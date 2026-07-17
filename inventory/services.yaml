@@ -41,7 +41,7 @@ services:
   searxng:
     name: "SearXNG"
     host: "10.10.50.51"
-    port: 8080
+    port: 8888
     protocol: "http"
     health_endpoint: "/"
     expected_status:
