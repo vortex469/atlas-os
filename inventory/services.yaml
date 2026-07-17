@@ -3,28 +3,28 @@ atlas:
   assistant: "Orion"
   reasoning_engine: "Hermes"
 
-hosts:
-  proxmox_primary:
-    name: "Primary Proxmox"
-    address: "10.10.50.10"
-    type: "proxmox"
-    notes: "Single-node Proxmox host"
-
-  atlas_host:
-    name: "Hermes II"
-    address: "10.10.50.60"
-    type: "lxc"
-    container_id: 108
-
 services:
+  
   hermes:
     name: "Hermes"
     host: "10.10.50.60"
+    port: 8642
+    protocol: "http"
+    health_endpoint: "/health"
+    expected_status:
+      - 200
+    critical: true
     role: "reasoning-engine"
 
   open_webui:
     name: "Open WebUI"
     host: "10.10.50.60"
+    port: 3000
+    protocol: "http"
+    health_endpoint: "/"
+    expected_status:
+      - 200
+    critical: true
     role: "chat-interface"
 
   kokoro:
@@ -32,36 +32,52 @@ services:
     host: "10.10.50.60"
     port: 8880
     protocol: "http"
+    health_endpoint: "/v1/audio/voices"
+    expected_status:
+      - 200
+    critical: false
     role: "text-to-speech"
 
   searxng:
     name: "SearXNG"
     host: "10.10.50.51"
-    container_id: 103
+    port: 8080
+    protocol: "http"
+    health_endpoint: "/"
+    expected_status:
+      - 200
+    critical: false
     role: "web-search"
 
   lm_studio:
     name: "LM Studio"
     host: "10.10.30.146"
+    port: 1234
+    protocol: "http"
+    health_endpoint: "/"
+    expected_status:
+      - 200
+    critical: true
     role: "model-inference"
 
   home_assistant:
     name: "Home Assistant"
     host: "10.10.40.140"
-    type: "virtual-machine"
+    port: 8123
+    protocol: "http"
+    health_endpoint: "/"
+    expected_status:
+      - 200
+    critical: false
     role: "home-automation"
-    notes: "Runs on a separate Proxmox server"
 
   ifileshare:
     name: "iFileshare"
     host: "10.10.50.30"
     port: 8080
-    container_id: 105
     protocol: "http"
+    health_endpoint: "/"
+    expected_status:
+      - 200
+    critical: false
     role: "file-sharing"
-
-  iventoy:
-    name: "iVentoy"
-    host: "10.10.50.20"
-    container_id: 102
-    role: "network-boot"
