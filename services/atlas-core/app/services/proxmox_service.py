@@ -1,16 +1,13 @@
-import os
-
-from app.clients.proxmox_client import get_client
-
+from app.clients.proxmox_client import get_proxmox_client
+from app.config.settings import settings
 
 def bytes_to_gib(value: int | float) -> float:
     return round(value / (1024 ** 3), 2)
 
 
 def get_proxmox_status() -> dict:
-    client = get_client()
-    node = os.environ["PROXMOX_NODE"]
-
+    client = get_proxmox_client()
+    node = settings.proxmox.node
     status = client.nodes(node).status.get()
 
     memory = status.get("memory", {})
@@ -36,9 +33,8 @@ def get_proxmox_status() -> dict:
 
 
 def get_proxmox_guests() -> dict:
-    client = get_client()
-    node = os.environ["PROXMOX_NODE"]
-
+    client = get_proxmox_client()
+    node = settings.proxmox.node
     guests = []
 
     for vm in client.nodes(node).qemu.get():

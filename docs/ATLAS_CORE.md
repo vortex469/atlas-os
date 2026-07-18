@@ -4,9 +4,9 @@ Atlas Core is the central API for Atlas OS.
 
 ## Address
 
-- API: http://10.10.50.60:8643
-- Documentation: http://10.10.50.60:8643/docs
-- Health: http://10.10.50.60:8643/health
+- API: http://atlas-host:8643
+- Documentation: http://atlas-host:8643/docs
+- Health: http://atlas-host:8643/health
 
 ## Service Management
 

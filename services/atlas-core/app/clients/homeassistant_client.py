@@ -1,21 +1,21 @@
 import os
 
 import httpx
-from dotenv import load_dotenv
 
-
-load_dotenv("/opt/atlas/.env")
+from app.config.settings import settings
 
 
 def get_headers() -> dict[str, str]:
+    token = os.environ["HASS_TOKEN"]
+
     return {
-        "Authorization": f"Bearer {os.environ['HASS_TOKEN']}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
 
 
 def get_api_status() -> dict:
-    url = f"{os.environ['HASS_URL'].rstrip('/')}/api/"
+    url = f"{settings.home_assistant.url.rstrip('/')}/api/"
 
     response = httpx.get(
         url,
@@ -28,7 +28,7 @@ def get_api_status() -> dict:
 
 
 def get_states() -> list[dict]:
-    url = f"{os.environ['HASS_URL'].rstrip('/')}/api/states"
+    url = f"{settings.home_assistant.url.rstrip('/')}/api/states"
 
     response = httpx.get(
         url,
