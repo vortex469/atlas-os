@@ -3,6 +3,7 @@ from typing import Any, Callable
 
 from app.services.docker_service import get_docker_status
 from app.services.health_service import get_health
+from app.services.homeassistant_service import get_homeassistant_status
 from app.services.proxmox_service import (
     get_proxmox_guests,
     get_proxmox_status,
@@ -33,6 +34,10 @@ def get_ops_summary() -> dict:
     docker = safely_collect("docker", get_docker_status)
     proxmox = safely_collect("proxmox", get_proxmox_status)
     guests = safely_collect("proxmox-guests", get_proxmox_guests)
+    home = safely_collect(
+        "home-assistant",
+        get_homeassistant_status,
+    )
 
     sections = {
         "services": services,
@@ -40,6 +45,7 @@ def get_ops_summary() -> dict:
         "docker": docker,
         "proxmox": proxmox,
         "guests": guests,
+        "home": home,
     }
 
     failed_sections = [
@@ -65,11 +71,33 @@ def get_ops_summary() -> dict:
     ]
 
     docker_data = docker.get("data", {})
-    unhealthy_containers = docker_data.get("unhealthy", 0)
+    unhealthy_containers = docker_data.get(
+        "unhealthy",
+        0,
+    )
+
+    home_data = home.get("data", {})
+
+    unavailable_entities = (
+        home_data
+        .get("entities", {})
+        .get("unavailable_count", 0)
+    )
+
+    pending_home_updates = (
+        home_data
+        .get("updates", {})
+        .get("pending_count", 0)
+    )
 
     if critical_failures or failed_sections:
         overall_status = "critical"
-    elif warnings or unhealthy_containers:
+    elif (
+        warnings
+        or unhealthy_containers
+        or unavailable_entities
+        or pending_home_updates
+    ):
         overall_status = "degraded"
     else:
         overall_status = "healthy"
@@ -84,6 +112,8 @@ def get_ops_summary() -> dict:
             "warnings": warnings,
             "failed_sections": failed_sections,
             "unhealthy_containers": unhealthy_containers,
+            "unavailable_home_entities": unavailable_entities,
+            "pending_home_updates": pending_home_updates,
         },
         **sections,
     }

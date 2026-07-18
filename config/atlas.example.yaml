@@ -1,0 +1,24 @@
+atlas:
+  name: Atlas OS
+  release: 0.2-foundation
+  assistant: Orion
+  host: 0.0.0.0
+  port: 8643
+
+infrastructure:
+  domain: home.arpa
+
+proxmox:
+  host: 10.10.50.10
+  port: 8006
+  node: vorex469
+  verify_ssl: false
+
+home_assistant:
+  url: http://10.10.40.140:8123
+
+docker:
+  socket: unix:///var/run/docker.sock
+
+inventory:
+  file: /opt/atlas/inventory/services.yaml
