@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ATLAS_ROOT="/opt/atlas"
+ATLAS_CORE="$ATLAS_ROOT/services/atlas-core"
+PYTHON="$ATLAS_CORE/.venv/bin/python"
+
+command="${1:-help}"
+
+case "$command" in
+    doctor)
+        cd "$ATLAS_CORE"
+        exec "$PYTHON" -m app.doctor
+        ;;
+
+    status)
+        systemctl status atlas-core --no-pager -l
+        ;;
+
+    logs)
+        journalctl -u atlas-core -n 100 --no-pager
+        ;;
+
+    restart)
+        systemctl restart atlas-core
+        systemctl status atlas-core --no-pager -l
+        ;;
+
+    help|--help|-h)
+        echo "Atlas OS command-line utility"
+        echo
+        echo "Usage:"
+        echo "  atlas doctor   Run system diagnostics"
+        echo "  atlas status   Show Atlas Core status"
+        echo "  atlas logs     Show recent Atlas logs"
+        echo "  atlas restart  Restart Atlas Core"
+        ;;
+
+    *)
+        echo "Unknown Atlas command: $command" >&2
+        echo "Run 'atlas help' for available commands." >&2
+        exit 64
+        ;;
+esac
