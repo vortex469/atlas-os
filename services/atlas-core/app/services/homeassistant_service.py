@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 
 from app.clients.homeassistant_client import (
     get_api_status,
@@ -78,4 +78,55 @@ def get_homeassistant_status() -> dict:
             "entities": zwave_entities,
         },
         "unavailable_entities": unavailable,
+    }
+
+def get_unavailable_entities() -> dict:
+    states = get_states()
+
+    grouped: dict[str, list[dict]] = defaultdict(list)
+
+    for state in states:
+        entity_state = state.get("state")
+
+        if entity_state not in {"unavailable", "unknown"}:
+            continue
+
+        entity_id = state["entity_id"]
+        domain = entity_id.split(".", 1)[0]
+        attributes = state.get("attributes", {})
+
+        grouped[domain].append(
+            {
+                "entity_id": entity_id,
+                "name": attributes.get(
+                    "friendly_name",
+                    entity_id,
+                ),
+                "state": entity_state,
+                "device_class": attributes.get("device_class"),
+                "integration": attributes.get("integration"),
+            }
+        )
+
+    sorted_groups = {
+        domain: sorted(
+            entities,
+            key=lambda item: item["name"].lower(),
+        )
+        for domain, entities in sorted(grouped.items())
+    }
+
+    return {
+        "total": sum(
+            len(entities)
+            for entities in sorted_groups.values()
+        ),
+        "domain_count": len(sorted_groups),
+        "domains": {
+            domain: {
+                "count": len(entities),
+                "entities": entities,
+            }
+            for domain, entities in sorted_groups.items()
+        },
     }
