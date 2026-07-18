@@ -22,6 +22,7 @@ def get_homeassistant_status() -> dict:
                 "friendly_name",
                 state["entity_id"],
             ),
+            "state": state.get("state"),
         }
         for state in states
         if state.get("state") in {"unavailable", "unknown"}

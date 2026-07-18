@@ -8,10 +8,8 @@ load_dotenv("/opt/atlas/.env")
 
 
 def get_headers() -> dict[str, str]:
-    token = os.environ["HASS_TOKEN"]
-
     return {
-        "Authorization": f"Bearer {token}",
+        "Authorization": f"Bearer {os.environ['HASS_TOKEN']}",
         "Content-Type": "application/json",
     }
 
