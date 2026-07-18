@@ -11,7 +11,7 @@ from app.services.system_service import get_system_status
 
 
 def safely_collect(
-    name: str,
+    source: str,
     collector: Callable[[], Any],
 ) -> dict:
     try:
@@ -22,7 +22,7 @@ def safely_collect(
     except Exception as error:
         return {
             "status": "offline",
-            "source": name,
+            "source": source,
             "error": str(error),
         }
 
@@ -49,6 +49,7 @@ def get_ops_summary() -> dict:
     ]
 
     service_results = services.get("data", {})
+
     critical_failures = [
         name
         for name, result in service_results.items()
@@ -56,16 +57,19 @@ def get_ops_summary() -> dict:
         and result.get("status") != "online"
     ]
 
-    noncritical_failures = [
+    warnings = [
         name
         for name, result in service_results.items()
         if result.get("critical") is not True
         and result.get("status") != "online"
     ]
 
+    docker_data = docker.get("data", {})
+    unhealthy_containers = docker_data.get("unhealthy", 0)
+
     if critical_failures or failed_sections:
         overall_status = "critical"
-    elif noncritical_failures:
+    elif warnings or unhealthy_containers:
         overall_status = "degraded"
     else:
         overall_status = "healthy"
@@ -77,8 +81,9 @@ def get_ops_summary() -> dict:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "alerts": {
             "critical_services": critical_failures,
-            "warnings": noncritical_failures,
+            "warnings": warnings,
             "failed_sections": failed_sections,
+            "unhealthy_containers": unhealthy_containers,
         },
         **sections,
     }
