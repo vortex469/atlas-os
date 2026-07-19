@@ -21,7 +21,7 @@ export function MissionControl() {
     } = useMissionControl();
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100">
+        <div className="min-h-screen">
             <DashboardHeader lastUpdated={lastUpdated} />
 
             <main className="mx-auto max-w-7xl space-y-8 p-8">

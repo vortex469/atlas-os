@@ -1,5 +1,7 @@
-import { MissionControl } from "./features/mission-control/MissionControl";
+import { RouterProvider } from "react-router-dom";
+
+import { router } from "./app/router";
 
 export default function App() {
-    return <MissionControl />;
+    return <RouterProvider router={router} />;
 }
