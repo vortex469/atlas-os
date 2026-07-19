@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.config.validation import validate_configuration
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware
+from app.routes.ace import router as ace_router
 from app.routes.docker import router as docker_router
 from app.routes.health import router as health_router
 from app.routes.homeassistant import router as home_router
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI):
     validate_configuration()
     logger.info("Atlas configuration validated")
 
+    logger.info("Atlas Cognitive Engine ready")
     logger.info("Atlas Core ready")
     yield
 
@@ -44,7 +46,8 @@ def root():
     return {
         "atlas": "online",
         "assistant": "Orion",
-        "engine": "Hermes",
+        "reasoning_engine": "Hermes",
+        "cognitive_engine": "ACE",
         "release": "0.3-intelligence",
     }
 
@@ -55,3 +58,4 @@ app.include_router(docker_router)
 app.include_router(proxmox_router)
 app.include_router(home_router)
 app.include_router(intelligence_router)
+app.include_router(ace_router)

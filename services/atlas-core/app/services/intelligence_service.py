@@ -1,16 +1,11 @@
+from app.intelligence.coordinator import collect_findings
 from app.intelligence.engine import IntelligenceEngine
 from app.intelligence.findings import Severity
-from app.intelligence.homeassistant_rules import evaluate_homeassistant
-from app.services.homeassistant_service import get_homeassistant_status
 
 
 def get_intelligence_summary() -> dict:
     engine = IntelligenceEngine()
-
-    homeassistant_status = get_homeassistant_status()
-    engine.extend(
-        evaluate_homeassistant(homeassistant_status)
-    )
+    engine.extend(collect_findings())
 
     summary = engine.summary()
     findings = engine.findings()
@@ -33,13 +28,27 @@ def get_intelligence_summary() -> dict:
         ],
     }
 
-    recommendations = [
-        finding.recommendation
-        for finding in findings
-        if finding.recommendation
-    ]
+    recommendations = list(
+        dict.fromkeys(
+            finding.recommendation
+            for finding in findings
+            if finding.recommendation
+        )
+    )
+
+    sources = sorted(
+        {
+            finding.source
+            for finding in findings
+        }
+    )
 
     return {
+        "engine": {
+            "name": "Atlas Cognitive Engine",
+            "short_name": "ACE",
+            "version": "0.3.0-alpha1",
+        },
         "health": {
             "score": summary["score"],
             "status": summary["status"],
@@ -47,9 +56,5 @@ def get_intelligence_summary() -> dict:
         "counts": summary["counts"],
         "findings": grouped_findings,
         "recommendations": recommendations,
-        "sources": {
-            "home_assistant": {
-                "status": "online",
-            },
-        },
+        "sources": sources,
     }
