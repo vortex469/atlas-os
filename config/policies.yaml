@@ -21,8 +21,15 @@ proxmox:
       expected: stopped
 
 docker:
+  containers:
+    open-webui:
+      expected: running
 
-  containers: {}
+    hermes:
+      expected: running
+
+    kokoro-tts:
+      expected: running
 
 homeassistant:
 

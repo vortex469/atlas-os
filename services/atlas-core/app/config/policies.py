@@ -61,3 +61,13 @@ def get_expected_container_state(name: str) -> str | None:
         return None
 
     return container.expected
+
+def get_expected_container_states() -> dict[str, str]:
+    """Return expected states for all configured Docker containers."""
+
+    policies = load_policies()
+
+    return {
+        name: container.expected
+        for name, container in policies.docker.containers.items()
+    }
