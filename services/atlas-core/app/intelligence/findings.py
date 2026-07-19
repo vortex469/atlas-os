@@ -15,9 +15,16 @@ class Finding(BaseModel):
     severity: Severity
     category: str
     source: str
+
     title: str
     message: str
     recommendation: str | None = None
+
+    # New fields for Atlas Cognitive Engine
+    component: str | None = None
+    metric: dict[str, Any] = Field(default_factory=dict)
+
     details: dict[str, Any] = Field(default_factory=dict)
+
     affects_health: bool = True
     score_penalty: int = Field(default=0, ge=0, le=100)
