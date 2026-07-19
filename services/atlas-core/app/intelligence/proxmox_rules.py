@@ -1,5 +1,5 @@
 from app.intelligence.findings import Finding, Severity
-
+from app.config.policies import is_expected_guest
 
 CPU_WARNING_PERCENT = 85
 CPU_CRITICAL_PERCENT = 95
@@ -11,6 +11,7 @@ MEMORY_CRITICAL_PERCENT = 95
 def evaluate_proxmox(
     status: dict,
     guests: dict,
+    expected_guest_checker=is_expected_guest,
 ) -> list[Finding]:
     findings: list[Finding] = []
 
@@ -139,43 +140,51 @@ def evaluate_proxmox(
             )
         )
 
-    if stopped_guests > 0:
-        stopped = [
+    unexpected_stopped = []
+
+    for guest in guest_items:
+        if guest.get("status") == "running":
+            continue
+
+        vmid = guest.get("vmid")
+
+        if expected_guest_checker(vmid, "stopped"):
+            continue
+
+        unexpected_stopped.append(
             {
-                "vmid": guest.get("vmid"),
+                "vmid": vmid,
                 "name": guest.get("name"),
                 "type": guest.get("type"),
                 "status": guest.get("status"),
             }
-            for guest in guest_items
-            if guest.get("status") != "running"
-        ]
+        )
 
+    if unexpected_stopped:
         findings.append(
             Finding(
-                id="proxmox-guests-stopped",
-                severity=Severity.INFO,
+                id="proxmox-guests-unexpected-stopped",
+                severity=Severity.WARNING,
                 category="infrastructure",
                 source="proxmox",
                 component="Proxmox",
-                title="Proxmox guests stopped",
+                title="Unexpected Proxmox guests stopped",
                 message=(
-                    f"{stopped_guests} Proxmox guest(s) are stopped."
+                    f"{len(unexpected_stopped)} guest(s) are stopped "
+                    "unexpectedly."
                 ),
                 recommendation=(
-                    "Review the stopped guests and confirm that their "
-                    "state is intentional."
+                    "Review guests that are stopped but expected to be running."
                 ),
                 metric={
+                    "unexpected_stopped": len(unexpected_stopped),
                     "running_guests": running_guests,
-                    "stopped_guests": stopped_guests,
                 },
                 details={
                     "node": node,
-                    "stopped_guests": stopped,
+                    "guests": unexpected_stopped,
                 },
-                affects_health=False,
-                score_penalty=0,
+                score_penalty=5,
             )
         )
 
