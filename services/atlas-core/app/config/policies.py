@@ -19,14 +19,13 @@ def load_policies() -> dict[str, Any]:
     return data or {}
 
 
-_POLICIES = load_policies()
-
-
 def get_expected_guest_state(vmid: int) -> str | None:
     """Return the expected state for a Proxmox guest."""
 
+    policies = load_policies()
+
     return (
-        _POLICIES
+        policies
         .get("proxmox", {})
         .get("guests", {})
         .get(str(vmid), {})
@@ -35,8 +34,6 @@ def get_expected_guest_state(vmid: int) -> str | None:
 
 
 def is_expected_guest(vmid: int, state: str) -> bool:
-    """Return True if the guest is in its expected state."""
-
     expected = get_expected_guest_state(vmid)
 
     if expected is None:
@@ -46,16 +43,20 @@ def is_expected_guest(vmid: int, state: str) -> bool:
 
 
 def get_ignored_entities() -> list[str]:
+    policies = load_policies()
+
     return (
-        _POLICIES
+        policies
         .get("homeassistant", {})
         .get("ignored_entities", [])
     )
 
 
 def get_expected_container_state(name: str) -> str | None:
+    policies = load_policies()
+
     return (
-        _POLICIES
+        policies
         .get("docker", {})
         .get("containers", {})
         .get(name, {})
