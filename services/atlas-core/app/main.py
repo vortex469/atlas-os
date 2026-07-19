@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.config.validation import validate_configuration
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware
+from app.providers.loader import load_provider_registry
 from app.routes.ace import router as ace_router
 from app.routes.docker import router as docker_router
 from app.routes.health import router as health_router
@@ -12,7 +13,7 @@ from app.routes.homeassistant import router as home_router
 from app.routes.intelligence import router as intelligence_router
 from app.routes.ops import router as ops_router
 from app.routes.proxmox import router as proxmox_router
-
+from app.routes.providers import router as providers_router
 
 configure_logging()
 logger = get_logger("atlas")
@@ -25,8 +26,12 @@ async def lifespan(app: FastAPI):
     validate_configuration()
     logger.info("Atlas configuration validated")
 
+    load_provider_registry()
+    logger.info("Provider registry initialized")
+
     logger.info("Atlas Cognitive Engine ready")
     logger.info("Atlas Core ready")
+
     yield
 
     logger.info("Atlas Core shutting down")
@@ -53,6 +58,7 @@ def root():
 
 
 app.include_router(health_router)
+app.include_router(providers_router)
 app.include_router(ops_router)
 app.include_router(docker_router)
 app.include_router(proxmox_router)

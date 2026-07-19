@@ -71,5 +71,7 @@ class ProviderRegistry:
     def __len__(self) -> int:
         return len(self._providers)
 
+    def ids(self) -> tuple[str, ...]:
+        return tuple(self._providers.keys())
 
 provider_registry = ProviderRegistry()
