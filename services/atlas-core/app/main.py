@@ -8,6 +8,7 @@ from app.core.middleware import RequestLoggingMiddleware
 from app.routes.docker import router as docker_router
 from app.routes.health import router as health_router
 from app.routes.homeassistant import router as home_router
+from app.routes.intelligence import router as intelligence_router
 from app.routes.ops import router as ops_router
 from app.routes.proxmox import router as proxmox_router
 
@@ -31,7 +32,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Atlas Core",
-    version="0.2.0",
+    version="0.3.0-alpha1",
     lifespan=lifespan,
 )
 
@@ -44,7 +45,7 @@ def root():
         "atlas": "online",
         "assistant": "Orion",
         "engine": "Hermes",
-        "release": "0.2-foundation",
+        "release": "0.3-intelligence",
     }
 
 
@@ -53,3 +54,4 @@ app.include_router(ops_router)
 app.include_router(docker_router)
 app.include_router(proxmox_router)
 app.include_router(home_router)
+app.include_router(intelligence_router)

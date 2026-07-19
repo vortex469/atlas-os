@@ -6,6 +6,9 @@ from app.config.validation import (
     ConfigurationValidationError,
     validate_configuration,
 )
+from app.intelligence.engine import IntelligenceEngine
+from app.intelligence.findings import Severity
+from app.intelligence.homeassistant_rules import evaluate_homeassistant
 from app.services.docker_service import get_docker_status
 from app.services.health_service import get_health
 from app.services.homeassistant_service import get_homeassistant_status
@@ -103,31 +106,30 @@ def main() -> int:
     information: list[str] = []
     critical: list[str] = []
 
-    home = results.get("Home Assistant", {})
+    intelligence = IntelligenceEngine()
 
-    unavailable_entities = (
-        home
-        .get("entities", {})
-        .get("unavailable_count", 0)
-    )
+    home = results.get("Home Assistant")
 
-    pending_updates = (
-        home
-        .get("updates", {})
-        .get("pending_count", 0)
-    )
-
-    if unavailable_entities:
-        warning_count += 1
-        warnings.append(
-            "Home Assistant has "
-            f"{unavailable_entities} unavailable or unknown entities"
+    if isinstance(home, dict):
+        intelligence.extend(
+            evaluate_homeassistant(home)
         )
 
-    if pending_updates:
-        information.append(
-            f"Home Assistant has {pending_updates} pending updates"
-        )
+    for finding in intelligence.findings():
+        if finding.severity == Severity.CRITICAL:
+            critical.append(finding.message)
+
+            if finding.affects_health:
+                critical_service_failures += 1
+
+        elif finding.severity == Severity.WARNING:
+            warnings.append(finding.message)
+
+            if finding.affects_health:
+                warning_count += 1
+
+        elif finding.severity == Severity.INFO:
+            information.append(finding.message)
 
     docker = results.get("Docker", {})
     unhealthy_containers = docker.get("unhealthy", 0)
