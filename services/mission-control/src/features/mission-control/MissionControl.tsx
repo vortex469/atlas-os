@@ -1,8 +1,8 @@
 import { DashboardHeader } from "../../components/DashboardHeader";
 import { HealthCard } from "../../components/HealthCard";
+import { ProviderCard } from "../../components/ProviderCard";
 import { RefreshIndicator } from "../../components/RefreshIndicator";
 import { SectionHeader } from "../../components/SectionHeader";
-import { ServiceCard } from "../../components/ServiceCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useMissionControl } from "../../hooks/useMissionControl";
 import { FindingsSection } from "./FindingsSection";
@@ -12,7 +12,7 @@ export function MissionControl() {
     const {
         summary,
         health,
-        services,
+        providers,
         lastUpdated,
         error,
         isLoading,
@@ -50,17 +50,21 @@ export function MissionControl() {
                     </div>
                 )}
 
-                {isLoading && !summary && !health && (
-                    <div className="rounded-lg border border-slate-800 bg-slate-900 p-8">
-                        <p className="text-sm font-medium text-slate-300">
-                            Connecting to Atlas Core...
-                        </p>
+                {isLoading &&
+                    !summary &&
+                    !health &&
+                    providers.length === 0 && (
+                        <div className="rounded-lg border border-slate-800 bg-slate-900 p-8">
+                            <p className="text-sm font-medium text-slate-300">
+                                Connecting to Atlas Core...
+                            </p>
 
-                        <p className="mt-2 text-sm text-slate-500">
-                            Loading the current ACE situation report and service health.
-                        </p>
-                    </div>
-                )}
+                            <p className="mt-2 text-sm text-slate-500">
+                                Loading the current ACE situation report,
+                                platform health, and provider catalog.
+                            </p>
+                        </div>
+                    )}
 
                 {summary && (
                     <>
@@ -76,18 +80,20 @@ export function MissionControl() {
                     </>
                 )}
 
-                {health && (
+                {(health || providers.length > 0) && (
                     <section>
                         <div className="mb-4 flex items-end justify-between gap-4">
                             <SectionHeader
-                                title="Services"
-                                description="Live status of Atlas capabilities and connected infrastructure."
+                                title="Providers"
+                                description="Registry-backed Atlas capabilities and connected infrastructure."
                             />
 
                             <div className="mb-4 flex items-center gap-3">
                                 <RefreshIndicator active={isRefreshing} />
 
-                                <StatusBadge status={health.atlas} />
+                                {health && (
+                                    <StatusBadge status={health.atlas} />
+                                )}
 
                                 <button
                                     type="button"
@@ -100,18 +106,29 @@ export function MissionControl() {
                             </div>
                         </div>
 
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {services.map(([name, service]) => (
-                                <ServiceCard
-                                    key={name}
-                                    name={name}
-                                    status={service.status}
-                                    critical={service.critical}
-                                    latencyMs={service.latency_ms}
-                                    httpStatus={service.http_status}
-                                />
-                            ))}
-                        </div>
+                        {providers.length > 0 ? (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {providers.map((provider) => (
+                                    <ProviderCard
+                                        key={provider.id}
+                                        provider={provider}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            !isLoading && (
+                                <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
+                                    <p className="text-sm font-medium text-slate-300">
+                                        No providers registered
+                                    </p>
+
+                                    <p className="mt-2 text-sm text-slate-500">
+                                        Atlas Core did not return any
+                                        providers from the registry.
+                                    </p>
+                                </div>
+                            )
+                        )}
                     </section>
                 )}
 
