@@ -1,7 +1,15 @@
-from app.providers import Provider
+from app.providers import Provider, ProviderAction
+
+
+def serialize_action(action: ProviderAction) -> dict:
+    """Convert a provider action into its public API representation."""
+
+    return action.model_dump()
 
 
 async def serialize_provider(provider: Provider) -> dict:
+    """Convert a provider and its current health into an API response."""
+
     health = await provider.get_health()
 
     return {
