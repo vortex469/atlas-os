@@ -20,15 +20,28 @@ export function ComposeEditor({
     onAnalysis,
 }: ComposeEditorProps) {
     const [compose, setCompose] = useState(defaultCompose);
+    const [reference, setReference] = useState("nginx-demo");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     async function handleAnalyze() {
-        setLoading(true);
         setError(null);
 
+        const normalizedReference = reference.trim();
+
+        if (!normalizedReference) {
+            setError("Deployment name is required.");
+            return;
+        }
+
+        setLoading(true);
+
         try {
-            const result = await analyzeCompose(compose);
+            const result = await analyzeCompose(
+                compose,
+                normalizedReference,
+            );
+
             onAnalysis(result);
         } catch (caughtError) {
             const message =
@@ -55,9 +68,27 @@ export function ComposeEditor({
                 </p>
             </div>
 
+            <label className="mb-4 block">
+                <span className="text-sm font-medium text-slate-300">
+                    Deployment name
+                </span>
+
+                <input
+                    type="text"
+                    value={reference}
+                    onChange={(event) =>
+                        setReference(event.target.value)
+                    }
+                    placeholder="nginx-demo"
+                    className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-blue-500"
+                />
+            </label>
+
             <textarea
                 value={compose}
-                onChange={(event) => setCompose(event.target.value)}
+                onChange={(event) =>
+                    setCompose(event.target.value)
+                }
                 spellCheck={false}
                 className="min-h-80 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-200 outline-none transition focus:border-blue-500"
             />

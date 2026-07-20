@@ -10,13 +10,14 @@ export const atlas = axios.create({
 
 export async function analyzeCompose(
     compose: string,
+    reference: string,
 ): Promise<DeploymentAnalysisResponse> {
     const response =
         await atlas.post<DeploymentAnalysisResponse>(
             "/analysis/deployments",
             {
                 source: "compose",
-                reference: "forge",
+                reference,
                 document: parse(compose),
             },
         );

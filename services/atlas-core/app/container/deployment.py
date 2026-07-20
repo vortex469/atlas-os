@@ -10,7 +10,7 @@ from app.deploy.risk import (
     RiskEngine,
 )
 from app.planning import PlanningEngine
-
+from app.deploy.recognition import ApplicationRecognizer
 
 def create_analyzer_registry() -> AnalyzerRegistry:
     registry = AnalyzerRegistry()
@@ -35,6 +35,9 @@ def create_planning_engine() -> PlanningEngine:
 def create_deployment_service() -> DeploymentService:
     return DeploymentService(
         analyzer_registry=create_analyzer_registry(),
+        recognizer=create_application_recognizer(),
         risk_engine=create_risk_engine(),
         planner=create_planning_engine(),
     )
+def create_application_recognizer() -> ApplicationRecognizer:
+    return ApplicationRecognizer()

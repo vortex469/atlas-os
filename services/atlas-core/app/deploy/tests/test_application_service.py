@@ -10,7 +10,7 @@ from app.deploy.risk import (
     RiskEngine,
 )
 from app.planning import PlanningEngine
-
+from app.deploy.recognition import ApplicationRecognizer
 
 def test_complete_analysis_pipeline() -> None:
     registry = AnalyzerRegistry()
@@ -26,6 +26,7 @@ def test_complete_analysis_pipeline() -> None:
 
     service = DeploymentService(
         analyzer_registry=registry,
+        recognizer=ApplicationRecognizer(),
         risk_engine=risk,
         planner=planner,
     )

@@ -17,9 +17,20 @@ export function DiagnosticsPanel({
             </h2>
 
             {diagnostics.length === 0 ? (
-                <p className="mt-3 text-sm text-emerald-300">
-                    No issues detected.
-                </p>
+                <div className="mt-4 flex items-center gap-3 rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-4">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-900/50 text-sm text-emerald-300">
+                        ✓
+                    </span>
+
+                    <div>
+                        <p className="font-medium text-emerald-300">
+                            No issues detected
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                            Atlas found no security or operational concerns.
+                        </p>
+                    </div>
+                </div>
             ) : (
                 <div className="mt-4 space-y-3">
                     {diagnostics.map((diagnostic) => (

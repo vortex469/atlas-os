@@ -5,6 +5,7 @@ import { ComposeEditor } from "./ComposeEditor";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { PlanPanel } from "./PlanPanel";
 import type { DeploymentAnalysisResponse } from "./types";
+import { DeploymentBrief } from "./DeploymentBrief";
 
 export function Forge() {
     const [result, setResult] =
@@ -25,12 +26,18 @@ export function Forge() {
 
             <ComposeEditor onAnalysis={setResult} />
 
-            <div className="grid gap-6 lg:grid-cols-2">
-                <AnalysisPanel result={result} />
-                <DiagnosticsPanel result={result} />
-            </div>
+            {result && (
+                <div className="space-y-6">
+                    <DeploymentBrief analysis={result} />
 
-            <PlanPanel result={result} />
+                    <div className="grid gap-6 lg:grid-cols-2">
+                        <AnalysisPanel result={result} />
+                        <DiagnosticsPanel result={result} />
+                    </div>
+
+                    <PlanPanel result={result} />
+                </div>
+            )}
 
             {result && (
                 <details className="rounded-lg border border-slate-800 bg-slate-900 p-6">
