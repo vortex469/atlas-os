@@ -6,11 +6,13 @@
 
 **An open-source conversational infrastructure operating system.**
 
-*Atlas helps you understand your infrastructure before it helps you change it.*
+Atlas helps you understand your infrastructure before it helps you change it.
 
 ---
 
-**Current Release:** Foundry 0.1
+**Current Release**
+
+**Foundry 0.1**
 
 </div>
 
@@ -18,11 +20,11 @@
 
 # What is Atlas?
 
-Atlas is an intelligent infrastructure platform designed to help you understand, manage, and eventually automate your entire infrastructure from a single interface.
+Atlas is an intelligent infrastructure platform designed to analyze, understand, and eventually operate modern infrastructure through conversation.
 
-Instead of switching between Docker, Proxmox, Home Assistant, Kubernetes, SSH sessions, and dozens of dashboards, Atlas provides one place to analyze deployments, assess risk, plan execution, and guide operations.
+Instead of managing Docker, Proxmox, Home Assistant, Kubernetes, SSH sessions, and dozens of dashboards separately, Atlas provides a unified platform that explains your infrastructure, recommends actions, and safely guides execution.
 
-Atlas is built around a simple idea:
+Atlas is built around one simple philosophy:
 
 > **Understanding comes before automation.**
 
@@ -34,14 +36,14 @@ Most infrastructure tools help you automate.
 
 Atlas helps you understand.
 
-Before Atlas executes a deployment, it explains:
+Before Atlas executes a deployment it answers four questions:
 
-- What it discovered
-- What risks exist
-- What it plans to do
-- Why it recommends that action
+- **What did I find?**
+- **What risks exist?**
+- **What do I recommend?**
+- **Why?**
 
-Every recommendation is backed by reasoning.
+Every recommendation is backed by analysis rather than automation alone.
 
 ---
 
@@ -54,7 +56,7 @@ Atlas is built around four guiding principles.
 - ✅ Require approval before execution
 - 🤖 Automate only after understanding
 
-These principles influence every feature in Atlas.
+These principles influence every subsystem inside Atlas.
 
 ---
 
@@ -83,24 +85,23 @@ Current features include:
 
 - Deployment Briefs
 - Docker Compose analysis
-- Diagnostics
+- Deployment planning
 - Risk analysis
+- Diagnostics
 - Rich component inspection
-- Execution planning
 - Application recognition *(in progress)*
 
 ---
 
 ## Mission Control
 
-Operational dashboard for Atlas.
+Modern operations interface.
 
 Mission Control provides:
 
 - Deployment review
 - Infrastructure overview
 - Operational dashboards
-- Approval workflows
 - Future execution management
 
 ---
@@ -109,38 +110,38 @@ Mission Control provides:
 
 Conversational infrastructure assistant.
 
-Future capabilities:
+Future capabilities include:
 
 - Voice interaction
 - Infrastructure explanations
 - Guided troubleshooting
-- Operational recommendations
-- Intelligent deployment assistance
+- Infrastructure recommendations
+- Conversational operations
 
 ---
 
 # Architecture
 
 ```text
-        Docker Compose
-        Kubernetes
-        Terraform
-        Infrastructure Providers
-                 │
-                 ▼
-        Deployment Analysis
-                 │
-                 ▼
-         Knowledge Engine
-                 │
-                 ▼
-            Risk Engine
-                 │
-                 ▼
-         Planning Engine
-                 │
-                 ▼
-          Mission Control
+          Docker Compose
+           Kubernetes
+            Terraform
+      Infrastructure Providers
+                   │
+                   ▼
+         Deployment Analysis
+                   │
+                   ▼
+          Knowledge Engine
+                   │
+                   ▼
+             Risk Engine
+                   │
+                   ▼
+          Planning Engine
+                   │
+                   ▼
+            Mission Control
 ```
 
 ---
@@ -166,20 +167,42 @@ Deployment Brief
 
         ▼
 
-Review Risks
+Review Findings
 
         │
 
         ▼
 
-Approval
+Approve
 
         │
 
         ▼
 
-Execution
+Execute
 ```
+
+---
+
+# Current Status
+
+Atlas currently supports:
+
+- Docker Compose deployment analysis
+- Deployment Brief generation
+- Risk analysis
+- Execution planning
+- Diagnostics
+- Provider abstraction
+- Mission Control web interface
+
+Currently under development:
+
+- Application recognition
+- Knowledge catalog
+- Infrastructure expertise
+- Approval workflows
+- Provider execution
 
 ---
 
@@ -187,12 +210,12 @@ Execution
 
 ## Foundry (Current)
 
-- Deployment analysis
-- Deployment Briefs
-- Risk engine
-- Planning engine
-- Forge UI
-- Mission Control
+- ✅ Deployment analysis
+- ✅ Deployment Briefs
+- ✅ Risk engine
+- ✅ Planning engine
+- ✅ Forge UI
+- ✅ Mission Control
 
 ---
 
@@ -201,14 +224,14 @@ Execution
 - Application recognition
 - Knowledge catalog
 - Best-practice recommendations
-- Infrastructure expertise
 - Resource estimation
+- Infrastructure expertise
 
 ---
 
 ## Deployment Platform
 
-- Approval workflow
+- Approval workflows
 - Provider execution
 - Rollback support
 - Live deployment monitoring
@@ -219,9 +242,9 @@ Execution
 
 - Orion Assistant
 - Voice interaction
-- Conversational operations
 - Guided troubleshooting
 - Cross-provider reasoning
+- Conversational operations
 
 ---
 
@@ -229,9 +252,9 @@ Execution
 
 Atlas is under active development.
 
-The architecture is stabilizing while new capabilities are being added.
+Core architecture is stabilizing while new capabilities are being added.
 
-Breaking changes may occur before the first stable release.
+Breaking changes should be expected before the first stable release.
 
 ---
 
@@ -239,7 +262,7 @@ Breaking changes may occur before the first stable release.
 
 Contributions are welcome.
 
-Whether you're improving documentation, adding provider support, expanding the knowledge catalog, or helping build new features, we'd love your help.
+Whether you're improving documentation, expanding the Knowledge Engine, adding providers, improving Mission Control, or building new capabilities, we'd love your help.
 
 ---
 
