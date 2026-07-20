@@ -27,3 +27,14 @@ documentation: https://www.home-assistant.io/docs/
 resources:
   cpu_cores: 2
   ram_mb: 2048
+
+recommended_ports:
+  - 8123
+
+persistent_paths:
+  - /config
+
+notes:
+  - Host networking is common.
+  - Persistent storage is required.
+  - Configure regular backups.

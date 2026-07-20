@@ -26,3 +26,27 @@ documentation: https://www.postgresql.org/docs/
 resources:
   cpu_cores: 2
   ram_mb: 2048
+  
+recommended_ports:
+  - 5432
+
+persistent_paths:
+  - /var/lib/postgresql/data
+
+environment_variables:
+  POSTGRES_USER:
+    required: true
+    description: Database administrator username
+
+  POSTGRES_PASSWORD:
+    required: true
+    description: Database administrator password
+
+  POSTGRES_DB:
+    required: false
+    description: Initial database name
+
+notes:
+  - Persistent storage is strongly recommended.
+  - Back up the data directory regularly.
+  - Do not expose PostgreSQL directly to the Internet.

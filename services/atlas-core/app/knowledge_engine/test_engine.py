@@ -13,6 +13,13 @@ from app.knowledge_engine import (
 )
 
 
+def create_knowledge_engine() -> KnowledgeEngine:
+    return KnowledgeEngine(
+        loader=KnowledgeCatalogLoader(),
+        matcher=ApplicationMatcher(),
+    )
+
+
 @pytest.mark.parametrize(
     ("image", "expected_id", "expected_name"),
     [
@@ -33,10 +40,7 @@ def test_recognizes_catalog_applications(
     expected_id: str,
     expected_name: str,
 ) -> None:
-    engine = KnowledgeEngine(
-        loader=KnowledgeCatalogLoader(),
-        matcher=ApplicationMatcher(),
-    )
+    engine = create_knowledge_engine()
 
     plan = DeploymentPlan(
         id=f"{expected_id}-demo",
@@ -59,3 +63,41 @@ def test_recognizes_catalog_applications(
     assert match.application.name == expected_name
     assert match.confidence == 100
     assert match.matched_component_ids == ["service"]
+
+
+def test_loads_postgres_operational_metadata() -> None:
+    engine = create_knowledge_engine()
+
+    plan = DeploymentPlan(
+        id="postgres-demo",
+        name="postgres-demo",
+        source=DeploymentSource.COMPOSE,
+        components=[
+            ApplicationComponent(
+                id="database",
+                name="Database",
+                kind=ComponentKind.SERVICE,
+                image="postgres:16",
+            )
+        ],
+    )
+
+    match = engine.recognize(plan)
+
+    assert match is not None
+    assert match.application.id == "postgres"
+    assert match.application.recommended_ports == [5432]
+
+    assert "/var/lib/postgresql/data" in (
+        match.application.persistent_paths
+    )
+
+    assert "POSTGRES_PASSWORD" in (
+        match.application.environment_variables
+    )
+
+    password = match.application.environment_variables[
+        "POSTGRES_PASSWORD"
+    ]
+
+    assert password.required is True
