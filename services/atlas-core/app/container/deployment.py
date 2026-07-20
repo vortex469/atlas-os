@@ -11,6 +11,11 @@ from app.deploy.risk import (
 )
 from app.planning import PlanningEngine
 from app.deploy.recognition import ApplicationRecognizer
+from app.knowledge_engine import (
+    ApplicationMatcher,
+    KnowledgeCatalogLoader,
+    KnowledgeEngine,
+)
 
 def create_analyzer_registry() -> AnalyzerRegistry:
     registry = AnalyzerRegistry()
@@ -39,5 +44,14 @@ def create_deployment_service() -> DeploymentService:
         risk_engine=create_risk_engine(),
         planner=create_planning_engine(),
     )
+
 def create_application_recognizer() -> ApplicationRecognizer:
-    return ApplicationRecognizer()
+    return ApplicationRecognizer(
+        knowledge_engine=create_knowledge_engine(),
+    )
+
+def create_knowledge_engine() -> KnowledgeEngine:
+    return KnowledgeEngine(
+        loader=KnowledgeCatalogLoader(),
+        matcher=ApplicationMatcher(),
+    )

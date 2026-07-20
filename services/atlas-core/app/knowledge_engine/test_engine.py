@@ -1,3 +1,5 @@
+import pytest
+
 from app.deploy.components import ApplicationComponent
 from app.deploy.enums import (
     ComponentKind,
@@ -11,22 +13,41 @@ from app.knowledge_engine import (
 )
 
 
-def test_recognizes_nginx_from_catalog() -> None:
+@pytest.mark.parametrize(
+    ("image", "expected_id", "expected_name"),
+    [
+        ("nginx:latest", "nginx", "NGINX"),
+        ("postgres:16", "postgres", "PostgreSQL"),
+        ("redis:7", "redis", "Redis"),
+        (
+            "ghcr.io/home-assistant/home-assistant:stable",
+            "homeassistant",
+            "Home Assistant",
+        ),
+        ("traefik:v3.0", "traefik", "Traefik"),
+        ("caddy:2", "caddy", "Caddy"),
+    ],
+)
+def test_recognizes_catalog_applications(
+    image: str,
+    expected_id: str,
+    expected_name: str,
+) -> None:
     engine = KnowledgeEngine(
         loader=KnowledgeCatalogLoader(),
         matcher=ApplicationMatcher(),
     )
 
     plan = DeploymentPlan(
-        id="nginx-demo",
-        name="nginx-demo",
+        id=f"{expected_id}-demo",
+        name=f"{expected_id}-demo",
         source=DeploymentSource.COMPOSE,
         components=[
             ApplicationComponent(
-                id="web",
-                name="Web",
+                id="service",
+                name="Service",
                 kind=ComponentKind.SERVICE,
-                image="nginx:latest",
+                image=image,
             )
         ],
     )
@@ -34,7 +55,7 @@ def test_recognizes_nginx_from_catalog() -> None:
     match = engine.recognize(plan)
 
     assert match is not None
-    assert match.application.id == "nginx"
-    assert match.application.name == "NGINX"
+    assert match.application.id == expected_id
+    assert match.application.name == expected_name
     assert match.confidence == 100
-    assert match.matched_component_ids == ["web"]
+    assert match.matched_component_ids == ["service"]

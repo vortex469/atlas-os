@@ -1,0 +1,28 @@
+id: postgres
+
+name: PostgreSQL
+
+category: Database
+
+description: |
+  PostgreSQL is an enterprise-class relational database management system.
+
+images:
+  - postgres
+  - docker.io/library/postgres
+  - library/postgres
+
+service_names:
+  - postgres
+  - db
+  - database
+
+required_services: []
+
+optional_services: []
+
+documentation: https://www.postgresql.org/docs/
+
+resources:
+  cpu_cores: 2
+  ram_mb: 2048
