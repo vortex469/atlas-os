@@ -4,6 +4,7 @@ import { MainLayout } from "../layouts/MainLayout";
 import { MissionControlPage } from "../pages/MissionControlPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { ProviderPage } from "../pages/ProviderPage";
+import { ForgePage } from "../pages/ForgePage";
 
 export const router = createBrowserRouter([
     {
@@ -17,6 +18,10 @@ export const router = createBrowserRouter([
             {
                 path: "providers/:providerId",
                 element: <ProviderPage />,
+            },
+            {
+                path: "forge",
+                element: <ForgePage />,
             },
         ],
     },
