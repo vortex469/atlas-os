@@ -4,9 +4,11 @@ import { AnalysisPanel } from "./AnalysisPanel";
 import { ComposeEditor } from "./ComposeEditor";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { PlanPanel } from "./PlanPanel";
+import type { DeploymentAnalysisResponse } from "./types";
 
 export function Forge() {
-    const [result, setResult] = useState<unknown>(null);
+    const [result, setResult] =
+        useState<DeploymentAnalysisResponse | null>(null);
 
     return (
         <main className="mx-auto max-w-7xl space-y-8 p-8">
@@ -24,22 +26,22 @@ export function Forge() {
             <ComposeEditor onAnalysis={setResult} />
 
             <div className="grid gap-6 lg:grid-cols-2">
-                <AnalysisPanel />
-                <DiagnosticsPanel />
+                <AnalysisPanel result={result} />
+                <DiagnosticsPanel result={result} />
             </div>
 
-            <PlanPanel />
+            <PlanPanel result={result} />
 
-            {result !== null && (
-                <section className="rounded-lg border border-slate-800 bg-slate-900 p-6">
-                    <h2 className="text-lg font-semibold text-slate-100">
-                        Raw Result
-                    </h2>
+            {result && (
+                <details className="rounded-lg border border-slate-800 bg-slate-900 p-6">
+                    <summary className="cursor-pointer text-sm font-semibold text-slate-300">
+                        Developer Output
+                    </summary>
 
-                    <pre className="mt-4 overflow-x-auto whitespace-pre-wrap text-xs text-slate-300">
+                    <pre className="mt-4 overflow-x-auto whitespace-pre-wrap text-xs text-slate-400">
                         {JSON.stringify(result, null, 2)}
                     </pre>
-                </section>
+                </details>
             )}
         </main>
     );

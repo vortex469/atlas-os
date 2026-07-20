@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { analyzeCompose } from "../../api/atlas";
+import type { DeploymentAnalysisResponse } from "./types";
 
 const defaultCompose = `services:
   web:
@@ -10,7 +11,9 @@ const defaultCompose = `services:
 `;
 
 type ComposeEditorProps = {
-    onAnalysis: (result: unknown) => void;
+    onAnalysis: (
+        result: DeploymentAnalysisResponse,
+    ) => void;
 };
 
 export function ComposeEditor({
