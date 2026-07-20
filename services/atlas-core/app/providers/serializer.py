@@ -1,3 +1,4 @@
+from app.actions.models import ProviderActionResult
 from app.providers import Provider, ProviderAction
 
 
@@ -5,6 +6,12 @@ def serialize_action(action: ProviderAction) -> dict:
     """Convert a provider action into its public API representation."""
 
     return action.model_dump()
+
+
+def serialize_action_result(result: ProviderActionResult) -> dict:
+    """Convert an action result into its public API representation."""
+
+    return result.model_dump(mode="json")
 
 
 async def serialize_provider(provider: Provider) -> dict:

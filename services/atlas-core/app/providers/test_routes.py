@@ -79,3 +79,71 @@ def test_unknown_provider_actions_return_404() -> None:
     assert response.json()["detail"] == (
         "Unknown provider 'not-real'."
     )
+
+
+def test_provider_advertises_diagnostics_action() -> None:
+    response = client.get("/providers/hermes/actions")
+
+    assert response.status_code == 200
+
+    actions = response.json()
+
+    assert any(
+        action["id"] == "run-diagnostics"
+        for action in actions
+    )
+
+
+def test_provider_diagnostics_action_executes() -> None:
+    response = client.post(
+        "/providers/hermes/actions/run-diagnostics",
+        json={
+            "confirmed": False,
+            "parameters": {},
+        },
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+
+    assert result["provider_id"] == "hermes"
+    assert result["action_id"] == "run-diagnostics"
+    assert result["status"] == "succeeded"
+    assert result["success"] is True
+    assert result["data"]["provider"]["id"] == "hermes"
+    assert "health" in result["data"]
+
+
+def test_provider_action_accepts_an_empty_body() -> None:
+    response = client.post(
+        "/providers/hermes/actions/run-diagnostics",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+
+
+def test_unknown_provider_action_returns_404() -> None:
+    response = client.post(
+        "/providers/hermes/actions/not-real",
+        json={},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == (
+        "Provider 'hermes' does not advertise action "
+        "'not-real'."
+    )
+
+
+def test_action_on_unknown_provider_returns_404() -> None:
+    response = client.post(
+        "/providers/not-real/actions/run-diagnostics",
+        json={},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == (
+        "Unknown provider 'not-real'."
+    )
