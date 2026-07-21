@@ -6,7 +6,7 @@ from app.knowledge_engine.assessors.base import (
 from app.knowledge_engine.assessors.postgres import (
     PostgresAssessor,
 )
-
+from app.knowledge_engine.assessors.redis import RedisAssessor
 
 class AssessorRegistry:
     """Registry for application-specific assessors."""

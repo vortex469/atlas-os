@@ -26,3 +26,4 @@ documentation: https://redis.io/docs/
 resources:
   cpu_cores: 1
   ram_mb: 512
+

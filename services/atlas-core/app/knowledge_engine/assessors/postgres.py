@@ -8,8 +8,9 @@ from app.knowledge_engine.assessment import (
 from app.knowledge_engine.assessors.base import (
     ApplicationAssessor,
 )
-
-
+from app.knowledge_engine.rules.healthcheck import (
+    HealthCheckRule,
+)
 class PostgresAssessor(ApplicationAssessor):
     """Assess PostgreSQL deployments."""
 
@@ -27,7 +28,6 @@ class PostgresAssessor(ApplicationAssessor):
                 "Configure health checks.",
             ]
         )
-
         assessment.findings.append(
             KnowledgeFinding(
                 severity="info",
@@ -36,8 +36,7 @@ class PostgresAssessor(ApplicationAssessor):
                     "Atlas recognized a PostgreSQL deployment."
                 ),
             )
-        )
-
+        )        
         self._check_persistent_storage(
             plan,
             assessment,
@@ -46,10 +45,31 @@ class PostgresAssessor(ApplicationAssessor):
             plan,
             assessment,
         )
-        self._check_healthcheck(
-            plan,
-            assessment,
-        )
+        for component in plan.components:
+            if component.image is None:
+                continue
+
+            normalized_image = (
+                component.image.strip()
+                .lower()
+                .split("@", 1)[0]
+            )
+
+            if ":" in normalized_image.rsplit("/", 1)[-1]:
+                normalized_image = normalized_image.rsplit(":", 1)[0]
+
+            if normalized_image not in {
+                "postgres",
+                "library/postgres",
+                "docker.io/library/postgres",
+            }:
+                continue
+
+            self._healthcheck_rule.assess(
+                component,
+                assessment,
+            )
+
         self._check_port_exposure(
             plan,
             assessment,
@@ -107,49 +127,6 @@ class PostgresAssessor(ApplicationAssessor):
             "Configure POSTGRES_PASSWORD."
         )
 
-    def _check_healthcheck(
-        self,
-        plan: DeploymentPlan,
-        assessment: KnowledgeAssessment,
-    ) -> None:
-        for component in plan.components:
-            if component.image is None:
-                continue
-
-            normalized_image = (
-                component.image.strip()
-                .lower()
-                .split("@", 1)[0]
-            )
-
-            if ":" in normalized_image.rsplit("/", 1)[-1]:
-                normalized_image = normalized_image.rsplit(":", 1)[0]
-
-            if normalized_image not in {
-                "postgres",
-                "library/postgres",
-                "docker.io/library/postgres",
-            }:
-                continue
-
-            if (
-                component.healthcheck is not None
-                and not component.healthcheck.disabled
-                and component.healthcheck.test
-            ):
-                return
-
-        assessment.findings.append(
-            KnowledgeFinding(
-                severity="warning",
-                title="Health check missing",
-                description=(
-                    "PostgreSQL does not have an active container "
-                    "health check."
-                ),
-            )
-        )
-
         assessment.recommendations.append(
             "Add a PostgreSQL health check using pg_isready."
         )
@@ -200,3 +177,11 @@ class PostgresAssessor(ApplicationAssessor):
                         "avoid publicly exposing port 5432."
                     )
                     return
+                
+    def __init__(self) -> None:
+        self._healthcheck_rule = HealthCheckRule(
+            application_name="PostgreSQL",
+            recommendation=(
+                "Add a PostgreSQL health check using pg_isready."
+            ),
+        )                
