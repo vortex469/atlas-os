@@ -13,6 +13,8 @@ from app.knowledge_engine.assessors.base import (
 class PostgresAssessor(ApplicationAssessor):
     """Assess PostgreSQL deployments."""
 
+    _DATA_PATH = "/var/lib/postgresql/data"
+
     def assess(
         self,
         plan: DeploymentPlan,
@@ -26,10 +28,6 @@ class PostgresAssessor(ApplicationAssessor):
             ]
         )
 
-        assessment.recommendations.append(
-            "Use POSTGRES_PASSWORD for production deployments."
-        )
-
         assessment.findings.append(
             KnowledgeFinding(
                 severity="info",
@@ -38,4 +36,116 @@ class PostgresAssessor(ApplicationAssessor):
                     "Atlas recognized a PostgreSQL deployment."
                 ),
             )
+        )
+
+        self._check_persistent_storage(
+            plan,
+            assessment,
+        )
+        self._check_password(
+            plan,
+            assessment,
+        )
+        self._check_healthcheck(
+            plan,
+            assessment,
+        )
+
+    def _check_persistent_storage(
+        self,
+        plan: DeploymentPlan,
+        assessment: KnowledgeAssessment,
+    ) -> None:
+        for component in plan.components:
+            for mount in component.storage:
+                if (
+                    mount.target == self._DATA_PATH
+                    and mount.persistent
+                ):
+                    return
+
+        assessment.findings.append(
+            KnowledgeFinding(
+                severity="warning",
+                title="Persistent storage missing",
+                description=(
+                    "PostgreSQL data is not mounted to persistent "
+                    "storage at /var/lib/postgresql/data."
+                ),
+            )
+        )
+
+        assessment.recommendations.append(
+            "Mount /var/lib/postgresql/data to persistent storage."
+        )
+
+    def _check_password(
+        self,
+        plan: DeploymentPlan,
+        assessment: KnowledgeAssessment,
+    ) -> None:
+        for component in plan.components:
+            if "POSTGRES_PASSWORD" in component.environment:
+                return
+
+        assessment.findings.append(
+            KnowledgeFinding(
+                severity="warning",
+                title="POSTGRES_PASSWORD missing",
+                description=(
+                    "PostgreSQL should be configured with "
+                    "POSTGRES_PASSWORD."
+                ),
+            )
+        )
+
+        assessment.recommendations.append(
+            "Configure POSTGRES_PASSWORD."
+        )
+
+    def _check_healthcheck(
+        self,
+        plan: DeploymentPlan,
+        assessment: KnowledgeAssessment,
+    ) -> None:
+        for component in plan.components:
+            if component.image is None:
+                continue
+
+            normalized_image = (
+                component.image.strip()
+                .lower()
+                .split("@", 1)[0]
+            )
+
+            if ":" in normalized_image.rsplit("/", 1)[-1]:
+                normalized_image = normalized_image.rsplit(":", 1)[0]
+
+            if normalized_image not in {
+                "postgres",
+                "library/postgres",
+                "docker.io/library/postgres",
+            }:
+                continue
+
+            if (
+                component.healthcheck is not None
+                and not component.healthcheck.disabled
+                and component.healthcheck.test
+            ):
+                return
+
+        assessment.findings.append(
+            KnowledgeFinding(
+                severity="warning",
+                title="Health check missing",
+                description=(
+                    "PostgreSQL does not have an active container "
+                    "health check."
+                ),
+            )
+        )
+
+        assessment.recommendations.append(
+            "Add a PostgreSQL health check using pg_isready."
         )

@@ -147,3 +147,40 @@ def test_reject_wrong_analysis_source() -> None:
         match="only supports Compose",
     ):
         ComposeAnalyzer().analyze(request)
+
+def test_parse_healthcheck() -> None:
+    request = AnalysisRequest(
+        source=DeploymentSource.COMPOSE,
+        document={
+            "services": {
+                "database": {
+                    "image": "postgres:16",
+                    "healthcheck": {
+                        "test": [
+                            "CMD-SHELL",
+                            "pg_isready -U postgres",
+                        ],
+                        "interval": "10s",
+                        "timeout": "5s",
+                        "retries": 5,
+                        "start_period": "20s",
+                    },
+                },
+            },
+        },
+    )
+
+    result = ComposeAnalyzer().analyze(request)
+
+    component = result.plan.components[0]
+
+    assert component.healthcheck is not None
+    assert component.healthcheck.test == [
+        "CMD-SHELL",
+        "pg_isready -U postgres",
+    ]
+    assert component.healthcheck.interval == "10s"
+    assert component.healthcheck.timeout == "5s"
+    assert component.healthcheck.retries == 5
+    assert component.healthcheck.start_period == "20s"
+    assert component.healthcheck.disabled is False

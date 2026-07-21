@@ -9,6 +9,7 @@ from app.deploy.analysis import AnalysisRequest, AnalysisResult
 from app.deploy.analyzers.base import DeploymentAnalyzer
 from app.deploy.components import (
     ApplicationComponent,
+    HealthCheck,
     PortBinding,
     StorageMount,
 )
@@ -18,6 +19,12 @@ from app.deploy.enums import (
 )
 from app.deploy.plan import DeploymentPlan
 
+from app.deploy.components import (
+    ApplicationComponent,
+    HealthCheck,
+    PortBinding,
+    StorageMount,
+)
 
 class ComposeAnalyzer(DeploymentAnalyzer):
     """Analyze parsed Docker Compose documents."""
@@ -108,6 +115,9 @@ class ComposeAnalyzer(DeploymentAnalyzer):
             ),
             dependencies=self._parse_dependencies(
                 service.get("depends_on", [])
+            ),
+            healthcheck=self._parse_healthcheck(
+                service.get("healthcheck")
             ),
             metadata={
                 "build": service.get("build"),
@@ -359,6 +369,52 @@ class ComposeAnalyzer(DeploymentAnalyzer):
 
         raise ValueError(
             "Compose depends_on must be a list or mapping."
+        )
+    
+    def _parse_healthcheck(
+        self,
+        healthcheck: Any,
+    ) -> HealthCheck | None:
+        if healthcheck is None:
+            return None
+
+        if not isinstance(healthcheck, Mapping):
+            raise ValueError(
+                "Compose service healthcheck must be a mapping."
+            )
+
+        disabled = bool(
+            healthcheck.get("disable", False)
+        )
+
+        raw_test = healthcheck.get("test", [])
+
+        if isinstance(raw_test, str):
+            test = [raw_test]
+        elif isinstance(raw_test, list):
+            test = [str(item) for item in raw_test]
+        else:
+            raise ValueError(
+                "Compose healthcheck test must be a string or list."
+            )
+
+        return HealthCheck(
+            test=test,
+            interval=self._optional_string(
+                healthcheck.get("interval")
+            ),
+            timeout=self._optional_string(
+                healthcheck.get("timeout")
+            ),
+            retries=(
+                int(healthcheck["retries"])
+                if healthcheck.get("retries") is not None
+                else None
+            ),
+            start_period=self._optional_string(
+                healthcheck.get("start_period")
+            ),
+            disabled=disabled,
         )
 
     def _parse_command(

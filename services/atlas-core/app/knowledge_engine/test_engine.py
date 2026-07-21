@@ -125,8 +125,30 @@ def test_assesses_postgres_deployment() -> None:
 
     assert assessment.recognition is not None
     assert assessment.recognition.application.id == "postgres"
-    assert len(assessment.findings) == 1
-    assert len(assessment.recommendations) == 1
+    finding_titles = {
+        finding.title
+        for finding in assessment.findings
+    }
+
+    assert "PostgreSQL detected" in finding_titles
+    assert "Persistent storage missing" in finding_titles
+    assert "POSTGRES_PASSWORD missing" in finding_titles
+    assert "Health check missing" in finding_titles
+
+    assert (
+        "Mount /var/lib/postgresql/data to persistent storage."
+        in assessment.recommendations
+    )
+
+    assert "Configure POSTGRES_PASSWORD." in (
+        assessment.recommendations
+    )
+
+    assert (
+        "Add a PostgreSQL health check using pg_isready."
+        in assessment.recommendations
+    )
+
     assert len(assessment.best_practices) == 3
 
 def create_knowledge_engine() -> KnowledgeEngine:

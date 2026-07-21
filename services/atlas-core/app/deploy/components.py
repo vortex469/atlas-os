@@ -32,7 +32,15 @@ class StorageMount(BaseModel):
     read_only: bool = False
     persistent: bool = True
 
+class HealthCheck(BaseModel):
+    """Container health-check configuration."""
 
+    test: list[str] = Field(default_factory=list)
+    interval: str | None = None
+    timeout: str | None = None
+    retries: int | None = Field(default=None, ge=1)
+    start_period: str | None = None
+    disabled: bool = False
 class ApplicationComponent(BaseModel):
     """A provider-independent component of an application."""
 
@@ -49,4 +57,5 @@ class ApplicationComponent(BaseModel):
     storage: list[StorageMount] = Field(default_factory=list)
     environment: dict[str, str] = Field(default_factory=dict)
     dependencies: list[str] = Field(default_factory=list)
+    healthcheck: HealthCheck | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
