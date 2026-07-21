@@ -16,6 +16,9 @@ from app.knowledge_engine import (
     KnowledgeCatalogLoader,
     KnowledgeEngine,
 )
+from app.knowledge_engine.assessors.registry import (
+    AssessorRegistry,
+)
 
 def test_complete_analysis_pipeline() -> None:
     registry = AnalyzerRegistry()
@@ -35,6 +38,7 @@ def test_complete_analysis_pipeline() -> None:
             knowledge_engine=KnowledgeEngine(
                 loader=KnowledgeCatalogLoader(),
                 matcher=ApplicationMatcher(),
+                registry=AssessorRegistry(),
             ),
         ),
         risk_engine=risk,

@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 from app.deploy.plan import DeploymentPlan
+from app.knowledge_engine.assessment import (
+    KnowledgeAssessment,
+)
+from app.knowledge_engine.assessors.registry import (
+    AssessorRegistry,
+)
 from app.knowledge_engine.loader import (
     KnowledgeCatalogLoader,
 )
@@ -8,23 +14,21 @@ from app.knowledge_engine.matcher import (
     ApplicationMatch,
     ApplicationMatcher,
 )
-from app.knowledge_engine.assessment import (
-    KnowledgeAssessment,
-)
-from app.knowledge_engine.assessors.postgres import (
-    PostgresAssessor,
-)
+
+
 class KnowledgeEngine:
-    """Coordinate knowledge catalog loading and application matching."""
+    """Coordinate catalog matching and operational assessment."""
 
     def __init__(
         self,
         *,
         loader: KnowledgeCatalogLoader,
         matcher: ApplicationMatcher,
+        registry: AssessorRegistry,
     ) -> None:
         self._loader = loader
         self._matcher = matcher
+        self._registry = registry
 
     def recognize(
         self,
@@ -54,8 +58,12 @@ class KnowledgeEngine:
         if match is None:
             return assessment
 
-        if match.application.id == "postgres":
-            PostgresAssessor().assess(
+        assessor = self._registry.get(
+            match.application.id
+        )
+
+        if assessor is not None:
+            assessor.assess(
                 plan,
                 assessment,
             )

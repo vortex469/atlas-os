@@ -16,6 +16,9 @@ from app.knowledge_engine import (
     KnowledgeCatalogLoader,
     KnowledgeEngine,
 )
+from app.knowledge_engine.assessors.registry import (
+    AssessorRegistry,
+)
 
 def create_analyzer_registry() -> AnalyzerRegistry:
     registry = AnalyzerRegistry()
@@ -54,4 +57,10 @@ def create_knowledge_engine() -> KnowledgeEngine:
     return KnowledgeEngine(
         loader=KnowledgeCatalogLoader(),
         matcher=ApplicationMatcher(),
+    )
+def create_knowledge_engine() -> KnowledgeEngine:
+    return KnowledgeEngine(
+        loader=KnowledgeCatalogLoader(),
+        matcher=ApplicationMatcher(),
+        registry=AssessorRegistry(),
     )

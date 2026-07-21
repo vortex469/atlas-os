@@ -11,7 +11,9 @@ from app.knowledge_engine import (
     KnowledgeCatalogLoader,
     KnowledgeEngine,
 )
-
+from app.knowledge_engine.assessors.registry import (
+    AssessorRegistry,
+)
 
 def create_knowledge_engine() -> KnowledgeEngine:
     return KnowledgeEngine(
@@ -126,3 +128,10 @@ def test_assesses_postgres_deployment() -> None:
     assert len(assessment.findings) == 1
     assert len(assessment.recommendations) == 1
     assert len(assessment.best_practices) == 3
+
+def create_knowledge_engine() -> KnowledgeEngine:
+    return KnowledgeEngine(
+        loader=KnowledgeCatalogLoader(),
+        matcher=ApplicationMatcher(),
+        registry=AssessorRegistry(),
+    )
