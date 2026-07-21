@@ -8,8 +8,12 @@ from app.knowledge_engine.matcher import (
     ApplicationMatch,
     ApplicationMatcher,
 )
-
-
+from app.knowledge_engine.assessment import (
+    KnowledgeAssessment,
+)
+from app.knowledge_engine.assessors.postgres import (
+    PostgresAssessor,
+)
 class KnowledgeEngine:
     """Coordinate knowledge catalog loading and application matching."""
 
@@ -34,3 +38,26 @@ class KnowledgeEngine:
             plan,
             applications,
         )
+
+    def assess(
+        self,
+        plan: DeploymentPlan,
+    ) -> KnowledgeAssessment:
+        """Create an operational assessment for a deployment."""
+
+        match = self.recognize(plan)
+
+        assessment = KnowledgeAssessment(
+            recognition=match,
+        )
+
+        if match is None:
+            return assessment
+
+        if match.application.id == "postgres":
+            PostgresAssessor().assess(
+                plan,
+                assessment,
+            )
+
+        return assessment

@@ -101,3 +101,28 @@ def test_loads_postgres_operational_metadata() -> None:
     ]
 
     assert password.required is True
+
+def test_assesses_postgres_deployment() -> None:
+    engine = create_knowledge_engine()
+
+    plan = DeploymentPlan(
+        id="postgres-demo",
+        name="postgres-demo",
+        source=DeploymentSource.COMPOSE,
+        components=[
+            ApplicationComponent(
+                id="db",
+                name="Database",
+                kind=ComponentKind.SERVICE,
+                image="postgres:16",
+            )
+        ],
+    )
+
+    assessment = engine.assess(plan)
+
+    assert assessment.recognition is not None
+    assert assessment.recognition.application.id == "postgres"
+    assert len(assessment.findings) == 1
+    assert len(assessment.recommendations) == 1
+    assert len(assessment.best_practices) == 3
