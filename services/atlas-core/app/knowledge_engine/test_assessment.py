@@ -18,6 +18,12 @@ from app.deploy.components import (
     HealthCheck,
     StorageMount,
 )
+from app.deploy.components import (
+    ApplicationComponent,
+    HealthCheck,
+    PortBinding,
+    StorageMount,
+)
 
 def test_postgres_assessment() -> None:
     plan = DeploymentPlan(
@@ -274,3 +280,66 @@ def test_postgres_with_healthcheck_has_no_health_warning() -> None:
     }
 
     assert "Health check missing" not in warning_titles
+
+def test_public_postgres_port_generates_warning() -> None:
+    plan = DeploymentPlan(
+        id="postgres",
+        name="postgres",
+        source=DeploymentSource.COMPOSE,
+        components=[
+            ApplicationComponent(
+                id="db",
+                name="Database",
+                image="postgres:16",
+                ports=[
+                    PortBinding(
+                        container_port=5432,
+                        host_port=5432,
+                        public=True,
+                    )
+                ],
+            )
+        ],
+    )
+
+    assessment = KnowledgeAssessment()
+    PostgresAssessor().assess(plan, assessment)
+
+    finding_titles = {
+        finding.title
+        for finding in assessment.findings
+    }
+
+    assert "PostgreSQL publicly exposed" in finding_titles
+
+
+def test_private_postgres_port_has_no_exposure_warning() -> None:
+    plan = DeploymentPlan(
+        id="postgres",
+        name="postgres",
+        source=DeploymentSource.COMPOSE,
+        components=[
+            ApplicationComponent(
+                id="db",
+                name="Database",
+                image="postgres:16",
+                ports=[
+                    PortBinding(
+                        container_port=5432,
+                        host_port=5432,
+                        public=False,
+                    )
+                ],
+            )
+        ],
+    )
+
+    assessment = KnowledgeAssessment()
+    PostgresAssessor().assess(plan, assessment)
+
+    finding_titles = {
+        finding.title
+        for finding in assessment.findings
+    }
+
+    assert "PostgreSQL publicly exposed" not in finding_titles

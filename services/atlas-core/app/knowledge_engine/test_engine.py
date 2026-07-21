@@ -15,6 +15,7 @@ from app.knowledge_engine.assessors.registry import (
     AssessorRegistry,
 )
 
+
 def create_knowledge_engine() -> KnowledgeEngine:
     return KnowledgeEngine(
         loader=KnowledgeCatalogLoader(),

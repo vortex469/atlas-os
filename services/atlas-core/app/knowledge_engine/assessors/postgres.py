@@ -50,6 +50,10 @@ class PostgresAssessor(ApplicationAssessor):
             plan,
             assessment,
         )
+        self._check_port_exposure(
+            plan,
+            assessment,
+        )
 
     def _check_persistent_storage(
         self,
@@ -149,3 +153,50 @@ class PostgresAssessor(ApplicationAssessor):
         assessment.recommendations.append(
             "Add a PostgreSQL health check using pg_isready."
         )
+
+    def _check_port_exposure(
+        self,
+        plan: DeploymentPlan,
+        assessment: KnowledgeAssessment,
+    ) -> None:
+        for component in plan.components:
+            if component.image is None:
+                continue
+
+            normalized_image = (
+                component.image.strip()
+                .lower()
+                .split("@", 1)[0]
+            )
+
+            if ":" in normalized_image.rsplit("/", 1)[-1]:
+                normalized_image = normalized_image.rsplit(":", 1)[0]
+
+            if normalized_image not in {
+                "postgres",
+                "library/postgres",
+                "docker.io/library/postgres",
+            }:
+                continue
+
+            for port in component.ports:
+                if (
+                    port.container_port == 5432
+                    and port.public
+                ):
+                    assessment.findings.append(
+                        KnowledgeFinding(
+                            severity="warning",
+                            title="PostgreSQL publicly exposed",
+                            description=(
+                                "PostgreSQL port 5432 is exposed "
+                                "publicly."
+                            ),
+                        )
+                    )
+
+                    assessment.recommendations.append(
+                        "Keep PostgreSQL on an internal network and "
+                        "avoid publicly exposing port 5432."
+                    )
+                    return
