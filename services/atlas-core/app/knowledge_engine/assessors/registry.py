@@ -9,6 +9,9 @@ from app.knowledge_engine.assessors.postgres import (
 from app.knowledge_engine.assessors.redis import (
     RedisAssessor,
 )
+from app.knowledge_engine.assessors.mssql import (
+    MSSQLAssessor,
+)
 class AssessorRegistry:
     """Registry for application-specific assessors."""
 
@@ -16,6 +19,7 @@ class AssessorRegistry:
         self._assessors = {
             "postgres": PostgresAssessor(),
             "redis": RedisAssessor(),
+            "mssql": MSSQLAssessor(),
         }
     def get(
         self,
