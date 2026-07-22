@@ -1,20 +1,27 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from collections.abc import Iterator
 
-from app.deploy.plan import DeploymentPlan
-from app.knowledge_engine.assessment import (
-    KnowledgeAssessment,
+from app.deploy.plan import (
+    ApplicationComponent,
+    DeploymentPlan,
+)
+from app.knowledge_engine.utils import (
+    normalize_image,
 )
 
 
-class ApplicationAssessor(ABC):
-    """Base class for application-specific assessors."""
+class ApplicationAssessor:
+    """Base class for application assessors."""
 
-    @abstractmethod
-    def assess(
-        self,
+    @staticmethod
+    def iter_matching_components(
         plan: DeploymentPlan,
-        assessment: KnowledgeAssessment,
-    ) -> None:
-        """Update the assessment in-place."""
+        images: set[str],
+    ) -> Iterator[ApplicationComponent]:
+        for component in plan.components:
+            if component.image is None:
+                continue
+
+            if normalize_image(component.image) in images:
+                yield component
