@@ -20,8 +20,9 @@ from app.knowledge_engine.rules.port_exposure import (
 from app.knowledge_engine.rules.storage import (
     StorageRule,
 )
-
-
+from app.knowledge_engine.assessors.redis import (
+    RedisAssessor
+)
 class PostgresAssessor(ApplicationAssessor):
     """Assess PostgreSQL deployments."""
 

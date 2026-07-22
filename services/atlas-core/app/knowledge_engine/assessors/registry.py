@@ -6,19 +6,17 @@ from app.knowledge_engine.assessors.base import (
 from app.knowledge_engine.assessors.postgres import (
     PostgresAssessor,
 )
-from app.knowledge_engine.assessors.redis import RedisAssessor
-
+from app.knowledge_engine.assessors.redis import (
+    RedisAssessor,
+)
 class AssessorRegistry:
     """Registry for application-specific assessors."""
 
     def __init__(self) -> None:
-        self._assessors: dict[
-            str,
-            ApplicationAssessor,
-        ] = {
+        self._assessors = {
             "postgres": PostgresAssessor(),
+            "redis": RedisAssessor(),
         }
-
     def get(
         self,
         application_id: str,

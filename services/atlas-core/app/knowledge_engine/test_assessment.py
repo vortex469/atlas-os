@@ -1,5 +1,7 @@
 from app.deploy.components import (
     ApplicationComponent,
+    HealthCheck,
+    PortBinding,
     StorageMount,
 )
 from app.deploy.enums import (
@@ -12,17 +14,6 @@ from app.knowledge_engine.assessment import (
 )
 from app.knowledge_engine.assessors.postgres import (
     PostgresAssessor,
-)
-from app.deploy.components import (
-    ApplicationComponent,
-    HealthCheck,
-    StorageMount,
-)
-from app.deploy.components import (
-    ApplicationComponent,
-    HealthCheck,
-    PortBinding,
-    StorageMount,
 )
 
 def test_postgres_assessment() -> None:
@@ -305,12 +296,13 @@ def test_public_postgres_port_generates_warning() -> None:
     assessment = KnowledgeAssessment()
     PostgresAssessor().assess(plan, assessment)
 
-    finding_titles = {
+    warning_titles = {
         finding.title
         for finding in assessment.findings
+        if finding.severity == "warning"
     }
 
-    assert "PostgreSQL publicly exposed" in finding_titles
+    assert "PostgreSQL publicly exposed" in warning_titles
 
 
 def test_private_postgres_port_has_no_exposure_warning() -> None:
@@ -337,9 +329,10 @@ def test_private_postgres_port_has_no_exposure_warning() -> None:
     assessment = KnowledgeAssessment()
     PostgresAssessor().assess(plan, assessment)
 
-    finding_titles = {
+    warning_titles = {
         finding.title
         for finding in assessment.findings
+        if finding.severity == "warning"
     }
 
-    assert "PostgreSQL publicly exposed" not in finding_titles
+    assert "PostgreSQL publicly exposed" not in warning_titles
