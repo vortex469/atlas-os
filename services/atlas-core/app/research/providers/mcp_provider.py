@@ -1,40 +1,46 @@
 from __future__ import annotations
 
+import json
 import subprocess
 
 from app.research.models import ResearchDocument
+from app.research.parsers.exa import ExaParser
 from app.research.providers.base import ResearchProvider
 
 
-class AgentReachProvider(ResearchProvider):
-    """Research provider backed by Agent-Reach and MCPorter."""
+class MCPResearchProvider(ResearchProvider):
+    """Research provider backed by MCPorter."""
 
     MCPORTER = "/usr/local/bin/mcporter"
     MCPORTER_CONFIG = "/opt/atlas/config/mcporter.json"
+
+    def __init__(self) -> None:
+        self._parser = ExaParser()
 
     def search(
         self,
         query: str,
     ) -> list[ResearchDocument]:
-        raw = self._search(query)
-        return self._normalize(raw)
+
+        response = self._search(query)
+
+        return self._parser.parse(response)
 
     def _search(
         self,
         query: str,
-    ) -> str:
-        return self._run_mcporter(
+    ) -> dict:
+
+        raw = self._run_mcporter(
             "call",
             "exa.web_search_exa",
             f"query={query}",
             "numResults=5",
+            "--output",
+            "json",
         )
 
-    def _normalize(
-        self,
-        raw: str,
-    ) -> list[ResearchDocument]:
-        raise NotImplementedError
+        return json.loads(raw)
 
     def _run_mcporter(
         self,
@@ -57,7 +63,8 @@ class AgentReachProvider(ResearchProvider):
         if result.returncode != 0:
             error = result.stderr.strip() or result.stdout.strip()
             raise RuntimeError(
-                f"MCPorter failed with exit code {result.returncode}: {error}"
+                f"MCPorter failed with exit code "
+                f"{result.returncode}: {error}"
             )
 
         return result.stdout
