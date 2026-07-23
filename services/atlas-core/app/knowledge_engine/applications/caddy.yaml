@@ -1,0 +1,24 @@
+id: caddy
+
+name: Caddy
+
+category: Reverse Proxy
+
+description: |
+  Caddy is an automatic HTTPS web server and reverse proxy.
+
+images:
+  - caddy
+
+service_names:
+  - caddy
+
+required_services: []
+
+optional_services: []
+
+documentation: https://caddyserver.com/docs/
+
+resources:
+  cpu_cores: 1
+  ram_mb: 512

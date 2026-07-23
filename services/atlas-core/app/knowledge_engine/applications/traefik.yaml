@@ -1,0 +1,24 @@
+id: traefik
+
+name: Traefik
+
+category: Reverse Proxy
+
+description: |
+  Traefik is a cloud-native reverse proxy and ingress controller.
+
+images:
+  - traefik
+
+service_names:
+  - traefik
+
+required_services: []
+
+optional_services: []
+
+documentation: https://doc.traefik.io/traefik/
+
+resources:
+  cpu_cores: 1
+  ram_mb: 512

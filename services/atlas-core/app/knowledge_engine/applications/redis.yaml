@@ -1,0 +1,29 @@
+id: redis
+
+name: Redis
+
+category: Cache
+
+description: |
+  Redis is an in-memory data store commonly used as a cache,
+  message broker, and lightweight database.
+
+images:
+  - redis
+  - docker.io/library/redis
+  - library/redis
+
+service_names:
+  - redis
+  - cache
+
+required_services: []
+
+optional_services: []
+
+documentation: https://redis.io/docs/
+
+resources:
+  cpu_cores: 1
+  ram_mb: 512
+

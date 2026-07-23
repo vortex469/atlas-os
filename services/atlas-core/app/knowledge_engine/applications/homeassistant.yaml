@@ -1,0 +1,40 @@
+id: homeassistant
+
+name: Home Assistant
+
+category: Home Automation
+
+description: |
+  Home Assistant is an open-source home automation platform.
+
+images:
+  - ghcr.io/home-assistant/home-assistant
+  - homeassistant/home-assistant
+
+service_names:
+  - homeassistant
+  - home-assistant
+  - hass
+
+required_services: []
+
+optional_services:
+  - mosquitto
+  - postgres
+
+documentation: https://www.home-assistant.io/docs/
+
+resources:
+  cpu_cores: 2
+  ram_mb: 2048
+
+recommended_ports:
+  - 8123
+
+persistent_paths:
+  - /config
+
+notes:
+  - Host networking is common.
+  - Persistent storage is required.
+  - Configure regular backups.

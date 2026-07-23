@@ -1,0 +1,27 @@
+id: nginx
+name: NGINX
+category: Web Server / Reverse Proxy
+
+description: >
+  A high-performance web server, reverse proxy,
+  and load balancer.
+
+images:
+  - nginx
+  - library/nginx
+  - docker.io/library/nginx
+
+service_names:
+  - nginx
+  - web
+  - proxy
+
+required_services: []
+
+optional_services: []
+
+documentation: https://nginx.org
+
+resources:
+  cpu_cores: 1
+  ram_mb: 512

@@ -1,30 +1,46 @@
-from unittest.mock import patch
-
-from app.intelligence.coordinator import collect_findings
+from app.intelligence import coordinator
 from app.intelligence.findings import Finding, Severity
 
 
-def test_collect_findings() -> None:
-    sample = Finding(
-        id="test-finding",
+def make_test_finding() -> Finding:
+    return Finding(
+        id="coordinator-test",
         severity=Severity.INFO,
         category="test",
-        source="test_provider",
-        title="Test finding",
+        source="test-provider",
+        title="Coordinator test",
         message="Coordinator test finding.",
+        component="Test Component",
         affects_health=False,
     )
 
-    with patch(
-        "app.intelligence.coordinator.PROVIDERS",
-        (lambda: [sample],),
-    ):
-        findings = collect_findings()
 
-    assert len(findings) == 1
-    assert findings[0].id == "test-finding"
+def test_collect_findings(monkeypatch):
+    finding = make_test_finding()
+
+    monkeypatch.setattr(
+        coordinator,
+        "PROVIDERS",
+        (lambda: [finding],),
+    )
+
+    findings = coordinator.collect_findings()
+
+    assert findings == [finding]
 
 
-if __name__ == "__main__":
-    test_collect_findings()
-    print("ACE coordinator test passed")
+def test_build_report(monkeypatch):
+    finding = make_test_finding()
+
+    monkeypatch.setattr(
+        coordinator,
+        "PROVIDERS",
+        (lambda: [finding],),
+    )
+
+    report = coordinator.build_report()
+
+    assert report.score == 100
+    assert report.status == "healthy"
+    assert report.findings == [finding]
+    assert len(report.assessments) == 1

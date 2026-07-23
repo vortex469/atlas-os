@@ -1,0 +1,36 @@
+proxmox:
+
+  guests:
+
+    "100":
+      expected: stopped
+
+    "101":
+      expected: stopped
+
+    "104":
+      expected: stopped
+
+    "106":
+      expected: stopped
+
+    "107":
+      expected: stopped
+
+    "1000":
+      expected: stopped
+
+docker:
+  containers:
+    open-webui:
+      expected: running
+
+    hermes:
+      expected: running
+
+    kokoro-tts:
+      expected: running
+
+homeassistant:
+
+  ignored_entities: []
