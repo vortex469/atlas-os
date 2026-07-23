@@ -10,7 +10,7 @@ class ResearchDocument:
     """
     Normalized research result returned by any provider.
 
-    Every provider (Agent-Reach, Crawl4AI, GitHub, PDFs, etc.)
+    Every provider (MCP, Crawl4AI, GitHub, PDFs, etc.)
     should return this object.
     """
 
@@ -20,8 +20,9 @@ class ResearchDocument:
     provider: str
     content: str
 
+    published: str | None = None
+    author: str | None = None
+
     metadata: dict[str, Any] = field(default_factory=dict)
-
     confidence: float = 1.0
-
     timestamp: datetime = field(default_factory=datetime.utcnow)
