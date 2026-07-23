@@ -71,7 +71,7 @@ class ExaParser(ResearchParser):
 
         lines = block.splitlines()
 
-        title = self._field_value(lines, "Title:")
+        title = self._optional_field_value(lines, "Title:")
         url = self._field_value(lines, "URL:")
         published = self._optional_field_value(lines, "Published:")
         author = self._optional_field_value(lines, "Author:")

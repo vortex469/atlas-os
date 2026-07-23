@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -25,4 +25,6 @@ class ResearchDocument:
 
     metadata: dict[str, Any] = field(default_factory=dict)
     confidence: float = 1.0
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(
+        default_factory=lambda: datetime.now(UTC)
+    )
