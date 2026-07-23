@@ -1,5 +1,6 @@
 from app.config.inventory import load_inventory
 from app.providers.inventory_provider import InventoryServiceProvider
+from app.providers.ollama import OllamaProvider
 from app.providers.registry import provider_registry
 
 
@@ -14,11 +15,14 @@ def load_provider_registry():
         "services",
         {},
     ).items():
-        provider_registry.register(
-            InventoryServiceProvider(
+        if service_id == "ollama":
+            provider = OllamaProvider(service)
+        else:
+            provider = InventoryServiceProvider(
                 service_id,
                 service,
             )
-        )
+
+        provider_registry.register(provider)
 
     return provider_registry
