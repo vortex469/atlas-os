@@ -49,12 +49,12 @@ services:
     critical: false
     role: "web-search"
 
-  lm_studio:
-    name: "LM Studio"
+  ollama:
+    name: "Ollama"
     host: "10.10.30.146"
-    port: 1234
+    port: 11434
     protocol: "http"
-    health_endpoint: "/"
+    health_endpoint: "/api/version"
     expected_status:
       - 200
     critical: true
