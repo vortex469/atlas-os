@@ -154,6 +154,7 @@ def test_actions_include_model_operations() -> None:
     assert action_ids == {
         "run-diagnostics",
         "list-models",
+        "runtime-status",
         "pull-model",
     }
 

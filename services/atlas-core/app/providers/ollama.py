@@ -156,6 +156,25 @@ class OllamaProvider(Provider):
 
         return models
 
+    async def list_running_models(self) -> list[dict[str, Any]]:
+        async with httpx.AsyncClient(
+            timeout=self._timeout_seconds,
+        ) as client:
+            response = await client.get(
+                self._url("/api/ps"),
+            )
+            response.raise_for_status()
+            payload = response.json()
+
+        models = payload.get("models", [])
+
+        if not isinstance(models, list):
+            raise ValueError(
+                "Ollama returned an invalid running models response."
+            )
+
+        return models
+
     async def pull_model(
         self,
         model: str,
@@ -200,6 +219,15 @@ class OllamaProvider(Provider):
                         "Ollama model library."
                     ),
                     icon="list",
+                    requires_confirmation=False,
+                    destructive=False,
+                    enabled=True,
+                ),
+                ProviderAction(
+                    id="runtime-status",
+                    label="Runtime Status",
+                    description="Show currently loaded Ollama models.",
+                    icon="cpu",
                     requires_confirmation=False,
                     destructive=False,
                     enabled=True,
@@ -272,6 +300,39 @@ class OllamaProvider(Provider):
                 ),
                 data={
                     "models": models,
+                    "count": len(models),
+                },
+            )
+
+        if action_id == "runtime-status":
+            try:
+                models = await self.list_running_models()
+            except (
+                httpx.HTTPError,
+                ValueError,
+            ) as error:
+                return ProviderActionResult(
+                    provider_id=self.metadata.id,
+                    action_id=action_id,
+                    status="failed",
+                    success=False,
+                    message="Unable to retrieve Ollama runtime status.",
+                    data={
+                        "error": str(error),
+                    },
+                )
+
+            return ProviderActionResult(
+                provider_id=self.metadata.id,
+                action_id=action_id,
+                status="succeeded",
+                success=True,
+                message=(
+                    f"Found {len(models)} running "
+                    f"Ollama model(s)."
+                ),
+                data={
+                    "running_models": models,
                     "count": len(models),
                 },
             )
