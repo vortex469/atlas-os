@@ -155,6 +155,8 @@ def test_actions_include_model_operations() -> None:
         "run-diagnostics",
         "list-models",
         "runtime-status",
+        "load-model",
+        "unload-model",
         "pull-model",
     }
 

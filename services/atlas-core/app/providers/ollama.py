@@ -175,6 +175,72 @@ class OllamaProvider(Provider):
 
         return models
 
+    async def load_model(
+        self,
+        model: str,
+    ) -> dict[str, Any]:
+        normalized_model = model.strip()
+
+        if not normalized_model:
+            raise ValueError(
+                "A non-empty model name is required."
+            )
+
+        async with httpx.AsyncClient(
+            timeout=self._pull_timeout_seconds,
+        ) as client:
+            response = await client.post(
+                self._url("/api/generate"),
+                json={
+                    "model": normalized_model,
+                    "prompt": "",
+                    "stream": False,
+                    "keep_alive": -1,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+
+        if not isinstance(payload, dict):
+            raise ValueError(
+                "Ollama returned an invalid load response."
+            )
+
+        return payload
+
+    async def unload_model(
+        self,
+        model: str,
+    ) -> dict[str, Any]:
+        normalized_model = model.strip()
+
+        if not normalized_model:
+            raise ValueError(
+                "A non-empty model name is required."
+            )
+
+        async with httpx.AsyncClient(
+            timeout=self._timeout_seconds,
+        ) as client:
+            response = await client.post(
+                self._url("/api/generate"),
+                json={
+                    "model": normalized_model,
+                    "prompt": "",
+                    "stream": False,
+                    "keep_alive": 0,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+
+        if not isinstance(payload, dict):
+            raise ValueError(
+                "Ollama returned an invalid unload response."
+            )
+
+        return payload
+
     async def pull_model(
         self,
         model: str,
@@ -232,6 +298,48 @@ class OllamaProvider(Provider):
                     destructive=False,
                     enabled=True,
                 ),
+
+                ProviderAction(
+                    id="load-model",
+                    label="Load Model",
+                    description=(
+                        "Load an Ollama model into memory and keep "
+                        "it resident."
+                    ),
+                    icon="upload",
+                    requires_confirmation=False,
+                    destructive=False,
+                    enabled=True,
+                    parameters={
+                        "model": {
+                            "type": "string",
+                            "required": True,
+                            "description": "Installed Ollama model name.",
+                            "example": "gemma4:12b",
+                        }
+                    },
+                ),
+                ProviderAction(
+                    id="unload-model",
+                    label="Unload Model",
+                    description=(
+                        "Unload an Ollama model and release its "
+                        "runtime memory."
+                    ),
+                    icon="power",
+                    requires_confirmation=True,
+                    destructive=False,
+                    enabled=True,
+                    parameters={
+                        "model": {
+                            "type": "string",
+                            "required": True,
+                            "description": "Loaded Ollama model name.",
+                            "example": "gemma4:12b",
+                        }
+                    },
+                ),
+
                 ProviderAction(
                     id="pull-model",
                     label="Pull Model",
@@ -334,6 +442,96 @@ class OllamaProvider(Provider):
                 data={
                     "running_models": models,
                     "count": len(models),
+                },
+            )
+
+        if action_id == "load-model":
+            model = parameters.get("model")
+
+            if not isinstance(model, str) or not model.strip():
+                return ProviderActionResult(
+                    provider_id=self.metadata.id,
+                    action_id=action_id,
+                    status="failed",
+                    success=False,
+                    message=(
+                        "Parameter 'model' must be a non-empty "
+                        "string."
+                    ),
+                )
+
+            try:
+                result = await self.load_model(model)
+            except (
+                httpx.HTTPError,
+                ValueError,
+            ) as error:
+                return ProviderActionResult(
+                    provider_id=self.metadata.id,
+                    action_id=action_id,
+                    status="failed",
+                    success=False,
+                    message=f"Unable to load model '{model}'.",
+                    data={
+                        "model": model,
+                        "error": str(error),
+                    },
+                )
+
+            return ProviderActionResult(
+                provider_id=self.metadata.id,
+                action_id=action_id,
+                status="succeeded",
+                success=True,
+                message=f"Loaded Ollama model '{model}'.",
+                data={
+                    "model": model,
+                    "result": result,
+                },
+            )
+
+        if action_id == "unload-model":
+            model = parameters.get("model")
+
+            if not isinstance(model, str) or not model.strip():
+                return ProviderActionResult(
+                    provider_id=self.metadata.id,
+                    action_id=action_id,
+                    status="failed",
+                    success=False,
+                    message=(
+                        "Parameter 'model' must be a non-empty "
+                        "string."
+                    ),
+                )
+
+            try:
+                result = await self.unload_model(model)
+            except (
+                httpx.HTTPError,
+                ValueError,
+            ) as error:
+                return ProviderActionResult(
+                    provider_id=self.metadata.id,
+                    action_id=action_id,
+                    status="failed",
+                    success=False,
+                    message=f"Unable to unload model '{model}'.",
+                    data={
+                        "model": model,
+                        "error": str(error),
+                    },
+                )
+
+            return ProviderActionResult(
+                provider_id=self.metadata.id,
+                action_id=action_id,
+                status="succeeded",
+                success=True,
+                message=f"Unloaded Ollama model '{model}'.",
+                data={
+                    "model": model,
+                    "result": result,
                 },
             )
 
