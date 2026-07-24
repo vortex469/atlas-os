@@ -168,3 +168,21 @@ def test_confirmed_unload_forwards_model_name() -> None:
             },
         ),
     ]
+
+def test_status_aggregates_provider_state() -> None:
+    service, provider = make_service()
+
+    result = asyncio.run(service.status())
+
+    assert result["provider"] == {
+        "id": "ollama",
+        "name": "Ollama",
+        "online": True,
+    }
+    assert result["health"]["status"] == "online"
+    assert result["models"]["installed_count"] == 0
+    assert result["models"]["running_count"] == 0
+    assert provider.calls == [
+        ("list-models", {}),
+        ("runtime-status", {}),
+    ]

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+from typing import Any
 from app.actions import (
     ProviderActionRequest,
     ProviderActionResult,
@@ -24,6 +26,55 @@ class AIControlService:
         """Resolve the configured AI provider."""
 
         return self._registry.get(self._provider_id)
+
+    async def status(self) -> dict[str, Any]:
+        """Return an aggregated view of the Atlas AI subsystem."""
+
+        provider = self._provider()
+
+        health, installed, running = await asyncio.gather(
+            provider.get_health(),
+            self.installed_models(),
+            self.running_models(),
+        )
+
+        installed_models = (
+            installed.data.get("models", [])
+            if installed.success
+            else []
+        )
+        running_models = (
+            running.data.get("running_models", [])
+            if running.success
+            else []
+        )
+
+        return {
+            "provider": {
+                "id": provider.metadata.id,
+                "name": provider.metadata.name,
+                "online": health.status == "online",
+            },
+            "health": health.model_dump(mode="json"),
+            "models": {
+                "installed": installed_models,
+                "installed_count": len(installed_models),
+                "running": running_models,
+                "running_count": len(running_models),
+            },
+            "errors": {
+                "installed_models": (
+                    None
+                    if installed.success
+                    else installed.message
+                ),
+                "running_models": (
+                    None
+                    if running.success
+                    else running.message
+                ),
+            },
+        }
 
     async def installed_models(self) -> ProviderActionResult:
         """Return models installed in the provider's model library."""

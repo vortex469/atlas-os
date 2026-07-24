@@ -15,6 +15,7 @@ from app.routes.intelligence import router as intelligence_router
 from app.routes.ops import router as ops_router
 from app.routes.proxmox import router as proxmox_router
 from app.routes.providers import router as providers_router
+from app.routes.ai import router as ai_router
 
 configure_logging()
 logger = get_logger("atlas")
@@ -67,3 +68,8 @@ app.include_router(proxmox_router)
 app.include_router(home_router)
 app.include_router(intelligence_router)
 app.include_router(ace_router)
+app.include_router(analysis_router)
+app.include_router(health_router)
+app.include_router(providers_router)
+app.include_router(ai_router)
+app.include_router(ops_router)
