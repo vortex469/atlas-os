@@ -185,3 +185,5 @@ curl \
     | grep -qi '^Strict-Transport-Security: max-age=31536000'
 
 echo "Container release gate passed"
+
+"$SCRIPT_DIRECTORY/data-recovery-gate"

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_IMAGE="python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+DATA_VOLUME="${ATLAS_DATA_VOLUME:-atlas_atlas-data}"
+DATA_UID="${ATLAS_DATA_UID:-10001}"
+
+if [[ $# -ne 2 || "$2" != "--confirm" ]]; then
+    echo "Usage: $0 BACKUP_DIRECTORY --confirm" >&2
+    exit 2
+fi
+
+for executable in docker realpath; do
+    if ! command -v "$executable" >/dev/null 2>&1; then
+        echo "Required executable not found: $executable" >&2
+        exit 127
+    fi
+done
+
+BACKUP_DIRECTORY="$(realpath "$1")"
+if [[ ! -f "$BACKUP_DIRECTORY/manifest.json" ]]; then
+    echo "Backup manifest not found: $BACKUP_DIRECTORY/manifest.json" >&2
+    exit 1
+fi
+
+docker volume inspect "$DATA_VOLUME" >/dev/null
+running_containers="$(
+    docker ps \
+        --filter "volume=$DATA_VOLUME" \
+        --format '{{.Names}}'
+)"
+if [[ -n "$running_containers" ]]; then
+    echo "Refusing restore while containers use $DATA_VOLUME:" >&2
+    echo "$running_containers" >&2
+    exit 1
+fi
+
+docker run \
+    --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --user "$DATA_UID:$DATA_UID" \
+    --mount "type=volume,src=$DATA_VOLUME,dst=/target" \
+    --mount "type=bind,src=$BACKUP_DIRECTORY,dst=/backup,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+    "$PYTHON_IMAGE" \
+    python /tool.py restore /backup /target
+
+echo "Atlas data volume restored: $DATA_VOLUME"

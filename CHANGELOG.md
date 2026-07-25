@@ -10,6 +10,8 @@ release boundaries.
 
 - Configurable loopback or LAN HTTP binding and an optional authenticated
   HTTPS ingress overlay.
+- Online, integrity-checked backups and guarded restores for persistent
+  action history and provider telemetry.
 
 ## v1.0.0 — Foundry (2026-07-25)
 

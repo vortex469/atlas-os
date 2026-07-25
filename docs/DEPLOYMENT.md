@@ -169,6 +169,45 @@ The `atlas-data` named volume contains action history and provider
 intelligence telemetry. Deleting that volume permanently removes both
 databases.
 
+## Back up and restore data
+
+Create a consistent online backup while Atlas remains available:
+
+```bash
+./scripts/atlas-data-backup
+```
+
+Backups default to timestamped directories beneath `backups/`. Pass a
+different parent directory as the first argument to store them on
+separate media:
+
+```bash
+./scripts/atlas-data-backup /mnt/atlas-backups
+```
+
+Each backup contains both SQLite databases and a versioned
+`manifest.json` with sizes and SHA-256 checksums. The command uses
+SQLite's online backup API, so WAL-mode writes can continue without
+producing an inconsistent file copy.
+
+Restore replaces both databases and removes their stale WAL and shared
+memory sidecars. Stop every container using the volume first:
+
+```bash
+docker compose -f compose.production.yaml down
+./scripts/atlas-data-restore \
+  /mnt/atlas-backups/atlas-data-YYYYMMDDTHHMMSSZ \
+  --confirm
+docker compose -f compose.production.yaml up -d
+```
+
+Include `-f compose.https.yaml` in the `down` and `up` commands for an
+HTTPS deployment. The restore command refuses to run while a container
+uses the target volume, validates the manifest, checks every checksum,
+and runs SQLite integrity checks before replacing live database files.
+Set `ATLAS_DATA_VOLUME` only when the Compose project uses a non-default
+volume name.
+
 ## Security notes
 
 The Core container has access to the Docker socket, which is equivalent
