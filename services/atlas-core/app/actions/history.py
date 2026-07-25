@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -6,6 +8,7 @@ from threading import Lock
 
 from app.actions.models import (
     ProviderActionAuditEntry,
+    ProviderActionHistoryPage,
     ProviderActionHistoryProvider,
     ProviderActionHistorySummary,
     ProviderActionPruneResult,
@@ -240,6 +243,7 @@ class ProviderActionHistory:
         status: str | None = None,
         completed_from: datetime | None = None,
         completed_to: datetime | None = None,
+        search: str | None = None,
     ) -> list[ProviderActionAuditEntry]:
         return self.list(
             limit=self._max_entries,
@@ -247,6 +251,7 @@ class ProviderActionHistory:
             status=status,
             completed_from=completed_from,
             completed_to=completed_to,
+            search=search,
         )
 
     def providers(self) -> list[ProviderActionHistoryProvider]:
@@ -279,11 +284,112 @@ class ProviderActionHistory:
         self,
         *,
         limit: int = 50,
+        offset: int = 0,
         provider_id: str | None = None,
         status: str | None = None,
         completed_from: datetime | None = None,
         completed_to: datetime | None = None,
+        search: str | None = None,
     ) -> list[ProviderActionAuditEntry]:
+        where_clause, parameters = self._query_parts(
+            provider_id=provider_id,
+            status=status,
+            completed_from=completed_from,
+            completed_to=completed_to,
+            search=search,
+        )
+        parameters.extend([limit, offset])
+
+        with self._lock, self._connection:
+            self._prune()
+            rows = self._connection.execute(
+                f"""
+                SELECT *
+                FROM provider_action_history
+                {where_clause}
+                ORDER BY completed_at DESC, rowid DESC
+                LIMIT ? OFFSET ?
+                """,
+                parameters,
+            ).fetchall()
+
+        return [self._entry_from_row(row) for row in rows]
+
+    def page(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        provider_id: str | None = None,
+        status: str | None = None,
+        completed_from: datetime | None = None,
+        completed_to: datetime | None = None,
+        search: str | None = None,
+    ) -> ProviderActionHistoryPage:
+        items = self.list(
+            limit=limit,
+            offset=offset,
+            provider_id=provider_id,
+            status=status,
+            completed_from=completed_from,
+            completed_to=completed_to,
+            search=search,
+        )
+        total = self.count(
+            provider_id=provider_id,
+            status=status,
+            completed_from=completed_from,
+            completed_to=completed_to,
+            search=search,
+        )
+
+        return ProviderActionHistoryPage(
+            items=items,
+            total=total,
+            offset=offset,
+            limit=limit,
+            has_more=offset + len(items) < total,
+        )
+
+    def count(
+        self,
+        *,
+        provider_id: str | None = None,
+        status: str | None = None,
+        completed_from: datetime | None = None,
+        completed_to: datetime | None = None,
+        search: str | None = None,
+    ) -> int:
+        where_clause, parameters = self._query_parts(
+            provider_id=provider_id,
+            status=status,
+            completed_from=completed_from,
+            completed_to=completed_to,
+            search=search,
+        )
+
+        with self._lock, self._connection:
+            self._prune()
+            row = self._connection.execute(
+                f"""
+                SELECT COUNT(*) AS entry_count
+                FROM provider_action_history
+                {where_clause}
+                """,
+                parameters,
+            ).fetchone()
+
+        return int(row["entry_count"])
+
+    def _query_parts(
+        self,
+        *,
+        provider_id: str | None,
+        status: str | None,
+        completed_from: datetime | None,
+        completed_to: datetime | None,
+        search: str | None,
+    ) -> tuple[str, list[str | int]]:
         conditions: list[str] = []
         parameters: list[str | int] = []
 
@@ -299,53 +405,62 @@ class ProviderActionHistory:
         if completed_to is not None:
             conditions.append("completed_at <= ?")
             parameters.append(utc_iso(completed_to))
+        normalized_search = search.strip() if search else ""
+        if normalized_search:
+            escaped_search = (
+                normalized_search.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            )
+            search_pattern = f"%{escaped_search}%"
+            conditions.append(
+                """
+                (
+                    action_id LIKE ? ESCAPE '\\'
+                    OR action_label LIKE ? ESCAPE '\\'
+                    OR request_id LIKE ? ESCAPE '\\'
+                )
+                """,
+            )
+            parameters.extend(
+                [
+                    search_pattern,
+                    search_pattern,
+                    search_pattern,
+                ],
+            )
 
         where_clause = (
             f"WHERE {' AND '.join(conditions)}"
             if conditions
             else ""
         )
-        parameters.append(limit)
 
-        with self._lock, self._connection:
-            self._prune()
-            rows = self._connection.execute(
-                f"""
-                SELECT *
-                FROM provider_action_history
-                {where_clause}
-                ORDER BY completed_at DESC, rowid DESC
-                LIMIT ?
-                """,
-                parameters,
-            ).fetchall()
+        return where_clause, parameters
 
-        return [
-            ProviderActionAuditEntry(
-                id=row["id"],
-                provider_id=row["provider_id"],
-                provider_name=row["provider_name"],
-                action_id=row["action_id"],
-                action_label=row["action_label"],
-                status=row["status"],
-                success=bool(row["success"]),
-                message=row["message"],
-                confirmed=bool(row["confirmed"]),
-                destructive=bool(row["destructive"]),
-                parameter_names=json.loads(
-                    row["parameter_names"],
-                ),
-                request_id=row["request_id"],
-                started_at=datetime.fromisoformat(
-                    row["started_at"],
-                ),
-                completed_at=datetime.fromisoformat(
-                    row["completed_at"],
-                ),
-                duration_ms=row["duration_ms"],
-            )
-            for row in rows
-        ]
+    @staticmethod
+    def _entry_from_row(
+        row: sqlite3.Row,
+    ) -> ProviderActionAuditEntry:
+        return ProviderActionAuditEntry(
+            id=row["id"],
+            provider_id=row["provider_id"],
+            provider_name=row["provider_name"],
+            action_id=row["action_id"],
+            action_label=row["action_label"],
+            status=row["status"],
+            success=bool(row["success"]),
+            message=row["message"],
+            confirmed=bool(row["confirmed"]),
+            destructive=bool(row["destructive"]),
+            parameter_names=json.loads(row["parameter_names"]),
+            request_id=row["request_id"],
+            started_at=datetime.fromisoformat(row["started_at"]),
+            completed_at=datetime.fromisoformat(
+                row["completed_at"],
+            ),
+            duration_ms=row["duration_ms"],
+        )
 
     def clear(self) -> None:
         with self._lock, self._connection:

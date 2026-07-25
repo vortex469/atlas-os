@@ -11,7 +11,7 @@ import type {
 import type {
     ActionHistoryExportFormat,
     ActionHistoryQuery,
-    ProviderActionAuditEntry,
+    ProviderActionHistoryPage,
     ProviderActionHistorySummary,
     ProviderActionHistoryProvider,
     ProviderActionPruneResult,
@@ -75,12 +75,14 @@ export async function runProviderAction(
 
 export async function getProviderActionHistory(
     options: ActionHistoryQuery = {},
-): Promise<ProviderActionAuditEntry[]> {
-    const response = await atlas.get<ProviderActionAuditEntry[]>(
-        "/ops/actions",
+): Promise<ProviderActionHistoryPage> {
+    const response = await atlas.get<ProviderActionHistoryPage>(
+        "/ops/actions/page",
         {
             params: {
-                limit: options.limit ?? 100,
+                limit: options.limit ?? 25,
+                offset: options.offset ?? 0,
+                search: options.search,
                 status: options.status,
                 provider_id: options.providerId,
                 completed_from: options.completedFrom,
@@ -114,6 +116,7 @@ export async function exportProviderActionHistory(
                 provider_id: options.providerId,
                 completed_from: options.completedFrom,
                 completed_to: options.completedTo,
+                search: options.search,
             },
             responseType: "blob",
         },

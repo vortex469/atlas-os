@@ -10,6 +10,7 @@ from fastapi.responses import Response
 
 from app.actions import (
     ProviderActionAuditEntry,
+    ProviderActionHistoryPage,
     ProviderActionHistoryProvider,
     ProviderActionHistorySummary,
     ProviderActionPruneRequest,
@@ -86,6 +87,7 @@ def action_history(
     status: Literal["succeeded", "failed"] | None = None,
     completed_from: datetime | None = None,
     completed_to: datetime | None = None,
+    search: str | None = Query(default=None, max_length=200),
 ) -> list[ProviderActionAuditEntry]:
     normalized_from, normalized_to = normalized_range(
         completed_from,
@@ -98,6 +100,7 @@ def action_history(
         status=status,
         completed_from=normalized_from,
         completed_to=normalized_to,
+        search=search,
     )
 
 
@@ -117,6 +120,35 @@ def action_history_summary() -> ProviderActionHistorySummary:
 
 
 @router.get(
+    "/actions/page",
+    response_model=ProviderActionHistoryPage,
+)
+def action_history_page(
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    provider_id: str | None = None,
+    status: Literal["succeeded", "failed"] | None = None,
+    completed_from: datetime | None = None,
+    completed_to: datetime | None = None,
+    search: str | None = Query(default=None, max_length=200),
+) -> ProviderActionHistoryPage:
+    normalized_from, normalized_to = normalized_range(
+        completed_from,
+        completed_to,
+    )
+
+    return get_provider_action_history().page(
+        limit=limit,
+        offset=offset,
+        provider_id=provider_id,
+        status=status,
+        completed_from=normalized_from,
+        completed_to=normalized_to,
+        search=search,
+    )
+
+
+@router.get(
     "/actions/providers",
     response_model=list[ProviderActionHistoryProvider],
 )
@@ -131,6 +163,7 @@ def export_action_history(
     status: Literal["succeeded", "failed"] | None = None,
     completed_from: datetime | None = None,
     completed_to: datetime | None = None,
+    search: str | None = Query(default=None, max_length=200),
 ) -> Response:
     normalized_from, normalized_to = normalized_range(
         completed_from,
@@ -141,6 +174,7 @@ def export_action_history(
         status=status,
         completed_from=normalized_from,
         completed_to=normalized_to,
+        search=search,
     )
 
     if format == "json":

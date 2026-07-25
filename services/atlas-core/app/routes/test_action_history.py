@@ -245,3 +245,63 @@ def test_action_history_rejects_invalid_date_ranges() -> None:
     assert response.json()["error"]["message"] == (
         "Audit start date must not be after the end date."
     )
+
+
+def test_action_history_page_and_literal_search(
+    isolated_action_history: ProviderActionHistory,
+) -> None:
+    timestamp = datetime.now(timezone.utc)
+
+    for index, request_id in enumerate(
+        ("REQ_100%", "other-request"),
+    ):
+        isolated_action_history.append(
+            ProviderActionAuditEntry(
+                id=f"page-{index}",
+                provider_id="ollama",
+                provider_name="Ollama",
+                action_id=f"action-{index}",
+                action_label=f"Action {index}",
+                status="succeeded",
+                success=True,
+                message="Completed.",
+                confirmed=False,
+                destructive=False,
+                parameter_names=[],
+                request_id=request_id,
+                started_at=timestamp + timedelta(seconds=index),
+                completed_at=timestamp + timedelta(seconds=index),
+                duration_ms=1,
+            ),
+        )
+
+    first_page = client.get(
+        "/api/v1/ops/actions/page",
+        params={"limit": 1, "offset": 0},
+    )
+    assert first_page.status_code == 200
+    assert first_page.json()["total"] == 2
+    assert first_page.json()["has_more"] is True
+    assert [entry["id"] for entry in first_page.json()["items"]] == [
+        "page-1",
+    ]
+
+    second_page = client.get(
+        "/api/v1/ops/actions/page",
+        params={"limit": 1, "offset": 1},
+    )
+    assert second_page.status_code == 200
+    assert second_page.json()["has_more"] is False
+    assert [entry["id"] for entry in second_page.json()["items"]] == [
+        "page-0",
+    ]
+
+    searched = client.get(
+        "/api/v1/ops/actions/page",
+        params={"search": "REQ_100%"},
+    )
+    assert searched.status_code == 200
+    assert searched.json()["total"] == 1
+    assert searched.json()["items"][0]["request_id"] == (
+        "REQ_100%"
+    )

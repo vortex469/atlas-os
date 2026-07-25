@@ -46,8 +46,8 @@ const mockedPruneProviderActionHistory = vi.mocked(
 describe("OperationsPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockedGetProviderActionHistory.mockResolvedValue([
-            {
+        mockedGetProviderActionHistory.mockResolvedValue({
+            items: [{
                 id: "audit-1",
                 provider_id: "ollama",
                 provider_name: "Ollama",
@@ -63,8 +63,12 @@ describe("OperationsPage", () => {
                 started_at: "2026-07-25T17:00:00Z",
                 completed_at: "2026-07-25T17:00:01Z",
                 duration_ms: 12.5,
-            },
-        ]);
+            }],
+            total: 26,
+            offset: 0,
+            limit: 25,
+            has_more: true,
+        });
         mockedGetProviderActionHistorySummary.mockResolvedValue({
             entry_count: 1,
             max_entries: 5000,
@@ -119,7 +123,9 @@ describe("OperationsPage", () => {
             expect(
                 mockedGetProviderActionHistory,
             ).toHaveBeenLastCalledWith({
-                limit: 100,
+                limit: 25,
+                offset: 0,
+                search: undefined,
                 status: "failed",
                 providerId: undefined,
                 completedFrom: undefined,
@@ -151,7 +157,9 @@ describe("OperationsPage", () => {
         expect(
             mockedExportProviderActionHistory,
         ).toHaveBeenCalledWith("json", {
-            limit: 100,
+            limit: 25,
+            offset: 0,
+            search: undefined,
             status: undefined,
             providerId: undefined,
             completedFrom: undefined,
@@ -216,13 +224,61 @@ describe("OperationsPage", () => {
             expect(
                 mockedGetProviderActionHistory,
             ).toHaveBeenLastCalledWith({
-                limit: 100,
+                limit: 25,
+                offset: 0,
+                search: undefined,
                 status: undefined,
                 providerId: "ollama",
                 completedFrom:
                     "2026-07-01T00:00:00.000Z",
                 completedTo:
                     "2026-07-25T23:59:59.999Z",
+            }),
+        );
+    });
+
+    it("searches and pages through audit results", async () => {
+        const user = userEvent.setup();
+        render(<OperationsPage />);
+
+        await screen.findByText("Unload Model");
+        await user.type(
+            screen.getByLabelText("Action or request ID"),
+            "request-123",
+        );
+        await user.click(
+            screen.getByRole("button", { name: "Search" }),
+        );
+
+        await waitFor(() =>
+            expect(
+                mockedGetProviderActionHistory,
+            ).toHaveBeenLastCalledWith({
+                limit: 25,
+                offset: 0,
+                search: "request-123",
+                status: undefined,
+                providerId: undefined,
+                completedFrom: undefined,
+                completedTo: undefined,
+            }),
+        );
+
+        await user.click(
+            screen.getByRole("button", { name: "Next" }),
+        );
+
+        await waitFor(() =>
+            expect(
+                mockedGetProviderActionHistory,
+            ).toHaveBeenLastCalledWith({
+                limit: 25,
+                offset: 25,
+                search: "request-123",
+                status: undefined,
+                providerId: undefined,
+                completedFrom: undefined,
+                completedTo: undefined,
             }),
         );
     });

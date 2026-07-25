@@ -36,10 +36,20 @@ export type ActionHistoryExportFormat = "json" | "csv";
 
 export type ActionHistoryQuery = {
     limit?: number;
+    offset?: number;
+    search?: string;
     status?: ActionHistoryStatus;
     providerId?: string;
     completedFrom?: string;
     completedTo?: string;
+};
+
+export type ProviderActionHistoryPage = {
+    items: ProviderActionAuditEntry[];
+    total: number;
+    offset: number;
+    limit: number;
+    has_more: boolean;
 };
 
 export type ProviderActionHistoryProvider = {

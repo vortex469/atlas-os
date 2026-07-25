@@ -56,6 +56,16 @@ class ProviderActionHistoryProvider(BaseModel):
     name: str
 
 
+class ProviderActionHistoryPage(BaseModel):
+    items: list[ProviderActionAuditEntry] = Field(
+        default_factory=list,
+    )
+    total: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1)
+    has_more: bool
+
+
 class ProviderActionPruneRequest(BaseModel):
     confirmed: bool = False
 

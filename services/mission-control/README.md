@@ -19,6 +19,8 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Confirmed expired-entry pruning
 - Provider and UTC date-range audit filtering
 - Filter-aware exports
+- Paginated audit results
+- Action and request-ID search
 - Forge deployment analysis workspace
 
 ## Development

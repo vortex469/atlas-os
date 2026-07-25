@@ -206,7 +206,9 @@ Future capabilities:
 - Confirmed retention maintenance
 - Provider and UTC date-range audit filtering
 - Filter-aware audit exports
-- 168 Atlas Core tests
+- Paginated audit results
+- Action and request-ID search
+- 169 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---

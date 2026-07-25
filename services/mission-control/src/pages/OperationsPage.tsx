@@ -24,6 +24,7 @@ import type {
 } from "../types/actionHistory";
 
 type HistoryFilter = "all" | ActionHistoryStatus;
+const PAGE_SIZE = 25;
 
 function formatTimestamp(timestamp: string): string {
     const date = new Date(timestamp);
@@ -59,8 +60,13 @@ export function OperationsPage() {
     >([]);
     const [filter, setFilter] = useState<HistoryFilter>("all");
     const [providerId, setProviderId] = useState("all");
+    const [searchInput, setSearchInput] = useState("");
+    const [search, setSearch] = useState("");
     const [completedFrom, setCompletedFrom] = useState("");
     const [completedTo, setCompletedTo] = useState("");
+    const [offset, setOffset] = useState(0);
+    const [total, setTotal] = useState(0);
+    const [hasMore, setHasMore] = useState(false);
     const [providers, setProviders] = useState<
         ProviderActionHistoryProvider[]
     >([]);
@@ -77,14 +83,23 @@ export function OperationsPage() {
 
     const historyQuery = useMemo<ActionHistoryQuery>(
         () => ({
-            limit: 100,
+            limit: PAGE_SIZE,
+            offset,
+            search: search || undefined,
             status: filter === "all" ? undefined : filter,
             providerId:
                 providerId === "all" ? undefined : providerId,
             completedFrom: startOfUtcDay(completedFrom),
             completedTo: endOfUtcDay(completedTo),
         }),
-        [completedFrom, completedTo, filter, providerId],
+        [
+            completedFrom,
+            completedTo,
+            filter,
+            offset,
+            providerId,
+            search,
+        ],
     );
 
     const loadHistory = useCallback(async () => {
@@ -95,7 +110,7 @@ export function OperationsPage() {
 
         try {
             const [
-                history,
+                historyPage,
                 historySummary,
                 historyProviders,
             ] = await Promise.all([
@@ -105,7 +120,9 @@ export function OperationsPage() {
             ]);
 
             if (requestSequence.current === requestId) {
-                setEntries(history);
+                setEntries(historyPage.items);
+                setTotal(historyPage.total);
+                setHasMore(historyPage.has_more);
                 setSummary(historySummary);
                 setProviders(historyProviders);
             }
@@ -196,7 +213,11 @@ export function OperationsPage() {
                         : "entries"
                 } pruned.`,
             );
-            await loadHistory();
+            if (offset === 0) {
+                await loadHistory();
+            } else {
+                setOffset(0);
+            }
         } catch (requestError) {
             console.error(
                 "Unable to prune provider action history:",
@@ -211,7 +232,7 @@ export function OperationsPage() {
         } finally {
             setIsPruning(false);
         }
-    }, [loadHistory, summary?.retention_days]);
+    }, [loadHistory, offset, summary?.retention_days]);
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -264,7 +285,10 @@ export function OperationsPage() {
                         <button
                             key={value}
                             type="button"
-                            onClick={() => setFilter(value)}
+                            onClick={() => {
+                                setFilter(value);
+                                setOffset(0);
+                            }}
                             className={
                                 filter === value
                                     ? "rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-white"
@@ -281,7 +305,42 @@ export function OperationsPage() {
                 </p>
             </div>
 
-            <section className="grid gap-4 rounded-lg border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid gap-4 rounded-lg border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 xl:grid-cols-5">
+                <form
+                    className="sm:col-span-2 xl:col-span-1"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        setSearch(searchInput.trim());
+                        setOffset(0);
+                    }}
+                >
+                    <label
+                        htmlFor="audit-search"
+                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
+                    >
+                        Action or request ID
+                    </label>
+                    <div className="mt-2 flex">
+                        <input
+                            id="audit-search"
+                            type="search"
+                            value={searchInput}
+                            maxLength={200}
+                            placeholder="Search history"
+                            onChange={(event) =>
+                                setSearchInput(event.target.value)
+                            }
+                            className="min-w-0 flex-1 rounded-l-lg border border-r-0 border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none placeholder:text-slate-600 focus:border-cyan-500"
+                        />
+                        <button
+                            type="submit"
+                            className="rounded-r-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20"
+                        >
+                            Search
+                        </button>
+                    </div>
+                </form>
+
                 <div>
                     <label
                         htmlFor="audit-provider-filter"
@@ -292,9 +351,10 @@ export function OperationsPage() {
                     <select
                         id="audit-provider-filter"
                         value={providerId}
-                        onChange={(event) =>
-                            setProviderId(event.target.value)
-                        }
+                        onChange={(event) => {
+                            setProviderId(event.target.value);
+                            setOffset(0);
+                        }}
                         className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
                     >
                         <option value="all">All providers</option>
@@ -321,9 +381,10 @@ export function OperationsPage() {
                         type="date"
                         value={completedFrom}
                         max={completedTo || undefined}
-                        onChange={(event) =>
-                            setCompletedFrom(event.target.value)
-                        }
+                        onChange={(event) => {
+                            setCompletedFrom(event.target.value);
+                            setOffset(0);
+                        }}
                         className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
                     />
                 </div>
@@ -340,9 +401,10 @@ export function OperationsPage() {
                         type="date"
                         value={completedTo}
                         min={completedFrom || undefined}
-                        onChange={(event) =>
-                            setCompletedTo(event.target.value)
-                        }
+                        onChange={(event) => {
+                            setCompletedTo(event.target.value);
+                            setOffset(0);
+                        }}
                         className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
                     />
                 </div>
@@ -353,12 +415,17 @@ export function OperationsPage() {
                         onClick={() => {
                             setFilter("all");
                             setProviderId("all");
+                            setSearchInput("");
+                            setSearch("");
                             setCompletedFrom("");
                             setCompletedTo("");
+                            setOffset(0);
                         }}
                         disabled={
                             filter === "all" &&
                             providerId === "all" &&
+                            !search &&
+                            !searchInput &&
                             !completedFrom &&
                             !completedTo
                         }
@@ -459,12 +526,13 @@ export function OperationsPage() {
             )}
 
             {entries.length > 0 && (
-                <div className="space-y-3">
-                    {entries.map((entry) => (
-                        <article
-                            key={entry.id}
-                            className="rounded-lg border border-slate-800 bg-slate-900 p-5"
-                        >
+                <>
+                    <div className="space-y-3">
+                        {entries.map((entry) => (
+                            <article
+                                key={entry.id}
+                                className="rounded-lg border border-slate-800 bg-slate-900 p-5"
+                            >
                             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                                 <div>
                                     <div className="flex flex-wrap items-center gap-2">
@@ -538,9 +606,51 @@ export function OperationsPage() {
                                     </dd>
                                 </div>
                             </dl>
-                        </article>
-                    ))}
-                </div>
+                            </article>
+                        ))}
+                    </div>
+
+                    <nav
+                        aria-label="Action history pagination"
+                        className="flex flex-col items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900 p-4 sm:flex-row"
+                    >
+                        <p className="text-sm text-slate-400">
+                            Showing {offset + 1}–
+                            {Math.min(offset + entries.length, total)} of{" "}
+                            {total}
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setOffset((current) =>
+                                        Math.max(
+                                            0,
+                                            current - PAGE_SIZE,
+                                        ),
+                                    )
+                                }
+                                disabled={offset === 0}
+                                className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setOffset(
+                                        (current) =>
+                                            current + PAGE_SIZE,
+                                    )
+                                }
+                                disabled={!hasMore}
+                                className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </nav>
+                </>
             )}
         </main>
     );

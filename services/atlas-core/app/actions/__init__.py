@@ -16,6 +16,7 @@ from app.actions.history import (
 )
 from app.actions.models import (
     ProviderActionAuditEntry,
+    ProviderActionHistoryPage,
     ProviderActionHistoryProvider,
     ProviderActionHistorySummary,
     ProviderActionPruneRequest,
@@ -33,6 +34,7 @@ __all__ = [
     "ProviderActionRequest",
     "ProviderActionResult",
     "ProviderActionHistory",
+    "ProviderActionHistoryPage",
     "ProviderActionHistoryProvider",
     "ProviderActionHistorySummary",
     "ProviderActionPruneRequest",
