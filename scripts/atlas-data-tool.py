@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+
+import argparse
+import hashlib
+import json
+import os
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+DATABASES = ("action_history.db", "provider_intelligence.db")
+MANIFEST_NAME = "manifest.json"
+FORMAT_VERSION = 1
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def integrity(path: Path) -> str:
+    connection = sqlite3.connect(
+        f"file:{path}?mode=ro&immutable=1",
+        uri=True,
+    )
+    try:
+        return str(connection.execute("PRAGMA integrity_check").fetchone()[0])
+    finally:
+        connection.close()
+
+
+def sqlite_backup(source: Path, destination: Path) -> None:
+    source_connection = sqlite3.connect(
+        f"file:{source}?mode=ro",
+        uri=True,
+    )
+    destination_connection = sqlite3.connect(destination)
+    try:
+        source_connection.backup(destination_connection)
+        destination_connection.execute("PRAGMA journal_mode=DELETE")
+    finally:
+        destination_connection.close()
+        source_connection.close()
+
+
+def create_backup(source: Path, destination: Path) -> None:
+    destination.mkdir(parents=True, exist_ok=False)
+    records: list[dict[str, object]] = []
+
+    for filename in DATABASES:
+        source_path = source / filename
+        if not source_path.is_file():
+            raise RuntimeError(f"required database not found: {source_path}")
+
+        destination_path = destination / filename
+        sqlite_backup(source_path, destination_path)
+        result = integrity(destination_path)
+        if result != "ok":
+            raise RuntimeError(
+                f"backup integrity check failed for {filename}: {result}"
+            )
+        records.append(
+            {
+                "filename": filename,
+                "sha256": sha256(destination_path),
+                "size": destination_path.stat().st_size,
+            }
+        )
+
+    manifest = {
+        "format_version": FORMAT_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "databases": records,
+    }
+    manifest_path = destination / MANIFEST_NAME
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def verify_backup(backup: Path) -> dict[str, object]:
+    manifest_path = backup / MANIFEST_NAME
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("format_version") != FORMAT_VERSION:
+        raise RuntimeError("unsupported backup format version")
+
+    records = manifest.get("databases")
+    if not isinstance(records, list):
+        raise RuntimeError("backup manifest has no database records")
+
+    filenames = {
+        record.get("filename")
+        for record in records
+        if isinstance(record, dict)
+    }
+    if filenames != set(DATABASES):
+        raise RuntimeError("backup manifest database set is invalid")
+
+    expected_files = {*DATABASES, MANIFEST_NAME}
+    actual_files = {
+        path.name
+        for path in backup.iterdir()
+        if path.is_file()
+    }
+    if actual_files != expected_files:
+        unexpected = sorted(actual_files - expected_files)
+        missing = sorted(expected_files - actual_files)
+        raise RuntimeError(
+            f"backup file set is invalid; unexpected={unexpected}, "
+            f"missing={missing}"
+        )
+
+    for record in records:
+        if not isinstance(record, dict):
+            raise RuntimeError("backup manifest record is invalid")
+        filename = record["filename"]
+        if filename not in DATABASES:
+            raise RuntimeError(f"unexpected database filename: {filename}")
+        path = backup / filename
+        if not path.is_file():
+            raise RuntimeError(f"backup database not found: {filename}")
+        if path.stat().st_size != record.get("size"):
+            raise RuntimeError(f"backup size mismatch: {filename}")
+        if sha256(path) != record.get("sha256"):
+            raise RuntimeError(f"backup checksum mismatch: {filename}")
+        result = integrity(path)
+        if result != "ok":
+            raise RuntimeError(
+                f"backup integrity check failed for {filename}: {result}"
+            )
+
+    return manifest
+
+
+def restore_backup(backup: Path, target: Path) -> None:
+    verify_backup(backup)
+    target.mkdir(parents=True, exist_ok=True)
+
+    for filename in DATABASES:
+        temporary_path = target / f".{filename}.restore"
+        if temporary_path.exists():
+            temporary_path.unlink()
+        sqlite_backup(backup / filename, temporary_path)
+        result = integrity(temporary_path)
+        if result != "ok":
+            raise RuntimeError(
+                f"restored database integrity check failed for "
+                f"{filename}: {result}"
+            )
+        os.replace(temporary_path, target / filename)
+        for suffix in ("-wal", "-shm"):
+            journal = target / f"{filename}{suffix}"
+            if journal.exists():
+                journal.unlink()
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    backup_parser = subparsers.add_parser("backup")
+    backup_parser.add_argument("source", type=Path)
+    backup_parser.add_argument("destination", type=Path)
+
+    verify_parser = subparsers.add_parser("verify")
+    verify_parser.add_argument("backup", type=Path)
+
+    restore_parser = subparsers.add_parser("restore")
+    restore_parser.add_argument("backup", type=Path)
+    restore_parser.add_argument("target", type=Path)
+
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    if args.command == "backup":
+        create_backup(args.source, args.destination)
+    elif args.command == "verify":
+        manifest = verify_backup(args.backup)
+        print(
+            f"Backup verified: {len(manifest['databases'])} databases, "
+            f"created {manifest['created_at']}"
+        )
+    else:
+        restore_backup(args.backup, args.target)
+        print("Backup restored and verified")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_IMAGE="python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+GATE_DIRECTORY="$(mktemp -d /tmp/atlas-recovery-gate.XXXXXX)"
+GATE_VOLUME="atlas-recovery-gate-$$"
+
+cleanup() {
+    docker volume rm "$GATE_VOLUME" >/dev/null 2>&1 || true
+    rm -rf -- "$GATE_DIRECTORY"
+}
+trap cleanup EXIT
+
+docker volume create "$GATE_VOLUME" >/dev/null
+docker run \
+    --rm \
+    --mount "type=volume,src=$GATE_VOLUME,dst=/data" \
+    "$PYTHON_IMAGE" \
+    python -c '
+import sqlite3
+from pathlib import Path
+for filename in ("action_history.db", "provider_intelligence.db"):
+    connection = sqlite3.connect(Path("/data") / filename)
+    connection.execute("CREATE TABLE records (value TEXT NOT NULL)")
+    connection.execute("INSERT INTO records VALUES (\"before-backup\")")
+    connection.commit()
+    connection.close()
+'
+
+ATLAS_DATA_VOLUME="$GATE_VOLUME" \
+    "$SCRIPT_DIRECTORY/atlas-data-backup" "$GATE_DIRECTORY"
+backup_directory="$(
+    find "$GATE_DIRECTORY" \
+        -mindepth 1 \
+        -maxdepth 1 \
+        -type d \
+        -name 'atlas-data-*' \
+        -print \
+        -quit
+)"
+test -n "$backup_directory"
+
+docker run \
+    --rm \
+    --mount "type=volume,src=$GATE_VOLUME,dst=/data" \
+    "$PYTHON_IMAGE" \
+    python -c '
+import sqlite3
+from pathlib import Path
+for filename in ("action_history.db", "provider_intelligence.db"):
+    connection = sqlite3.connect(Path("/data") / filename)
+    connection.execute("UPDATE records SET value = \"after-backup\"")
+    connection.commit()
+    connection.close()
+'
+
+ATLAS_DATA_VOLUME="$GATE_VOLUME" \
+ATLAS_DATA_UID=0 \
+    "$SCRIPT_DIRECTORY/atlas-data-restore" \
+    "$backup_directory" \
+    --confirm
+
+docker run \
+    --rm \
+    --mount "type=volume,src=$GATE_VOLUME,dst=/data,readonly" \
+    "$PYTHON_IMAGE" \
+    python -c '
+import sqlite3
+from pathlib import Path
+for filename in ("action_history.db", "provider_intelligence.db"):
+    database_path = Path("/data") / filename
+    connection = sqlite3.connect(
+        "file:" + str(database_path) + "?mode=ro",
+        uri=True,
+    )
+    value = connection.execute("SELECT value FROM records").fetchone()[0]
+    connection.close()
+    assert value == "before-backup", (filename, value)
+'
+
+echo "Atlas data recovery gate passed"
