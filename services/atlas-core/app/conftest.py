@@ -1,0 +1,26 @@
+from collections.abc import Generator
+from pathlib import Path
+
+import pytest
+
+from app.actions import history as history_module
+from app.actions.history import ProviderActionHistory
+
+
+@pytest.fixture(autouse=True)
+def isolated_action_history(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> Generator[ProviderActionHistory, None, None]:
+    history = ProviderActionHistory(
+        database_path=tmp_path / "action_history.db",
+    )
+    monkeypatch.setattr(
+        history_module,
+        "provider_action_history",
+        history,
+    )
+
+    yield history
+
+    history.close()

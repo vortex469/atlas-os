@@ -1,9 +1,6 @@
-from collections.abc import Generator
-
 import pytest
 from fastapi.testclient import TestClient
 
-from app.actions import provider_action_history
 from app.main import app
 from app.providers.loader import load_provider_registry
 
@@ -12,11 +9,8 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def reset_action_history() -> Generator[None, None, None]:
-    provider_action_history.clear()
+def load_test_providers() -> None:
     load_provider_registry()
-    yield
-    provider_action_history.clear()
 
 
 def test_executed_action_is_available_in_history() -> None:

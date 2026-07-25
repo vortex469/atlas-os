@@ -142,7 +142,7 @@ export function OperationsPage() {
                 </div>
 
                 <p className="text-xs text-slate-500">
-                    Process-local history · resets when Atlas Core restarts
+                    Persistent audit history · retention managed by Atlas Core
                 </p>
             </div>
 

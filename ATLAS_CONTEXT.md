@@ -121,7 +121,9 @@ Planned
 
 ✔ Action History and Audit Visibility
 
-160 Atlas Core tests passing.
+✔ Persistent Audit Storage and Retention
+
+163 Atlas Core tests passing.
 
 6 Mission Control component tests passing.
 
@@ -133,7 +135,7 @@ Foundry Dashboard and Operations
 
 Next work
 
-- Persistent audit storage and retention policy
+- Audit export and administrative retention controls
 - Frontend coverage for dashboard refresh and service details
 - Dynamic policy reload
 - Docker expected state

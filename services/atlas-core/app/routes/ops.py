@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query
 
 from app.actions import (
     ProviderActionAuditEntry,
-    provider_action_history,
+    get_provider_action_history,
 )
 
 from app.services.summary_service import get_ops_summary
@@ -36,7 +36,7 @@ def action_history(
     provider_id: str | None = None,
     status: Literal["succeeded", "failed"] | None = None,
 ) -> list[ProviderActionAuditEntry]:
-    return provider_action_history.list(
+    return get_provider_action_history().list(
         limit=limit,
         provider_id=provider_id,
         status=status,

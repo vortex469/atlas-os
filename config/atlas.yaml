@@ -22,3 +22,8 @@ docker:
 
 inventory:
   file: /opt/atlas/inventory/services.yaml
+
+audit:
+  database: /opt/atlas/data/action_history.db
+  max_entries: 5000
+  retention_days: 90

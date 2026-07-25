@@ -107,7 +107,7 @@ Current capabilities:
 - Versioned REST API with typed contracts
 - Standardized API errors and request tracing
 - Provider action discovery and execution
-- Sanitized provider action history
+- Persistent, sanitized provider action history
 - Aggregated dashboard, health, and AI status
 - Modular architecture
 
@@ -202,7 +202,7 @@ Future capabilities:
 - Live Mission Control service health
 - Provider-backed operational actions
 - Operations workspace and action audit visibility
-- 160 Atlas Core tests
+- 163 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---

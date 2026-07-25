@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from app.actions import (
     ProviderActionAuditEntry,
@@ -11,8 +12,9 @@ def make_entry(
     *,
     provider_id: str = "ollama",
     status: str = "succeeded",
+    timestamp: datetime | None = None,
 ) -> ProviderActionAuditEntry:
-    timestamp = datetime.now(timezone.utc)
+    recorded_at = timestamp or datetime.now(timezone.utc)
 
     return ProviderActionAuditEntry(
         id=entry_id,
@@ -26,8 +28,8 @@ def make_entry(
         confirmed=False,
         destructive=False,
         parameter_names=[],
-        started_at=timestamp,
-        completed_at=timestamp,
+        started_at=recorded_at,
+        completed_at=recorded_at,
         duration_ms=1,
     )
 
@@ -70,3 +72,36 @@ def test_history_filters_without_exposing_parameters() -> None:
         "docker-failure",
     ]
     assert not hasattr(entries[0], "parameters")
+
+
+def test_history_persists_between_repository_instances(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "history.db"
+    history = ProviderActionHistory(database_path)
+    history.append(make_entry("persistent"))
+    history.close()
+
+    reopened_history = ProviderActionHistory(database_path)
+
+    assert [
+        entry.id
+        for entry in reopened_history.list()
+    ] == ["persistent"]
+
+    reopened_history.close()
+
+
+def test_history_prunes_entries_older_than_retention() -> None:
+    history = ProviderActionHistory(retention_days=30)
+    history.append(
+        make_entry(
+            "expired",
+            timestamp=datetime.now(timezone.utc)
+            - timedelta(days=31),
+        ),
+    )
+
+    assert history.list() == []
+
+    history.close()

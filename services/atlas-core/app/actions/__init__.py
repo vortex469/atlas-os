@@ -8,14 +8,16 @@ from app.actions.exceptions import (
     ProviderActionError,
     ProviderActionNotFoundError,
 )
+from app.actions.history import (
+    ProviderActionHistory,
+    get_provider_action_history,
+    provider_action_history,
+    record_provider_action_audit,
+)
 from app.actions.models import (
     ProviderActionAuditEntry,
     ProviderActionRequest,
     ProviderActionResult,
-)
-from app.actions.history import (
-    ProviderActionHistory,
-    provider_action_history,
 )
 
 __all__ = [
@@ -29,5 +31,7 @@ __all__ = [
     "ProviderActionHistory",
     "execute_provider_action",
     "find_provider_action",
+    "get_provider_action_history",
     "provider_action_history",
+    "record_provider_action_audit",
 ]

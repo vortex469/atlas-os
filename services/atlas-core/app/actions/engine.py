@@ -10,12 +10,12 @@ from app.actions.exceptions import (
     ProviderActionDisabledError,
     ProviderActionNotFoundError,
 )
+from app.actions.history import record_provider_action_audit
 from app.actions.models import (
     ProviderActionAuditEntry,
     ProviderActionRequest,
     ProviderActionResult,
 )
-from app.actions.history import provider_action_history
 from app.providers.models import ProviderAction
 
 if TYPE_CHECKING:
@@ -72,7 +72,7 @@ async def execute_provider_action(
         )
     except Exception:
         completed_at = datetime.now(timezone.utc)
-        provider_action_history.append(
+        record_provider_action_audit(
             ProviderActionAuditEntry(
                 id=uuid4().hex,
                 provider_id=provider.metadata.id,
@@ -97,7 +97,7 @@ async def execute_provider_action(
         raise
 
     completed_at = datetime.now(timezone.utc)
-    provider_action_history.append(
+    record_provider_action_audit(
         ProviderActionAuditEntry(
             id=uuid4().hex,
             provider_id=provider.metadata.id,

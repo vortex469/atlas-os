@@ -44,6 +44,12 @@ class InventorySettings(BaseModel):
     file: str
 
 
+class AuditSettings(BaseModel):
+    database: str = "/opt/atlas/data/action_history.db"
+    max_entries: int = Field(default=5000, ge=1)
+    retention_days: int = Field(default=90, ge=1)
+
+
 class Settings(BaseModel):
     atlas: AtlasSettings
     infrastructure: InfrastructureSettings
@@ -51,6 +57,7 @@ class Settings(BaseModel):
     home_assistant: HomeAssistantSettings
     docker: DockerSettings
     inventory: InventorySettings
+    audit: AuditSettings = Field(default_factory=AuditSettings)
 
 
 def load_yaml_config() -> dict[str, Any]:
