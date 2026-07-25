@@ -181,6 +181,8 @@ Planned
 
 ✔ Provider Telemetry History Filtering
 
+✔ Policy Diagnostics Operator Examples
+
 253 Atlas Core tests collected.
 
 31 Mission Control component tests passing.
@@ -193,7 +195,6 @@ Provider Operations and Observability Complete
 
 Next work
 
-- Policy diagnostics documentation examples
 - Provider telemetry history export
 
 ---

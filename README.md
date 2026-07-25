@@ -319,6 +319,54 @@ Mission Control continues loading provider and ACE state when the
 policy snapshot is invalid, so operators can see and correct the
 degraded policy state.
 
+For example, this invalid policy contains a duplicate collection and
+an unsupported severity:
+
+```yaml
+qdrant:
+  expected_collections:
+    - memory
+    - memory
+n8n:
+  scan_truncated_severity: urgent
+```
+
+`GET /api/v1/policies/status` returns a sanitized diagnostic response:
+
+```json
+{
+  "status": "degraded",
+  "source_exists": true,
+  "checked_at": "2026-07-25T19:00:00Z",
+  "loaded_at": null,
+  "duration_ms": 0.42,
+  "error": "Policy reload failed with 2 diagnostic(s).",
+  "diagnostics": [
+    {
+      "path": "qdrant.expected_collections",
+      "error_type": "value_error",
+      "message": "Value error, expected_collections must not contain duplicates.",
+      "line": null,
+      "column": null
+    },
+    {
+      "path": "n8n.scan_truncated_severity",
+      "error_type": "literal_error",
+      "message": "Input should be 'info', 'warning' or 'critical'",
+      "line": null,
+      "column": null
+    }
+  ]
+}
+```
+
+Schema diagnostics use dotted policy paths. YAML syntax diagnostics use
+`"$"` as the path and include one-based `line` and `column` values.
+Neither response type includes the policy filename or rejected input
+value. After correcting the file, refresh Mission Control; the status
+returns to `healthy` and the newly validated snapshot appears
+immediately.
+
 ---
 
 ### Qdrant provider
