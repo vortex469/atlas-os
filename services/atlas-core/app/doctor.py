@@ -1,13 +1,13 @@
 import sys
 from collections.abc import Callable
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Literal
 
-from app.config.validation import (
-    ConfigurationValidationError,
-    validate_configuration,
-)
-from app.intelligence.engine import IntelligenceEngine
-from app.intelligence.findings import Severity
+from pydantic import BaseModel, Field
+
+from app.config.validation import validate_configuration
+from app.intelligence.docker_rules import evaluate_docker
+from app.intelligence.findings import Finding, Severity
 from app.intelligence.homeassistant_rules import evaluate_homeassistant
 from app.services.docker_service import get_docker_status
 from app.services.health_service import get_health
@@ -24,18 +24,21 @@ WARN = "!"
 FAIL = "✗"
 
 
-def run_check(
-    name: str,
-    check: Callable[[], Any],
-) -> tuple[bool, Any, str | None]:
-    try:
-        result = check()
-        print(f"{PASS} {name}")
-        return True, result, None
-    except Exception as error:
-        message = str(error)
-        print(f"{FAIL} {name}: {message}")
-        return False, None, message
+class DoctorCheck(BaseModel):
+    name: str
+    passed: bool
+    error: str | None = None
+
+
+class DoctorReport(BaseModel):
+    status: Literal["healthy", "degraded", "critical"]
+    score: int = Field(ge=0, le=100)
+    checked_at: datetime
+    configuration_ok: bool
+    checks: list[DoctorCheck] = Field(default_factory=list)
+    critical: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    information: list[str] = Field(default_factory=list)
 
 
 def calculate_score(
@@ -56,175 +59,211 @@ def calculate_score(
     return max(score, 0)
 
 
-def main() -> int:
-    print()
-    print("Atlas Doctor")
-    print("=" * 44)
-
-    configuration_ok = True
-    infrastructure_failures = 0
-    critical_service_failures = 0
+def _classify_findings(
+    findings: list[Finding],
+    critical: list[str],
+    warnings: list[str],
+    information: list[str],
+) -> tuple[int, int]:
+    critical_failures = 0
     warning_count = 0
 
-    results: dict[str, Any] = {}
-    failures: dict[str, str] = {}
-
-    print()
-    print("Configuration")
-    print("-" * 44)
-
-    try:
-        validate_configuration()
-        print(f"{PASS} Atlas configuration")
-    except ConfigurationValidationError as error:
-        configuration_ok = False
-        print(f"{FAIL} Atlas configuration")
-        print(error)
-
-    print()
-    print("Infrastructure")
-    print("-" * 44)
-
-    checks = (
-        ("Docker", get_docker_status),
-        ("Proxmox", get_proxmox_status),
-        ("Proxmox guests", get_proxmox_guests),
-        ("Home Assistant", get_homeassistant_status),
-        ("Service inventory", get_health),
-    )
-
-    for name, check in checks:
-        passed, result, error = run_check(name, check)
-
-        if passed:
-            results[name] = result
-        else:
-            infrastructure_failures += 1
-            failures[name] = error or "Unknown error"
-
-    warnings: list[str] = []
-    information: list[str] = []
-    critical: list[str] = []
-
-    intelligence = IntelligenceEngine()
-
-    home = results.get("Home Assistant")
-
-    if isinstance(home, dict):
-        intelligence.extend(
-            evaluate_homeassistant(home)
-        )
-
-    for finding in intelligence.findings():
+    for finding in findings:
         if finding.severity == Severity.CRITICAL:
             critical.append(finding.message)
-
             if finding.affects_health:
-                critical_service_failures += 1
-
+                critical_failures += 1
         elif finding.severity == Severity.WARNING:
             warnings.append(finding.message)
-
             if finding.affects_health:
                 warning_count += 1
-
         elif finding.severity == Severity.INFO:
             information.append(finding.message)
 
-    docker = results.get("Docker", {})
-    unhealthy_containers = docker.get("unhealthy", 0)
+    return critical_failures, warning_count
 
-    if unhealthy_containers:
-        warning_count += 1
-        warnings.append(
-            f"Docker has {unhealthy_containers} unhealthy containers"
+
+def run_diagnostics(
+    *,
+    configuration_check: Callable[[], None] = validate_configuration,
+    infrastructure_checks: tuple[
+        tuple[str, Callable[[], Any]], ...
+    ] | None = None,
+) -> DoctorReport:
+    checks_to_run = (
+        infrastructure_checks
+        if infrastructure_checks is not None
+        else (
+            ("Docker", get_docker_status),
+            ("Proxmox", get_proxmox_status),
+            ("Proxmox guests", get_proxmox_guests),
+            ("Home Assistant", get_homeassistant_status),
+            ("Service inventory", get_health),
         )
+    )
+    configuration_ok = True
+    critical: list[str] = []
+    warnings: list[str] = []
+    information: list[str] = []
+    checks: list[DoctorCheck] = []
+    results: dict[str, Any] = {}
 
-    services = results.get("Service inventory", {})
+    try:
+        configuration_check()
+    except Exception as error:
+        configuration_ok = False
+        critical.append(str(error))
 
+    for name, check in checks_to_run:
+        try:
+            results[name] = check()
+            checks.append(DoctorCheck(name=name, passed=True))
+        except Exception as error:
+            message = str(error)
+            checks.append(
+                DoctorCheck(
+                    name=name,
+                    passed=False,
+                    error=message,
+                ),
+            )
+            critical.append(f"{name}: {message}")
+
+    findings: list[Finding] = []
+    docker = results.get("Docker")
+    if isinstance(docker, dict):
+        findings.extend(evaluate_docker(docker))
+    home = results.get("Home Assistant")
+    if isinstance(home, dict):
+        findings.extend(evaluate_homeassistant(home))
+
+    critical_service_failures, warning_count = (
+        _classify_findings(
+            findings,
+            critical,
+            warnings,
+            information,
+        )
+    )
+
+    services = results.get("Service inventory")
     if isinstance(services, dict):
         for service_name, service in services.items():
             if not isinstance(service, dict):
                 continue
-
             status = service.get("status", "unknown")
-            critical_service = service.get("critical") is True
-
             if status == "online":
                 continue
-
-            if critical_service:
+            if service.get("critical") is True:
                 critical_service_failures += 1
-                critical.append(
-                    f"{service_name}: {status}"
-                )
+                critical.append(f"{service_name}: {status}")
             else:
                 warning_count += 1
-                warnings.append(
-                    f"{service_name}: {status}"
-                )
+                warnings.append(f"{service_name}: {status}")
 
-    for name, error in failures.items():
-        critical.append(f"{name}: {error}")
-
-    print()
-    print("Critical")
-    print("-" * 44)
-
-    if critical:
-        for item in critical:
-            print(f"{FAIL} {item}")
-    else:
-        print(f"{PASS} No critical issues detected")
-
-    print()
-    print("Warnings")
-    print("-" * 44)
-
-    if warnings:
-        for item in warnings:
-            print(f"{WARN} {item}")
-    else:
-        print(f"{PASS} No warnings detected")
-
-    print()
-    print("Information")
-    print("-" * 44)
-
-    if information:
-        for item in information:
-            print(f"{INFO} {item}")
-    else:
-        print(f"{PASS} No informational notices")
-
+    infrastructure_failures = sum(
+        not check.passed for check in checks
+    )
     score = calculate_score(
         configuration_ok=configuration_ok,
         infrastructure_failures=infrastructure_failures,
         critical_service_failures=critical_service_failures,
         warnings=warning_count,
     )
+    status: Literal["healthy", "degraded", "critical"]
+    if (
+        not configuration_ok
+        or infrastructure_failures
+        or critical_service_failures
+    ):
+        status = "critical"
+    elif warning_count:
+        status = "degraded"
+    else:
+        status = "healthy"
+
+    return DoctorReport(
+        status=status,
+        score=score,
+        checked_at=datetime.now(timezone.utc),
+        configuration_ok=configuration_ok,
+        checks=checks,
+        critical=critical,
+        warnings=warnings,
+        information=information,
+    )
+
+
+def _print_items(
+    title: str,
+    items: list[str],
+    marker: str,
+    empty_message: str,
+) -> None:
+    print()
+    print(title)
+    print("-" * 44)
+    if items:
+        for item in items:
+            print(f"{marker} {item}")
+    else:
+        print(f"{PASS} {empty_message}")
+
+
+def main() -> int:
+    print()
+    print("Atlas Doctor")
+    print("=" * 44)
+
+    report = run_diagnostics()
+
+    print()
+    print("Configuration")
+    print("-" * 44)
+    if report.configuration_ok:
+        print(f"{PASS} Atlas configuration")
+    else:
+        print(f"{FAIL} Atlas configuration")
+
+    print()
+    print("Infrastructure")
+    print("-" * 44)
+    for check in report.checks:
+        if check.passed:
+            print(f"{PASS} {check.name}")
+        else:
+            print(f"{FAIL} {check.name}: {check.error}")
+
+    _print_items(
+        "Critical",
+        report.critical,
+        FAIL,
+        "No critical issues detected",
+    )
+    _print_items(
+        "Warnings",
+        report.warnings,
+        WARN,
+        "No warnings detected",
+    )
+    _print_items(
+        "Information",
+        report.information,
+        INFO,
+        "No informational notices",
+    )
 
     print()
     print("Overall Health")
     print("-" * 44)
-    print(f"Score: {score}/100")
+    print(f"Score: {report.score}/100")
+    print(f"Status: {report.status.upper()}")
 
-    has_critical_failure = (
-        not configuration_ok
-        or infrastructure_failures > 0
-        or critical_service_failures > 0
-    )
-
-    if has_critical_failure:
-        print("Status: CRITICAL")
-        return 2
-
-    if warning_count:
-        print("Status: DEGRADED")
-        return 1
-
-    print("Status: HEALTHY")
-    return 0
+    return {
+        "healthy": 0,
+        "degraded": 1,
+        "critical": 2,
+    }[report.status]
 
 
 if __name__ == "__main__":

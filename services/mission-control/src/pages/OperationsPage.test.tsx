@@ -17,6 +17,7 @@ import {
 import { OperationsPage } from "./OperationsPage";
 
 vi.mock("../api/atlas", () => ({
+    getAtlasDoctorReport: vi.fn(),
     getAtlasErrorMessage: (
         error: unknown,
         fallback: string,

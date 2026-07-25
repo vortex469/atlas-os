@@ -17,6 +17,7 @@ from app.actions import (
     ProviderActionPruneResult,
     get_provider_action_history,
 )
+from app.doctor import DoctorReport, run_diagnostics as run_atlas_doctor
 
 from app.services.summary_service import get_ops_summary
 from app.services.system_service import get_system_status
@@ -75,6 +76,14 @@ def ops_status():
 @router.get("/summary")
 def ops_summary():
     return get_ops_summary()
+
+
+@router.get(
+    "/doctor",
+    response_model=DoctorReport,
+)
+def doctor_report() -> DoctorReport:
+    return run_atlas_doctor()
 
 
 @router.get(

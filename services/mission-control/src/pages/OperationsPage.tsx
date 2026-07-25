@@ -7,6 +7,7 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 
+import { AtlasDoctorPanel } from "../components/AtlasDoctorPanel";
 import {
     exportProviderActionHistory,
     getAtlasErrorMessage,
@@ -493,6 +494,8 @@ export function OperationsPage() {
                     </p>
                 )}
             </section>
+
+            <AtlasDoctorPanel />
 
             {error && (
                 <div

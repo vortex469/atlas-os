@@ -2,6 +2,7 @@ import axios from "axios";
 import { parse } from "yaml";
 
 import type { DeploymentAnalysisResponse } from "../features/forge/types";
+import type { DoctorReport } from "../types/doctor";
 import type {
     AtlasAPIError,
     ProviderAction,
@@ -91,6 +92,12 @@ export async function getProviderActionHistory(
             },
         },
     );
+
+    return response.data;
+}
+
+export async function getAtlasDoctorReport(): Promise<DoctorReport> {
+    const response = await atlas.get<DoctorReport>("/ops/doctor");
 
     return response.data;
 }

@@ -137,9 +137,11 @@ Planned
 
 ✔ Docker Expected State
 
-175 Atlas Core tests passing.
+✔ Atlas Doctor Integration
 
-17 Mission Control component tests passing.
+179 Atlas Core tests passing.
+
+19 Mission Control component tests passing.
 
 ---
 
@@ -149,7 +151,6 @@ Foundry Dashboard and Operations
 
 Next work
 
-- Atlas Doctor integration
 - OPNsense provider
 
 ---

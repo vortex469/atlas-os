@@ -110,6 +110,7 @@ Current capabilities:
 - Persistent, sanitized provider action history
 - Live, validated operational policy reload
 - Policy-aware Docker expected-state monitoring
+- Atlas Doctor diagnostics through CLI and Operations API
 - Aggregated dashboard, health, and AI status
 - Modular architecture
 
