@@ -125,9 +125,11 @@ Planned
 
 ✔ Audit Export and Retention Administration
 
-166 Atlas Core tests passing.
+✔ Provider and Date-Range Audit Filtering
 
-8 Mission Control component tests passing.
+168 Atlas Core tests passing.
+
+9 Mission Control component tests passing.
 
 ---
 
@@ -137,7 +139,7 @@ Foundry Dashboard and Operations
 
 Next work
 
-- Provider and date-range audit filtering
+- Audit pagination and action/request search
 - Frontend coverage for dashboard refresh and service details
 - Dynamic policy reload
 - Docker expected state

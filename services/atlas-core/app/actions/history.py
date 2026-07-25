@@ -6,6 +6,7 @@ from threading import Lock
 
 from app.actions.models import (
     ProviderActionAuditEntry,
+    ProviderActionHistoryProvider,
     ProviderActionHistorySummary,
     ProviderActionPruneResult,
 )
@@ -14,6 +15,13 @@ from app.core.logging import get_logger
 
 
 logger = get_logger("atlas.actions.history")
+
+
+def utc_iso(timestamp: datetime) -> str:
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+
+    return timestamp.astimezone(timezone.utc).isoformat()
 
 
 class ProviderActionHistory:
@@ -112,8 +120,8 @@ class ProviderActionHistory:
             int(entry.destructive),
             json.dumps(entry.parameter_names),
             entry.request_id,
-            entry.started_at.isoformat(),
-            entry.completed_at.isoformat(),
+            utc_iso(entry.started_at),
+            utc_iso(entry.completed_at),
             entry.duration_ms,
         )
 
@@ -225,8 +233,47 @@ class ProviderActionHistory:
             ),
         )
 
-    def export_entries(self) -> list[ProviderActionAuditEntry]:
-        return self.list(limit=self._max_entries)
+    def export_entries(
+        self,
+        *,
+        provider_id: str | None = None,
+        status: str | None = None,
+        completed_from: datetime | None = None,
+        completed_to: datetime | None = None,
+    ) -> list[ProviderActionAuditEntry]:
+        return self.list(
+            limit=self._max_entries,
+            provider_id=provider_id,
+            status=status,
+            completed_from=completed_from,
+            completed_to=completed_to,
+        )
+
+    def providers(self) -> list[ProviderActionHistoryProvider]:
+        with self._lock, self._connection:
+            self._prune()
+            rows = self._connection.execute(
+                """
+                SELECT history.provider_id, history.provider_name
+                FROM provider_action_history AS history
+                WHERE history.rowid = (
+                    SELECT latest.rowid
+                    FROM provider_action_history AS latest
+                    WHERE latest.provider_id = history.provider_id
+                    ORDER BY latest.completed_at DESC, latest.rowid DESC
+                    LIMIT 1
+                )
+                ORDER BY history.provider_name, history.provider_id
+                """,
+            ).fetchall()
+
+        return [
+            ProviderActionHistoryProvider(
+                id=row["provider_id"],
+                name=row["provider_name"],
+            )
+            for row in rows
+        ]
 
     def list(
         self,
@@ -234,6 +281,8 @@ class ProviderActionHistory:
         limit: int = 50,
         provider_id: str | None = None,
         status: str | None = None,
+        completed_from: datetime | None = None,
+        completed_to: datetime | None = None,
     ) -> list[ProviderActionAuditEntry]:
         conditions: list[str] = []
         parameters: list[str | int] = []
@@ -244,6 +293,12 @@ class ProviderActionHistory:
         if status is not None:
             conditions.append("status = ?")
             parameters.append(status)
+        if completed_from is not None:
+            conditions.append("completed_at >= ?")
+            parameters.append(utc_iso(completed_from))
+        if completed_to is not None:
+            conditions.append("completed_at <= ?")
+            parameters.append(utc_iso(completed_to))
 
         where_clause = (
             f"WHERE {' AND '.join(conditions)}"

@@ -204,7 +204,9 @@ Future capabilities:
 - Operations workspace and action audit visibility
 - JSON and CSV audit export
 - Confirmed retention maintenance
-- 166 Atlas Core tests
+- Provider and UTC date-range audit filtering
+- Filter-aware audit exports
+- 168 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---

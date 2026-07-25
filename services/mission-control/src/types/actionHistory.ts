@@ -33,3 +33,16 @@ export type ProviderActionPruneResult = {
 };
 
 export type ActionHistoryExportFormat = "json" | "csv";
+
+export type ActionHistoryQuery = {
+    limit?: number;
+    status?: ActionHistoryStatus;
+    providerId?: string;
+    completedFrom?: string;
+    completedTo?: string;
+};
+
+export type ProviderActionHistoryProvider = {
+    id: string;
+    name: string;
+};

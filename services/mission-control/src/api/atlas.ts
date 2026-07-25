@@ -10,9 +10,10 @@ import type {
 } from "../types/providerAction";
 import type {
     ActionHistoryExportFormat,
-    ActionHistoryStatus,
+    ActionHistoryQuery,
     ProviderActionAuditEntry,
     ProviderActionHistorySummary,
+    ProviderActionHistoryProvider,
     ProviderActionPruneResult,
 } from "../types/actionHistory";
 
@@ -73,10 +74,7 @@ export async function runProviderAction(
 }
 
 export async function getProviderActionHistory(
-    options: {
-        limit?: number;
-        status?: ActionHistoryStatus;
-    } = {},
+    options: ActionHistoryQuery = {},
 ): Promise<ProviderActionAuditEntry[]> {
     const response = await atlas.get<ProviderActionAuditEntry[]>(
         "/ops/actions",
@@ -84,6 +82,9 @@ export async function getProviderActionHistory(
             params: {
                 limit: options.limit ?? 100,
                 status: options.status,
+                provider_id: options.providerId,
+                completed_from: options.completedFrom,
+                completed_to: options.completedTo,
             },
         },
     );
@@ -102,14 +103,29 @@ export async function getProviderActionHistorySummary(): Promise<ProviderActionH
 
 export async function exportProviderActionHistory(
     format: ActionHistoryExportFormat,
+    options: ActionHistoryQuery = {},
 ): Promise<Blob> {
     const response = await atlas.get<Blob>(
         "/ops/actions/export",
         {
-            params: { format },
+            params: {
+                format,
+                status: options.status,
+                provider_id: options.providerId,
+                completed_from: options.completedFrom,
+                completed_to: options.completedTo,
+            },
             responseType: "blob",
         },
     );
+
+    return response.data;
+}
+
+export async function getProviderActionHistoryProviders(): Promise<ProviderActionHistoryProvider[]> {
+    const response = await atlas.get<
+        ProviderActionHistoryProvider[]
+    >("/ops/actions/providers");
 
     return response.data;
 }

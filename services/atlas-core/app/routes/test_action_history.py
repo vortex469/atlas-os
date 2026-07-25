@@ -158,3 +158,90 @@ def test_pruning_requires_confirmation_and_uses_retention(
     assert confirmed.status_code == 200
     assert confirmed.json()["deleted_entries"] == 1
     assert confirmed.json()["remaining_entries"] == 0
+
+
+def test_provider_and_date_filters_apply_to_history_and_export(
+    isolated_action_history: ProviderActionHistory,
+) -> None:
+    now = datetime.now(timezone.utc)
+
+    for entry_id, provider_id, provider_name, timestamp in (
+        ("recent", "ollama", "Ollama", now),
+        (
+            "older",
+            "docker",
+            "Docker",
+            now - timedelta(days=2),
+        ),
+    ):
+        isolated_action_history.append(
+            ProviderActionAuditEntry(
+                id=entry_id,
+                provider_id=provider_id,
+                provider_name=provider_name,
+                action_id="run-diagnostics",
+                action_label="Run Diagnostics",
+                status="succeeded",
+                success=True,
+                message="Completed.",
+                confirmed=False,
+                destructive=False,
+                parameter_names=[],
+                started_at=timestamp,
+                completed_at=timestamp,
+                duration_ms=1,
+            ),
+        )
+
+    providers = client.get("/api/v1/ops/actions/providers")
+    assert providers.status_code == 200
+    assert providers.json() == [
+        {"id": "docker", "name": "Docker"},
+        {"id": "ollama", "name": "Ollama"},
+    ]
+
+    filtered = client.get(
+        "/api/v1/ops/actions",
+        params={
+            "provider_id": "ollama",
+            "completed_from": (
+                now - timedelta(hours=1)
+            ).isoformat(),
+            "completed_to": (
+                now + timedelta(hours=1)
+            ).isoformat(),
+        },
+    )
+    assert filtered.status_code == 200
+    assert [
+        entry["id"]
+        for entry in filtered.json()
+    ] == ["recent"]
+
+    exported = client.get(
+        "/api/v1/ops/actions/export",
+        params={
+            "format": "json",
+            "provider_id": "docker",
+        },
+    )
+    assert exported.status_code == 200
+    assert [
+        entry["id"]
+        for entry in exported.json()
+    ] == ["older"]
+
+
+def test_action_history_rejects_invalid_date_ranges() -> None:
+    response = client.get(
+        "/api/v1/ops/actions",
+        params={
+            "completed_from": "2026-07-26T00:00:00Z",
+            "completed_to": "2026-07-25T00:00:00Z",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["message"] == (
+        "Audit start date must not be after the end date."
+    )

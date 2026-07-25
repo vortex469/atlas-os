@@ -51,6 +51,11 @@ class ProviderActionHistorySummary(BaseModel):
     newest_entry_at: datetime | None = None
 
 
+class ProviderActionHistoryProvider(BaseModel):
+    id: str
+    name: str
+
+
 class ProviderActionPruneRequest(BaseModel):
     confirmed: bool = False
 

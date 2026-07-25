@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -9,6 +10,7 @@ from fastapi.responses import Response
 
 from app.actions import (
     ProviderActionAuditEntry,
+    ProviderActionHistoryProvider,
     ProviderActionHistorySummary,
     ProviderActionPruneRequest,
     ProviderActionPruneResult,
@@ -23,6 +25,45 @@ router = APIRouter(
     prefix="/ops",
     tags=["Operations"],
 )
+
+
+def normalized_range(
+    completed_from: datetime | None,
+    completed_to: datetime | None,
+) -> tuple[datetime | None, datetime | None]:
+    for value in (completed_from, completed_to):
+        if value is not None and value.tzinfo is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Audit date filters must include a timezone."
+                ),
+            )
+
+    normalized_from = (
+        completed_from.astimezone(timezone.utc)
+        if completed_from
+        else None
+    )
+    normalized_to = (
+        completed_to.astimezone(timezone.utc)
+        if completed_to
+        else None
+    )
+
+    if (
+        normalized_from is not None
+        and normalized_to is not None
+        and normalized_from > normalized_to
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Audit start date must not be after the end date."
+            ),
+        )
+
+    return normalized_from, normalized_to
 
 
 @router.get("/status")
@@ -43,11 +84,20 @@ def action_history(
     limit: int = Query(default=50, ge=1, le=200),
     provider_id: str | None = None,
     status: Literal["succeeded", "failed"] | None = None,
+    completed_from: datetime | None = None,
+    completed_to: datetime | None = None,
 ) -> list[ProviderActionAuditEntry]:
+    normalized_from, normalized_to = normalized_range(
+        completed_from,
+        completed_to,
+    )
+
     return get_provider_action_history().list(
         limit=limit,
         provider_id=provider_id,
         status=status,
+        completed_from=normalized_from,
+        completed_to=normalized_to,
     )
 
 
@@ -66,11 +116,32 @@ def action_history_summary() -> ProviderActionHistorySummary:
     return get_provider_action_history().summary()
 
 
+@router.get(
+    "/actions/providers",
+    response_model=list[ProviderActionHistoryProvider],
+)
+def action_history_providers() -> list[ProviderActionHistoryProvider]:
+    return get_provider_action_history().providers()
+
+
 @router.get("/actions/export")
 def export_action_history(
     format: Literal["json", "csv"] = "json",
+    provider_id: str | None = None,
+    status: Literal["succeeded", "failed"] | None = None,
+    completed_from: datetime | None = None,
+    completed_to: datetime | None = None,
 ) -> Response:
-    entries = get_provider_action_history().export_entries()
+    normalized_from, normalized_to = normalized_range(
+        completed_from,
+        completed_to,
+    )
+    entries = get_provider_action_history().export_entries(
+        provider_id=provider_id,
+        status=status,
+        completed_from=normalized_from,
+        completed_to=normalized_to,
+    )
 
     if format == "json":
         content = json.dumps(

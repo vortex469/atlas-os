@@ -1,6 +1,7 @@
 import {
     useCallback,
     useEffect,
+    useMemo,
     useRef,
     useState,
 } from "react";
@@ -9,14 +10,17 @@ import {
     exportProviderActionHistory,
     getAtlasErrorMessage,
     getProviderActionHistory,
+    getProviderActionHistoryProviders,
     getProviderActionHistorySummary,
     pruneProviderActionHistory,
 } from "../api/atlas";
 import type {
     ActionHistoryExportFormat,
+    ActionHistoryQuery,
     ActionHistoryStatus,
     ProviderActionAuditEntry,
     ProviderActionHistorySummary,
+    ProviderActionHistoryProvider,
 } from "../types/actionHistory";
 
 type HistoryFilter = "all" | ActionHistoryStatus;
@@ -37,11 +41,29 @@ function statusClasses(status: ActionHistoryStatus): string {
         : "border-red-500/30 bg-red-500/10 text-red-300";
 }
 
+function startOfUtcDay(date: string): string | undefined {
+    return date
+        ? `${date}T00:00:00.000Z`
+        : undefined;
+}
+
+function endOfUtcDay(date: string): string | undefined {
+    return date
+        ? `${date}T23:59:59.999Z`
+        : undefined;
+}
+
 export function OperationsPage() {
     const [entries, setEntries] = useState<
         ProviderActionAuditEntry[]
     >([]);
     const [filter, setFilter] = useState<HistoryFilter>("all");
+    const [providerId, setProviderId] = useState("all");
+    const [completedFrom, setCompletedFrom] = useState("");
+    const [completedTo, setCompletedTo] = useState("");
+    const [providers, setProviders] = useState<
+        ProviderActionHistoryProvider[]
+    >([]);
     const [summary, setSummary] =
         useState<ProviderActionHistorySummary | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -53,6 +75,18 @@ export function OperationsPage() {
     >(null);
     const requestSequence = useRef(0);
 
+    const historyQuery = useMemo<ActionHistoryQuery>(
+        () => ({
+            limit: 100,
+            status: filter === "all" ? undefined : filter,
+            providerId:
+                providerId === "all" ? undefined : providerId,
+            completedFrom: startOfUtcDay(completedFrom),
+            completedTo: endOfUtcDay(completedTo),
+        }),
+        [completedFrom, completedTo, filter, providerId],
+    );
+
     const loadHistory = useCallback(async () => {
         const requestId = requestSequence.current + 1;
         requestSequence.current = requestId;
@@ -60,18 +94,20 @@ export function OperationsPage() {
         setError(null);
 
         try {
-            const [history, historySummary] = await Promise.all([
-                getProviderActionHistory({
-                    limit: 100,
-                    status:
-                        filter === "all" ? undefined : filter,
-                }),
+            const [
+                history,
+                historySummary,
+                historyProviders,
+            ] = await Promise.all([
+                getProviderActionHistory(historyQuery),
                 getProviderActionHistorySummary(),
+                getProviderActionHistoryProviders(),
             ]);
 
             if (requestSequence.current === requestId) {
                 setEntries(history);
                 setSummary(historySummary);
+                setProviders(historyProviders);
             }
         } catch (requestError) {
             if (requestSequence.current !== requestId) {
@@ -93,7 +129,7 @@ export function OperationsPage() {
                 setIsLoading(false);
             }
         }
-    }, [filter]);
+    }, [historyQuery]);
 
     const exportHistory = useCallback(
         async (format: ActionHistoryExportFormat) => {
@@ -103,7 +139,10 @@ export function OperationsPage() {
 
             try {
                 const exportBlob =
-                    await exportProviderActionHistory(format);
+                    await exportProviderActionHistory(
+                        format,
+                        historyQuery,
+                    );
                 const downloadUrl =
                     URL.createObjectURL(exportBlob);
                 const anchor = document.createElement("a");
@@ -131,7 +170,7 @@ export function OperationsPage() {
                 setIsExporting(false);
             }
         },
-        [],
+        [historyQuery],
     );
 
     const pruneHistory = useCallback(async () => {
@@ -241,6 +280,94 @@ export function OperationsPage() {
                     Persistent audit history · retention managed by Atlas Core
                 </p>
             </div>
+
+            <section className="grid gap-4 rounded-lg border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 xl:grid-cols-4">
+                <div>
+                    <label
+                        htmlFor="audit-provider-filter"
+                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
+                    >
+                        Provider
+                    </label>
+                    <select
+                        id="audit-provider-filter"
+                        value={providerId}
+                        onChange={(event) =>
+                            setProviderId(event.target.value)
+                        }
+                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                    >
+                        <option value="all">All providers</option>
+                        {providers.map((provider) => (
+                            <option
+                                key={provider.id}
+                                value={provider.id}
+                            >
+                                {provider.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label
+                        htmlFor="audit-from-filter"
+                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
+                    >
+                        From date
+                    </label>
+                    <input
+                        id="audit-from-filter"
+                        type="date"
+                        value={completedFrom}
+                        max={completedTo || undefined}
+                        onChange={(event) =>
+                            setCompletedFrom(event.target.value)
+                        }
+                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                    />
+                </div>
+
+                <div>
+                    <label
+                        htmlFor="audit-to-filter"
+                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
+                    >
+                        To date
+                    </label>
+                    <input
+                        id="audit-to-filter"
+                        type="date"
+                        value={completedTo}
+                        min={completedFrom || undefined}
+                        onChange={(event) =>
+                            setCompletedTo(event.target.value)
+                        }
+                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                    />
+                </div>
+
+                <div className="flex items-end">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFilter("all");
+                            setProviderId("all");
+                            setCompletedFrom("");
+                            setCompletedTo("");
+                        }}
+                        disabled={
+                            filter === "all" &&
+                            providerId === "all" &&
+                            !completedFrom &&
+                            !completedTo
+                        }
+                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        Clear filters
+                    </button>
+                </div>
+            </section>
 
             <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
                 <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">

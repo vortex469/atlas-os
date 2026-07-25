@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     exportProviderActionHistory,
     getProviderActionHistory,
+    getProviderActionHistoryProviders,
     getProviderActionHistorySummary,
     pruneProviderActionHistory,
 } from "../api/atlas";
@@ -21,6 +22,7 @@ vi.mock("../api/atlas", () => ({
     ) => (error instanceof Error ? error.message : fallback),
     getProviderActionHistory: vi.fn(),
     getProviderActionHistorySummary: vi.fn(),
+    getProviderActionHistoryProviders: vi.fn(),
     exportProviderActionHistory: vi.fn(),
     pruneProviderActionHistory: vi.fn(),
 }));
@@ -30,6 +32,9 @@ const mockedGetProviderActionHistory = vi.mocked(
 );
 const mockedGetProviderActionHistorySummary = vi.mocked(
     getProviderActionHistorySummary,
+);
+const mockedGetProviderActionHistoryProviders = vi.mocked(
+    getProviderActionHistoryProviders,
 );
 const mockedExportProviderActionHistory = vi.mocked(
     exportProviderActionHistory,
@@ -67,6 +72,12 @@ describe("OperationsPage", () => {
             oldest_entry_at: "2026-07-25T17:00:01Z",
             newest_entry_at: "2026-07-25T17:00:01Z",
         });
+        mockedGetProviderActionHistoryProviders.mockResolvedValue(
+            [
+                { id: "ollama", name: "Ollama" },
+                { id: "docker", name: "Docker" },
+            ],
+        );
         mockedExportProviderActionHistory.mockResolvedValue(
             new Blob(["[]"], {
                 type: "application/json",
@@ -85,7 +96,7 @@ describe("OperationsPage", () => {
         expect(
             await screen.findByText("Unload Model"),
         ).toBeInTheDocument();
-        expect(screen.getByText("Ollama")).toBeInTheDocument();
+        expect(screen.getAllByText("Ollama")).toHaveLength(2);
         expect(screen.getByText("model")).toBeInTheDocument();
         expect(
             screen.getByText("request-123"),
@@ -110,6 +121,9 @@ describe("OperationsPage", () => {
             ).toHaveBeenLastCalledWith({
                 limit: 100,
                 status: "failed",
+                providerId: undefined,
+                completedFrom: undefined,
+                completedTo: undefined,
             }),
         );
     });
@@ -136,7 +150,13 @@ describe("OperationsPage", () => {
 
         expect(
             mockedExportProviderActionHistory,
-        ).toHaveBeenCalledWith("json");
+        ).toHaveBeenCalledWith("json", {
+            limit: 100,
+            status: undefined,
+            providerId: undefined,
+            completedFrom: undefined,
+            completedTo: undefined,
+        });
         expect(createObjectURL).toHaveBeenCalledOnce();
         expect(click).toHaveBeenCalledOnce();
         expect(revokeObjectURL).toHaveBeenCalledWith(
@@ -172,5 +192,38 @@ describe("OperationsPage", () => {
                 "1 expired audit entry pruned.",
             ),
         ).toBeInTheDocument();
+    });
+
+    it("filters by provider and UTC date range", async () => {
+        const user = userEvent.setup();
+        render(<OperationsPage />);
+
+        await screen.findByText("Unload Model");
+        await user.selectOptions(
+            screen.getByLabelText("Provider"),
+            "ollama",
+        );
+        await user.type(
+            screen.getByLabelText("From date"),
+            "2026-07-01",
+        );
+        await user.type(
+            screen.getByLabelText("To date"),
+            "2026-07-25",
+        );
+
+        await waitFor(() =>
+            expect(
+                mockedGetProviderActionHistory,
+            ).toHaveBeenLastCalledWith({
+                limit: 100,
+                status: undefined,
+                providerId: "ollama",
+                completedFrom:
+                    "2026-07-01T00:00:00.000Z",
+                completedTo:
+                    "2026-07-25T23:59:59.999Z",
+            }),
+        );
     });
 });
