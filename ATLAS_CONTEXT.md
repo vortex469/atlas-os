@@ -135,7 +135,9 @@ Planned
 
 ✔ Dynamic Policy Reload
 
-174 Atlas Core tests passing.
+✔ Docker Expected State
+
+175 Atlas Core tests passing.
 
 17 Mission Control component tests passing.
 
@@ -147,7 +149,6 @@ Foundry Dashboard and Operations
 
 Next work
 
-- Docker expected state
 - Atlas Doctor integration
 - OPNsense provider
 
