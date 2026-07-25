@@ -86,6 +86,7 @@ export function MissionControl() {
                 {health && (
                     <ServiceHealthSection
                         services={health.services}
+                        providers={providers}
                         isRefreshing={isRefreshing}
                         onRefresh={() => void refresh()}
                     />

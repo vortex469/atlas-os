@@ -74,10 +74,30 @@ def get_health() -> dict:
         critical = service.get("critical", False)
         expected_statuses = service.get("expected_status", [200])
 
-        results[display_name] = check_service(
+        result = check_service(
             url=url,
             expected_statuses=expected_statuses,
             critical=critical,
         )
+        status = result["status"]
+
+        results[display_name] = {
+            "provider_id": service_id.replace("_", "-"),
+            "status": status,
+            "latency_ms": result.get("latency_ms"),
+            "http_status": result.get("http_status"),
+            "message": (
+                None
+                if status == "online"
+                else result.get(
+                    "error",
+                    "Service returned an unexpected status.",
+                )
+            ),
+            "details": {
+                "url": result.get("url"),
+                "critical": result.get("critical", False),
+            },
+        }
 
     return results

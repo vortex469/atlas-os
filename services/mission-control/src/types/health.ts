@@ -8,6 +8,7 @@ export type ServiceStatus =
     | "unknown";
 
 export type ServiceHealth = {
+    provider_id: string;
     status: ServiceStatus | string;
     latency_ms: number | null;
     http_status: number | null;

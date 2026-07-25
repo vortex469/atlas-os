@@ -1,10 +1,13 @@
 import { useEffect } from "react";
 import type { ServiceHealth } from "../types/health";
+import type { Provider } from "../types/provider";
+import { ProviderActions } from "./ProviderActions";
 import { StatusBadge } from "./StatusBadge";
 
 type ServiceDetailsDrawerProps = {
     name: string;
     health: ServiceHealth;
+    provider: Pick<Provider, "id" | "name"> | null;
     isRefreshing: boolean;
     onRefresh: () => void;
     onClose: () => void;
@@ -29,6 +32,7 @@ function formatHttpStatus(status: number | null): string {
 export function ServiceDetailsDrawer({
     name,
     health,
+    provider,
     isRefreshing,
     onRefresh,
     onClose,
@@ -117,28 +121,33 @@ export function ServiceDetailsDrawer({
                         </div>
                     </dl>
 
-                    <section>
-                        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                            Operations
-                        </h3>
+                    {provider ? (
+                        <ProviderActions
+                            provider={provider}
+                            compact
+                            onActionCompleted={onRefresh}
+                        />
+                    ) : (
+                        <section>
+                            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                                Operations
+                            </h3>
+                            <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
+                                No provider operations are available for this service.
+                            </div>
+                        </section>
+                    )}
 
-                        <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900 p-4">
-                            <button
-                                type="button"
-                                onClick={onRefresh}
-                                disabled={isRefreshing}
-                                className="w-full rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 transition hover:border-cyan-400/50 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {isRefreshing
-                                    ? "Refreshing health..."
-                                    : "Refresh health"}
-                            </button>
-
-                            <p className="mt-3 text-xs text-slate-500">
-                                Request the latest health state from Atlas Core.
-                            </p>
-                        </div>
-                    </section>
+                    <button
+                        type="button"
+                        onClick={onRefresh}
+                        disabled={isRefreshing}
+                        className="w-full rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 transition hover:border-cyan-400/50 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {isRefreshing
+                            ? "Refreshing health..."
+                            : "Refresh health"}
+                    </button>
 
                     <section>
                         <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">

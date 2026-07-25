@@ -16,6 +16,7 @@ class APIError(BaseModel):
 
 
 class ServiceHealth(BaseModel):
+    provider_id: str
     status: str
     latency_ms: float | None = None
     http_status: int | None = None

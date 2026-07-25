@@ -12,18 +12,42 @@ import {
 import type { Provider } from "../types/provider";
 import type {
     ProviderAction,
+    ProviderActionParameters,
     ProviderActionResult,
 } from "../types/providerAction";
 import { SectionHeader } from "./SectionHeader";
 
 type ProviderActionsProps = {
-    provider: Provider;
-    onActionCompleted: () => Promise<void>;
+    provider: Pick<Provider, "id" | "name">;
+    onActionCompleted: () => Promise<void> | void;
+    compact?: boolean;
 };
+
+type ActionParameterDefinition = {
+    type?: string;
+    required?: boolean;
+    description?: string;
+    example?: string;
+};
+
+function getParameterDefinition(
+    value: unknown,
+): ActionParameterDefinition {
+    if (
+        typeof value !== "object" ||
+        value === null ||
+        Array.isArray(value)
+    ) {
+        return {};
+    }
+
+    return value as ActionParameterDefinition;
+}
 
 export function ProviderActions({
     provider,
     onActionCompleted,
+    compact = false,
 }: ProviderActionsProps) {
     const [actions, setActions] = useState<ProviderAction[]>(
         [],
@@ -35,6 +59,9 @@ export function ProviderActions({
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] =
         useState<ProviderActionResult | null>(null);
+    const [parameters, setParameters] = useState<
+        Record<string, ProviderActionParameters>
+    >({});
 
     const loadActions = useCallback(async () => {
         setIsLoading(true);
@@ -126,12 +153,13 @@ export function ProviderActions({
         setResult(null);
 
         try {
+            const actionParameters = parameters[action.id] ?? {};
             const actionResult = await runProviderAction(
                 provider.id,
                 action.id,
                 {
                     confirmed,
-                    parameters: {},
+                    parameters: actionParameters,
                 },
             );
 
@@ -158,10 +186,21 @@ export function ProviderActions({
 
     return (
         <section>
-            <SectionHeader
-                title="Provider Actions"
-                description="Safe operations advertised by this provider."
-            />
+            {compact ? (
+                <div className="mb-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                        Operations
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                        Safe actions advertised by this service provider.
+                    </p>
+                </div>
+            ) : (
+                <SectionHeader
+                    title="Provider Actions"
+                    description="Safe operations advertised by this provider."
+                />
+            )}
 
             {isLoading && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
@@ -204,18 +243,52 @@ export function ProviderActions({
             {!isLoading &&
                 !error &&
                 actions.length > 0 && (
-                    <div className="grid gap-4 lg:grid-cols-2">
+                    <div
+                        className={
+                            compact
+                                ? "grid gap-3"
+                                : "grid gap-4 lg:grid-cols-2"
+                        }
+                    >
                         {actions.map((action) => {
                             const isRunning =
                                 runningActionId === action.id;
+                            const parameterEntries =
+                                Object.entries(action.parameters);
+                            const actionParameters =
+                                parameters[action.id] ?? {};
+                            const hasMissingRequiredParameter =
+                                parameterEntries.some(
+                                    ([parameterName, schema]) => {
+                                        const definition =
+                                            getParameterDefinition(
+                                                schema,
+                                            );
+                                        const value =
+                                            actionParameters[
+                                                parameterName
+                                            ];
+
+                                        return (
+                                            definition.required ===
+                                                true &&
+                                            (typeof value !==
+                                                "string" ||
+                                                value.trim() === "")
+                                        );
+                                    },
+                                );
                             const isBlocked =
                                 runningActionId !== null ||
-                                !action.enabled;
+                                !action.enabled ||
+                                hasMissingRequiredParameter;
 
                             return (
                                 <article
                                     key={action.id}
-                                    className="rounded-lg border border-slate-800 bg-slate-900 p-6"
+                                    className={`rounded-lg border border-slate-800 bg-slate-900 ${
+                                        compact ? "p-4" : "p-6"
+                                    }`}
                                 >
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
@@ -253,6 +326,104 @@ export function ProviderActions({
                                             </span>
                                         )}
                                     </div>
+
+                                    {parameterEntries.length > 0 && (
+                                        <div className="mt-5 space-y-4">
+                                            {parameterEntries.map(
+                                                ([
+                                                    parameterName,
+                                                    schema,
+                                                ]) => {
+                                                    const definition =
+                                                        getParameterDefinition(
+                                                            schema,
+                                                        );
+                                                    const inputId = `${provider.id}-${action.id}-${parameterName}`;
+
+                                                    return (
+                                                        <div
+                                                            key={
+                                                                parameterName
+                                                            }
+                                                        >
+                                                            <label
+                                                                htmlFor={
+                                                                    inputId
+                                                                }
+                                                                className="text-sm font-medium text-slate-300"
+                                                            >
+                                                                {
+                                                                    parameterName
+                                                                }
+                                                                {definition.required && (
+                                                                    <span className="text-red-300">
+                                                                        {" "}
+                                                                        *
+                                                                    </span>
+                                                                )}
+                                                            </label>
+                                                            <input
+                                                                id={
+                                                                    inputId
+                                                                }
+                                                                type="text"
+                                                                value={
+                                                                    typeof actionParameters[
+                                                                        parameterName
+                                                                    ] ===
+                                                                    "string"
+                                                                        ? String(
+                                                                              actionParameters[
+                                                                                  parameterName
+                                                                              ],
+                                                                          )
+                                                                        : ""
+                                                                }
+                                                                placeholder={
+                                                                    definition.example
+                                                                }
+                                                                disabled={
+                                                                    runningActionId !==
+                                                                    null
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    setParameters(
+                                                                        (
+                                                                            current,
+                                                                        ) => ({
+                                                                            ...current,
+                                                                            [action.id]:
+                                                                                {
+                                                                                    ...(current[
+                                                                                        action
+                                                                                            .id
+                                                                                    ] ??
+                                                                                        {}),
+                                                                                    [parameterName]:
+                                                                                        event
+                                                                                            .target
+                                                                                            .value,
+                                                                                },
+                                                                        }),
+                                                                    )
+                                                                }
+                                                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            />
+                                                            {definition.description && (
+                                                                <p className="mt-1 text-xs text-slate-500">
+                                                                    {
+                                                                        definition.description
+                                                                    }
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                    )}
 
                                     <button
                                         type="button"

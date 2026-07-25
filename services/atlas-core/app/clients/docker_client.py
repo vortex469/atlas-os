@@ -3,9 +3,6 @@ from datetime import datetime, timezone
 import docker
 
 
-client = docker.from_env()
-
-
 def format_uptime(started_at: str | None) -> str | None:
     if not started_at:
         return None
@@ -54,6 +51,7 @@ def format_ports(port_data: dict | None) -> list[str]:
 
 def list_containers() -> list[dict]:
     containers = []
+    client = docker.from_env()
 
     for container in client.containers.list(all=True):
         container.reload()

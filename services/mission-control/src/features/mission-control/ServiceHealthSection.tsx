@@ -3,9 +3,11 @@ import { SectionHeader } from "../../components/SectionHeader";
 import { ServiceDetailsDrawer } from "../../components/ServiceDetailsDrawer";
 import { ServiceHealthCard } from "../../components/ServiceHealthCard";
 import type { ServiceHealth } from "../../types/health";
+import type { Provider } from "../../types/provider";
 
 type ServiceHealthSectionProps = {
     services: Record<string, ServiceHealth>;
+    providers: Provider[];
     isRefreshing: boolean;
     onRefresh: () => void;
 };
@@ -27,6 +29,7 @@ const statusPriority: Record<string, number> = {
 
 export function ServiceHealthSection({
     services,
+    providers,
     isRefreshing,
     onRefresh,
 }: ServiceHealthSectionProps) {
@@ -83,6 +86,13 @@ export function ServiceHealthSection({
                     health={
                         services[selectedService.name] ??
                         selectedService.health
+                    }
+                    provider={
+                        providers.find(
+                            (provider) =>
+                                provider.id ===
+                                selectedService.health.provider_id,
+                        ) ?? null
                     }
                     isRefreshing={isRefreshing}
                     onRefresh={onRefresh}
