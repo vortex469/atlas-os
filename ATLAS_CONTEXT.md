@@ -163,7 +163,9 @@ Planned
 
 ✔ n8n Provider
 
-236 Atlas Core tests collected.
+✔ Qdrant Collection Policies
+
+237 Atlas Core tests collected.
 
 19 Mission Control component tests passing.
 
@@ -175,7 +177,6 @@ Provider Intelligence
 
 Next work
 
-- Qdrant collection policies
 - n8n workflow policies
 
 ---

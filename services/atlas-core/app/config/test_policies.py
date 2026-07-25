@@ -11,6 +11,7 @@ from app.config.policies import (
     get_ignored_entities,
     get_obsidian_policy,
     get_opnsense_policy,
+    get_qdrant_policy,
     load_policies,
 )
 
@@ -59,6 +60,12 @@ obsidian:
   insufficient_notes_severity: critical
   stale_severity: warning
   scan_truncated_severity: info
+qdrant:
+  expected_collections:
+    - memory
+    - documents
+  missing_collection_severity: critical
+  empty_instance_severity: warning
 """,
     )
 
@@ -83,6 +90,14 @@ obsidian:
     assert get_obsidian_policy().stale_after_days == 14
     assert (
         get_obsidian_policy().insufficient_notes_severity
+        == "critical"
+    )
+    assert get_qdrant_policy().expected_collections == [
+        "memory",
+        "documents",
+    ]
+    assert (
+        get_qdrant_policy().missing_collection_severity
         == "critical"
     )
 
@@ -112,6 +127,7 @@ opnsense:
     assert get_frigate_policy().cameras == {}
     assert get_obsidian_policy().minimum_note_count == 1
     assert get_obsidian_policy().stale_after_days is None
+    assert get_qdrant_policy().expected_collections == []
 
 
 @pytest.mark.parametrize(
@@ -137,6 +153,21 @@ frigate:
         """
 obsidian:
   stale_after_days: 0
+""",
+        """
+qdrant:
+  expected_collections:
+    - memory
+    - memory
+""",
+        """
+qdrant:
+  expected_collections:
+    - ""
+""",
+        """
+qdrant:
+  missing_collection_severity: emergency
 """,
     ],
 )
@@ -168,3 +199,4 @@ def test_missing_policy_file_uses_safe_defaults(
     )
     assert policies.frigate.cameras == {}
     assert policies.obsidian.minimum_note_count == 1
+    assert policies.qdrant.expected_collections == []

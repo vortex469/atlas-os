@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 ExpectedState = Literal["running", "stopped"]
@@ -58,6 +58,28 @@ class ObsidianPolicy(BaseModel):
     scan_truncated_severity: PolicySeverity = "warning"
 
 
+class QdrantPolicy(BaseModel):
+    expected_collections: list[str] = Field(default_factory=list)
+    missing_collection_severity: PolicySeverity = "warning"
+    empty_instance_severity: PolicySeverity = "info"
+
+    @field_validator("expected_collections")
+    @classmethod
+    def validate_expected_collections(
+        cls,
+        values: list[str],
+    ) -> list[str]:
+        if any(not value for value in values):
+            raise ValueError(
+                "expected_collections must contain non-empty names."
+            )
+        if len(set(values)) != len(values):
+            raise ValueError(
+                "expected_collections must not contain duplicates."
+            )
+        return values
+
+
 class Policies(BaseModel):
     proxmox: ProxmoxPolicy = Field(default_factory=ProxmoxPolicy)
     docker: DockerPolicy = Field(default_factory=DockerPolicy)
@@ -71,3 +93,4 @@ class Policies(BaseModel):
     obsidian: ObsidianPolicy = Field(
         default_factory=ObsidianPolicy
     )
+    qdrant: QdrantPolicy = Field(default_factory=QdrantPolicy)

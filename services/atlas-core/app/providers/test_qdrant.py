@@ -1,8 +1,8 @@
 import asyncio
 
 import httpx
-import pytest
 
+from app.config.policy_models import QdrantPolicy
 from app.providers import loader
 from app.providers.qdrant import QdrantProvider
 from app.providers.registry import ProviderRegistry
@@ -42,9 +42,12 @@ def test_qdrant_health_uses_api_key_and_sanitizes_inventory() -> None:
         )
 
     provider = QdrantProvider(
-        service(expected_collections=["memory"]),
+        service(),
         api_key="test-key",
         transport=httpx.MockTransport(handler),
+        policy_getter=lambda: QdrantPolicy(
+            expected_collections=["memory"],
+        ),
     )
 
     health = asyncio.run(provider.get_health())
@@ -82,15 +85,16 @@ def test_qdrant_can_use_unauthenticated_internal_api() -> None:
 
 def test_missing_expected_collections_produce_finding() -> None:
     provider = QdrantProvider(
-        service(
-            expected_collections=["documents", "memory"],
-        ),
+        service(),
         api_key="test-key",
         transport=httpx.MockTransport(
             lambda request: httpx.Response(
                 200,
                 json=collections_response("memory"),
             ),
+        ),
+        policy_getter=lambda: QdrantPolicy(
+            expected_collections=["documents", "memory"],
         ),
     )
 
@@ -121,6 +125,33 @@ def test_empty_qdrant_finding_is_advisory() -> None:
     assert findings[0].id == "qdrant-no-collections"
     assert findings[0].severity == "info"
     assert findings[0].affects_health is False
+
+
+def test_qdrant_finding_severity_follows_policy() -> None:
+    provider = QdrantProvider(
+        service(),
+        api_key="test-key",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=collections_response(),
+            ),
+        ),
+        policy_getter=lambda: QdrantPolicy(
+            expected_collections=["memory"],
+            missing_collection_severity="critical",
+            empty_instance_severity="warning",
+        ),
+    )
+
+    findings = asyncio.run(provider.get_findings())
+
+    assert [finding.severity for finding in findings] == [
+        "critical",
+        "warning",
+    ]
+    assert findings[0].score_penalty == 20
+    assert findings[1].affects_health is True
 
 
 def test_qdrant_authentication_failure_is_degraded() -> None:
@@ -156,25 +187,6 @@ def test_critical_qdrant_connection_failure_is_critical() -> None:
 
     assert findings[0].id == "qdrant-api-offline"
     assert findings[0].severity == "critical"
-
-
-@pytest.mark.parametrize(
-    "expected_collections",
-    [
-        "memory",
-        ["memory", ""],
-        ["memory", "memory"],
-    ],
-)
-def test_invalid_expected_collections_are_rejected(
-    expected_collections,
-) -> None:
-    with pytest.raises(ValueError):
-        QdrantProvider(
-            service(
-                expected_collections=expected_collections,
-            ),
-        )
 
 
 def test_invalid_collection_payload_is_offline() -> None:

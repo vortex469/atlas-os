@@ -8,6 +8,7 @@ from app.config.policy_models import (
     ObsidianPolicy,
     OPNsensePolicy,
     Policies,
+    QdrantPolicy,
 )
 
 ATLAS_ROOT = Path("/opt/atlas")
@@ -100,3 +101,7 @@ def get_frigate_policy() -> FrigatePolicy:
 
 def get_obsidian_policy() -> ObsidianPolicy:
     return load_policies().obsidian
+
+
+def get_qdrant_policy() -> QdrantPolicy:
+    return load_policies().qdrant

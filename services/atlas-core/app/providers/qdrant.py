@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 from time import perf_counter
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urljoin
 
 import httpx
 
+from app.config.policies import get_qdrant_policy
+from app.config.policy_models import PolicySeverity, QdrantPolicy
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -28,6 +30,9 @@ class QdrantProvider(Provider):
         api_key: str | None = None,
         timeout_seconds: float = 10.0,
         transport: httpx.AsyncBaseTransport | None = None,
+        policy_getter: Callable[[], QdrantPolicy] = (
+            get_qdrant_policy
+        ),
     ) -> None:
         self._service = service
         self._api_key = (
@@ -37,26 +42,7 @@ class QdrantProvider(Provider):
         )
         self._timeout_seconds = timeout_seconds
         self._transport = transport
-        expected_collections = service.get(
-            "expected_collections",
-            [],
-        )
-        if not isinstance(expected_collections, list) or not all(
-            isinstance(name, str) and name
-            for name in expected_collections
-        ):
-            raise ValueError(
-                "expected_collections must be a list of names."
-            )
-        if len(set(expected_collections)) != len(
-            expected_collections
-        ):
-            raise ValueError(
-                "expected_collections must not contain duplicates."
-            )
-        self._expected_collections = frozenset(
-            expected_collections
-        )
+        self._policy_getter = policy_getter
 
         protocol = service.get("protocol", "http")
         host = service["host"]
@@ -125,8 +111,12 @@ class QdrantProvider(Provider):
                 payload = response.json()
 
             collections = self._collection_names(payload)
+            policy = self._policy_getter()
+            expected_collections = set(
+                policy.expected_collections
+            )
             missing = sorted(
-                self._expected_collections - set(collections)
+                expected_collections - set(collections)
             )
             return ProviderHealth(
                 status="online",
@@ -139,7 +129,7 @@ class QdrantProvider(Provider):
                     "collection_count": len(collections),
                     "collections": collections,
                     "expected_collection_count": len(
-                        self._expected_collections
+                        expected_collections
                     ),
                     "missing_expected_collections": missing,
                 },
@@ -209,15 +199,19 @@ class QdrantProvider(Provider):
             ]
 
         findings: list[Finding] = []
+        policy = self._policy_getter()
         missing = health.details.get(
             "missing_expected_collections",
             [],
         )
         if isinstance(missing, list) and missing:
+            severity = self._severity(
+                policy.missing_collection_severity
+            )
             findings.append(
                 Finding(
                     id="qdrant-expected-collections-missing",
-                    severity=Severity.WARNING,
+                    severity=severity,
                     category="knowledge",
                     source="qdrant",
                     component=self.metadata.name,
@@ -230,11 +224,15 @@ class QdrantProvider(Provider):
                         "Review collection provisioning, restoration, "
                         "and the expected_collections inventory."
                     ),
-                    score_penalty=10,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
                     metric={
                         "missing_collections": len(missing),
-                        "expected_collections": len(
-                            self._expected_collections
+                        "expected_collections": int(
+                            health.details.get(
+                                "expected_collection_count",
+                                0,
+                            ),
                         ),
                     },
                     details={"collections": missing},
@@ -242,10 +240,13 @@ class QdrantProvider(Provider):
             )
 
         if health.details.get("collection_count") == 0:
+            severity = self._severity(
+                policy.empty_instance_severity
+            )
             findings.append(
                 Finding(
                     id="qdrant-no-collections",
-                    severity=Severity.INFO,
+                    severity=severity,
                     category="knowledge",
                     source="qdrant",
                     component=self.metadata.name,
@@ -258,8 +259,8 @@ class QdrantProvider(Provider):
                         "Confirm whether this Qdrant instance should "
                         "contain indexed knowledge."
                     ),
-                    affects_health=False,
-                    score_penalty=0,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
                 ),
             )
 
@@ -298,3 +299,19 @@ class QdrantProvider(Provider):
     @staticmethod
     def _elapsed_ms(started_at: float) -> float:
         return round((perf_counter() - started_at) * 1000, 2)
+
+    @staticmethod
+    def _severity(value: PolicySeverity) -> Severity:
+        return {
+            "info": Severity.INFO,
+            "warning": Severity.WARNING,
+            "critical": Severity.CRITICAL,
+        }[value]
+
+    @staticmethod
+    def _score_penalty(severity: Severity) -> int:
+        return {
+            Severity.INFO: 0,
+            Severity.WARNING: 10,
+            Severity.CRITICAL: 20,
+        }[severity]

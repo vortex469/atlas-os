@@ -305,9 +305,6 @@ services:
     critical: false
     verify_tls: true
     # ca_bundle: /opt/atlas/config/certificates/qdrant.pem
-    expected_collections:
-      - atlas-memory
-      - atlas-documents
 ```
 
 Provide the API key through the environment when authentication is
@@ -317,12 +314,23 @@ enabled:
 QDRANT_API_KEY=replace-me
 ```
 
+Collection expectations are live-reloaded from
+`config/policies.yaml`:
+
+```yaml
+qdrant:
+  expected_collections:
+    - atlas-memory
+    - atlas-documents
+  missing_collection_severity: warning
+  empty_instance_severity: info
+```
+
 The provider reads collection inventory from Qdrant's HTTP API and
 reports collection count, names, and missing expected collections.
-Expected collections produce health-affecting warnings when absent. An
-online instance with no collections produces an informational finding.
-The API key is sent only in the `api-key` request header and is never
-included in provider output.
+Finding severity accepts `info`, `warning`, or `critical`; informational
+findings do not reduce health. The API key is sent only in the `api-key`
+request header and is never included in provider output.
 
 An unauthenticated internal API is supported when the key is omitted,
 but it should only be exposed on a trusted network. TLS verification is

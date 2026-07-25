@@ -49,3 +49,8 @@ obsidian:
   insufficient_notes_severity: warning
   stale_severity: info
   scan_truncated_severity: warning
+
+qdrant:
+  expected_collections: []
+  missing_collection_severity: warning
+  empty_instance_severity: info
