@@ -123,3 +123,24 @@ def test_unhealthy_container() -> None:
     assert warning.severity == Severity.WARNING
     assert warning.score_penalty == 10
     assert warning.metric["unhealthy_containers"] == 1
+
+
+def test_offline_docker_suppresses_expected_state_drift() -> None:
+    findings = evaluate_docker(
+        status={
+            "status": "offline",
+            "error": "Permission denied",
+            "running": 0,
+            "stopped": 0,
+            "unhealthy": 0,
+            "containers": [],
+        },
+        expected_states_getter=lambda: {
+            "atlas-api": "running",
+        },
+    )
+
+    assert len(findings) == 1
+    assert findings[0].id == "docker-provider-failure"
+    assert findings[0].severity == Severity.CRITICAL
+    assert findings[0].details["error"] == "Permission denied"

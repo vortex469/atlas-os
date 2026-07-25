@@ -6,9 +6,17 @@ import {
 } from "react";
 
 import { atlas } from "../api/atlas";
-import type { AceSummary } from "../types/ace";
+import type {
+    AceSummary,
+    IntelligenceTelemetrySnapshot,
+    IntelligenceTelemetryRetentionSummary,
+} from "../types/ace";
 import type { AtlasHealth } from "../types/health";
 import type { Provider } from "../types/provider";
+import type {
+    AtlasPolicies,
+    PolicyReloadHealth,
+} from "../types/policies";
 
 const REFRESH_INTERVAL_MS = 30_000;
 
@@ -16,6 +24,10 @@ type MissionControlState = {
     summary: AceSummary | null;
     health: AtlasHealth | null;
     providers: Provider[];
+    policies: AtlasPolicies | null;
+    policyHealth: PolicyReloadHealth | null;
+    telemetryHistory: IntelligenceTelemetrySnapshot[];
+    telemetryRetention: IntelligenceTelemetryRetentionSummary | null;
     lastUpdated: Date | null;
     error: string | null;
     isLoading: boolean;
@@ -48,6 +60,16 @@ export function useMissionControl(): MissionControlState {
     const [summary, setSummary] = useState<AceSummary | null>(null);
     const [health, setHealth] = useState<AtlasHealth | null>(null);
     const [providers, setProviders] = useState<Provider[]>([]);
+    const [policies, setPolicies] = useState<AtlasPolicies | null>(
+        null,
+    );
+    const [policyHealth, setPolicyHealth] =
+        useState<PolicyReloadHealth | null>(null);
+    const [telemetryHistory, setTelemetryHistory] = useState<
+        IntelligenceTelemetrySnapshot[]
+    >([]);
+    const [telemetryRetention, setTelemetryRetention] =
+        useState<IntelligenceTelemetryRetentionSummary | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -74,15 +96,48 @@ export function useMissionControl(): MissionControlState {
                 summaryResponse,
                 healthResponse,
                 providersResponse,
+                policiesResponse,
+                policyHealthResponse,
+                telemetryHistoryResponse,
+                telemetryRetentionResponse,
             ] = await Promise.all([
                 atlas.get<AceSummary>("/ace/summary"),
                 atlas.get<AtlasHealth>("/health"),
                 atlas.get<Provider[]>("/providers"),
+                atlas
+                    .get<AtlasPolicies>("/policies")
+                    .catch(() => null),
+                atlas.get<PolicyReloadHealth>("/policies/status"),
+                atlas
+                    .get<IntelligenceTelemetrySnapshot[]>(
+                        "/intelligence/telemetry/history",
+                        { params: { limit: 30 } },
+                    )
+                    .catch(() => null),
+                atlas
+                    .get<IntelligenceTelemetryRetentionSummary>(
+                        "/intelligence/telemetry/history/retention",
+                    )
+                    .catch(() => null),
             ]);
 
             setSummary(summaryResponse.data);
             setHealth(healthResponse.data);
             setProviders(sortProviders(providersResponse.data));
+            if (policiesResponse !== null) {
+                setPolicies(policiesResponse.data);
+            }
+            setPolicyHealth(policyHealthResponse.data);
+            if (telemetryHistoryResponse !== null) {
+                setTelemetryHistory(
+                    telemetryHistoryResponse.data,
+                );
+            }
+            if (telemetryRetentionResponse !== null) {
+                setTelemetryRetention(
+                    telemetryRetentionResponse.data,
+                );
+            }
             setLastUpdated(new Date());
             setError(null);
 
@@ -122,6 +177,10 @@ export function useMissionControl(): MissionControlState {
         summary,
         health,
         providers,
+        policies,
+        policyHealth,
+        telemetryHistory,
+        telemetryRetention,
         lastUpdated,
         error,
         isLoading,

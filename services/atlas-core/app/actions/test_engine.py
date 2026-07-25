@@ -1,11 +1,14 @@
 import asyncio
+import sqlite3
 from typing import Any
 
 import pytest
 
 from app.actions import (
+    ProviderActionAuditEntry,
     ProviderActionConfirmationRequiredError,
     ProviderActionDisabledError,
+    ProviderActionHistory,
     ProviderActionNotFoundError,
     ProviderActionRequest,
     ProviderActionResult,
@@ -203,6 +206,33 @@ def test_confirmed_action_executes() -> None:
             request=ProviderActionRequest(
                 confirmed=True,
             ),
+        ),
+    )
+
+    assert result.success is True
+
+
+def test_audit_write_failure_does_not_fail_action(
+    isolated_action_history: ProviderActionHistory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_to_append(
+        entry: ProviderActionAuditEntry,
+    ) -> None:
+        del entry
+        raise sqlite3.OperationalError("database unavailable")
+
+    monkeypatch.setattr(
+        isolated_action_history,
+        "append",
+        fail_to_append,
+    )
+
+    result = asyncio.run(
+        execute_provider_action(
+            provider=ActionTestProvider(),
+            action_id="run-diagnostics",
+            request=ProviderActionRequest(),
         ),
     )
 

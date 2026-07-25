@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
+COMPOSE_FILE="$ATLAS_ROOT/compose.production.yaml"
+GATE_DIRECTORY="$(mktemp -d /tmp/atlas-container-gate.XXXXXX)"
+GATE_ENV_FILE="$GATE_DIRECTORY/atlas.env"
+GATE_PROJECT="atlas-release-gate-$$"
+
+for executable in docker curl; do
+    if ! command -v "$executable" >/dev/null 2>&1; then
+        echo "Required executable not found: $executable" >&2
+        exit 127
+    fi
+done
+
+if [[ ! -S /var/run/docker.sock ]]; then
+    echo "Docker socket not found: /var/run/docker.sock" >&2
+    exit 1
+fi
+
+cleanup() {
+    docker compose \
+        --project-name "$GATE_PROJECT" \
+        --file "$COMPOSE_FILE" \
+        down \
+        --volumes \
+        --rmi local \
+        --remove-orphans \
+        >/dev/null 2>&1 || true
+    rm -f "$GATE_ENV_FILE"
+    rmdir "$GATE_DIRECTORY" 2>/dev/null || true
+}
+
+trap cleanup EXIT
+
+printf '%s\n' \
+    'PROXMOX_USER=release-gate' \
+    'PROXMOX_TOKEN_NAME=release-gate' \
+    'PROXMOX_TOKEN_VALUE=release-gate' \
+    'HASS_TOKEN=release-gate' \
+    >"$GATE_ENV_FILE"
+
+export ATLAS_ENV_FILE="$GATE_ENV_FILE"
+export ATLAS_HTTP_PORT=0
+export DOCKER_GID
+DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+
+compose=(
+    docker compose
+    --project-name "$GATE_PROJECT"
+    --file "$COMPOSE_FILE"
+)
+
+echo "Validating production Compose configuration"
+"${compose[@]}" config --no-env-resolution --quiet
+
+echo "Building production images"
+"${compose[@]}" build
+
+echo "Starting isolated production stack"
+"${compose[@]}" up --detach --wait --wait-timeout 90
+
+core_container="$("${compose[@]}" ps --quiet atlas-core)"
+mission_container="$("${compose[@]}" ps --quiet mission-control)"
+
+for container in "$core_container" "$mission_container"; do
+    test -n "$container"
+    test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$container")" = "true"
+    test "$(docker inspect --format '{{json .HostConfig.CapDrop}}' "$container")" = '["ALL"]'
+    docker inspect \
+        --format '{{json .HostConfig.SecurityOpt}}' \
+        "$container" \
+        | grep -q 'no-new-privileges:true'
+
+    container_user="$(docker inspect --format '{{.Config.User}}' "$container")"
+    test -n "$container_user"
+    test "$container_user" != "0"
+    test "$container_user" != "root"
+done
+
+published_address="$("${compose[@]}" port mission-control 8080)"
+published_port="${published_address##*:}"
+base_url="http://127.0.0.1:$published_port"
+
+echo "Checking Mission Control, API proxy, and SPA fallback"
+curl --fail --silent --show-error "$base_url/" \
+    | grep -q '<title>mission-control</title>'
+curl --fail --silent --show-error "$base_url/operations/actions/gate" \
+    | grep -q '<title>mission-control</title>'
+curl --fail --silent --show-error "$base_url/api/v1" \
+    | grep -q '"release":"Foundry"'
+curl --fail --silent --show-error --head "$base_url/" \
+    | grep -qi '^X-Content-Type-Options: nosniff'
+
+echo "Container release gate passed"

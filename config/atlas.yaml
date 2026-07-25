@@ -1,6 +1,6 @@
 atlas:
   name: Atlas OS
-  release: 0.2-foundation
+  release: Foundry
   assistant: Orion
   host: 0.0.0.0
   port: 8643
@@ -22,3 +22,14 @@ docker:
 
 inventory:
   file: /opt/atlas/inventory/services.yaml
+
+audit:
+  database: /opt/atlas/data/action_history.db
+  max_entries: 5000
+  retention_days: 90
+
+intelligence:
+  provider_timeout_seconds: 10
+  telemetry_database: /opt/atlas/data/provider_intelligence.db
+  telemetry_max_entries: 10000
+  telemetry_retention_days: 30

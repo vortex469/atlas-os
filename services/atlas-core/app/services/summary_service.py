@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from app.config.settings import settings
 from app.services.docker_service import get_docker_status
 from app.services.health_service import get_health
 from app.services.homeassistant_service import get_homeassistant_status
@@ -104,8 +105,8 @@ def get_ops_summary() -> dict:
 
     return {
         "atlas": overall_status,
-        "release": "0.1-foundry",
-        "assistant": "Orion",
+        "release": settings.atlas.release,
+        "assistant": settings.atlas.assistant,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "alerts": {
             "critical_services": critical_failures,

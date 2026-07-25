@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
+
+import { atlas } from "../api/atlas";
 
 type NavigationItem = {
     label: string;
@@ -8,7 +11,7 @@ type NavigationItem = {
 
 const navigationItems: NavigationItem[] = [
     { label: "Mission Control", path: "/", enabled: true },
-    { label: "Operations", path: "/operations", enabled: false },
+    { label: "Operations", path: "/operations", enabled: true },
     { label: "Forge", path: "/forge", enabled: true },
     { label: "Knowledge", path: "/knowledge", enabled: false },
     { label: "Developer", path: "/developer", enabled: false },
@@ -16,6 +19,29 @@ const navigationItems: NavigationItem[] = [
 ];
 
 export function MainLayout() {
+    const [release, setRelease] = useState<string | null>(null);
+
+    useEffect(() => {
+        let active = true;
+
+        void atlas
+            .get<{ release: string }>("")
+            .then((response) => {
+                if (active) {
+                    setRelease(response.data.release);
+                }
+            })
+            .catch(() => {
+                if (active) {
+                    setRelease(null);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
             <div className="grid min-h-screen lg:grid-cols-[15rem_1fr]">
@@ -81,7 +107,7 @@ export function MainLayout() {
                                 Atlas Core
                             </div>
                             <p className="mt-2 text-xs text-slate-600">
-                                Foundry 0.1
+                                {release ?? "Release unavailable"}
                             </p>
                         </div>
                     </div>

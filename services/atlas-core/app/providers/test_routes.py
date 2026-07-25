@@ -1,9 +1,8 @@
-from fastapi.testclient import TestClient
-
 from app.main import app
 from app.providers.loader import load_provider_registry
+from app.testing import ASGITestClient
 
-client = TestClient(app)
+client = ASGITestClient(app)
 
 
 def setup_module() -> None:

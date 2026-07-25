@@ -13,14 +13,28 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Confirmation for guarded operations
 - Schema-driven action parameters
 - Health refresh after successful operations
+- Filterable, persistent provider action history
+- Request ID and execution timing visibility
+- JSON and CSV audit exports
+- Confirmed expired-entry pruning
+- Provider and UTC date-range audit filtering
+- Filter-aware exports
+- Paginated audit results
+- Action and request-ID search
+- Audit detail views with shareable deep links
+- Refresh-aware service details
+- On-demand Atlas Doctor diagnostics
+- OPNsense health and diagnostics through the provider workspace
+- Frigate camera health and version telemetry
 - Forge deployment analysis workspace
 
 ## Development
 
-Install dependencies and start the development server:
+Use Node.js 20.19 or newer (Node.js 22.12+ is recommended) and npm 10 or
+newer. Install the locked dependency graph and start the development server:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 

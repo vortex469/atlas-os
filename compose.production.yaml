@@ -1,0 +1,50 @@
+name: atlas
+
+services:
+  atlas-core:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-core.Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: ${ATLAS_ENV_FILE:-.env}
+        required: true
+    volumes:
+      - ./config/atlas.yaml:/opt/atlas/config/atlas.yaml:ro
+      - ./config/policies.yaml:/opt/atlas/config/policies.yaml:ro
+      - ./inventory/services.yaml:/opt/atlas/inventory/services.yaml:ro
+      - atlas-data:/opt/atlas/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    group_add:
+      - "${DOCKER_GID:-999}"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /opt/atlas/logs:size=64m,uid=10001,gid=10001,mode=0750
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8643"
+
+  mission-control:
+    build:
+      context: .
+      dockerfile: deploy/docker/mission-control.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      atlas-core:
+        condition: service_healthy
+    ports:
+      - "${ATLAS_HTTP_PORT:-8080}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  atlas-data:

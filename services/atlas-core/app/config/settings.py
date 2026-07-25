@@ -44,6 +44,25 @@ class InventorySettings(BaseModel):
     file: str
 
 
+class AuditSettings(BaseModel):
+    database: str = "/opt/atlas/data/action_history.db"
+    max_entries: int = Field(default=5000, ge=1)
+    retention_days: int = Field(default=90, ge=1)
+
+
+class IntelligenceSettings(BaseModel):
+    provider_timeout_seconds: float = Field(
+        default=10.0,
+        gt=0,
+        le=60,
+    )
+    telemetry_database: str = (
+        "/opt/atlas/data/provider_intelligence.db"
+    )
+    telemetry_max_entries: int = Field(default=10_000, ge=1)
+    telemetry_retention_days: int = Field(default=30, ge=1)
+
+
 class Settings(BaseModel):
     atlas: AtlasSettings
     infrastructure: InfrastructureSettings
@@ -51,6 +70,10 @@ class Settings(BaseModel):
     home_assistant: HomeAssistantSettings
     docker: DockerSettings
     inventory: InventorySettings
+    audit: AuditSettings = Field(default_factory=AuditSettings)
+    intelligence: IntelligenceSettings = Field(
+        default_factory=IntelligenceSettings,
+    )
 
 
 def load_yaml_config() -> dict[str, Any]:

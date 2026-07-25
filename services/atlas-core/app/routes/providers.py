@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.actions import (
     ProviderActionConfirmationRequiredError,
@@ -82,6 +82,7 @@ async def list_provider_actions(provider_id: str):
 async def run_provider_action(
     provider_id: str,
     action_id: str,
+    http_request: Request,
     request: ProviderActionRequest | None = None,
 ):
     provider = get_registered_provider(provider_id)
@@ -92,6 +93,11 @@ async def run_provider_action(
             provider=provider,
             action_id=action_id,
             request=action_request,
+            request_id=getattr(
+                http_request.state,
+                "request_id",
+                None,
+            ),
         )
     except ProviderActionNotFoundError as error:
         raise HTTPException(

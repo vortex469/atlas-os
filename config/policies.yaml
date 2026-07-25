@@ -34,3 +34,32 @@ docker:
 homeassistant:
 
   ignored_entities: []
+
+opnsense:
+  pending_update_warning_threshold: 1
+  reboot_required_severity: warning
+
+frigate:
+  stalled_camera_severity: warning
+  cameras: {}
+
+obsidian:
+  minimum_note_count: 1
+  stale_after_days:
+  insufficient_notes_severity: warning
+  stale_severity: info
+  scan_truncated_severity: warning
+
+qdrant:
+  expected_collections: []
+  missing_collection_severity: warning
+  empty_instance_severity: info
+
+n8n:
+  expected_active_workflows: []
+  inactive_workflow_severity: warning
+  scan_truncated_severity: warning
+  empty_instance_severity: info
+
+intelligence:
+  providers: {}

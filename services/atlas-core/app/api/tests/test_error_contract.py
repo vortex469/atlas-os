@@ -1,8 +1,7 @@
-from fastapi.testclient import TestClient
-
 from app.main import app
+from app.testing import ASGITestClient
 
-client = TestClient(app)
+client = ASGITestClient(app)
 
 
 def assert_error_contract(

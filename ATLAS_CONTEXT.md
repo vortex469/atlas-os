@@ -37,15 +37,12 @@ Implemented
 - Docker
 - Home Assistant
 - Ollama
-- Inventory-backed services
-
-Planned
-
 - OPNsense
 - Frigate
 - Obsidian
 - Qdrant
 - n8n
+- Inventory-backed services
 
 ---
 
@@ -71,12 +68,14 @@ Current
 
 - Expected Proxmox guest state
 - Ignored Home Assistant entities
-
-Planned
-
-- Docker expected container state
-- OPNsense policies
-- Frigate policies
+- Expected Docker container state
+- OPNsense firmware posture
+- OPNsense firmware severity thresholds
+- Frigate camera health thresholds
+- Obsidian vault health
+- Qdrant collection expectations
+- n8n workflow expectations
+- Provider intelligence performance thresholds
 
 ---
 
@@ -119,24 +118,109 @@ Planned
 
 ✔ Confirmed and Parameterized Operations
 
-156 Atlas Core tests passing.
+✔ Action History and Audit Visibility
 
-4 Mission Control component tests passing.
+✔ Persistent Audit Storage and Retention
+
+✔ Audit Export and Retention Administration
+
+✔ Provider and Date-Range Audit Filtering
+
+✔ Audit Pagination and Action/Request Search
+
+✔ Audit Detail Views and Shareable Deep Links
+
+✔ Dashboard Refresh and Service Detail Coverage
+
+✔ Dynamic Policy Reload
+
+✔ Docker Expected State
+
+✔ Atlas Doctor Integration
+
+✔ OPNsense Provider
+
+✔ Provider-Backed ACE Findings
+
+✔ OPNsense Policy Thresholds
+
+✔ Provider Intelligence Time Budgets
+
+✔ Frigate Provider
+
+✔ Frigate Camera Health Policies
+
+✔ Provider Intelligence Timing Telemetry
+
+✔ Obsidian Provider
+
+✔ Qdrant Provider
+
+✔ Obsidian Vault Policies
+
+✔ n8n Provider
+
+✔ Qdrant Collection Policies
+
+✔ n8n Workflow Policies
+
+✔ Mission Control Provider Intelligence Telemetry
+
+✔ Provider Policy API and Mission Control Visibility
+
+✔ Provider Policy Detail Views
+
+✔ Policy Reload Health Telemetry
+
+✔ Persistent Provider Intelligence Trend History
+
+✔ Structured Policy Validation Diagnostics
+
+✔ Provider Telemetry History Filtering
+
+✔ Policy Diagnostics Operator Examples
+
+✔ Provider Telemetry History Export
+
+✔ Provider Telemetry Retention Administration
+
+✔ Provider Telemetry Retention Detail View
+
+✔ Provider-Specific Telemetry Trends
+
+✔ Provider Intelligence Performance Policies
+
+✔ Provider Performance Threshold Overlays
+
+✔ Atlas Core Full-Suite Hang Remediation
+
+✔ Foundry Dependency and Packaging Audit
+
+✔ Foundry Release Documentation Audit
+
+✔ Foundry Release Identifier Consistency
+
+✔ Foundry Production Deployment Packaging
+
+✔ Foundry Container Release Gates
+
+✔ Foundry Release Candidate Audit
+
+✔ Operator Credential Rotation Verified
+
+260 Atlas Core tests collected.
+
+36 Mission Control component tests passing.
 
 ---
 
 # Current Sprint
 
-Foundry Dashboard and Operations
+Foundry Release Hardening
 
 Next work
 
-- Action history and audit visibility
-- Frontend coverage for dashboard refresh and service details
-- Dynamic policy reload
-- Docker expected state
-- Atlas Doctor integration
-- OPNsense provider
+- Push release candidate and confirm remote CI
 
 ---
 

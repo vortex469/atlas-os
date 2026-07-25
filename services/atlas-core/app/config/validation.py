@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-from app.config.settings import CONFIG_FILE, ENV_FILE, settings
+from app.config.settings import CONFIG_FILE, settings
 
 
 REQUIRED_ENVIRONMENT_VARIABLES = (
@@ -20,10 +20,6 @@ class ConfigurationValidationError(RuntimeError):
 
 def validate_environment() -> list[str]:
     errors: list[str] = []
-
-    if not ENV_FILE.exists():
-        errors.append(f"Environment file not found: {ENV_FILE}")
-        return errors
 
     missing_variables = [
         variable

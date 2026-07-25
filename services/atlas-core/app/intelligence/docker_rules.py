@@ -7,6 +7,26 @@ from app.intelligence.findings import Finding, Severity
 ExpectedStatesGetter = Callable[[], dict[str, str]]
 
 
+def docker_failure_finding(error: str) -> Finding:
+    return Finding(
+        id="docker-provider-failure",
+        severity=Severity.CRITICAL,
+        category="docker",
+        source="docker",
+        component="Docker",
+        title="Docker monitoring failed",
+        message=f"ACE could not collect Docker status: {error}",
+        recommendation=(
+            "Verify that the Docker daemon is running and that "
+            "Atlas can access the Docker socket."
+        ),
+        score_penalty=20,
+        details={
+            "error": error,
+        },
+    )
+
+
 def normalize_container_state(state: str | None) -> str:
     """Normalize Docker runtime states to Atlas policy states."""
 
@@ -22,6 +42,16 @@ def evaluate_docker(
         get_expected_container_states
     ),
 ) -> list[Finding]:
+    if status.get("status") == "offline":
+        return [
+            docker_failure_finding(
+                str(
+                    status.get("error")
+                    or "Docker daemon is offline."
+                ),
+            ),
+        ]
+
     findings: list[Finding] = []
 
     running = int(status.get("running", 0))

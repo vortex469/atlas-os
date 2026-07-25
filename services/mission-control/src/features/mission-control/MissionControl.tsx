@@ -4,6 +4,9 @@ import { ProviderCard } from "../../components/ProviderCard";
 import { SectionHeader } from "../../components/SectionHeader";
 import { useMissionControl } from "../../hooks/useMissionControl";
 import { FindingsSection } from "./FindingsSection";
+import { IntelligenceTelemetrySection } from "./IntelligenceTelemetrySection";
+import { IntelligenceTrendSection } from "./IntelligenceTrendSection";
+import { PolicyVisibilitySection } from "./PolicyVisibilitySection";
 import { RecommendationsSection } from "./RecommendationsSection";
 import { ServiceHealthSection } from "./ServiceHealthSection";
 
@@ -12,6 +15,10 @@ export function MissionControl() {
         summary,
         health,
         providers,
+        policies,
+        policyHealth,
+        telemetryHistory,
+        telemetryRetention,
         lastUpdated,
         error,
         isLoading,
@@ -122,6 +129,25 @@ export function MissionControl() {
                             )
                         )}
                     </section>
+                )}
+
+                {summary && (
+                    <IntelligenceTelemetrySection
+                        telemetry={summary.telemetry}
+                    />
+                )}
+
+                <IntelligenceTrendSection
+                    snapshots={telemetryHistory}
+                    retention={telemetryRetention}
+                    onPruned={refresh}
+                />
+
+                {policyHealth && (
+                    <PolicyVisibilitySection
+                        policies={policies}
+                        health={policyHealth}
+                    />
                 )}
 
                 {summary && (

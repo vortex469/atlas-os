@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -80,6 +80,22 @@ class AceRecommendation(BaseModel):
     component: str | None = None
 
 
+class ProviderCollectionTiming(BaseModel):
+    provider_id: str
+    provider_name: str
+    status: Literal["completed", "timed_out", "failed"]
+    duration_ms: float = Field(ge=0)
+    finding_count: int = Field(ge=0)
+
+
+class IntelligenceTelemetry(BaseModel):
+    provider_collection_duration_ms: float = Field(ge=0)
+    provider_timeout_seconds: float = Field(ge=0)
+    providers: list[ProviderCollectionTiming] = Field(
+        default_factory=list
+    )
+
+
 class AceSummary(BaseModel):
     score: int
     status: str
@@ -87,3 +103,9 @@ class AceSummary(BaseModel):
     findings: list[AceFinding] = Field(default_factory=list)
     assessments: list[AceAssessment] = Field(default_factory=list)
     recommendations: list[AceRecommendation] = Field(default_factory=list)
+    telemetry: IntelligenceTelemetry = Field(
+        default_factory=lambda: IntelligenceTelemetry(
+            provider_collection_duration_ms=0,
+            provider_timeout_seconds=0,
+        )
+    )

@@ -3,6 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { FindingCard } from "../components/FindingCard";
 import { ProviderActions } from "../components/ProviderActions";
 import { ProviderOverview } from "../components/ProviderOverview";
+import { ProviderPolicyDetails } from "../components/ProviderPolicyDetails";
+import { ProviderTelemetryTrend } from "../components/ProviderTelemetryTrend";
 import { RecommendationCard } from "../components/RecommendationCard";
 import { RefreshIndicator } from "../components/RefreshIndicator";
 import { SectionHeader } from "../components/SectionHeader";
@@ -21,6 +23,8 @@ export function ProviderPage() {
     const {
         summary,
         providers,
+        policies,
+        telemetryHistory,
         lastUpdated,
         error,
         isLoading,
@@ -167,6 +171,23 @@ export function ProviderPage() {
                     <ProviderActions
                         provider={provider}
                         onActionCompleted={refresh}
+                    />
+
+                    {policies && (
+                        <ProviderPolicyDetails
+                            providerId={provider.id}
+                            policies={policies}
+                        />
+                    )}
+
+                    <ProviderTelemetryTrend
+                        providerId={provider.id}
+                        snapshots={telemetryHistory}
+                        performancePolicy={
+                            policies?.intelligence.providers[
+                                provider.id
+                            ] ?? null
+                        }
                     />
 
                     <section>

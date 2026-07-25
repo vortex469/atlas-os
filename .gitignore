@@ -7,3 +7,5 @@ __pycache__/
 venv/
 backups/*
 !backups/.gitkeep
+data/*
+!data/.gitkeep

@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.intelligence.findings import Finding
@@ -19,6 +22,49 @@ class Recommendation(BaseModel):
     component: str | None = None
 
 
+class ProviderCollectionTiming(BaseModel):
+    provider_id: str
+    provider_name: str
+    status: Literal["completed", "timed_out", "failed"]
+    duration_ms: float = Field(ge=0)
+    finding_count: int = Field(ge=0)
+
+
+class IntelligenceTelemetry(BaseModel):
+    provider_collection_duration_ms: float = Field(
+        default=0,
+        ge=0,
+    )
+    provider_timeout_seconds: float = Field(default=0, ge=0)
+    providers: list[ProviderCollectionTiming] = Field(
+        default_factory=list
+    )
+
+
+class IntelligenceTelemetrySnapshot(BaseModel):
+    id: str
+    collected_at: datetime
+    telemetry: IntelligenceTelemetry
+
+
+class IntelligenceTelemetryRetentionSummary(BaseModel):
+    entry_count: int = Field(ge=0)
+    max_entries: int = Field(ge=1)
+    retention_days: int = Field(ge=1)
+    oldest_snapshot_at: datetime | None = None
+    newest_snapshot_at: datetime | None = None
+
+
+class IntelligenceTelemetryPruneRequest(BaseModel):
+    confirmed: bool = False
+
+
+class IntelligenceTelemetryPruneResult(BaseModel):
+    deleted_entries: int = Field(ge=0)
+    remaining_entries: int = Field(ge=0)
+    retention_days: int = Field(ge=1)
+
+
 class SituationReport(BaseModel):
     score: int
     status: str
@@ -27,3 +73,6 @@ class SituationReport(BaseModel):
     findings: list[Finding] = Field(default_factory=list)
     assessments: list[Assessment] = Field(default_factory=list)
     recommendations: list[Recommendation] = Field(default_factory=list)
+    telemetry: IntelligenceTelemetry = Field(
+        default_factory=IntelligenceTelemetry
+    )

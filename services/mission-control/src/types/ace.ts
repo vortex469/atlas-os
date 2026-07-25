@@ -42,6 +42,50 @@ export type AceRecommendation = {
     component: string | null;
 };
 
+export type ProviderCollectionTiming = {
+    provider_id: string;
+    provider_name: string;
+    status: "completed" | "timed_out" | "failed";
+    duration_ms: number;
+    finding_count: number;
+};
+
+export type IntelligenceTelemetry = {
+    provider_collection_duration_ms: number;
+    provider_timeout_seconds: number;
+    providers: ProviderCollectionTiming[];
+};
+
+export type IntelligenceTelemetrySnapshot = {
+    id: string;
+    collected_at: string;
+    telemetry: IntelligenceTelemetry;
+};
+
+export type IntelligenceTelemetryExportFormat = "json" | "csv";
+
+export type IntelligenceTelemetryHistoryQuery = {
+    providerId?: string;
+    status?: "completed" | "timed_out" | "failed";
+    collectedFrom?: string;
+    collectedTo?: string;
+    limit?: number;
+};
+
+export type IntelligenceTelemetryRetentionSummary = {
+    entry_count: number;
+    max_entries: number;
+    retention_days: number;
+    oldest_snapshot_at: string | null;
+    newest_snapshot_at: string | null;
+};
+
+export type IntelligenceTelemetryPruneResult = {
+    deleted_entries: number;
+    remaining_entries: number;
+    retention_days: number;
+};
+
 export type AceSummary = {
     score: number;
     status: string;
@@ -49,4 +93,5 @@ export type AceSummary = {
     findings: AceFinding[];
     assessments: AceAssessment[];
     recommendations: AceRecommendation[];
+    telemetry: IntelligenceTelemetry;
 };
