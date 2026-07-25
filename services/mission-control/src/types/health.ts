@@ -9,10 +9,10 @@ export type ServiceStatus =
 
 export type ServiceHealth = {
     status: ServiceStatus | string;
-    critical: boolean;
-    url: string;
     latency_ms: number | null;
     http_status: number | null;
+    message: string | null;
+    details: Record<string, unknown>;
 };
 
 export type AtlasHealth = {
