@@ -197,6 +197,8 @@ Planned
 
 ✔ Atlas Core Full-Suite Hang Remediation
 
+✔ Foundry Dependency and Packaging Audit
+
 257 Atlas Core tests collected.
 
 35 Mission Control component tests passing.
@@ -209,7 +211,7 @@ Foundry Release Hardening
 
 Next work
 
-- Foundry dependency and packaging audit
+- Foundry release documentation audit
 
 ---
 

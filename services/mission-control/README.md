@@ -30,10 +30,11 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 
 ## Development
 
-Install dependencies and start the development server:
+Use Node.js 20.19 or newer (Node.js 22.12+ is recommended) and npm 10 or
+newer. Install the locked dependency graph and start the development server:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
