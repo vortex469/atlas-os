@@ -41,11 +41,12 @@ Implemented
 - Frigate
 - Obsidian
 - Qdrant
+- n8n
 - Inventory-backed services
 
 Planned
 
-- n8n
+- Provider policies for Qdrant and n8n
 
 ---
 
@@ -160,7 +161,9 @@ Planned
 
 ✔ Obsidian Vault Policies
 
-225 Atlas Core tests collected.
+✔ n8n Provider
+
+236 Atlas Core tests collected.
 
 19 Mission Control component tests passing.
 
@@ -172,7 +175,8 @@ Provider Intelligence
 
 Next work
 
-- n8n provider
+- Qdrant collection policies
+- n8n workflow policies
 
 ---
 

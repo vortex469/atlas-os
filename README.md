@@ -330,6 +330,43 @@ enabled by default and may use a private CA bundle.
 
 ---
 
+### n8n provider
+
+Add n8n to `inventory/services.yaml`:
+
+```yaml
+services:
+  n8n:
+    name: n8n
+    host: n8n.home.arpa
+    port: 5678
+    protocol: https
+    critical: false
+    verify_tls: true
+    # ca_bundle: /opt/atlas/config/certificates/n8n.pem
+    max_workflows: 250
+    expected_active_workflows:
+      - Daily infrastructure backup
+      - Atlas knowledge sync
+```
+
+Provide a public API key through the environment:
+
+```dotenv
+N8N_API_KEY=replace-me
+```
+
+The provider paginates the read-only workflow endpoint and reports
+active and inactive workflow inventory. Missing or inactive expected
+workflows produce a warning. Empty instances are informational, and
+inventories beyond `max_workflows` produce a truncation warning.
+
+The key is sent only in the `X-N8N-API-KEY` header and is never included
+in provider output. TLS verification is enabled by default and supports
+a private CA bundle.
+
+---
+
 ## Forge
 
 Deployment analysis workspace.
@@ -415,7 +452,7 @@ Future capabilities:
 - Unified dashboard control plane
 - Standardized API error contracts
 - Proxmox, Docker, Home Assistant, Ollama, OPNsense, Frigate, Obsidian,
-  and Qdrant integration
+  Qdrant, and n8n integration
 - Ollama model lifecycle operations
 - Live Mission Control service health
 - Provider-backed operational actions
