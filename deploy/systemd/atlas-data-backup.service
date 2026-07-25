@@ -14,6 +14,7 @@ Environment=ATLAS_BACKUP_MINIMUM_COUNT=7
 EnvironmentFile=-/etc/atlas/backup.env
 ExecStart=/opt/atlas/scripts/atlas-data-backup ${ATLAS_BACKUP_ROOT}
 ExecStart=/usr/bin/python3 /opt/atlas/scripts/atlas-data-tool.py prune ${ATLAS_BACKUP_ROOT} --retention-days ${ATLAS_BACKUP_RETENTION_DAYS} --minimum-count ${ATLAS_BACKUP_MINIMUM_COUNT}
+ExecStart=/opt/atlas/scripts/atlas-data-replicate ${ATLAS_BACKUP_ROOT}
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true

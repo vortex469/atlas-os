@@ -10,3 +10,4 @@ backups/*
 data/*
 !data/.gitkeep
 secrets/
+deploy/rest-server/server.env

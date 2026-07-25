@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
+RESTIC_IMAGE="restic/restic@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510"
+RESTIC_ENV_FILE="${ATLAS_RESTIC_ENV_FILE:-/etc/atlas/restic.env}"
+RESTIC_CA_FILE="${ATLAS_RESTIC_CA_FILE:-/etc/atlas/restic-ca.pem}"
+BACKUP_ROOT="${1:-$ATLAS_ROOT/backups}"
+ACTION="${2:-backup}"
+
+if [[ ! -f "$RESTIC_ENV_FILE" ]]; then
+    echo "Remote replication skipped: $RESTIC_ENV_FILE is not configured"
+    exit 0
+fi
+
+env_mode="$(stat -c '%a' "$RESTIC_ENV_FILE")"
+if (( (8#$env_mode & 8#077) != 0 )); then
+    echo "Restic environment must not be accessible by group or others: $RESTIC_ENV_FILE" >&2
+    exit 1
+fi
+
+for executable in docker python3 realpath; do
+    if ! command -v "$executable" >/dev/null 2>&1; then
+        echo "Required executable not found: $executable" >&2
+        exit 127
+    fi
+done
+
+if [[ "$ACTION" != "backup" && "$ACTION" != "init" ]]; then
+    echo "Usage: $0 [backup-root] [backup|init]" >&2
+    exit 2
+fi
+
+BACKUP_ROOT="$(realpath "$BACKUP_ROOT")"
+latest_backup="$(
+    find "$BACKUP_ROOT" \
+        -mindepth 1 \
+        -maxdepth 1 \
+        -type d \
+        -name 'atlas-data-????????T??????Z' \
+        -printf '%f\n' \
+        | sort \
+        | tail -n 1
+)"
+if [[ -z "$latest_backup" ]]; then
+    echo "No Atlas data backup found beneath $BACKUP_ROOT" >&2
+    exit 1
+fi
+
+python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify \
+    "$BACKUP_ROOT/$latest_backup"
+
+restic=(
+    docker run
+    --rm
+    --read-only
+    --cap-drop ALL
+    --security-opt no-new-privileges:true
+    --user "$(id -u):$(id -g)"
+    --env-file "$RESTIC_ENV_FILE"
+    --mount "type=bind,src=$BACKUP_ROOT/$latest_backup,dst=/atlas-backup,readonly"
+    --tmpfs /tmp:size=32m,mode=1777
+)
+
+if [[ -n "${ATLAS_RESTIC_NETWORK:-}" ]]; then
+    restic+=(--network "$ATLAS_RESTIC_NETWORK")
+fi
+
+if [[ -f "$RESTIC_CA_FILE" ]]; then
+    restic+=(
+        --env RESTIC_CACERT=/certs/ca.pem
+        --mount "type=bind,src=$RESTIC_CA_FILE,dst=/certs/ca.pem,readonly"
+    )
+fi
+restic+=("$RESTIC_IMAGE" --no-cache)
+
+if [[ "$ACTION" = "init" ]]; then
+    echo "Initializing encrypted remote Restic repository"
+    "${restic[@]}" init
+    exit 0
+fi
+
+echo "Replicating verified backup: $latest_backup"
+"${restic[@]}" backup \
+    /atlas-backup \
+    --host atlas \
+    --tag atlas-data \
+    --tag "$latest_backup"
+"${restic[@]}" check
+
+echo "Remote replication completed: $latest_backup"

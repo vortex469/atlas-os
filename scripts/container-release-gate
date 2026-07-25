@@ -187,3 +187,4 @@ curl \
 echo "Container release gate passed"
 
 "$SCRIPT_DIRECTORY/data-recovery-gate"
+"$SCRIPT_DIRECTORY/rest-server-gate"
