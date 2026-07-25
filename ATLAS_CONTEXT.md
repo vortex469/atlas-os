@@ -36,6 +36,8 @@ Implemented
 - Proxmox
 - Docker
 - Home Assistant
+- Ollama
+- Inventory-backed services
 
 Planned
 
@@ -107,16 +109,30 @@ Planned
 
 ✔ Home Assistant Expected State
 
-18 unit tests passing.
+✔ Atlas API v1
+
+✔ Unified Dashboard API
+
+✔ Provider Action Engine
+
+✔ Mission Control Service Health
+
+✔ Confirmed and Parameterized Operations
+
+156 Atlas Core tests passing.
+
+4 Mission Control component tests passing.
 
 ---
 
 # Current Sprint
 
-Sprint 3.4
+Foundry Dashboard and Operations
 
 Next work
 
+- Action history and audit visibility
+- Frontend coverage for dashboard refresh and service details
 - Dynamic policy reload
 - Docker expected state
 - Atlas Doctor integration

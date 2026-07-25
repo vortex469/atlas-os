@@ -104,7 +104,10 @@ Current capabilities:
 - Risk assessment
 - Planning engine
 - Provider abstraction
-- REST API
+- Versioned REST API with typed contracts
+- Standardized API errors and request tracing
+- Provider action discovery and execution
+- Aggregated dashboard, health, and AI status
 - Modular architecture
 
 ---
@@ -132,9 +135,11 @@ Operational dashboard.
 Provides:
 
 - Infrastructure overview
-- Deployment review
-- Operational dashboards
-- Planning workflows
+- Live Atlas and service health
+- Provider catalog and drill-down pages
+- Service details and health refresh
+- Confirmed, parameterized provider operations
+- ACE findings and recommendations
 
 ---
 
@@ -187,8 +192,15 @@ Future capabilities:
 - Diagnostics
 - Modular analyzers
 - Provider abstraction
-- REST API
-- Mission Control UI
+- Atlas API v1
+- Unified dashboard control plane
+- Standardized API error contracts
+- Proxmox, Docker, Home Assistant, and Ollama integration
+- Ollama model lifecycle operations
+- Live Mission Control service health
+- Provider-backed operational actions
+- 156 Atlas Core tests
+- Mission Control component tests, lint, and production build gates
 
 ---
 
@@ -201,6 +213,8 @@ Future capabilities:
 - Mission Control
 - Risk engine
 - Planning engine
+- Atlas API v1
+- Service health and provider operations
 
 ---
 
