@@ -50,6 +50,7 @@ docker run \
     --read-only \
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
+    --user "$(id -u):$(id -g)" \
     --mount "type=bind,src=$GATE_DIRECTORY,dst=/backups" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
     "$PYTHON_IMAGE" \
