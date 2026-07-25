@@ -113,6 +113,7 @@ Current capabilities:
 - Atlas Doctor diagnostics through CLI and Operations API
 - Read-only OPNsense health and diagnostics provider
 - Concurrent provider-backed ACE findings
+- Bounded provider intelligence collection
 - Aggregated dashboard, health, and AI status
 - Modular architecture
 
@@ -158,6 +159,16 @@ opnsense:
 Set the update threshold to `null` to keep pending packages
 informational. Reboot severity accepts `info`, `warning`, or
 `critical`.
+
+Provider finding collection uses a configurable deadline in
+`config/atlas.yaml`:
+
+```yaml
+intelligence:
+  provider_timeout_seconds: 10
+```
+
+The timeout must be greater than zero and no more than 60 seconds.
 
 ---
 
@@ -257,7 +268,7 @@ Future capabilities:
 - Paginated audit results
 - Audit detail views with shareable deep links
 - Action and request-ID search
-- 189 Atlas Core tests
+- 194 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---

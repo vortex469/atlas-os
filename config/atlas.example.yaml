@@ -27,3 +27,6 @@ audit:
   database: /opt/atlas/data/action_history.db
   max_entries: 5000
   retention_days: 90
+
+intelligence:
+  provider_timeout_seconds: 10

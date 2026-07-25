@@ -98,3 +98,60 @@ def test_provider_finding_failure_is_isolated() -> None:
     assert len(findings) == 1
     assert findings[0].severity == Severity.CRITICAL
     assert findings[0].source == "opnsense"
+
+
+def test_provider_finding_collection_has_time_budget() -> None:
+    class SlowProvider(OPNsenseProvider):
+        async def get_findings(self) -> list[Finding]:
+            await asyncio.Event().wait()
+            return []
+
+    registry = ProviderRegistry()
+    registry.register(
+        SlowProvider(
+            {
+                "host": "firewall.example.test",
+                "protocol": "https",
+            },
+            api_key="key",
+            api_secret="secret",
+        ),
+    )
+
+    findings = asyncio.run(
+        coordinator.collect_provider_findings(
+            registry,
+            timeout_seconds=0.001,
+        ),
+    )
+
+    assert len(findings) == 1
+    assert findings[0].id.endswith("timed-out")
+    assert findings[0].severity == Severity.CRITICAL
+    assert findings[0].details["timeout_seconds"] == 0.001
+
+
+def test_optional_provider_failure_is_warning() -> None:
+    class FailingProvider(OPNsenseProvider):
+        async def get_findings(self) -> list[Finding]:
+            raise RuntimeError("Provider failed")
+
+    registry = ProviderRegistry()
+    registry.register(
+        FailingProvider(
+            {
+                "host": "firewall.example.test",
+                "protocol": "https",
+                "critical": False,
+            },
+            api_key="key",
+            api_secret="secret",
+        ),
+    )
+
+    findings = asyncio.run(
+        coordinator.collect_provider_findings(registry),
+    )
+
+    assert findings[0].severity == Severity.WARNING
+    assert findings[0].score_penalty == 10

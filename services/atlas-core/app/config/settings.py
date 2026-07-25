@@ -50,6 +50,14 @@ class AuditSettings(BaseModel):
     retention_days: int = Field(default=90, ge=1)
 
 
+class IntelligenceSettings(BaseModel):
+    provider_timeout_seconds: float = Field(
+        default=10.0,
+        gt=0,
+        le=60,
+    )
+
+
 class Settings(BaseModel):
     atlas: AtlasSettings
     infrastructure: InfrastructureSettings
@@ -58,6 +66,9 @@ class Settings(BaseModel):
     docker: DockerSettings
     inventory: InventorySettings
     audit: AuditSettings = Field(default_factory=AuditSettings)
+    intelligence: IntelligenceSettings = Field(
+        default_factory=IntelligenceSettings,
+    )
 
 
 def load_yaml_config() -> dict[str, Any]:

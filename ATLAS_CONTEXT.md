@@ -146,7 +146,9 @@ Planned
 
 ✔ OPNsense Policy Thresholds
 
-189 Atlas Core tests passing.
+✔ Provider Intelligence Time Budgets
+
+194 Atlas Core tests passing.
 
 19 Mission Control component tests passing.
 
@@ -158,7 +160,6 @@ Provider Intelligence
 
 Next work
 
-- Provider intelligence time budgets
 - Frigate provider
 
 ---
