@@ -152,7 +152,9 @@ Planned
 
 ✔ Frigate Camera Health Policies
 
-203 Atlas Core tests collected.
+✔ Provider Intelligence Timing Telemetry
+
+204 Atlas Core tests collected.
 
 19 Mission Control component tests passing.
 
@@ -160,11 +162,10 @@ Planned
 
 # Current Sprint
 
-Provider Intelligence Telemetry
+Provider Intelligence
 
 Next work
 
-- Provider intelligence timing telemetry
 - Obsidian provider
 
 ---

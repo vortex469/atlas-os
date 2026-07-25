@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Callable
+from time import perf_counter
 
 from app.config.settings import settings
 from app.intelligence.assessment import build_situation_report
@@ -11,7 +12,11 @@ from app.intelligence.providers.homeassistant import (
 from app.intelligence.providers.proxmox import (
     collect_proxmox_findings,
 )
-from app.intelligence.report import SituationReport
+from app.intelligence.report import (
+    IntelligenceTelemetry,
+    ProviderCollectionTiming,
+    SituationReport,
+)
 from app.providers.base import Provider
 from app.providers.capabilities import ProviderPriority
 from app.providers.registry import ProviderRegistry, provider_registry
@@ -43,6 +48,22 @@ async def collect_provider_findings(
         settings.intelligence.provider_timeout_seconds
     ),
 ) -> list[Finding]:
+    findings, _ = await collect_provider_findings_with_telemetry(
+        registry,
+        timeout_seconds=timeout_seconds,
+    )
+    return findings
+
+
+async def collect_provider_findings_with_telemetry(
+    registry: ProviderRegistry = provider_registry,
+    *,
+    timeout_seconds: float = (
+        settings.intelligence.provider_timeout_seconds
+    ),
+) -> tuple[list[Finding], IntelligenceTelemetry]:
+    collection_started_at = perf_counter()
+
     def failure_finding(
         provider: Provider,
         *,
@@ -81,19 +102,23 @@ async def collect_provider_findings(
 
     async def collect_from_provider(
         provider: Provider,
-    ) -> list[Finding]:
+    ) -> tuple[list[Finding], ProviderCollectionTiming]:
+        started_at = perf_counter()
+        status = "completed"
+
         try:
             provider_findings = await asyncio.wait_for(
                 provider.get_findings(),
                 timeout=timeout_seconds,
             )
-            return [
+            findings = [
                 finding
                 for finding in provider_findings
                 if isinstance(finding, Finding)
             ]
         except TimeoutError:
-            return [
+            status = "timed_out"
+            findings = [
                 failure_finding(
                     provider,
                     title="Provider intelligence collection timed out",
@@ -109,7 +134,8 @@ async def collect_provider_findings(
                 ),
             ]
         except Exception as error:
-            return [
+            status = "failed"
+            findings = [
                 failure_finding(
                     provider,
                     title="Provider intelligence collection failed",
@@ -122,6 +148,17 @@ async def collect_provider_findings(
                 ),
             ]
 
+        return findings, ProviderCollectionTiming(
+            provider_id=provider.metadata.id,
+            provider_name=provider.metadata.name,
+            status=status,
+            duration_ms=round(
+                (perf_counter() - started_at) * 1000,
+                2,
+            ),
+            finding_count=len(findings),
+        )
+
     provider_results = await asyncio.gather(
         *(
             collect_from_provider(provider)
@@ -129,15 +166,33 @@ async def collect_provider_findings(
         ),
     )
 
-    return [
+    findings = [
         finding
-        for provider_findings in provider_results
+        for provider_findings, _ in provider_results
         for finding in provider_findings
     ]
+    telemetry = IntelligenceTelemetry(
+        provider_collection_duration_ms=round(
+            (perf_counter() - collection_started_at) * 1000,
+            2,
+        ),
+        provider_timeout_seconds=timeout_seconds,
+        providers=[
+            timing
+            for _, timing in provider_results
+        ],
+    )
+    return findings, telemetry
 
 
 async def build_report() -> SituationReport:
     """Collect all provider findings and build the ACE Situation Report."""
     findings = collect_findings()
-    findings.extend(await collect_provider_findings())
-    return build_situation_report(findings)
+    provider_findings, telemetry = (
+        await collect_provider_findings_with_telemetry()
+    )
+    findings.extend(provider_findings)
+    report = build_situation_report(findings)
+    return report.model_copy(
+        update={"telemetry": telemetry},
+    )

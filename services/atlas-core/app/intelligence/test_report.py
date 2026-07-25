@@ -17,6 +17,8 @@ def test_situation_report_defaults():
     assert report.findings == []
     assert report.assessments == []
     assert report.recommendations == []
+    assert report.telemetry.providers == []
+    assert report.telemetry.provider_collection_duration_ms == 0
 
 
 def test_assessment():

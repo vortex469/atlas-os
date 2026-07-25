@@ -24,6 +24,11 @@ const summary: AceSummary = {
     findings: [],
     assessments: [],
     recommendations: [],
+    telemetry: {
+        provider_collection_duration_ms: 12,
+        provider_timeout_seconds: 10,
+        providers: [],
+    },
 };
 
 const health: AtlasHealth = {

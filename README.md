@@ -170,6 +170,29 @@ intelligence:
 ```
 
 The timeout must be greater than zero and no more than 60 seconds.
+ACE situation reports include collection telemetry for operational
+visibility:
+
+```json
+{
+  "telemetry": {
+    "provider_collection_duration_ms": 42.5,
+    "provider_timeout_seconds": 10,
+    "providers": [
+      {
+        "provider_id": "frigate",
+        "provider_name": "Frigate",
+        "status": "completed",
+        "duration_ms": 38.2,
+        "finding_count": 1
+      }
+    ]
+  }
+}
+```
+
+Provider status is `completed`, `timed_out`, or `failed`. Durations use
+monotonic elapsed time and provider collection remains concurrent.
 
 ---
 

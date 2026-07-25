@@ -48,6 +48,7 @@ def test_build_report(monkeypatch):
     assert report.status == "healthy"
     assert report.findings == [finding]
     assert len(report.assessments) == 1
+    assert report.telemetry.provider_timeout_seconds == 10
 
 
 def test_collects_registered_provider_findings() -> None:
@@ -72,6 +73,42 @@ def test_collects_registered_provider_findings() -> None:
     )
 
     assert findings == [make_test_finding()]
+
+
+def test_provider_collection_exposes_timing_telemetry() -> None:
+    class FindingProvider(OPNsenseProvider):
+        async def get_findings(self) -> list[Finding]:
+            return [make_test_finding()]
+
+    registry = ProviderRegistry()
+    registry.register(
+        FindingProvider(
+            {
+                "host": "firewall.example.test",
+                "protocol": "https",
+            },
+            api_key="key",
+            api_secret="secret",
+        ),
+    )
+
+    findings, telemetry = asyncio.run(
+        coordinator.collect_provider_findings_with_telemetry(
+            registry,
+            timeout_seconds=2,
+        ),
+    )
+
+    assert findings == [make_test_finding()]
+    assert telemetry.provider_timeout_seconds == 2
+    assert telemetry.provider_collection_duration_ms >= 0
+    assert len(telemetry.providers) == 1
+    timing = telemetry.providers[0]
+    assert timing.provider_id == "opnsense"
+    assert timing.provider_name == "OPNsense"
+    assert timing.status == "completed"
+    assert timing.duration_ms >= 0
+    assert timing.finding_count == 1
 
 
 def test_provider_finding_failure_is_isolated() -> None:
@@ -129,6 +166,15 @@ def test_provider_finding_collection_has_time_budget() -> None:
     assert findings[0].id.endswith("timed-out")
     assert findings[0].severity == Severity.CRITICAL
     assert findings[0].details["timeout_seconds"] == 0.001
+
+    _, telemetry = asyncio.run(
+        coordinator.collect_provider_findings_with_telemetry(
+            registry,
+            timeout_seconds=0.001,
+        ),
+    )
+    assert telemetry.providers[0].status == "timed_out"
+    assert telemetry.providers[0].finding_count == 1
 
 
 def test_optional_provider_failure_is_warning() -> None:

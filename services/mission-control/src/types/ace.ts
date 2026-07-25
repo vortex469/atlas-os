@@ -42,6 +42,20 @@ export type AceRecommendation = {
     component: string | null;
 };
 
+export type ProviderCollectionTiming = {
+    provider_id: string;
+    provider_name: string;
+    status: "completed" | "timed_out" | "failed";
+    duration_ms: number;
+    finding_count: number;
+};
+
+export type IntelligenceTelemetry = {
+    provider_collection_duration_ms: number;
+    provider_timeout_seconds: number;
+    providers: ProviderCollectionTiming[];
+};
+
 export type AceSummary = {
     score: number;
     status: string;
@@ -49,4 +63,5 @@ export type AceSummary = {
     findings: AceFinding[];
     assessments: AceAssessment[];
     recommendations: AceRecommendation[];
+    telemetry: IntelligenceTelemetry;
 };
