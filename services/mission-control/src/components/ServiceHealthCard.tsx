@@ -4,6 +4,7 @@ import { StatusBadge } from "./StatusBadge";
 type ServiceHealthCardProps = {
     name: string;
     health: ServiceHealth;
+    onSelect: () => void;
 };
 
 function formatLatency(latency: number | null): string {
@@ -25,9 +26,15 @@ function formatHttpStatus(status: number | null): string {
 export function ServiceHealthCard({
     name,
     health,
+    onSelect,
 }: ServiceHealthCardProps) {
     return (
-        <article className="rounded-lg border border-slate-800 bg-slate-900 p-5 shadow-sm">
+        <button
+            type="button"
+            onClick={onSelect}
+            className="w-full rounded-lg border border-slate-800 bg-slate-900 p-5 text-left shadow-sm transition hover:border-slate-700 hover:bg-slate-800/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            aria-label={`View details for ${name}`}
+        >
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h3 className="font-semibold text-slate-100">
@@ -66,6 +73,6 @@ export function ServiceHealthCard({
                     {health.message}
                 </p>
             )}
-        </article>
+        </button>
     );
 }
