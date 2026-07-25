@@ -47,7 +47,7 @@ and re-audit requirement are recorded in `docs/DEPENDENCY_SECURITY.md`.
 
 Complete these items immediately before tagging:
 
-- [ ] Rotate and verify any credentials exposed during pre-release
+- [x] Rotate and verify any credentials exposed during pre-release
   validation.
 - [ ] Review deployment-specific inventory, policy, and TLS settings.
 - [ ] Confirm the target branch contains only intended release commits.

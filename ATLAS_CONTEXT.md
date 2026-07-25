@@ -206,6 +206,8 @@ Current
 
 ✔ Foundry Release Candidate Audit
 
+✔ Operator Credential Rotation Verified
+
 260 Atlas Core tests collected.
 
 36 Mission Control component tests passing.
@@ -218,7 +220,7 @@ Foundry Release Hardening
 
 Next work
 
-- Operator credential rotation and release approval
+- Push release candidate and confirm remote CI
 
 ---
 
