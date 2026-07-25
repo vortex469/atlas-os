@@ -3,6 +3,7 @@ import asyncio
 import httpx
 import pytest
 
+from app.config.policy_models import N8nPolicy
 from app.providers import loader
 from app.providers.n8n import N8nProvider
 from app.providers.registry import ProviderRegistry
@@ -44,11 +45,12 @@ def test_n8n_health_uses_api_key_and_sanitizes_workflows() -> None:
         )
 
     provider = N8nProvider(
-        service(
-            expected_active_workflows=["Daily backup"],
-        ),
+        service(),
         api_key="test-key",
         transport=httpx.MockTransport(handler),
+        policy_getter=lambda: N8nPolicy(
+            expected_active_workflows=["Daily backup"],
+        ),
     )
 
     health = asyncio.run(provider.get_health())
@@ -97,12 +99,7 @@ def test_n8n_workflow_inventory_is_paginated() -> None:
 
 def test_expected_missing_and_inactive_workflows_are_findings() -> None:
     provider = N8nProvider(
-        service(
-            expected_active_workflows=[
-                "Required",
-                "Disabled",
-            ],
-        ),
+        service(),
         api_key="test-key",
         transport=httpx.MockTransport(
             lambda request: httpx.Response(
@@ -112,6 +109,12 @@ def test_expected_missing_and_inactive_workflows_are_findings() -> None:
                     "nextCursor": None,
                 },
             ),
+        ),
+        policy_getter=lambda: N8nPolicy(
+            expected_active_workflows=[
+                "Required",
+                "Disabled",
+            ],
         ),
     )
 
@@ -164,6 +167,36 @@ def test_empty_n8n_finding_is_advisory() -> None:
     assert findings[0].affects_health is False
 
 
+def test_n8n_finding_severity_follows_policy() -> None:
+    provider = N8nProvider(
+        service(max_workflows=1),
+        api_key="test-key",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={
+                    "data": [workflow("Disabled", False)],
+                    "nextCursor": "more",
+                },
+            ),
+        ),
+        policy_getter=lambda: N8nPolicy(
+            expected_active_workflows=["Disabled"],
+            inactive_workflow_severity="critical",
+            scan_truncated_severity="info",
+        ),
+    )
+
+    findings = asyncio.run(provider.get_findings())
+
+    assert [finding.severity for finding in findings] == [
+        "critical",
+        "info",
+    ]
+    assert findings[0].score_penalty == 20
+    assert findings[1].affects_health is False
+
+
 def test_n8n_authentication_failure_is_degraded() -> None:
     provider = N8nProvider(
         service(),
@@ -203,8 +236,6 @@ def test_critical_n8n_connection_failure_is_critical() -> None:
     "overrides",
     [
         {"max_workflows": 0},
-        {"expected_active_workflows": "Workflow"},
-        {"expected_active_workflows": ["Same", "Same"]},
     ],
 )
 def test_invalid_n8n_configuration_is_rejected(

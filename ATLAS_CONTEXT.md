@@ -165,7 +165,9 @@ Planned
 
 ✔ Qdrant Collection Policies
 
-237 Atlas Core tests collected.
+✔ n8n Workflow Policies
+
+239 Atlas Core tests collected.
 
 19 Mission Control component tests passing.
 
@@ -173,11 +175,12 @@ Planned
 
 # Current Sprint
 
-Provider Intelligence
+Provider Intelligence Complete
 
 Next work
 
-- n8n workflow policies
+- Provider intelligence telemetry in Mission Control
+- Provider policy visibility
 
 ---
 

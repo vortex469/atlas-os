@@ -9,6 +9,7 @@ from app.config.policies import (
     get_expected_guest_state,
     get_frigate_policy,
     get_ignored_entities,
+    get_n8n_policy,
     get_obsidian_policy,
     get_opnsense_policy,
     get_qdrant_policy,
@@ -66,6 +67,13 @@ qdrant:
     - documents
   missing_collection_severity: critical
   empty_instance_severity: warning
+n8n:
+  expected_active_workflows:
+    - Daily backup
+    - Knowledge sync
+  inactive_workflow_severity: critical
+  scan_truncated_severity: info
+  empty_instance_severity: warning
 """,
     )
 
@@ -100,6 +108,14 @@ qdrant:
         get_qdrant_policy().missing_collection_severity
         == "critical"
     )
+    assert get_n8n_policy().expected_active_workflows == [
+        "Daily backup",
+        "Knowledge sync",
+    ]
+    assert (
+        get_n8n_policy().inactive_workflow_severity
+        == "critical"
+    )
 
     write_policy(
         policy_file,
@@ -128,6 +144,7 @@ opnsense:
     assert get_obsidian_policy().minimum_note_count == 1
     assert get_obsidian_policy().stale_after_days is None
     assert get_qdrant_policy().expected_collections == []
+    assert get_n8n_policy().expected_active_workflows == []
 
 
 @pytest.mark.parametrize(
@@ -169,6 +186,21 @@ qdrant:
 qdrant:
   missing_collection_severity: emergency
 """,
+        """
+n8n:
+  expected_active_workflows:
+    - Sync
+    - Sync
+""",
+        """
+n8n:
+  expected_active_workflows:
+    - ""
+""",
+        """
+n8n:
+  scan_truncated_severity: urgent
+""",
     ],
 )
 def test_invalid_policy_reload_has_stable_error(
@@ -200,3 +232,4 @@ def test_missing_policy_file_uses_safe_defaults(
     assert policies.frigate.cameras == {}
     assert policies.obsidian.minimum_note_count == 1
     assert policies.qdrant.expected_collections == []
+    assert policies.n8n.expected_active_workflows == []

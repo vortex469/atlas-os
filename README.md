@@ -353,9 +353,6 @@ services:
     verify_tls: true
     # ca_bundle: /opt/atlas/config/certificates/n8n.pem
     max_workflows: 250
-    expected_active_workflows:
-      - Daily infrastructure backup
-      - Atlas knowledge sync
 ```
 
 Provide a public API key through the environment:
@@ -364,10 +361,24 @@ Provide a public API key through the environment:
 N8N_API_KEY=replace-me
 ```
 
+Workflow expectations are live-reloaded from
+`config/policies.yaml`:
+
+```yaml
+n8n:
+  expected_active_workflows:
+    - Daily infrastructure backup
+    - Atlas knowledge sync
+  inactive_workflow_severity: warning
+  scan_truncated_severity: warning
+  empty_instance_severity: info
+```
+
 The provider paginates the read-only workflow endpoint and reports
-active and inactive workflow inventory. Missing or inactive expected
-workflows produce a warning. Empty instances are informational, and
-inventories beyond `max_workflows` produce a truncation warning.
+active and inactive workflow inventory. Finding severity accepts
+`info`, `warning`, or `critical`; informational findings do not reduce
+health. The inventory `max_workflows` setting remains a hard bound on
+collection size.
 
 The key is sent only in the `X-N8N-API-KEY` header and is never included
 in provider output. TLS verification is enabled by default and supports

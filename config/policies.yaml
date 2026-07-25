@@ -54,3 +54,9 @@ qdrant:
   expected_collections: []
   missing_collection_severity: warning
   empty_instance_severity: info
+
+n8n:
+  expected_active_workflows: []
+  inactive_workflow_severity: warning
+  scan_truncated_severity: warning
+  empty_instance_severity: info

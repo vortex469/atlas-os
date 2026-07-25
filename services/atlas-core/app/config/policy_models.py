@@ -80,6 +80,33 @@ class QdrantPolicy(BaseModel):
         return values
 
 
+class N8nPolicy(BaseModel):
+    expected_active_workflows: list[str] = Field(
+        default_factory=list
+    )
+    inactive_workflow_severity: PolicySeverity = "warning"
+    scan_truncated_severity: PolicySeverity = "warning"
+    empty_instance_severity: PolicySeverity = "info"
+
+    @field_validator("expected_active_workflows")
+    @classmethod
+    def validate_expected_active_workflows(
+        cls,
+        values: list[str],
+    ) -> list[str]:
+        if any(not value for value in values):
+            raise ValueError(
+                "expected_active_workflows must contain "
+                "non-empty names."
+            )
+        if len(set(values)) != len(values):
+            raise ValueError(
+                "expected_active_workflows must not contain "
+                "duplicates."
+            )
+        return values
+
+
 class Policies(BaseModel):
     proxmox: ProxmoxPolicy = Field(default_factory=ProxmoxPolicy)
     docker: DockerPolicy = Field(default_factory=DockerPolicy)
@@ -94,3 +121,4 @@ class Policies(BaseModel):
         default_factory=ObsidianPolicy
     )
     qdrant: QdrantPolicy = Field(default_factory=QdrantPolicy)
+    n8n: N8nPolicy = Field(default_factory=N8nPolicy)

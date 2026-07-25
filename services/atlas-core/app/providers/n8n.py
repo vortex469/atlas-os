@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 from time import perf_counter
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urljoin
 
 import httpx
 
+from app.config.policies import get_n8n_policy
+from app.config.policy_models import N8nPolicy, PolicySeverity
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -28,6 +30,7 @@ class N8nProvider(Provider):
         api_key: str | None = None,
         timeout_seconds: float = 10.0,
         transport: httpx.AsyncBaseTransport | None = None,
+        policy_getter: Callable[[], N8nPolicy] = get_n8n_policy,
     ) -> None:
         self._service = service
         self._api_key = (
@@ -37,24 +40,11 @@ class N8nProvider(Provider):
         )
         self._timeout_seconds = timeout_seconds
         self._transport = transport
+        self._policy_getter = policy_getter
         self._max_workflows = self._positive_int(
             service.get("max_workflows", 250),
             "max_workflows",
         )
-        expected = service.get("expected_active_workflows", [])
-        if not isinstance(expected, list) or not all(
-            isinstance(name, str) and name
-            for name in expected
-        ):
-            raise ValueError(
-                "expected_active_workflows must be a list of names."
-            )
-        if len(set(expected)) != len(expected):
-            raise ValueError(
-                "expected_active_workflows must not contain duplicates."
-            )
-        self._expected_active_workflows = frozenset(expected)
-
         protocol = service.get("protocol", "http")
         host = service["host"]
         port = service.get("port", 5678)
@@ -128,12 +118,15 @@ class N8nProvider(Provider):
                 if not workflow["active"]
             )
             known_names = set(active_names) | set(inactive_names)
+            policy = self._policy_getter()
+            expected_active_workflows = set(
+                policy.expected_active_workflows
+            )
             missing = sorted(
-                self._expected_active_workflows - known_names
+                expected_active_workflows - known_names
             )
             inactive_expected = sorted(
-                self._expected_active_workflows
-                & set(inactive_names)
+                expected_active_workflows & set(inactive_names)
             )
 
             return ProviderHealth(
@@ -152,6 +145,9 @@ class N8nProvider(Provider):
                     "missing_expected_workflows": missing,
                     "inactive_expected_workflows": (
                         inactive_expected
+                    ),
+                    "expected_active_workflow_count": len(
+                        expected_active_workflows
                     ),
                     "scan_truncated": truncated,
                     "max_workflows": self._max_workflows,
@@ -222,6 +218,7 @@ class N8nProvider(Provider):
             ]
 
         findings: list[Finding] = []
+        policy = self._policy_getter()
         missing = self._detail_list(
             health,
             "missing_expected_workflows",
@@ -231,10 +228,13 @@ class N8nProvider(Provider):
             "inactive_expected_workflows",
         )
         if missing or inactive:
+            severity = self._severity(
+                policy.inactive_workflow_severity
+            )
             findings.append(
                 Finding(
                     id="n8n-expected-workflows-inactive",
-                    severity=Severity.WARNING,
+                    severity=severity,
                     category="automation",
                     source="n8n",
                     component=self.metadata.name,
@@ -247,7 +247,8 @@ class N8nProvider(Provider):
                         "Review workflow provisioning, activation, and "
                         "the expected_active_workflows inventory."
                     ),
-                    score_penalty=10,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
                     metric={
                         "missing_workflows": len(missing),
                         "inactive_workflows": len(inactive),
@@ -260,10 +261,13 @@ class N8nProvider(Provider):
             )
 
         if health.details.get("scan_truncated"):
+            severity = self._severity(
+                policy.scan_truncated_severity
+            )
             findings.append(
                 Finding(
                     id="n8n-workflow-scan-truncated",
-                    severity=Severity.WARNING,
+                    severity=severity,
                     category="automation",
                     source="n8n",
                     component=self.metadata.name,
@@ -276,7 +280,8 @@ class N8nProvider(Provider):
                         "Increase max_workflows so Atlas can evaluate "
                         "the complete n8n inventory."
                     ),
-                    score_penalty=5,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
                     details={
                         "max_workflows": self._max_workflows,
                     },
@@ -284,10 +289,13 @@ class N8nProvider(Provider):
             )
 
         if health.details.get("workflow_count") == 0:
+            severity = self._severity(
+                policy.empty_instance_severity
+            )
             findings.append(
                 Finding(
                     id="n8n-no-workflows",
-                    severity=Severity.INFO,
+                    severity=severity,
                     category="automation",
                     source="n8n",
                     component=self.metadata.name,
@@ -299,8 +307,8 @@ class N8nProvider(Provider):
                         "Confirm whether this n8n instance should "
                         "contain automation workflows."
                     ),
-                    affects_health=False,
-                    score_penalty=0,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
                 ),
             )
 
@@ -410,3 +418,19 @@ class N8nProvider(Provider):
     @staticmethod
     def _elapsed_ms(started_at: float) -> float:
         return round((perf_counter() - started_at) * 1000, 2)
+
+    @staticmethod
+    def _severity(value: PolicySeverity) -> Severity:
+        return {
+            "info": Severity.INFO,
+            "warning": Severity.WARNING,
+            "critical": Severity.CRITICAL,
+        }[value]
+
+    @staticmethod
+    def _score_penalty(severity: Severity) -> int:
+        return {
+            Severity.INFO: 0,
+            Severity.WARNING: 10,
+            Severity.CRITICAL: 20,
+        }[severity]
