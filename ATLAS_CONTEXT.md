@@ -38,11 +38,11 @@ Implemented
 - Home Assistant
 - Ollama
 - OPNsense
+- Frigate
 - Inventory-backed services
 
 Planned
 
-- Frigate
 - Obsidian
 - Qdrant
 - n8n
@@ -148,7 +148,9 @@ Planned
 
 ✔ Provider Intelligence Time Budgets
 
-194 Atlas Core tests passing.
+✔ Frigate Provider
+
+200 Atlas Core tests passing.
 
 19 Mission Control component tests passing.
 
@@ -160,7 +162,9 @@ Provider Intelligence
 
 Next work
 
-- Frigate provider
+- Frigate camera health policies
+- Provider intelligence timing telemetry
+- Obsidian provider
 
 ---
 

@@ -25,6 +25,7 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Refresh-aware service details
 - On-demand Atlas Doctor diagnostics
 - OPNsense health and diagnostics through the provider workspace
+- Frigate camera health and version telemetry
 - Forge deployment analysis workspace
 
 ## Development

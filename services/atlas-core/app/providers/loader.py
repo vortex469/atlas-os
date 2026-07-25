@@ -1,4 +1,5 @@
 from app.config.inventory import load_inventory
+from app.providers.frigate import FrigateProvider
 from app.providers.inventory_provider import InventoryServiceProvider
 from app.providers.ollama import OllamaProvider
 from app.providers.opnsense import OPNsenseProvider
@@ -20,6 +21,8 @@ def load_provider_registry():
             provider = OllamaProvider(service)
         elif service_id == "opnsense":
             provider = OPNsenseProvider(service)
+        elif service_id == "frigate":
+            provider = FrigateProvider(service)
         else:
             provider = InventoryServiceProvider(
                 service_id,

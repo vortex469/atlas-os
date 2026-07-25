@@ -114,6 +114,7 @@ Current capabilities:
 - Read-only OPNsense health and diagnostics provider
 - Concurrent provider-backed ACE findings
 - Bounded provider intelligence collection
+- Read-only Frigate camera health and version telemetry
 - Aggregated dashboard, health, and AI status
 - Modular architecture
 
@@ -169,6 +170,38 @@ intelligence:
 ```
 
 The timeout must be greater than zero and no more than 60 seconds.
+
+---
+
+### Frigate provider
+
+For the authenticated Frigate API, add this service to
+`inventory/services.yaml`:
+
+```yaml
+services:
+  frigate:
+    name: Frigate
+    host: frigate.home.arpa
+    port: 8971
+    protocol: https
+    health_endpoint: /api/stats
+    expected_status: [200]
+    critical: false
+    verify_tls: true
+    # ca_bundle: /opt/atlas/config/certificates/frigate.pem
+```
+
+Provide a Frigate JWT through the environment when authentication is
+enabled:
+
+```dotenv
+FRIGATE_API_TOKEN=replace-me
+```
+
+The internal unauthenticated API on port `5000` is also supported when
+the token is omitted. That port grants broad access and must only be
+used on a trusted, isolated container network.
 
 ---
 
@@ -256,7 +289,8 @@ Future capabilities:
 - Atlas API v1
 - Unified dashboard control plane
 - Standardized API error contracts
-- Proxmox, Docker, Home Assistant, and Ollama integration
+- Proxmox, Docker, Home Assistant, Ollama, OPNsense, and Frigate
+  integration
 - Ollama model lifecycle operations
 - Live Mission Control service health
 - Provider-backed operational actions
@@ -268,7 +302,7 @@ Future capabilities:
 - Paginated audit results
 - Audit detail views with shareable deep links
 - Action and request-ID search
-- 194 Atlas Core tests
+- 200 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---
