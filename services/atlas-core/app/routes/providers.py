@@ -7,6 +7,7 @@ from app.actions import (
     ProviderActionRequest,
     execute_provider_action,
 )
+from app.models.contracts import APIError, ProviderResponse
 from app.providers import Provider, ProviderNotFoundError
 from app.providers.registry import provider_registry
 from app.providers.serializer import (
@@ -30,7 +31,7 @@ def get_registered_provider(provider_id: str) -> Provider:
         ) from error
 
 
-@router.get("")
+@router.get("", response_model=list[ProviderResponse])
 async def list_providers():
     return [
         await serialize_provider(provider)
@@ -38,7 +39,11 @@ async def list_providers():
     ]
 
 
-@router.get("/{provider_id}")
+@router.get(
+    "/{provider_id}",
+    response_model=ProviderResponse,
+    responses={404: {"model": APIError}},
+)
 async def get_provider(provider_id: str):
     provider = get_registered_provider(provider_id)
 
