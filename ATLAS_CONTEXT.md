@@ -171,9 +171,11 @@ Planned
 
 ✔ Provider Policy API and Mission Control Visibility
 
+✔ Provider Policy Detail Views
+
 241 Atlas Core tests collected.
 
-23 Mission Control component tests passing.
+26 Mission Control component tests passing.
 
 ---
 
@@ -183,7 +185,6 @@ Provider Operations
 
 Next work
 
-- Provider policy detail views
 - Policy reload health telemetry
 
 ---

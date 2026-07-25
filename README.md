@@ -116,6 +116,7 @@ Current capabilities:
 - Bounded provider intelligence collection
 - Provider intelligence timing and outcome dashboard
 - Live provider policy snapshot and Mission Control visibility
+- Provider-specific operational policy detail views
 - Read-only Frigate camera health and version telemetry
 - Aggregated dashboard, health, and AI status
 - Modular architecture
