@@ -49,6 +49,15 @@ export type AtlasPolicies = {
         scan_truncated_severity: PolicySeverity;
         empty_instance_severity: PolicySeverity;
     };
+    intelligence: {
+        providers: Record<
+            string,
+            {
+                maximum_collection_duration_ms: number;
+                severity: PolicySeverity;
+            }
+        >;
+    };
 };
 
 export type PolicyReloadHealth = {

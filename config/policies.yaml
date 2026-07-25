@@ -60,3 +60,6 @@ n8n:
   inactive_workflow_severity: warning
   scan_truncated_severity: warning
   empty_instance_severity: info
+
+intelligence:
+  providers: {}

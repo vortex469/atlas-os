@@ -223,6 +223,23 @@ filters.
 Each Provider detail page also charts that provider's individual
 collection duration and outcomes, separating integration performance
 from the overall concurrent ACE collection time.
+
+Successful provider collection can also be bounded by live policy:
+
+```yaml
+intelligence:
+  providers:
+    qdrant:
+      maximum_collection_duration_ms: 500
+      severity: warning
+    n8n:
+      maximum_collection_duration_ms: 1000
+      severity: info
+```
+
+Completed collection above its threshold creates a slow-provider
+finding. Time-outs keep their dedicated timeout finding and are not
+reported twice. Severity accepts `info`, `warning`, or `critical`.
 Mission Control also displays stored entry count, retention days, and
 the entry cap, with oldest/newest snapshot times and a capacity meter.
 Manual pruning requires confirmation in both the UI and the Core API.

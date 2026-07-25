@@ -72,6 +72,7 @@ const policies: AtlasPolicies = {
         scan_truncated_severity: "warning",
         empty_instance_severity: "info",
     },
+    intelligence: { providers: {} },
 };
 
 const policyHealth: PolicyReloadHealth = {

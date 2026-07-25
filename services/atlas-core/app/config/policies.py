@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from app.config.policy_models import (
     FrigatePolicy,
     N8nPolicy,
+    IntelligencePolicy,
     ObsidianPolicy,
     OPNsensePolicy,
     Policies,
@@ -114,6 +115,10 @@ def get_qdrant_policy() -> QdrantPolicy:
 
 def get_n8n_policy() -> N8nPolicy:
     return load_policies().n8n
+
+
+def get_intelligence_policy() -> IntelligencePolicy:
+    return load_policies().intelligence
 
 
 def get_policy_reload_health(

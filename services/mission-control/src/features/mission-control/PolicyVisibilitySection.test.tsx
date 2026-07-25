@@ -40,6 +40,14 @@ const policies: AtlasPolicies = {
         scan_truncated_severity: "warning",
         empty_instance_severity: "info",
     },
+    intelligence: {
+        providers: {
+            qdrant: {
+                maximum_collection_duration_ms: 250,
+                severity: "critical",
+            },
+        },
+    },
 };
 
 const health = {
@@ -62,7 +70,7 @@ describe("PolicyVisibilitySection", () => {
         );
 
         const rows = screen.getAllByRole("row").slice(1);
-        expect(rows).toHaveLength(11);
+        expect(rows).toHaveLength(12);
         expect(
             screen.getByText("Policy reload healthy"),
         ).toBeInTheDocument();
@@ -94,6 +102,9 @@ describe("PolicyVisibilitySection", () => {
             within(rows[8]).getByText(
                 "1 expected active workflow(s)",
             ),
+        ).toBeInTheDocument();
+        expect(
+            within(rows[11]).getByText("250 ms maximum"),
         ).toBeInTheDocument();
     });
 

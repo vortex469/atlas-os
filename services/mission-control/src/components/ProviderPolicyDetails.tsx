@@ -197,7 +197,25 @@ export function ProviderPolicyDetails({
     providerId,
     policies,
 }: ProviderPolicyDetailsProps) {
-    const details = policyDetails(providerId, policies);
+    const providerDetails = policyDetails(providerId, policies);
+    const performance =
+        policies.intelligence.providers[providerId];
+    const details =
+        performance === undefined
+            ? providerDetails
+            : [
+                  ...(providerDetails ?? []),
+                  {
+                      label: "Maximum collection duration",
+                      value: `${performance.maximum_collection_duration_ms} ms`,
+                  },
+                  {
+                      label: "Slow collection severity",
+                      value: formatSeverity(
+                          performance.severity,
+                      ),
+                  },
+              ];
 
     return (
         <section>

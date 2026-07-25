@@ -191,7 +191,9 @@ Planned
 
 ✔ Provider-Specific Telemetry Trends
 
-255 Atlas Core tests collected.
+✔ Provider Intelligence Performance Policies
+
+257 Atlas Core tests collected.
 
 35 Mission Control component tests passing.
 
@@ -203,7 +205,7 @@ Provider Operations and Observability Complete
 
 Next work
 
-- Provider intelligence performance policies
+- Provider performance threshold overlays
 
 ---
 

@@ -129,6 +129,18 @@ export function PolicyVisibilitySection({
             severity: policies.n8n.empty_instance_severity,
         },
     ];
+    rows.push(
+        ...Object.entries(policies.intelligence.providers)
+            .sort(([first], [second]) =>
+                first.localeCompare(second),
+            )
+            .map(([provider, policy]) => ({
+                provider,
+                expectation: `${policy.maximum_collection_duration_ms} ms maximum`,
+                scope: "Intelligence collection duration",
+                severity: policy.severity,
+            })),
+    );
 
     return (
         <section>
@@ -159,7 +171,9 @@ export function PolicyVisibilitySection({
                     </thead>
                     <tbody className="divide-y divide-slate-800">
                         {rows.map((row) => (
-                            <tr key={row.provider}>
+                            <tr
+                                key={`${row.provider}-${row.scope}`}
+                            >
                                 <td className="px-5 py-4 font-medium text-slate-200">
                                     {row.provider}
                                 </td>

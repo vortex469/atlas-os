@@ -50,6 +50,14 @@ const policies: AtlasPolicies = {
         scan_truncated_severity: "warning",
         empty_instance_severity: "info",
     },
+    intelligence: {
+        providers: {
+            qdrant: {
+                maximum_collection_duration_ms: 250,
+                severity: "critical",
+            },
+        },
+    },
 };
 
 describe("ProviderPolicyDetails", () => {
@@ -80,6 +88,7 @@ describe("ProviderPolicyDetails", () => {
         expect(
             screen.getByText("memory, documents"),
         ).toBeInTheDocument();
+        expect(screen.getByText("250 ms")).toBeInTheDocument();
 
         rerender(
             <ProviderPolicyDetails

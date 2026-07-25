@@ -3,6 +3,8 @@ from collections.abc import Callable
 from time import perf_counter
 
 from app.config.settings import settings
+from app.config.policies import get_intelligence_policy
+from app.config.policy_models import PolicySeverity
 from app.intelligence.assessment import build_situation_report
 from app.intelligence.findings import Finding, Severity
 from app.intelligence import history as history_module
@@ -195,6 +197,7 @@ async def build_report() -> SituationReport:
         await collect_provider_findings_with_telemetry()
     )
     findings.extend(provider_findings)
+    findings.extend(_performance_findings(telemetry))
     report = build_situation_report(findings)
     try:
         history_module.intelligence_telemetry_history.append(
@@ -207,3 +210,70 @@ async def build_report() -> SituationReport:
     return report.model_copy(
         update={"telemetry": telemetry},
     )
+
+
+def _performance_findings(
+    telemetry: IntelligenceTelemetry,
+) -> list[Finding]:
+    policy = get_intelligence_policy()
+    findings: list[Finding] = []
+
+    for timing in telemetry.providers:
+        provider_policy = policy.providers.get(
+            timing.provider_id
+        )
+        if (
+            provider_policy is None
+            or timing.status != "completed"
+            or timing.duration_ms
+            <= provider_policy.maximum_collection_duration_ms
+        ):
+            continue
+
+        severity = _policy_severity(provider_policy.severity)
+        findings.append(
+            Finding(
+                id=(
+                    f"{timing.provider_id}-intelligence-"
+                    "collection-slow"
+                ),
+                severity=severity,
+                category="provider",
+                source=timing.provider_id,
+                component=timing.provider_name,
+                title="Provider intelligence collection is slow",
+                message=(
+                    f"{timing.provider_name} finding collection took "
+                    f"{timing.duration_ms:g} ms; policy allows "
+                    f"{provider_policy.maximum_collection_duration_ms:g} "
+                    "ms."
+                ),
+                recommendation=(
+                    "Review provider response time, query scope, and "
+                    "network latency before the hard timeout is reached."
+                ),
+                affects_health=severity != Severity.INFO,
+                score_penalty={
+                    Severity.INFO: 0,
+                    Severity.WARNING: 5,
+                    Severity.CRITICAL: 15,
+                }[severity],
+                metric={
+                    "duration_ms": timing.duration_ms,
+                    "maximum_duration_ms": (
+                        provider_policy
+                        .maximum_collection_duration_ms
+                    ),
+                },
+            ),
+        )
+
+    return findings
+
+
+def _policy_severity(value: PolicySeverity) -> Severity:
+    return {
+        "info": Severity.INFO,
+        "warning": Severity.WARNING,
+        "critical": Severity.CRITICAL,
+    }[value]

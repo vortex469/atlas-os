@@ -9,6 +9,7 @@ from app.config.policies import (
     get_expected_guest_state,
     get_frigate_policy,
     get_ignored_entities,
+    get_intelligence_policy,
     get_n8n_policy,
     get_obsidian_policy,
     get_opnsense_policy,
@@ -74,6 +75,11 @@ n8n:
   inactive_workflow_severity: critical
   scan_truncated_severity: info
   empty_instance_severity: warning
+intelligence:
+  providers:
+    qdrant:
+      maximum_collection_duration_ms: 250
+      severity: critical
 """,
     )
 
@@ -116,6 +122,12 @@ n8n:
         get_n8n_policy().inactive_workflow_severity
         == "critical"
     )
+    assert (
+        get_intelligence_policy()
+        .providers["qdrant"]
+        .maximum_collection_duration_ms
+        == 250
+    )
 
     write_policy(
         policy_file,
@@ -145,6 +157,7 @@ opnsense:
     assert get_obsidian_policy().stale_after_days is None
     assert get_qdrant_policy().expected_collections == []
     assert get_n8n_policy().expected_active_workflows == []
+    assert get_intelligence_policy().providers == {}
 
 
 @pytest.mark.parametrize(
@@ -201,6 +214,12 @@ n8n:
 n8n:
   scan_truncated_severity: urgent
 """,
+        """
+intelligence:
+  providers:
+    qdrant:
+      maximum_collection_duration_ms: 0
+""",
     ],
 )
 def test_invalid_policy_reload_has_stable_error(
@@ -233,3 +252,4 @@ def test_missing_policy_file_uses_safe_defaults(
     assert policies.obsidian.minimum_note_count == 1
     assert policies.qdrant.expected_collections == []
     assert policies.n8n.expected_active_workflows == []
+    assert policies.intelligence.providers == {}

@@ -108,6 +108,17 @@ class N8nPolicy(BaseModel):
         return values
 
 
+class ProviderPerformancePolicy(BaseModel):
+    maximum_collection_duration_ms: float = Field(gt=0)
+    severity: PolicySeverity = "warning"
+
+
+class IntelligencePolicy(BaseModel):
+    providers: dict[str, ProviderPerformancePolicy] = Field(
+        default_factory=dict
+    )
+
+
 class Policies(BaseModel):
     proxmox: ProxmoxPolicy = Field(default_factory=ProxmoxPolicy)
     docker: DockerPolicy = Field(default_factory=DockerPolicy)
@@ -123,6 +134,9 @@ class Policies(BaseModel):
     )
     qdrant: QdrantPolicy = Field(default_factory=QdrantPolicy)
     n8n: N8nPolicy = Field(default_factory=N8nPolicy)
+    intelligence: IntelligencePolicy = Field(
+        default_factory=IntelligencePolicy
+    )
 
 
 class PolicyReloadHealth(BaseModel):

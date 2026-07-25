@@ -2,6 +2,14 @@ import asyncio
 
 from app.intelligence import coordinator
 from app.intelligence.findings import Finding, Severity
+from app.intelligence.report import (
+    IntelligenceTelemetry,
+    ProviderCollectionTiming,
+)
+from app.config.policy_models import (
+    IntelligencePolicy,
+    ProviderPerformancePolicy,
+)
 from app.providers.opnsense import OPNsenseProvider
 from app.providers.registry import ProviderRegistry
 
@@ -204,3 +212,56 @@ def test_optional_provider_failure_is_warning() -> None:
 
     assert findings[0].severity == Severity.WARNING
     assert findings[0].score_penalty == 10
+
+
+def test_provider_performance_findings_follow_policy(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        coordinator,
+        "get_intelligence_policy",
+        lambda: IntelligencePolicy(
+            providers={
+                "qdrant": ProviderPerformancePolicy(
+                    maximum_collection_duration_ms=100,
+                    severity="critical",
+                ),
+                "n8n": ProviderPerformancePolicy(
+                    maximum_collection_duration_ms=100,
+                ),
+            },
+        ),
+    )
+    telemetry = IntelligenceTelemetry(
+        provider_collection_duration_ms=200,
+        provider_timeout_seconds=10,
+        providers=[
+            ProviderCollectionTiming(
+                provider_id="qdrant",
+                provider_name="Qdrant",
+                status="completed",
+                duration_ms=150,
+                finding_count=0,
+            ),
+            ProviderCollectionTiming(
+                provider_id="n8n",
+                provider_name="n8n",
+                status="timed_out",
+                duration_ms=10000,
+                finding_count=1,
+            ),
+        ],
+    )
+
+    findings = coordinator._performance_findings(telemetry)
+
+    assert len(findings) == 1
+    assert findings[0].id == (
+        "qdrant-intelligence-collection-slow"
+    )
+    assert findings[0].severity == "critical"
+    assert findings[0].score_penalty == 15
+    assert findings[0].metric == {
+        "duration_ms": 150,
+        "maximum_duration_ms": 100,
+    }
