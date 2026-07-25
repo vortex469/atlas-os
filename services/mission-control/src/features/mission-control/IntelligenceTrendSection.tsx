@@ -1,7 +1,11 @@
 import { useState } from "react";
 
+import { exportIntelligenceTelemetryHistory } from "../../api/atlas";
 import { SectionHeader } from "../../components/SectionHeader";
-import type { IntelligenceTelemetrySnapshot } from "../../types/ace";
+import type {
+    IntelligenceTelemetryExportFormat,
+    IntelligenceTelemetrySnapshot,
+} from "../../types/ace";
 
 type IntelligenceTrendSectionProps = {
     snapshots: IntelligenceTelemetrySnapshot[];
@@ -12,6 +16,50 @@ export function IntelligenceTrendSection({
 }: IntelligenceTrendSectionProps) {
     const [providerFilter, setProviderFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(
+        null,
+    );
+
+    async function exportHistory(
+        format: IntelligenceTelemetryExportFormat,
+    ) {
+        setIsExporting(true);
+        setExportError(null);
+
+        try {
+            const blob = await exportIntelligenceTelemetryHistory(
+                format,
+                {
+                    providerId:
+                        providerFilter === "all"
+                            ? undefined
+                            : providerFilter,
+                    status:
+                        statusFilter === "all"
+                            ? undefined
+                            : (statusFilter as
+                                  | "completed"
+                                  | "timed_out"
+                                  | "failed"),
+                },
+            );
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = `atlas-intelligence-history.${format}`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+        } catch {
+            setExportError(
+                "Mission Control could not export telemetry history.",
+            );
+        } finally {
+            setIsExporting(false);
+        }
+    }
 
     if (snapshots.length === 0) {
         return null;
@@ -64,6 +112,10 @@ export function IntelligenceTrendSection({
                     statusFilter={statusFilter}
                     onProviderChange={setProviderFilter}
                     onStatusChange={setStatusFilter}
+                    isExporting={isExporting}
+                    onExport={(format) =>
+                        void exportHistory(format)
+                    }
                 />
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
                     No telemetry snapshots match the selected filters.
@@ -98,7 +150,20 @@ export function IntelligenceTrendSection({
                 statusFilter={statusFilter}
                 onProviderChange={setProviderFilter}
                 onStatusChange={setStatusFilter}
+                isExporting={isExporting}
+                onExport={(format) =>
+                    void exportHistory(format)
+                }
             />
+
+            {exportError && (
+                <p
+                    role="alert"
+                    className="mb-4 text-sm text-red-300"
+                >
+                    {exportError}
+                </p>
+            )}
 
             <div className="rounded-lg border border-slate-800 bg-slate-900 p-5">
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -177,12 +242,18 @@ function TrendFilters({
     statusFilter,
     onProviderChange,
     onStatusChange,
+    isExporting,
+    onExport,
 }: {
     providers: [string, string][];
     providerFilter: string;
     statusFilter: string;
     onProviderChange: (value: string) => void;
     onStatusChange: (value: string) => void;
+    isExporting: boolean;
+    onExport: (
+        format: IntelligenceTelemetryExportFormat,
+    ) => void;
 }) {
     return (
         <div className="mb-4 flex flex-wrap gap-3">
@@ -219,6 +290,25 @@ function TrendFilters({
                     <option value="failed">Failed</option>
                 </select>
             </label>
+
+            <div className="flex gap-2">
+                <button
+                    type="button"
+                    disabled={isExporting}
+                    onClick={() => onExport("json")}
+                    className="rounded border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:opacity-50"
+                >
+                    Export JSON
+                </button>
+                <button
+                    type="button"
+                    disabled={isExporting}
+                    onClick={() => onExport("csv")}
+                    className="rounded border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:opacity-50"
+                >
+                    Export CSV
+                </button>
+            </div>
         </div>
     );
 }

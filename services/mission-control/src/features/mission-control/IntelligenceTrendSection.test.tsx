@@ -1,9 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { IntelligenceTelemetrySnapshot } from "../../types/ace";
 import { IntelligenceTrendSection } from "./IntelligenceTrendSection";
+
+const { exportHistory } = vi.hoisted(() => ({
+    exportHistory: vi.fn(
+        async () => new Blob(["history"]),
+    ),
+}));
+
+vi.mock("../../api/atlas", () => ({
+    exportIntelligenceTelemetryHistory: exportHistory,
+}));
 
 const snapshots: IntelligenceTelemetrySnapshot[] = [
     {
@@ -89,5 +99,49 @@ describe("IntelligenceTrendSection", () => {
         expect(
             screen.getByLabelText("200 ms, provider issue"),
         ).toBeInTheDocument();
+    });
+
+    it("exports history with the active filters", async () => {
+        const user = userEvent.setup();
+        const createObjectURL = vi.fn(() => "blob:history");
+        const revokeObjectURL = vi.fn();
+        Object.defineProperty(URL, "createObjectURL", {
+            value: createObjectURL,
+            configurable: true,
+        });
+        Object.defineProperty(URL, "revokeObjectURL", {
+            value: revokeObjectURL,
+            configurable: true,
+        });
+        vi.spyOn(
+            HTMLAnchorElement.prototype,
+            "click",
+        ).mockImplementation(() => undefined);
+        render(
+            <IntelligenceTrendSection snapshots={snapshots} />,
+        );
+
+        await user.selectOptions(
+            screen.getByLabelText("Provider"),
+            "qdrant",
+        );
+        await user.selectOptions(
+            screen.getByLabelText("Outcome"),
+            "timed_out",
+        );
+        await user.click(
+            screen.getByRole("button", {
+                name: "Export CSV",
+            }),
+        );
+
+        expect(exportHistory).toHaveBeenCalledWith("csv", {
+            providerId: "qdrant",
+            status: "timed_out",
+        });
+        expect(createObjectURL).toHaveBeenCalled();
+        expect(revokeObjectURL).toHaveBeenCalledWith(
+            "blob:history",
+        );
     });
 });

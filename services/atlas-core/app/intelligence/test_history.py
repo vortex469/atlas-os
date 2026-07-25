@@ -8,7 +8,10 @@ from app.intelligence.report import (
     IntelligenceTelemetry,
     ProviderCollectionTiming,
 )
-from app.routes.intelligence import intelligence_telemetry_history
+from app.routes.intelligence import (
+    export_intelligence_telemetry_history,
+    intelligence_telemetry_history,
+)
 
 
 def telemetry(duration_ms: float) -> IntelligenceTelemetry:
@@ -152,3 +155,39 @@ def test_history_rejects_inverted_date_range() -> None:
         )
 
     history.close()
+
+
+def test_history_exports_filtered_json_and_csv(
+    isolated_intelligence_history,
+) -> None:
+    failed = telemetry(20)
+    failed.providers[0].status = "failed"
+    failed.providers[0].provider_name = "=Unsafe"
+    isolated_intelligence_history.append(failed)
+
+    json_response = export_intelligence_telemetry_history(
+        format="json",
+        limit=10,
+        provider_id="frigate",
+        status="failed",
+        collected_from=None,
+        collected_to=None,
+    )
+    csv_response = export_intelligence_telemetry_history(
+        format="csv",
+        limit=10,
+        provider_id=None,
+        status=None,
+        collected_from=None,
+        collected_to=None,
+    )
+
+    assert json_response.media_type == "application/json"
+    assert b'"status": "failed"' in json_response.body
+    assert csv_response.media_type == "text/csv"
+    assert b"provider_duration_ms" in csv_response.body
+    assert b"'=Unsafe" in csv_response.body
+    assert (
+        csv_response.headers["content-disposition"]
+        == 'attachment; filename="atlas-intelligence-history.csv"'
+    )

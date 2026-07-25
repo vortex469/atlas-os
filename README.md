@@ -184,6 +184,10 @@ retention window, and available from
 The history endpoint accepts `provider_id`, `status`,
 `collected_from`, `collected_to`, and a bounded `limit`. Status accepts
 `completed`, `timed_out`, or `failed`.
+Filtered history can be exported from
+`/api/v1/intelligence/telemetry/history/export` with `format=json` or
+`format=csv`. CSV output uses one row per snapshot/provider and escapes
+spreadsheet formula prefixes.
 ACE situation reports include collection telemetry for operational
 visibility:
 
@@ -210,6 +214,8 @@ monotonic elapsed time and provider collection remains concurrent.
 Mission Control charts recent collection duration and highlights
 snapshots containing provider failures or time-outs. Provider and
 outcome controls filter the visible trend without another request.
+JSON and CSV download actions apply the active provider and outcome
+filters.
 
 ---
 

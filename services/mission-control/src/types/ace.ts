@@ -62,6 +62,16 @@ export type IntelligenceTelemetrySnapshot = {
     telemetry: IntelligenceTelemetry;
 };
 
+export type IntelligenceTelemetryExportFormat = "json" | "csv";
+
+export type IntelligenceTelemetryHistoryQuery = {
+    providerId?: string;
+    status?: "completed" | "timed_out" | "failed";
+    collectedFrom?: string;
+    collectedTo?: string;
+    limit?: number;
+};
+
 export type AceSummary = {
     score: number;
     status: string;

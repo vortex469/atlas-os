@@ -4,6 +4,10 @@ import { parse } from "yaml";
 import type { DeploymentAnalysisResponse } from "../features/forge/types";
 import type { DoctorReport } from "../types/doctor";
 import type {
+    IntelligenceTelemetryExportFormat,
+    IntelligenceTelemetryHistoryQuery,
+} from "../types/ace";
+import type {
     AtlasAPIError,
     ProviderAction,
     ProviderActionRequest,
@@ -98,6 +102,28 @@ export async function getProviderActionHistory(
 
 export async function getAtlasDoctorReport(): Promise<DoctorReport> {
     const response = await atlas.get<DoctorReport>("/ops/doctor");
+
+    return response.data;
+}
+
+export async function exportIntelligenceTelemetryHistory(
+    format: IntelligenceTelemetryExportFormat,
+    options: IntelligenceTelemetryHistoryQuery = {},
+): Promise<Blob> {
+    const response = await atlas.get<Blob>(
+        "/intelligence/telemetry/history/export",
+        {
+            params: {
+                format,
+                limit: options.limit ?? 500,
+                provider_id: options.providerId,
+                status: options.status,
+                collected_from: options.collectedFrom,
+                collected_to: options.collectedTo,
+            },
+            responseType: "blob",
+        },
+    );
 
     return response.data;
 }
