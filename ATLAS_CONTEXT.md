@@ -39,11 +39,11 @@ Implemented
 - Ollama
 - OPNsense
 - Frigate
+- Obsidian
 - Inventory-backed services
 
 Planned
 
-- Obsidian
 - Qdrant
 - n8n
 
@@ -154,7 +154,9 @@ Planned
 
 ✔ Provider Intelligence Timing Telemetry
 
-204 Atlas Core tests collected.
+✔ Obsidian Provider
+
+213 Atlas Core tests collected.
 
 19 Mission Control component tests passing.
 
@@ -166,7 +168,8 @@ Provider Intelligence
 
 Next work
 
-- Obsidian provider
+- Qdrant provider
+- Obsidian vault policies
 
 ---
 

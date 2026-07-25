@@ -250,6 +250,38 @@ findings do not reduce the Atlas health score.
 
 ---
 
+### Obsidian provider
+
+Mount the vault read-only into Atlas Core and add it to
+`inventory/services.yaml`:
+
+```yaml
+services:
+  obsidian:
+    name: Obsidian
+    vault_path: /vaults/atlas
+    critical: false
+    max_scan_files: 10000
+    stale_after_days: 30
+    exclude_directories:
+      - .obsidian
+      - .trash
+```
+
+The vault path must be absolute. Atlas reads filesystem metadata only;
+note contents and full local paths are not returned by the provider.
+The bounded scan reports Markdown note count, attachment count, newest
+note modification time, and whether the file limit truncated the scan.
+Symlinked files and directories are skipped to keep collection inside
+the configured vault.
+
+`stale_after_days` is optional. When configured, an old newest-note
+timestamp creates an informational finding without reducing health.
+Missing vaults, empty vaults, and truncated scans produce operational
+findings.
+
+---
+
 ## Forge
 
 Deployment analysis workspace.
@@ -334,7 +366,7 @@ Future capabilities:
 - Atlas API v1
 - Unified dashboard control plane
 - Standardized API error contracts
-- Proxmox, Docker, Home Assistant, Ollama, OPNsense, and Frigate
+- Proxmox, Docker, Home Assistant, Ollama, OPNsense, Frigate, and Obsidian
   integration
 - Ollama model lifecycle operations
 - Live Mission Control service health
