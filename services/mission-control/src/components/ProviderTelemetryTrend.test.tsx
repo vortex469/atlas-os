@@ -54,11 +54,21 @@ describe("ProviderTelemetryTrend", () => {
             <ProviderTelemetryTrend
                 providerId="qdrant"
                 snapshots={snapshots}
+                performancePolicy={{
+                    maximum_collection_duration_ms: 150,
+                    severity: "critical",
+                }}
             />,
         );
 
         expect(screen.getByText("150 ms")).toBeInTheDocument();
         expect(screen.getByText("Timed out")).toBeInTheDocument();
+        expect(
+            screen.getByText("Over threshold"),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByLabelText("Policy threshold 150 ms"),
+        ).toHaveStyle({ bottom: "75%" });
         expect(
             screen.getByRole("img", {
                 name: "Qdrant intelligence duration trend",

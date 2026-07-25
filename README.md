@@ -223,6 +223,9 @@ filters.
 Each Provider detail page also charts that provider's individual
 collection duration and outcomes, separating integration performance
 from the overall concurrent ACE collection time.
+When a performance policy exists, the chart includes a severity-colored
+threshold line and counts completed snapshots above policy separately
+from failed or timed-out collection.
 
 Successful provider collection can also be bounded by live policy:
 

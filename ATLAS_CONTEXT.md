@@ -193,6 +193,8 @@ Planned
 
 ✔ Provider Intelligence Performance Policies
 
+✔ Provider Performance Threshold Overlays
+
 257 Atlas Core tests collected.
 
 35 Mission Control component tests passing.
@@ -201,11 +203,11 @@ Planned
 
 # Current Sprint
 
-Provider Operations and Observability Complete
+Foundry Release Hardening
 
 Next work
 
-- Provider performance threshold overlays
+- Atlas Core full-suite hang remediation
 
 ---
 

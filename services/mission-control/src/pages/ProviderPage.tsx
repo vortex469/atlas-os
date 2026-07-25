@@ -183,6 +183,11 @@ export function ProviderPage() {
                     <ProviderTelemetryTrend
                         providerId={provider.id}
                         snapshots={telemetryHistory}
+                        performancePolicy={
+                            policies?.intelligence.providers[
+                                provider.id
+                            ] ?? null
+                        }
                     />
 
                     <section>

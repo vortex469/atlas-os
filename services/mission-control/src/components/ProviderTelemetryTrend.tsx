@@ -3,15 +3,23 @@ import type {
     IntelligenceTelemetrySnapshot,
     ProviderCollectionTiming,
 } from "../types/ace";
+import type { PolicySeverity } from "../types/policies";
+
+type PerformancePolicy = {
+    maximum_collection_duration_ms: number;
+    severity: PolicySeverity;
+};
 
 type Props = {
     providerId: string;
     snapshots: IntelligenceTelemetrySnapshot[];
+    performancePolicy?: PerformancePolicy | null;
 };
 
 export function ProviderTelemetryTrend({
     providerId,
     snapshots,
+    performancePolicy = null,
 }: Props) {
     const points = snapshots
         .flatMap((snapshot) => {
@@ -40,7 +48,10 @@ export function ProviderTelemetryTrend({
                     this provider yet.
                 </div>
             ) : (
-                <TrendChart points={points} />
+                <TrendChart
+                    points={points}
+                    performancePolicy={performancePolicy}
+                />
             )}
         </section>
     );
@@ -52,10 +63,20 @@ type Point = {
     timing: ProviderCollectionTiming;
 };
 
-function TrendChart({ points }: { points: Point[] }) {
-    const maximum = Math.max(
+function TrendChart({
+    points,
+    performancePolicy,
+}: {
+    points: Point[];
+    performancePolicy: PerformancePolicy | null;
+}) {
+    const maximumDuration = Math.max(
         ...points.map(({ timing }) => timing.duration_ms),
         1,
+    );
+    const scaleMaximum = Math.max(
+        maximumDuration,
+        performancePolicy?.maximum_collection_duration_ms ?? 0,
     );
     const average =
         points.reduce(
@@ -66,6 +87,15 @@ function TrendChart({ points }: { points: Point[] }) {
         ({ timing }) => timing.status !== "completed",
     ).length;
     const latest = points[points.length - 1];
+    const overThreshold =
+        performancePolicy === null
+            ? 0
+            : points.filter(
+                  ({ timing }) =>
+                      timing.status === "completed" &&
+                      timing.duration_ms >
+                          performancePolicy.maximum_collection_duration_ms,
+              ).length;
 
     return (
         <div className="rounded-lg border border-slate-800 bg-slate-900 p-5">
@@ -73,9 +103,21 @@ function TrendChart({ points }: { points: Point[] }) {
                 <Metric label="Snapshots" value={String(points.length)} />
                 <Metric label="Average" value={duration(average)} />
                 <Metric
-                    label="Issues"
-                    value={String(issues)}
-                    warning={issues > 0}
+                    label={
+                        performancePolicy
+                            ? "Over threshold"
+                            : "Issues"
+                    }
+                    value={String(
+                        performancePolicy
+                            ? overThreshold
+                            : issues,
+                    )}
+                    warning={
+                        performancePolicy
+                            ? overThreshold > 0
+                            : issues > 0
+                    }
                 />
                 <Metric
                     label="Latest"
@@ -83,35 +125,60 @@ function TrendChart({ points }: { points: Point[] }) {
                     warning={latest.timing.status !== "completed"}
                 />
             </div>
-            <div
-                role="img"
-                aria-label={`${latest.timing.provider_name} intelligence duration trend`}
-                className="mt-6 flex h-32 items-end gap-1 border-b border-l border-slate-700 px-2 pt-2"
-            >
-                {points.map((point) => {
-                    const unhealthy =
-                        point.timing.status !== "completed";
-                    return (
-                        <div
-                            key={point.id}
-                            title={`${new Date(point.collectedAt).toLocaleString()} · ${duration(point.timing.duration_ms)} · ${status(point.timing.status)}`}
-                            aria-label={`${duration(point.timing.duration_ms)}, ${status(point.timing.status)}`}
-                            className={`min-w-1 flex-1 rounded-t ${
-                                unhealthy
-                                    ? "bg-amber-400/80"
-                                    : "bg-emerald-400/70"
-                            }`}
-                            style={{
-                                height: `${Math.max(
-                                    (point.timing.duration_ms /
-                                        maximum) *
-                                        100,
-                                    3,
-                                )}%`,
-                            }}
-                        />
-                    );
-                })}
+            <div className="relative mt-6">
+                {performancePolicy && (
+                    <div
+                        aria-label={`Policy threshold ${duration(performancePolicy.maximum_collection_duration_ms)}`}
+                        className={`absolute right-0 left-0 z-10 border-t border-dashed ${
+                            performancePolicy.severity === "critical"
+                                ? "border-red-400"
+                                : performancePolicy.severity ===
+                                    "warning"
+                                  ? "border-amber-400"
+                                  : "border-blue-400"
+                        }`}
+                        style={{
+                            bottom: `${(performancePolicy.maximum_collection_duration_ms / scaleMaximum) * 100}%`,
+                        }}
+                    >
+                        <span className="absolute right-0 -top-5 text-[10px] text-slate-400">
+                            {duration(
+                                performancePolicy.maximum_collection_duration_ms,
+                            )}{" "}
+                            policy
+                        </span>
+                    </div>
+                )}
+                <div
+                    role="img"
+                    aria-label={`${latest.timing.provider_name} intelligence duration trend`}
+                    className="flex h-32 items-end gap-1 border-b border-l border-slate-700 px-2 pt-2"
+                >
+                    {points.map((point) => {
+                        const unhealthy =
+                            point.timing.status !== "completed";
+                        return (
+                            <div
+                                key={point.id}
+                                title={`${new Date(point.collectedAt).toLocaleString()} · ${duration(point.timing.duration_ms)} · ${status(point.timing.status)}`}
+                                aria-label={`${duration(point.timing.duration_ms)}, ${status(point.timing.status)}`}
+                                className={`min-w-1 flex-1 rounded-t ${
+                                    unhealthy
+                                        ? "bg-amber-400/80"
+                                        : "bg-emerald-400/70"
+                                }`}
+                                style={{
+                                    height: `${Math.max(
+                                        (point.timing.duration_ms /
+                                            scaleMaximum) *
+                                            100,
+                                        3,
+                                    )}%`,
+                                }}
+                            />
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
