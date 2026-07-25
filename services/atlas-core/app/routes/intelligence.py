@@ -9,7 +9,12 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import Response
 
 from app.intelligence import history as history_module
-from app.intelligence.report import IntelligenceTelemetrySnapshot
+from app.intelligence.report import (
+    IntelligenceTelemetryPruneRequest,
+    IntelligenceTelemetryPruneResult,
+    IntelligenceTelemetryRetentionSummary,
+    IntelligenceTelemetrySnapshot,
+)
 from app.models.contracts import AceSummary, APIError
 from app.services.intelligence_service import get_intelligence_summary
 
@@ -155,6 +160,37 @@ def _csv_safe(value: str) -> str:
     if value.startswith(("=", "+", "-", "@")):
         return f"'{value}"
     return value
+
+
+@router.get(
+    "/telemetry/history/retention",
+    response_model=IntelligenceTelemetryRetentionSummary,
+)
+def intelligence_telemetry_retention() -> (
+    IntelligenceTelemetryRetentionSummary
+):
+    return history_module.intelligence_telemetry_history.summary()
+
+
+@router.post(
+    "/telemetry/history/prune",
+    response_model=IntelligenceTelemetryPruneResult,
+    responses={409: {"description": "Confirmation required"}},
+)
+def prune_intelligence_telemetry_history(
+    request: IntelligenceTelemetryPruneRequest,
+) -> IntelligenceTelemetryPruneResult:
+    if not request.confirmed:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Pruning intelligence telemetry history requires "
+                "confirmation."
+            ),
+        )
+    return (
+        history_module.intelligence_telemetry_history.prune_expired()
+    )
 
 
 @router.get(

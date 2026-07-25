@@ -5,14 +5,20 @@ import { describe, expect, it, vi } from "vitest";
 import type { IntelligenceTelemetrySnapshot } from "../../types/ace";
 import { IntelligenceTrendSection } from "./IntelligenceTrendSection";
 
-const { exportHistory } = vi.hoisted(() => ({
+const { exportHistory, pruneHistory } = vi.hoisted(() => ({
     exportHistory: vi.fn(
         async () => new Blob(["history"]),
     ),
+    pruneHistory: vi.fn(async () => ({
+        deleted_entries: 2,
+        remaining_entries: 3,
+        retention_days: 30,
+    })),
 }));
 
 vi.mock("../../api/atlas", () => ({
     exportIntelligenceTelemetryHistory: exportHistory,
+    pruneIntelligenceTelemetryHistory: pruneHistory,
 }));
 
 const snapshots: IntelligenceTelemetrySnapshot[] = [
@@ -143,5 +149,42 @@ describe("IntelligenceTrendSection", () => {
         expect(revokeObjectURL).toHaveBeenCalledWith(
             "blob:history",
         );
+    });
+
+    it("shows retention and confirms manual pruning", async () => {
+        const user = userEvent.setup();
+        vi.spyOn(window, "confirm").mockReturnValue(true);
+        const onPruned = vi.fn(async () => undefined);
+        render(
+            <IntelligenceTrendSection
+                snapshots={snapshots}
+                retention={{
+                    entry_count: 5,
+                    max_entries: 10000,
+                    retention_days: 30,
+                    oldest_snapshot_at: null,
+                    newest_snapshot_at: null,
+                }}
+                onPruned={onPruned}
+            />,
+        );
+
+        expect(
+            screen.getByText(/5 stored snapshot/),
+        ).toBeInTheDocument();
+        await user.click(
+            screen.getByRole("button", {
+                name: "Prune now",
+            }),
+        );
+
+        expect(window.confirm).toHaveBeenCalled();
+        expect(pruneHistory).toHaveBeenCalled();
+        expect(onPruned).toHaveBeenCalled();
+        expect(
+            screen.getByText(
+                "Pruned 2 snapshot(s); 3 remain.",
+            ),
+        ).toBeInTheDocument();
     });
 });

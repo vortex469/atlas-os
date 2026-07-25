@@ -11,6 +11,8 @@ from uuid import uuid4
 from app.config.settings import settings
 from app.intelligence.report import (
     IntelligenceTelemetry,
+    IntelligenceTelemetryPruneResult,
+    IntelligenceTelemetryRetentionSummary,
     IntelligenceTelemetrySnapshot,
 )
 
@@ -238,6 +240,63 @@ class IntelligenceTelemetryHistory:
             )
             """,
             (self._max_entries,),
+        )
+
+    def summary(self) -> IntelligenceTelemetryRetentionSummary:
+        with self._lock:
+            row = self._connection.execute(
+                """
+                SELECT
+                    COUNT(*) AS entry_count,
+                    MIN(collected_at) AS oldest_snapshot_at,
+                    MAX(collected_at) AS newest_snapshot_at
+                FROM intelligence_telemetry
+                """
+            ).fetchone()
+
+        return IntelligenceTelemetryRetentionSummary(
+            entry_count=int(row["entry_count"]),
+            max_entries=self._max_entries,
+            retention_days=self._retention_days,
+            oldest_snapshot_at=(
+                datetime.fromisoformat(row["oldest_snapshot_at"])
+                if row["oldest_snapshot_at"]
+                else None
+            ),
+            newest_snapshot_at=(
+                datetime.fromisoformat(row["newest_snapshot_at"])
+                if row["newest_snapshot_at"]
+                else None
+            ),
+        )
+
+    def prune_expired(
+        self,
+        *,
+        now: datetime | None = None,
+    ) -> IntelligenceTelemetryPruneResult:
+        timestamp = now or datetime.now(UTC)
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
+        timestamp = timestamp.astimezone(UTC)
+
+        with self._lock, self._connection:
+            before = int(
+                self._connection.execute(
+                    "SELECT COUNT(*) FROM intelligence_telemetry"
+                ).fetchone()[0]
+            )
+            self._prune_locked(timestamp)
+            remaining = int(
+                self._connection.execute(
+                    "SELECT COUNT(*) FROM intelligence_telemetry"
+                ).fetchone()[0]
+            )
+
+        return IntelligenceTelemetryPruneResult(
+            deleted_entries=before - remaining,
+            remaining_entries=remaining,
+            retention_days=self._retention_days,
         )
 
     def close(self) -> None:

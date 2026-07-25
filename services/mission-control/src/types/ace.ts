@@ -72,6 +72,20 @@ export type IntelligenceTelemetryHistoryQuery = {
     limit?: number;
 };
 
+export type IntelligenceTelemetryRetentionSummary = {
+    entry_count: number;
+    max_entries: number;
+    retention_days: number;
+    oldest_snapshot_at: string | null;
+    newest_snapshot_at: string | null;
+};
+
+export type IntelligenceTelemetryPruneResult = {
+    deleted_entries: number;
+    remaining_entries: number;
+    retention_days: number;
+};
+
 export type AceSummary = {
     score: number;
     status: string;

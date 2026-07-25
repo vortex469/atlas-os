@@ -6,6 +6,8 @@ import type { DoctorReport } from "../types/doctor";
 import type {
     IntelligenceTelemetryExportFormat,
     IntelligenceTelemetryHistoryQuery,
+    IntelligenceTelemetryPruneResult,
+    IntelligenceTelemetryRetentionSummary,
 } from "../types/ace";
 import type {
     AtlasAPIError,
@@ -125,6 +127,23 @@ export async function exportIntelligenceTelemetryHistory(
         },
     );
 
+    return response.data;
+}
+
+export async function getIntelligenceTelemetryRetention(): Promise<IntelligenceTelemetryRetentionSummary> {
+    const response =
+        await atlas.get<IntelligenceTelemetryRetentionSummary>(
+            "/intelligence/telemetry/history/retention",
+        );
+    return response.data;
+}
+
+export async function pruneIntelligenceTelemetryHistory(): Promise<IntelligenceTelemetryPruneResult> {
+    const response =
+        await atlas.post<IntelligenceTelemetryPruneResult>(
+            "/intelligence/telemetry/history/prune",
+            { confirmed: true },
+        );
     return response.data;
 }
 

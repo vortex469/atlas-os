@@ -47,6 +47,24 @@ class IntelligenceTelemetrySnapshot(BaseModel):
     telemetry: IntelligenceTelemetry
 
 
+class IntelligenceTelemetryRetentionSummary(BaseModel):
+    entry_count: int = Field(ge=0)
+    max_entries: int = Field(ge=1)
+    retention_days: int = Field(ge=1)
+    oldest_snapshot_at: datetime | None = None
+    newest_snapshot_at: datetime | None = None
+
+
+class IntelligenceTelemetryPruneRequest(BaseModel):
+    confirmed: bool = False
+
+
+class IntelligenceTelemetryPruneResult(BaseModel):
+    deleted_entries: int = Field(ge=0)
+    remaining_entries: int = Field(ge=0)
+    retention_days: int = Field(ge=1)
+
+
 class SituationReport(BaseModel):
     score: int
     status: str

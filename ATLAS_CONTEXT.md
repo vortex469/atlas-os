@@ -185,9 +185,11 @@ Planned
 
 ✔ Provider Telemetry History Export
 
-254 Atlas Core tests collected.
+✔ Provider Telemetry Retention Administration
 
-32 Mission Control component tests passing.
+255 Atlas Core tests collected.
+
+33 Mission Control component tests passing.
 
 ---
 
@@ -197,7 +199,7 @@ Provider Operations and Observability Complete
 
 Next work
 
-- Provider telemetry retention administration
+- Provider telemetry retention detail view
 
 ---
 

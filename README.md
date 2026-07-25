@@ -188,6 +188,10 @@ Filtered history can be exported from
 `/api/v1/intelligence/telemetry/history/export` with `format=json` or
 `format=csv`. CSV output uses one row per snapshot/provider and escapes
 spreadsheet formula prefixes.
+Retention status is available at
+`/api/v1/intelligence/telemetry/history/retention`. A confirmed
+`POST /api/v1/intelligence/telemetry/history/prune` removes snapshots
+outside the configured retention and entry limits.
 ACE situation reports include collection telemetry for operational
 visibility:
 
@@ -216,6 +220,9 @@ snapshots containing provider failures or time-outs. Provider and
 outcome controls filter the visible trend without another request.
 JSON and CSV download actions apply the active provider and outcome
 filters.
+Mission Control also displays stored entry count, retention days, and
+the entry cap. Manual pruning requires confirmation in both the UI and
+the Core API.
 
 ---
 

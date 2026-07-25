@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 
 from app.intelligence.history import IntelligenceTelemetryHistory
 from app.intelligence.report import (
@@ -11,7 +12,10 @@ from app.intelligence.report import (
 from app.routes.intelligence import (
     export_intelligence_telemetry_history,
     intelligence_telemetry_history,
+    intelligence_telemetry_retention,
+    prune_intelligence_telemetry_history,
 )
+from app.intelligence.report import IntelligenceTelemetryPruneRequest
 
 
 def telemetry(duration_ms: float) -> IntelligenceTelemetry:
@@ -191,3 +195,29 @@ def test_history_exports_filtered_json_and_csv(
         csv_response.headers["content-disposition"]
         == 'attachment; filename="atlas-intelligence-history.csv"'
     )
+
+
+def test_history_summary_and_confirmed_prune(
+    isolated_intelligence_history,
+) -> None:
+    now = datetime.now(UTC)
+    isolated_intelligence_history.append(
+        telemetry(10),
+        collected_at=now,
+    )
+
+    summary = intelligence_telemetry_retention()
+    assert summary.entry_count == 1
+    assert summary.oldest_snapshot_at == now
+
+    with pytest.raises(HTTPException) as unconfirmed:
+        prune_intelligence_telemetry_history(
+            IntelligenceTelemetryPruneRequest(),
+        )
+    assert unconfirmed.value.status_code == 409
+
+    result = isolated_intelligence_history.prune_expired(
+        now=now + timedelta(days=31),
+    )
+    assert result.deleted_entries == 1
+    assert result.remaining_entries == 0

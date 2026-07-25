@@ -18,6 +18,7 @@ export function MissionControl() {
         policies,
         policyHealth,
         telemetryHistory,
+        telemetryRetention,
         lastUpdated,
         error,
         isLoading,
@@ -138,6 +139,8 @@ export function MissionControl() {
 
                 <IntelligenceTrendSection
                     snapshots={telemetryHistory}
+                    retention={telemetryRetention}
+                    onPruned={refresh}
                 />
 
                 {policyHealth && (

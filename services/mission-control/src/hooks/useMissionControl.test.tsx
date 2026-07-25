@@ -14,6 +14,7 @@ import {
 import { atlas } from "../api/atlas";
 import type { AceSummary } from "../types/ace";
 import type { IntelligenceTelemetrySnapshot } from "../types/ace";
+import type { IntelligenceTelemetryRetentionSummary } from "../types/ace";
 import type { AtlasHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import type {
@@ -91,6 +92,14 @@ const telemetryHistory: IntelligenceTelemetrySnapshot[] = [
     },
 ];
 
+const telemetryRetention: IntelligenceTelemetryRetentionSummary = {
+    entry_count: 1,
+    max_entries: 10000,
+    retention_days: 30,
+    oldest_snapshot_at: "2026-07-25T19:00:00Z",
+    newest_snapshot_at: "2026-07-25T19:00:00Z",
+};
+
 function provider(
     id: string,
     name: string,
@@ -144,6 +153,12 @@ describe("useMissionControl", () => {
                 if (url === "/intelligence/telemetry/history") {
                     return { data: telemetryHistory };
                 }
+                if (
+                    url ===
+                    "/intelligence/telemetry/history/retention"
+                ) {
+                    return { data: telemetryRetention };
+                }
 
                 return {
                     data: [
@@ -178,11 +193,14 @@ describe("useMissionControl", () => {
         expect(result.current.telemetryHistory).toEqual(
             telemetryHistory,
         );
+        expect(result.current.telemetryRetention).toEqual(
+            telemetryRetention,
+        );
         expect(
             result.current.providers.map(({ id }) => id),
         ).toEqual(["docker", "ollama"]);
         expect(result.current.lastUpdated).toBeInstanceOf(Date);
-        expect(get).toHaveBeenCalledTimes(6);
+        expect(get).toHaveBeenCalledTimes(7);
     });
 
     it("preserves current data when a manual refresh fails", async () => {
@@ -203,6 +221,12 @@ describe("useMissionControl", () => {
                 }
                 if (url === "/intelligence/telemetry/history") {
                     return { data: telemetryHistory };
+                }
+                if (
+                    url ===
+                    "/intelligence/telemetry/history/retention"
+                ) {
+                    return { data: telemetryRetention };
                 }
 
                 return { data: [] };
@@ -229,7 +253,7 @@ describe("useMissionControl", () => {
             "Mission Control could not retrieve the latest state from Atlas Core.",
         );
 
-        expect(get).toHaveBeenCalledTimes(12);
+        expect(get).toHaveBeenCalledTimes(14);
     });
 
     it("keeps dashboard data available when policy reload fails", async () => {
@@ -265,6 +289,12 @@ describe("useMissionControl", () => {
             }
             if (url === "/intelligence/telemetry/history") {
                 return { data: [] };
+            }
+            if (
+                url ===
+                "/intelligence/telemetry/history/retention"
+            ) {
+                return { data: telemetryRetention };
             }
 
             throw new Error("Invalid policy file");

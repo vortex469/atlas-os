@@ -1,18 +1,26 @@
 import { useState } from "react";
 
-import { exportIntelligenceTelemetryHistory } from "../../api/atlas";
+import {
+    exportIntelligenceTelemetryHistory,
+    pruneIntelligenceTelemetryHistory,
+} from "../../api/atlas";
 import { SectionHeader } from "../../components/SectionHeader";
 import type {
     IntelligenceTelemetryExportFormat,
+    IntelligenceTelemetryRetentionSummary,
     IntelligenceTelemetrySnapshot,
 } from "../../types/ace";
 
 type IntelligenceTrendSectionProps = {
     snapshots: IntelligenceTelemetrySnapshot[];
+    retention?: IntelligenceTelemetryRetentionSummary | null;
+    onPruned?: () => Promise<void>;
 };
 
 export function IntelligenceTrendSection({
     snapshots,
+    retention = null,
+    onPruned,
 }: IntelligenceTrendSectionProps) {
     const [providerFilter, setProviderFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -20,6 +28,10 @@ export function IntelligenceTrendSection({
     const [exportError, setExportError] = useState<string | null>(
         null,
     );
+    const [isPruning, setIsPruning] = useState(false);
+    const [operationMessage, setOperationMessage] = useState<
+        string | null
+    >(null);
 
     async function exportHistory(
         format: IntelligenceTelemetryExportFormat,
@@ -58,6 +70,33 @@ export function IntelligenceTrendSection({
             );
         } finally {
             setIsExporting(false);
+        }
+    }
+
+    async function pruneHistory() {
+        if (
+            !window.confirm(
+                "Prune telemetry snapshots outside the configured retention policy?",
+            )
+        ) {
+            return;
+        }
+
+        setIsPruning(true);
+        setExportError(null);
+        try {
+            const result =
+                await pruneIntelligenceTelemetryHistory();
+            setOperationMessage(
+                `Pruned ${result.deleted_entries} snapshot(s); ${result.remaining_entries} remain.`,
+            );
+            await onPruned?.();
+        } catch {
+            setExportError(
+                "Mission Control could not prune telemetry history.",
+            );
+        } finally {
+            setIsPruning(false);
         }
     }
 
@@ -156,12 +195,41 @@ export function IntelligenceTrendSection({
                 }
             />
 
+            {retention && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900 p-4">
+                    <p className="text-sm text-slate-400">
+                        {retention.entry_count} stored snapshot(s)
+                        {" · "}
+                        {retention.retention_days}-day retention
+                        {" · "}
+                        {retention.max_entries} entry limit
+                    </p>
+                    <button
+                        type="button"
+                        disabled={isPruning}
+                        onClick={() => void pruneHistory()}
+                        className="rounded border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50"
+                    >
+                        {isPruning ? "Pruning..." : "Prune now"}
+                    </button>
+                </div>
+            )}
+
             {exportError && (
                 <p
                     role="alert"
                     className="mb-4 text-sm text-red-300"
                 >
                     {exportError}
+                </p>
+            )}
+
+            {operationMessage && (
+                <p
+                    role="status"
+                    className="mb-4 text-sm text-emerald-300"
+                >
+                    {operationMessage}
                 </p>
             )}
 
