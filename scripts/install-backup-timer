@@ -23,6 +23,11 @@ systemd-analyze verify \
     "$SYSTEMD_DIRECTORY/atlas-data-backup.service" \
     "$SYSTEMD_DIRECTORY/atlas-data-backup.timer"
 
+if [[ ! -x "$ATLAS_ROOT/scripts/atlas-data-replicate" ]]; then
+    echo "Replication script is not executable: $ATLAS_ROOT/scripts/atlas-data-replicate" >&2
+    exit 1
+fi
+
 install -d -m 0750 "$ATLAS_CONFIG_DIRECTORY"
 if [[ ! -e "$ATLAS_CONFIG_DIRECTORY/backup.env" ]]; then
     install \

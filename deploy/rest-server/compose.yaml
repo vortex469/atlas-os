@@ -1,0 +1,43 @@
+services:
+  rest-server:
+    image: restic/rest-server@sha256:d2aff06f47eb38637dff580c3e6bce4af98f386c396a25d32eb6727ec96214a5
+    restart: unless-stopped
+    user: "${REST_SERVER_UID:-10001}:${REST_SERVER_GID:-10001}"
+    environment:
+      DATA_DIRECTORY: /data
+      PASSWORD_FILE: /auth/htpasswd
+      OPTIONS: >-
+        --append-only
+        --private-repos
+        --tls
+        --tls-cert /tls/server.crt
+        --tls-key /tls/server.key
+        --tls-min-ver 1.2
+        --listen :8000
+        --log -
+    ports:
+      - "${REST_SERVER_BIND:-127.0.0.1}:${REST_SERVER_PORT:-8000}:8000"
+    volumes:
+      - type: bind
+        source: ${REST_SERVER_DATA_PATH:?set REST_SERVER_DATA_PATH}
+        target: /data
+      - type: bind
+        source: ${REST_SERVER_HTPASSWD_FILE:?set REST_SERVER_HTPASSWD_FILE}
+        target: /auth/htpasswd
+        read_only: true
+      - type: bind
+        source: ${REST_SERVER_TLS_CERT_FILE:?set REST_SERVER_TLS_CERT_FILE}
+        target: /tls/server.crt
+        read_only: true
+      - type: bind
+        source: ${REST_SERVER_TLS_KEY_FILE:?set REST_SERVER_TLS_KEY_FILE}
+        target: /tls/server.key
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128

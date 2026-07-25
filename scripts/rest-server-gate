@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
+COMPOSE_FILE="$ATLAS_ROOT/deploy/rest-server/compose.yaml"
+RESTIC_IMAGE="restic/restic@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510"
+GATE_DIRECTORY="$(mktemp -d /tmp/atlas-rest-server-gate.XXXXXX)"
+GATE_PROJECT="atlas-rest-server-gate-$$"
+
+cleanup() {
+    docker compose \
+        --project-name "$GATE_PROJECT" \
+        --file "$COMPOSE_FILE" \
+        down \
+        --volumes \
+        --remove-orphans \
+        >/dev/null 2>&1 || true
+    rm -rf -- "$GATE_DIRECTORY"
+}
+trap cleanup EXIT
+
+for executable in base64 docker openssl python3; do
+    if ! command -v "$executable" >/dev/null 2>&1; then
+        echo "Required executable not found: $executable" >&2
+        exit 127
+    fi
+done
+
+mkdir -p \
+    "$GATE_DIRECTORY/backups" \
+    "$GATE_DIRECTORY/data" \
+    "$GATE_DIRECTORY/restore" \
+    "$GATE_DIRECTORY/source"
+
+python3 - "$GATE_DIRECTORY/source" <<'PY'
+import sqlite3
+import sys
+from pathlib import Path
+
+directory = Path(sys.argv[1])
+for filename in ("action_history.db", "provider_intelligence.db"):
+    connection = sqlite3.connect(directory / filename)
+    connection.execute("CREATE TABLE records (value TEXT NOT NULL)")
+    connection.execute("INSERT INTO records VALUES ('remote recovery gate')")
+    connection.commit()
+    connection.close()
+PY
+python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" backup \
+    "$GATE_DIRECTORY/source" \
+    "$GATE_DIRECTORY/backups/atlas-data-20000101T000000Z"
+
+openssl req \
+    -x509 \
+    -newkey rsa:2048 \
+    -nodes \
+    -days 1 \
+    -subj '/CN=127.0.0.1' \
+    -addext 'subjectAltName=IP:127.0.0.1' \
+    -keyout "$GATE_DIRECTORY/server.key" \
+    -out "$GATE_DIRECTORY/server.crt" \
+    >/dev/null 2>&1
+password_hash="$(
+    printf '%s' 'transport-gate-password' \
+        | openssl dgst -sha1 -binary \
+        | base64
+)"
+printf 'atlas:{SHA}%s\n' "$password_hash" >"$GATE_DIRECTORY/htpasswd"
+printf '%s\n' \
+    'RESTIC_REPOSITORY=rest:https://127.0.0.1:8000/atlas' \
+    'RESTIC_REST_USERNAME=atlas' \
+    'RESTIC_REST_PASSWORD=transport-gate-password' \
+    'RESTIC_PASSWORD=repository-gate-password' \
+    >"$GATE_DIRECTORY/restic.env"
+
+gate_uid="$(id -u)"
+gate_gid="$(id -g)"
+if [[ "$gate_uid" = "0" ]]; then
+    gate_uid=10001
+    gate_gid=10001
+    # Rootless/user-namespaced CI may not permit chown to an unmapped ID.
+    # These relaxed modes apply only inside the disposable 0700 temp tree.
+    chmod 777 "$GATE_DIRECTORY/data"
+    chmod 644 \
+        "$GATE_DIRECTORY/server.key" \
+        "$GATE_DIRECTORY/htpasswd"
+else
+    chmod 600 \
+        "$GATE_DIRECTORY/server.key" \
+        "$GATE_DIRECTORY/htpasswd"
+fi
+chmod 600 "$GATE_DIRECTORY/restic.env"
+chmod 644 "$GATE_DIRECTORY/server.crt"
+
+export REST_SERVER_BIND=127.0.0.1
+export REST_SERVER_PORT=8000
+export REST_SERVER_DATA_PATH="$GATE_DIRECTORY/data"
+export REST_SERVER_HTPASSWD_FILE="$GATE_DIRECTORY/htpasswd"
+export REST_SERVER_TLS_CERT_FILE="$GATE_DIRECTORY/server.crt"
+export REST_SERVER_TLS_KEY_FILE="$GATE_DIRECTORY/server.key"
+export REST_SERVER_UID="$gate_uid"
+export REST_SERVER_GID="$gate_gid"
+
+docker compose \
+    --project-name "$GATE_PROJECT" \
+    --file "$COMPOSE_FILE" \
+    config \
+    --quiet
+docker compose \
+    --project-name "$GATE_PROJECT" \
+    --file "$COMPOSE_FILE" \
+    up \
+    --detach \
+    --wait \
+    --wait-timeout 30
+
+server_container="$(
+    docker compose \
+        --project-name "$GATE_PROJECT" \
+        --file "$COMPOSE_FILE" \
+        ps \
+        --quiet \
+        rest-server
+)"
+test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$server_container")" = "true"
+test "$(docker inspect --format '{{json .HostConfig.CapDrop}}' "$server_container")" = '["ALL"]'
+
+ATLAS_RESTIC_ENV_FILE="$GATE_DIRECTORY/restic.env" \
+ATLAS_RESTIC_CA_FILE="$GATE_DIRECTORY/server.crt" \
+ATLAS_RESTIC_NETWORK=host \
+    "$SCRIPT_DIRECTORY/atlas-data-replicate" "$GATE_DIRECTORY/backups" init
+ATLAS_RESTIC_ENV_FILE="$GATE_DIRECTORY/restic.env" \
+ATLAS_RESTIC_CA_FILE="$GATE_DIRECTORY/server.crt" \
+ATLAS_RESTIC_NETWORK=host \
+    "$SCRIPT_DIRECTORY/atlas-data-replicate" "$GATE_DIRECTORY/backups"
+
+docker run \
+    --rm \
+    --network host \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --env-file "$GATE_DIRECTORY/restic.env" \
+    --env RESTIC_CACERT=/certs/ca.pem \
+    --mount "type=bind,src=$GATE_DIRECTORY/server.crt,dst=/certs/ca.pem,readonly" \
+    --mount "type=bind,src=$GATE_DIRECTORY/restore,dst=/restore" \
+    --tmpfs /tmp:size=32m,mode=1777 \
+    "$RESTIC_IMAGE" \
+    --no-cache \
+    restore latest --target /restore
+
+cmp \
+    "$GATE_DIRECTORY/backups/atlas-data-20000101T000000Z/action_history.db" \
+    "$GATE_DIRECTORY/restore/atlas-backup/action_history.db"
+
+echo "Rest Server replication and recovery gate passed"

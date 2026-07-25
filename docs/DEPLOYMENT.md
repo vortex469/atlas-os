@@ -240,9 +240,94 @@ journalctl -u atlas-data-backup.service
 Backups on `/opt/atlas/backups` share the same ZFS storage as the live
 volume on a default installation. They protect against application-level
 damage and accidental database loss, but not host or storage-pool loss.
-For disaster recovery, set `ATLAS_BACKUP_ROOT` in
-`/etc/atlas/backup.env` to a mounted destination backed by separate or
-remote storage.
+For disaster recovery, replicate them to a physically separate host.
+
+### Replicate to Rest Server
+
+Atlas includes a pinned Restic client and a hardened Rest Server Compose
+deployment. Restic encrypts backup contents before upload. The server
+requires authenticated TLS, isolates each username to its own path, and
+runs append-only so credentials stolen from the Atlas host cannot modify
+or delete existing snapshots.
+
+Run Rest Server on a different Docker host with storage that does not
+share Atlas's failure domain. On that host:
+
+```bash
+sudo install -d -o 10001 -g 10001 -m 0700 \
+  /srv/atlas-restic \
+  /etc/atlas-rest-server
+sudo install -o 10001 -g 10001 -m 0644 server.crt \
+  /etc/atlas-rest-server/server.crt
+sudo install -o 10001 -g 10001 -m 0600 server.key \
+  /etc/atlas-rest-server/server.key
+
+sudo htpasswd -B -c /etc/atlas-rest-server/htpasswd atlas
+sudo chown 10001:10001 /etc/atlas-rest-server/htpasswd
+sudo chmod 600 /etc/atlas-rest-server/htpasswd
+
+cp deploy/rest-server/server.env.example deploy/rest-server/server.env
+editor deploy/rest-server/server.env
+docker compose \
+  --env-file deploy/rest-server/server.env \
+  -f deploy/rest-server/compose.yaml \
+  up -d
+```
+
+Use a certificate issued by a CA trusted by Atlas when possible. Bind only
+to the backup host's private or VPN address and restrict port 8000 at its
+firewall to the Atlas host. The `htpasswd` utility is provided by
+`apache2-utils` on Debian/Ubuntu and `httpd-tools` on Fedora/RHEL.
+
+On the Atlas host, create two independent random passwords: the transport
+password stored in the server's htpasswd file and a repository encryption
+password. Copy and edit the client environment:
+
+```bash
+sudo install -d -m 0750 /etc/atlas
+sudo install -m 0600 \
+  deploy/systemd/restic.env.example \
+  /etc/atlas/restic.env
+sudo editor /etc/atlas/restic.env
+```
+
+With `--private-repos`, the path in `RESTIC_REPOSITORY` must start with
+the authenticated username. For username `atlas`, use a URL ending in
+`/atlas` or `/atlas/<subrepository>`. If an internal CA is not in the
+client's system trust store, install its public CA certificate:
+
+```bash
+sudo install -m 0644 internal-ca.pem /etc/atlas/restic-ca.pem
+```
+
+Initialize the encrypted repository exactly once, then perform and inspect
+the first replication:
+
+```bash
+sudo ./scripts/atlas-data-replicate /opt/atlas/backups init
+sudo ./scripts/atlas-data-replicate /opt/atlas/backups
+journalctl -u atlas-data-backup.service
+```
+
+After `/etc/atlas/restic.env` exists, the regular backup service verifies
+and uploads its newest local backup on every run. Without that file, it
+logs a skip and local backups continue normally.
+
+Append-only mode deliberately prevents client-side `forget` and `prune`.
+Retention and repository maintenance must be performed directly on the
+trusted Rest Server host during a controlled maintenance window. Keep a
+separate offline copy of the repository password: losing it makes all
+snapshots unrecoverable.
+
+Run the isolated end-to-end recovery test with:
+
+```bash
+./scripts/rest-server-gate
+```
+
+It starts a temporary TLS Rest Server, initializes a repository, uploads a
+verified Atlas backup, checks the repository, restores the latest
+snapshot, compares the restored database, and removes all test data.
 
 ## Security notes
 
