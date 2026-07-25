@@ -9,3 +9,4 @@ backups/*
 !backups/.gitkeep
 data/*
 !data/.gitkeep
+secrets/

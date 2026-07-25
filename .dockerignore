@@ -1,6 +1,11 @@
 .git
 .env
 *.env
+*.crt
+*.key
+*.pem
+htpasswd
+secrets
 backups
 data
 **/__pycache__

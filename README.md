@@ -138,8 +138,10 @@ cd ../..
 See [Atlas Core operations](docs/ATLAS_CORE.md) and
 [dependency security](docs/DEPENDENCY_SECURITY.md) for operational
 details. For a production deployment, use the hardened
-[Docker Compose package](docs/DEPLOYMENT.md). Before tagging a release,
-complete the [Foundry release checklist](docs/RELEASE_CHECKLIST.md).
+[Docker Compose package](docs/DEPLOYMENT.md), which supports
+loopback/LAN HTTP and optional authenticated HTTPS ingress. Before
+tagging a release, complete the
+[Foundry release checklist](docs/RELEASE_CHECKLIST.md).
 
 ---
 
