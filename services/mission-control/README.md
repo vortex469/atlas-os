@@ -15,6 +15,8 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Health refresh after successful operations
 - Filterable, persistent provider action history
 - Request ID and execution timing visibility
+- JSON and CSV audit exports
+- Confirmed expired-entry pruning
 - Forge deployment analysis workspace
 
 ## Development

@@ -41,3 +41,21 @@ class ProviderActionAuditEntry(BaseModel):
     started_at: datetime
     completed_at: datetime
     duration_ms: float = Field(ge=0)
+
+
+class ProviderActionHistorySummary(BaseModel):
+    entry_count: int = Field(ge=0)
+    max_entries: int = Field(ge=1)
+    retention_days: int = Field(ge=1)
+    oldest_entry_at: datetime | None = None
+    newest_entry_at: datetime | None = None
+
+
+class ProviderActionPruneRequest(BaseModel):
+    confirmed: bool = False
+
+
+class ProviderActionPruneResult(BaseModel):
+    deleted_entries: int = Field(ge=0)
+    remaining_entries: int = Field(ge=0)
+    cutoff: datetime

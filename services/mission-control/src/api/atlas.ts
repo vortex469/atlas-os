@@ -9,8 +9,11 @@ import type {
     ProviderActionResult,
 } from "../types/providerAction";
 import type {
+    ActionHistoryExportFormat,
     ActionHistoryStatus,
     ProviderActionAuditEntry,
+    ProviderActionHistorySummary,
+    ProviderActionPruneResult,
 } from "../types/actionHistory";
 
 const ATLAS_API_BASE_URL =
@@ -84,6 +87,39 @@ export async function getProviderActionHistory(
             },
         },
     );
+
+    return response.data;
+}
+
+export async function getProviderActionHistorySummary(): Promise<ProviderActionHistorySummary> {
+    const response =
+        await atlas.get<ProviderActionHistorySummary>(
+            "/ops/actions/summary",
+        );
+
+    return response.data;
+}
+
+export async function exportProviderActionHistory(
+    format: ActionHistoryExportFormat,
+): Promise<Blob> {
+    const response = await atlas.get<Blob>(
+        "/ops/actions/export",
+        {
+            params: { format },
+            responseType: "blob",
+        },
+    );
+
+    return response.data;
+}
+
+export async function pruneProviderActionHistory(): Promise<ProviderActionPruneResult> {
+    const response =
+        await atlas.post<ProviderActionPruneResult>(
+            "/ops/actions/prune",
+            { confirmed: true },
+        );
 
     return response.data;
 }

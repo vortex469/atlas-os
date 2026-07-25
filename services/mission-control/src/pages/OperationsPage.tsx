@@ -6,12 +6,17 @@ import {
 } from "react";
 
 import {
+    exportProviderActionHistory,
     getAtlasErrorMessage,
     getProviderActionHistory,
+    getProviderActionHistorySummary,
+    pruneProviderActionHistory,
 } from "../api/atlas";
 import type {
+    ActionHistoryExportFormat,
     ActionHistoryStatus,
     ProviderActionAuditEntry,
+    ProviderActionHistorySummary,
 } from "../types/actionHistory";
 
 type HistoryFilter = "all" | ActionHistoryStatus;
@@ -37,8 +42,15 @@ export function OperationsPage() {
         ProviderActionAuditEntry[]
     >([]);
     const [filter, setFilter] = useState<HistoryFilter>("all");
+    const [summary, setSummary] =
+        useState<ProviderActionHistorySummary | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
+    const [isPruning, setIsPruning] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [operationMessage, setOperationMessage] = useState<
+        string | null
+    >(null);
     const requestSequence = useRef(0);
 
     const loadHistory = useCallback(async () => {
@@ -48,13 +60,18 @@ export function OperationsPage() {
         setError(null);
 
         try {
-            const history = await getProviderActionHistory({
-                limit: 100,
-                status: filter === "all" ? undefined : filter,
-            });
+            const [history, historySummary] = await Promise.all([
+                getProviderActionHistory({
+                    limit: 100,
+                    status:
+                        filter === "all" ? undefined : filter,
+                }),
+                getProviderActionHistorySummary(),
+            ]);
 
             if (requestSequence.current === requestId) {
                 setEntries(history);
+                setSummary(historySummary);
             }
         } catch (requestError) {
             if (requestSequence.current !== requestId) {
@@ -77,6 +94,85 @@ export function OperationsPage() {
             }
         }
     }, [filter]);
+
+    const exportHistory = useCallback(
+        async (format: ActionHistoryExportFormat) => {
+            setIsExporting(true);
+            setError(null);
+            setOperationMessage(null);
+
+            try {
+                const exportBlob =
+                    await exportProviderActionHistory(format);
+                const downloadUrl =
+                    URL.createObjectURL(exportBlob);
+                const anchor = document.createElement("a");
+                anchor.href = downloadUrl;
+                anchor.download = `atlas-action-history.${format}`;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                URL.revokeObjectURL(downloadUrl);
+                setOperationMessage(
+                    `Action history exported as ${format.toUpperCase()}.`,
+                );
+            } catch (requestError) {
+                console.error(
+                    "Unable to export provider action history:",
+                    requestError,
+                );
+                setError(
+                    getAtlasErrorMessage(
+                        requestError,
+                        "Mission Control could not export action history.",
+                    ),
+                );
+            } finally {
+                setIsExporting(false);
+            }
+        },
+        [],
+    );
+
+    const pruneHistory = useCallback(async () => {
+        const retentionDays = summary?.retention_days ?? 90;
+        const confirmed = window.confirm(
+            `Delete audit entries older than ${retentionDays} days?`,
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        setIsPruning(true);
+        setError(null);
+        setOperationMessage(null);
+
+        try {
+            const result = await pruneProviderActionHistory();
+            setOperationMessage(
+                `${result.deleted_entries} expired audit ${
+                    result.deleted_entries === 1
+                        ? "entry"
+                        : "entries"
+                } pruned.`,
+            );
+            await loadHistory();
+        } catch (requestError) {
+            console.error(
+                "Unable to prune provider action history:",
+                requestError,
+            );
+            setError(
+                getAtlasErrorMessage(
+                    requestError,
+                    "Mission Control could not prune action history.",
+                ),
+            );
+        } finally {
+            setIsPruning(false);
+        }
+    }, [loadHistory, summary?.retention_days]);
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -145,6 +241,63 @@ export function OperationsPage() {
                     Persistent audit history · retention managed by Atlas Core
                 </p>
             </div>
+
+            <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
+                <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                    <div>
+                        <h2 className="font-semibold text-slate-100">
+                            Audit administration
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-400">
+                            {summary
+                                ? `${summary.entry_count} of ${summary.max_entries} entries retained for ${summary.retention_days} days.`
+                                : "Loading retention policy..."}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() =>
+                                void exportHistory("json")
+                            }
+                            disabled={isExporting}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Export JSON
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                void exportHistory("csv")
+                            }
+                            disabled={isExporting}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Export CSV
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void pruneHistory()}
+                            disabled={isPruning || !summary}
+                            className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isPruning
+                                ? "Pruning..."
+                                : "Prune expired"}
+                        </button>
+                    </div>
+                </div>
+
+                {operationMessage && (
+                    <p
+                        role="status"
+                        className="mt-4 text-sm text-emerald-300"
+                    >
+                        {operationMessage}
+                    </p>
+                )}
+            </section>
 
             {error && (
                 <div

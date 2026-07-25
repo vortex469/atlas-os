@@ -4,7 +4,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 
-from app.actions.models import ProviderActionAuditEntry
+from app.actions.models import (
+    ProviderActionAuditEntry,
+    ProviderActionHistorySummary,
+    ProviderActionPruneResult,
+)
 from app.config.settings import settings
 from app.core.logging import get_logger
 
@@ -138,18 +142,24 @@ class ProviderActionHistory:
             )
             self._prune()
 
-    def _prune(self) -> None:
-        cutoff = datetime.now(timezone.utc) - timedelta(
+    def _retention_cutoff(self) -> datetime:
+        return datetime.now(timezone.utc) - timedelta(
             days=self._retention_days,
         )
-        self._connection.execute(
+
+    def _prune_expired(self, cutoff: datetime) -> int:
+        cursor = self._connection.execute(
             """
             DELETE FROM provider_action_history
             WHERE completed_at < ?
             """,
             (cutoff.isoformat(),),
         )
-        self._connection.execute(
+
+        return cursor.rowcount
+
+    def _prune_excess(self) -> int:
+        cursor = self._connection.execute(
             """
             DELETE FROM provider_action_history
             WHERE id NOT IN (
@@ -161,6 +171,62 @@ class ProviderActionHistory:
             """,
             (self._max_entries,),
         )
+
+        return cursor.rowcount
+
+    def _prune(self) -> None:
+        self._prune_expired(self._retention_cutoff())
+        self._prune_excess()
+
+    def prune_expired(self) -> ProviderActionPruneResult:
+        cutoff = self._retention_cutoff()
+
+        with self._lock, self._connection:
+            deleted_entries = self._prune_expired(cutoff)
+            row = self._connection.execute(
+                """
+                SELECT COUNT(*) AS entry_count
+                FROM provider_action_history
+                """,
+            ).fetchone()
+
+        return ProviderActionPruneResult(
+            deleted_entries=deleted_entries,
+            remaining_entries=int(row["entry_count"]),
+            cutoff=cutoff,
+        )
+
+    def summary(self) -> ProviderActionHistorySummary:
+        with self._lock, self._connection:
+            self._prune()
+            row = self._connection.execute(
+                """
+                SELECT
+                    COUNT(*) AS entry_count,
+                    MIN(completed_at) AS oldest_entry_at,
+                    MAX(completed_at) AS newest_entry_at
+                FROM provider_action_history
+                """,
+            ).fetchone()
+
+        return ProviderActionHistorySummary(
+            entry_count=int(row["entry_count"]),
+            max_entries=self._max_entries,
+            retention_days=self._retention_days,
+            oldest_entry_at=(
+                datetime.fromisoformat(row["oldest_entry_at"])
+                if row["oldest_entry_at"]
+                else None
+            ),
+            newest_entry_at=(
+                datetime.fromisoformat(row["newest_entry_at"])
+                if row["newest_entry_at"]
+                else None
+            ),
+        )
+
+    def export_entries(self) -> list[ProviderActionAuditEntry]:
+        return self.list(limit=self._max_entries)
 
     def list(
         self,

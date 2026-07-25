@@ -6,7 +6,12 @@ import {
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getProviderActionHistory } from "../api/atlas";
+import {
+    exportProviderActionHistory,
+    getProviderActionHistory,
+    getProviderActionHistorySummary,
+    pruneProviderActionHistory,
+} from "../api/atlas";
 import { OperationsPage } from "./OperationsPage";
 
 vi.mock("../api/atlas", () => ({
@@ -15,10 +20,22 @@ vi.mock("../api/atlas", () => ({
         fallback: string,
     ) => (error instanceof Error ? error.message : fallback),
     getProviderActionHistory: vi.fn(),
+    getProviderActionHistorySummary: vi.fn(),
+    exportProviderActionHistory: vi.fn(),
+    pruneProviderActionHistory: vi.fn(),
 }));
 
 const mockedGetProviderActionHistory = vi.mocked(
     getProviderActionHistory,
+);
+const mockedGetProviderActionHistorySummary = vi.mocked(
+    getProviderActionHistorySummary,
+);
+const mockedExportProviderActionHistory = vi.mocked(
+    exportProviderActionHistory,
+);
+const mockedPruneProviderActionHistory = vi.mocked(
+    pruneProviderActionHistory,
 );
 
 describe("OperationsPage", () => {
@@ -43,6 +60,23 @@ describe("OperationsPage", () => {
                 duration_ms: 12.5,
             },
         ]);
+        mockedGetProviderActionHistorySummary.mockResolvedValue({
+            entry_count: 1,
+            max_entries: 5000,
+            retention_days: 90,
+            oldest_entry_at: "2026-07-25T17:00:01Z",
+            newest_entry_at: "2026-07-25T17:00:01Z",
+        });
+        mockedExportProviderActionHistory.mockResolvedValue(
+            new Blob(["[]"], {
+                type: "application/json",
+            }),
+        );
+        mockedPruneProviderActionHistory.mockResolvedValue({
+            deleted_entries: 1,
+            remaining_entries: 0,
+            cutoff: "2026-04-26T17:00:00Z",
+        });
     });
 
     it("renders sanitized action audit details", async () => {
@@ -78,5 +112,65 @@ describe("OperationsPage", () => {
                 status: "failed",
             }),
         );
+    });
+
+    it("downloads a sanitized history export", async () => {
+        const user = userEvent.setup();
+        const click = vi
+            .spyOn(HTMLAnchorElement.prototype, "click")
+            .mockImplementation(() => undefined);
+        const createObjectURL = vi.fn(() => "blob:audit");
+        const revokeObjectURL = vi.fn();
+        vi.stubGlobal("URL", {
+            createObjectURL,
+            revokeObjectURL,
+        });
+        render(<OperationsPage />);
+
+        await screen.findByText("Unload Model");
+        await user.click(
+            screen.getByRole("button", {
+                name: "Export JSON",
+            }),
+        );
+
+        expect(
+            mockedExportProviderActionHistory,
+        ).toHaveBeenCalledWith("json");
+        expect(createObjectURL).toHaveBeenCalledOnce();
+        expect(click).toHaveBeenCalledOnce();
+        expect(revokeObjectURL).toHaveBeenCalledWith(
+            "blob:audit",
+        );
+        expect(
+            await screen.findByText(
+                "Action history exported as JSON.",
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it("confirms and prunes expired history", async () => {
+        const user = userEvent.setup();
+        vi.spyOn(window, "confirm").mockReturnValue(true);
+        render(<OperationsPage />);
+
+        await screen.findByText("Unload Model");
+        await user.click(
+            screen.getByRole("button", {
+                name: "Prune expired",
+            }),
+        );
+
+        expect(window.confirm).toHaveBeenCalledWith(
+            "Delete audit entries older than 90 days?",
+        );
+        expect(
+            mockedPruneProviderActionHistory,
+        ).toHaveBeenCalledOnce();
+        expect(
+            await screen.findByText(
+                "1 expired audit entry pruned.",
+            ),
+        ).toBeInTheDocument();
     });
 });

@@ -202,7 +202,9 @@ Future capabilities:
 - Live Mission Control service health
 - Provider-backed operational actions
 - Operations workspace and action audit visibility
-- 163 Atlas Core tests
+- JSON and CSV audit export
+- Confirmed retention maintenance
+- 166 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---
@@ -219,6 +221,7 @@ Future capabilities:
 - Atlas API v1
 - Service health and provider operations
 - Action history and audit visibility
+- Audit export and retention administration
 
 ---
 

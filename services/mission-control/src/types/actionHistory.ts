@@ -17,3 +17,19 @@ export type ProviderActionAuditEntry = {
     completed_at: string;
     duration_ms: number;
 };
+
+export type ProviderActionHistorySummary = {
+    entry_count: number;
+    max_entries: number;
+    retention_days: number;
+    oldest_entry_at: string | null;
+    newest_entry_at: string | null;
+};
+
+export type ProviderActionPruneResult = {
+    deleted_entries: number;
+    remaining_entries: number;
+    cutoff: string;
+};
+
+export type ActionHistoryExportFormat = "json" | "csv";
