@@ -55,6 +55,10 @@ export function ServiceHealthSection({
         return null;
     }
 
+    const selectedHealth = selectedService
+        ? services[selectedService.name] ?? selectedService.health
+        : null;
+
     return (
         <>
             <section>
@@ -83,15 +87,12 @@ export function ServiceHealthSection({
             {selectedService && (
                 <ServiceDetailsDrawer
                     name={selectedService.name}
-                    health={
-                        services[selectedService.name] ??
-                        selectedService.health
-                    }
+                    health={selectedHealth ?? selectedService.health}
                     provider={
                         providers.find(
                             (provider) =>
                                 provider.id ===
-                                selectedService.health.provider_id,
+                                selectedHealth?.provider_id,
                         ) ?? null
                     }
                     isRefreshing={isRefreshing}
