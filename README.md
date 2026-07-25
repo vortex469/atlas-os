@@ -111,8 +111,40 @@ Current capabilities:
 - Live, validated operational policy reload
 - Policy-aware Docker expected-state monitoring
 - Atlas Doctor diagnostics through CLI and Operations API
+- Read-only OPNsense health and diagnostics provider
 - Aggregated dashboard, health, and AI status
 - Modular architecture
+
+---
+
+### OPNsense provider
+
+Add an `opnsense` service to `inventory/services.yaml`:
+
+```yaml
+services:
+  opnsense:
+    name: OPNsense
+    host: firewall.home.arpa
+    port: 443
+    protocol: https
+    health_endpoint: /api/core/firmware/status
+    expected_status: [200]
+    critical: true
+    verify_tls: true
+    # ca_bundle: /opt/atlas/config/certificates/opnsense.pem
+```
+
+Provide the read-only API credentials through the environment:
+
+```dotenv
+OPNSENSE_API_KEY=replace-me
+OPNSENSE_API_SECRET=replace-me
+```
+
+TLS verification is enabled by default. Use `ca_bundle` for a private
+certificate authority; disabling verification should be limited to
+temporary development environments.
 
 ---
 

@@ -1,6 +1,7 @@
 from app.config.inventory import load_inventory
 from app.providers.inventory_provider import InventoryServiceProvider
 from app.providers.ollama import OllamaProvider
+from app.providers.opnsense import OPNsenseProvider
 from app.providers.registry import provider_registry
 
 
@@ -17,6 +18,8 @@ def load_provider_registry():
     ).items():
         if service_id == "ollama":
             provider = OllamaProvider(service)
+        elif service_id == "opnsense":
+            provider = OPNsenseProvider(service)
         else:
             provider = InventoryServiceProvider(
                 service_id,

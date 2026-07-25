@@ -139,7 +139,9 @@ Planned
 
 ✔ Atlas Doctor Integration
 
-179 Atlas Core tests passing.
+✔ OPNsense Provider
+
+184 Atlas Core tests passing.
 
 19 Mission Control component tests passing.
 
@@ -151,7 +153,7 @@ Foundry Dashboard and Operations
 
 Next work
 
-- OPNsense provider
+- Define next sprint priorities
 
 ---
 
