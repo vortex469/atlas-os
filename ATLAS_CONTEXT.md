@@ -204,6 +204,8 @@ Current
 
 ✔ Foundry Container Release Gates
 
+✔ Foundry Release Candidate Audit
+
 260 Atlas Core tests collected.
 
 36 Mission Control component tests passing.
@@ -216,7 +218,7 @@ Foundry Release Hardening
 
 Next work
 
-- Foundry release candidate audit
+- Operator credential rotation and release approval
 
 ---
 

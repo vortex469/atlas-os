@@ -138,7 +138,8 @@ cd ../..
 See [Atlas Core operations](docs/ATLAS_CORE.md) and
 [dependency security](docs/DEPENDENCY_SECURITY.md) for operational
 details. For a production deployment, use the hardened
-[Docker Compose package](docs/DEPLOYMENT.md).
+[Docker Compose package](docs/DEPLOYMENT.md). Before tagging a release,
+complete the [Foundry release checklist](docs/RELEASE_CHECKLIST.md).
 
 ---
 
@@ -727,4 +728,4 @@ Contributions are welcome, including:
 
 # License
 
-MIT
+[MIT](LICENSE)

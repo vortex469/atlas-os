@@ -21,6 +21,8 @@ release boundaries.
   health checks, an API proxy, and persistent telemetry storage.
 - Isolated container release gate with runtime hardening assertions,
   HTTP smoke checks, automatic cleanup, and GitHub Actions coverage.
+- Pinned Core and Mission Control quality gates, a release checklist, and
+  the project MIT license.
 
 ### Changed
 
@@ -28,6 +30,7 @@ release boundaries.
   harness.
 - Mission Control exposes provider telemetry, trends, policy status, and
   operational retention controls.
+- Removed a stale tracked test backup from release source archives.
 
 ## Historical development tags
 
