@@ -203,6 +203,28 @@ The internal unauthenticated API on port `5000` is also supported when
 the token is omitted. That port grants broad access and must only be
 used on a trusted, isolated container network.
 
+Camera health expectations are live-reloaded from
+`config/policies.yaml`:
+
+```yaml
+frigate:
+  stalled_camera_severity: warning
+  cameras:
+    front:
+      expected: active
+      minimum_camera_fps: 5
+      minimum_process_fps: 5
+    retired_camera:
+      expected: inactive
+```
+
+Active cameras are reported when they are missing, stop producing or
+processing frames, or fall below their configured FPS minimum.
+Inactive cameras are excluded from health findings. Unlisted cameras
+retain the safe default check for zero capture or processing FPS.
+Severity accepts `info`, `warning`, or `critical`; informational
+findings do not reduce the Atlas health score.
+
 ---
 
 ## Forge

@@ -37,6 +37,19 @@ class OPNsensePolicy(BaseModel):
     reboot_required_severity: PolicySeverity = "warning"
 
 
+class FrigateCameraPolicy(BaseModel):
+    expected: Literal["active", "inactive"] = "active"
+    minimum_camera_fps: float = Field(default=0, ge=0)
+    minimum_process_fps: float = Field(default=0, ge=0)
+
+
+class FrigatePolicy(BaseModel):
+    cameras: dict[str, FrigateCameraPolicy] = Field(
+        default_factory=dict
+    )
+    stalled_camera_severity: PolicySeverity = "warning"
+
+
 class Policies(BaseModel):
     proxmox: ProxmoxPolicy = Field(default_factory=ProxmoxPolicy)
     docker: DockerPolicy = Field(default_factory=DockerPolicy)
@@ -46,3 +59,4 @@ class Policies(BaseModel):
     opnsense: OPNsensePolicy = Field(
         default_factory=OPNsensePolicy,
     )
+    frigate: FrigatePolicy = Field(default_factory=FrigatePolicy)

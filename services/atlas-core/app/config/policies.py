@@ -3,7 +3,11 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from app.config.policy_models import OPNsensePolicy, Policies
+from app.config.policy_models import (
+    FrigatePolicy,
+    OPNsensePolicy,
+    Policies,
+)
 
 ATLAS_ROOT = Path("/opt/atlas")
 POLICY_FILE = ATLAS_ROOT / "config" / "policies.yaml"
@@ -87,3 +91,7 @@ def get_expected_container_states() -> dict[str, str]:
 
 def get_opnsense_policy() -> OPNsensePolicy:
     return load_policies().opnsense
+
+
+def get_frigate_policy() -> FrigatePolicy:
+    return load_policies().frigate

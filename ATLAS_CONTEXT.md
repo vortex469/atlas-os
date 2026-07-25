@@ -77,7 +77,7 @@ Current
 
 Planned
 
-- Frigate policies
+- Obsidian provider policies
 
 ---
 
@@ -150,7 +150,9 @@ Planned
 
 ✔ Frigate Provider
 
-200 Atlas Core tests passing.
+✔ Frigate Camera Health Policies
+
+203 Atlas Core tests collected.
 
 19 Mission Control component tests passing.
 
@@ -158,11 +160,10 @@ Planned
 
 # Current Sprint
 
-Provider Intelligence
+Provider Intelligence Telemetry
 
 Next work
 
-- Frigate camera health policies
 - Provider intelligence timing telemetry
 - Obsidian provider
 

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 from time import perf_counter
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urljoin
 
 import httpx
 
+from app.config.policies import get_frigate_policy
+from app.config.policy_models import FrigatePolicy, PolicySeverity
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -28,6 +30,9 @@ class FrigateProvider(Provider):
         api_token: str | None = None,
         timeout_seconds: float = 10.0,
         transport: httpx.AsyncBaseTransport | None = None,
+        policy_getter: Callable[[], FrigatePolicy] = (
+            get_frigate_policy
+        ),
     ) -> None:
         self._service = service
         self._api_token = (
@@ -37,6 +42,7 @@ class FrigateProvider(Provider):
         )
         self._timeout_seconds = timeout_seconds
         self._transport = transport
+        self._policy_getter = policy_getter
 
         protocol = service.get("protocol", "https")
         host = service["host"]
@@ -237,39 +243,42 @@ class FrigateProvider(Provider):
 
         findings: list[Finding] = []
         cameras = health.details.get("cameras", {})
-        stalled_cameras = [
-            name
-            for name, stats in cameras.items()
-            if isinstance(stats, dict)
-            and (
-                self._numeric_fps(stats.get("camera_fps")) <= 0
-                or self._numeric_fps(stats.get("process_fps")) <= 0
-            )
-        ] if isinstance(cameras, dict) else []
+        policy = self._policy_getter()
+        stalled_cameras = self._camera_policy_violations(
+            cameras if isinstance(cameras, dict) else {},
+            policy,
+        )
 
         if stalled_cameras:
+            severity = self._severity(
+                policy.stalled_camera_severity
+            )
             findings.append(
                 Finding(
                     id="frigate-cameras-stalled",
-                    severity=Severity.WARNING,
+                    severity=severity,
                     category="video",
                     source="frigate",
                     component="Frigate",
                     title="Frigate cameras stalled",
                     message=(
                         f"{len(stalled_cameras)} Frigate camera(s) "
-                        "are not producing or processing frames."
+                        "do not meet camera health policy."
                     ),
                     recommendation=(
                         "Review camera connectivity and Frigate ffmpeg "
                         "logs."
                     ),
-                    score_penalty=10,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
                     metric={
                         "stalled_cameras": len(stalled_cameras),
                         "configured_cameras": len(cameras),
                     },
-                    details={"cameras": stalled_cameras},
+                    details={
+                        "cameras": sorted(stalled_cameras),
+                        "violations": stalled_cameras,
+                    },
                 ),
             )
 
@@ -308,3 +317,74 @@ class FrigateProvider(Provider):
             return float(value or 0)
         except (TypeError, ValueError):
             return 0
+
+    @classmethod
+    def _camera_policy_violations(
+        cls,
+        cameras: dict[str, Any],
+        policy: FrigatePolicy,
+    ) -> dict[str, list[str]]:
+        violations: dict[str, list[str]] = {}
+        camera_names = set(cameras) | set(policy.cameras)
+
+        for name in sorted(camera_names):
+            camera_policy = policy.cameras.get(name)
+            if (
+                camera_policy is not None
+                and camera_policy.expected == "inactive"
+            ):
+                continue
+
+            stats = cameras.get(name)
+            if not isinstance(stats, dict):
+                violations[name] = ["missing"]
+                continue
+
+            minimum_camera_fps = (
+                camera_policy.minimum_camera_fps
+                if camera_policy is not None
+                else 0
+            )
+            minimum_process_fps = (
+                camera_policy.minimum_process_fps
+                if camera_policy is not None
+                else 0
+            )
+            camera_fps = cls._numeric_fps(
+                stats.get("camera_fps")
+            )
+            process_fps = cls._numeric_fps(
+                stats.get("process_fps")
+            )
+            reasons: list[str] = []
+
+            if camera_fps <= 0 or camera_fps < minimum_camera_fps:
+                reasons.append(
+                    f"camera_fps={camera_fps:g} "
+                    f"(minimum={minimum_camera_fps:g})"
+                )
+            if process_fps <= 0 or process_fps < minimum_process_fps:
+                reasons.append(
+                    f"process_fps={process_fps:g} "
+                    f"(minimum={minimum_process_fps:g})"
+                )
+            if reasons:
+                violations[name] = reasons
+
+        return violations
+
+    @staticmethod
+    def _severity(value: PolicySeverity) -> Severity:
+        return {
+            "info": Severity.INFO,
+            "warning": Severity.WARNING,
+            "critical": Severity.CRITICAL,
+        }[value]
+
+    @staticmethod
+    def _score_penalty(severity: Severity) -> int:
+        return {
+            Severity.INFO: 0,
+            Severity.WARNING: 10,
+            Severity.CRITICAL: 20,
+        }[severity]

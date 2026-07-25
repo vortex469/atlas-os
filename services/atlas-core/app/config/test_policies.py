@@ -7,6 +7,7 @@ from app.config.policies import (
     PolicyLoadError,
     get_expected_container_state,
     get_expected_guest_state,
+    get_frigate_policy,
     get_ignored_entities,
     get_opnsense_policy,
     load_policies,
@@ -44,6 +45,13 @@ homeassistant:
 opnsense:
   pending_update_warning_threshold: 3
   reboot_required_severity: critical
+frigate:
+  stalled_camera_severity: critical
+  cameras:
+    front:
+      expected: active
+      minimum_camera_fps: 4
+      minimum_process_fps: 3
 """,
     )
 
@@ -60,6 +68,10 @@ opnsense:
         get_opnsense_policy().reboot_required_severity
         == "critical"
     )
+    assert get_frigate_policy().cameras[
+        "front"
+    ].minimum_camera_fps == 4
+    assert get_frigate_policy().stalled_camera_severity == "critical"
 
     write_policy(
         policy_file,
@@ -84,6 +96,7 @@ opnsense:
         == 5
     )
     assert get_opnsense_policy().reboot_required_severity == "info"
+    assert get_frigate_policy().cameras == {}
 
 
 @pytest.mark.parametrize(
@@ -99,6 +112,12 @@ docker:
         """
 opnsense:
   pending_update_warning_threshold: 0
+""",
+        """
+frigate:
+  cameras:
+    front:
+      expected: unavailable
 """,
     ],
 )
@@ -128,3 +147,4 @@ def test_missing_policy_file_uses_safe_defaults(
         policies.opnsense.pending_update_warning_threshold
         is None
     )
+    assert policies.frigate.cameras == {}

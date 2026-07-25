@@ -38,3 +38,7 @@ homeassistant:
 opnsense:
   pending_update_warning_threshold: 1
   reboot_required_severity: warning
+
+frigate:
+  stalled_camera_severity: warning
+  cameras: {}
