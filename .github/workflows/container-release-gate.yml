@@ -1,0 +1,42 @@
+name: Container release gate
+
+on:
+  pull_request:
+    paths:
+      - ".dockerignore"
+      - "compose.production.yaml"
+      - "config/**"
+      - "deploy/docker/**"
+      - "inventory/**"
+      - "scripts/container-release-gate"
+      - "services/atlas-core/**"
+      - "services/mission-control/**"
+      - ".github/workflows/container-release-gate.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".dockerignore"
+      - "compose.production.yaml"
+      - "config/**"
+      - "deploy/docker/**"
+      - "inventory/**"
+      - "scripts/container-release-gate"
+      - "services/atlas-core/**"
+      - "services/mission-control/**"
+      - ".github/workflows/container-release-gate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  production-containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out Atlas
+        uses: actions/checkout@v4
+
+      - name: Run container release gate
+        run: ./scripts/container-release-gate

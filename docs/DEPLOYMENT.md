@@ -58,6 +58,20 @@ docker compose -f compose.production.yaml \
   config --no-env-resolution --quiet
 ```
 
+Run the complete container release gate:
+
+```bash
+./scripts/container-release-gate
+```
+
+The gate builds both images, starts an isolated stack on an ephemeral
+port, verifies container hardening and health, checks the UI/API proxy
+and SPA fallback, and removes its temporary containers, network, volume,
+and credential file. The same command runs in GitHub Actions.
+
+Set `ATLAS_ENV_FILE` to use a credential file outside the repository for
+normal deployments. It defaults to `.env`.
+
 Stop the services without deleting telemetry:
 
 ```bash

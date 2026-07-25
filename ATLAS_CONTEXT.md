@@ -202,6 +202,8 @@ Current
 
 ✔ Foundry Production Deployment Packaging
 
+✔ Foundry Container Release Gates
+
 260 Atlas Core tests collected.
 
 36 Mission Control component tests passing.
@@ -214,7 +216,7 @@ Foundry Release Hardening
 
 Next work
 
-- Foundry container release gates
+- Foundry release candidate audit
 
 ---
 

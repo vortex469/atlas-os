@@ -19,6 +19,8 @@ release boundaries.
 - Reproducible development dependency manifests and runtime requirements.
 - Hardened production containers for Atlas Core and Mission Control with
   health checks, an API proxy, and persistent telemetry storage.
+- Isolated container release gate with runtime hardening assertions,
+  HTTP smoke checks, automatic cleanup, and GitHub Actions coverage.
 
 ### Changed
 

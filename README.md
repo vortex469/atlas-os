@@ -130,6 +130,9 @@ cd ../mission-control
 npm test
 npm run lint
 npm run build
+
+cd ../..
+./scripts/container-release-gate
 ```
 
 See [Atlas Core operations](docs/ATLAS_CORE.md) and

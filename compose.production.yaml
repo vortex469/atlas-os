@@ -7,7 +7,7 @@ services:
       dockerfile: deploy/docker/atlas-core.Dockerfile
     restart: unless-stopped
     env_file:
-      - path: .env
+      - path: ${ATLAS_ENV_FILE:-.env}
         required: true
     volumes:
       - ./config/atlas.yaml:/opt/atlas/config/atlas.yaml:ro
