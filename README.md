@@ -134,7 +134,8 @@ npm run build
 
 See [Atlas Core operations](docs/ATLAS_CORE.md) and
 [dependency security](docs/DEPENDENCY_SECURITY.md) for operational
-details.
+details. For a production deployment, use the hardened
+[Docker Compose package](docs/DEPLOYMENT.md).
 
 ---
 
@@ -646,7 +647,7 @@ Future capabilities:
 - Paginated audit results
 - Audit detail views with shareable deep links
 - Action and request-ID search
-- 258 Atlas Core tests
+- 260 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---

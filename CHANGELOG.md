@@ -17,6 +17,8 @@ release boundaries.
 - Persistent action history with filtering, pagination, detail views,
   sanitized export, and confirmed retention maintenance.
 - Reproducible development dependency manifests and runtime requirements.
+- Hardened production containers for Atlas Core and Mission Control with
+  health checks, an API proxy, and persistent telemetry storage.
 
 ### Changed
 
