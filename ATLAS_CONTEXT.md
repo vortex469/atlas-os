@@ -44,10 +44,6 @@ Implemented
 - n8n
 - Inventory-backed services
 
-Planned
-
-- Provider policies for Qdrant and n8n
-
 ---
 
 # Configuration
@@ -75,10 +71,11 @@ Current
 - Expected Docker container state
 - OPNsense firmware posture
 - OPNsense firmware severity thresholds
-
-Planned
-
-- Obsidian provider policies
+- Frigate camera health thresholds
+- Obsidian vault health
+- Qdrant collection expectations
+- n8n workflow expectations
+- Provider intelligence performance thresholds
 
 ---
 
@@ -199,6 +196,8 @@ Planned
 
 ✔ Foundry Dependency and Packaging Audit
 
+✔ Foundry Release Documentation Audit
+
 257 Atlas Core tests collected.
 
 35 Mission Control component tests passing.
@@ -211,7 +210,7 @@ Foundry Release Hardening
 
 Next work
 
-- Foundry release documentation audit
+- Foundry release identifier consistency
 
 ---
 

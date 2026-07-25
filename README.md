@@ -8,7 +8,7 @@
 
 ![Status](https://img.shields.io/badge/status-active%20development-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Release](https://img.shields.io/badge/release-Foundry%200.1-orange)
+![Release](https://img.shields.io/badge/release-Foundry-orange)
 
 </div>
 
@@ -89,6 +89,52 @@ Observe
 Automation without understanding creates surprises.
 
 Atlas is designed to eliminate those surprises.
+
+---
+
+# Development setup
+
+Atlas currently runs as two services:
+
+- Atlas Core requires Python 3.12.
+- Mission Control requires Node.js 20.19+ or 22.12+ and npm 10+.
+
+Start Atlas Core:
+
+```bash
+cd services/atlas-core
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8643
+```
+
+In another terminal, start Mission Control:
+
+```bash
+cd services/mission-control
+npm ci
+npm run dev
+```
+
+Mission Control proxies API requests to Atlas Core at
+`http://127.0.0.1:8643`. Copy `.env.example` to `.env` only when the
+configured providers require credentials; never commit real secrets.
+
+Run the release gates:
+
+```bash
+cd services/atlas-core
+.venv/bin/pytest -q
+
+cd ../mission-control
+npm test
+npm run lint
+npm run build
+```
+
+See [Atlas Core operations](docs/ATLAS_CORE.md) and
+[dependency security](docs/DEPENDENCY_SECURITY.md) for operational
+details.
 
 ---
 
@@ -512,7 +558,7 @@ Features:
 - Execution planning
 - Rich component inspection
 - Risk visualization
-- Application recognition *(in progress)*
+- Application recognition
 
 ---
 
@@ -529,6 +575,9 @@ Provides:
 - Confirmed, parameterized provider operations
 - Filterable action history with request correlation
 - ACE findings and recommendations
+- Provider intelligence telemetry and trends
+- Live policy status, diagnostics, and provider policy details
+- Telemetry and action-history export and retention administration
 
 ---
 

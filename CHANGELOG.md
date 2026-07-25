@@ -1,0 +1,34 @@
+# Changelog
+
+This project is under active development. Entries describe significant
+operator-visible changes; Git tags remain the source of truth for exact
+release boundaries.
+
+## Unreleased — Foundry
+
+### Added
+
+- Specialized OPNsense, Frigate, Obsidian, Qdrant, and n8n providers.
+- Provider-backed ACE findings with bounded concurrent collection.
+- Persistent provider-intelligence telemetry, filtering, export, trends,
+  and retention administration.
+- Live provider policies, performance thresholds, structured validation
+  diagnostics, and Mission Control policy views.
+- Persistent action history with filtering, pagination, detail views,
+  sanitized export, and confirmed retention maintenance.
+- Reproducible development dependency manifests and runtime requirements.
+
+### Changed
+
+- Atlas Core integration tests now use a thread-free in-process ASGI
+  harness.
+- Mission Control exposes provider telemetry, trends, policy status, and
+  operational retention controls.
+
+## Historical development tags
+
+- `v0.7.0-foundry` — deployment planning, risk engine, and Forge workflow.
+- `foundry-0.4.0` — Mission Control provider architecture.
+- `v0.3.0-alpha2` — reusable knowledge-engine assessment rules.
+- `v0.3.0-alpha1` — Atlas Intelligence Engine and summary API.
+- `v0.2.0` — typed ACE policy engine.
