@@ -98,10 +98,57 @@ def test_history_route_returns_persisted_snapshots(
 ) -> None:
     isolated_intelligence_history.append(telemetry(25))
 
-    snapshots = intelligence_telemetry_history(limit=10)
+    snapshots = intelligence_telemetry_history(
+        limit=10,
+        provider_id=None,
+        status=None,
+        collected_from=None,
+        collected_to=None,
+    )
 
     assert len(snapshots) == 1
     assert (
         snapshots[0].telemetry.provider_collection_duration_ms
         == 25
     )
+
+
+def test_history_filters_provider_status_and_date() -> None:
+    history = IntelligenceTelemetryHistory()
+    now = datetime.now(UTC)
+    successful = telemetry(10)
+    failed = telemetry(20)
+    failed.providers[0].status = "failed"
+    failed.providers[0].provider_id = "qdrant"
+    history.append(
+        successful,
+        collected_at=now - timedelta(hours=2),
+    )
+    history.append(failed, collected_at=now)
+
+    snapshots = history.list(
+        provider_id="qdrant",
+        status="failed",
+        collected_from=now - timedelta(hours=1),
+        collected_to=now + timedelta(minutes=1),
+    )
+    history.close()
+
+    assert len(snapshots) == 1
+    assert snapshots[0].telemetry.providers[0].status == "failed"
+
+
+def test_history_rejects_inverted_date_range() -> None:
+    history = IntelligenceTelemetryHistory()
+    now = datetime.now(UTC)
+
+    with pytest.raises(
+        ValueError,
+        match="collected_from",
+    ):
+        history.list(
+            collected_from=now,
+            collected_to=now - timedelta(minutes=1),
+        )
+
+    history.close()

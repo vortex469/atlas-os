@@ -179,9 +179,11 @@ Planned
 
 ✔ Structured Policy Validation Diagnostics
 
-251 Atlas Core tests collected.
+✔ Provider Telemetry History Filtering
 
-30 Mission Control component tests passing.
+253 Atlas Core tests collected.
+
+31 Mission Control component tests passing.
 
 ---
 
@@ -191,8 +193,8 @@ Provider Operations and Observability Complete
 
 Next work
 
-- Provider telemetry history filtering
 - Policy diagnostics documentation examples
+- Provider telemetry history export
 
 ---
 

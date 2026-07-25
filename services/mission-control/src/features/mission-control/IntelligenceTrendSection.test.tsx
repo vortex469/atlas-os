@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import type { IntelligenceTelemetrySnapshot } from "../../types/ace";
@@ -58,5 +59,35 @@ describe("IntelligenceTrendSection", () => {
         );
 
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it("filters snapshots by provider and outcome", async () => {
+        const user = userEvent.setup();
+        render(
+            <IntelligenceTrendSection snapshots={snapshots} />,
+        );
+
+        await user.selectOptions(
+            screen.getByLabelText("Provider"),
+            "qdrant",
+        );
+        await user.selectOptions(
+            screen.getByLabelText("Outcome"),
+            "completed",
+        );
+
+        expect(
+            screen.getByText(
+                "No telemetry snapshots match the selected filters.",
+            ),
+        ).toBeInTheDocument();
+
+        await user.selectOptions(
+            screen.getByLabelText("Outcome"),
+            "timed_out",
+        );
+        expect(
+            screen.getByLabelText("200 ms, provider issue"),
+        ).toBeInTheDocument();
     });
 });

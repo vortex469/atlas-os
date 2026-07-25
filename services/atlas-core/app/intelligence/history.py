@@ -5,6 +5,7 @@ import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Lock
+from typing import Literal
 from uuid import uuid4
 
 from app.config.settings import settings
@@ -108,9 +109,36 @@ class IntelligenceTelemetryHistory:
         self,
         *,
         limit: int = 50,
+        provider_id: str | None = None,
+        status: Literal[
+            "completed",
+            "timed_out",
+            "failed",
+        ]
+        | None = None,
+        collected_from: datetime | None = None,
+        collected_to: datetime | None = None,
     ) -> list[IntelligenceTelemetrySnapshot]:
         if limit < 1 or limit > 500:
             raise ValueError("limit must be between 1 and 500.")
+        if (
+            collected_from is not None
+            and collected_to is not None
+        ):
+            start = (
+                collected_from.replace(tzinfo=UTC)
+                if collected_from.tzinfo is None
+                else collected_from.astimezone(UTC)
+            )
+            end = (
+                collected_to.replace(tzinfo=UTC)
+                if collected_to.tzinfo is None
+                else collected_to.astimezone(UTC)
+            )
+            if start > end:
+                raise ValueError(
+                    "collected_from must not be after collected_to."
+                )
 
         with self._lock:
             rows = self._connection.execute(
@@ -118,12 +146,10 @@ class IntelligenceTelemetryHistory:
                 SELECT id, collected_at, telemetry
                 FROM intelligence_telemetry
                 ORDER BY collected_at DESC, id DESC
-                LIMIT ?
                 """,
-                (limit,),
             ).fetchall()
 
-        return [
+        snapshots = [
             IntelligenceTelemetrySnapshot(
                 id=row["id"],
                 collected_at=datetime.fromisoformat(
@@ -135,6 +161,62 @@ class IntelligenceTelemetryHistory:
             )
             for row in rows
         ]
+        filtered = [
+            snapshot
+            for snapshot in snapshots
+            if self._matches(
+                snapshot,
+                provider_id=provider_id,
+                status=status,
+                collected_from=collected_from,
+                collected_to=collected_to,
+            )
+        ]
+        return filtered[:limit]
+
+    @staticmethod
+    def _matches(
+        snapshot: IntelligenceTelemetrySnapshot,
+        *,
+        provider_id: str | None,
+        status: str | None,
+        collected_from: datetime | None,
+        collected_to: datetime | None,
+    ) -> bool:
+        collected_at = snapshot.collected_at
+        if collected_at.tzinfo is None:
+            collected_at = collected_at.replace(tzinfo=UTC)
+
+        def normalized(value: datetime | None) -> datetime | None:
+            if value is None:
+                return None
+            if value.tzinfo is None:
+                return value.replace(tzinfo=UTC)
+            return value.astimezone(UTC)
+
+        start = normalized(collected_from)
+        end = normalized(collected_to)
+        if start is not None and collected_at < start:
+            return False
+        if end is not None and collected_at > end:
+            return False
+
+        providers = snapshot.telemetry.providers
+        if provider_id is not None:
+            providers = [
+                provider
+                for provider in providers
+                if provider.provider_id == provider_id
+            ]
+            if not providers:
+                return False
+        if status is not None and not any(
+            provider.status == status
+            for provider in providers
+        ):
+            return False
+
+        return True
 
     def _prune_locked(self, now: datetime) -> None:
         cutoff = now - timedelta(days=self._retention_days)

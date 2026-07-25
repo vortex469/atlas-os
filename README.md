@@ -181,6 +181,9 @@ The timeout must be greater than zero and no more than 60 seconds.
 Collection snapshots are persisted locally, bounded by entry count and
 retention window, and available from
 `/api/v1/intelligence/telemetry/history`.
+The history endpoint accepts `provider_id`, `status`,
+`collected_from`, `collected_to`, and a bounded `limit`. Status accepts
+`completed`, `timed_out`, or `failed`.
 ACE situation reports include collection telemetry for operational
 visibility:
 
@@ -205,7 +208,8 @@ visibility:
 Provider status is `completed`, `timed_out`, or `failed`. Durations use
 monotonic elapsed time and provider collection remains concurrent.
 Mission Control charts recent collection duration and highlights
-snapshots containing provider failures or time-outs.
+snapshots containing provider failures or time-outs. Provider and
+outcome controls filter the visible trend without another request.
 
 ---
 
