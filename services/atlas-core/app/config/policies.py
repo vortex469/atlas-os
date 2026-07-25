@@ -1,4 +1,6 @@
+from datetime import UTC, datetime
 from pathlib import Path
+from time import perf_counter
 
 import yaml
 from pydantic import ValidationError
@@ -9,6 +11,7 @@ from app.config.policy_models import (
     ObsidianPolicy,
     OPNsensePolicy,
     Policies,
+    PolicyReloadHealth,
     QdrantPolicy,
 )
 
@@ -110,3 +113,41 @@ def get_qdrant_policy() -> QdrantPolicy:
 
 def get_n8n_policy() -> N8nPolicy:
     return load_policies().n8n
+
+
+def get_policy_reload_health(
+    policy_file: Path | None = None,
+) -> PolicyReloadHealth:
+    """Validate the current policy source and report reload health."""
+
+    resolved_policy_file = policy_file or POLICY_FILE
+    checked_at = datetime.now(UTC)
+    started_at = perf_counter()
+
+    try:
+        load_policies(resolved_policy_file)
+    except PolicyLoadError as error:
+        return PolicyReloadHealth(
+            status="degraded",
+            source_exists=resolved_policy_file.exists(),
+            checked_at=checked_at,
+            duration_ms=round(
+                (perf_counter() - started_at) * 1000,
+                2,
+            ),
+            error=str(error).replace(
+                str(resolved_policy_file),
+                "<policy-file>",
+            ),
+        )
+
+    return PolicyReloadHealth(
+        status="healthy",
+        source_exists=resolved_policy_file.exists(),
+        checked_at=checked_at,
+        loaded_at=datetime.now(UTC),
+        duration_ms=round(
+            (perf_counter() - started_at) * 1000,
+            2,
+        ),
+    )

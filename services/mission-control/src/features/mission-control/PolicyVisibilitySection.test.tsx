@@ -42,12 +42,32 @@ const policies: AtlasPolicies = {
     },
 };
 
+const health = {
+    status: "healthy" as const,
+    source_exists: true,
+    checked_at: "2026-07-25T19:00:00Z",
+    loaded_at: "2026-07-25T19:00:00Z",
+    duration_ms: 1.25,
+    error: null,
+};
+
 describe("PolicyVisibilitySection", () => {
     it("shows live provider expectations and severities", () => {
-        render(<PolicyVisibilitySection policies={policies} />);
+        render(
+            <PolicyVisibilitySection
+                policies={policies}
+                health={health}
+            />,
+        );
 
         const rows = screen.getAllByRole("row").slice(1);
         expect(rows).toHaveLength(11);
+        expect(
+            screen.getByText("Policy reload healthy"),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/Validated in 1.25 ms/),
+        ).toBeInTheDocument();
         expect(
             within(rows[0]).getByText(
                 "Warn at 3 pending update(s)",
@@ -74,5 +94,29 @@ describe("PolicyVisibilitySection", () => {
                 "1 expected active workflow(s)",
             ),
         ).toBeInTheDocument();
+    });
+
+    it("shows degraded reload telemetry without a snapshot", () => {
+        render(
+            <PolicyVisibilitySection
+                policies={null}
+                health={{
+                    status: "degraded",
+                    source_exists: true,
+                    checked_at: "2026-07-25T19:00:00Z",
+                    loaded_at: null,
+                    duration_ms: 0.5,
+                    error: "Atlas policy reload failed.",
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText("Policy reload degraded"),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Atlas policy reload failed."),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole("table")).not.toBeInTheDocument();
     });
 });

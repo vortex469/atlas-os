@@ -9,7 +9,10 @@ import { atlas } from "../api/atlas";
 import type { AceSummary } from "../types/ace";
 import type { AtlasHealth } from "../types/health";
 import type { Provider } from "../types/provider";
-import type { AtlasPolicies } from "../types/policies";
+import type {
+    AtlasPolicies,
+    PolicyReloadHealth,
+} from "../types/policies";
 
 const REFRESH_INTERVAL_MS = 30_000;
 
@@ -18,6 +21,7 @@ type MissionControlState = {
     health: AtlasHealth | null;
     providers: Provider[];
     policies: AtlasPolicies | null;
+    policyHealth: PolicyReloadHealth | null;
     lastUpdated: Date | null;
     error: string | null;
     isLoading: boolean;
@@ -53,6 +57,8 @@ export function useMissionControl(): MissionControlState {
     const [policies, setPolicies] = useState<AtlasPolicies | null>(
         null,
     );
+    const [policyHealth, setPolicyHealth] =
+        useState<PolicyReloadHealth | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -80,17 +86,24 @@ export function useMissionControl(): MissionControlState {
                 healthResponse,
                 providersResponse,
                 policiesResponse,
+                policyHealthResponse,
             ] = await Promise.all([
                 atlas.get<AceSummary>("/ace/summary"),
                 atlas.get<AtlasHealth>("/health"),
                 atlas.get<Provider[]>("/providers"),
-                atlas.get<AtlasPolicies>("/policies"),
+                atlas
+                    .get<AtlasPolicies>("/policies")
+                    .catch(() => null),
+                atlas.get<PolicyReloadHealth>("/policies/status"),
             ]);
 
             setSummary(summaryResponse.data);
             setHealth(healthResponse.data);
             setProviders(sortProviders(providersResponse.data));
-            setPolicies(policiesResponse.data);
+            if (policiesResponse !== null) {
+                setPolicies(policiesResponse.data);
+            }
+            setPolicyHealth(policyHealthResponse.data);
             setLastUpdated(new Date());
             setError(null);
 
@@ -131,6 +144,7 @@ export function useMissionControl(): MissionControlState {
         health,
         providers,
         policies,
+        policyHealth,
         lastUpdated,
         error,
         isLoading,

@@ -173,9 +173,11 @@ Planned
 
 ✔ Provider Policy Detail Views
 
-241 Atlas Core tests collected.
+✔ Policy Reload Health Telemetry
 
-26 Mission Control component tests passing.
+243 Atlas Core tests collected.
+
+28 Mission Control component tests passing.
 
 ---
 
@@ -185,7 +187,8 @@ Provider Operations
 
 Next work
 
-- Policy reload health telemetry
+- Provider intelligence trend history
+- Policy validation diagnostics
 
 ---
 

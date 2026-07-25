@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -122,3 +123,12 @@ class Policies(BaseModel):
     )
     qdrant: QdrantPolicy = Field(default_factory=QdrantPolicy)
     n8n: N8nPolicy = Field(default_factory=N8nPolicy)
+
+
+class PolicyReloadHealth(BaseModel):
+    status: Literal["healthy", "degraded"]
+    source_exists: bool
+    checked_at: datetime
+    loaded_at: datetime | None = None
+    duration_ms: float = Field(ge=0)
+    error: str | None = None

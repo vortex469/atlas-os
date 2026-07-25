@@ -15,6 +15,7 @@ export function MissionControl() {
         health,
         providers,
         policies,
+        policyHealth,
         lastUpdated,
         error,
         isLoading,
@@ -133,8 +134,11 @@ export function MissionControl() {
                     />
                 )}
 
-                {policies && (
-                    <PolicyVisibilitySection policies={policies} />
+                {policyHealth && (
+                    <PolicyVisibilitySection
+                        policies={policies}
+                        health={policyHealth}
+                    />
                 )}
 
                 {summary && (

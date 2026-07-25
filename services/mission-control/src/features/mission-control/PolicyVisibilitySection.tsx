@@ -1,11 +1,13 @@
 import { SectionHeader } from "../../components/SectionHeader";
 import type {
     AtlasPolicies,
+    PolicyReloadHealth,
     PolicySeverity,
 } from "../../types/policies";
 
 type PolicyVisibilitySectionProps = {
-    policies: AtlasPolicies;
+    policies: AtlasPolicies | null;
+    health: PolicyReloadHealth;
 };
 
 type PolicyRow = {
@@ -29,7 +31,21 @@ function formatSeverity(severity: PolicySeverity): string {
 
 export function PolicyVisibilitySection({
     policies,
+    health,
 }: PolicyVisibilitySectionProps) {
+    if (policies === null) {
+        return (
+            <section>
+                <SectionHeader
+                    title="Provider Policies"
+                    description="Live validated operational expectations currently enforced by ACE."
+                />
+
+                <PolicyReloadStatus health={health} />
+            </section>
+        );
+    }
+
     const rows: PolicyRow[] = [
         {
             provider: "OPNsense",
@@ -121,6 +137,8 @@ export function PolicyVisibilitySection({
                 description="Live validated operational expectations currently enforced by ACE."
             />
 
+            <PolicyReloadStatus health={health} />
+
             <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900">
                 <table className="w-full min-w-[620px] text-left text-sm">
                     <thead className="border-b border-slate-800 bg-slate-950/40 text-xs uppercase tracking-[0.12em] text-slate-500">
@@ -164,3 +182,65 @@ export function PolicyVisibilitySection({
         </section>
     );
 }
+
+function PolicyReloadStatus({
+    health,
+}: {
+    health: PolicyReloadHealth;
+}) {
+    const healthy = health.status === "healthy";
+
+    return (
+        <div
+            role="status"
+            className={`mb-4 rounded-lg border p-4 ${
+                healthy
+                    ? "border-emerald-500/20 bg-emerald-500/10"
+                    : "border-red-500/30 bg-red-500/10"
+            }`}
+        >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p
+                        className={`text-sm font-semibold ${
+                            healthy
+                                ? "text-emerald-300"
+                                : "text-red-300"
+                        }`}
+                    >
+                        {healthy
+                            ? "Policy reload healthy"
+                            : "Policy reload degraded"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                        Validated in {health.duration_ms.toFixed(2)} ms
+                        {" · "}
+                        {health.source_exists
+                            ? "Policy file present"
+                            : "Safe defaults active"}
+                    </p>
+                </div>
+
+                <p className="text-xs text-slate-500">
+                    Checked{" "}
+                    {new Date(health.checked_at).toLocaleTimeString()}
+                </p>
+            </div>
+
+            {health.error && (
+                <p className="mt-3 break-words font-mono text-xs text-red-200/80">
+                    {health.error}
+                </p>
+            )}
+
+            {!healthy && policiesUnavailableMessage}
+        </div>
+    );
+}
+
+const policiesUnavailableMessage = (
+    <p className="mt-3 text-sm text-red-200/80">
+        The last policy snapshot remains in place when available.
+        Correct the policy file and refresh to resume live visibility.
+    </p>
+);

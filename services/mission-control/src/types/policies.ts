@@ -50,3 +50,12 @@ export type AtlasPolicies = {
         empty_instance_severity: PolicySeverity;
     };
 };
+
+export type PolicyReloadHealth = {
+    status: "healthy" | "degraded";
+    source_exists: boolean;
+    checked_at: string;
+    loaded_at: string | null;
+    duration_ms: number;
+    error: string | null;
+};

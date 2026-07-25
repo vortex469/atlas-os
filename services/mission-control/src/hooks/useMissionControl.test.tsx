@@ -15,7 +15,10 @@ import { atlas } from "../api/atlas";
 import type { AceSummary } from "../types/ace";
 import type { AtlasHealth } from "../types/health";
 import type { Provider } from "../types/provider";
-import type { AtlasPolicies } from "../types/policies";
+import type {
+    AtlasPolicies,
+    PolicyReloadHealth,
+} from "../types/policies";
 import { useMissionControl } from "./useMissionControl";
 
 const summary: AceSummary = {
@@ -69,6 +72,15 @@ const policies: AtlasPolicies = {
     },
 };
 
+const policyHealth: PolicyReloadHealth = {
+    status: "healthy",
+    source_exists: true,
+    checked_at: "2026-07-25T19:00:00Z",
+    loaded_at: "2026-07-25T19:00:00Z",
+    duration_ms: 1.2,
+    error: null,
+};
+
 function provider(
     id: string,
     name: string,
@@ -116,6 +128,9 @@ describe("useMissionControl", () => {
                 if (url === "/policies") {
                     return { data: policies };
                 }
+                if (url === "/policies/status") {
+                    return { data: policyHealth };
+                }
 
                 return {
                     data: [
@@ -146,11 +161,12 @@ describe("useMissionControl", () => {
         expect(result.current.summary).toEqual(summary);
         expect(result.current.health).toEqual(health);
         expect(result.current.policies).toEqual(policies);
+        expect(result.current.policyHealth).toEqual(policyHealth);
         expect(
             result.current.providers.map(({ id }) => id),
         ).toEqual(["docker", "ollama"]);
         expect(result.current.lastUpdated).toBeInstanceOf(Date);
-        expect(get).toHaveBeenCalledTimes(4);
+        expect(get).toHaveBeenCalledTimes(5);
     });
 
     it("preserves current data when a manual refresh fails", async () => {
@@ -165,6 +181,9 @@ describe("useMissionControl", () => {
                 }
                 if (url === "/policies") {
                     return { data: policies };
+                }
+                if (url === "/policies/status") {
+                    return { data: policyHealth };
                 }
 
                 return { data: [] };
@@ -191,6 +210,45 @@ describe("useMissionControl", () => {
             "Mission Control could not retrieve the latest state from Atlas Core.",
         );
 
-        expect(get).toHaveBeenCalledTimes(8);
+        expect(get).toHaveBeenCalledTimes(10);
+    });
+
+    it("keeps dashboard data available when policy reload fails", async () => {
+        const degradedHealth: PolicyReloadHealth = {
+            status: "degraded",
+            source_exists: true,
+            checked_at: "2026-07-25T19:05:00Z",
+            loaded_at: null,
+            duration_ms: 0.5,
+            error: "Atlas policy reload failed.",
+        };
+        vi.spyOn(atlas, "get").mockImplementation(async (url) => {
+            if (url === "/ace/summary") {
+                return { data: summary };
+            }
+            if (url === "/health") {
+                return { data: health };
+            }
+            if (url === "/providers") {
+                return { data: [] };
+            }
+            if (url === "/policies/status") {
+                return { data: degradedHealth };
+            }
+
+            throw new Error("Invalid policy file");
+        });
+
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(0);
+        });
+
+        expect(result.current.summary).toEqual(summary);
+        expect(result.current.policies).toBeNull();
+        expect(result.current.policyHealth).toEqual(
+            degradedHealth,
+        );
+        expect(result.current.error).toBeNull();
     });
 });
