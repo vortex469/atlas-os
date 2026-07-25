@@ -9,11 +9,9 @@ export default defineConfig({
     ],
     server: {
         proxy: {
-            "/atlas-core": {
+            "/api/v1": {
                 target: "http://127.0.0.1:8643",
                 changeOrigin: true,
-                rewrite: (path) =>
-                    path.replace(/^\/atlas-core/, ""),
             },
         },
     },

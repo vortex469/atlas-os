@@ -104,13 +104,16 @@ export function useMissionControl(): MissionControlState {
     }, []);
 
     useEffect(() => {
-        void refresh();
+        const initialRefreshId = window.setTimeout(() => {
+            void refresh();
+        }, 0);
 
         const intervalId = window.setInterval(() => {
             void refresh();
         }, REFRESH_INTERVAL_MS);
 
         return () => {
+            window.clearTimeout(initialRefreshId);
             window.clearInterval(intervalId);
         };
     }, [refresh]);

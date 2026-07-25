@@ -3,9 +3,15 @@ import { parse } from "yaml";
 
 import type { DeploymentAnalysisResponse } from "../features/forge/types";
 
+const ATLAS_API_BASE_URL =
+    import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
+
 export const atlas = axios.create({
-    baseURL: "/atlas-core",
-    timeout: 15000,
+    baseURL: ATLAS_API_BASE_URL,
+    timeout: 15_000,
+    headers: {
+        Accept: "application/json",
+    },
 });
 
 export async function analyzeCompose(
