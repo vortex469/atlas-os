@@ -12,6 +12,8 @@ release boundaries.
   HTTPS ingress overlay.
 - Online, integrity-checked backups and guarded restores for persistent
   action history and provider telemetry.
+- Optional daily systemd backups with persistent scheduling, strict
+  verification, and minimum-count retention safeguards.
 
 ## v1.0.0 — Foundry (2026-07-25)
 

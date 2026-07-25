@@ -42,6 +42,25 @@ backup_directory="$(
 )"
 test -n "$backup_directory"
 
+cp -a -- "$backup_directory" "$GATE_DIRECTORY/atlas-data-20000101T000000Z"
+cp -a -- "$backup_directory" "$GATE_DIRECTORY/atlas-data-20000102T000000Z"
+docker run \
+    --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --mount "type=bind,src=$GATE_DIRECTORY,dst=/backups" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+    "$PYTHON_IMAGE" \
+    python /tool.py prune \
+    /backups \
+    --retention-days 30 \
+    --minimum-count 1
+test ! -e "$GATE_DIRECTORY/atlas-data-20000101T000000Z"
+test ! -e "$GATE_DIRECTORY/atlas-data-20000102T000000Z"
+test -d "$backup_directory"
+
 docker run \
     --rm \
     --mount "type=volume,src=$GATE_VOLUME,dst=/data" \

@@ -1,0 +1,23 @@
+[Unit]
+Description=Atlas online data backup and retention
+Requires=docker.service
+After=docker.service
+ConditionFileIsExecutable=/opt/atlas/scripts/atlas-data-backup
+ConditionFileIsExecutable=/usr/bin/python3
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/atlas
+Environment=ATLAS_BACKUP_ROOT=/opt/atlas/backups
+Environment=ATLAS_BACKUP_RETENTION_DAYS=30
+Environment=ATLAS_BACKUP_MINIMUM_COUNT=7
+EnvironmentFile=-/etc/atlas/backup.env
+ExecStart=/opt/atlas/scripts/atlas-data-backup ${ATLAS_BACKUP_ROOT}
+ExecStart=/usr/bin/python3 /opt/atlas/scripts/atlas-data-tool.py prune ${ATLAS_BACKUP_ROOT} --retention-days ${ATLAS_BACKUP_RETENTION_DAYS} --minimum-count ${ATLAS_BACKUP_MINIMUM_COUNT}
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

@@ -4,14 +4,19 @@ import argparse
 import hashlib
 import json
 import os
+import re
+import shutil
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
 DATABASES = ("action_history.db", "provider_intelligence.db")
 MANIFEST_NAME = "manifest.json"
 FORMAT_VERSION = 1
+BACKUP_NAME_PATTERN = re.compile(
+    r"^atlas-data-(?P<timestamp>\d{8}T\d{6}Z)$"
+)
 
 
 def sha256(path: Path) -> str:
@@ -159,6 +164,55 @@ def restore_backup(backup: Path, target: Path) -> None:
                 journal.unlink()
 
 
+def prune_backups(
+    backup_root: Path,
+    retention_days: int,
+    minimum_count: int,
+    *,
+    dry_run: bool,
+) -> None:
+    if retention_days < 1:
+        raise ValueError("retention days must be at least 1")
+    if minimum_count < 1:
+        raise ValueError("minimum count must be at least 1")
+    if not backup_root.is_dir():
+        raise RuntimeError(f"backup root not found: {backup_root}")
+
+    backups: list[tuple[datetime, Path]] = []
+    for path in backup_root.iterdir():
+        if not path.is_dir():
+            continue
+        match = BACKUP_NAME_PATTERN.fullmatch(path.name)
+        if match is None:
+            continue
+        timestamp = datetime.strptime(
+            match.group("timestamp"),
+            "%Y%m%dT%H%M%SZ",
+        ).replace(tzinfo=timezone.utc)
+        backups.append((timestamp, path))
+
+    backups.sort(reverse=True)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    candidates = [
+        path
+        for timestamp, path in backups[minimum_count:]
+        if timestamp < cutoff
+    ]
+
+    for path in candidates:
+        verify_backup(path)
+        if dry_run:
+            print(f"Would remove expired backup: {path}")
+        else:
+            shutil.rmtree(path)
+            print(f"Removed expired backup: {path}")
+
+    print(
+        f"Backup retention complete: total={len(backups)} "
+        f"expired={len(candidates)} minimum_kept={minimum_count}"
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -174,6 +228,20 @@ def parse_args() -> argparse.Namespace:
     restore_parser.add_argument("backup", type=Path)
     restore_parser.add_argument("target", type=Path)
 
+    prune_parser = subparsers.add_parser("prune")
+    prune_parser.add_argument("backup_root", type=Path)
+    prune_parser.add_argument(
+        "--retention-days",
+        type=int,
+        default=30,
+    )
+    prune_parser.add_argument(
+        "--minimum-count",
+        type=int,
+        default=7,
+    )
+    prune_parser.add_argument("--dry-run", action="store_true")
+
     return parser.parse_args()
 
 
@@ -187,9 +255,16 @@ def main() -> None:
             f"Backup verified: {len(manifest['databases'])} databases, "
             f"created {manifest['created_at']}"
         )
-    else:
+    elif args.command == "restore":
         restore_backup(args.backup, args.target)
         print("Backup restored and verified")
+    else:
+        prune_backups(
+            args.backup_root,
+            args.retention_days,
+            args.minimum_count,
+            dry_run=args.dry_run,
+        )
 
 
 if __name__ == "__main__":

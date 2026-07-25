@@ -208,6 +208,42 @@ and runs SQLite integrity checks before replacing live database files.
 Set `ATLAS_DATA_VOLUME` only when the Compose project uses a non-default
 volume name.
 
+### Schedule backups
+
+Atlas includes an optional systemd timer that runs an online backup every
+day at 02:15 UTC with up to 30 minutes of randomized delay. Persistent
+scheduling runs a missed backup after the host returns.
+
+Review the configuration before installation:
+
+```bash
+sudo mkdir -p /etc/atlas
+sudo cp deploy/systemd/backup.env.example /etc/atlas/backup.env
+sudo editor /etc/atlas/backup.env
+sudo ./scripts/install-backup-timer
+```
+
+The default policy stores backups in `/opt/atlas/backups`, expires
+verified backups older than 30 days, and always preserves at least the
+seven newest backups. Retention ignores unrelated directories and aborts
+instead of deleting a backup whose manifest, checksum, or SQLite
+integrity check fails.
+
+Inspect the schedule and recent result:
+
+```bash
+systemctl list-timers atlas-data-backup.timer
+systemctl status atlas-data-backup.service
+journalctl -u atlas-data-backup.service
+```
+
+Backups on `/opt/atlas/backups` share the same ZFS storage as the live
+volume on a default installation. They protect against application-level
+damage and accidental database loss, but not host or storage-pool loss.
+For disaster recovery, set `ATLAS_BACKUP_ROOT` in
+`/etc/atlas/backup.env` to a mounted destination backed by separate or
+remote storage.
+
 ## Security notes
 
 The Core container has access to the Docker socket, which is equivalent
