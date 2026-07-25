@@ -167,9 +167,11 @@ Planned
 
 ✔ n8n Workflow Policies
 
+✔ Mission Control Provider Intelligence Telemetry
+
 239 Atlas Core tests collected.
 
-19 Mission Control component tests passing.
+22 Mission Control component tests passing.
 
 ---
 
@@ -179,7 +181,6 @@ Provider Intelligence Complete
 
 Next work
 
-- Provider intelligence telemetry in Mission Control
 - Provider policy visibility
 
 ---

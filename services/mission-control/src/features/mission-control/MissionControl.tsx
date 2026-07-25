@@ -4,6 +4,7 @@ import { ProviderCard } from "../../components/ProviderCard";
 import { SectionHeader } from "../../components/SectionHeader";
 import { useMissionControl } from "../../hooks/useMissionControl";
 import { FindingsSection } from "./FindingsSection";
+import { IntelligenceTelemetrySection } from "./IntelligenceTelemetrySection";
 import { RecommendationsSection } from "./RecommendationsSection";
 import { ServiceHealthSection } from "./ServiceHealthSection";
 
@@ -122,6 +123,12 @@ export function MissionControl() {
                             )
                         )}
                     </section>
+                )}
+
+                {summary && (
+                    <IntelligenceTelemetrySection
+                        telemetry={summary.telemetry}
+                    />
                 )}
 
                 {summary && (

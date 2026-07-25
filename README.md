@@ -114,6 +114,7 @@ Current capabilities:
 - Read-only OPNsense health and diagnostics provider
 - Concurrent provider-backed ACE findings
 - Bounded provider intelligence collection
+- Provider intelligence timing and outcome dashboard
 - Read-only Frigate camera health and version telemetry
 - Aggregated dashboard, health, and AI status
 - Modular architecture
