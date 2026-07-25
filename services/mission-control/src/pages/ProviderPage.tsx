@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 
 import { FindingCard } from "../components/FindingCard";
+import { ProviderActions } from "../components/ProviderActions";
 import { ProviderOverview } from "../components/ProviderOverview";
 import { RecommendationCard } from "../components/RecommendationCard";
 import { RefreshIndicator } from "../components/RefreshIndicator";
@@ -163,6 +164,10 @@ export function ProviderPage() {
             {provider && (
                 <>
                     <ProviderOverview provider={provider} />
+                    <ProviderActions
+                        provider={provider}
+                        onActionCompleted={refresh}
+                    />
 
                     <section>
                         <SectionHeader

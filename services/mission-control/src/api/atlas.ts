@@ -2,6 +2,12 @@ import axios from "axios";
 import { parse } from "yaml";
 
 import type { DeploymentAnalysisResponse } from "../features/forge/types";
+import type {
+    AtlasAPIError,
+    ProviderAction,
+    ProviderActionRequest,
+    ProviderActionResult,
+} from "../types/providerAction";
 
 const ATLAS_API_BASE_URL =
     import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
@@ -29,4 +35,56 @@ export async function analyzeCompose(
         );
 
     return response.data;
+}
+
+export async function getProviderActions(
+    providerId: string,
+): Promise<ProviderAction[]> {
+    const response = await atlas.get<ProviderAction[]>(
+        `/providers/${encodeURIComponent(providerId)}/actions`,
+    );
+
+    return response.data;
+}
+
+export async function runProviderAction(
+    providerId: string,
+    actionId: string,
+    request: ProviderActionRequest = {},
+): Promise<ProviderActionResult> {
+    const response = await atlas.post<ProviderActionResult>(
+        `/providers/${encodeURIComponent(
+            providerId,
+        )}/actions/${encodeURIComponent(actionId)}`,
+        {
+            confirmed: request.confirmed ?? false,
+            parameters: request.parameters ?? {},
+        },
+    );
+
+    return response.data;
+}
+
+export function getAtlasErrorMessage(
+    error: unknown,
+    fallback: string,
+): string {
+    if (!axios.isAxiosError<AtlasAPIError>(error)) {
+        return fallback;
+    }
+
+    const apiMessage = error.response?.data?.error?.message;
+
+    if (
+        typeof apiMessage === "string" &&
+        apiMessage.trim().length > 0
+    ) {
+        return apiMessage;
+    }
+
+    if (error.code === "ECONNABORTED") {
+        return "Atlas Core did not respond before the request timed out.";
+    }
+
+    return fallback;
 }
