@@ -4,6 +4,7 @@ import { FindingCard } from "../components/FindingCard";
 import { ProviderActions } from "../components/ProviderActions";
 import { ProviderOverview } from "../components/ProviderOverview";
 import { ProviderPolicyDetails } from "../components/ProviderPolicyDetails";
+import { ProviderTelemetryTrend } from "../components/ProviderTelemetryTrend";
 import { RecommendationCard } from "../components/RecommendationCard";
 import { RefreshIndicator } from "../components/RefreshIndicator";
 import { SectionHeader } from "../components/SectionHeader";
@@ -23,6 +24,7 @@ export function ProviderPage() {
         summary,
         providers,
         policies,
+        telemetryHistory,
         lastUpdated,
         error,
         isLoading,
@@ -177,6 +179,11 @@ export function ProviderPage() {
                             policies={policies}
                         />
                     )}
+
+                    <ProviderTelemetryTrend
+                        providerId={provider.id}
+                        snapshots={telemetryHistory}
+                    />
 
                     <section>
                         <SectionHeader

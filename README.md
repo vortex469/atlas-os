@@ -220,6 +220,9 @@ snapshots containing provider failures or time-outs. Provider and
 outcome controls filter the visible trend without another request.
 JSON and CSV download actions apply the active provider and outcome
 filters.
+Each Provider detail page also charts that provider's individual
+collection duration and outcomes, separating integration performance
+from the overall concurrent ACE collection time.
 Mission Control also displays stored entry count, retention days, and
 the entry cap, with oldest/newest snapshot times and a capacity meter.
 Manual pruning requires confirmation in both the UI and the Core API.

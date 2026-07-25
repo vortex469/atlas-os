@@ -189,9 +189,11 @@ Planned
 
 ✔ Provider Telemetry Retention Detail View
 
+✔ Provider-Specific Telemetry Trends
+
 255 Atlas Core tests collected.
 
-33 Mission Control component tests passing.
+35 Mission Control component tests passing.
 
 ---
 
@@ -201,7 +203,7 @@ Provider Operations and Observability Complete
 
 Next work
 
-- Provider-specific telemetry trends
+- Provider intelligence performance policies
 
 ---
 
