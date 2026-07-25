@@ -4,8 +4,13 @@ import os
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Callable
 
+from app.config.policies import get_obsidian_policy
+from app.config.policy_models import (
+    ObsidianPolicy,
+    PolicySeverity,
+)
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -20,7 +25,14 @@ from app.providers import (
 class ObsidianProvider(Provider):
     """Read-only metadata provider for a local Obsidian vault."""
 
-    def __init__(self, service: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        service: dict[str, Any],
+        *,
+        policy_getter: Callable[[], ObsidianPolicy] = (
+            get_obsidian_policy
+        ),
+    ) -> None:
         self._service = service
         self._vault_path = Path(
             str(service.get("vault_path", "")),
@@ -29,10 +41,7 @@ class ObsidianProvider(Provider):
             service.get("max_scan_files", 10_000),
             "max_scan_files",
         )
-        self._stale_after_days = self._optional_positive_int(
-            service.get("stale_after_days"),
-            "stale_after_days",
-        )
+        self._policy_getter = policy_getter
         excluded = service.get(
             "exclude_directories",
             [".obsidian", ".trash"],
@@ -142,32 +151,48 @@ class ObsidianProvider(Provider):
             ]
 
         findings: list[Finding] = []
-        if health.details.get("note_count") == 0:
+        policy = self._policy_getter()
+        note_count = int(health.details.get("note_count") or 0)
+        if note_count < policy.minimum_note_count:
+            severity = self._severity(
+                policy.insufficient_notes_severity
+            )
             findings.append(
                 Finding(
-                    id="obsidian-vault-empty",
-                    severity=Severity.WARNING,
+                    id="obsidian-vault-insufficient-notes",
+                    severity=severity,
                     category="knowledge",
                     source="obsidian",
                     component=self.metadata.name,
-                    title="Obsidian vault contains no notes",
+                    title="Obsidian vault has insufficient notes",
                     message=(
-                        "Atlas found no Markdown notes in the "
-                        "configured Obsidian vault."
+                        f"Atlas found {note_count} Markdown note(s); "
+                        f"policy requires at least "
+                        f"{policy.minimum_note_count}."
                     ),
                     recommendation=(
                         "Confirm the vault path and verify that the "
                         "vault has been mounted with its note data."
                     ),
-                    score_penalty=5,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
+                    metric={
+                        "note_count": note_count,
+                        "minimum_note_count": (
+                            policy.minimum_note_count
+                        ),
+                    },
                 ),
             )
 
         if health.details.get("scan_truncated"):
+            severity = self._severity(
+                policy.scan_truncated_severity
+            )
             findings.append(
                 Finding(
                     id="obsidian-vault-scan-truncated",
-                    severity=Severity.WARNING,
+                    severity=severity,
                     category="knowledge",
                     source="obsidian",
                     component=self.metadata.name,
@@ -180,7 +205,8 @@ class ObsidianProvider(Provider):
                         "Increase max_scan_files or exclude large "
                         "non-note directories."
                     ),
-                    score_penalty=5,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
                     details={
                         "max_scan_files": self._max_scan_files,
                     },
@@ -188,32 +214,34 @@ class ObsidianProvider(Provider):
             )
 
         if (
-            self._stale_after_days is not None
+            policy.stale_after_days is not None
             and self._is_stale(
                 health.details.get("latest_note_modified_at"),
-                self._stale_after_days,
+                policy.stale_after_days,
             )
         ):
+            severity = self._severity(policy.stale_severity)
             findings.append(
                 Finding(
                     id="obsidian-vault-stale",
-                    severity=Severity.INFO,
+                    severity=severity,
                     category="knowledge",
                     source="obsidian",
                     component=self.metadata.name,
                     title="Obsidian vault has no recent note changes",
                     message=(
                         "The newest note exceeds the configured "
-                        f"{self._stale_after_days}-day freshness window."
+                        f"{policy.stale_after_days}-day freshness "
+                        "window."
                     ),
                     recommendation=(
                         "Confirm the vault is still active and that "
                         "synchronization is current."
                     ),
-                    affects_health=False,
-                    score_penalty=0,
+                    affects_health=severity != Severity.INFO,
+                    score_penalty=self._score_penalty(severity),
                     details={
-                        "stale_after_days": self._stale_after_days,
+                        "stale_after_days": policy.stale_after_days,
                         "latest_note_modified_at": health.details.get(
                             "latest_note_modified_at"
                         ),
@@ -317,16 +345,6 @@ class ObsidianProvider(Provider):
             raise ValueError(f"{field} must be a positive integer.")
         return parsed
 
-    @classmethod
-    def _optional_positive_int(
-        cls,
-        value: object,
-        field: str,
-    ) -> int | None:
-        if value is None:
-            return None
-        return cls._positive_int(value, field)
-
     @staticmethod
     def _is_stale(
         modified_at: object,
@@ -337,3 +355,19 @@ class ObsidianProvider(Provider):
         modified = datetime.fromisoformat(modified_at)
         age = datetime.now(UTC) - modified
         return age.total_seconds() > stale_after_days * 86_400
+
+    @staticmethod
+    def _severity(value: PolicySeverity) -> Severity:
+        return {
+            "info": Severity.INFO,
+            "warning": Severity.WARNING,
+            "critical": Severity.CRITICAL,
+        }[value]
+
+    @staticmethod
+    def _score_penalty(severity: Severity) -> int:
+        return {
+            Severity.INFO: 0,
+            Severity.WARNING: 5,
+            Severity.CRITICAL: 15,
+        }[severity]

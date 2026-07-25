@@ -262,7 +262,6 @@ services:
     vault_path: /vaults/atlas
     critical: false
     max_scan_files: 10000
-    stale_after_days: 30
     exclude_directories:
       - .obsidian
       - .trash
@@ -275,10 +274,20 @@ note modification time, and whether the file limit truncated the scan.
 Symlinked files and directories are skipped to keep collection inside
 the configured vault.
 
-`stale_after_days` is optional. When configured, an old newest-note
-timestamp creates an informational finding without reducing health.
-Missing vaults, empty vaults, and truncated scans produce operational
-findings.
+Vault expectations are live-reloaded from `config/policies.yaml`:
+
+```yaml
+obsidian:
+  minimum_note_count: 10
+  stale_after_days: 30
+  insufficient_notes_severity: warning
+  stale_severity: info
+  scan_truncated_severity: warning
+```
+
+`stale_after_days` is optional. Each finding severity accepts `info`,
+`warning`, or `critical`; informational findings do not reduce health.
+Missing vaults remain governed by the provider's inventory priority.
 
 ---
 

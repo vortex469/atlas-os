@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from app.config.policy_models import ObsidianPolicy
 from app.providers import loader
 from app.providers.obsidian import ObsidianProvider
 from app.providers.registry import ProviderRegistry
@@ -71,7 +72,9 @@ def test_empty_vault_is_degraded(tmp_path: Path) -> None:
     findings = asyncio.run(provider.get_findings())
 
     assert health.status == "degraded"
-    assert findings[0].id == "obsidian-vault-empty"
+    assert findings[0].id == (
+        "obsidian-vault-insufficient-notes"
+    )
     assert findings[0].severity == "warning"
 
 
@@ -105,7 +108,10 @@ def test_stale_vault_finding_is_advisory(tmp_path: Path) -> None:
     ).timestamp()
     os.utime(note, (old_timestamp, old_timestamp))
     provider = ObsidianProvider(
-        service(vault, stale_after_days=30),
+        service(vault),
+        policy_getter=lambda: ObsidianPolicy(
+            stale_after_days=30,
+        ),
     )
 
     findings = asyncio.run(provider.get_findings())
@@ -116,11 +122,35 @@ def test_stale_vault_finding_is_advisory(tmp_path: Path) -> None:
     assert findings[0].affects_health is False
 
 
+def test_obsidian_note_threshold_and_severity_follow_policy(
+    tmp_path: Path,
+) -> None:
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    (vault / "one.md").write_text("note", encoding="utf-8")
+    provider = ObsidianProvider(
+        service(vault),
+        policy_getter=lambda: ObsidianPolicy(
+            minimum_note_count=2,
+            insufficient_notes_severity="critical",
+        ),
+    )
+
+    findings = asyncio.run(provider.get_findings())
+
+    assert findings[0].severity == "critical"
+    assert findings[0].affects_health is True
+    assert findings[0].score_penalty == 15
+    assert findings[0].metric == {
+        "note_count": 1,
+        "minimum_note_count": 2,
+    }
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
         {"max_scan_files": 0},
-        {"stale_after_days": -1},
         {"exclude_directories": ".obsidian"},
     ],
 )

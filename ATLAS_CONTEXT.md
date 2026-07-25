@@ -158,7 +158,9 @@ Planned
 
 ✔ Qdrant Provider
 
-224 Atlas Core tests collected.
+✔ Obsidian Vault Policies
+
+225 Atlas Core tests collected.
 
 19 Mission Control component tests passing.
 
@@ -170,7 +172,6 @@ Provider Intelligence
 
 Next work
 
-- Obsidian vault policies
 - n8n provider
 
 ---

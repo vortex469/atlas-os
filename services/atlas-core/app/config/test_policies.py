@@ -9,6 +9,7 @@ from app.config.policies import (
     get_expected_guest_state,
     get_frigate_policy,
     get_ignored_entities,
+    get_obsidian_policy,
     get_opnsense_policy,
     load_policies,
 )
@@ -52,6 +53,12 @@ frigate:
       expected: active
       minimum_camera_fps: 4
       minimum_process_fps: 3
+obsidian:
+  minimum_note_count: 10
+  stale_after_days: 14
+  insufficient_notes_severity: critical
+  stale_severity: warning
+  scan_truncated_severity: info
 """,
     )
 
@@ -72,6 +79,12 @@ frigate:
         "front"
     ].minimum_camera_fps == 4
     assert get_frigate_policy().stalled_camera_severity == "critical"
+    assert get_obsidian_policy().minimum_note_count == 10
+    assert get_obsidian_policy().stale_after_days == 14
+    assert (
+        get_obsidian_policy().insufficient_notes_severity
+        == "critical"
+    )
 
     write_policy(
         policy_file,
@@ -97,6 +110,8 @@ opnsense:
     )
     assert get_opnsense_policy().reboot_required_severity == "info"
     assert get_frigate_policy().cameras == {}
+    assert get_obsidian_policy().minimum_note_count == 1
+    assert get_obsidian_policy().stale_after_days is None
 
 
 @pytest.mark.parametrize(
@@ -118,6 +133,10 @@ frigate:
   cameras:
     front:
       expected: unavailable
+""",
+        """
+obsidian:
+  stale_after_days: 0
 """,
     ],
 )
@@ -148,3 +167,4 @@ def test_missing_policy_file_uses_safe_defaults(
         is None
     )
     assert policies.frigate.cameras == {}
+    assert policies.obsidian.minimum_note_count == 1

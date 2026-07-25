@@ -50,6 +50,14 @@ class FrigatePolicy(BaseModel):
     stalled_camera_severity: PolicySeverity = "warning"
 
 
+class ObsidianPolicy(BaseModel):
+    minimum_note_count: int = Field(default=1, ge=0)
+    stale_after_days: int | None = Field(default=None, ge=1)
+    insufficient_notes_severity: PolicySeverity = "warning"
+    stale_severity: PolicySeverity = "info"
+    scan_truncated_severity: PolicySeverity = "warning"
+
+
 class Policies(BaseModel):
     proxmox: ProxmoxPolicy = Field(default_factory=ProxmoxPolicy)
     docker: DockerPolicy = Field(default_factory=DockerPolicy)
@@ -60,3 +68,6 @@ class Policies(BaseModel):
         default_factory=OPNsensePolicy,
     )
     frigate: FrigatePolicy = Field(default_factory=FrigatePolicy)
+    obsidian: ObsidianPolicy = Field(
+        default_factory=ObsidianPolicy
+    )

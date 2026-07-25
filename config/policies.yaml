@@ -42,3 +42,10 @@ opnsense:
 frigate:
   stalled_camera_severity: warning
   cameras: {}
+
+obsidian:
+  minimum_note_count: 1
+  stale_after_days:
+  insufficient_notes_severity: warning
+  stale_severity: info
+  scan_truncated_severity: warning
