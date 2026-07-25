@@ -6,7 +6,10 @@ import {
 } from "react";
 
 import { atlas } from "../api/atlas";
-import type { AceSummary } from "../types/ace";
+import type {
+    AceSummary,
+    IntelligenceTelemetrySnapshot,
+} from "../types/ace";
 import type { AtlasHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import type {
@@ -22,6 +25,7 @@ type MissionControlState = {
     providers: Provider[];
     policies: AtlasPolicies | null;
     policyHealth: PolicyReloadHealth | null;
+    telemetryHistory: IntelligenceTelemetrySnapshot[];
     lastUpdated: Date | null;
     error: string | null;
     isLoading: boolean;
@@ -59,6 +63,9 @@ export function useMissionControl(): MissionControlState {
     );
     const [policyHealth, setPolicyHealth] =
         useState<PolicyReloadHealth | null>(null);
+    const [telemetryHistory, setTelemetryHistory] = useState<
+        IntelligenceTelemetrySnapshot[]
+    >([]);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +94,7 @@ export function useMissionControl(): MissionControlState {
                 providersResponse,
                 policiesResponse,
                 policyHealthResponse,
+                telemetryHistoryResponse,
             ] = await Promise.all([
                 atlas.get<AceSummary>("/ace/summary"),
                 atlas.get<AtlasHealth>("/health"),
@@ -95,6 +103,12 @@ export function useMissionControl(): MissionControlState {
                     .get<AtlasPolicies>("/policies")
                     .catch(() => null),
                 atlas.get<PolicyReloadHealth>("/policies/status"),
+                atlas
+                    .get<IntelligenceTelemetrySnapshot[]>(
+                        "/intelligence/telemetry/history",
+                        { params: { limit: 30 } },
+                    )
+                    .catch(() => null),
             ]);
 
             setSummary(summaryResponse.data);
@@ -104,6 +118,11 @@ export function useMissionControl(): MissionControlState {
                 setPolicies(policiesResponse.data);
             }
             setPolicyHealth(policyHealthResponse.data);
+            if (telemetryHistoryResponse !== null) {
+                setTelemetryHistory(
+                    telemetryHistoryResponse.data,
+                );
+            }
             setLastUpdated(new Date());
             setError(null);
 
@@ -145,6 +164,7 @@ export function useMissionControl(): MissionControlState {
         providers,
         policies,
         policyHealth,
+        telemetryHistory,
         lastUpdated,
         error,
         isLoading,

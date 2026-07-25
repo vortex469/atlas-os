@@ -33,7 +33,7 @@ def test_collect_findings(monkeypatch):
     assert findings == [finding]
 
 
-def test_build_report(monkeypatch):
+def test_build_report(monkeypatch, isolated_intelligence_history):
     finding = make_test_finding()
 
     monkeypatch.setattr(
@@ -49,6 +49,9 @@ def test_build_report(monkeypatch):
     assert report.findings == [finding]
     assert len(report.assessments) == 1
     assert report.telemetry.provider_timeout_seconds == 10
+    snapshots = isolated_intelligence_history.list()
+    assert len(snapshots) == 1
+    assert snapshots[0].telemetry == report.telemetry
 
 
 def test_collects_registered_provider_findings() -> None:

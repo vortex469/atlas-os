@@ -13,6 +13,7 @@ import {
 
 import { atlas } from "../api/atlas";
 import type { AceSummary } from "../types/ace";
+import type { IntelligenceTelemetrySnapshot } from "../types/ace";
 import type { AtlasHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import type {
@@ -81,6 +82,14 @@ const policyHealth: PolicyReloadHealth = {
     error: null,
 };
 
+const telemetryHistory: IntelligenceTelemetrySnapshot[] = [
+    {
+        id: "snapshot-1",
+        collected_at: "2026-07-25T19:00:00Z",
+        telemetry: summary.telemetry,
+    },
+];
+
 function provider(
     id: string,
     name: string,
@@ -131,6 +140,9 @@ describe("useMissionControl", () => {
                 if (url === "/policies/status") {
                     return { data: policyHealth };
                 }
+                if (url === "/intelligence/telemetry/history") {
+                    return { data: telemetryHistory };
+                }
 
                 return {
                     data: [
@@ -162,11 +174,14 @@ describe("useMissionControl", () => {
         expect(result.current.health).toEqual(health);
         expect(result.current.policies).toEqual(policies);
         expect(result.current.policyHealth).toEqual(policyHealth);
+        expect(result.current.telemetryHistory).toEqual(
+            telemetryHistory,
+        );
         expect(
             result.current.providers.map(({ id }) => id),
         ).toEqual(["docker", "ollama"]);
         expect(result.current.lastUpdated).toBeInstanceOf(Date);
-        expect(get).toHaveBeenCalledTimes(5);
+        expect(get).toHaveBeenCalledTimes(6);
     });
 
     it("preserves current data when a manual refresh fails", async () => {
@@ -184,6 +199,9 @@ describe("useMissionControl", () => {
                 }
                 if (url === "/policies/status") {
                     return { data: policyHealth };
+                }
+                if (url === "/intelligence/telemetry/history") {
+                    return { data: telemetryHistory };
                 }
 
                 return { data: [] };
@@ -210,7 +228,7 @@ describe("useMissionControl", () => {
             "Mission Control could not retrieve the latest state from Atlas Core.",
         );
 
-        expect(get).toHaveBeenCalledTimes(10);
+        expect(get).toHaveBeenCalledTimes(12);
     });
 
     it("keeps dashboard data available when policy reload fails", async () => {
@@ -234,6 +252,9 @@ describe("useMissionControl", () => {
             }
             if (url === "/policies/status") {
                 return { data: degradedHealth };
+            }
+            if (url === "/intelligence/telemetry/history") {
+                return { data: [] };
             }
 
             throw new Error("Invalid policy file");

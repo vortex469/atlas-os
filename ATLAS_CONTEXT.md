@@ -175,9 +175,11 @@ Planned
 
 ✔ Policy Reload Health Telemetry
 
-243 Atlas Core tests collected.
+✔ Persistent Provider Intelligence Trend History
 
-28 Mission Control component tests passing.
+250 Atlas Core tests collected.
+
+30 Mission Control component tests passing.
 
 ---
 
@@ -187,7 +189,6 @@ Provider Operations
 
 Next work
 
-- Provider intelligence trend history
 - Policy validation diagnostics
 
 ---

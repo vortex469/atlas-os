@@ -5,6 +5,7 @@ from time import perf_counter
 from app.config.settings import settings
 from app.intelligence.assessment import build_situation_report
 from app.intelligence.findings import Finding, Severity
+from app.intelligence import history as history_module
 from app.intelligence.providers.docker import collect_docker_findings
 from app.intelligence.providers.homeassistant import (
     collect_homeassistant_findings,
@@ -20,9 +21,11 @@ from app.intelligence.report import (
 from app.providers.base import Provider
 from app.providers.capabilities import ProviderPriority
 from app.providers.registry import ProviderRegistry, provider_registry
+from app.core.logging import get_logger
 
 
 FindingProvider = Callable[[], list[Finding]]
+logger = get_logger("atlas.intelligence.coordinator")
 
 
 PROVIDERS: tuple[FindingProvider, ...] = (
@@ -193,6 +196,14 @@ async def build_report() -> SituationReport:
     )
     findings.extend(provider_findings)
     report = build_situation_report(findings)
+    try:
+        history_module.intelligence_telemetry_history.append(
+            telemetry
+        )
+    except Exception:
+        logger.exception(
+            "Unable to persist provider intelligence telemetry"
+        )
     return report.model_copy(
         update={"telemetry": telemetry},
     )

@@ -171,9 +171,15 @@ Provider finding collection uses a configurable deadline in
 ```yaml
 intelligence:
   provider_timeout_seconds: 10
+  telemetry_database: /opt/atlas/data/provider_intelligence.db
+  telemetry_max_entries: 10000
+  telemetry_retention_days: 30
 ```
 
 The timeout must be greater than zero and no more than 60 seconds.
+Collection snapshots are persisted locally, bounded by entry count and
+retention window, and available from
+`/api/v1/intelligence/telemetry/history`.
 ACE situation reports include collection telemetry for operational
 visibility:
 
@@ -197,6 +203,8 @@ visibility:
 
 Provider status is `completed`, `timed_out`, or `failed`. Durations use
 monotonic elapsed time and provider collection remains concurrent.
+Mission Control charts recent collection duration and highlights
+snapshots containing provider failures or time-outs.
 
 ---
 

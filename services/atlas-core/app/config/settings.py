@@ -56,6 +56,11 @@ class IntelligenceSettings(BaseModel):
         gt=0,
         le=60,
     )
+    telemetry_database: str = (
+        "/opt/atlas/data/provider_intelligence.db"
+    )
+    telemetry_max_entries: int = Field(default=10_000, ge=1)
+    telemetry_retention_days: int = Field(default=30, ge=1)
 
 
 class Settings(BaseModel):

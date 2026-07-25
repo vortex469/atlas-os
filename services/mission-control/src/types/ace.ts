@@ -56,6 +56,12 @@ export type IntelligenceTelemetry = {
     providers: ProviderCollectionTiming[];
 };
 
+export type IntelligenceTelemetrySnapshot = {
+    id: string;
+    collected_at: string;
+    telemetry: IntelligenceTelemetry;
+};
+
 export type AceSummary = {
     score: number;
     status: string;

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -38,6 +39,12 @@ class IntelligenceTelemetry(BaseModel):
     providers: list[ProviderCollectionTiming] = Field(
         default_factory=list
     )
+
+
+class IntelligenceTelemetrySnapshot(BaseModel):
+    id: str
+    collected_at: datetime
+    telemetry: IntelligenceTelemetry
 
 
 class SituationReport(BaseModel):
