@@ -5,6 +5,7 @@ import { SectionHeader } from "../../components/SectionHeader";
 import { useMissionControl } from "../../hooks/useMissionControl";
 import { FindingsSection } from "./FindingsSection";
 import { IntelligenceTelemetrySection } from "./IntelligenceTelemetrySection";
+import { PolicyVisibilitySection } from "./PolicyVisibilitySection";
 import { RecommendationsSection } from "./RecommendationsSection";
 import { ServiceHealthSection } from "./ServiceHealthSection";
 
@@ -13,6 +14,7 @@ export function MissionControl() {
         summary,
         health,
         providers,
+        policies,
         lastUpdated,
         error,
         isLoading,
@@ -129,6 +131,10 @@ export function MissionControl() {
                     <IntelligenceTelemetrySection
                         telemetry={summary.telemetry}
                     />
+                )}
+
+                {policies && (
+                    <PolicyVisibilitySection policies={policies} />
                 )}
 
                 {summary && (

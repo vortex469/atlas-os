@@ -115,6 +115,7 @@ Current capabilities:
 - Concurrent provider-backed ACE findings
 - Bounded provider intelligence collection
 - Provider intelligence timing and outcome dashboard
+- Live provider policy snapshot and Mission Control visibility
 - Read-only Frigate camera health and version telemetry
 - Aggregated dashboard, health, and AI status
 - Modular architecture
@@ -289,6 +290,11 @@ obsidian:
 `stale_after_days` is optional. Each finding severity accepts `info`,
 `warning`, or `critical`; informational findings do not reduce health.
 Missing vaults remain governed by the provider's inventory priority.
+
+The complete validated policy snapshot is available read-only at
+`/api/v1/policies` and is displayed in Mission Control. Policy changes
+continue to reload from `config/policies.yaml` without a process
+restart.
 
 ---
 

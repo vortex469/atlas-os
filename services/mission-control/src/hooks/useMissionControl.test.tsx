@@ -15,6 +15,7 @@ import { atlas } from "../api/atlas";
 import type { AceSummary } from "../types/ace";
 import type { AtlasHealth } from "../types/health";
 import type { Provider } from "../types/provider";
+import type { AtlasPolicies } from "../types/policies";
 import { useMissionControl } from "./useMissionControl";
 
 const summary: AceSummary = {
@@ -34,6 +35,38 @@ const summary: AceSummary = {
 const health: AtlasHealth = {
     atlas: "healthy",
     services: {},
+};
+
+const policies: AtlasPolicies = {
+    proxmox: { guests: {} },
+    docker: { containers: {} },
+    homeassistant: { ignored_entities: [] },
+    opnsense: {
+        pending_update_warning_threshold: null,
+        reboot_required_severity: "warning",
+    },
+    frigate: {
+        cameras: {},
+        stalled_camera_severity: "warning",
+    },
+    obsidian: {
+        minimum_note_count: 1,
+        stale_after_days: null,
+        insufficient_notes_severity: "warning",
+        stale_severity: "info",
+        scan_truncated_severity: "warning",
+    },
+    qdrant: {
+        expected_collections: [],
+        missing_collection_severity: "warning",
+        empty_instance_severity: "info",
+    },
+    n8n: {
+        expected_active_workflows: [],
+        inactive_workflow_severity: "warning",
+        scan_truncated_severity: "warning",
+        empty_instance_severity: "info",
+    },
 };
 
 function provider(
@@ -80,6 +113,9 @@ describe("useMissionControl", () => {
                 if (url === "/health") {
                     return { data: health };
                 }
+                if (url === "/policies") {
+                    return { data: policies };
+                }
 
                 return {
                     data: [
@@ -109,11 +145,12 @@ describe("useMissionControl", () => {
         expect(result.current.isLoading).toBe(false);
         expect(result.current.summary).toEqual(summary);
         expect(result.current.health).toEqual(health);
+        expect(result.current.policies).toEqual(policies);
         expect(
             result.current.providers.map(({ id }) => id),
         ).toEqual(["docker", "ollama"]);
         expect(result.current.lastUpdated).toBeInstanceOf(Date);
-        expect(get).toHaveBeenCalledTimes(3);
+        expect(get).toHaveBeenCalledTimes(4);
     });
 
     it("preserves current data when a manual refresh fails", async () => {
@@ -125,6 +162,9 @@ describe("useMissionControl", () => {
                 }
                 if (url === "/health") {
                     return { data: health };
+                }
+                if (url === "/policies") {
+                    return { data: policies };
                 }
 
                 return { data: [] };
@@ -151,6 +191,6 @@ describe("useMissionControl", () => {
             "Mission Control could not retrieve the latest state from Atlas Core.",
         );
 
-        expect(get).toHaveBeenCalledTimes(6);
+        expect(get).toHaveBeenCalledTimes(8);
     });
 });

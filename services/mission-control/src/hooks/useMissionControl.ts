@@ -9,6 +9,7 @@ import { atlas } from "../api/atlas";
 import type { AceSummary } from "../types/ace";
 import type { AtlasHealth } from "../types/health";
 import type { Provider } from "../types/provider";
+import type { AtlasPolicies } from "../types/policies";
 
 const REFRESH_INTERVAL_MS = 30_000;
 
@@ -16,6 +17,7 @@ type MissionControlState = {
     summary: AceSummary | null;
     health: AtlasHealth | null;
     providers: Provider[];
+    policies: AtlasPolicies | null;
     lastUpdated: Date | null;
     error: string | null;
     isLoading: boolean;
@@ -48,6 +50,9 @@ export function useMissionControl(): MissionControlState {
     const [summary, setSummary] = useState<AceSummary | null>(null);
     const [health, setHealth] = useState<AtlasHealth | null>(null);
     const [providers, setProviders] = useState<Provider[]>([]);
+    const [policies, setPolicies] = useState<AtlasPolicies | null>(
+        null,
+    );
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -74,15 +79,18 @@ export function useMissionControl(): MissionControlState {
                 summaryResponse,
                 healthResponse,
                 providersResponse,
+                policiesResponse,
             ] = await Promise.all([
                 atlas.get<AceSummary>("/ace/summary"),
                 atlas.get<AtlasHealth>("/health"),
                 atlas.get<Provider[]>("/providers"),
+                atlas.get<AtlasPolicies>("/policies"),
             ]);
 
             setSummary(summaryResponse.data);
             setHealth(healthResponse.data);
             setProviders(sortProviders(providersResponse.data));
+            setPolicies(policiesResponse.data);
             setLastUpdated(new Date());
             setError(null);
 
@@ -122,6 +130,7 @@ export function useMissionControl(): MissionControlState {
         summary,
         health,
         providers,
+        policies,
         lastUpdated,
         error,
         isLoading,

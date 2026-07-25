@@ -169,19 +169,22 @@ Planned
 
 ✔ Mission Control Provider Intelligence Telemetry
 
-239 Atlas Core tests collected.
+✔ Provider Policy API and Mission Control Visibility
 
-22 Mission Control component tests passing.
+241 Atlas Core tests collected.
+
+23 Mission Control component tests passing.
 
 ---
 
 # Current Sprint
 
-Provider Intelligence Complete
+Provider Operations
 
 Next work
 
-- Provider policy visibility
+- Provider policy detail views
+- Policy reload health telemetry
 
 ---
 
