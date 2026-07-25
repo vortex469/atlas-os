@@ -40,11 +40,11 @@ Implemented
 - OPNsense
 - Frigate
 - Obsidian
+- Qdrant
 - Inventory-backed services
 
 Planned
 
-- Qdrant
 - n8n
 
 ---
@@ -156,7 +156,9 @@ Planned
 
 ✔ Obsidian Provider
 
-213 Atlas Core tests collected.
+✔ Qdrant Provider
+
+224 Atlas Core tests collected.
 
 19 Mission Control component tests passing.
 
@@ -168,8 +170,8 @@ Provider Intelligence
 
 Next work
 
-- Qdrant provider
 - Obsidian vault policies
+- n8n provider
 
 ---
 

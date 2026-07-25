@@ -282,6 +282,45 @@ findings.
 
 ---
 
+### Qdrant provider
+
+Add Qdrant to `inventory/services.yaml`:
+
+```yaml
+services:
+  qdrant:
+    name: Qdrant
+    host: qdrant.home.arpa
+    port: 6333
+    protocol: https
+    critical: false
+    verify_tls: true
+    # ca_bundle: /opt/atlas/config/certificates/qdrant.pem
+    expected_collections:
+      - atlas-memory
+      - atlas-documents
+```
+
+Provide the API key through the environment when authentication is
+enabled:
+
+```dotenv
+QDRANT_API_KEY=replace-me
+```
+
+The provider reads collection inventory from Qdrant's HTTP API and
+reports collection count, names, and missing expected collections.
+Expected collections produce health-affecting warnings when absent. An
+online instance with no collections produces an informational finding.
+The API key is sent only in the `api-key` request header and is never
+included in provider output.
+
+An unauthenticated internal API is supported when the key is omitted,
+but it should only be exposed on a trusted network. TLS verification is
+enabled by default and may use a private CA bundle.
+
+---
+
 ## Forge
 
 Deployment analysis workspace.
@@ -366,8 +405,8 @@ Future capabilities:
 - Atlas API v1
 - Unified dashboard control plane
 - Standardized API error contracts
-- Proxmox, Docker, Home Assistant, Ollama, OPNsense, Frigate, and Obsidian
-  integration
+- Proxmox, Docker, Home Assistant, Ollama, OPNsense, Frigate, Obsidian,
+  and Qdrant integration
 - Ollama model lifecycle operations
 - Live Mission Control service health
 - Provider-backed operational actions
