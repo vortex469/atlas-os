@@ -119,9 +119,11 @@ Planned
 
 ✔ Confirmed and Parameterized Operations
 
-156 Atlas Core tests passing.
+✔ Action History and Audit Visibility
 
-4 Mission Control component tests passing.
+160 Atlas Core tests passing.
+
+6 Mission Control component tests passing.
 
 ---
 
@@ -131,7 +133,7 @@ Foundry Dashboard and Operations
 
 Next work
 
-- Action history and audit visibility
+- Persistent audit storage and retention policy
 - Frontend coverage for dashboard refresh and service details
 - Dynamic policy reload
 - Docker expected state

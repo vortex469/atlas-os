@@ -13,6 +13,8 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Confirmation for guarded operations
 - Schema-driven action parameters
 - Health refresh after successful operations
+- Filterable provider action history
+- Request ID and execution timing visibility
 - Forge deployment analysis workspace
 
 ## Development

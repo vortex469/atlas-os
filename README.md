@@ -107,6 +107,7 @@ Current capabilities:
 - Versioned REST API with typed contracts
 - Standardized API errors and request tracing
 - Provider action discovery and execution
+- Sanitized provider action history
 - Aggregated dashboard, health, and AI status
 - Modular architecture
 
@@ -139,6 +140,7 @@ Provides:
 - Provider catalog and drill-down pages
 - Service details and health refresh
 - Confirmed, parameterized provider operations
+- Filterable action history with request correlation
 - ACE findings and recommendations
 
 ---
@@ -199,7 +201,8 @@ Future capabilities:
 - Ollama model lifecycle operations
 - Live Mission Control service health
 - Provider-backed operational actions
-- 156 Atlas Core tests
+- Operations workspace and action audit visibility
+- 160 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---
@@ -215,6 +218,7 @@ Future capabilities:
 - Planning engine
 - Atlas API v1
 - Service health and provider operations
+- Action history and audit visibility
 
 ---
 

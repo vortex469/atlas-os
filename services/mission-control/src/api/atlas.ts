@@ -8,6 +8,10 @@ import type {
     ProviderActionRequest,
     ProviderActionResult,
 } from "../types/providerAction";
+import type {
+    ActionHistoryStatus,
+    ProviderActionAuditEntry,
+} from "../types/actionHistory";
 
 const ATLAS_API_BASE_URL =
     import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
@@ -59,6 +63,25 @@ export async function runProviderAction(
         {
             confirmed: request.confirmed ?? false,
             parameters: request.parameters ?? {},
+        },
+    );
+
+    return response.data;
+}
+
+export async function getProviderActionHistory(
+    options: {
+        limit?: number;
+        status?: ActionHistoryStatus;
+    } = {},
+): Promise<ProviderActionAuditEntry[]> {
+    const response = await atlas.get<ProviderActionAuditEntry[]>(
+        "/ops/actions",
+        {
+            params: {
+                limit: options.limit ?? 100,
+                status: options.status,
+            },
         },
     );
 
