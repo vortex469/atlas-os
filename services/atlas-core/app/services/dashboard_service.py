@@ -191,7 +191,7 @@ async def get_dashboard() -> Dashboard:
     ops = get_ops_summary()
 
     try:
-        intelligence = get_intelligence_summary()
+        intelligence = await get_intelligence_summary()
     except Exception as error:
         intelligence = {
             "score": 0,

@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 
 import httpx
 
+from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
     ProviderCapability,
@@ -183,3 +184,111 @@ class OPNsenseProvider(Provider):
                     "error": str(error),
                 },
             )
+
+    async def get_findings(self) -> list[Finding]:
+        health = await self.get_health()
+
+        if health.status == "offline":
+            return [
+                Finding(
+                    id="opnsense-api-offline",
+                    severity=Severity.CRITICAL,
+                    category="network",
+                    source="opnsense",
+                    component="OPNsense",
+                    title="OPNsense API unavailable",
+                    message=(
+                        health.message
+                        or "OPNsense API is unavailable."
+                    ),
+                    recommendation=(
+                        "Verify firewall reachability, TLS trust, and "
+                        "OPNsense API availability."
+                    ),
+                    score_penalty=20,
+                    details={
+                        "http_status": health.http_status,
+                    },
+                ),
+            ]
+
+        if health.status == "degraded":
+            return [
+                Finding(
+                    id="opnsense-api-degraded",
+                    severity=Severity.WARNING,
+                    category="network",
+                    source="opnsense",
+                    component="OPNsense",
+                    title="OPNsense API degraded",
+                    message=(
+                        health.message
+                        or "OPNsense API health is degraded."
+                    ),
+                    recommendation=(
+                        "Review OPNsense API credentials, privileges, "
+                        "and endpoint configuration."
+                    ),
+                    score_penalty=10,
+                    details={
+                        "http_status": health.http_status,
+                    },
+                ),
+            ]
+
+        findings: list[Finding] = []
+        updates_value = health.details.get("updates")
+
+        try:
+            update_count = int(updates_value or 0)
+        except (TypeError, ValueError):
+            update_count = 0
+
+        if update_count > 0:
+            findings.append(
+                Finding(
+                    id="opnsense-firmware-updates",
+                    severity=Severity.INFO,
+                    category="updates",
+                    source="opnsense",
+                    component="OPNsense",
+                    title="OPNsense firmware updates available",
+                    message=(
+                        f"OPNsense reports {update_count} pending "
+                        "firmware package update(s)."
+                    ),
+                    recommendation=(
+                        "Review the OPNsense firmware changelog and "
+                        "schedule an approved maintenance window."
+                    ),
+                    affects_health=False,
+                    score_penalty=0,
+                    metric={"updates": update_count},
+                ),
+            )
+
+        reboot_value = str(
+            health.details.get("upgrade_needs_reboot") or "",
+        ).lower()
+        if reboot_value in {"1", "true", "yes"}:
+            findings.append(
+                Finding(
+                    id="opnsense-reboot-required",
+                    severity=Severity.WARNING,
+                    category="updates",
+                    source="opnsense",
+                    component="OPNsense",
+                    title="OPNsense reboot required",
+                    message=(
+                        "OPNsense requires a reboot to complete its "
+                        "firmware maintenance."
+                    ),
+                    recommendation=(
+                        "Schedule an approved firewall reboot during "
+                        "a maintenance window."
+                    ),
+                    score_penalty=5,
+                ),
+            )
+
+        return findings

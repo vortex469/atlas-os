@@ -15,9 +15,9 @@ router = APIRouter(
     response_model=AceSummary,
     responses={503: {"model": APIError}},
 )
-def intelligence_summary():
+async def intelligence_summary():
     try:
-        return get_intelligence_summary()
+        return await get_intelligence_summary()
     except Exception as error:
         raise HTTPException(
             status_code=503,

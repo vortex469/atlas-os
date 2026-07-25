@@ -37,11 +37,11 @@ Implemented
 - Docker
 - Home Assistant
 - Ollama
+- OPNsense
 - Inventory-backed services
 
 Planned
 
-- OPNsense
 - Frigate
 - Obsidian
 - Qdrant
@@ -71,10 +71,11 @@ Current
 
 - Expected Proxmox guest state
 - Ignored Home Assistant entities
+- Expected Docker container state
+- OPNsense firmware posture
 
 Planned
 
-- Docker expected container state
 - OPNsense policies
 - Frigate policies
 
@@ -141,7 +142,9 @@ Planned
 
 ✔ OPNsense Provider
 
-184 Atlas Core tests passing.
+✔ Provider-Backed ACE Findings
+
+187 Atlas Core tests passing.
 
 19 Mission Control component tests passing.
 
@@ -149,11 +152,13 @@ Planned
 
 # Current Sprint
 
-Foundry Dashboard and Operations
+Provider Intelligence
 
 Next work
 
-- Define next sprint priorities
+- OPNsense policy thresholds
+- Provider intelligence time budgets
+- Frigate provider
 
 ---
 

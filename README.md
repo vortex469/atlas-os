@@ -112,6 +112,7 @@ Current capabilities:
 - Policy-aware Docker expected-state monitoring
 - Atlas Doctor diagnostics through CLI and Operations API
 - Read-only OPNsense health and diagnostics provider
+- Concurrent provider-backed ACE findings
 - Aggregated dashboard, health, and AI status
 - Modular architecture
 
@@ -244,7 +245,7 @@ Future capabilities:
 - Paginated audit results
 - Audit detail views with shareable deep links
 - Action and request-ID search
-- 170 Atlas Core tests
+- 187 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---
