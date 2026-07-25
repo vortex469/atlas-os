@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
+SYSTEMD_DIRECTORY="$ATLAS_ROOT/deploy/systemd"
+ATLAS_CONFIG_DIRECTORY="/etc/atlas"
+
+if [[ "$(id -u)" != "0" ]]; then
+    echo "Run this installer as root." >&2
+    exit 1
+fi
+
+for executable in install systemctl systemd-analyze; do
+    if ! command -v "$executable" >/dev/null 2>&1; then
+        echo "Required executable not found: $executable" >&2
+        exit 127
+    fi
+done
+
+systemd-analyze verify \
+    "$SYSTEMD_DIRECTORY/atlas-data-backup.service" \
+    "$SYSTEMD_DIRECTORY/atlas-data-backup.timer"
+
+install -d -m 0750 "$ATLAS_CONFIG_DIRECTORY"
+if [[ ! -e "$ATLAS_CONFIG_DIRECTORY/backup.env" ]]; then
+    install \
+        -m 0640 \
+        "$SYSTEMD_DIRECTORY/backup.env.example" \
+        "$ATLAS_CONFIG_DIRECTORY/backup.env"
+fi
+install \
+    -m 0644 \
+    "$SYSTEMD_DIRECTORY/atlas-data-backup.service" \
+    /etc/systemd/system/atlas-data-backup.service
+install \
+    -m 0644 \
+    "$SYSTEMD_DIRECTORY/atlas-data-backup.timer" \
+    /etc/systemd/system/atlas-data-backup.timer
+
+systemctl daemon-reload
+systemctl enable --now atlas-data-backup.timer
+systemctl list-timers atlas-data-backup.timer --no-pager
