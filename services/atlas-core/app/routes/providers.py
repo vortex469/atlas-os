@@ -5,10 +5,15 @@ from app.actions import (
     ProviderActionDisabledError,
     ProviderActionNotFoundError,
     ProviderActionRequest,
+    ProviderActionResult,
     execute_provider_action,
 )
 from app.models.contracts import APIError, ProviderResponse
-from app.providers import Provider, ProviderNotFoundError
+from app.providers import (
+    Provider,
+    ProviderAction,
+    ProviderNotFoundError,
+)
 from app.providers.registry import provider_registry
 from app.providers.serializer import (
     serialize_action,
@@ -50,7 +55,11 @@ async def get_provider(provider_id: str):
     return await serialize_provider(provider)
 
 
-@router.get("/{provider_id}/actions")
+@router.get(
+    "/{provider_id}/actions",
+    response_model=list[ProviderAction],
+    responses={404: {"model": APIError}},
+)
 async def list_provider_actions(provider_id: str):
     provider = get_registered_provider(provider_id)
     actions = await provider.get_actions()
@@ -61,7 +70,15 @@ async def list_provider_actions(provider_id: str):
     ]
 
 
-@router.post("/{provider_id}/actions/{action_id}")
+@router.post(
+    "/{provider_id}/actions/{action_id}",
+    response_model=ProviderActionResult,
+    responses={
+        404: {"model": APIError},
+        409: {"model": APIError},
+        422: {"model": APIError},
+    },
+)
 async def run_provider_action(
     provider_id: str,
     action_id: str,

@@ -163,3 +163,82 @@ def test_action_on_unknown_provider_returns_404() -> None:
         "Unknown provider 'not-real'."
     )
     assert body["request_id"]
+
+
+def test_provider_actions_match_contract() -> None:
+    response = client.get(
+        "/api/v1/providers/hermes/actions"
+    )
+
+    assert response.status_code == 200
+
+    actions = response.json()
+    assert isinstance(actions, list)
+    assert actions
+
+    action = actions[0]
+    assert isinstance(action["id"], str)
+    assert isinstance(action["label"], str)
+    assert isinstance(action["enabled"], bool)
+    assert isinstance(
+        action["requires_confirmation"],
+        bool,
+    )
+
+
+def test_provider_action_result_matches_contract() -> None:
+    response = client.post(
+        "/api/v1/providers/hermes/actions/run-diagnostics",
+        json={
+            "confirmed": False,
+            "parameters": {},
+        },
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+    assert result["provider_id"] == "hermes"
+    assert result["action_id"] == "run-diagnostics"
+    assert result["status"] == "succeeded"
+    assert result["success"] is True
+    assert isinstance(result["message"], str)
+    assert isinstance(result["data"], dict)
+    assert isinstance(result["warnings"], list)
+
+
+def test_action_contracts_are_in_openapi() -> None:
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schema = response.json()
+
+    actions_get = schema["paths"][
+        "/api/v1/providers/{provider_id}/actions"
+    ]["get"]
+
+    action_post = schema["paths"][
+        "/api/v1/providers/{provider_id}/actions/{action_id}"
+    ]["post"]
+
+    get_schema = actions_get["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
+
+    post_schema = action_post["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
+
+    assert get_schema["type"] == "array"
+    assert (
+        get_schema["items"]["$ref"]
+        == "#/components/schemas/ProviderAction"
+    )
+    assert (
+        post_schema["$ref"]
+        == "#/components/schemas/ProviderActionResult"
+    )
+
+    assert "404" in action_post["responses"]
+    assert "409" in action_post["responses"]
+    assert "422" in action_post["responses"]
