@@ -9,20 +9,32 @@ ATLAS_ROOT = Path("/opt/atlas")
 POLICY_FILE = ATLAS_ROOT / "config" / "policies.yaml"
 
 
-def load_policies() -> Policies:
+class PolicyLoadError(RuntimeError):
+    """Raised when Atlas cannot read or validate its policy file."""
+
+
+def load_policies(
+    policy_file: Path | None = None,
+) -> Policies:
     """Load and validate Atlas operational policies."""
 
-    if not POLICY_FILE.exists():
+    resolved_policy_file = policy_file or POLICY_FILE
+
+    if not resolved_policy_file.exists():
         return Policies()
 
-    with POLICY_FILE.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f) or {}
-
     try:
+        with resolved_policy_file.open(
+            "r",
+            encoding="utf-8",
+        ) as policy_stream:
+            data = yaml.safe_load(policy_stream) or {}
+
         return Policies.model_validate(data)
-    except ValidationError as error:
-        raise RuntimeError(
-            f"Policy validation failed:\n{error}"
+    except (OSError, ValidationError, yaml.YAMLError) as error:
+        raise PolicyLoadError(
+            f"Atlas policy reload failed for "
+            f"{resolved_policy_file}: {error}"
         ) from error
 
 

@@ -108,6 +108,7 @@ Current capabilities:
 - Standardized API errors and request tracing
 - Provider action discovery and execution
 - Persistent, sanitized provider action history
+- Live, validated operational policy reload
 - Aggregated dashboard, health, and AI status
 - Modular architecture
 

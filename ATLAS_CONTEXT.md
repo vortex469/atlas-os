@@ -133,7 +133,9 @@ Planned
 
 ✔ Dashboard Refresh and Service Detail Coverage
 
-170 Atlas Core tests passing.
+✔ Dynamic Policy Reload
+
+174 Atlas Core tests passing.
 
 17 Mission Control component tests passing.
 
@@ -145,7 +147,6 @@ Foundry Dashboard and Operations
 
 Next work
 
-- Dynamic policy reload
 - Docker expected state
 - Atlas Doctor integration
 - OPNsense provider
