@@ -49,8 +49,13 @@ Complete these items immediately before tagging:
 
 - [x] Rotate and verify any credentials exposed during pre-release
   validation.
-- [ ] Review deployment-specific inventory, policy, and TLS settings.
-- [ ] Confirm the target branch contains only intended release commits.
-- [ ] Run `./scripts/container-release-gate` on the release commit.
-- [ ] Confirm required GitHub checks pass.
-- [ ] Create an annotated Foundry release tag and publish release notes.
+- [x] Review deployment-specific inventory, policy, and TLS settings.
+- [x] Confirm the target branch contains only intended release commits.
+- [x] Run `./scripts/container-release-gate` on the release commit.
+- [x] Confirm required GitHub checks pass.
+- [x] Create an annotated Foundry release tag and publish release notes.
+
+Foundry `v1.0.0` was published on 2026-07-25 from commit `b32b21d`.
+Production validation reported no critical issues. The release notes record
+the operator-accepted warning for unavailable or unknown Home Assistant
+entities.

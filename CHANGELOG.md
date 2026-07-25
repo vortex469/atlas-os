@@ -4,7 +4,11 @@ This project is under active development. Entries describe significant
 operator-visible changes; Git tags remain the source of truth for exact
 release boundaries.
 
-## Unreleased — Foundry
+## Unreleased
+
+No operator-visible changes yet.
+
+## v1.0.0 — Foundry (2026-07-25)
 
 ### Added
 
