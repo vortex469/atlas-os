@@ -67,6 +67,44 @@ def test_policy_status_reports_validation_failure_without_path(
     assert health.duration_ms >= 0
     assert health.error is not None
     assert str(policy_file) not in health.error
+    assert len(health.diagnostics) == 1
+    assert health.diagnostics[0].error_type == "yaml_syntax"
+    assert health.diagnostics[0].line is not None
+
+
+def test_policy_status_reports_structured_field_diagnostics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    policy_file = tmp_path / "policies.yaml"
+    policy_file.write_text(
+        """
+qdrant:
+  expected_collections:
+    - memory
+    - memory
+n8n:
+  scan_truncated_severity: urgent
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        policy_config,
+        "POLICY_FILE",
+        policy_file,
+    )
+
+    health = policy_status()
+
+    assert health.status == "degraded"
+    assert [item.path for item in health.diagnostics] == [
+        "qdrant.expected_collections",
+        "n8n.scan_truncated_severity",
+    ]
+    assert all(
+        str(policy_file) not in item.message
+        for item in health.diagnostics
+    )
 
 
 def test_missing_policy_source_is_healthy_default(
@@ -85,3 +123,4 @@ def test_missing_policy_source_is_healthy_default(
     assert health.source_exists is False
     assert health.loaded_at is not None
     assert health.error is None
+    assert health.diagnostics == []

@@ -80,6 +80,7 @@ const policyHealth: PolicyReloadHealth = {
     loaded_at: "2026-07-25T19:00:00Z",
     duration_ms: 1.2,
     error: null,
+    diagnostics: [],
 };
 
 const telemetryHistory: IntelligenceTelemetrySnapshot[] = [
@@ -239,6 +240,15 @@ describe("useMissionControl", () => {
             loaded_at: null,
             duration_ms: 0.5,
             error: "Atlas policy reload failed.",
+            diagnostics: [
+                {
+                    path: "qdrant.expected_collections",
+                    error_type: "value_error",
+                    message: "Duplicate collection name.",
+                    line: null,
+                    column: null,
+                },
+            ],
         };
         vi.spyOn(atlas, "get").mockImplementation(async (url) => {
             if (url === "/ace/summary") {

@@ -58,4 +58,13 @@ export type PolicyReloadHealth = {
     loaded_at: string | null;
     duration_ms: number;
     error: string | null;
+    diagnostics: PolicyValidationDiagnostic[];
+};
+
+export type PolicyValidationDiagnostic = {
+    path: string;
+    error_type: string;
+    message: string;
+    line: number | null;
+    column: number | null;
 };

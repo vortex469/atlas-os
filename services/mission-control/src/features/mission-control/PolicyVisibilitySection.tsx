@@ -233,6 +233,39 @@ function PolicyReloadStatus({
                 </p>
             )}
 
+            {health.diagnostics.length > 0 && (
+                <ul className="mt-3 space-y-2">
+                    {health.diagnostics.map(
+                        (diagnostic, index) => (
+                            <li
+                                key={`${diagnostic.path}-${diagnostic.error_type}-${index}`}
+                                className="rounded border border-red-500/20 bg-slate-950/30 p-3"
+                            >
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <code className="text-xs font-semibold text-red-200">
+                                        {diagnostic.path}
+                                    </code>
+                                    <span className="text-xs text-slate-500">
+                                        {diagnostic.error_type}
+                                    </span>
+                                    {diagnostic.line !== null && (
+                                        <span className="text-xs text-slate-500">
+                                            Line {diagnostic.line}
+                                            {diagnostic.column !==
+                                                null &&
+                                                `, column ${diagnostic.column}`}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="mt-1 text-sm text-red-200/80">
+                                    {diagnostic.message}
+                                </p>
+                            </li>
+                        ),
+                    )}
+                </ul>
+            )}
+
             {!healthy && policiesUnavailableMessage}
         </div>
     );

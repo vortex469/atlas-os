@@ -49,6 +49,7 @@ const health = {
     loaded_at: "2026-07-25T19:00:00Z",
     duration_ms: 1.25,
     error: null,
+    diagnostics: [],
 };
 
 describe("PolicyVisibilitySection", () => {
@@ -106,7 +107,21 @@ describe("PolicyVisibilitySection", () => {
                     checked_at: "2026-07-25T19:00:00Z",
                     loaded_at: null,
                     duration_ms: 0.5,
-                    error: "Atlas policy reload failed.",
+                    error: (
+                        "Policy reload failed with 1 diagnostic(s)."
+                    ),
+                    diagnostics: [
+                        {
+                            path: "n8n.scan_truncated_severity",
+                            error_type: "literal_error",
+                            message: (
+                                "Input should be 'info', 'warning' " +
+                                "or 'critical'"
+                            ),
+                            line: null,
+                            column: null,
+                        },
+                    ],
                 }}
             />,
         );
@@ -115,7 +130,12 @@ describe("PolicyVisibilitySection", () => {
             screen.getByText("Policy reload degraded"),
         ).toBeInTheDocument();
         expect(
-            screen.getByText("Atlas policy reload failed."),
+            screen.getByText(
+                "Policy reload failed with 1 diagnostic(s).",
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("n8n.scan_truncated_severity"),
         ).toBeInTheDocument();
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
     });

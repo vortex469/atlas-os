@@ -177,7 +177,9 @@ Planned
 
 ✔ Persistent Provider Intelligence Trend History
 
-250 Atlas Core tests collected.
+✔ Structured Policy Validation Diagnostics
+
+251 Atlas Core tests collected.
 
 30 Mission Control component tests passing.
 
@@ -185,11 +187,12 @@ Planned
 
 # Current Sprint
 
-Provider Operations
+Provider Operations and Observability Complete
 
 Next work
 
-- Policy validation diagnostics
+- Provider telemetry history filtering
+- Policy diagnostics documentation examples
 
 ---
 

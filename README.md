@@ -118,6 +118,7 @@ Current capabilities:
 - Live provider policy snapshot and Mission Control visibility
 - Provider-specific operational policy detail views
 - Policy reload validation and timing telemetry
+- Structured field-level policy validation diagnostics
 - Read-only Frigate camera health and version telemetry
 - Aggregated dashboard, health, and AI status
 - Modular architecture
@@ -308,9 +309,11 @@ restart.
 
 Reload health is available at `/api/v1/policies/status`. It reports
 validation status, reload duration, source presence, check time, and a
-sanitized error when validation fails. Mission Control continues
-loading provider and ACE state when the policy snapshot is invalid, so
-operators can see and correct the degraded policy state.
+sanitized error when validation fails. Diagnostics identify the policy
+field and validation type, with line and column for YAML syntax errors.
+Mission Control continues loading provider and ACE state when the
+policy snapshot is invalid, so operators can see and correct the
+degraded policy state.
 
 ---
 

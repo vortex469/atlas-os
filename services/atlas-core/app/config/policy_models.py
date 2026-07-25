@@ -132,3 +132,14 @@ class PolicyReloadHealth(BaseModel):
     loaded_at: datetime | None = None
     duration_ms: float = Field(ge=0)
     error: str | None = None
+    diagnostics: list["PolicyValidationDiagnostic"] = Field(
+        default_factory=list
+    )
+
+
+class PolicyValidationDiagnostic(BaseModel):
+    path: str
+    error_type: str
+    message: str
+    line: int | None = Field(default=None, ge=1)
+    column: int | None = Field(default=None, ge=1)

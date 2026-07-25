@@ -12,6 +12,7 @@ from app.config.policy_models import (
     OPNsensePolicy,
     Policies,
     PolicyReloadHealth,
+    PolicyValidationDiagnostic,
     QdrantPolicy,
 )
 
@@ -127,6 +128,7 @@ def get_policy_reload_health(
     try:
         load_policies(resolved_policy_file)
     except PolicyLoadError as error:
+        diagnostics = _policy_diagnostics(error)
         return PolicyReloadHealth(
             status="degraded",
             source_exists=resolved_policy_file.exists(),
@@ -135,10 +137,11 @@ def get_policy_reload_health(
                 (perf_counter() - started_at) * 1000,
                 2,
             ),
-            error=str(error).replace(
-                str(resolved_policy_file),
-                "<policy-file>",
+            error=(
+                "Policy reload failed with "
+                f"{len(diagnostics)} diagnostic(s)."
             ),
+            diagnostics=diagnostics,
         )
 
     return PolicyReloadHealth(
@@ -151,3 +154,63 @@ def get_policy_reload_health(
             2,
         ),
     )
+
+
+def _policy_diagnostics(
+    error: PolicyLoadError,
+) -> list[PolicyValidationDiagnostic]:
+    cause = error.__cause__
+
+    if isinstance(cause, ValidationError):
+        return [
+            PolicyValidationDiagnostic(
+                path=".".join(
+                    str(part)
+                    for part in item["loc"]
+                )
+                or "$",
+                error_type=str(item["type"]),
+                message=str(item["msg"]),
+            )
+            for item in cause.errors(
+                include_url=False,
+                include_context=False,
+                include_input=False,
+            )
+        ]
+
+    if isinstance(cause, yaml.MarkedYAMLError):
+        mark = cause.problem_mark
+        return [
+            PolicyValidationDiagnostic(
+                path="$",
+                error_type="yaml_syntax",
+                message=(
+                    cause.problem
+                    or "The policy file contains invalid YAML."
+                ),
+                line=mark.line + 1 if mark is not None else None,
+                column=(
+                    mark.column + 1
+                    if mark is not None
+                    else None
+                ),
+            ),
+        ]
+
+    if isinstance(cause, OSError):
+        return [
+            PolicyValidationDiagnostic(
+                path="$",
+                error_type="file_error",
+                message="Atlas could not read the policy file.",
+            ),
+        ]
+
+    return [
+        PolicyValidationDiagnostic(
+            path="$",
+            error_type="policy_error",
+            message="Atlas could not validate the policy file.",
+        ),
+    ]
