@@ -141,6 +141,7 @@ docker run \
     --read-only \
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
+    --user "$(id -u):$(id -g)" \
     --env-file "$GATE_DIRECTORY/restic.env" \
     --env RESTIC_CACERT=/certs/ca.pem \
     --mount "type=bind,src=$GATE_DIRECTORY/server.crt,dst=/certs/ca.pem,readonly" \
