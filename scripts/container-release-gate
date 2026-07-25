@@ -5,11 +5,15 @@ set -euo pipefail
 SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
 COMPOSE_FILE="$ATLAS_ROOT/compose.production.yaml"
+HTTPS_COMPOSE_FILE="$ATLAS_ROOT/compose.https.yaml"
 GATE_DIRECTORY="$(mktemp -d /tmp/atlas-container-gate.XXXXXX)"
 GATE_ENV_FILE="$GATE_DIRECTORY/atlas.env"
+GATE_CERT_FILE="$GATE_DIRECTORY/tls.crt"
+GATE_KEY_FILE="$GATE_DIRECTORY/tls.key"
+GATE_HTPASSWD_FILE="$GATE_DIRECTORY/htpasswd"
 GATE_PROJECT="atlas-release-gate-$$"
 
-for executable in docker curl; do
+for executable in docker curl openssl; do
     if ! command -v "$executable" >/dev/null 2>&1; then
         echo "Required executable not found: $executable" >&2
         exit 127
@@ -25,12 +29,17 @@ cleanup() {
     docker compose \
         --project-name "$GATE_PROJECT" \
         --file "$COMPOSE_FILE" \
+        --file "$HTTPS_COMPOSE_FILE" \
         down \
         --volumes \
         --rmi local \
         --remove-orphans \
         >/dev/null 2>&1 || true
-    rm -f "$GATE_ENV_FILE"
+    rm -f \
+        "$GATE_ENV_FILE" \
+        "$GATE_CERT_FILE" \
+        "$GATE_KEY_FILE" \
+        "$GATE_HTPASSWD_FILE"
     rmdir "$GATE_DIRECTORY" 2>/dev/null || true
 }
 
@@ -43,8 +52,40 @@ printf '%s\n' \
     'HASS_TOKEN=release-gate' \
     >"$GATE_ENV_FILE"
 
+openssl req \
+    -x509 \
+    -newkey rsa:2048 \
+    -nodes \
+    -days 1 \
+    -subj '/CN=127.0.0.1' \
+    -addext 'subjectAltName=IP:127.0.0.1' \
+    -keyout "$GATE_KEY_FILE" \
+    -out "$GATE_CERT_FILE" \
+    >/dev/null 2>&1
+printf 'atlas:%s\n' \
+    "$(openssl passwd -apr1 'release-gate')" \
+    >"$GATE_HTPASSWD_FILE"
+gate_uid="$(id -u)"
+if [[ "$gate_uid" = "0" ]]; then
+    export ATLAS_EDGE_UID=101
+    chown "$ATLAS_EDGE_UID:$ATLAS_EDGE_UID" \
+        "$GATE_CERT_FILE" \
+        "$GATE_KEY_FILE" \
+        "$GATE_HTPASSWD_FILE"
+else
+    export ATLAS_EDGE_UID="$gate_uid"
+fi
+chmod 600 "$GATE_KEY_FILE" "$GATE_HTPASSWD_FILE"
+chmod 644 "$GATE_CERT_FILE"
+
 export ATLAS_ENV_FILE="$GATE_ENV_FILE"
+export ATLAS_HTTP_BIND=127.0.0.1
 export ATLAS_HTTP_PORT=0
+export ATLAS_HTTPS_BIND=127.0.0.1
+export ATLAS_HTTPS_PORT=0
+export ATLAS_TLS_CERT_FILE="$GATE_CERT_FILE"
+export ATLAS_TLS_KEY_FILE="$GATE_KEY_FILE"
+export ATLAS_HTPASSWD_FILE="$GATE_HTPASSWD_FILE"
 export DOCKER_GID
 DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
 
@@ -52,9 +93,16 @@ compose=(
     docker compose
     --project-name "$GATE_PROJECT"
     --file "$COMPOSE_FILE"
+    --file "$HTTPS_COMPOSE_FILE"
 )
 
-echo "Validating production Compose configuration"
+echo "Validating HTTP and HTTPS Compose configuration"
+docker compose \
+    --project-name "$GATE_PROJECT" \
+    --file "$COMPOSE_FILE" \
+    config \
+    --no-env-resolution \
+    --quiet
 "${compose[@]}" config --no-env-resolution --quiet
 
 echo "Building production images"
@@ -65,8 +113,9 @@ echo "Starting isolated production stack"
 
 core_container="$("${compose[@]}" ps --quiet atlas-core)"
 mission_container="$("${compose[@]}" ps --quiet mission-control)"
+edge_container="$("${compose[@]}" ps --quiet atlas-edge)"
 
-for container in "$core_container" "$mission_container"; do
+for container in "$core_container" "$mission_container" "$edge_container"; do
     test -n "$container"
     test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$container")" = "true"
     test "$(docker inspect --format '{{json .HostConfig.CapDrop}}' "$container")" = '["ALL"]'
@@ -84,6 +133,13 @@ done
 published_address="$("${compose[@]}" port mission-control 8080)"
 published_port="${published_address##*:}"
 base_url="http://127.0.0.1:$published_port"
+https_published_address="$("${compose[@]}" port atlas-edge 8443)"
+https_published_port="${https_published_address##*:}"
+https_base_url="https://127.0.0.1:$https_published_port"
+
+test "$(docker inspect \
+    --format '{{(index .HostConfig.PortBindings "8080/tcp" 0).HostIp}}' \
+    "$mission_container")" = "127.0.0.1"
 
 echo "Checking Mission Control, API proxy, and SPA fallback"
 curl --fail --silent --show-error "$base_url/" \
@@ -94,5 +150,38 @@ curl --fail --silent --show-error "$base_url/api/v1" \
     | grep -q '"release":"Foundry"'
 curl --fail --silent --show-error --head "$base_url/" \
     | grep -qi '^X-Content-Type-Options: nosniff'
+
+echo "Checking authenticated HTTPS ingress"
+test "$(curl \
+    --cacert "$GATE_CERT_FILE" \
+    --output /dev/null \
+    --silent \
+    --write-out '%{http_code}' \
+    "$https_base_url/")" = "401"
+curl \
+    --cacert "$GATE_CERT_FILE" \
+    --fail \
+    --silent \
+    --show-error \
+    --user 'atlas:release-gate' \
+    "$https_base_url/" \
+    | grep -q '<title>mission-control</title>'
+curl \
+    --cacert "$GATE_CERT_FILE" \
+    --fail \
+    --silent \
+    --show-error \
+    --user 'atlas:release-gate' \
+    "$https_base_url/api/v1" \
+    | grep -q '"release":"Foundry"'
+curl \
+    --cacert "$GATE_CERT_FILE" \
+    --fail \
+    --silent \
+    --show-error \
+    --head \
+    --user 'atlas:release-gate' \
+    "$https_base_url/" \
+    | grep -qi '^Strict-Transport-Security: max-age=31536000'
 
 echo "Container release gate passed"

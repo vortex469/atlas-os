@@ -6,7 +6,10 @@ release boundaries.
 
 ## Unreleased
 
-No operator-visible changes yet.
+### Added
+
+- Configurable loopback or LAN HTTP binding and an optional authenticated
+  HTTPS ingress overlay.
 
 ## v1.0.0 — Foundry (2026-07-25)
 

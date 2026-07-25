@@ -5,6 +5,7 @@ on:
     paths:
       - ".dockerignore"
       - "compose.production.yaml"
+      - "compose.https.yaml"
       - "config/**"
       - "deploy/docker/**"
       - "inventory/**"
@@ -18,6 +19,7 @@ on:
     paths:
       - ".dockerignore"
       - "compose.production.yaml"
+      - "compose.https.yaml"
       - "config/**"
       - "deploy/docker/**"
       - "inventory/**"
