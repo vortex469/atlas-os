@@ -1,6 +1,6 @@
 atlas:
   name: Atlas OS
-  release: 0.2-foundation
+  release: Foundry
   assistant: Orion
   host: 0.0.0.0
   port: 8643
