@@ -6,6 +6,8 @@ import type { ServiceHealth } from "../../types/health";
 
 type ServiceHealthSectionProps = {
     services: Record<string, ServiceHealth>;
+    isRefreshing: boolean;
+    onRefresh: () => void;
 };
 
 type SelectedService = {
@@ -25,6 +27,8 @@ const statusPriority: Record<string, number> = {
 
 export function ServiceHealthSection({
     services,
+    isRefreshing,
+    onRefresh,
 }: ServiceHealthSectionProps) {
     const [selectedService, setSelectedService] =
         useState<SelectedService | null>(null);
@@ -80,6 +84,8 @@ export function ServiceHealthSection({
                         services[selectedService.name] ??
                         selectedService.health
                     }
+                    isRefreshing={isRefreshing}
+                    onRefresh={onRefresh}
                     onClose={() => setSelectedService(null)}
                 />
             )}
