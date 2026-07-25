@@ -11,6 +11,7 @@ import type {
 import type {
     ActionHistoryExportFormat,
     ActionHistoryQuery,
+    ProviderActionAuditEntry,
     ProviderActionHistoryPage,
     ProviderActionHistorySummary,
     ProviderActionHistoryProvider,
@@ -89,6 +90,16 @@ export async function getProviderActionHistory(
                 completed_to: options.completedTo,
             },
         },
+    );
+
+    return response.data;
+}
+
+export async function getProviderActionHistoryEntry(
+    entryId: string,
+): Promise<ProviderActionAuditEntry> {
+    const response = await atlas.get<ProviderActionAuditEntry>(
+        `/ops/actions/${encodeURIComponent(entryId)}`,
     );
 
     return response.data;

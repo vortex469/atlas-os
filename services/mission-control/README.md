@@ -21,6 +21,7 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Filter-aware exports
 - Paginated audit results
 - Action and request-ID search
+- Audit detail views with shareable deep links
 - Forge deployment analysis workspace
 
 ## Development

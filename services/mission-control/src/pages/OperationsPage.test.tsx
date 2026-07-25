@@ -5,6 +5,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 
 import {
     exportProviderActionHistory,
@@ -42,6 +43,14 @@ const mockedExportProviderActionHistory = vi.mocked(
 const mockedPruneProviderActionHistory = vi.mocked(
     pruneProviderActionHistory,
 );
+
+function renderPage() {
+    return render(
+        <MemoryRouter>
+            <OperationsPage />
+        </MemoryRouter>,
+    );
+}
 
 describe("OperationsPage", () => {
     beforeEach(() => {
@@ -95,7 +104,7 @@ describe("OperationsPage", () => {
     });
 
     it("renders sanitized action audit details", async () => {
-        render(<OperationsPage />);
+        renderPage();
 
         expect(
             await screen.findByText("Unload Model"),
@@ -108,11 +117,19 @@ describe("OperationsPage", () => {
         expect(
             screen.getByText("Confirmed"),
         ).toBeInTheDocument();
+        expect(
+            screen.getByRole("link", {
+                name: "View audit details",
+            }),
+        ).toHaveAttribute(
+            "href",
+            "/operations/actions/audit-1",
+        );
     });
 
     it("requests failed actions when filtered", async () => {
         const user = userEvent.setup();
-        render(<OperationsPage />);
+        renderPage();
 
         await screen.findByText("Unload Model");
         await user.click(
@@ -145,7 +162,7 @@ describe("OperationsPage", () => {
             createObjectURL,
             revokeObjectURL,
         });
-        render(<OperationsPage />);
+        renderPage();
 
         await screen.findByText("Unload Model");
         await user.click(
@@ -180,7 +197,7 @@ describe("OperationsPage", () => {
     it("confirms and prunes expired history", async () => {
         const user = userEvent.setup();
         vi.spyOn(window, "confirm").mockReturnValue(true);
-        render(<OperationsPage />);
+        renderPage();
 
         await screen.findByText("Unload Model");
         await user.click(
@@ -204,7 +221,7 @@ describe("OperationsPage", () => {
 
     it("filters by provider and UTC date range", async () => {
         const user = userEvent.setup();
-        render(<OperationsPage />);
+        renderPage();
 
         await screen.findByText("Unload Model");
         await user.selectOptions(
@@ -239,7 +256,7 @@ describe("OperationsPage", () => {
 
     it("searches and pages through audit results", async () => {
         const user = userEvent.setup();
-        render(<OperationsPage />);
+        renderPage();
 
         await screen.findByText("Unload Model");
         await user.type(

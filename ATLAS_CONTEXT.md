@@ -129,9 +129,11 @@ Planned
 
 ✔ Audit Pagination and Action/Request Search
 
-169 Atlas Core tests passing.
+✔ Audit Detail Views and Shareable Deep Links
 
-10 Mission Control component tests passing.
+170 Atlas Core tests passing.
+
+13 Mission Control component tests passing.
 
 ---
 
@@ -141,7 +143,6 @@ Foundry Dashboard and Operations
 
 Next work
 
-- Audit detail view and shareable deep links
 - Frontend coverage for dashboard refresh and service details
 - Dynamic policy reload
 - Docker expected state

@@ -315,6 +315,20 @@ class ProviderActionHistory:
 
         return [self._entry_from_row(row) for row in rows]
 
+    def get(self, entry_id: str) -> ProviderActionAuditEntry | None:
+        with self._lock, self._connection:
+            self._prune()
+            row = self._connection.execute(
+                """
+                SELECT *
+                FROM provider_action_history
+                WHERE id = ?
+                """,
+                (entry_id,),
+            ).fetchone()
+
+        return self._entry_from_row(row) if row else None
+
     def page(
         self,
         *,

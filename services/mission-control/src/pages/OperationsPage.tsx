@@ -5,6 +5,7 @@ import {
     useRef,
     useState,
 } from "react";
+import { Link } from "react-router-dom";
 
 import {
     exportProviderActionHistory,
@@ -560,6 +561,14 @@ export function OperationsPage() {
                                     <p className="mt-2 text-sm text-slate-300">
                                         {entry.message}
                                     </p>
+                                    <Link
+                                        to={`/operations/actions/${encodeURIComponent(
+                                            entry.id,
+                                        )}`}
+                                        className="mt-3 inline-flex text-sm font-medium text-blue-400 transition hover:text-blue-300"
+                                    >
+                                        View audit details
+                                    </Link>
                                 </div>
 
                                 <time

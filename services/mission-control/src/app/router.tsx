@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 
 import { MainLayout } from "../layouts/MainLayout";
+import { ActionHistoryDetailPage } from "../pages/ActionHistoryDetailPage";
 import { MissionControlPage } from "../pages/MissionControlPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OperationsPage } from "../pages/OperationsPage";
@@ -19,6 +20,10 @@ export const router = createBrowserRouter([
             {
                 path: "operations",
                 element: <OperationsPage />,
+            },
+            {
+                path: "operations/actions/:auditId",
+                element: <ActionHistoryDetailPage />,
             },
             {
                 path: "providers/:providerId",

@@ -259,3 +259,22 @@ def prune_action_history(
         )
 
     return get_provider_action_history().prune_expired()
+
+
+@router.get(
+    "/actions/{entry_id}",
+    response_model=ProviderActionAuditEntry,
+    responses={404: {"description": "Audit entry not found"}},
+)
+def action_history_detail(
+    entry_id: str,
+) -> ProviderActionAuditEntry:
+    entry = get_provider_action_history().get(entry_id)
+
+    if entry is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Provider action audit entry not found.",
+        )
+
+    return entry

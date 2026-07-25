@@ -207,8 +207,9 @@ Future capabilities:
 - Provider and UTC date-range audit filtering
 - Filter-aware audit exports
 - Paginated audit results
+- Audit detail views with shareable deep links
 - Action and request-ID search
-- 169 Atlas Core tests
+- 170 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---

@@ -305,3 +305,43 @@ def test_action_history_page_and_literal_search(
     assert searched.json()["items"][0]["request_id"] == (
         "REQ_100%"
     )
+
+
+def test_action_history_detail_returns_entry_or_not_found(
+    isolated_action_history: ProviderActionHistory,
+) -> None:
+    timestamp = datetime.now(timezone.utc)
+    isolated_action_history.append(
+        ProviderActionAuditEntry(
+            id="detail-entry",
+            provider_id="ollama",
+            provider_name="Ollama",
+            action_id="run-diagnostics",
+            action_label="Run Diagnostics",
+            status="succeeded",
+            success=True,
+            message="Diagnostics complete.",
+            confirmed=False,
+            destructive=False,
+            parameter_names=["scope"],
+            request_id="detail-request",
+            started_at=timestamp,
+            completed_at=timestamp,
+            duration_ms=2.5,
+        ),
+    )
+
+    response = client.get(
+        "/api/v1/ops/actions/detail-entry",
+    )
+    assert response.status_code == 200
+    assert response.json()["id"] == "detail-entry"
+    assert response.json()["request_id"] == "detail-request"
+
+    missing = client.get(
+        "/api/v1/ops/actions/missing-entry",
+    )
+    assert missing.status_code == 404
+    assert missing.json()["error"]["message"] == (
+        "Provider action audit entry not found."
+    )
