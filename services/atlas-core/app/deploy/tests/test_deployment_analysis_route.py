@@ -1,9 +1,8 @@
-from fastapi.testclient import TestClient
-
 from app.main import app
+from app.testing import ASGITestClient
 
 
-client = TestClient(app)
+client = ASGITestClient(app)
 
 
 def test_analyze_compose_deployment() -> None:

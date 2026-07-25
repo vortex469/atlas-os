@@ -195,6 +195,8 @@ Planned
 
 ✔ Provider Performance Threshold Overlays
 
+✔ Atlas Core Full-Suite Hang Remediation
+
 257 Atlas Core tests collected.
 
 35 Mission Control component tests passing.
@@ -207,7 +209,7 @@ Foundry Release Hardening
 
 Next work
 
-- Atlas Core full-suite hang remediation
+- Foundry dependency and packaging audit
 
 ---
 

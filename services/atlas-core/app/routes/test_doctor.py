@@ -1,13 +1,12 @@
 from datetime import datetime, timezone
 
-from fastapi.testclient import TestClient
-
 from app.doctor import DoctorCheck, DoctorReport
 from app.main import app
 from app.routes import ops
+from app.testing import ASGITestClient
 
 
-client = TestClient(app)
+client = ASGITestClient(app)
 
 
 def test_doctor_report_is_available_from_ops(

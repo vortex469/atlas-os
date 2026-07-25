@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.actions import (
     ProviderActionAuditEntry,
@@ -9,9 +8,10 @@ from app.actions import (
 )
 from app.main import app
 from app.providers.loader import load_provider_registry
+from app.testing import ASGITestClient
 
 
-client = TestClient(app)
+client = ASGITestClient(app)
 
 
 @pytest.fixture(autouse=True)
