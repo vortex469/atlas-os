@@ -8,6 +8,7 @@ from app.config.policies import (
     get_expected_container_state,
     get_expected_guest_state,
     get_ignored_entities,
+    get_opnsense_policy,
     load_policies,
 )
 
@@ -40,6 +41,9 @@ proxmox:
 homeassistant:
   ignored_entities:
     - sensor.intentional_offline
+opnsense:
+  pending_update_warning_threshold: 3
+  reboot_required_severity: critical
 """,
     )
 
@@ -48,6 +52,14 @@ homeassistant:
     assert get_ignored_entities() == [
         "sensor.intentional_offline",
     ]
+    assert (
+        get_opnsense_policy().pending_update_warning_threshold
+        == 3
+    )
+    assert (
+        get_opnsense_policy().reboot_required_severity
+        == "critical"
+    )
 
     write_policy(
         policy_file,
@@ -58,12 +70,20 @@ docker:
       expected: stopped
 homeassistant:
   ignored_entities: []
+opnsense:
+  pending_update_warning_threshold: 5
+  reboot_required_severity: info
 """,
     )
 
     assert get_expected_container_state("atlas-core") == "stopped"
     assert get_expected_guest_state(101) is None
     assert get_ignored_entities() == []
+    assert (
+        get_opnsense_policy().pending_update_warning_threshold
+        == 5
+    )
+    assert get_opnsense_policy().reboot_required_severity == "info"
 
 
 @pytest.mark.parametrize(
@@ -75,6 +95,10 @@ docker:
   containers:
     atlas-core:
       expected: paused
+""",
+        """
+opnsense:
+  pending_update_warning_threshold: 0
 """,
     ],
 )
@@ -100,3 +124,7 @@ def test_missing_policy_file_uses_safe_defaults(
     assert policies.docker.containers == {}
     assert policies.proxmox.guests == {}
     assert policies.homeassistant.ignored_entities == []
+    assert (
+        policies.opnsense.pending_update_warning_threshold
+        is None
+    )

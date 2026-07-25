@@ -147,6 +147,18 @@ TLS verification is enabled by default. Use `ca_bundle` for a private
 certificate authority; disabling verification should be limited to
 temporary development environments.
 
+Firmware posture is controlled live through `config/policies.yaml`:
+
+```yaml
+opnsense:
+  pending_update_warning_threshold: 1
+  reboot_required_severity: warning
+```
+
+Set the update threshold to `null` to keep pending packages
+informational. Reboot severity accepts `info`, `warning`, or
+`critical`.
+
 ---
 
 ## Forge
@@ -245,7 +257,7 @@ Future capabilities:
 - Paginated audit results
 - Audit detail views with shareable deep links
 - Action and request-ID search
-- 187 Atlas Core tests
+- 189 Atlas Core tests
 - Mission Control component tests, lint, and production build gates
 
 ---

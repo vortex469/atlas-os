@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import os
 from time import perf_counter
 from typing import Any
@@ -7,6 +8,8 @@ from urllib.parse import urljoin
 
 import httpx
 
+from app.config.policies import get_opnsense_policy
+from app.config.policy_models import OPNsensePolicy, PolicySeverity
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -29,6 +32,9 @@ class OPNsenseProvider(Provider):
         api_secret: str | None = None,
         timeout_seconds: float = 10.0,
         transport: httpx.AsyncBaseTransport | None = None,
+        policy_getter: Callable[
+            [], OPNsensePolicy
+        ] = get_opnsense_policy,
     ) -> None:
         self._service = service
         self._api_key = (
@@ -43,6 +49,7 @@ class OPNsenseProvider(Provider):
         )
         self._timeout_seconds = timeout_seconds
         self._transport = transport
+        self._policy_getter = policy_getter
 
         protocol = service.get("protocol", "https")
         host = service["host"]
@@ -236,6 +243,7 @@ class OPNsenseProvider(Provider):
                 ),
             ]
 
+        policy = self._policy_getter()
         findings: list[Finding] = []
         updates_value = health.details.get("updates")
 
@@ -245,10 +253,21 @@ class OPNsenseProvider(Provider):
             update_count = 0
 
         if update_count > 0:
+            update_severity: PolicySeverity = "info"
+            if (
+                policy.pending_update_warning_threshold
+                is not None
+                and update_count
+                >= policy.pending_update_warning_threshold
+            ):
+                update_severity = "warning"
+            severity, affects_health, penalty = (
+                self._finding_settings(update_severity)
+            )
             findings.append(
                 Finding(
                     id="opnsense-firmware-updates",
-                    severity=Severity.INFO,
+                    severity=severity,
                     category="updates",
                     source="opnsense",
                     component="OPNsense",
@@ -261,8 +280,8 @@ class OPNsenseProvider(Provider):
                         "Review the OPNsense firmware changelog and "
                         "schedule an approved maintenance window."
                     ),
-                    affects_health=False,
-                    score_penalty=0,
+                    affects_health=affects_health,
+                    score_penalty=penalty,
                     metric={"updates": update_count},
                 ),
             )
@@ -271,10 +290,15 @@ class OPNsenseProvider(Provider):
             health.details.get("upgrade_needs_reboot") or "",
         ).lower()
         if reboot_value in {"1", "true", "yes"}:
+            severity, affects_health, penalty = (
+                self._finding_settings(
+                    policy.reboot_required_severity,
+                )
+            )
             findings.append(
                 Finding(
                     id="opnsense-reboot-required",
-                    severity=Severity.WARNING,
+                    severity=severity,
                     category="updates",
                     source="opnsense",
                     component="OPNsense",
@@ -287,8 +311,20 @@ class OPNsenseProvider(Provider):
                         "Schedule an approved firewall reboot during "
                         "a maintenance window."
                     ),
-                    score_penalty=5,
+                    affects_health=affects_health,
+                    score_penalty=penalty,
                 ),
             )
 
         return findings
+
+    @staticmethod
+    def _finding_settings(
+        severity: PolicySeverity,
+    ) -> tuple[Severity, bool, int]:
+        if severity == "critical":
+            return Severity.CRITICAL, True, 15
+        if severity == "warning":
+            return Severity.WARNING, True, 5
+
+        return Severity.INFO, False, 0

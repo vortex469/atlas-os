@@ -73,10 +73,10 @@ Current
 - Ignored Home Assistant entities
 - Expected Docker container state
 - OPNsense firmware posture
+- OPNsense firmware severity thresholds
 
 Planned
 
-- OPNsense policies
 - Frigate policies
 
 ---
@@ -144,7 +144,9 @@ Planned
 
 ✔ Provider-Backed ACE Findings
 
-187 Atlas Core tests passing.
+✔ OPNsense Policy Thresholds
+
+189 Atlas Core tests passing.
 
 19 Mission Control component tests passing.
 
@@ -156,7 +158,6 @@ Provider Intelligence
 
 Next work
 
-- OPNsense policy thresholds
 - Provider intelligence time budgets
 - Frigate provider
 

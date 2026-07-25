@@ -2,6 +2,7 @@ import asyncio
 
 import httpx
 
+from app.config.policy_models import OPNsensePolicy
 from app.providers.opnsense import OPNsenseProvider
 from app.providers.registry import ProviderRegistry
 from app.providers import loader
@@ -64,6 +65,9 @@ def test_opnsense_firmware_posture_produces_findings() -> None:
                 },
             ),
         ),
+        policy_getter=lambda: OPNsensePolicy(
+            pending_update_warning_threshold=1,
+        ),
     )
 
     findings = asyncio.run(provider.get_findings())
@@ -72,8 +76,39 @@ def test_opnsense_firmware_posture_produces_findings() -> None:
         "opnsense-firmware-updates",
         "opnsense-reboot-required",
     ]
-    assert findings[0].affects_health is False
+    assert findings[0].severity == "warning"
+    assert findings[0].affects_health is True
+    assert findings[0].score_penalty == 5
     assert findings[1].score_penalty == 5
+
+
+def test_opnsense_firmware_severity_follows_policy() -> None:
+    provider = OPNsenseProvider(
+        service(),
+        api_key="api-key",
+        api_secret="api-secret",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={
+                    "status": "ok",
+                    "updates": "2",
+                    "upgrade_needs_reboot": "1",
+                },
+            ),
+        ),
+        policy_getter=lambda: OPNsensePolicy(
+            pending_update_warning_threshold=5,
+            reboot_required_severity="critical",
+        ),
+    )
+
+    findings = asyncio.run(provider.get_findings())
+
+    assert findings[0].severity == "info"
+    assert findings[0].affects_health is False
+    assert findings[1].severity == "critical"
+    assert findings[1].score_penalty == 15
 
 
 def test_opnsense_health_requires_credentials() -> None:
