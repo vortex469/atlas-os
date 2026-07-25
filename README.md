@@ -221,8 +221,8 @@ outcome controls filter the visible trend without another request.
 JSON and CSV download actions apply the active provider and outcome
 filters.
 Mission Control also displays stored entry count, retention days, and
-the entry cap. Manual pruning requires confirmation in both the UI and
-the Core API.
+the entry cap, with oldest/newest snapshot times and a capacity meter.
+Manual pruning requires confirmation in both the UI and the Core API.
 
 ---
 

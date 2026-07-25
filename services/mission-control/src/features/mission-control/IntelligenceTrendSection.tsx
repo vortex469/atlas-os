@@ -196,23 +196,11 @@ export function IntelligenceTrendSection({
             />
 
             {retention && (
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900 p-4">
-                    <p className="text-sm text-slate-400">
-                        {retention.entry_count} stored snapshot(s)
-                        {" · "}
-                        {retention.retention_days}-day retention
-                        {" · "}
-                        {retention.max_entries} entry limit
-                    </p>
-                    <button
-                        type="button"
-                        disabled={isPruning}
-                        onClick={() => void pruneHistory()}
-                        className="rounded border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50"
-                    >
-                        {isPruning ? "Pruning..." : "Prune now"}
-                    </button>
-                </div>
+                <RetentionDetails
+                    retention={retention}
+                    isPruning={isPruning}
+                    onPrune={() => void pruneHistory()}
+                />
             )}
 
             {exportError && (
@@ -302,6 +290,107 @@ export function IntelligenceTrendSection({
             </div>
         </section>
     );
+}
+
+function RetentionDetails({
+    retention,
+    isPruning,
+    onPrune,
+}: {
+    retention: IntelligenceTelemetryRetentionSummary;
+    isPruning: boolean;
+    onPrune: () => void;
+}) {
+    const capacity = Math.min(
+        (retention.entry_count / retention.max_entries) * 100,
+        100,
+    );
+
+    return (
+        <div className="mb-4 rounded-lg border border-slate-800 bg-slate-900 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="grid flex-1 gap-4 sm:grid-cols-3">
+                    <RetentionMetric
+                        label="Stored"
+                        value={`${retention.entry_count} snapshot(s)`}
+                    />
+                    <RetentionMetric
+                        label="Oldest"
+                        value={formatTimestamp(
+                            retention.oldest_snapshot_at,
+                        )}
+                    />
+                    <RetentionMetric
+                        label="Newest"
+                        value={formatTimestamp(
+                            retention.newest_snapshot_at,
+                        )}
+                    />
+                </div>
+                <button
+                    type="button"
+                    disabled={isPruning}
+                    onClick={onPrune}
+                    className="rounded border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50"
+                >
+                    {isPruning ? "Pruning..." : "Prune now"}
+                </button>
+            </div>
+
+            <div className="mt-4">
+                <div className="mb-2 flex justify-between text-xs text-slate-500">
+                    <span>{capacity.toFixed(1)}% capacity</span>
+                    <span>
+                        {retention.max_entries} entry limit
+                        {" · "}
+                        {retention.retention_days}-day retention
+                    </span>
+                </div>
+                <div
+                    role="progressbar"
+                    aria-label="Telemetry history storage capacity"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={capacity}
+                    className="h-2 overflow-hidden rounded-full bg-slate-800"
+                >
+                    <div
+                        className={`h-full rounded-full ${
+                            capacity >= 90
+                                ? "bg-amber-400"
+                                : "bg-blue-400"
+                        }`}
+                        style={{ width: `${capacity}%` }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function RetentionMetric({
+    label,
+    value,
+}: {
+    label: string;
+    value: string;
+}) {
+    return (
+        <div>
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">
+                {label}
+            </p>
+            <p className="mt-1 text-sm font-medium text-slate-200">
+                {value}
+            </p>
+        </div>
+    );
+}
+
+function formatTimestamp(value: string | null): string {
+    return value === null
+        ? "No snapshots"
+        : new Date(value).toLocaleString();
 }
 
 function TrendFilters({

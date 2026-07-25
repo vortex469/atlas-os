@@ -160,17 +160,32 @@ describe("IntelligenceTrendSection", () => {
                 snapshots={snapshots}
                 retention={{
                     entry_count: 5,
-                    max_entries: 10000,
+                    max_entries: 100,
                     retention_days: 30,
-                    oldest_snapshot_at: null,
-                    newest_snapshot_at: null,
+                    oldest_snapshot_at:
+                        "2026-07-24T19:00:00Z",
+                    newest_snapshot_at:
+                        "2026-07-25T19:00:00Z",
                 }}
                 onPruned={onPruned}
             />,
         );
 
         expect(
-            screen.getByText(/5 stored snapshot/),
+            screen.getByText("5 snapshot(s)"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("5.0% capacity")).toBeInTheDocument();
+        expect(
+            screen.getByRole("progressbar", {
+                name: "Telemetry history storage capacity",
+            }),
+        ).toHaveAttribute("aria-valuenow", "5");
+        expect(
+            screen.getByText(
+                new Date(
+                    "2026-07-24T19:00:00Z",
+                ).toLocaleString(),
+            ),
         ).toBeInTheDocument();
         await user.click(
             screen.getByRole("button", {
