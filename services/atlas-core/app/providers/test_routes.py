@@ -46,9 +46,13 @@ def test_unknown_provider_returns_404() -> None:
     response = client.get("/providers/not-real")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == (
+    body = response.json()
+    assert body["error"]["code"] == "not_found"
+    assert body["error"]["status"] == 404
+    assert body["error"]["message"] == (
         "Unknown provider 'not-real'."
     )
+    assert body["request_id"]
 
 
 def test_every_provider_contains_required_fields() -> None:
@@ -76,9 +80,13 @@ def test_unknown_provider_actions_return_404() -> None:
     response = client.get("/providers/not-real/actions")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == (
+    body = response.json()
+    assert body["error"]["code"] == "not_found"
+    assert body["error"]["status"] == 404
+    assert body["error"]["message"] == (
         "Unknown provider 'not-real'."
     )
+    assert body["request_id"]
 
 
 def test_provider_advertises_diagnostics_action() -> None:
@@ -131,10 +139,14 @@ def test_unknown_provider_action_returns_404() -> None:
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == (
+    body = response.json()
+    assert body["error"]["code"] == "not_found"
+    assert body["error"]["status"] == 404
+    assert body["error"]["message"] == (
         "Provider 'hermes' does not advertise action "
         "'not-real'."
     )
+    assert body["request_id"]
 
 
 def test_action_on_unknown_provider_returns_404() -> None:
@@ -144,6 +156,10 @@ def test_action_on_unknown_provider_returns_404() -> None:
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == (
+    body = response.json()
+    assert body["error"]["code"] == "not_found"
+    assert body["error"]["status"] == 404
+    assert body["error"]["message"] == (
         "Unknown provider 'not-real'."
     )
+    assert body["request_id"]

@@ -3,8 +3,16 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class APIErrorDetail(BaseModel):
+    code: str
+    message: str
+    status: int
+    details: Any = Field(default_factory=dict)
+
+
 class APIError(BaseModel):
-    detail: str
+    error: APIErrorDetail
+    request_id: str
 
 
 class ServiceHealth(BaseModel):
