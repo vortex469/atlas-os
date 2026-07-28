@@ -198,3 +198,101 @@ Deliverables
 - Tests complete
 - Performance validation
 - Operational readiness
+
+---
+
+## A11 — Atlas Core Integration
+
+Goal
+
+Allow Atlas Agent to reason about the running Atlas system through supported Atlas Core APIs.
+
+Deliverables
+
+- typed Atlas Core client
+- configuration and connection validation
+- read-only Atlas system context retrieval
+- Context Engine
+- normalized AgentContext
+- backward-compatible integration with planning, verification, and review
+- unit and integration tests
+- API and architecture documentation
+
+Suggested implementation sequence:
+- A11.1 Atlas Core Client
+- A11.2 Context Aggregation
+- A11.3 Planning Integration
+- A11.4 Verification and Review Integration
+
+Explicitly out of scope:
+- direct Atlas Core database or persistence access
+- Git write automation
+- external command execution
+- Docker execution
+- autonomous editing
+- Mission Control UI changes
+- multi-model orchestration
+
+Acceptance Criteria
+
+- Atlas Core remains the authoritative source of Atlas system state
+- Atlas Agent retrieves Atlas state only through supported Atlas Core APIs
+- failures are bounded and reported clearly
+- existing repository-only workflows remain functional
+- no breaking API changes
+- Ruff passes
+- all tests pass
+
+---
+
+## A12 — Approval-Gated Tool Execution
+
+Goal
+
+Enable tool execution that requires human approval.
+
+Capabilities
+
+- Git, Ruff, pytest, npm, and Docker execution
+- explicit safety boundaries and approvals
+
+---
+
+## A13 — Local Model Orchestration
+
+Goal
+
+Orchestrate local language models for enhanced capabilities.
+
+Capabilities
+
+- local reasoning, planning, review, and model selection
+- model implementations remain replaceable
+
+---
+
+## A14 — Mission Control Integration
+
+Goal
+
+Expose Atlas Agent workflows through the Atlas UI.
+
+Capabilities
+
+- repository status
+- sprint status
+- verification reports
+- review reports
+
+---
+
+## A15 — Approval-Gated Development Loops
+
+Goal
+
+Orchestrate inspection, planning, editing, verification, review, and commits with human approval at defined write boundaries.
+
+Capabilities
+
+- orchestrate inspection, planning, editing, verification, review, and commits
+- retain human approval at defined write boundaries

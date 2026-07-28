@@ -159,3 +159,13 @@ matches the approved architecture.
 
 Future capabilities must extend the existing architecture rather than
 replace it.
+
+---
+
+# Current Implementation Status
+
+The current implementation is complete through A10.
+
+A11 — Atlas Core Integration is the next checkpoint.
+
+A12–A15 are the approved long-term direction.

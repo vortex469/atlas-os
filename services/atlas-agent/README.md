@@ -213,6 +213,21 @@ Atlas Agent follows these principles.
 - Human approval precedes every commit.
 
 These principles guide every future Atlas Agent capability.
+
+---
+
+# Architecture
+
+For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+---
+
+# Roadmap
+
+For the current roadmap, see [ROADMAP.md](./ROADMAP.md).
+
+The next checkpoint is A11 — Atlas Core Integration.
+
 ---
 
 # HTTP Endpoints
