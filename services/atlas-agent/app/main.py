@@ -11,6 +11,9 @@ from app.routes.health import router as health_router
 from app.routes.status import router as status_router
 from app.workflow.state import WorkflowStateStore
 
+logger = logging.getLogger("atlas-agent")
+AGENT_VERSION = "development"
+
 
 def configure_logging(settings: Settings) -> None:
     """Configure standard console logging."""
@@ -32,6 +35,17 @@ def create_app() -> FastAPI:
 
     settings = load_settings()
     configure_logging(settings)
+
+    logger.info(
+        "Starting %s version=%s environment=%s host=%s port=%s "
+        "repository_root=%s",
+        settings.app_name,
+        AGENT_VERSION,
+        settings.environment,
+        settings.host,
+        settings.port,
+        settings.repository_root,
+    )
 
     container = ApplicationContainer(
         settings=settings,
