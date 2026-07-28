@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.container.application import ApplicationContainer
 from app.review.models import ReviewReport
 from app.verification.models import VerificationReport, VerificationStatus
+from app.version import AGENT_VERSION
 from app.workflow.models import SprintPhase, SprintStatus
 
 router = APIRouter(prefix="/api/v1/agent", tags=["atlas-agent"])
@@ -159,7 +160,7 @@ async def agent_info(request: Request) -> AgentInfoResponse:
 
     return AgentInfoResponse(
         app_name=settings.app_name,
-        version="development",
+        version=AGENT_VERSION,
         environment=settings.environment,
         repository_root=_path(settings.repository_root),
         supported_workflow_phases=[

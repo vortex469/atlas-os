@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.version import AGENT_VERSION
 
 
 def test_health() -> None:
@@ -57,9 +58,40 @@ def test_create_app_logs_startup_diagnostics(
 
     assert (
         "Starting Atlas Agent Test "
-        "version=development "
+        f"version={AGENT_VERSION} "
         "environment=testing "
         "host=127.0.0.1 "
         "port=8091 "
         f"repository_root={repository.resolve()}"
     ) in caplog.messages
+
+
+def test_create_app_uses_centralized_version_metadata(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """FastAPI metadata uses the centralized Atlas Agent version."""
+
+    import subprocess
+
+    from app.config.settings import Settings
+
+    repository = tmp_path / "repository"
+    repository.mkdir()
+
+    subprocess.run(
+        ["git", "init"],
+        cwd=repository,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    settings = Settings(
+        repository_root=repository.resolve(),
+    )
+    monkeypatch.setattr("app.main.load_settings", lambda: settings)
+
+    application = create_app()
+
+    assert application.version == AGENT_VERSION

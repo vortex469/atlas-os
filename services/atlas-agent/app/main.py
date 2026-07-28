@@ -9,10 +9,10 @@ from app.container.application import ApplicationContainer
 from app.repository.inspector import GitInspector
 from app.routes.health import router as health_router
 from app.routes.status import router as status_router
+from app.version import AGENT_VERSION
 from app.workflow.state import WorkflowStateStore
 
 logger = logging.getLogger("atlas-agent")
-AGENT_VERSION = "development"
 
 
 def configure_logging(settings: Settings) -> None:
@@ -55,7 +55,10 @@ def create_app() -> FastAPI:
         workflow_state=WorkflowStateStore(),
     )
 
-    application = FastAPI(title=settings.app_name)
+    application = FastAPI(
+        title=settings.app_name,
+        version=AGENT_VERSION,
+    )
     application.state.container = container
     application.include_router(health_router)
     application.include_router(status_router)

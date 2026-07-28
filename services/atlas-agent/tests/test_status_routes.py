@@ -19,6 +19,7 @@ from app.verification.models import (
     VerificationReport,
     VerificationStatus,
 )
+from app.version import AGENT_VERSION
 from app.workflow.models import SprintPhase, SprintStatus
 
 
@@ -240,7 +241,7 @@ def test_agent_info_returns_runtime_information(
     assert response.status_code == 200
     assert response.json() == {
         "app_name": "Atlas Agent",
-        "version": "development",
+        "version": AGENT_VERSION,
         "environment": "development",
         "repository_root": str(container.settings.repository_root),
         "supported_workflow_phases": [
