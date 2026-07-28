@@ -5,6 +5,78 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _DEFAULT_REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+_ALLOWED_ENVIRONMENTS = frozenset(
+    {
+        "development",
+        "testing",
+        "production",
+    }
+)
+_ALLOWED_LOG_LEVELS = frozenset(
+    {
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL",
+    }
+)
+
+
+def _load_port() -> int:
+    """Load and validate the configured service port."""
+
+    raw_port = os.getenv("ATLAS_AGENT_PORT", "8090")
+
+    try:
+        port = int(raw_port)
+    except ValueError as exc:
+        raise ValueError(
+            "ATLAS_AGENT_PORT must be an integer"
+        ) from exc
+
+    if not 1 <= port <= 65535:
+        raise ValueError(
+            "ATLAS_AGENT_PORT must be between 1 and 65535"
+        )
+
+    return port
+
+
+def _load_environment() -> str:
+    """Load and validate the configured runtime environment."""
+
+    environment = os.getenv(
+        "ATLAS_AGENT_ENVIRONMENT",
+        "development",
+    ).strip().lower()
+
+    if environment not in _ALLOWED_ENVIRONMENTS:
+        supported = ", ".join(sorted(_ALLOWED_ENVIRONMENTS))
+        raise ValueError(
+            "ATLAS_AGENT_ENVIRONMENT must be one of: "
+            f"{supported}"
+        )
+
+    return environment
+
+
+def _load_log_level() -> str:
+    """Load and validate the configured logging level."""
+
+    log_level = os.getenv(
+        "ATLAS_AGENT_LOG_LEVEL",
+        "INFO",
+    ).strip().upper()
+
+    if log_level not in _ALLOWED_LOG_LEVELS:
+        supported = ", ".join(sorted(_ALLOWED_LOG_LEVELS))
+        raise ValueError(
+            "ATLAS_AGENT_LOG_LEVEL must be one of: "
+            f"{supported}"
+        )
+
+    return log_level
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,7 +92,7 @@ class Settings:
 
     @classmethod
     def from_environment(cls) -> "Settings":
-        """Load settings from Atlas Agent environment variables."""
+        """Load validated settings from Atlas Agent environment variables."""
 
         repository_root = Path(
             os.getenv(
@@ -31,16 +103,10 @@ class Settings:
 
         return cls(
             app_name=os.getenv("ATLAS_AGENT_APP_NAME", "Atlas Agent"),
-            environment=os.getenv(
-                "ATLAS_AGENT_ENVIRONMENT",
-                "development",
-            ),
-            log_level=os.getenv(
-                "ATLAS_AGENT_LOG_LEVEL",
-                "INFO",
-            ),
+            environment=_load_environment(),
+            log_level=_load_log_level(),
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),
-            port=int(os.getenv("ATLAS_AGENT_PORT", "8090")),
+            port=_load_port(),
             repository_root=repository_root,
         )
 
