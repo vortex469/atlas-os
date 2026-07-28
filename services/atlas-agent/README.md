@@ -213,3 +213,21 @@ Atlas Agent follows these principles.
 - Human approval precedes every commit.
 
 These principles guide every future Atlas Agent capability.
+---
+
+# HTTP Endpoints
+
+Atlas Agent exposes the following read-only operational endpoints:
+
+```text
+GET /health
+GET /api/v1/agent/info
+GET /api/v1/agent/repository
+GET /api/v1/agent/sprint
+GET /api/v1/agent/verification
+GET /api/v1/agent/review
+```
+
+`GET /api/v1/agent/info` returns the configured application name,
+runtime environment, repository root, development version marker, and
+the workflow and verification states supported by the service.

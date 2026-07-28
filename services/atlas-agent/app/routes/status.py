@@ -7,10 +7,21 @@ from pydantic import BaseModel
 
 from app.container.application import ApplicationContainer
 from app.review.models import ReviewReport
-from app.verification.models import VerificationReport
-from app.workflow.models import SprintStatus
+from app.verification.models import VerificationReport, VerificationStatus
+from app.workflow.models import SprintPhase, SprintStatus
 
 router = APIRouter(prefix="/api/v1/agent", tags=["atlas-agent"])
+
+
+class AgentInfoResponse(BaseModel):
+    """Serialized Atlas Agent runtime information."""
+
+    app_name: str
+    version: str
+    environment: str
+    repository_root: str
+    supported_workflow_phases: list[str]
+    supported_verification_statuses: list[str]
 
 
 class RepositoryStatusResponse(BaseModel):
@@ -136,6 +147,29 @@ def _sprint_response(sprint: SprintStatus) -> SprintStatusResponse:
         title=sprint.title,
         goal=sprint.goal,
         phase=sprint.phase.value,
+    )
+
+
+@router.get("/info", response_model=AgentInfoResponse)
+async def agent_info(request: Request) -> AgentInfoResponse:
+    """Return Atlas Agent runtime information."""
+
+    container = _container(request)
+    settings = container.settings
+
+    return AgentInfoResponse(
+        app_name=settings.app_name,
+        version="development",
+        environment=settings.environment,
+        repository_root=_path(settings.repository_root),
+        supported_workflow_phases=[
+            phase.value
+            for phase in SprintPhase
+        ],
+        supported_verification_statuses=[
+            status.value
+            for status in VerificationStatus
+        ],
     )
 
 

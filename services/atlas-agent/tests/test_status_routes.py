@@ -227,3 +227,34 @@ def test_review_returns_published_report(
         ],
         "recommendations": ["Remove the out-of-scope change"],
     }
+
+
+def test_agent_info_returns_runtime_information(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    client, container = make_client(tmp_path, monkeypatch)
+
+    response = client.get("/api/v1/agent/info")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "app_name": "Atlas Agent",
+        "version": "development",
+        "environment": "development",
+        "repository_root": str(container.settings.repository_root),
+        "supported_workflow_phases": [
+            "planned",
+            "in_progress",
+            "verifying",
+            "reviewing",
+            "completed",
+            "blocked",
+        ],
+        "supported_verification_statuses": [
+            "passed",
+            "failed",
+            "timed_out",
+            "launch_failed",
+        ],
+    }
