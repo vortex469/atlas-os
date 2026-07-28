@@ -8,6 +8,8 @@ from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
 from app.repository.inspector import GitInspector
 from app.routes.health import router as health_router
+from app.routes.status import router as status_router
+from app.workflow.state import WorkflowStateStore
 
 
 def configure_logging(settings: Settings) -> None:
@@ -36,11 +38,13 @@ def create_app() -> FastAPI:
         repository_inspector=GitInspector(
             repository_root=settings.repository_root,
         ),
+        workflow_state=WorkflowStateStore(),
     )
 
     application = FastAPI(title=settings.app_name)
     application.state.container = container
     application.include_router(health_router)
+    application.include_router(status_router)
 
     return application
 

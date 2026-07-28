@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from app.config.settings import Settings
 from app.repository.inspector import GitInspector
+from app.workflow.state import WorkflowStateStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -12,3 +13,4 @@ class ApplicationContainer:
 
     settings: Settings
     repository_inspector: GitInspector
+    workflow_state: WorkflowStateStore

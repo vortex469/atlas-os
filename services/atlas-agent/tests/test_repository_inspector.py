@@ -296,3 +296,6 @@ def test_create_app_wires_repository_inspector(
     assert container.settings is settings
     assert isinstance(container.repository_inspector, GitInspector)
     assert container.repository_inspector.repository_root == repository.resolve()
+    assert container.workflow_state.get_sprint() is None
+    assert container.workflow_state.get_verification() is None
+    assert container.workflow_state.get_review() is None
