@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
+from app.repository.inspector import GitInspector
 from app.routes.health import router as health_router
 
 
@@ -30,7 +31,12 @@ def create_app() -> FastAPI:
     settings = load_settings()
     configure_logging(settings)
 
-    container = ApplicationContainer(settings=settings)
+    container = ApplicationContainer(
+        settings=settings,
+        repository_inspector=GitInspector(
+            repository_root=settings.repository_root,
+        ),
+    )
 
     application = FastAPI(title=settings.app_name)
     application.state.container = container
