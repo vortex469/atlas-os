@@ -9,6 +9,7 @@ import { IntelligenceTrendSection } from "./IntelligenceTrendSection";
 import { PolicyVisibilitySection } from "./PolicyVisibilitySection";
 import { RecommendationsSection } from "./RecommendationsSection";
 import { ServiceHealthSection } from "./ServiceHealthSection";
+import { AtlasAgentPanel } from "../../components/AtlasAgentPanel";
 
 export function MissionControl() {
     const {
@@ -98,7 +99,7 @@ export function MissionControl() {
                         onRefresh={() => void refresh()}
                     />
                 )}
-
+                <AtlasAgentPanel />
                 {(health || providers.length > 0) && (
                     <section>
                         <SectionHeader
