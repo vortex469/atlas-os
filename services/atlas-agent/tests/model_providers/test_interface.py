@@ -1,19 +1,23 @@
 """Tests for the model provider interface."""
 
+from dataclasses import FrozenInstanceError
+
+import pytest
 
 from app.model_providers.interface import ModelProvider
+from app.model_providers.models import ModelResponse
 
 
 class DummyProvider:
     """Dummy implementation of the ModelProvider interface."""
-    
+
     def __init__(self, provider_id: str = "test-provider"):
         self._provider_id = provider_id
-    
+
     @property
     def provider_id(self) -> str:
         return self._provider_id
-    
+
     def health_check(self) -> bool:
         return True
 
@@ -38,3 +42,22 @@ def test_interface_is_protocol():
     assert hasattr(ModelProvider, '__annotations__')
     assert hasattr(ModelProvider, 'provider_id')
     assert hasattr(ModelProvider, 'health_check')
+
+
+def test_model_response():
+    """Test that ModelResponse works correctly."""
+    # Test construction with all fields
+    response = ModelResponse(
+        text="test response",
+        model="test-model",
+        provider_id="test-provider",
+    )
+
+    # Verify field values
+    assert response.text == "test response"
+    assert response.model == "test-model"
+    assert response.provider_id == "test-provider"
+
+    # Verify frozen behavior
+    with pytest.raises(FrozenInstanceError):
+        response.text = "new text"
