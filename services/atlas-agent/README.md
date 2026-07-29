@@ -188,6 +188,11 @@ Every engineering change must pass through this workflow.
 
 Human approval is a required engineering gate.
 
+The approval workflow includes:
+- Pause at defined tool execution points
+- Resume after human approval
+- Mission Control visibility of approval status
+
 Atlas Agent may recommend changes.
 
 Atlas Agent may verify changes.

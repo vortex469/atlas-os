@@ -163,6 +163,11 @@ replace it.
 ---
 
 # Current Implementation Status
+A12.6 Documentation Sync is complete.
+
+The documentation now reflects the completed approval workflow,
+including approval lifecycle, workflow pause/resume behavior,
+and Mission Control visibility.
 
 The current implementation is complete through A10.
 
