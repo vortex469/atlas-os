@@ -1,0 +1,112 @@
+import pytest
+from pydantic import ValidationError
+
+from app.core_client.models import AtlasCoreHealth, AtlasCoreStatus, ServiceHealth
+
+
+def test_service_health_valid_payload():
+    """Test valid ServiceHealth payload."""
+    data = {
+        "provider_id": "test-provider",
+        "status": "healthy",
+        "latency_ms": 150.5,
+        "http_status": 200,
+        "message": "All good",
+        "details": {"version": "1.0"}
+    }
+    health = ServiceHealth(**data)
+    assert health.provider_id == "test-provider"
+    assert health.status == "healthy"
+    assert health.latency_ms == 150.5
+    assert health.http_status == 200
+    assert health.message == "All good"
+    assert health.details == {"version": "1.0"}
+
+def test_service_health_default_values():
+    """Test default optional values."""
+    health = ServiceHealth(provider_id="test", status="healthy")
+    assert health.latency_ms is None
+    assert health.http_status is None
+    assert health.message is None
+    assert health.details == {}
+
+def test_service_health_details_independent_default():
+    """Test that details uses an independent default dictionary."""
+    health1 = ServiceHealth(provider_id="test1", status="healthy")
+    health2 = ServiceHealth(provider_id="test2", status="healthy")
+
+    # Modify one instance's details
+    health1.details["key"] = "value"
+
+    # The other should be unaffected
+    assert health2.details == {}
+    assert health1.details == {"key": "value"}
+
+def test_atlas_core_health_valid_payload():
+    """Test valid AtlasCoreHealth payload with nested service."""
+    service_data = {
+        "provider_id": "test-provider",
+        "status": "healthy"
+    }
+
+    data = {
+        "atlas": "test-atlas",
+        "services": {"service1": service_data}
+    }
+
+    core_health = AtlasCoreHealth(**data)
+    assert core_health.atlas == "test-atlas"
+    assert "service1" in core_health.services
+    assert core_health.services["service1"].provider_id == "test-provider"
+    assert core_health.services["service1"].status == "healthy"
+
+def test_atlas_core_status_valid_payload():
+    """Test valid AtlasCoreStatus payload."""
+    data = {
+        "atlas": "test-atlas",
+        "assistant": "test-assistant",
+        "engine": "test-engine",
+        "release": "1.0.0"
+    }
+
+    status = AtlasCoreStatus(**data)
+    assert status.atlas == "test-atlas"
+    assert status.assistant == "test-assistant"
+    assert status.engine == "test-engine"
+    assert status.release == "1.0.0"
+
+def test_missing_required_fields_rejected():
+    """Test that missing required fields are rejected."""
+    # Test ServiceHealth missing required fields
+    with pytest.raises(ValidationError):
+        ServiceHealth(latency_ms=100)
+
+    with pytest.raises(ValidationError):
+        ServiceHealth(status="healthy")
+
+    # Test AtlasCoreStatus missing required fields
+    with pytest.raises(ValidationError):
+        AtlasCoreStatus(atlas="test-atlas", assistant="test")
+
+    with pytest.raises(ValidationError):
+        AtlasCoreStatus(atlas="test-atlas", assistant="test", engine="test")
+
+def test_invalid_nested_service_rejected():
+    """Test that invalid nested service payload is rejected."""
+    # This should work
+    valid_data = {
+        "atlas": "test-atlas",
+        "services": {"service1": {"provider_id": "test", "status": "healthy"}}
+    }
+
+    core_health = AtlasCoreHealth(**valid_data)
+    assert core_health.atlas == "test-atlas"
+
+    # This should fail
+    invalid_data = {
+        "atlas": "test-atlas",
+        "services": {"service1": {"status": "healthy"}}  # missing provider_id
+    }
+
+    with pytest.raises(ValidationError):
+        AtlasCoreHealth(**invalid_data)

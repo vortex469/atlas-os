@@ -89,6 +89,9 @@ class Settings:
     host: str = "127.0.0.1"
     port: int = 8090
     repository_root: Path = _DEFAULT_REPOSITORY_ROOT
+    atlas_core_host: str = "127.0.0.1"
+    atlas_core_port: int = 8643
+    atlas_core_timeout_seconds: float = 10.0
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -108,6 +111,9 @@ class Settings:
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),
             port=_load_port(),
             repository_root=repository_root,
+            atlas_core_host=os.getenv("ATLAS_CORE_HOST", "127.0.0.1"),
+            atlas_core_port=int(os.getenv("ATLAS_CORE_PORT", "8643")),
+            atlas_core_timeout_seconds=float(os.getenv("ATLAS_CORE_TIMEOUT_SECONDS", "10.0")),
         )
 
 
