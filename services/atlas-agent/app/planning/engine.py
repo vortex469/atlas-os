@@ -3,6 +3,7 @@
 from collections.abc import Iterable
 from pathlib import Path
 
+from app.context.models import AgentContext
 from app.planning.exceptions import PlanningValidationError
 from app.planning.models import (
     ImplementationPlan,
@@ -19,6 +20,7 @@ class PlanningEngine:
         self,
         checkpoint: RoadmapCheckpoint,
         snapshot: RepositorySnapshot,
+        context: AgentContext | None = None,
     ) -> ImplementationPlan:
         """Create an immutable implementation plan."""
 
@@ -52,7 +54,10 @@ class PlanningEngine:
         )
 
         repository_risks = self._repository_risks(snapshot)
-        risks = self._deduplicate((*explicit_risks, *repository_risks))
+        context_risks = self._context_risks(context)
+        risks = self._deduplicate(
+            (*explicit_risks, *repository_risks, *context_risks)
+        )
 
         return ImplementationPlan(
             checkpoint_id=checkpoint_id,
@@ -154,6 +159,34 @@ class PlanningEngine:
                     code="missing-head",
                     summary="Repository does not have a HEAD commit",
                     source="repository",
+                )
+            )
+
+        return tuple(risks)
+
+    @staticmethod
+    def _context_risks(
+        context: AgentContext | None,
+    ) -> tuple[PlanRisk, ...]:
+        """Create deterministic risks from Atlas service health."""
+
+        if context is None:
+            return ()
+
+        risks: list[PlanRisk] = []
+
+        for service_name, service in sorted(context.services.items()):
+            if service.status == "healthy":
+                continue
+
+            risks.append(
+                PlanRisk(
+                    code="atlas-service-unhealthy",
+                    summary=(
+                        f"Atlas service '{service_name}' reports "
+                        f"status '{service.status}'"
+                    ),
+                    source="atlas-core",
                 )
             )
 

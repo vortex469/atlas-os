@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from app.context.models import AgentContext, ServiceHealth
 from app.planning.engine import PlanningEngine
 from app.planning.exceptions import PlanningValidationError
 from app.planning.models import PlanRisk, RoadmapCheckpoint
@@ -49,6 +50,32 @@ def make_checkpoint(**overrides: object) -> RoadmapCheckpoint:
     return RoadmapCheckpoint(**values)  # type: ignore[arg-type]
 
 
+def make_context(
+    services: dict[str, ServiceHealth],
+) -> AgentContext:
+    """Create Atlas context with supplied service health."""
+
+    return AgentContext(
+        atlas="atlas",
+        assistant="atlas-agent",
+        engine="deterministic",
+        release="development",
+        services=services,
+    )
+
+
+def make_service(
+    provider_id: str,
+    status: str,
+) -> ServiceHealth:
+    """Create service health for planning tests."""
+
+    return ServiceHealth(
+        provider_id=provider_id,
+        status=status,
+    )
+
+
 def test_generates_valid_plan() -> None:
     """Explicit checkpoint data becomes a traceable plan."""
 
@@ -62,6 +89,108 @@ def test_generates_valid_plan() -> None:
     assert plan.affected_files == (
         Path("app/planning/models.py"),
         Path("app/planning/engine.py"),
+    )
+
+
+def test_no_context_preserves_existing_plan() -> None:
+    """Omitted context and explicit None produce equal plans."""
+
+    engine = PlanningEngine()
+    checkpoint = make_checkpoint()
+    snapshot = make_snapshot()
+
+    assert engine.plan(checkpoint, snapshot) == engine.plan(
+        checkpoint,
+        snapshot,
+        context=None,
+    )
+
+
+def test_healthy_services_add_no_risks() -> None:
+    """Healthy Atlas services do not add planning risks."""
+
+    context = make_context(
+        {
+            "atlas-core": make_service("atlas-core", "healthy"),
+            "ollama": make_service("ollama", "healthy"),
+        }
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert plan.risks == ()
+
+
+def test_unhealthy_services_add_atlas_core_risks() -> None:
+    """Non-healthy services become Atlas Core planning risks."""
+
+    context = make_context(
+        {
+            "ollama": make_service("ollama", "degraded"),
+        }
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert plan.risks == (
+        PlanRisk(
+            code="atlas-service-unhealthy",
+            summary="Atlas service 'ollama' reports status 'degraded'",
+            source="atlas-core",
+        ),
+    )
+
+
+def test_context_risks_are_ordered_by_service_name() -> None:
+    """Context risks are ordered deterministically by service name."""
+
+    context = make_context(
+        {
+            "zeta": make_service("zeta", "unhealthy"),
+            "alpha": make_service("alpha", "degraded"),
+            "healthy": make_service("healthy", "healthy"),
+        }
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert tuple(risk.summary for risk in plan.risks) == (
+        "Atlas service 'alpha' reports status 'degraded'",
+        "Atlas service 'zeta' reports status 'unhealthy'",
+    )
+
+
+def test_context_risks_follow_existing_risk_sources() -> None:
+    """Context risks use the existing ordered risk pipeline."""
+
+    context = make_context(
+        {
+            "ollama": make_service("ollama", "unhealthy"),
+        }
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=("Checkpoint concern",)),
+        make_snapshot(is_clean=False),
+        context=context,
+    )
+
+    assert tuple(risk.source for risk in plan.risks) == (
+        "checkpoint",
+        "repository",
+        "atlas-core",
     )
 
 
