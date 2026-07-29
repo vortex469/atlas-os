@@ -4,11 +4,13 @@ import logging
 
 from fastapi import FastAPI
 
+from app.approval.repository import ApprovalRepository
 from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
 from app.repository.inspector import GitInspector
+from app.routes.approval import router as approval_router
 from app.routes.health import router as health_router
 from app.routes.status import router as status_router
 from app.version import AGENT_VERSION
@@ -62,6 +64,7 @@ def create_app() -> FastAPI:
         workflow_state=WorkflowStateStore(),
         core_client=core_client,
         context_engine=ContextEngine(core_client),
+        approval_repository=ApprovalRepository(),
     )
 
     application = FastAPI(
@@ -71,6 +74,7 @@ def create_app() -> FastAPI:
     application.state.container = container
     application.include_router(health_router)
     application.include_router(status_router)
+    application.include_router(approval_router)
 
     return application
 

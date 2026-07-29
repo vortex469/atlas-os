@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from app.approval.repository import ApprovalRepository
 from app.config.settings import Settings
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
@@ -18,3 +19,5 @@ class ApplicationContainer:
     context_engine: ContextEngine
     repository_inspector: GitInspector
     workflow_state: WorkflowStateStore
+
+    approval_repository: ApprovalRepository
