@@ -1,3 +1,4 @@
+import { getPendingApprovals } from "../api/approval";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +21,10 @@ vi.mock("../api/atlas-agent", () => ({
     ) => (error instanceof Error ? error.message : fallback),
 }));
 
+vi.mock("../api/approval", () => ({
+    getPendingApprovals: vi.fn(),
+}));
+
 const mockedGetRepositoryStatus = vi.mocked(
     getRepositoryStatus,
 );
@@ -28,6 +33,7 @@ const mockedGetVerificationReport = vi.mocked(
     getVerificationReport,
 );
 const mockedGetReviewReport = vi.mocked(getReviewReport);
+const mockedGetPendingApprovals = vi.mocked(getPendingApprovals);
 
 describe("useAtlasAgent", () => {
     beforeEach(() => {
@@ -63,6 +69,20 @@ describe("useAtlasAgent", () => {
             findings: [],
             recommendations: [],
         });
+        mockedGetPendingApprovals.mockResolvedValue([
+            {
+                identifier: "approval-1",
+                checkpoint_id: "A12.5",
+                request: {
+                    checkpoint_id: "A12.5",
+                    title: "Test Approval",
+                    requested_tool: "git",
+                    requested_command: ["clone"],
+                    rationale: "Testing approval flow",
+                },
+                status: "pending",
+            },
+        ]);
 
         const { result } = renderHook(() => useAtlasAgent());
 
@@ -77,21 +97,23 @@ describe("useAtlasAgent", () => {
         expect(result.current.sprint?.checkpoint_id).toBe("A7B");
         expect(result.current.verification?.status).toBe("passed");
         expect(result.current.review?.status).toBe("approved");
+        expect(result.current.approvals).toHaveLength(1);
     });
 
     it("preserves unpublished workflow resources as null", async () => {
         mockedGetRepositoryStatus.mockResolvedValue({
             root: "/opt/atlas",
-            branch: null,
-            head_commit: null,
-            is_clean: false,
+            branch: "feature/atlas-agent",
+            head_commit: "7661770",
+            is_clean: true,
             modified_files: [],
             staged_files: [],
-            untracked_files: ["logs/"],
+            untracked_files: [],
         });
         mockedGetSprintStatus.mockResolvedValue(null);
         mockedGetVerificationReport.mockResolvedValue(null);
         mockedGetReviewReport.mockResolvedValue(null);
+        mockedGetPendingApprovals.mockResolvedValue([]);
 
         const { result } = renderHook(() => useAtlasAgent());
 
@@ -113,6 +135,7 @@ describe("useAtlasAgent", () => {
         mockedGetSprintStatus.mockResolvedValue(null);
         mockedGetVerificationReport.mockResolvedValue(null);
         mockedGetReviewReport.mockResolvedValue(null);
+        mockedGetPendingApprovals.mockResolvedValue([]);
 
         const { result } = renderHook(() => useAtlasAgent());
 

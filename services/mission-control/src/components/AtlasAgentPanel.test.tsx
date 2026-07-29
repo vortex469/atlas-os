@@ -45,6 +45,7 @@ describe("AtlasAgentPanel", () => {
                 findings: [],
                 recommendations: [],
             },
+            approvals: [],
             isLoading: false,
             error: null,
         });
@@ -83,6 +84,7 @@ describe("AtlasAgentPanel", () => {
             sprint: null,
             verification: null,
             review: null,
+            approvals: [],
             isLoading: false,
             error: null,
         });
@@ -106,6 +108,7 @@ describe("AtlasAgentPanel", () => {
             sprint: null,
             verification: null,
             review: null,
+            approvals: [],
             isLoading: false,
             error: "Atlas Agent unavailable.",
         });

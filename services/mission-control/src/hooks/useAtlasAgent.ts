@@ -7,18 +7,22 @@ import {
     getSprintStatus,
     getVerificationReport,
 } from "../api/atlas-agent";
+import { getPendingApprovals } from "../api/approval";
+
 import type {
     RepositoryStatus,
     ReviewReport,
     SprintStatus,
     VerificationReport,
 } from "../types/atlasAgent";
+import type { ApprovalResult } from "../types/approval";
 
 interface AtlasAgentState {
     repository: RepositoryStatus | null;
     sprint: SprintStatus | null;
     verification: VerificationReport | null;
     review: ReviewReport | null;
+    approvals: ApprovalResult[];
     isLoading: boolean;
     error: string | null;
 }
@@ -28,6 +32,7 @@ const initialState: AtlasAgentState = {
     sprint: null,
     verification: null,
     review: null,
+    approvals: [],
     isLoading: true,
     error: null,
 };
@@ -46,11 +51,13 @@ export function useAtlasAgent(): AtlasAgentState {
                     sprint,
                     verification,
                     review,
+                    approvals,
                 ] = await Promise.all([
                     getRepositoryStatus(),
                     getSprintStatus(),
                     getVerificationReport(),
                     getReviewReport(),
+                    getPendingApprovals(),
                 ]);
 
                 if (!isCancelled) {
@@ -59,6 +66,7 @@ export function useAtlasAgent(): AtlasAgentState {
                         sprint,
                         verification,
                         review,
+                        approvals,
                         isLoading: false,
                         error: null,
                     });
