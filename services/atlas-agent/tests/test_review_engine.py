@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.planning.models import ImplementationPlan
+from app.planning.models import ImplementationPlan, PlanRisk
 from app.review import (
     ArchitectureAssessment,
     ReviewCategory,
@@ -35,6 +35,7 @@ def make_plan(
         "Run Ruff",
         "Run pytest",
     ),
+    risks: tuple[PlanRisk, ...] = (),
 ) -> ImplementationPlan:
     return ImplementationPlan(
         checkpoint_id="A6",
@@ -46,7 +47,7 @@ def make_plan(
         scope_items=("Add deterministic implementation review",),
         affected_files=affected_files,
         required_tests=required_tests,
-        risks=(),
+        risks=risks,
     )
 
 
@@ -121,6 +122,85 @@ def test_approves_complete_passing_review() -> None:
     assert report.status is ReviewStatus.APPROVED
     assert report.findings == ()
     assert report.recommendations == ()
+
+
+def test_plan_risk_findings_preserve_order() -> None:
+    request = make_request(
+        plan=make_plan(
+            risks=(
+                PlanRisk(
+                    code="first-risk",
+                    summary="First risk.",
+                    source="atlas-core",
+                ),
+                PlanRisk(
+                    code="second-risk",
+                    summary="Second risk.",
+                    source="planning-engine",
+                ),
+            ),
+        ),
+    )
+
+    report = ReviewEngine().review(request)
+
+    assert tuple(finding.code for finding in report.findings) == (
+        "plan-risk-first-risk",
+        "plan-risk-second-risk",
+    )
+
+
+def test_plan_risk_warning_coexists_with_error() -> None:
+    request = make_request(
+        plan=make_plan(
+            risks=(
+                PlanRisk(
+                    code="atlas-core-unavailable",
+                    summary="Atlas Core context could not be loaded.",
+                    source="atlas-core",
+                ),
+            ),
+        ),
+        changed_files=(Path("services/atlas-core/app/main.py"),),
+    )
+
+    report = ReviewEngine().review(request)
+
+    assert report.status is ReviewStatus.CHANGES_REQUIRED
+    assert tuple(finding.code for finding in report.findings) == (
+        "out-of-scope-file",
+        "plan-risk-atlas-core-unavailable",
+    )
+
+
+def test_plan_risk_creates_warning_finding() -> None:
+    request = make_request(
+        plan=make_plan(
+            risks=(
+                PlanRisk(
+                    code="atlas-core-unavailable",
+                    summary="Atlas Core context could not be loaded.",
+                    source="atlas-core",
+                ),
+            ),
+        ),
+    )
+
+    report = ReviewEngine().review(request)
+
+    assert report.status is ReviewStatus.APPROVED
+    assert len(report.findings) == 1
+
+    finding = report.findings[0]
+
+    assert finding.code == "plan-risk-atlas-core-unavailable"
+    assert finding.category is ReviewCategory.SCOPE
+    assert finding.severity.value == "warning"
+    assert finding.summary == "Atlas Core context could not be loaded."
+    assert finding.evidence == "Plan risk source: atlas-core"
+    assert finding.recommendation == (
+        "Address or explicitly accept this plan risk before implementation."
+    )
 
 
 def test_failed_architecture_assessment_requires_changes() -> None:

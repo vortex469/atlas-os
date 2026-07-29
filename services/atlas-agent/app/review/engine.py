@@ -29,6 +29,7 @@ class ReviewEngine:
             + self._scope_findings(normalized_request)
             + self._test_coverage_findings(normalized_request)
             + self._verification_findings(normalized_request)
+            + self._plan_risk_findings(normalized_request)
         )
 
         return ReviewReport(
@@ -215,6 +216,24 @@ class ReviewEngine:
             )
 
         return tuple(findings)
+
+    def _plan_risk_findings(
+        self,
+        request: ReviewRequest,
+    ) -> tuple[ReviewFinding, ...]:
+        return tuple(
+            ReviewFinding(
+                code=f"plan-risk-{risk.code}",
+                category=ReviewCategory.SCOPE,
+                severity=ReviewSeverity.WARNING,
+                summary=risk.summary,
+                evidence=f"Plan risk source: {risk.source}",
+                recommendation=(
+                    "Address or explicitly accept this plan risk before implementation."
+                ),
+            )
+            for risk in request.plan.risks
+        )
 
     @staticmethod
     def _scope_findings(
