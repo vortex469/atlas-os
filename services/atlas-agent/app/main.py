@@ -6,6 +6,8 @@ from fastapi import FastAPI
 
 from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
+from app.context.engine import ContextEngine
+from app.core_client.client import AtlasCoreClient
 from app.repository.inspector import GitInspector
 from app.routes.health import router as health_router
 from app.routes.status import router as status_router
@@ -47,12 +49,19 @@ def create_app() -> FastAPI:
         settings.repository_root,
     )
 
+    # Create a single core client instance
+    core_client = AtlasCoreClient(
+        settings=settings,
+    )
+
     container = ApplicationContainer(
         settings=settings,
         repository_inspector=GitInspector(
             repository_root=settings.repository_root,
         ),
         workflow_state=WorkflowStateStore(),
+        core_client=core_client,
+        context_engine=ContextEngine(core_client),
     )
 
     application = FastAPI(
