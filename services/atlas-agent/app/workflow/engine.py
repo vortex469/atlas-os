@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from app.approval.engine import ApprovalEngine
+from app.approval.models import ApprovalDecision
 from app.execution.engine import ExecutionEngine
 from app.execution.models import ExecutionRequest, ExecutionStatus
 from app.planning.engine import PlanningEngine
@@ -33,6 +35,7 @@ class WorkflowEngine:
         execution_engine: ExecutionEngine,
         verification_engine: VerificationEngine,
         review_engine: ReviewEngine,
+        approval_engine: ApprovalEngine,
         state_store: WorkflowStateStore,
     ) -> None:
         self._repository_inspector_factory = repository_inspector_factory
@@ -40,9 +43,15 @@ class WorkflowEngine:
         self._execution_engine = execution_engine
         self._verification_engine = verification_engine
         self._review_engine = review_engine
+        self._approval_engine = approval_engine
         self._state_store = state_store
 
-    def run(self, request: WorkflowRequest) -> WorkflowResult:
+    def run(
+        self,
+        request: WorkflowRequest,
+        *,
+        approval_decision: ApprovalDecision | None = None,
+    ) -> WorkflowResult:
         """Execute one workflow request."""
 
         planned_status = SprintStatus(
@@ -71,6 +80,24 @@ class WorkflowEngine:
             argv=request.execution_argv,
             working_directory=request.execution_workdir,
         )
+
+        if approval_decision is not None:
+            approval_result = self._approval_engine.evaluate(approval_decision)
+
+            if not approval_result.approved:
+                blocked_status = SprintStatus(
+                    checkpoint_id=request.checkpoint.identifier,
+                    title=request.checkpoint.title,
+                    goal=request.checkpoint.goal,
+                    phase=SprintPhase.BLOCKED,
+                )
+                self._state_store.publish_sprint(blocked_status)
+
+                return WorkflowResult(
+                    sprint=blocked_status,
+                    error_message="Approval required",
+                )
+
         execution_result = self._execution_engine.execute(execution_request)
 
         if execution_result.status is not ExecutionStatus.SUCCEEDED:

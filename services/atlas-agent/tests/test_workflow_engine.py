@@ -3,6 +3,13 @@
 from pathlib import Path
 from unittest.mock import Mock
 
+from app.approval.engine import ApprovalEngine
+from app.approval.models import (
+    ApprovalDecision,
+    ApprovalRequest,
+    ApprovalResult,
+    ApprovalStatus,
+)
 from app.execution.models import ExecutionResult, ExecutionStatus
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.models import RepositorySnapshot
@@ -118,6 +125,15 @@ def make_request(root: Path) -> WorkflowRequest:
         review_identifier="review-a9",
     )
 
+def make_approval_request() -> ApprovalRequest:
+    return ApprovalRequest(
+        identifier="approval-a12",
+        checkpoint_id="A12",
+        title="Approval Gate",
+        requested_tool="codex",
+        requested_command=("codex", "implement"),
+        rationale="Approve controlled execution.",
+    )
 
 def make_engine(
     root: Path,
@@ -125,7 +141,7 @@ def make_engine(
     execution_result: ExecutionResult,
     verification_report: VerificationReport,
     review_report: ReviewReport,
-) -> tuple[WorkflowEngine, Mock, Mock, Mock, Mock, Mock]:
+) -> tuple[WorkflowEngine, Mock, Mock, Mock, Mock, Mock, Mock]:
     inspector = Mock()
     inspector.inspect.return_value = make_snapshot(root)
 
@@ -134,14 +150,19 @@ def make_engine(
     planning_engine = Mock()
     planning_engine.plan.return_value = make_plan(root)
 
+
     execution_engine = Mock()
     execution_engine.execute.return_value = execution_result
+
 
     verification_engine = Mock()
     verification_engine.verify.return_value = verification_report
 
     review_engine = Mock()
     review_engine.review.return_value = review_report
+
+    approval_engine = Mock()
+    approval_engine = Mock(spec=ApprovalEngine)
 
     state_store = Mock(spec=WorkflowStateStore)
 
@@ -151,8 +172,9 @@ def make_engine(
         execution_engine=execution_engine,
         verification_engine=verification_engine,
         review_engine=review_engine,
+        approval_engine=approval_engine,
         state_store=state_store,
-    )
+)
 
     return (
         engine,
@@ -160,6 +182,7 @@ def make_engine(
         execution_engine,
         verification_engine,
         review_engine,
+        approval_engine,
         state_store,
     )
 
@@ -183,6 +206,7 @@ def test_successful_workflow_completes_and_publishes_artifacts(
         execution_engine,
         verification_engine,
         review_engine,
+        _,
         state_store,
     ) = make_engine(
         tmp_path,
@@ -231,6 +255,7 @@ def test_execution_failure_blocks_downstream_stages(tmp_path: Path) -> None:
         _,
         verification_engine,
         review_engine,
+        _,
         state_store,
     ) = make_engine(
         tmp_path,
@@ -266,6 +291,7 @@ def test_verification_failure_blocks_review(tmp_path: Path) -> None:
         _,
         _,
         review_engine,
+        _,
         state_store,
     ) = make_engine(
         tmp_path,
@@ -299,6 +325,7 @@ def test_review_rejection_blocks_completion(tmp_path: Path) -> None:
         _,
         _,
         _,
+        _,
         state_store,
     ) = make_engine(
         tmp_path,
@@ -318,5 +345,82 @@ def test_review_rejection_blocks_completion(tmp_path: Path) -> None:
         SprintPhase.IN_PROGRESS,
         SprintPhase.VERIFYING,
         SprintPhase.REVIEWING,
+        SprintPhase.BLOCKED,
+    ]
+
+def test_approved_decision_allows_execution(tmp_path: Path) -> None:
+    (
+        engine,
+        planning_engine,
+        execution_engine,
+        verification_engine,
+        review_engine,
+        approval_engine,
+        _,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+    )
+
+    decision = ApprovalDecision(
+        request=make_approval_request(),
+        status=ApprovalStatus.APPROVED,
+        reviewer="tester",
+    )
+    approval_engine.evaluate.return_value = ApprovalResult(decision=decision)
+
+    result = engine.run(
+        make_request(tmp_path),
+        approval_decision=decision,
+    )
+
+    assert result.sprint.phase is SprintPhase.COMPLETED
+    approval_engine.evaluate.assert_called_once_with(decision)
+    planning_engine.plan.assert_called_once()
+    execution_engine.execute.assert_called_once()
+    verification_engine.verify.assert_called_once()
+    review_engine.review.assert_called_once()
+
+def test_rejected_decision_blocks_before_execution(tmp_path: Path) -> None:
+    (
+        engine,
+        planning_engine,
+        execution_engine,
+        verification_engine,
+        review_engine,
+        approval_engine,
+        state_store,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+    )
+
+    decision = ApprovalDecision(
+        request=make_approval_request(),
+        status=ApprovalStatus.REJECTED,
+        reviewer="tester",
+        reason="Rejected for test.",
+    )
+    approval_engine.evaluate.return_value = ApprovalResult(decision=decision)
+
+    result = engine.run(
+        make_request(tmp_path),
+        approval_decision=decision,
+    )
+
+    assert result.sprint.phase is SprintPhase.BLOCKED
+    assert result.error_message == "Approval required"
+    approval_engine.evaluate.assert_called_once_with(decision)
+    planning_engine.plan.assert_called_once()
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+    assert published_phases(state_store) == [
+        SprintPhase.PLANNED,
+        SprintPhase.IN_PROGRESS,
         SprintPhase.BLOCKED,
     ]
