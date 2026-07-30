@@ -27,6 +27,7 @@ from app.workflow.engine import WorkflowEngine
 from app.workflow.models import (
     SprintPhase,
     WorkflowRequest,
+    WorkflowSession,
     WorkflowSessionState,
 )
 from app.workflow.state import WorkflowStateStore
@@ -674,3 +675,323 @@ def test_rejected_decision_also_cannot_bypass_pause(tmp_path: Path) -> None:
         SprintPhase.PLANNED,
         SprintPhase.AWAITING_APPROVAL,
     ]
+
+
+def make_resume_engine(
+    root: Path,
+    *,
+    approval_status: ApprovalStatus = ApprovalStatus.APPROVED,
+    session_state: WorkflowSessionState = WorkflowSessionState.AWAITING_APPROVAL,
+    execution_result: ExecutionResult | None = None,
+    verification_report: VerificationReport | None = None,
+    review_report: ReviewReport | None = None,
+) -> tuple[
+    WorkflowEngine,
+    WorkflowStateStore,
+    ApprovalRepository,
+    Mock,
+    Mock,
+    Mock,
+    Mock,
+    Mock,
+]:
+    request = make_request(root)
+    plan = make_plan(root)
+    session = WorkflowSession(
+        identifier="workflow-a15-3",
+        request=request,
+        plan=plan,
+        state=session_state,
+    )
+    state_store = WorkflowStateStore()
+    state_store.create_session(session)
+    approval_repository = ApprovalRepository()
+    approval_request = ApprovalRequest(
+        identifier=f"approval-{session.identifier}",
+        workflow_id=session.identifier,
+        checkpoint_id=plan.checkpoint_id,
+        title="Approve implementation",
+        requested_tool=request.execution_argv[0],
+        requested_command=request.execution_argv,
+        requested_working_directory=request.execution_workdir,
+        rationale="Approve the exact planned implementation operation.",
+    )
+    approval_repository.save_request(approval_request)
+    approval_repository.update_decision(
+        approval_request.identifier,
+        ApprovalDecision(
+            request=approval_request,
+            status=approval_status,
+            reviewer="tester" if approval_status is not ApprovalStatus.PENDING else None,
+            reason="Not approved" if approval_status is ApprovalStatus.REJECTED else None,
+        ),
+    )
+    inspector_factory = Mock()
+    planning_engine = Mock()
+    execution_engine = Mock()
+    execution_engine.execute.return_value = (
+        execution_result or make_execution_result(root)
+    )
+    verification_engine = Mock()
+    verification_engine.verify.return_value = (
+        verification_report or make_verification_report(root)
+    )
+    review_engine = Mock()
+    review_engine.review.return_value = review_report or make_review_report()
+    engine = WorkflowEngine(
+        repository_inspector_factory=inspector_factory,
+        planning_engine=planning_engine,
+        execution_engine=execution_engine,
+        verification_engine=verification_engine,
+        review_engine=review_engine,
+        approval_engine=ApprovalEngine(),
+        approval_repository=approval_repository,
+        state_store=state_store,
+    )
+    return (
+        engine,
+        state_store,
+        approval_repository,
+        inspector_factory,
+        planning_engine,
+        execution_engine,
+        verification_engine,
+        review_engine,
+    )
+
+
+def test_approved_workflow_resumes_exact_stored_plan(tmp_path: Path) -> None:
+    (
+        engine,
+        state_store,
+        _,
+        inspector_factory,
+        planning_engine,
+        execution_engine,
+        verification_engine,
+        review_engine,
+    ) = make_resume_engine(tmp_path)
+    session = state_store.get_session("workflow-a15-3")
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.sprint.phase is SprintPhase.COMPLETED
+    assert result.plan is session.plan
+    assert result.execution_result is not None
+    assert result.verification_report is not None
+    assert result.review_report is not None
+    assert (
+        state_store.get_session(session.identifier).state
+        is WorkflowSessionState.COMPLETED
+    )
+    execution_request = execution_engine.execute.call_args.args[0]
+    review_request = review_engine.review.call_args.args[0]
+    assert execution_request.plan is session.plan
+    assert review_request.plan is session.plan
+    verification_engine.verify.assert_called_once_with(
+        repository_root=session.request.repository_root,
+        checks=session.request.verification_checks,
+    )
+    inspector_factory.assert_not_called()
+    planning_engine.plan.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("state", "error"),
+    (
+        (WorkflowSessionState.IN_PROGRESS, "Workflow already in progress"),
+        (WorkflowSessionState.COMPLETED, "Workflow already completed"),
+        (WorkflowSessionState.BLOCKED, "Workflow is not resumable"),
+    ),
+)
+def test_terminal_or_claimed_workflow_does_not_resume_or_mutate(
+    tmp_path: Path,
+    state: WorkflowSessionState,
+    error: str,
+) -> None:
+    engine, state_store, _, _, _, execution_engine, _, _ = make_resume_engine(
+        tmp_path,
+        session_state=state,
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == error
+    assert state_store.get_session("workflow-a15-3").state is state
+    execution_engine.execute.assert_not_called()
+
+
+def test_missing_workflow_fails_without_execution(tmp_path: Path) -> None:
+    engine, _, _, _, _, execution_engine, _, _ = make_resume_engine(tmp_path)
+
+    result = engine.resume("missing")
+
+    assert result.sprint.phase is SprintPhase.BLOCKED
+    assert result.error_message == "Workflow not found"
+    execution_engine.execute.assert_not_called()
+
+
+def test_missing_approval_leaves_workflow_awaiting(tmp_path: Path) -> None:
+    (
+        engine,
+        state_store,
+        approval_repository,
+        _,
+        _,
+        execution_engine,
+        _,
+        _,
+    ) = make_resume_engine(tmp_path)
+    approval_repository._storage.clear()
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Approval not found"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.AWAITING_APPROVAL
+    )
+    execution_engine.execute.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("workflow_id", "another-workflow"),
+        ("checkpoint_id", "A15.4"),
+        ("requested_tool", "pytest"),
+        ("requested_command", ("codex", "different")),
+        ("requested_working_directory", Path("/different")),
+    ),
+)
+def test_mismatched_approval_leaves_workflow_awaiting(
+    tmp_path: Path,
+    field: str,
+    value: object,
+) -> None:
+    (
+        engine,
+        state_store,
+        approval_repository,
+        _,
+        _,
+        execution_engine,
+        _,
+        _,
+    ) = make_resume_engine(tmp_path)
+    stored = approval_repository.get_request("approval-workflow-a15-3")
+    values = {
+        name: getattr(stored.decision.request, name)
+        for name in ApprovalRequest.__dataclass_fields__
+    }
+    values[field] = value
+    mismatched = ApprovalRequest(**values)
+    approval_repository.update_decision(
+        mismatched.identifier,
+        ApprovalDecision(
+            request=mismatched,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Approval does not match workflow"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.AWAITING_APPROVAL
+    )
+    execution_engine.execute.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "approval_status",
+    (ApprovalStatus.PENDING, ApprovalStatus.REJECTED),
+)
+def test_unapproved_decision_claims_then_blocks(
+    tmp_path: Path,
+    approval_status: ApprovalStatus,
+) -> None:
+    engine, state_store, _, _, _, execution_engine, _, _ = make_resume_engine(
+        tmp_path,
+        approval_status=approval_status,
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Approval rejected"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )
+    execution_engine.execute.assert_not_called()
+
+
+def test_duplicate_resume_does_not_replay_execution(tmp_path: Path) -> None:
+    engine, _, _, _, _, execution_engine, _, _ = make_resume_engine(tmp_path)
+
+    first = engine.resume("workflow-a15-3")
+    second = engine.resume("workflow-a15-3")
+
+    assert first.sprint.phase is SprintPhase.COMPLETED
+    assert second.error_message == "Workflow already completed"
+    execution_engine.execute.assert_called_once()
+
+
+def test_execution_failure_blocks_and_stops_pipeline(tmp_path: Path) -> None:
+    engine, state_store, _, _, _, _, verification_engine, review_engine = (
+        make_resume_engine(
+            tmp_path,
+            execution_result=make_execution_result(
+                tmp_path,
+                status=ExecutionStatus.FAILED,
+            ),
+        )
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Execution failed"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+
+
+def test_verification_failure_blocks_before_review(tmp_path: Path) -> None:
+    engine, state_store, _, _, _, _, _, review_engine = make_resume_engine(
+        tmp_path,
+        verification_report=make_verification_report(
+            tmp_path,
+            status=VerificationStatus.FAILED,
+        ),
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Verification failed"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )
+    review_engine.review.assert_not_called()
+
+
+def test_review_rejection_blocks_workflow(tmp_path: Path) -> None:
+    engine, state_store, _, _, _, _, _, _ = make_resume_engine(
+        tmp_path,
+        review_report=make_review_report(
+            status=ReviewStatus.CHANGES_REQUIRED,
+        ),
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Review failed"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )

@@ -27,10 +27,13 @@ class SprintPhase(StrEnum):
 
 
 class WorkflowSessionState(StrEnum):
-    """Lifecycle state required for a passive planned workflow session."""
+    """Lifecycle state for one stored workflow session."""
 
     PLANNED = "planned"
     AWAITING_APPROVAL = "awaiting_approval"
+    IN_PROGRESS = "in_progress"
+    BLOCKED = "blocked"
+    COMPLETED = "completed"
 
 
 @dataclass(frozen=True, slots=True)

@@ -206,3 +206,73 @@ def test_awaiting_approval_state_is_supported(tmp_path: Path) -> None:
     assert store.get_session(session.identifier) is session
     assert session.state.value == "awaiting_approval"
     assert SprintPhase.AWAITING_APPROVAL.value == "awaiting_approval"
+
+
+def test_session_transition_replaces_state_and_preserves_artifacts(
+    tmp_path: Path,
+) -> None:
+    store = WorkflowStateStore()
+    session = make_session(tmp_path)
+    store.create_session(session)
+
+    assert store.transition_session(
+        session.identifier,
+        WorkflowSessionState.PLANNED,
+        WorkflowSessionState.IN_PROGRESS,
+    )
+
+    transitioned = store.get_session(session.identifier)
+    assert transitioned is not session
+    assert transitioned.state is WorkflowSessionState.IN_PROGRESS
+    assert transitioned.request is session.request
+    assert transitioned.plan is session.plan
+    assert transitioned.planning_analysis is session.planning_analysis
+
+
+def test_session_transition_requires_expected_state(tmp_path: Path) -> None:
+    store = WorkflowStateStore()
+    session = make_session(tmp_path)
+    store.create_session(session)
+
+    assert not store.transition_session(
+        session.identifier,
+        WorkflowSessionState.AWAITING_APPROVAL,
+        WorkflowSessionState.IN_PROGRESS,
+    )
+    assert store.get_session(session.identifier) is session
+    assert not store.transition_session(
+        "missing",
+        WorkflowSessionState.PLANNED,
+        WorkflowSessionState.IN_PROGRESS,
+    )
+
+
+def test_concurrent_session_transition_allows_one_claim(
+    tmp_path: Path,
+) -> None:
+    store = WorkflowStateStore()
+    session = WorkflowSession(
+        identifier="workflow-a15-3",
+        request=make_request(tmp_path),
+        plan=make_plan(tmp_path),
+        state=WorkflowSessionState.AWAITING_APPROVAL,
+    )
+    store.create_session(session)
+    barrier = Barrier(2)
+
+    def claim(_: int) -> bool:
+        barrier.wait()
+        return store.transition_session(
+            session.identifier,
+            WorkflowSessionState.AWAITING_APPROVAL,
+            WorkflowSessionState.IN_PROGRESS,
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = tuple(executor.map(claim, range(2)))
+
+    assert sorted(results) == [False, True]
+    assert (
+        store.get_session(session.identifier).state
+        is WorkflowSessionState.IN_PROGRESS
+    )

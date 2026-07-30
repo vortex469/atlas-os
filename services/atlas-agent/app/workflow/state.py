@@ -1,10 +1,15 @@
 """Thread-safe in-memory Atlas Agent workflow state."""
 
+from dataclasses import replace
 from threading import RLock
 
 from app.review.models import ReviewReport
 from app.verification.models import VerificationReport
-from app.workflow.models import SprintStatus, WorkflowSession
+from app.workflow.models import (
+    SprintStatus,
+    WorkflowSession,
+    WorkflowSessionState,
+)
 
 
 class WorkflowStateStore:
@@ -43,6 +48,23 @@ class WorkflowStateStore:
 
         with self._lock:
             return self._sessions.pop(identifier, None) is not None
+
+    def transition_session(
+        self,
+        identifier: str,
+        expected_state: WorkflowSessionState,
+        new_state: WorkflowSessionState,
+    ) -> bool:
+        """Atomically replace a session when its current state matches."""
+
+        with self._lock:
+            session = self._sessions.get(identifier)
+
+            if session is None or session.state is not expected_state:
+                return False
+
+            self._sessions[identifier] = replace(session, state=new_state)
+            return True
 
     def publish_sprint(self, status: SprintStatus) -> None:
         """Publish the current sprint status."""
