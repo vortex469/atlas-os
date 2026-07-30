@@ -95,6 +95,23 @@ def _load_planning_mode() -> str:
 
     return planning_mode
 
+
+def _load_atlas_core_required() -> bool:
+    """Load whether workflows require Atlas Core context."""
+
+    raw_value = os.getenv("ATLAS_CORE_REQUIRED", "false").strip().lower()
+    values = {
+        "true": True,
+        "false": False,
+    }
+    try:
+        return values[raw_value]
+    except KeyError as exc:
+        raise ValueError(
+            "ATLAS_CORE_REQUIRED must be one of: false, true"
+        ) from exc
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     """Atlas Agent runtime settings."""
@@ -108,6 +125,7 @@ class Settings:
     atlas_core_host: str = "127.0.0.1"
     atlas_core_port: int = 8643
     atlas_core_timeout_seconds: float = 10.0
+    atlas_core_required: bool = False
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_default_model: str = "qwen3-coder-atlas:latest"
     planning_mode: str = "deterministic"
@@ -134,6 +152,7 @@ class Settings:
             atlas_core_host=os.getenv("ATLAS_CORE_HOST", "127.0.0.1"),
             atlas_core_port=int(os.getenv("ATLAS_CORE_PORT", "8643")),
             atlas_core_timeout_seconds=float(os.getenv("ATLAS_CORE_TIMEOUT_SECONDS", "10.0")),
+            atlas_core_required=_load_atlas_core_required(),
             ollama_base_url=os.getenv(
                 "ATLAS_AGENT_OLLAMA_BASE_URL",
                 "http://127.0.0.1:11434",

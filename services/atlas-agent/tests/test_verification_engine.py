@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from app.context.models import AgentContext
 from app.execution import EnvironmentVariable, RunnerOutcome
 from app.verification import (
     VerificationCheck,
@@ -69,6 +70,26 @@ def test_successful_suite_returns_passed_report(
     assert report.results[0].status is VerificationStatus.PASSED
     assert report.results[0].duration_seconds == 1.0
     assert report.results[0].stdout == "ok"
+
+
+def test_report_retains_context_snapshot(tmp_path: Path) -> None:
+    context = AgentContext(
+        atlas="online",
+        assistant="Atlas",
+        engine="Hermes",
+        release="test",
+        services={},
+    )
+    runner = Mock()
+    runner.run.return_value = RunnerOutcome(0, "", "")
+
+    report = VerificationEngine(runner).verify(
+        repository_root=tmp_path,
+        checks=(make_check(),),
+        context=context,
+    )
+
+    assert report.context is context
 
 
 def test_nonzero_exit_returns_failed_result(

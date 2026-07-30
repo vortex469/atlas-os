@@ -10,6 +10,7 @@ from uuid import uuid4
 from app.approval.engine import ApprovalEngine
 from app.approval.models import ApprovalDecision, ApprovalRequest
 from app.approval.repository import ApprovalRepository
+from app.context.models import AgentContext
 from app.execution.engine import ExecutionEngine
 from app.execution.models import ExecutionRequest, ExecutionStatus
 from app.model_providers.models import ModelResponse
@@ -75,11 +76,32 @@ class WorkflowEngine:
         self._planning_mode = planning_mode
         self._planning_advisor = planning_advisor
 
+    def block_before_planning(
+        self,
+        request: WorkflowRequest,
+        *,
+        error_message: str,
+    ) -> WorkflowResult:
+        """Publish a blocked result before repository planning begins."""
+
+        blocked_status = SprintStatus(
+            checkpoint_id=request.checkpoint.identifier,
+            title=request.checkpoint.title,
+            goal=request.checkpoint.goal,
+            phase=SprintPhase.BLOCKED,
+        )
+        self._state_store.publish_sprint(blocked_status)
+        return WorkflowResult(
+            sprint=blocked_status,
+            error_message=error_message,
+        )
+
     def run(
         self,
         request: WorkflowRequest,
         *,
         approval_decision: ApprovalDecision | None = None,
+        context: AgentContext | None = None,
     ) -> WorkflowResult:
         """Plan one workflow request and pause for pre-execution approval."""
 
@@ -94,7 +116,11 @@ class WorkflowEngine:
         inspector = self._repository_inspector_factory(request.repository_root)
         try:
             snapshot = inspector.inspect()
-            plan = self._planning_engine.plan(request.checkpoint, snapshot)
+            plan = self._planning_engine.plan(
+                request.checkpoint,
+                snapshot,
+                context=context,
+            )
         except Exception:
             logger.exception("Workflow planning failed")
             blocked_status = SprintStatus(
@@ -156,6 +182,7 @@ class WorkflowEngine:
             plan=plan,
             state=WorkflowSessionState.AWAITING_APPROVAL,
             planning_analysis=planning_analysis,
+            context=context,
         )
 
         session_created = False
@@ -193,6 +220,7 @@ class WorkflowEngine:
         return WorkflowResult(
             sprint=awaiting_approval_status,
             plan=plan,
+            context=context,
             planning_analysis=planning_analysis,
             approval_request=approval_request,
         )
@@ -279,6 +307,7 @@ class WorkflowEngine:
 
         request = session.request
         plan = session.plan
+        context = session.context
         in_progress_status = self._status(session, SprintPhase.IN_PROGRESS)
         self._state_store.publish_sprint(in_progress_status)
 
@@ -338,6 +367,7 @@ class WorkflowEngine:
             verification_report = self._verification_engine.verify(
                 repository_root=request.repository_root,
                 checks=request.verification_checks,
+                context=context,
             )
         except Exception:
             logger.exception("Workflow verification failed")
@@ -366,6 +396,7 @@ class WorkflowEngine:
             plan=plan,
             changed_files=changed_files,
             verification_report=verification_report,
+            context=context,
             architecture_assessments=request.architecture_assessments,
             test_evidence=request.test_evidence,
         )
@@ -427,6 +458,7 @@ class WorkflowEngine:
         return WorkflowResult(
             sprint=completed_status,
             plan=plan,
+            context=context,
             planning_analysis=session.planning_analysis,
             approval_request=approval_request,
             execution_result=execution_result,

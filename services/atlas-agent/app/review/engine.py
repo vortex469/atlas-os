@@ -56,6 +56,11 @@ class ReviewEngine:
                 "Verification report repository root must match the plan"
             )
 
+        if request.context != request.verification_report.context:
+            raise ReviewValidationError(
+                "Review context must match the verification snapshot"
+            )
+
         changed_files = self._normalize_changed_files(
             repository_root=repository_root,
             changed_files=request.changed_files,
@@ -70,6 +75,7 @@ class ReviewEngine:
             plan=request.plan,
             changed_files=changed_files,
             verification_report=request.verification_report,
+            context=request.context,
             architecture_assessments=assessments,
             test_evidence=test_evidence,
         )

@@ -1,11 +1,13 @@
 """Context models for Atlas Agent."""
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ServiceHealth(BaseModel):
     """Health information for a single service."""
+
+    model_config = ConfigDict(frozen=True)
 
     provider_id: str
     status: str
@@ -16,6 +18,8 @@ class ServiceHealth(BaseModel):
 
 class AgentContext(BaseModel):
     """Complete context for the Atlas Agent."""
+
+    model_config = ConfigDict(frozen=True)
 
     atlas: str
     assistant: str

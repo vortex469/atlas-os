@@ -89,6 +89,15 @@ The AgentContext contains:
 
 Engines consume normalized context and do not call Atlas Core independently.
 
+Atlas Core context is captured exactly once before workflow planning. The
+immutable snapshot is stored with the workflow session and is passed to
+planning, verification, and review. Resuming a workflow reuses the stored
+snapshot and never retrieves fresh Atlas Core context. When Atlas Core is
+optional, retrieval failures preserve repository-only workflows; required mode
+blocks before planning. An asynchronous application-composition layer retrieves
+the context and then invokes the synchronous Workflow Engine. The read-only
+integration does not poll or retry.
+
 ## Dependency Flow
 
 The dependency flow is:

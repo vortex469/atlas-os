@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from app.context.models import AgentContext
 from app.planning.models import ImplementationPlan
 from app.verification.models import VerificationReport
 
@@ -58,6 +59,7 @@ class ReviewRequest:
     plan: ImplementationPlan
     changed_files: tuple[Path, ...]
     verification_report: VerificationReport
+    context: AgentContext | None = None
     architecture_assessments: tuple[ArchitectureAssessment, ...] = ()
     test_evidence: tuple[TestEvidence, ...] = ()
 

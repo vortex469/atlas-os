@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from app.context.models import AgentContext
 from app.planning.models import ImplementationPlan, PlanRisk
 from app.review import (
     ArchitectureAssessment,
@@ -122,6 +123,22 @@ def test_approves_complete_passing_review() -> None:
     assert report.status is ReviewStatus.APPROVED
     assert report.findings == ()
     assert report.recommendations == ()
+
+
+def test_rejects_context_different_from_verification_snapshot() -> None:
+    context = AgentContext(
+        atlas="online",
+        assistant="Atlas",
+        engine="Hermes",
+        release="test",
+        services={},
+    )
+
+    with pytest.raises(
+        ReviewValidationError,
+        match="Review context must match the verification snapshot",
+    ):
+        ReviewEngine().review(make_request(context=context))
 
 
 def test_plan_risk_findings_preserve_order() -> None:

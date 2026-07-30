@@ -12,6 +12,7 @@ from app.approval.models import (
     ApprovalStatus,
 )
 from app.approval.repository import ApprovalRepository
+from app.context.models import AgentContext, ServiceHealth
 from app.execution.models import ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
 from app.planning.advisor import PlanningAdvisor
@@ -101,6 +102,21 @@ def make_plan(root: Path) -> ImplementationPlan:
     )
 
 
+def make_context() -> AgentContext:
+    return AgentContext(
+        atlas="online",
+        assistant="Atlas",
+        engine="Hermes",
+        release="test",
+        services={
+            "atlas-core": ServiceHealth(
+                provider_id="atlas-core",
+                status="healthy",
+            )
+        },
+    )
+
+
 def make_execution_result(
     root: Path,
     *,
@@ -125,12 +141,14 @@ def make_verification_report(
     root: Path,
     *,
     status: VerificationStatus = VerificationStatus.PASSED,
+    context: AgentContext | None = None,
 ) -> VerificationReport:
     return VerificationReport(
         repository_root=root,
         results=(),
         status=status,
         duration_seconds=1.0,
+        context=context,
     )
 
 
@@ -236,6 +254,35 @@ def published_phases(state_store: Mock) -> list[SprintPhase]:
         invocation.args[0].phase
         for invocation in state_store.publish_sprint.call_args_list
     ]
+
+
+def test_run_captures_context_once_before_planning(tmp_path: Path) -> None:
+    context = make_context()
+    (
+        engine,
+        planning_engine,
+        _,
+        _,
+        _,
+        _,
+        state_store,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+    )
+
+    result = engine.run(make_request(tmp_path), context=context)
+
+    planning_engine.plan.assert_called_once_with(
+        make_request(tmp_path).checkpoint,
+        make_snapshot(tmp_path),
+        context=context,
+    )
+    session = state_store.create_session.call_args.args[0]
+    assert session.context is context
+    assert result.context is context
 
 
 def test_workflow_plans_stores_approval_and_pauses(
@@ -718,6 +765,7 @@ def make_resume_engine(
     before_snapshot: RepositorySnapshot | None = None,
     after_snapshot: RepositorySnapshot | None = None,
     commit_error: Exception | None = None,
+    context: AgentContext | None = None,
 ) -> tuple[
     WorkflowEngine,
     WorkflowStateStore,
@@ -735,6 +783,7 @@ def make_resume_engine(
         request=request,
         plan=plan,
         state=session_state,
+        context=context,
     )
     state_store = WorkflowStateStore()
     state_store.create_session(session)
@@ -772,7 +821,7 @@ def make_resume_engine(
     )
     verification_engine = Mock()
     verification_engine.verify.return_value = (
-        verification_report or make_verification_report(root)
+        verification_report or make_verification_report(root, context=context)
     )
     review_engine = Mock()
     review_engine.review.return_value = review_report or make_review_report()
@@ -836,9 +885,40 @@ def test_approved_workflow_resumes_exact_stored_plan(tmp_path: Path) -> None:
     verification_engine.verify.assert_called_once_with(
         repository_root=session.request.repository_root,
         checks=session.request.verification_checks,
+        context=None,
     )
     inspector_factory.assert_called_once_with(session.request.repository_root)
     planning_engine.plan.assert_not_called()
+
+
+def test_resume_reuses_snapshot_without_context_acquisition(
+    tmp_path: Path,
+) -> None:
+    context = make_context()
+    (
+        engine,
+        _,
+        _,
+        _,
+        _,
+        _,
+        verification_engine,
+        review_engine,
+    ) = make_resume_engine(
+        tmp_path,
+        context=context,
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    verification_engine.verify.assert_called_once_with(
+        repository_root=tmp_path,
+        checks=make_request(tmp_path).verification_checks,
+        context=context,
+    )
+    review_request = review_engine.review.call_args.args[0]
+    assert review_request.context is context
+    assert result.context is context
     assert review_request.changed_files == (
         Path("app/workflow/engine.py"),
     )

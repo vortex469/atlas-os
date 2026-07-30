@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, RunnerOutcome
 from app.execution.runner import CommandRunner
 from app.verification.exceptions import VerificationValidationError
@@ -35,6 +36,7 @@ class VerificationEngine:
         *,
         repository_root: Path,
         checks: tuple[VerificationCheck, ...],
+        context: AgentContext | None = None,
     ) -> VerificationReport:
         """Run all checks and return an immutable structured report."""
 
@@ -53,6 +55,7 @@ class VerificationEngine:
             results=results,
             status=self._report_status(results),
             duration_seconds=duration,
+            context=context,
         )
 
     def _run_check(

@@ -219,10 +219,10 @@ Deliverables
 - API and architecture documentation
 
 Suggested implementation sequence:
-- A11.1 Atlas Core Client
-- A11.2 Context Aggregation
-- A11.3 Planning Integration
-- A11.4 Verification and Review Integration
+- A11.1 Atlas Core Client — complete
+- A11.2 Context Aggregation — complete
+- A11.3 Planning Integration — complete
+- A11.4 Verification and Review Integration — complete
 
 Explicitly out of scope:
 - direct Atlas Core database or persistence access

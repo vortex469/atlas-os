@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable
 
 
@@ -50,3 +51,4 @@ class VerificationReport:
     results: tuple[VerificationCheckResult, ...]
     status: VerificationStatus
     duration_seconds: float
+    context: AgentContext | None = None

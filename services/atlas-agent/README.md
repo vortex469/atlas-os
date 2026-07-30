@@ -127,6 +127,12 @@ Atlas Core remains the primary platform for Atlas capabilities.
 Atlas Agent consumes architectural context and project information when
 required but does not replace Atlas Core functionality.
 
+Atlas Core context is retrieved once before workflow planning and retained as
+an immutable workflow snapshot for planning, verification, and review. Resume
+reuses that snapshot and does not contact Atlas Core again. Context retrieval
+is read-only, has no retries, and is optional by default. Set
+`ATLAS_CORE_REQUIRED=true` to block new workflows when context is unavailable.
+
 ---
 
 # Relationship to Mission Control

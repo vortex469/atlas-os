@@ -7,6 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from app.approval.models import ApprovalRequest
+from app.context.models import AgentContext
 from app.execution.models import ExecutionResult
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
@@ -71,6 +72,7 @@ class WorkflowSession:
     plan: ImplementationPlan
     state: WorkflowSessionState
     planning_analysis: ModelResponse | None = None
+    context: AgentContext | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +81,7 @@ class WorkflowResult:
 
     sprint: SprintStatus
     plan: ImplementationPlan | None = None
+    context: AgentContext | None = None
     planning_analysis: ModelResponse | None = None
     approval_request: ApprovalRequest | None = None
     execution_result: ExecutionResult | None = None

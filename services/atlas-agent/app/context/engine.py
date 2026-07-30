@@ -1,6 +1,5 @@
 """Context engine for Atlas Agent."""
 
-
 from app.context.exceptions import ContextConflictError
 from app.context.models import AgentContext, ServiceHealth
 from app.core_client.client import AtlasCoreClient

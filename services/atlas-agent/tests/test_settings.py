@@ -18,6 +18,7 @@ def clear_validated_environment(monkeypatch) -> None:
         "ATLAS_AGENT_OLLAMA_BASE_URL",
         "ATLAS_AGENT_OLLAMA_DEFAULT_MODEL",
         "ATLAS_AGENT_PLANNING_MODE",
+        "ATLAS_CORE_REQUIRED",
     ):
         monkeypatch.delenv(variable, raising=False)
 
@@ -33,6 +34,7 @@ def test_settings_use_defaults(monkeypatch) -> None:
     assert settings.repository_root.is_absolute()
     assert settings.ollama_base_url == "http://127.0.0.1:11434"
     assert settings.ollama_default_model == "qwen3-coder-atlas:latest"
+    assert settings.atlas_core_required is False
 
 
 def test_settings_accept_valid_environment_overrides(
@@ -130,5 +132,23 @@ def test_settings_reject_invalid_planning_mode(monkeypatch) -> None:
     with pytest.raises(
         ValueError,
         match="ATLAS_AGENT_PLANNING_MODE must be one of:",
+    ):
+        Settings.from_environment()
+
+
+def test_settings_accept_atlas_core_required(monkeypatch) -> None:
+    clear_validated_environment(monkeypatch)
+    monkeypatch.setenv("ATLAS_CORE_REQUIRED", "true")
+
+    assert Settings.from_environment().atlas_core_required is True
+
+
+def test_settings_reject_invalid_atlas_core_required(monkeypatch) -> None:
+    clear_validated_environment(monkeypatch)
+    monkeypatch.setenv("ATLAS_CORE_REQUIRED", "sometimes")
+
+    with pytest.raises(
+        ValueError,
+        match="ATLAS_CORE_REQUIRED must be one of: false, true",
     ):
         Settings.from_environment()
