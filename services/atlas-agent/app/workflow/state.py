@@ -38,6 +38,12 @@ class WorkflowStateStore:
         with self._lock:
             return self._sessions.get(identifier)
 
+    def delete_session(self, identifier: str) -> bool:
+        """Delete a workflow session and report whether it existed."""
+
+        with self._lock:
+            return self._sessions.pop(identifier, None) is not None
+
     def publish_sprint(self, status: SprintStatus) -> None:
         """Publish the current sprint status."""
 

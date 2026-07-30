@@ -246,6 +246,7 @@ def test_agent_info_returns_runtime_information(
         "repository_root": str(container.settings.repository_root),
         "supported_workflow_phases": [
             "planned",
+            "awaiting_approval",
             "in_progress",
             "verifying",
             "reviewing",

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 
 
 class ApprovalStatus(StrEnum):
@@ -22,6 +23,8 @@ class ApprovalRequest:
     requested_tool: str
     requested_command: tuple[str, ...]
     rationale: str
+    workflow_id: str | None = None
+    requested_working_directory: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)

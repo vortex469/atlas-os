@@ -1,6 +1,7 @@
 """Tests for immutable approval models."""
 
 from dataclasses import FrozenInstanceError
+from pathlib import Path
 
 import pytest
 
@@ -45,6 +46,26 @@ def test_approval_request_construction_and_equality() -> None:
     )
     assert request.rationale == "Verify the approved implementation."
     assert request == make_request()
+    assert request.workflow_id is None
+    assert request.requested_working_directory is None
+
+
+def test_approval_request_accepts_workflow_operation_binding() -> None:
+    workdir = Path("/workspace/atlas")
+    request = ApprovalRequest(
+        identifier="approval-a15-2",
+        checkpoint_id="A15.2",
+        title="Approve implementation",
+        requested_tool="codex",
+        requested_command=("codex", "implement"),
+        rationale="Approve the exact planned operation.",
+        workflow_id="workflow-a15-2",
+        requested_working_directory=workdir,
+    )
+
+    assert request.workflow_id == "workflow-a15-2"
+    assert request.requested_command == ("codex", "implement")
+    assert request.requested_working_directory is workdir
 
 
 def test_approval_decision_defaults() -> None:

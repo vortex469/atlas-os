@@ -5,24 +5,26 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from uuid import uuid4
 
 from app.approval.engine import ApprovalEngine
-from app.approval.models import ApprovalDecision
+from app.approval.models import ApprovalDecision, ApprovalRequest
+from app.approval.repository import ApprovalRepository
 from app.execution.engine import ExecutionEngine
-from app.execution.models import ExecutionRequest, ExecutionStatus
+from app.execution.models import ExecutionRequest
 from app.model_providers.models import ModelResponse
 from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
 from app.repository.inspector import GitInspector
 from app.review.engine import ReviewEngine
-from app.review.models import ReviewRequest, ReviewStatus
 from app.verification.engine import VerificationEngine
-from app.verification.models import VerificationStatus
 from app.workflow.models import (
     SprintPhase,
     SprintStatus,
     WorkflowRequest,
     WorkflowResult,
+    WorkflowSession,
+    WorkflowSessionState,
 )
 from app.workflow.state import WorkflowStateStore
 
@@ -41,6 +43,7 @@ class WorkflowEngine:
         verification_engine: VerificationEngine,
         review_engine: ReviewEngine,
         approval_engine: ApprovalEngine,
+        approval_repository: ApprovalRepository,
         state_store: WorkflowStateStore,
         planning_mode: str = "deterministic",
         planning_advisor: PlanningAdvisor | None = None,
@@ -58,7 +61,9 @@ class WorkflowEngine:
         self._execution_engine = execution_engine
         self._verification_engine = verification_engine
         self._review_engine = review_engine
+        # Retained for decision evaluation when resume support arrives in A15.3.
         self._approval_engine = approval_engine
+        self._approval_repository = approval_repository
         self._state_store = state_store
         self._planning_mode = planning_mode
         self._planning_advisor = planning_advisor
@@ -69,7 +74,7 @@ class WorkflowEngine:
         *,
         approval_decision: ApprovalDecision | None = None,
     ) -> WorkflowResult:
-        """Execute one workflow request."""
+        """Plan one workflow request and pause for pre-execution approval."""
 
         planned_status = SprintStatus(
             checkpoint_id=request.checkpoint.identifier,
@@ -80,8 +85,24 @@ class WorkflowEngine:
         self._state_store.publish_sprint(planned_status)
 
         inspector = self._repository_inspector_factory(request.repository_root)
-        snapshot = inspector.inspect()
-        plan = self._planning_engine.plan(request.checkpoint, snapshot)
+        try:
+            snapshot = inspector.inspect()
+            plan = self._planning_engine.plan(request.checkpoint, snapshot)
+        except Exception:
+            logger.exception("Workflow planning failed")
+            blocked_status = SprintStatus(
+                checkpoint_id=request.checkpoint.identifier,
+                title=request.checkpoint.title,
+                goal=request.checkpoint.goal,
+                phase=SprintPhase.BLOCKED,
+            )
+            self._state_store.publish_sprint(blocked_status)
+
+            return WorkflowResult(
+                sprint=blocked_status,
+                error_message="Workflow planning failed",
+            )
+
         planning_analysis: ModelResponse | None = None
 
         if self._planning_mode == "model-assisted":
@@ -100,16 +121,9 @@ class WorkflowEngine:
 
                 return WorkflowResult(
                     sprint=blocked_status,
+                    plan=plan,
                     error_message="Model-assisted planning analysis failed",
                 )
-
-        in_progress_status = SprintStatus(
-            checkpoint_id=request.checkpoint.identifier,
-            title=request.checkpoint.title,
-            goal=request.checkpoint.goal,
-            phase=SprintPhase.IN_PROGRESS,
-        )
-        self._state_store.publish_sprint(in_progress_status)
 
         execution_request = ExecutionRequest(
             identifier=request.execution_identifier,
@@ -118,96 +132,34 @@ class WorkflowEngine:
             working_directory=request.execution_workdir,
         )
 
-        if approval_decision is not None:
-            approval_result = self._approval_engine.evaluate(approval_decision)
-
-            if not approval_result.approved:
-                blocked_status = SprintStatus(
-                    checkpoint_id=request.checkpoint.identifier,
-                    title=request.checkpoint.title,
-                    goal=request.checkpoint.goal,
-                    phase=SprintPhase.BLOCKED,
-                )
-                self._state_store.publish_sprint(blocked_status)
-
-                return WorkflowResult(
-                    sprint=blocked_status,
-                    planning_analysis=planning_analysis,
-                    error_message="Approval required",
-                )
-
-        execution_result = self._execution_engine.execute(execution_request)
-
-        if execution_result.status is not ExecutionStatus.SUCCEEDED:
-            blocked_status = SprintStatus(
-                checkpoint_id=request.checkpoint.identifier,
-                title=request.checkpoint.title,
-                goal=request.checkpoint.goal,
-                phase=SprintPhase.BLOCKED,
-            )
-            self._state_store.publish_sprint(blocked_status)
-
-            return WorkflowResult(
-                sprint=blocked_status,
-                planning_analysis=planning_analysis,
-                execution_result=execution_result,
-                error_message=execution_result.error,
-            )
-
-
-        verifying_status = SprintStatus(
+        workflow_id = str(uuid4())
+        approval_request = ApprovalRequest(
+            identifier=f"approval-{workflow_id}",
+            workflow_id=workflow_id,
             checkpoint_id=request.checkpoint.identifier,
-            title=request.checkpoint.title,
-            goal=request.checkpoint.goal,
-            phase=SprintPhase.VERIFYING,
+            title=f"Approve implementation of {request.checkpoint.title}",
+            requested_tool=execution_request.argv[0],
+            requested_command=execution_request.argv,
+            requested_working_directory=execution_request.working_directory,
+            rationale="Approve the exact planned implementation operation.",
         )
-        self._state_store.publish_sprint(verifying_status)
-
-        verification_report = self._verification_engine.verify(
-            repository_root=request.repository_root,
-            checks=request.verification_checks,
-        )
-
-        self._state_store.publish_verification(verification_report)
-
-        if verification_report.status is not VerificationStatus.PASSED:
-            blocked_status = SprintStatus(
-                checkpoint_id=request.checkpoint.identifier,
-                title=request.checkpoint.title,
-                goal=request.checkpoint.goal,
-                phase=SprintPhase.BLOCKED,
-            )
-            self._state_store.publish_sprint(blocked_status)
-
-            return WorkflowResult(
-                sprint=blocked_status,
-                planning_analysis=planning_analysis,
-                execution_result=execution_result,
-                verification_report=verification_report,
-                error_message="Verification failed",
-            )
-
-        reviewing_status = SprintStatus(
-            checkpoint_id=request.checkpoint.identifier,
-            title=request.checkpoint.title,
-            goal=request.checkpoint.goal,
-            phase=SprintPhase.REVIEWING,
-        )
-        self._state_store.publish_sprint(reviewing_status)
-
-        review_request = ReviewRequest(
-            identifier=request.review_identifier,
+        session = WorkflowSession(
+            identifier=workflow_id,
+            request=request,
             plan=plan,
-            changed_files=plan.affected_files,
-            verification_report=verification_report,
-            architecture_assessments=request.architecture_assessments,
-            test_evidence=request.test_evidence,
+            state=WorkflowSessionState.AWAITING_APPROVAL,
+            planning_analysis=planning_analysis,
         )
 
-        review_report = self._review_engine.review(review_request)
-        self._state_store.publish_review(review_report)
-
-        if review_report.status is not ReviewStatus.APPROVED:
+        session_created = False
+        try:
+            self._state_store.create_session(session)
+            session_created = True
+            self._approval_repository.save_request(approval_request)
+        except Exception:
+            if session_created:
+                self._state_store.delete_session(workflow_id)
+            logger.exception("Pre-execution approval storage failed")
             blocked_status = SprintStatus(
                 checkpoint_id=request.checkpoint.identifier,
                 title=request.checkpoint.title,
@@ -218,25 +170,22 @@ class WorkflowEngine:
 
             return WorkflowResult(
                 sprint=blocked_status,
+                plan=plan,
                 planning_analysis=planning_analysis,
-                execution_result=execution_result,
-                verification_report=verification_report,
-                review_report=review_report,
-                error_message="Review failed",
+                error_message="Pre-execution approval storage failed",
             )
 
-        completed_status = SprintStatus(
+        awaiting_approval_status = SprintStatus(
             checkpoint_id=request.checkpoint.identifier,
             title=request.checkpoint.title,
             goal=request.checkpoint.goal,
-            phase=SprintPhase.COMPLETED,
+            phase=SprintPhase.AWAITING_APPROVAL,
         )
-        self._state_store.publish_sprint(completed_status)
+        self._state_store.publish_sprint(awaiting_approval_status)
 
         return WorkflowResult(
-            sprint=completed_status,
+            sprint=awaiting_approval_status,
+            plan=plan,
             planning_analysis=planning_analysis,
-            execution_result=execution_result,
-            verification_report=verification_report,
-            review_report=review_report,
+            approval_request=approval_request,
         )

@@ -9,9 +9,9 @@ from app.approval.engine import ApprovalEngine
 from app.approval.models import (
     ApprovalDecision,
     ApprovalRequest,
-    ApprovalResult,
     ApprovalStatus,
 )
+from app.approval.repository import ApprovalRepository
 from app.execution.models import ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
 from app.planning.advisor import PlanningAdvisor
@@ -24,7 +24,11 @@ from app.verification.models import (
     VerificationStatus,
 )
 from app.workflow.engine import WorkflowEngine
-from app.workflow.models import SprintPhase, WorkflowRequest
+from app.workflow.models import (
+    SprintPhase,
+    WorkflowRequest,
+    WorkflowSessionState,
+)
 from app.workflow.state import WorkflowStateStore
 
 
@@ -167,8 +171,8 @@ def make_engine(
     review_engine = Mock()
     review_engine.review.return_value = review_report
 
-    approval_engine = Mock()
     approval_engine = Mock(spec=ApprovalEngine)
+    approval_repository = Mock(spec=ApprovalRepository)
 
     state_store = Mock(spec=WorkflowStateStore)
 
@@ -179,6 +183,7 @@ def make_engine(
         verification_engine=verification_engine,
         review_engine=review_engine,
         approval_engine=approval_engine,
+        approval_repository=approval_repository,
         state_store=state_store,
         planning_mode=planning_mode,
         planning_advisor=planning_advisor,
@@ -190,7 +195,7 @@ def make_engine(
         execution_engine,
         verification_engine,
         review_engine,
-        approval_engine,
+        approval_repository,
         state_store,
     )
 
@@ -202,7 +207,7 @@ def published_phases(state_store: Mock) -> list[SprintPhase]:
     ]
 
 
-def test_successful_workflow_completes_and_publishes_artifacts(
+def test_workflow_plans_stores_approval_and_pauses(
     tmp_path: Path,
 ) -> None:
     execution_result = make_execution_result(tmp_path)
@@ -214,7 +219,7 @@ def test_successful_workflow_completes_and_publishes_artifacts(
         execution_engine,
         verification_engine,
         review_engine,
-        _,
+        approval_repository,
         state_store,
     ) = make_engine(
         tmp_path,
@@ -226,29 +231,37 @@ def test_successful_workflow_completes_and_publishes_artifacts(
     request = make_request(tmp_path)
     result = engine.run(request)
 
-    assert result.sprint.phase is SprintPhase.COMPLETED
+    assert result.sprint.phase is SprintPhase.AWAITING_APPROVAL
+    assert result.plan is planning_engine.plan.return_value
     assert result.planning_analysis is None
-    assert result.execution_result is execution_result
-    assert result.verification_report is verification_report
-    assert result.review_report is review_report
+    assert result.approval_request is not None
+    assert result.execution_result is None
+    assert result.verification_report is None
+    assert result.review_report is None
     assert result.error_message is None
 
     planning_engine.plan.assert_called_once()
-    execution_engine.execute.assert_called_once()
-    verification_engine.verify.assert_called_once_with(
-        repository_root=tmp_path,
-        checks=request.verification_checks,
+    approval_repository.save_request.assert_called_once_with(
+        result.approval_request
     )
-    review_engine.review.assert_called_once()
-
-    state_store.publish_verification.assert_called_once_with(verification_report)
-    state_store.publish_review.assert_called_once_with(review_report)
+    approval = result.approval_request
+    session = state_store.create_session.call_args.args[0]
+    assert approval.workflow_id == session.identifier
+    assert approval.checkpoint_id == request.checkpoint.identifier
+    assert approval.requested_command is request.execution_argv
+    assert approval.requested_working_directory is request.execution_workdir
+    assert session.request is request
+    assert session.plan is result.plan
+    assert session.planning_analysis is None
+    assert session.state is WorkflowSessionState.AWAITING_APPROVAL
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+    state_store.publish_verification.assert_not_called()
+    state_store.publish_review.assert_not_called()
     assert published_phases(state_store) == [
         SprintPhase.PLANNED,
-        SprintPhase.IN_PROGRESS,
-        SprintPhase.VERIFYING,
-        SprintPhase.REVIEWING,
-        SprintPhase.COMPLETED,
+        SprintPhase.AWAITING_APPROVAL,
     ]
 
 
@@ -293,9 +306,9 @@ def test_model_assisted_mode_stores_analysis_without_replacing_plan(
         planning_engine,
         execution_engine,
         _,
-        review_engine,
         _,
         _,
+        state_store,
     ) = make_engine(
         tmp_path,
         execution_result=make_execution_result(tmp_path),
@@ -310,8 +323,11 @@ def test_model_assisted_mode_stores_analysis_without_replacing_plan(
 
     planning_advisor.analyze.assert_called_once_with(plan)
     assert result.planning_analysis is analysis
-    assert execution_engine.execute.call_args.args[0].plan is plan
-    assert review_engine.review.call_args.args[0].plan is plan
+    assert result.plan is plan
+    session = state_store.create_session.call_args.args[0]
+    assert session.plan is plan
+    assert session.planning_analysis is analysis
+    execution_engine.execute.assert_not_called()
 
 
 def test_model_assisted_advisor_failure_blocks_before_execution(
@@ -353,6 +369,104 @@ def test_model_assisted_advisor_failure_blocks_before_execution(
     ]
 
 
+def test_planning_failure_blocks_before_approval_creation(
+    tmp_path: Path,
+) -> None:
+    (
+        engine,
+        planning_engine,
+        execution_engine,
+        verification_engine,
+        review_engine,
+        approval_repository,
+        state_store,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+    )
+    planning_engine.plan.side_effect = RuntimeError("sensitive planning failure")
+
+    result = engine.run(make_request(tmp_path))
+
+    assert result.sprint.phase is SprintPhase.BLOCKED
+    assert result.error_message == "Workflow planning failed"
+    assert "sensitive planning failure" not in result.error_message
+    approval_repository.save_request.assert_not_called()
+    state_store.create_session.assert_not_called()
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+    assert published_phases(state_store) == [
+        SprintPhase.PLANNED,
+        SprintPhase.BLOCKED,
+    ]
+
+
+def test_approval_storage_failure_blocks_without_execution(
+    tmp_path: Path,
+) -> None:
+    (
+        engine,
+        _,
+        execution_engine,
+        verification_engine,
+        review_engine,
+        approval_repository,
+        state_store,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+    )
+    approval_repository.save_request.side_effect = RuntimeError("storage down")
+
+    result = engine.run(make_request(tmp_path))
+
+    assert result.sprint.phase is SprintPhase.BLOCKED
+    assert result.error_message == "Pre-execution approval storage failed"
+    state_store.create_session.assert_called_once()
+    session = state_store.create_session.call_args.args[0]
+    state_store.delete_session.assert_called_once_with(session.identifier)
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+
+
+def test_session_storage_failure_leaves_no_approval(
+    tmp_path: Path,
+) -> None:
+    (
+        engine,
+        _,
+        execution_engine,
+        verification_engine,
+        review_engine,
+        approval_repository,
+        state_store,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+    )
+    state_store.create_session.side_effect = ValueError(
+        "Workflow session identifier already exists"
+    )
+
+    result = engine.run(make_request(tmp_path))
+
+    assert result.sprint.phase is SprintPhase.BLOCKED
+    assert result.error_message == "Pre-execution approval storage failed"
+    approval_repository.save_request.assert_not_called()
+    state_store.delete_session.assert_not_called()
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+
+
 def test_invalid_planning_mode_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Unsupported planning mode"):
         make_engine(
@@ -378,7 +492,9 @@ def test_model_assisted_mode_requires_advisor(tmp_path: Path) -> None:
         )
 
 
-def test_execution_failure_blocks_downstream_stages(tmp_path: Path) -> None:
+def test_execution_failure_fixture_remains_unreached_before_resume(
+    tmp_path: Path,
+) -> None:
     execution_result = make_execution_result(
         tmp_path,
         status=ExecutionStatus.FAILED,
@@ -387,7 +503,7 @@ def test_execution_failure_blocks_downstream_stages(tmp_path: Path) -> None:
     (
         engine,
         _,
-        _,
+        execution_engine,
         verification_engine,
         review_engine,
         _,
@@ -401,21 +517,23 @@ def test_execution_failure_blocks_downstream_stages(tmp_path: Path) -> None:
 
     result = engine.run(make_request(tmp_path))
 
-    assert result.sprint.phase is SprintPhase.BLOCKED
-    assert result.execution_result is execution_result
+    assert result.sprint.phase is SprintPhase.AWAITING_APPROVAL
+    assert result.execution_result is None
     assert result.verification_report is None
     assert result.review_report is None
-    assert result.error_message == "Execution failed"
+    assert result.error_message is None
+    execution_engine.execute.assert_not_called()
     verification_engine.verify.assert_not_called()
     review_engine.review.assert_not_called()
     assert published_phases(state_store) == [
         SprintPhase.PLANNED,
-        SprintPhase.IN_PROGRESS,
-        SprintPhase.BLOCKED,
+        SprintPhase.AWAITING_APPROVAL,
     ]
 
 
-def test_verification_failure_blocks_review(tmp_path: Path) -> None:
+def test_verification_failure_fixture_remains_unreached_before_resume(
+    tmp_path: Path,
+) -> None:
     verification_report = make_verification_report(
         tmp_path,
         status=VerificationStatus.FAILED,
@@ -423,8 +541,8 @@ def test_verification_failure_blocks_review(tmp_path: Path) -> None:
     (
         engine,
         _,
-        _,
-        _,
+        execution_engine,
+        verification_engine,
         review_engine,
         _,
         state_store,
@@ -437,29 +555,31 @@ def test_verification_failure_blocks_review(tmp_path: Path) -> None:
 
     result = engine.run(make_request(tmp_path))
 
-    assert result.sprint.phase is SprintPhase.BLOCKED
-    assert result.verification_report is verification_report
+    assert result.sprint.phase is SprintPhase.AWAITING_APPROVAL
+    assert result.verification_report is None
     assert result.review_report is None
-    assert result.error_message == "Verification failed"
+    assert result.error_message is None
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
     review_engine.review.assert_not_called()
-    state_store.publish_verification.assert_called_once_with(verification_report)
+    state_store.publish_verification.assert_not_called()
     state_store.publish_review.assert_not_called()
     assert published_phases(state_store) == [
         SprintPhase.PLANNED,
-        SprintPhase.IN_PROGRESS,
-        SprintPhase.VERIFYING,
-        SprintPhase.BLOCKED,
+        SprintPhase.AWAITING_APPROVAL,
     ]
 
 
-def test_review_rejection_blocks_completion(tmp_path: Path) -> None:
+def test_review_rejection_fixture_remains_unreached_before_resume(
+    tmp_path: Path,
+) -> None:
     review_report = make_review_report(status=ReviewStatus.CHANGES_REQUIRED)
     (
         engine,
         _,
-        _,
-        _,
-        _,
+        execution_engine,
+        verification_engine,
+        review_engine,
         _,
         state_store,
     ) = make_engine(
@@ -471,26 +591,26 @@ def test_review_rejection_blocks_completion(tmp_path: Path) -> None:
 
     result = engine.run(make_request(tmp_path))
 
-    assert result.sprint.phase is SprintPhase.BLOCKED
-    assert result.review_report is review_report
-    assert result.error_message == "Review failed"
-    state_store.publish_review.assert_called_once_with(review_report)
+    assert result.sprint.phase is SprintPhase.AWAITING_APPROVAL
+    assert result.review_report is None
+    assert result.error_message is None
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+    state_store.publish_review.assert_not_called()
     assert published_phases(state_store) == [
         SprintPhase.PLANNED,
-        SprintPhase.IN_PROGRESS,
-        SprintPhase.VERIFYING,
-        SprintPhase.REVIEWING,
-        SprintPhase.BLOCKED,
+        SprintPhase.AWAITING_APPROVAL,
     ]
 
-def test_approved_decision_allows_execution(tmp_path: Path) -> None:
+def test_approved_decision_cannot_bypass_pause(tmp_path: Path) -> None:
     (
         engine,
         planning_engine,
         execution_engine,
         verification_engine,
         review_engine,
-        approval_engine,
+        approval_repository,
         _,
     ) = make_engine(
         tmp_path,
@@ -504,28 +624,26 @@ def test_approved_decision_allows_execution(tmp_path: Path) -> None:
         status=ApprovalStatus.APPROVED,
         reviewer="tester",
     )
-    approval_engine.evaluate.return_value = ApprovalResult(decision=decision)
-
     result = engine.run(
         make_request(tmp_path),
         approval_decision=decision,
     )
 
-    assert result.sprint.phase is SprintPhase.COMPLETED
-    approval_engine.evaluate.assert_called_once_with(decision)
+    assert result.sprint.phase is SprintPhase.AWAITING_APPROVAL
+    approval_repository.save_request.assert_called_once()
     planning_engine.plan.assert_called_once()
-    execution_engine.execute.assert_called_once()
-    verification_engine.verify.assert_called_once()
-    review_engine.review.assert_called_once()
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
 
-def test_rejected_decision_blocks_before_execution(tmp_path: Path) -> None:
+def test_rejected_decision_also_cannot_bypass_pause(tmp_path: Path) -> None:
     (
         engine,
         planning_engine,
         execution_engine,
         verification_engine,
         review_engine,
-        approval_engine,
+        approval_repository,
         state_store,
     ) = make_engine(
         tmp_path,
@@ -540,22 +658,19 @@ def test_rejected_decision_blocks_before_execution(tmp_path: Path) -> None:
         reviewer="tester",
         reason="Rejected for test.",
     )
-    approval_engine.evaluate.return_value = ApprovalResult(decision=decision)
-
     result = engine.run(
         make_request(tmp_path),
         approval_decision=decision,
     )
 
-    assert result.sprint.phase is SprintPhase.BLOCKED
-    assert result.error_message == "Approval required"
-    approval_engine.evaluate.assert_called_once_with(decision)
+    assert result.sprint.phase is SprintPhase.AWAITING_APPROVAL
+    assert result.error_message is None
+    approval_repository.save_request.assert_called_once()
     planning_engine.plan.assert_called_once()
     execution_engine.execute.assert_not_called()
     verification_engine.verify.assert_not_called()
     review_engine.review.assert_not_called()
     assert published_phases(state_store) == [
         SprintPhase.PLANNED,
-        SprintPhase.IN_PROGRESS,
-        SprintPhase.BLOCKED,
+        SprintPhase.AWAITING_APPROVAL,
     ]

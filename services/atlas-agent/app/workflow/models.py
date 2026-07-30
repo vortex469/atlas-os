@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from app.approval.models import ApprovalRequest
 from app.execution.models import ExecutionResult
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
@@ -17,6 +18,7 @@ class SprintPhase(StrEnum):
     """Lifecycle phase of one Atlas Agent sprint."""
 
     PLANNED = "planned"
+    AWAITING_APPROVAL = "awaiting_approval"
     IN_PROGRESS = "in_progress"
     VERIFYING = "verifying"
     REVIEWING = "reviewing"
@@ -28,6 +30,7 @@ class WorkflowSessionState(StrEnum):
     """Lifecycle state required for a passive planned workflow session."""
 
     PLANNED = "planned"
+    AWAITING_APPROVAL = "awaiting_approval"
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +74,9 @@ class WorkflowResult:
     """Immutable result of one Atlas Agent workflow."""
 
     sprint: SprintStatus
+    plan: ImplementationPlan | None = None
     planning_analysis: ModelResponse | None = None
+    approval_request: ApprovalRequest | None = None
     execution_result: ExecutionResult | None = None
     verification_report: VerificationReport | None = None
     review_report: ReviewReport | None = None

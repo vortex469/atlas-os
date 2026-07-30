@@ -89,6 +89,16 @@ def test_unknown_session_identifier_returns_none() -> None:
     assert store.get_session("unknown") is None
 
 
+def test_session_can_be_deleted_without_leaving_state(tmp_path: Path) -> None:
+    store = WorkflowStateStore()
+    session = make_session(tmp_path)
+    store.create_session(session)
+
+    assert store.delete_session(session.identifier) is True
+    assert store.get_session(session.identifier) is None
+    assert store.delete_session(session.identifier) is False
+
+
 def test_duplicate_session_identifier_is_rejected(tmp_path: Path) -> None:
     store = WorkflowStateStore()
     original = make_session(tmp_path)
@@ -180,3 +190,19 @@ def test_workflow_session_is_immutable(tmp_path: Path) -> None:
 
     with pytest.raises(FrozenInstanceError):
         session.identifier = "replacement"
+
+
+def test_awaiting_approval_state_is_supported(tmp_path: Path) -> None:
+    session = WorkflowSession(
+        identifier="workflow-a15-2",
+        request=make_request(tmp_path),
+        plan=make_plan(tmp_path),
+        state=WorkflowSessionState.AWAITING_APPROVAL,
+    )
+    store = WorkflowStateStore()
+
+    store.create_session(session)
+
+    assert store.get_session(session.identifier) is session
+    assert session.state.value == "awaiting_approval"
+    assert SprintPhase.AWAITING_APPROVAL.value == "awaiting_approval"
