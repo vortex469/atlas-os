@@ -6,15 +6,19 @@ from app.execution.exceptions import (
     ExecutionValidationError,
 )
 from app.execution.models import (
+    AllowedCommand,
     EnvironmentVariable,
     ExecutionRequest,
     ExecutionResult,
     ExecutionStatus,
+    PolicyViolation,
     RunnerOutcome,
 )
+from app.execution.policy import ToolPolicy
 from app.execution.runner import CommandRunner, SubprocessRunner
 
 __all__ = [
+    "AllowedCommand",
     "CommandRunner",
     "EnvironmentVariable",
     "ExecutionEngine",
@@ -23,6 +27,8 @@ __all__ = [
     "ExecutionResult",
     "ExecutionStatus",
     "ExecutionValidationError",
+    "PolicyViolation",
     "RunnerOutcome",
     "SubprocessRunner",
+    "ToolPolicy",
 ]

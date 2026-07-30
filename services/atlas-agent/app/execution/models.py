@@ -37,6 +37,25 @@ class ExecutionRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class AllowedCommand:
+    """Normalized command approved by an execution policy."""
+
+    identifier: str
+    plan: ImplementationPlan
+    argv: tuple[str, ...]
+    working_directory: Path
+    timeout_seconds: float | None
+    environment: tuple[EnvironmentVariable, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PolicyViolation:
+    """Reason an execution policy rejected a command."""
+
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
 class RunnerOutcome:
     """Raw outcome returned by a command runner."""
 
