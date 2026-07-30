@@ -6,6 +6,7 @@ from app.approval.repository import ApprovalRepository
 from app.config.settings import Settings
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
+from app.model_service.service import ModelService
 from app.repository.inspector import GitInspector
 from app.workflow.state import WorkflowStateStore
 
@@ -19,5 +20,5 @@ class ApplicationContainer:
     context_engine: ContextEngine
     repository_inspector: GitInspector
     workflow_state: WorkflowStateStore
-
     approval_repository: ApprovalRepository
+    model_service: ModelService

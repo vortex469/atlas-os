@@ -9,6 +9,8 @@ from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
+from app.model_providers.ollama import OllamaProvider
+from app.model_service.service import ModelService
 from app.repository.inspector import GitInspector
 from app.routes.approval import router as approval_router
 from app.routes.health import router as health_router
@@ -55,6 +57,13 @@ def create_app() -> FastAPI:
     core_client = AtlasCoreClient(
         settings=settings,
     )
+    model_service = ModelService(
+        provider=OllamaProvider(
+            base_url=settings.ollama_base_url,
+            timeout_seconds=settings.atlas_core_timeout_seconds,
+        ),
+        default_model=settings.ollama_default_model,
+    )
 
     container = ApplicationContainer(
         settings=settings,
@@ -65,6 +74,7 @@ def create_app() -> FastAPI:
         core_client=core_client,
         context_engine=ContextEngine(core_client),
         approval_repository=ApprovalRepository(),
+        model_service=model_service,
     )
 
     application = FastAPI(

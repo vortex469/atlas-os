@@ -283,11 +283,45 @@ def test_create_app_wires_repository_inspector(
         tmp_path / "repository",
         with_commit=True,
     )
-    settings = Settings(repository_root=repository.resolve())
+    settings = Settings(
+        repository_root=repository.resolve(),
+        atlas_core_timeout_seconds=42.0,
+        ollama_base_url="http://ollama.example:11434",
+        ollama_default_model="test-model:latest",
+    )
+    captured: dict[str, object] = {}
+    provider = object()
+    model_service = object()
+
+    def create_ollama_provider(
+        *,
+        base_url: str,
+        timeout_seconds: float,
+    ) -> object:
+        captured["base_url"] = base_url
+        captured["timeout_seconds"] = timeout_seconds
+        return provider
+
+    def create_model_service(
+        *,
+        provider: object,
+        default_model: str,
+    ) -> object:
+        captured["provider"] = provider
+        captured["default_model"] = default_model
+        return model_service
 
     monkeypatch.setattr(
         "app.main.load_settings",
         lambda: settings,
+    )
+    monkeypatch.setattr(
+        "app.main.OllamaProvider",
+        create_ollama_provider,
+    )
+    monkeypatch.setattr(
+        "app.main.ModelService",
+        create_model_service,
     )
 
     application = create_app()
@@ -299,3 +333,10 @@ def test_create_app_wires_repository_inspector(
     assert container.workflow_state.get_sprint() is None
     assert container.workflow_state.get_verification() is None
     assert container.workflow_state.get_review() is None
+    assert container.model_service is model_service
+    assert captured == {
+        "base_url": "http://ollama.example:11434",
+        "timeout_seconds": 42.0,
+        "provider": provider,
+        "default_model": "test-model:latest",
+    }

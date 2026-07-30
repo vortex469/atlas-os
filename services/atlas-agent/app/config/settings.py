@@ -92,6 +92,8 @@ class Settings:
     atlas_core_host: str = "127.0.0.1"
     atlas_core_port: int = 8643
     atlas_core_timeout_seconds: float = 10.0
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_default_model: str = "qwen3-coder-atlas:latest"
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -114,6 +116,14 @@ class Settings:
             atlas_core_host=os.getenv("ATLAS_CORE_HOST", "127.0.0.1"),
             atlas_core_port=int(os.getenv("ATLAS_CORE_PORT", "8643")),
             atlas_core_timeout_seconds=float(os.getenv("ATLAS_CORE_TIMEOUT_SECONDS", "10.0")),
+            ollama_base_url=os.getenv(
+                "ATLAS_AGENT_OLLAMA_BASE_URL",
+                "http://127.0.0.1:11434",
+            ),
+            ollama_default_model=os.getenv(
+                "ATLAS_AGENT_OLLAMA_DEFAULT_MODEL",
+                "qwen3-coder-atlas:latest",
+            ),
         )
 
 

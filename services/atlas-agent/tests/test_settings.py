@@ -15,6 +15,8 @@ def clear_validated_environment(monkeypatch) -> None:
         "ATLAS_AGENT_LOG_LEVEL",
         "ATLAS_AGENT_PORT",
         "ATLAS_AGENT_REPOSITORY_ROOT",
+        "ATLAS_AGENT_OLLAMA_BASE_URL",
+        "ATLAS_AGENT_OLLAMA_DEFAULT_MODEL",
     ):
         monkeypatch.delenv(variable, raising=False)
 
@@ -28,6 +30,8 @@ def test_settings_use_defaults(monkeypatch) -> None:
     assert settings.log_level == "INFO"
     assert settings.port == 8090
     assert settings.repository_root.is_absolute()
+    assert settings.ollama_base_url == "http://127.0.0.1:11434"
+    assert settings.ollama_default_model == "qwen3-coder-atlas:latest"
 
 
 def test_settings_accept_valid_environment_overrides(
@@ -44,6 +48,14 @@ def test_settings_accept_valid_environment_overrides(
         "ATLAS_AGENT_REPOSITORY_ROOT",
         str(repository),
     )
+    monkeypatch.setenv(
+        "ATLAS_AGENT_OLLAMA_BASE_URL",
+        "http://ollama.example:11434",
+    )
+    monkeypatch.setenv(
+        "ATLAS_AGENT_OLLAMA_DEFAULT_MODEL",
+        "test-model:latest",
+    )
 
     settings = Settings.from_environment()
 
@@ -51,6 +63,8 @@ def test_settings_accept_valid_environment_overrides(
     assert settings.log_level == "WARNING"
     assert settings.port == 9000
     assert settings.repository_root == repository.resolve()
+    assert settings.ollama_base_url == "http://ollama.example:11434"
+    assert settings.ollama_default_model == "test-model:latest"
 
 
 def test_settings_reject_non_integer_port(monkeypatch) -> None:
