@@ -10,6 +10,7 @@ from app.approval.models import ApprovalRequest
 from app.execution.models import ExecutionResult
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
+from app.repository.models import CommitResult
 from app.review.models import ArchitectureAssessment, ReviewReport, TestEvidence
 from app.verification.models import VerificationCheck, VerificationReport
 
@@ -83,4 +84,5 @@ class WorkflowResult:
     execution_result: ExecutionResult | None = None
     verification_report: VerificationReport | None = None
     review_report: ReviewReport | None = None
+    commit_result: CommitResult | None = None
     error_message: str | None = None

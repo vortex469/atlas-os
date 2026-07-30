@@ -16,7 +16,7 @@ from app.execution.models import ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
 from app.planning.advisor import PlanningAdvisor
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
-from app.repository.models import RepositorySnapshot
+from app.repository.models import CommitResult, RepositorySnapshot
 from app.review.models import ReviewReport, ReviewStatus
 from app.verification.models import (
     VerificationCheck,
@@ -53,6 +53,36 @@ def make_snapshot(root: Path) -> RepositorySnapshot:
         modified_files=(),
         staged_files=(),
         untracked_files=(),
+    )
+
+
+def make_changed_snapshot(
+    root: Path,
+    *,
+    head_commit: str = "abc123",
+    modified_files: tuple[str, ...] = ("app/workflow/engine.py",),
+    staged_files: tuple[str, ...] = (),
+    untracked_files: tuple[str, ...] = (),
+) -> RepositorySnapshot:
+    return RepositorySnapshot(
+        root=root,
+        branch="feature/atlas-agent",
+        head_commit=head_commit,
+        is_clean=False,
+        modified_files=modified_files,
+        staged_files=staged_files,
+        untracked_files=untracked_files,
+    )
+
+
+def make_commit_result(root: Path) -> CommitResult:
+    return CommitResult(
+        repository_root=root.resolve(strict=False),
+        branch="feature/atlas-agent",
+        parent_head="abc123",
+        commit_sha="def456",
+        message="feat(agent): workflow automation",
+        committed_files=(Path("app/workflow/engine.py"),),
     )
 
 
@@ -685,6 +715,9 @@ def make_resume_engine(
     execution_result: ExecutionResult | None = None,
     verification_report: VerificationReport | None = None,
     review_report: ReviewReport | None = None,
+    before_snapshot: RepositorySnapshot | None = None,
+    after_snapshot: RepositorySnapshot | None = None,
+    commit_error: Exception | None = None,
 ) -> tuple[
     WorkflowEngine,
     WorkflowStateStore,
@@ -726,7 +759,12 @@ def make_resume_engine(
             reason="Not approved" if approval_status is ApprovalStatus.REJECTED else None,
         ),
     )
-    inspector_factory = Mock()
+    inspector = Mock()
+    inspector.inspect.side_effect = (
+        before_snapshot or make_snapshot(root),
+        after_snapshot or make_changed_snapshot(root),
+    )
+    inspector_factory = Mock(return_value=inspector)
     planning_engine = Mock()
     execution_engine = Mock()
     execution_engine.execute.return_value = (
@@ -738,6 +776,11 @@ def make_resume_engine(
     )
     review_engine = Mock()
     review_engine.review.return_value = review_report or make_review_report()
+    committer = Mock()
+    committer.commit.return_value = make_commit_result(root)
+    if commit_error is not None:
+        committer.commit.side_effect = commit_error
+    committer_factory = Mock(return_value=committer)
     engine = WorkflowEngine(
         repository_inspector_factory=inspector_factory,
         planning_engine=planning_engine,
@@ -747,6 +790,7 @@ def make_resume_engine(
         approval_engine=ApprovalEngine(),
         approval_repository=approval_repository,
         state_store=state_store,
+        repository_committer_factory=committer_factory,
     )
     return (
         engine,
@@ -780,6 +824,7 @@ def test_approved_workflow_resumes_exact_stored_plan(tmp_path: Path) -> None:
     assert result.execution_result is not None
     assert result.verification_report is not None
     assert result.review_report is not None
+    assert result.commit_result is not None
     assert (
         state_store.get_session(session.identifier).state
         is WorkflowSessionState.COMPLETED
@@ -792,8 +837,16 @@ def test_approved_workflow_resumes_exact_stored_plan(tmp_path: Path) -> None:
         repository_root=session.request.repository_root,
         checks=session.request.verification_checks,
     )
-    inspector_factory.assert_not_called()
+    inspector_factory.assert_called_once_with(session.request.repository_root)
     planning_engine.plan.assert_not_called()
+    assert review_request.changed_files == (
+        Path("app/workflow/engine.py"),
+    )
+    commit_request = (
+        engine._repository_committer_factory.return_value.commit.call_args.args[0]
+    )
+    assert commit_request.paths == review_request.changed_files
+    assert commit_request.message == "feat(agent): workflow automation"
 
 
 @pytest.mark.parametrize(
@@ -995,3 +1048,147 @@ def test_review_rejection_blocks_workflow(tmp_path: Path) -> None:
         state_store.get_session("workflow-a15-3").state
         is WorkflowSessionState.BLOCKED
     )
+
+
+def test_preexisting_non_log_change_blocks_before_execution(
+    tmp_path: Path,
+) -> None:
+    engine, state_store, _, _, _, execution_engine, _, _ = make_resume_engine(
+        tmp_path,
+        before_snapshot=make_changed_snapshot(tmp_path),
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Workflow repository validation failed"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )
+    execution_engine.execute.assert_not_called()
+
+
+def test_preexisting_untracked_logs_are_permitted(tmp_path: Path) -> None:
+    before = make_changed_snapshot(
+        tmp_path,
+        modified_files=(),
+        untracked_files=("logs/",),
+    )
+    after = make_changed_snapshot(
+        tmp_path,
+        untracked_files=("logs/",),
+    )
+    engine, _, _, _, _, _, _, review_engine = make_resume_engine(
+        tmp_path,
+        before_snapshot=before,
+        after_snapshot=after,
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.sprint.phase is SprintPhase.COMPLETED
+    review_request = review_engine.review.call_args.args[0]
+    assert review_request.changed_files == (
+        Path("app/workflow/engine.py"),
+    )
+
+
+def test_out_of_plan_change_blocks_before_verification(
+    tmp_path: Path,
+) -> None:
+    engine, state_store, _, _, _, _, verification_engine, review_engine = (
+        make_resume_engine(
+            tmp_path,
+            after_snapshot=make_changed_snapshot(
+                tmp_path,
+                modified_files=("unrelated.py",),
+            ),
+        )
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Workflow change inspection failed"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+
+
+def test_post_execution_head_validation_is_deferred_to_committer(
+    tmp_path: Path,
+) -> None:
+    engine, _, _, _, _, _, _, review_engine = make_resume_engine(
+        tmp_path,
+        after_snapshot=make_changed_snapshot(
+            tmp_path,
+            head_commit="changed-after-execution",
+        ),
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.sprint.phase is SprintPhase.COMPLETED
+    review_engine.review.assert_called_once()
+    commit_request = (
+        engine._repository_committer_factory.return_value.commit.call_args.args[0]
+    )
+    assert commit_request.expected_head == "abc123"
+
+
+def test_no_committable_change_blocks_before_verification(
+    tmp_path: Path,
+) -> None:
+    engine, state_store, _, _, _, _, verification_engine, _ = make_resume_engine(
+        tmp_path,
+        after_snapshot=make_changed_snapshot(
+            tmp_path,
+            modified_files=(),
+            untracked_files=("logs/",),
+        ),
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Workflow change inspection failed"
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )
+    verification_engine.verify.assert_not_called()
+
+
+def test_commit_failure_blocks_and_preserves_completed_artifacts(
+    tmp_path: Path,
+) -> None:
+    engine, state_store, _, _, _, _, _, _ = make_resume_engine(
+        tmp_path,
+        commit_error=RuntimeError("git identity missing"),
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Workflow commit failed"
+    assert result.execution_result is not None
+    assert result.verification_report is not None
+    assert result.review_report is not None
+    assert result.commit_result is None
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )
+
+
+def test_review_rejection_never_calls_committer(tmp_path: Path) -> None:
+    engine, _, _, _, _, _, _, _ = make_resume_engine(
+        tmp_path,
+        review_report=make_review_report(
+            status=ReviewStatus.CHANGES_REQUIRED,
+        ),
+    )
+
+    engine.resume("workflow-a15-3")
+
+    engine._repository_committer_factory.assert_not_called()

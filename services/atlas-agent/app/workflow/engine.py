@@ -15,7 +15,10 @@ from app.execution.models import ExecutionRequest, ExecutionStatus
 from app.model_providers.models import ModelResponse
 from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
+from app.planning.models import ImplementationPlan
+from app.repository.committer import GitCommitter
 from app.repository.inspector import GitInspector
+from app.repository.models import CommitRequest, RepositorySnapshot
 from app.review.engine import ReviewEngine
 from app.review.models import ReviewRequest, ReviewStatus
 from app.verification.engine import VerificationEngine
@@ -47,6 +50,7 @@ class WorkflowEngine:
         approval_engine: ApprovalEngine,
         approval_repository: ApprovalRepository,
         state_store: WorkflowStateStore,
+        repository_committer_factory: Callable[[Path], GitCommitter] = GitCommitter,
         planning_mode: str = "deterministic",
         planning_advisor: PlanningAdvisor | None = None,
     ) -> None:
@@ -67,6 +71,7 @@ class WorkflowEngine:
         self._approval_engine = approval_engine
         self._approval_repository = approval_repository
         self._state_store = state_store
+        self._repository_committer_factory = repository_committer_factory
         self._planning_mode = planning_mode
         self._planning_advisor = planning_advisor
 
@@ -277,6 +282,18 @@ class WorkflowEngine:
         in_progress_status = self._status(session, SprintPhase.IN_PROGRESS)
         self._state_store.publish_sprint(in_progress_status)
 
+        inspector = self._repository_inspector_factory(request.repository_root)
+        try:
+            before_execution = inspector.inspect()
+            self._validate_pre_execution_snapshot(before_execution, plan)
+        except Exception:
+            logger.exception("Workflow repository validation failed")
+            self._block_claimed_session(workflow_id)
+            return self._blocked_session_result(
+                session=session,
+                error_message="Workflow repository validation failed",
+            )
+
         execution_request = ExecutionRequest(
             identifier=request.execution_identifier,
             plan=plan,
@@ -300,6 +317,18 @@ class WorkflowEngine:
                 session=session,
                 execution_result=execution_result,
                 error_message=execution_result.error or "Execution failed",
+            )
+
+        try:
+            after_execution = inspector.inspect()
+            changed_files = self._workflow_changed_files(after_execution, plan)
+        except Exception:
+            logger.exception("Workflow change inspection failed")
+            self._block_claimed_session(workflow_id)
+            return self._blocked_session_result(
+                session=session,
+                execution_result=execution_result,
+                error_message="Workflow change inspection failed",
             )
 
         verifying_status = self._status(session, SprintPhase.VERIFYING)
@@ -335,7 +364,7 @@ class WorkflowEngine:
         review_request = ReviewRequest(
             identifier=request.review_identifier,
             plan=plan,
-            changed_files=plan.affected_files,
+            changed_files=changed_files,
             verification_report=verification_report,
             architecture_assessments=request.architecture_assessments,
             test_evidence=request.test_evidence,
@@ -365,6 +394,28 @@ class WorkflowEngine:
                 error_message="Review failed",
             )
 
+        try:
+            commit_request = CommitRequest(
+                repository_root=plan.repository_root,
+                expected_branch=plan.branch,
+                expected_head=plan.head_commit,
+                paths=changed_files,
+                message=self._commit_message(plan.title),
+            )
+            commit_result = self._repository_committer_factory(
+                plan.repository_root
+            ).commit(commit_request)
+        except Exception:
+            logger.exception("Workflow commit failed")
+            self._block_claimed_session(workflow_id)
+            return self._blocked_session_result(
+                session=session,
+                execution_result=execution_result,
+                verification_report=verification_report,
+                review_report=review_report,
+                error_message="Workflow commit failed",
+            )
+
         self._state_store.transition_session(
             workflow_id,
             WorkflowSessionState.IN_PROGRESS,
@@ -381,7 +432,66 @@ class WorkflowEngine:
             execution_result=execution_result,
             verification_report=verification_report,
             review_report=review_report,
+            commit_result=commit_result,
         )
+
+    @staticmethod
+    def _validate_pre_execution_snapshot(
+        snapshot: RepositorySnapshot,
+        plan: ImplementationPlan,
+    ) -> None:
+        if snapshot.root != plan.repository_root.resolve(strict=False):
+            raise ValueError("Repository root differs from the approved plan")
+        if snapshot.branch != plan.branch:
+            raise ValueError("Repository branch differs from the approved plan")
+        if snapshot.head_commit != plan.head_commit:
+            raise ValueError("Repository HEAD differs from the approved plan")
+
+        if snapshot.modified_files or snapshot.staged_files:
+            raise ValueError("Repository contains pre-existing changes")
+        if any(
+            not WorkflowEngine._is_log_path(path)
+            for path in snapshot.untracked_files
+        ):
+            raise ValueError("Repository contains pre-existing changes")
+
+    @staticmethod
+    def _workflow_changed_files(
+        snapshot: RepositorySnapshot,
+        plan: ImplementationPlan,
+    ) -> tuple[Path, ...]:
+        if snapshot.root != plan.repository_root.resolve(strict=False):
+            raise ValueError("Repository root differs from the approved plan")
+        if snapshot.branch != plan.branch:
+            raise ValueError("Repository branch differs from the approved plan")
+
+        actual = {
+            Path(path)
+            for path in (
+                *snapshot.modified_files,
+                *snapshot.staged_files,
+                *snapshot.untracked_files,
+            )
+            if not WorkflowEngine._is_log_path(path)
+        }
+        allowed = set(plan.affected_files)
+        if not actual:
+            raise ValueError("Workflow produced no committable changes")
+        if not actual.issubset(allowed):
+            raise ValueError("Workflow changed files outside the approved plan")
+        return tuple(sorted(actual))
+
+    @staticmethod
+    def _is_log_path(path: str | Path) -> bool:
+        parts = Path(path).parts
+        return bool(parts) and parts[0] == "logs"
+
+    @staticmethod
+    def _commit_message(title: str) -> str:
+        normalized_title = " ".join(title.split()).lower()
+        if not normalized_title:
+            raise ValueError("Plan title must not be blank")
+        return f"feat(agent): {normalized_title}"
 
     @staticmethod
     def _approval_matches_session(
