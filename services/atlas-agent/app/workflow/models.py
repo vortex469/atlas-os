@@ -8,7 +8,7 @@ from pathlib import Path
 
 from app.execution.models import ExecutionResult
 from app.model_providers.models import ModelResponse
-from app.planning.models import RoadmapCheckpoint
+from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.review.models import ArchitectureAssessment, ReviewReport, TestEvidence
 from app.verification.models import VerificationCheck, VerificationReport
 
@@ -22,6 +22,12 @@ class SprintPhase(StrEnum):
     REVIEWING = "reviewing"
     COMPLETED = "completed"
     BLOCKED = "blocked"
+
+
+class WorkflowSessionState(StrEnum):
+    """Lifecycle state required for a passive planned workflow session."""
+
+    PLANNED = "planned"
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +53,17 @@ class WorkflowRequest:
     review_identifier: str
     architecture_assessments: tuple[ArchitectureAssessment, ...] = ()
     test_evidence: tuple[TestEvidence, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowSession:
+    """Immutable identity and artifacts for one planned workflow."""
+
+    identifier: str
+    request: WorkflowRequest
+    plan: ImplementationPlan
+    state: WorkflowSessionState
+    planning_analysis: ModelResponse | None = None
 
 
 @dataclass(frozen=True, slots=True)

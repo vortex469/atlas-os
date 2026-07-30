@@ -4,7 +4,7 @@ from threading import RLock
 
 from app.review.models import ReviewReport
 from app.verification.models import VerificationReport
-from app.workflow.models import SprintStatus
+from app.workflow.models import SprintStatus, WorkflowSession
 
 
 class WorkflowStateStore:
@@ -15,6 +15,28 @@ class WorkflowStateStore:
         self._sprint: SprintStatus | None = None
         self._verification: VerificationReport | None = None
         self._review: ReviewReport | None = None
+        self._sessions: dict[str, WorkflowSession] = {}
+
+    def create_session(self, session: WorkflowSession) -> None:
+        """Store a uniquely identified immutable workflow session."""
+
+        if not session.identifier.strip():
+            raise ValueError("Workflow session identifier must not be blank")
+
+        with self._lock:
+            if session.identifier in self._sessions:
+                raise ValueError(
+                    "Workflow session identifier already exists: "
+                    f"{session.identifier}"
+                )
+
+            self._sessions[session.identifier] = session
+
+    def get_session(self, identifier: str) -> WorkflowSession | None:
+        """Return a workflow session by identifier when it exists."""
+
+        with self._lock:
+            return self._sessions.get(identifier)
 
     def publish_sprint(self, status: SprintStatus) -> None:
         """Publish the current sprint status."""
