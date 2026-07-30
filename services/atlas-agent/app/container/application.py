@@ -7,6 +7,7 @@ from app.config.settings import Settings
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
 from app.model_service.service import ModelService
+from app.planning.advisor import PlanningAdvisor
 from app.repository.inspector import GitInspector
 from app.workflow.state import WorkflowStateStore
 
@@ -22,3 +23,4 @@ class ApplicationContainer:
     workflow_state: WorkflowStateStore
     approval_repository: ApprovalRepository
     model_service: ModelService
+    planning_advisor: PlanningAdvisor

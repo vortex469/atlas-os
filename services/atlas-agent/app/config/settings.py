@@ -78,6 +78,22 @@ def _load_log_level() -> str:
 
     return log_level
 
+def _load_planning_mode() -> str:
+    """Load and validate the configured planning mode."""
+
+    planning_mode = os.getenv(
+        "ATLAS_AGENT_PLANNING_MODE",
+        "deterministic",
+    ).strip().lower()
+
+    if planning_mode not in ("deterministic", "model-assisted"):
+        supported = "deterministic, model-assisted"
+        raise ValueError(
+            "ATLAS_AGENT_PLANNING_MODE must be one of: "
+            f"{supported}"
+        )
+
+    return planning_mode
 
 @dataclass(frozen=True, slots=True)
 class Settings:
@@ -94,6 +110,7 @@ class Settings:
     atlas_core_timeout_seconds: float = 10.0
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_default_model: str = "qwen3-coder-atlas:latest"
+    planning_mode: str = "deterministic"
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -110,6 +127,7 @@ class Settings:
             app_name=os.getenv("ATLAS_AGENT_APP_NAME", "Atlas Agent"),
             environment=_load_environment(),
             log_level=_load_log_level(),
+            planning_mode=_load_planning_mode(),
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),
             port=_load_port(),
             repository_root=repository_root,

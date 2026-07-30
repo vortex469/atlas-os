@@ -292,6 +292,7 @@ def test_create_app_wires_repository_inspector(
     captured: dict[str, object] = {}
     provider = object()
     model_service = object()
+    planning_advisor = object()
 
     def create_ollama_provider(
         *,
@@ -311,6 +312,13 @@ def test_create_app_wires_repository_inspector(
         captured["default_model"] = default_model
         return model_service
 
+    def create_planning_advisor(
+        *,
+        model_service: object,
+    ) -> object:
+        captured["advisor_model_service"] = model_service
+        return planning_advisor
+
     monkeypatch.setattr(
         "app.main.load_settings",
         lambda: settings,
@@ -323,6 +331,10 @@ def test_create_app_wires_repository_inspector(
         "app.main.ModelService",
         create_model_service,
     )
+    monkeypatch.setattr(
+        "app.main.PlanningAdvisor",
+        create_planning_advisor,
+    )
 
     application = create_app()
     container = application.state.container
@@ -334,9 +346,11 @@ def test_create_app_wires_repository_inspector(
     assert container.workflow_state.get_verification() is None
     assert container.workflow_state.get_review() is None
     assert container.model_service is model_service
+    assert container.planning_advisor is planning_advisor
     assert captured == {
         "base_url": "http://ollama.example:11434",
         "timeout_seconds": 42.0,
         "provider": provider,
         "default_model": "test-model:latest",
+        "advisor_model_service": model_service,
     }

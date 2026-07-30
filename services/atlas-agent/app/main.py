@@ -11,6 +11,7 @@ from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
 from app.model_providers.ollama import OllamaProvider
 from app.model_service.service import ModelService
+from app.planning.advisor import PlanningAdvisor
 from app.repository.inspector import GitInspector
 from app.routes.approval import router as approval_router
 from app.routes.health import router as health_router
@@ -65,6 +66,10 @@ def create_app() -> FastAPI:
         default_model=settings.ollama_default_model,
     )
 
+    planning_advisor = PlanningAdvisor(
+        model_service=model_service,
+    )
+
     container = ApplicationContainer(
         settings=settings,
         repository_inspector=GitInspector(
@@ -75,6 +80,7 @@ def create_app() -> FastAPI:
         context_engine=ContextEngine(core_client),
         approval_repository=ApprovalRepository(),
         model_service=model_service,
+        planning_advisor=planning_advisor,
     )
 
     application = FastAPI(
