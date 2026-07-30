@@ -7,6 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from app.execution.models import ExecutionResult
+from app.model_providers.models import ModelResponse
 from app.planning.models import RoadmapCheckpoint
 from app.review.models import ArchitectureAssessment, ReviewReport, TestEvidence
 from app.verification.models import VerificationCheck, VerificationReport
@@ -53,6 +54,7 @@ class WorkflowResult:
     """Immutable result of one Atlas Agent workflow."""
 
     sprint: SprintStatus
+    planning_analysis: ModelResponse | None = None
     execution_result: ExecutionResult | None = None
     verification_report: VerificationReport | None = None
     review_report: ReviewReport | None = None

@@ -3,6 +3,8 @@
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
+
 from app.approval.engine import ApprovalEngine
 from app.approval.models import (
     ApprovalDecision,
@@ -11,6 +13,8 @@ from app.approval.models import (
     ApprovalStatus,
 )
 from app.execution.models import ExecutionResult, ExecutionStatus
+from app.model_providers.models import ModelResponse
+from app.planning.advisor import PlanningAdvisor
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.models import RepositorySnapshot
 from app.review.models import ReviewReport, ReviewStatus
@@ -141,6 +145,8 @@ def make_engine(
     execution_result: ExecutionResult,
     verification_report: VerificationReport,
     review_report: ReviewReport,
+    planning_mode: str = "deterministic",
+    planning_advisor: PlanningAdvisor | None = None,
 ) -> tuple[WorkflowEngine, Mock, Mock, Mock, Mock, Mock, Mock]:
     inspector = Mock()
     inspector.inspect.return_value = make_snapshot(root)
@@ -174,7 +180,9 @@ def make_engine(
         review_engine=review_engine,
         approval_engine=approval_engine,
         state_store=state_store,
-)
+        planning_mode=planning_mode,
+        planning_advisor=planning_advisor,
+    )
 
     return (
         engine,
@@ -219,6 +227,7 @@ def test_successful_workflow_completes_and_publishes_artifacts(
     result = engine.run(request)
 
     assert result.sprint.phase is SprintPhase.COMPLETED
+    assert result.planning_analysis is None
     assert result.execution_result is execution_result
     assert result.verification_report is verification_report
     assert result.review_report is review_report
@@ -241,6 +250,132 @@ def test_successful_workflow_completes_and_publishes_artifacts(
         SprintPhase.REVIEWING,
         SprintPhase.COMPLETED,
     ]
+
+
+def test_deterministic_mode_never_calls_planning_advisor(
+    tmp_path: Path,
+) -> None:
+    planning_advisor = Mock(spec=PlanningAdvisor)
+    (
+        engine,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+        planning_advisor=planning_advisor,
+    )
+
+    result = engine.run(make_request(tmp_path))
+
+    planning_advisor.analyze.assert_not_called()
+    assert result.planning_analysis is None
+
+
+def test_model_assisted_mode_stores_analysis_without_replacing_plan(
+    tmp_path: Path,
+) -> None:
+    analysis = ModelResponse(
+        text="Keep the approved scope.",
+        model="test-model",
+        provider_id="test-provider",
+    )
+    planning_advisor = Mock(spec=PlanningAdvisor)
+    planning_advisor.analyze.return_value = analysis
+    (
+        engine,
+        planning_engine,
+        execution_engine,
+        _,
+        review_engine,
+        _,
+        _,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+        planning_mode="model-assisted",
+        planning_advisor=planning_advisor,
+    )
+    plan = planning_engine.plan.return_value
+
+    result = engine.run(make_request(tmp_path))
+
+    planning_advisor.analyze.assert_called_once_with(plan)
+    assert result.planning_analysis is analysis
+    assert execution_engine.execute.call_args.args[0].plan is plan
+    assert review_engine.review.call_args.args[0].plan is plan
+
+
+def test_model_assisted_advisor_failure_blocks_before_execution(
+    tmp_path: Path,
+) -> None:
+    planning_advisor = Mock(spec=PlanningAdvisor)
+    planning_advisor.analyze.side_effect = RuntimeError(
+        "sensitive provider failure"
+    )
+    (
+        engine,
+        _,
+        execution_engine,
+        verification_engine,
+        review_engine,
+        _,
+        state_store,
+    ) = make_engine(
+        tmp_path,
+        execution_result=make_execution_result(tmp_path),
+        verification_report=make_verification_report(tmp_path),
+        review_report=make_review_report(),
+        planning_mode="model-assisted",
+        planning_advisor=planning_advisor,
+    )
+
+    result = engine.run(make_request(tmp_path))
+
+    assert result.sprint.phase is SprintPhase.BLOCKED
+    assert result.planning_analysis is None
+    assert result.error_message == "Model-assisted planning analysis failed"
+    assert "sensitive provider failure" not in result.error_message
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+    assert published_phases(state_store) == [
+        SprintPhase.PLANNED,
+        SprintPhase.BLOCKED,
+    ]
+
+
+def test_invalid_planning_mode_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Unsupported planning mode"):
+        make_engine(
+            tmp_path,
+            execution_result=make_execution_result(tmp_path),
+            verification_report=make_verification_report(tmp_path),
+            review_report=make_review_report(),
+            planning_mode="autonomous",
+        )
+
+
+def test_model_assisted_mode_requires_advisor(tmp_path: Path) -> None:
+    with pytest.raises(
+        ValueError,
+        match="Model-assisted planning requires a planning advisor",
+    ):
+        make_engine(
+            tmp_path,
+            execution_result=make_execution_result(tmp_path),
+            verification_report=make_verification_report(tmp_path),
+            review_report=make_review_report(),
+            planning_mode="model-assisted",
+        )
 
 
 def test_execution_failure_blocks_downstream_stages(tmp_path: Path) -> None:

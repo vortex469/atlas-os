@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from app.approval.engine import ApprovalEngine
 from app.approval.models import ApprovalDecision
 from app.execution.engine import ExecutionEngine
 from app.execution.models import ExecutionRequest, ExecutionStatus
+from app.model_providers.models import ModelResponse
+from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
 from app.repository.inspector import GitInspector
 from app.review.engine import ReviewEngine
@@ -22,6 +25,8 @@ from app.workflow.models import (
     WorkflowResult,
 )
 from app.workflow.state import WorkflowStateStore
+
+logger = logging.getLogger("atlas-agent")
 
 
 class WorkflowEngine:
@@ -37,7 +42,17 @@ class WorkflowEngine:
         review_engine: ReviewEngine,
         approval_engine: ApprovalEngine,
         state_store: WorkflowStateStore,
+        planning_mode: str = "deterministic",
+        planning_advisor: PlanningAdvisor | None = None,
     ) -> None:
+        if planning_mode not in ("deterministic", "model-assisted"):
+            raise ValueError(f"Unsupported planning mode: {planning_mode}")
+
+        if planning_mode == "model-assisted" and planning_advisor is None:
+            raise ValueError(
+                "Model-assisted planning requires a planning advisor"
+            )
+
         self._repository_inspector_factory = repository_inspector_factory
         self._planning_engine = planning_engine
         self._execution_engine = execution_engine
@@ -45,6 +60,8 @@ class WorkflowEngine:
         self._review_engine = review_engine
         self._approval_engine = approval_engine
         self._state_store = state_store
+        self._planning_mode = planning_mode
+        self._planning_advisor = planning_advisor
 
     def run(
         self,
@@ -65,6 +82,26 @@ class WorkflowEngine:
         inspector = self._repository_inspector_factory(request.repository_root)
         snapshot = inspector.inspect()
         plan = self._planning_engine.plan(request.checkpoint, snapshot)
+        planning_analysis: ModelResponse | None = None
+
+        if self._planning_mode == "model-assisted":
+            assert self._planning_advisor is not None
+            try:
+                planning_analysis = self._planning_advisor.analyze(plan)
+            except Exception:
+                logger.exception("Model-assisted planning analysis failed")
+                blocked_status = SprintStatus(
+                    checkpoint_id=request.checkpoint.identifier,
+                    title=request.checkpoint.title,
+                    goal=request.checkpoint.goal,
+                    phase=SprintPhase.BLOCKED,
+                )
+                self._state_store.publish_sprint(blocked_status)
+
+                return WorkflowResult(
+                    sprint=blocked_status,
+                    error_message="Model-assisted planning analysis failed",
+                )
 
         in_progress_status = SprintStatus(
             checkpoint_id=request.checkpoint.identifier,
@@ -95,6 +132,7 @@ class WorkflowEngine:
 
                 return WorkflowResult(
                     sprint=blocked_status,
+                    planning_analysis=planning_analysis,
                     error_message="Approval required",
                 )
 
@@ -111,6 +149,7 @@ class WorkflowEngine:
 
             return WorkflowResult(
                 sprint=blocked_status,
+                planning_analysis=planning_analysis,
                 execution_result=execution_result,
                 error_message=execution_result.error,
             )
@@ -142,6 +181,7 @@ class WorkflowEngine:
 
             return WorkflowResult(
                 sprint=blocked_status,
+                planning_analysis=planning_analysis,
                 execution_result=execution_result,
                 verification_report=verification_report,
                 error_message="Verification failed",
@@ -178,6 +218,7 @@ class WorkflowEngine:
 
             return WorkflowResult(
                 sprint=blocked_status,
+                planning_analysis=planning_analysis,
                 execution_result=execution_result,
                 verification_report=verification_report,
                 review_report=review_report,
@@ -194,6 +235,7 @@ class WorkflowEngine:
 
         return WorkflowResult(
             sprint=completed_status,
+            planning_analysis=planning_analysis,
             execution_result=execution_result,
             verification_report=verification_report,
             review_report=review_report,
