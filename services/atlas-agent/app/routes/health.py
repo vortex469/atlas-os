@@ -1,8 +1,22 @@
-"""Atlas Agent health endpoint."""
+"""Atlas Agent health and diagnostics endpoints."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from pydantic import BaseModel
+
+from app.approval.engine import ApprovalEngine
+from app.version import AGENT_VERSION
+from app.workflow.engine import WorkflowEngine
 
 router = APIRouter()
+
+
+class DiagnosticsResponse(BaseModel):
+    """Serialized Atlas Agent diagnostics."""
+
+    version: str
+    git_branch: str | None
+    approval_engine_available: bool
+    workflow_engine_available: bool
 
 
 @router.get("/health")
@@ -13,3 +27,17 @@ async def health() -> dict[str, str]:
         "status": "healthy",
         "service": "atlas-agent",
     }
+
+
+@router.get("/diagnostics", response_model=DiagnosticsResponse)
+async def diagnostics(request: Request) -> DiagnosticsResponse:
+    """Return read-only Atlas Agent runtime diagnostics."""
+
+    snapshot = request.app.state.container.repository_inspector.inspect()
+
+    return DiagnosticsResponse(
+        version=AGENT_VERSION,
+        git_branch=snapshot.branch,
+        approval_engine_available=bool(ApprovalEngine),
+        workflow_engine_available=bool(WorkflowEngine),
+    )
