@@ -1,7 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from app.core_client.models import AtlasCoreHealth, AtlasCoreStatus, ServiceHealth
+from app.core_client.models import (
+    AtlasCoreHealth,
+    AtlasCoreIntelligenceSummary,
+    AtlasCoreStatus,
+    ServiceHealth,
+)
 
 
 def test_service_health_valid_payload():
@@ -110,3 +115,71 @@ def test_invalid_nested_service_rejected():
 
     with pytest.raises(ValidationError):
         AtlasCoreHealth(**invalid_data)
+
+
+def test_atlas_core_intelligence_summary_valid_payload() -> None:
+    summary = AtlasCoreIntelligenceSummary.model_validate(
+        {
+            "score": 72,
+            "status": "warning",
+            "summary": "Atlas requires attention.",
+            "findings": [
+                {
+                    "id": "finding-1",
+                    "severity": "warning",
+                    "category": "reliability",
+                    "source": "ace",
+                    "title": "Provider degraded",
+                    "message": "One provider is degraded.",
+                    "affects_health": True,
+                }
+            ],
+            "assessments": [
+                {
+                    "title": "Review provider health",
+                    "priority": "high",
+                }
+            ],
+            "recommendations": [
+                {
+                    "title": "Restore provider",
+                    "reason": "The provider affects Atlas health.",
+                    "priority": "high",
+                    "confidence": 0.9,
+                    "estimated_effort": "small",
+                }
+            ],
+        }
+    )
+
+    assert summary.findings[0].id == "finding-1"
+    assert summary.assessments[0].priority == "high"
+    assert summary.recommendations[0].confidence == 0.9
+
+
+def test_atlas_core_intelligence_summary_has_immutable_defaults() -> None:
+    first = AtlasCoreIntelligenceSummary(
+        score=100,
+        status="healthy",
+        summary="Healthy",
+    )
+    second = AtlasCoreIntelligenceSummary(
+        score=100,
+        status="healthy",
+        summary="Healthy",
+    )
+
+    assert first.findings == ()
+    assert second.findings == ()
+
+
+def test_atlas_core_intelligence_summary_rejects_invalid_nested_data() -> None:
+    with pytest.raises(ValidationError):
+        AtlasCoreIntelligenceSummary.model_validate(
+            {
+                "score": 50,
+                "status": "warning",
+                "summary": "Invalid finding",
+                "findings": [{"id": "missing-required-fields"}],
+            }
+        )

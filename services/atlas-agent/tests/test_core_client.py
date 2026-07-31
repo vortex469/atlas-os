@@ -14,7 +14,11 @@ from app.core_client.exceptions import (
     AtlasCoreResponseError,
     AtlasCoreTimeoutError,
 )
-from app.core_client.models import AtlasCoreHealth, AtlasCoreStatus
+from app.core_client.models import (
+    AtlasCoreHealth,
+    AtlasCoreIntelligenceSummary,
+    AtlasCoreStatus,
+)
 
 
 def create_test_settings(host="127.0.0.1", port=8643, timeout=10.0):
@@ -50,6 +54,26 @@ def create_mock_status_response():
         "assistant": "test-assistant",
         "engine": "test-engine",
         "release": "1.0.0"
+    }
+
+
+def create_mock_intelligence_response():
+    """Create a valid intelligence response payload."""
+    return {
+        "score": 80,
+        "status": "warning",
+        "summary": "One recommendation is available.",
+        "findings": [],
+        "assessments": [],
+        "recommendations": [
+            {
+                "title": "Review provider health",
+                "reason": "A provider is degraded.",
+                "priority": "high",
+                "confidence": 0.9,
+                "estimated_effort": "small",
+            }
+        ],
     }
 
 
@@ -124,6 +148,91 @@ def test_get_status_parsing_valid_response(atlas_core_client, mock_status_respon
         assert isinstance(result, AtlasCoreStatus)
         assert result.atlas == "test-atlas"
         assert result.assistant == "test-assistant"
+
+
+def test_get_intelligence_summary_uses_supported_endpoint() -> None:
+    """Intelligence retrieval uses the versioned read-only endpoint."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/api/v1/intelligence/summary"
+        return httpx.Response(
+            200,
+            json=create_mock_intelligence_response(),
+        )
+
+    with httpx.MockTransport(handler) as transport:
+        client = httpx.AsyncClient(transport=transport)
+        atlas_client = AtlasCoreClient(
+            settings=create_test_settings(),
+            client=client,
+        )
+
+        result = asyncio.run(atlas_client.get_intelligence_summary())
+
+    assert isinstance(result, AtlasCoreIntelligenceSummary)
+    assert result.recommendations[0].title == "Review provider health"
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_exception"),
+    (
+        (
+            httpx.ConnectError("connection failed"),
+            AtlasCoreConnectionError,
+        ),
+        (
+            httpx.TimeoutException("request timed out"),
+            AtlasCoreTimeoutError,
+        ),
+    ),
+)
+def test_intelligence_transport_errors_preserve_exception_semantics(
+    error,
+    expected_exception,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise error
+
+    with httpx.MockTransport(handler) as transport:
+        client = httpx.AsyncClient(transport=transport)
+        atlas_client = AtlasCoreClient(
+            settings=create_test_settings(),
+            client=client,
+        )
+
+        with pytest.raises(expected_exception):
+            asyncio.run(atlas_client.get_intelligence_summary())
+
+
+def test_intelligence_response_error_preserves_exception_semantics() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="unavailable")
+
+    with httpx.MockTransport(handler) as transport:
+        client = httpx.AsyncClient(transport=transport)
+        atlas_client = AtlasCoreClient(
+            settings=create_test_settings(),
+            client=client,
+        )
+
+        with pytest.raises(AtlasCoreResponseError):
+            asyncio.run(atlas_client.get_intelligence_summary())
+
+
+def test_intelligence_payload_error_preserves_exception_semantics() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"invalid": "payload"})
+
+    with httpx.MockTransport(handler) as transport:
+        client = httpx.AsyncClient(transport=transport)
+        atlas_client = AtlasCoreClient(
+            settings=create_test_settings(),
+            client=client,
+        )
+
+        with pytest.raises(AtlasCorePayloadError):
+            asyncio.run(atlas_client.get_intelligence_summary())
 
 
 def test_validate_connection_calls_health_endpoint(atlas_core_client):

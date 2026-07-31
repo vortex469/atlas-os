@@ -8,6 +8,10 @@ from .exceptions import (
 )
 from .models import (
     AtlasCoreHealth,
+    AtlasCoreIntelligenceAssessment,
+    AtlasCoreIntelligenceFinding,
+    AtlasCoreIntelligenceRecommendation,
+    AtlasCoreIntelligenceSummary,
     AtlasCoreStatus,
     ServiceHealth,
 )
@@ -17,6 +21,10 @@ __all__ = [
     "AtlasCoreClientError",
     "AtlasCoreConnectionError",
     "AtlasCoreHealth",
+    "AtlasCoreIntelligenceAssessment",
+    "AtlasCoreIntelligenceFinding",
+    "AtlasCoreIntelligenceRecommendation",
+    "AtlasCoreIntelligenceSummary",
     "AtlasCorePayloadError",
     "AtlasCoreResponseError",
     "AtlasCoreStatus",

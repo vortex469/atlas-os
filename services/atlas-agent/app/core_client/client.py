@@ -12,7 +12,11 @@ from .exceptions import (
     AtlasCoreResponseError,
     AtlasCoreTimeoutError,
 )
-from .models import AtlasCoreHealth, AtlasCoreStatus
+from .models import (
+    AtlasCoreHealth,
+    AtlasCoreIntelligenceSummary,
+    AtlasCoreStatus,
+)
 
 __all__ = [
     'AtlasCoreClient',
@@ -71,6 +75,36 @@ class AtlasCoreClient:
             )
         except (json.JSONDecodeError, ValidationError) as e:
             raise AtlasCorePayloadError(f"Invalid payload fetching status from {url}: {e!s}")
+
+    async def get_intelligence_summary(
+        self,
+    ) -> AtlasCoreIntelligenceSummary:
+        url = f"{self._base_url}/api/v1/intelligence/summary"
+        try:
+            response = await self._get_client().get(url, timeout=self._timeout)
+            response.raise_for_status()
+            return AtlasCoreIntelligenceSummary.model_validate(response.json())
+        except httpx.TimeoutException as e:
+            raise AtlasCoreTimeoutError(
+                f"Timeout fetching intelligence from {url}: {e!s}"
+            )
+        except httpx.ConnectError as e:
+            raise AtlasCoreConnectionError(
+                f"Connection error fetching intelligence from {url}: {e!s}"
+            )
+        except httpx.RequestError as e:
+            raise AtlasCoreConnectionError(
+                f"Request error fetching intelligence from {url}: {e!s}"
+            )
+        except httpx.HTTPStatusError as e:
+            raise AtlasCoreResponseError(
+                f"HTTP {response.status_code} fetching intelligence "
+                f"from {url}: {e!s}"
+            )
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise AtlasCorePayloadError(
+                f"Invalid payload fetching intelligence from {url}: {e!s}"
+            )
 
     async def validate_connection(self) -> None:
         await self.get_health()

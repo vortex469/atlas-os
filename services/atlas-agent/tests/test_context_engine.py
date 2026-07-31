@@ -3,6 +3,8 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from app.context.engine import ContextEngine
 from app.context.exceptions import ContextConflictError
 from app.context.models import AgentContext
@@ -13,6 +15,38 @@ from app.core_client.exceptions import (
     AtlasCoreResponseError,
     AtlasCoreTimeoutError,
 )
+from app.core_client.models import AtlasCoreIntelligenceSummary
+
+
+def make_intelligence_summary() -> AtlasCoreIntelligenceSummary:
+    return AtlasCoreIntelligenceSummary.model_validate(
+        {
+            "score": 75,
+            "status": "warning",
+            "summary": "Atlas has advisory evidence.",
+            "findings": [
+                {
+                    "id": "finding-1",
+                    "severity": "warning",
+                    "category": "reliability",
+                    "source": "ace",
+                    "title": "Provider degraded",
+                    "message": "One provider is degraded.",
+                    "affects_health": True,
+                }
+            ],
+            "assessments": [],
+            "recommendations": [
+                {
+                    "title": "Review provider",
+                    "reason": "The provider affects health.",
+                    "priority": "high",
+                    "confidence": 0.9,
+                    "estimated_effort": "small",
+                }
+            ],
+        }
+    )
 
 
 def test_context_engine_init():
@@ -44,6 +78,9 @@ def test_get_context():
     mock_client = AsyncMock()
     mock_client.get_health.return_value = mock_health
     mock_client.get_status.return_value = mock_status
+    mock_client.get_intelligence_summary.return_value = (
+        make_intelligence_summary()
+    )
 
     engine = ContextEngine(mock_client)
     context = asyncio.run(engine.get_context())
@@ -54,6 +91,15 @@ def test_get_context():
     assert context.engine == "test-engine"
     assert context.release == "1.0.0"
     assert "test-service" in context.services
+    assert context.intelligence is not None
+    assert context.intelligence.findings[0].identifier == "finding-1"
+    assert (
+        context.intelligence.recommendations[0].title
+        == "Review provider"
+    )
+    mock_client.get_health.assert_awaited_once_with()
+    mock_client.get_status.assert_awaited_once_with()
+    mock_client.get_intelligence_summary.assert_awaited_once_with()
     
     # Test normalized AgentContext fields
     assert hasattr(context, "atlas")
@@ -146,3 +192,65 @@ def test_get_context():
         assert False, "Expected AtlasCorePayloadError was not raised"
     except AtlasCorePayloadError:
         pass  # Expected
+
+
+@pytest.mark.parametrize(
+    ("error", "code", "message"),
+    (
+        (
+            AtlasCoreConnectionError("raw connection detail"),
+            "connection_error",
+            "Atlas intelligence connection failed.",
+        ),
+        (
+            AtlasCoreTimeoutError("raw timeout detail"),
+            "timeout",
+            "Atlas intelligence request timed out.",
+        ),
+        (
+            AtlasCoreResponseError("raw response detail"),
+            "response_error",
+            "Atlas intelligence returned an unsuccessful response.",
+        ),
+        (
+            AtlasCorePayloadError("raw payload detail"),
+            "payload_error",
+            "Atlas intelligence returned an invalid payload.",
+        ),
+    ),
+)
+def test_intelligence_failure_preserves_essential_context(
+    error,
+    code,
+    message,
+) -> None:
+    service = MagicMock(
+        provider_id="provider",
+        status="healthy",
+        latency_ms=None,
+        http_status=200,
+        message=None,
+        details={},
+    )
+    health = MagicMock(atlas="atlas", services={"service": service})
+    status = MagicMock(
+        atlas="atlas",
+        assistant="assistant",
+        engine="engine",
+        release="1.0",
+    )
+    client = AsyncMock()
+    client.get_health.return_value = health
+    client.get_status.return_value = status
+    client.get_intelligence_summary.side_effect = error
+
+    context = asyncio.run(ContextEngine(client).get_context())
+
+    assert context.atlas == "atlas"
+    assert context.services["service"].status == "healthy"
+    assert context.intelligence is not None
+    assert context.intelligence.failure is not None
+    assert context.intelligence.failure.code == code
+    assert context.intelligence.failure.message == message
+    assert "raw" not in context.intelligence.failure.message
+    client.get_intelligence_summary.assert_awaited_once_with()

@@ -5,7 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from app.context.models import AgentContext, ServiceHealth
+from app.context.models import (
+    AgentContext,
+    IntelligenceAssessment,
+    IntelligenceContext,
+    IntelligenceFailure,
+    IntelligenceFinding,
+    IntelligenceRecommendation,
+    ServiceHealth,
+)
 from app.planning.engine import PlanningEngine
 from app.planning.exceptions import PlanningValidationError
 from app.planning.models import PlanRisk, RoadmapCheckpoint
@@ -52,6 +60,7 @@ def make_checkpoint(**overrides: object) -> RoadmapCheckpoint:
 
 def make_context(
     services: dict[str, ServiceHealth],
+    intelligence: IntelligenceContext | None = None,
 ) -> AgentContext:
     """Create Atlas context with supplied service health."""
 
@@ -61,6 +70,7 @@ def make_context(
         engine="deterministic",
         release="development",
         services=services,
+        intelligence=intelligence,
     )
 
 
@@ -192,6 +202,150 @@ def test_context_risks_follow_existing_risk_sources() -> None:
         "repository",
         "atlas-core",
     )
+
+
+def test_unavailable_intelligence_adds_one_stable_risk() -> None:
+    context = make_context(
+        {},
+        intelligence=IntelligenceContext(
+            failure=IntelligenceFailure(
+                code="timeout",
+                message="Atlas intelligence request timed out.",
+            )
+        ),
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert plan.risks == (
+        PlanRisk(
+            code="atlas-intelligence-unavailable",
+            summary="Atlas intelligence request timed out.",
+            source="atlas-knowledge",
+        ),
+    )
+
+
+def test_legacy_context_adds_no_intelligence_risk() -> None:
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=make_context({}),
+    )
+
+    assert plan.risks == ()
+
+
+def test_intelligence_risks_are_ordered_deduplicated_and_capped() -> None:
+    finding_one = IntelligenceFinding(
+        identifier="finding-1",
+        severity="warning",
+        category="reliability",
+        source="ace",
+        title="Finding one",
+        message="Evidence one",
+        component="provider-a",
+        affects_health=False,
+    )
+    context = make_context(
+        {},
+        intelligence=IntelligenceContext(
+            findings=(
+                IntelligenceFinding(
+                    identifier="ignored",
+                    severity="info",
+                    category="operations",
+                    source="ace",
+                    title="Informational",
+                    message="No action required",
+                    affects_health=False,
+                ),
+                finding_one,
+                finding_one.model_copy(
+                    update={"title": "Changed free-form title"}
+                ),
+                IntelligenceFinding(
+                    identifier="finding-2",
+                    severity="info",
+                    category="health",
+                    source="ace",
+                    title="Health finding",
+                    message="Health evidence",
+                    affects_health=True,
+                ),
+            ),
+            assessments=(
+                IntelligenceAssessment(
+                    title="Ignored assessment",
+                    priority="low",
+                ),
+                IntelligenceAssessment(
+                    title="High assessment",
+                    priority="high",
+                ),
+            ),
+            recommendations=tuple(
+                IntelligenceRecommendation(
+                    title=f"Recommendation {index}",
+                    reason=f"Reason {index}",
+                    priority="medium",
+                    confidence=0.8,
+                    estimated_effort="small",
+                )
+                for index in range(1, 4)
+            ),
+        ),
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert tuple(risk.summary for risk in plan.risks) == (
+        "Finding one",
+        "Health finding",
+        "High assessment",
+        "Recommendation 1",
+        "Recommendation 2",
+    )
+    assert len(plan.risks) == 5
+
+
+def test_intelligence_evidence_does_not_change_plan_execution_inputs() -> None:
+    checkpoint = make_checkpoint(risks=())
+    snapshot = make_snapshot()
+    baseline = PlanningEngine().plan(checkpoint, snapshot)
+    enriched = PlanningEngine().plan(
+        checkpoint,
+        snapshot,
+        context=make_context(
+            {},
+            intelligence=IntelligenceContext(
+                recommendations=(
+                    IntelligenceRecommendation(
+                        title="Run an untrusted command",
+                        reason="Advisory evidence only",
+                        priority="high",
+                        confidence=1.0,
+                        estimated_effort="small",
+                    ),
+                )
+            ),
+        ),
+    )
+
+    assert enriched.repository_root == baseline.repository_root
+    assert enriched.branch == baseline.branch
+    assert enriched.head_commit == baseline.head_commit
+    assert enriched.scope_items == baseline.scope_items
+    assert enriched.affected_files == baseline.affected_files
+    assert enriched.required_tests == baseline.required_tests
 
 
 def test_normalizes_whitespace_and_duplicates() -> None:

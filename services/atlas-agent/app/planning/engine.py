@@ -12,6 +12,21 @@ from app.planning.models import (
 )
 from app.repository.models import RepositorySnapshot
 
+_INTELLIGENCE_RISK_LIMIT = 5
+_QUALIFYING_INTELLIGENCE_STATES = frozenset(
+    {
+        "actionable",
+        "concerning",
+        "critical",
+        "error",
+        "failed",
+        "high",
+        "recommended",
+        "unhealthy",
+        "warning",
+    }
+)
+
 
 class PlanningEngine:
     """Create validated plans without Git, filesystem, or LLM operations."""
@@ -168,7 +183,7 @@ class PlanningEngine:
     def _context_risks(
         context: AgentContext | None,
     ) -> tuple[PlanRisk, ...]:
-        """Create deterministic risks from Atlas service health."""
+        """Create deterministic risks from Atlas context."""
 
         if context is None:
             return ()
@@ -190,7 +205,112 @@ class PlanningEngine:
                 )
             )
 
+        intelligence = context.intelligence
+        if intelligence is None:
+            return tuple(risks)
+
+        if intelligence.failure is not None:
+            risks.append(
+                PlanRisk(
+                    code="atlas-intelligence-unavailable",
+                    summary=intelligence.failure.message,
+                    source="atlas-knowledge",
+                )
+            )
+            return tuple(risks)
+
+        knowledge_risks: list[PlanRisk] = []
+        evidence_keys: set[tuple[object, ...]] = set()
+
+        for finding in intelligence.findings:
+            if not (
+                finding.affects_health
+                or finding.severity.strip().lower()
+                in _QUALIFYING_INTELLIGENCE_STATES
+            ):
+                continue
+            key = (
+                "finding",
+                finding.identifier,
+                finding.severity,
+                finding.category,
+                finding.source,
+                finding.component,
+            )
+            PlanningEngine._append_intelligence_risk(
+                risks=knowledge_risks,
+                evidence_keys=evidence_keys,
+                key=key,
+                risk=PlanRisk(
+                    code="atlas-intelligence-finding",
+                    summary=finding.title,
+                    source="atlas-knowledge",
+                ),
+            )
+            if len(knowledge_risks) == _INTELLIGENCE_RISK_LIMIT:
+                return (*risks, *knowledge_risks)
+
+        for assessment in intelligence.assessments:
+            if (
+                assessment.priority.strip().lower()
+                not in _QUALIFYING_INTELLIGENCE_STATES
+            ):
+                continue
+            key = (
+                "assessment",
+                assessment.title,
+                assessment.priority,
+                assessment.component,
+            )
+            PlanningEngine._append_intelligence_risk(
+                risks=knowledge_risks,
+                evidence_keys=evidence_keys,
+                key=key,
+                risk=PlanRisk(
+                    code="atlas-intelligence-assessment",
+                    summary=assessment.title,
+                    source="atlas-knowledge",
+                ),
+            )
+            if len(knowledge_risks) == _INTELLIGENCE_RISK_LIMIT:
+                return (*risks, *knowledge_risks)
+
+        for recommendation in intelligence.recommendations:
+            key = (
+                "recommendation",
+                recommendation.title,
+                recommendation.reason,
+                recommendation.priority,
+                recommendation.component,
+            )
+            PlanningEngine._append_intelligence_risk(
+                risks=knowledge_risks,
+                evidence_keys=evidence_keys,
+                key=key,
+                risk=PlanRisk(
+                    code="atlas-intelligence-recommendation",
+                    summary=recommendation.title,
+                    source="atlas-knowledge",
+                ),
+            )
+            if len(knowledge_risks) == _INTELLIGENCE_RISK_LIMIT:
+                break
+
+        risks.extend(knowledge_risks)
         return tuple(risks)
+
+    @staticmethod
+    def _append_intelligence_risk(
+        *,
+        risks: list[PlanRisk],
+        evidence_keys: set[tuple[object, ...]],
+        key: tuple[object, ...],
+        risk: PlanRisk,
+    ) -> None:
+        if key in evidence_keys:
+            return
+        evidence_keys.add(key)
+        risks.append(risk)
 
     @staticmethod
     def _deduplicate[T](values: Iterable[T]) -> tuple[T, ...]:
