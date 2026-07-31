@@ -250,6 +250,8 @@ def test_agent_info_returns_runtime_information(
             "in_progress",
             "awaiting_verification_approval",
             "verifying",
+            "awaiting_commit_approval",
+            "committing",
             "reviewing",
             "completed",
             "blocked",

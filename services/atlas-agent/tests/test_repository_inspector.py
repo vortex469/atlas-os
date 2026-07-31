@@ -354,3 +354,71 @@ def test_create_app_wires_repository_inspector(
         "default_model": "test-model:latest",
         "advisor_model_service": model_service,
     }
+
+
+def test_reviewed_change_evidence_hashes_modified_deleted_renamed_and_untracked(
+    tmp_path: Path,
+) -> None:
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    (repository / "delete.txt").write_text("delete\n", encoding="utf-8")
+    run_git(repository, "add", "delete.txt")
+    run_git(repository, "commit", "-m", "Add delete target")
+    head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    (repository / "new.txt").write_text("new\n", encoding="utf-8")
+    run_git(repository, "mv", "delete.txt", "renamed.txt")
+    (repository / "renamed.txt").write_text("renamed\n", encoding="utf-8")
+    run_git(repository, "rm", "tracked.txt")
+
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=(Path("new.txt"), Path("renamed.txt"), Path("tracked.txt")),
+        expected_branch="master",
+        expected_head=head,
+        commit_message="feat(agent): reviewed evidence",
+    )
+
+    assert len(evidence.fingerprint) == 64
+    assert evidence.reviewed_files == (
+        Path("new.txt"),
+        Path("renamed.txt"),
+        Path("tracked.txt"),
+    )
+    by_path = {change.path: change for change in evidence.changes}
+    assert by_path[Path("new.txt")].content_sha256 is not None
+    assert by_path[Path("tracked.txt")].deletion_marker == "deleted"
+    assert by_path[Path("renamed.txt")].rename_source == Path("delete.txt")
+
+
+def test_reviewed_change_evidence_rejects_unexpected_changed_paths(
+    tmp_path: Path,
+) -> None:
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    (repository / "tracked.txt").write_text("changed\n", encoding="utf-8")
+    (repository / "unexpected.txt").write_text("unexpected\n", encoding="utf-8")
+
+    with pytest.raises(RepositoryInspectionError, match="changed paths differ"):
+        GitInspector(repository).reviewed_change_evidence(
+            reviewed_files=(Path("tracked.txt"),),
+            expected_branch="master",
+            expected_head=head,
+            commit_message="feat(agent): reviewed evidence",
+        )
+
+
+def test_reviewed_change_evidence_ignores_existing_logs_policy(
+    tmp_path: Path,
+) -> None:
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    (repository / "tracked.txt").write_text("changed\n", encoding="utf-8")
+    (repository / "logs").mkdir()
+    (repository / "logs" / "agent.log").write_text("debug\n", encoding="utf-8")
+
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=(Path("tracked.txt"),),
+        expected_branch="master",
+        expected_head=head,
+        commit_message="feat(agent): reviewed evidence",
+    )
+
+    assert evidence.reviewed_files == (Path("tracked.txt"),)

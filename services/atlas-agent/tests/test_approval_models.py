@@ -13,6 +13,7 @@ from app.approval import (
 )
 from app.approval.models import (
     ApprovalPurpose,
+    CommitApprovalMetadata,
     VerificationApprovalCheck,
     VerificationApprovalEnvironment,
 )
@@ -85,6 +86,32 @@ def test_verification_approval_binds_non_secret_stage_metadata() -> None:
     assert request.verification_checks == (check,)
     assert environment.name == "ATLAS_TOKEN"
     assert not hasattr(environment, "value")
+
+
+def test_commit_approval_binds_non_secret_stage_metadata() -> None:
+    metadata = CommitApprovalMetadata(
+        expected_branch="feature/atlas-agent",
+        expected_head="abc123",
+        reviewed_files=(Path("app/workflow/engine.py"),),
+        reviewed_content_fingerprint="a" * 64,
+        commit_message="feat(agent): workflow automation",
+    )
+    request = ApprovalRequest(
+        identifier="approval-commit-a12-2",
+        workflow_id="workflow-a12-2",
+        checkpoint_id="A12.2",
+        title="Approve commit",
+        requested_tool="git",
+        requested_command=("git-commit", "app/workflow/engine.py"),
+        requested_working_directory=Path("/workspace/atlas"),
+        rationale="Approve exact reviewed commit.",
+        purpose=ApprovalPurpose.COMMIT,
+        commit_metadata=metadata,
+    )
+
+    assert request.commit_metadata == metadata
+    assert request.verification_checks == ()
+    assert not hasattr(metadata, "file_contents")
 
 
 def test_approval_request_accepts_workflow_operation_binding() -> None:

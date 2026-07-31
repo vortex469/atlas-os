@@ -11,6 +11,7 @@ from app.approval.models import (
     ApprovalPurpose,
     ApprovalRequest,
     ApprovalStatus,
+    CommitApprovalMetadata,
     VerificationApprovalCheck,
     VerificationApprovalEnvironment,
 )
@@ -529,6 +530,77 @@ def test_verification_approval_rejects_invalid_digest() -> None:
     ):
         ApprovalEngine().evaluate(
             ApprovalDecision(request=request, status=ApprovalStatus.PENDING)
+        )
+
+
+def test_commit_approval_preserves_normalized_metadata() -> None:
+    request = ApprovalRequest(
+        identifier=" approval-commit ",
+        workflow_id=" workflow-a12-2 ",
+        checkpoint_id=" A12.2 ",
+        title=" Approve commit ",
+        requested_tool=" git ",
+        requested_command=(" git-commit ", " app/workflow/engine.py "),
+        requested_working_directory=Path("/workspace/atlas"),
+        rationale=" Exact commit ",
+        purpose=ApprovalPurpose.COMMIT,
+        commit_metadata=CommitApprovalMetadata(
+            expected_branch="feature/atlas-agent",
+            expected_head="abc123",
+            reviewed_files=(Path("app/workflow/engine.py"),),
+            reviewed_content_fingerprint="a" * 64,
+            commit_message="feat(agent): workflow automation",
+        ),
+    )
+
+    result = ApprovalEngine().evaluate(
+        ApprovalDecision(request=request, status=ApprovalStatus.PENDING)
+    )
+
+    normalized = result.decision.request
+    assert normalized.workflow_id == "workflow-a12-2"
+    assert normalized.purpose is ApprovalPurpose.COMMIT
+    assert normalized.commit_metadata is not None
+    assert normalized.commit_metadata.reviewed_files == (Path("app/workflow/engine.py"),)
+    assert normalized.verification_checks == ()
+
+
+@pytest.mark.parametrize(
+    "approval_request",
+    (
+        ApprovalRequest(
+            identifier="approval-commit",
+            workflow_id="workflow-a12-2",
+            checkpoint_id="A12.2",
+            title="Approve commit",
+            requested_tool="git",
+            requested_command=("git-commit", "app/workflow/engine.py"),
+            rationale="Exact commit",
+            purpose=ApprovalPurpose.COMMIT,
+        ),
+        ApprovalRequest(
+            identifier="approval-implementation",
+            checkpoint_id="A12.2",
+            title="Approve implementation",
+            requested_tool="codex",
+            requested_command=("codex", "implement"),
+            rationale="Exact implementation",
+            commit_metadata=CommitApprovalMetadata(
+                expected_branch="feature/atlas-agent",
+                expected_head="abc123",
+                reviewed_files=(Path("app/workflow/engine.py"),),
+                reviewed_content_fingerprint="a" * 64,
+                commit_message="feat(agent): workflow automation",
+            ),
+        ),
+    ),
+)
+def test_commit_approval_rejects_invalid_metadata_combinations(
+    approval_request: ApprovalRequest,
+) -> None:
+    with pytest.raises(ApprovalValidationError):
+        ApprovalEngine().evaluate(
+            ApprovalDecision(request=approval_request, status=ApprovalStatus.PENDING)
         )
 
 

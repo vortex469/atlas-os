@@ -38,3 +38,27 @@ class CommitResult:
     commit_sha: str
     message: str
     committed_files: tuple[Path, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewedChange:
+    """Canonical metadata for one reviewed repository change."""
+
+    path: Path
+    status: str
+    content_sha256: str | None = None
+    deletion_marker: str | None = None
+    rename_source: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewedChangeEvidence:
+    """Canonical non-secret evidence for a reviewed commit boundary."""
+
+    repository_root: Path
+    expected_branch: str | None
+    expected_head: str | None
+    reviewed_files: tuple[Path, ...]
+    commit_message: str
+    changes: tuple[ReviewedChange, ...]
+    fingerprint: str

@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from app.approval.models import (
     ApprovalPurpose,
     ApprovalRequest,
+    CommitApprovalMetadata,
     VerificationApprovalCheck,
 )
 from app.config.settings import Settings
@@ -120,6 +121,25 @@ def workflow_result(
                     working_directory=repository,
                     timeout_seconds=None,
                 ),
+            ),
+        )
+    elif phase is SprintPhase.AWAITING_COMMIT_APPROVAL:
+        approval_request = ApprovalRequest(
+            identifier="approval-commit-workflow-a16",
+            workflow_id="workflow-a16",
+            checkpoint_id="A16",
+            title="Approve commit",
+            requested_tool="git",
+            requested_command=("git-commit", "app/routes/workflow.py"),
+            requested_working_directory=repository,
+            rationale="Approve the exact reviewed Git commit.",
+            purpose=ApprovalPurpose.COMMIT,
+            commit_metadata=CommitApprovalMetadata(
+                expected_branch="feature/atlas-agent",
+                expected_head="abc123",
+                reviewed_files=(Path("app/routes/workflow.py"),),
+                reviewed_content_fingerprint="a" * 64,
+                commit_message="feat(agent): workflow http integration",
             ),
         )
     return WorkflowResult(
@@ -261,6 +281,27 @@ def test_resume_returns_verification_approval_boundary(
     assert body["approval_request"]["verification_checks"][0][
         "identifier"
     ] == "pytest"
+
+
+def test_resume_returns_commit_approval_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, workflow_engine, _ = make_client(tmp_path, monkeypatch)
+    workflow_engine.resume.return_value = workflow_result(
+        tmp_path,
+        phase=SprintPhase.AWAITING_COMMIT_APPROVAL,
+    )
+
+    response = client.post("/api/v1/agent/workflows/workflow-a16/resume")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sprint"]["phase"] == "awaiting_commit_approval"
+    assert body["approval_request"]["purpose"] == "commit"
+    metadata = body["approval_request"]["commit_metadata"]
+    assert metadata["reviewed_files"] == ["app/routes/workflow.py"]
+    assert metadata["reviewed_content_fingerprint"] == "a" * 64
 
 
 def test_invalid_request_returns_422_without_starting_workflow(

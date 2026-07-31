@@ -14,6 +14,7 @@ from app.approval.models import (
     ApprovalPurpose,
     ApprovalRequest,
     ApprovalStatus,
+    CommitApprovalMetadata,
     VerificationApprovalCheck,
     VerificationApprovalEnvironment,
 )
@@ -247,6 +248,7 @@ class WorkflowEngine:
         if session.state in {
             WorkflowSessionState.EXECUTING,
             WorkflowSessionState.VERIFYING,
+            WorkflowSessionState.COMMITTING,
         }:
             return self._session_error_result(
                 session=session,
@@ -266,6 +268,8 @@ class WorkflowEngine:
             is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
         ):
             return self._resume_verification(session)
+        if session.state is WorkflowSessionState.AWAITING_COMMIT_APPROVAL:
+            return self._resume_commit(session)
 
         return self._blocked_session_result(
             session=session,
@@ -593,19 +597,30 @@ class WorkflowEngine:
                 error_message="Review failed",
             )
 
+        commit_request = CommitRequest(
+            repository_root=plan.repository_root,
+            expected_branch=plan.branch,
+            expected_head=plan.head_commit,
+            paths=changed_files,
+            message=self._commit_message(plan.title),
+        )
         try:
-            commit_request = CommitRequest(
-                repository_root=plan.repository_root,
-                expected_branch=plan.branch,
-                expected_head=plan.head_commit,
-                paths=changed_files,
-                message=self._commit_message(plan.title),
-            )
-            commit_result = self._repository_committer_factory(
+            evidence = self._repository_inspector_factory(
                 plan.repository_root
-            ).commit(commit_request)
+            ).reviewed_change_evidence(
+                reviewed_files=commit_request.paths,
+                expected_branch=commit_request.expected_branch,
+                expected_head=commit_request.expected_head,
+                commit_message=commit_request.message,
+            )
+            commit_approval = self._commit_approval_request(
+                session=session,
+                commit_request=commit_request,
+                fingerprint=evidence.fingerprint,
+            )
+            self._approval_repository.save_request(commit_approval)
         except Exception:
-            logger.exception("Workflow commit failed")
+            logger.exception("Commit approval storage failed")
             self._block_claimed_session(
                 workflow_id,
                 WorkflowSessionState.VERIFYING,
@@ -615,26 +630,158 @@ class WorkflowEngine:
                 execution_result=execution_result,
                 verification_report=verification_report,
                 review_report=review_report,
+                error_message="Commit approval storage failed",
+            )
+
+        if not self._state_store.transition_session(
+            workflow_id,
+            WorkflowSessionState.VERIFYING,
+            WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+            verification_report=verification_report,
+            review_report=review_report,
+            commit_request=commit_request,
+            reviewed_files=evidence.reviewed_files,
+            expected_branch=evidence.expected_branch,
+            expected_head=evidence.expected_head,
+            reviewed_content_fingerprint=evidence.fingerprint,
+        ):
+            return self._blocked_session_result(
+                session=session,
+                execution_result=execution_result,
+                verification_report=verification_report,
+                review_report=review_report,
+                error_message="Workflow state transition failed",
+            )
+        awaiting_commit_status = self._status(
+            session,
+            SprintPhase.AWAITING_COMMIT_APPROVAL,
+        )
+        self._state_store.publish_sprint(awaiting_commit_status)
+
+        return WorkflowResult(
+            sprint=awaiting_commit_status,
+            plan=plan,
+            context=context,
+            planning_analysis=session.planning_analysis,
+            approval_request=commit_approval,
+            execution_result=execution_result,
+            verification_report=verification_report,
+            review_report=review_report,
+        )
+
+    def _resume_commit(self, session: WorkflowSession) -> WorkflowResult:
+        workflow_id = session.identifier
+        approval_identifier = f"approval-commit-{workflow_id}"
+        approval_result = self._approval_repository.get_request(approval_identifier)
+        if approval_result is None:
+            return self._waiting_commit_result(session)
+        commit_request = session.commit_request
+        fingerprint = session.reviewed_content_fingerprint
+        if commit_request is None or fingerprint is None:
+            return self._block_commit_session(
+                session=session,
+                error_message="Workflow commit artifacts are missing",
+            )
+        expected_approval = self._commit_approval_request(
+            session=session,
+            commit_request=commit_request,
+            fingerprint=fingerprint,
+        )
+        if approval_result.decision.request != expected_approval:
+            return self._block_commit_session(
+                session=session,
+                error_message="Approval does not match workflow",
+            )
+        try:
+            evaluated_approval = self._approval_engine.evaluate(
+                approval_result.decision
+            )
+        except Exception:
+            logger.exception("Workflow commit approval validation failed")
+            return self._block_commit_session(
+                session=session,
+                error_message="Approval is invalid",
+            )
+        if evaluated_approval.decision.status is ApprovalStatus.PENDING:
+            return self._waiting_commit_result(
+                session,
+                approval_request=expected_approval,
+            )
+        if not evaluated_approval.approved:
+            return self._block_commit_session(
+                session=session,
+                error_message="Approval rejected",
+            )
+        if not self._state_store.transition_session(
+            workflow_id,
+            WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+            WorkflowSessionState.COMMITTING,
+        ):
+            return self._session_error_result(
+                session=session,
+                error_message="Workflow already resumed",
+            )
+
+        committing_status = self._status(session, SprintPhase.COMMITTING)
+        self._state_store.publish_sprint(committing_status)
+        try:
+            current = self._repository_inspector_factory(
+                commit_request.repository_root
+            ).reviewed_change_evidence(
+                reviewed_files=session.reviewed_files,
+                expected_branch=session.expected_branch,
+                expected_head=session.expected_head,
+                commit_message=commit_request.message,
+            )
+            if current.fingerprint != fingerprint:
+                raise ValueError("Reviewed repository evidence changed")
+        except Exception:
+            logger.exception("Workflow commit evidence validation failed")
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.COMMITTING,
+            )
+            return self._blocked_session_result(
+                session=session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
+                error_message="Workflow commit evidence validation failed",
+            )
+        try:
+            commit_result = self._repository_committer_factory(
+                commit_request.repository_root
+            ).commit(commit_request)
+        except Exception:
+            logger.exception("Workflow commit failed")
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.COMMITTING,
+            )
+            return self._blocked_session_result(
+                session=session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
                 error_message="Workflow commit failed",
             )
 
         self._state_store.transition_session(
             workflow_id,
-            WorkflowSessionState.VERIFYING,
+            WorkflowSessionState.COMMITTING,
             WorkflowSessionState.COMPLETED,
         )
         completed_status = self._status(session, SprintPhase.COMPLETED)
         self._state_store.publish_sprint(completed_status)
-
         return WorkflowResult(
             sprint=completed_status,
-            plan=plan,
-            context=context,
+            plan=session.plan,
+            context=session.context,
             planning_analysis=session.planning_analysis,
-            approval_request=approval_request,
-            execution_result=execution_result,
-            verification_report=verification_report,
-            review_report=review_report,
+            approval_request=expected_approval,
+            execution_result=session.execution_result,
+            verification_report=session.verification_report,
+            review_report=session.review_report,
             commit_result=commit_result,
         )
 
@@ -681,6 +828,39 @@ class WorkflowEngine:
             rationale="Approve the exact ordered verification checks.",
             purpose=ApprovalPurpose.VERIFICATION,
             verification_checks=checks,
+        )
+        return self._approval_engine.evaluate(
+            ApprovalDecision(
+                request=request,
+                status=ApprovalStatus.PENDING,
+            )
+        ).decision.request
+
+    def _commit_approval_request(
+        self,
+        *,
+        session: WorkflowSession,
+        commit_request: CommitRequest,
+        fingerprint: str,
+    ) -> ApprovalRequest:
+        paths = tuple(sorted(commit_request.paths))
+        request = ApprovalRequest(
+            identifier=f"approval-commit-{session.identifier}",
+            workflow_id=session.identifier,
+            checkpoint_id=session.plan.checkpoint_id,
+            title=f"Approve commit of {session.plan.title}",
+            requested_tool="git",
+            requested_command=("git-commit", *tuple(str(path) for path in paths)),
+            requested_working_directory=commit_request.repository_root,
+            rationale="Approve the exact reviewed Git commit.",
+            purpose=ApprovalPurpose.COMMIT,
+            commit_metadata=CommitApprovalMetadata(
+                expected_branch=commit_request.expected_branch,
+                expected_head=commit_request.expected_head,
+                reviewed_files=paths,
+                reviewed_content_fingerprint=fingerprint,
+                commit_message=commit_request.message,
+            ),
         )
         return self._approval_engine.evaluate(
             ApprovalDecision(
@@ -798,6 +978,28 @@ class WorkflowEngine:
             execution_result=session.execution_result,
         )
 
+    def _waiting_commit_result(
+        self,
+        session: WorkflowSession,
+        *,
+        approval_request: ApprovalRequest | None = None,
+    ) -> WorkflowResult:
+        awaiting_status = self._status(
+            session,
+            SprintPhase.AWAITING_COMMIT_APPROVAL,
+        )
+        self._state_store.publish_sprint(awaiting_status)
+        return WorkflowResult(
+            sprint=awaiting_status,
+            plan=session.plan,
+            context=session.context,
+            planning_analysis=session.planning_analysis,
+            approval_request=approval_request,
+            execution_result=session.execution_result,
+            verification_report=session.verification_report,
+            review_report=session.review_report,
+        )
+
     def _block_verification_session(
         self,
         *,
@@ -815,6 +1017,28 @@ class WorkflowEngine:
             )
         return self._blocked_session_result(
             session=session,
+            error_message=error_message,
+        )
+
+    def _block_commit_session(
+        self,
+        *,
+        session: WorkflowSession,
+        error_message: str,
+    ) -> WorkflowResult:
+        if not self._state_store.transition_session(
+            session.identifier,
+            WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+            WorkflowSessionState.BLOCKED,
+        ):
+            return self._session_error_result(
+                session=session,
+                error_message="Workflow already resumed",
+            )
+        return self._blocked_session_result(
+            session=session,
+            verification_report=session.verification_report,
+            review_report=session.review_report,
             error_message=error_message,
         )
 
@@ -850,6 +1074,7 @@ class WorkflowEngine:
         phase = {
             WorkflowSessionState.EXECUTING: SprintPhase.IN_PROGRESS,
             WorkflowSessionState.VERIFYING: SprintPhase.VERIFYING,
+            WorkflowSessionState.COMMITTING: SprintPhase.COMMITTING,
             WorkflowSessionState.COMPLETED: SprintPhase.COMPLETED,
         }.get(session.state, SprintPhase.BLOCKED)
         return WorkflowResult(
@@ -858,6 +1083,8 @@ class WorkflowEngine:
             context=session.context,
             planning_analysis=session.planning_analysis,
             execution_result=session.execution_result,
+            verification_report=session.verification_report,
+            review_report=session.review_report,
             error_message=error_message,
         )
 

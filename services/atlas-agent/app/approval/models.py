@@ -41,6 +41,17 @@ class VerificationApprovalCheck:
 
 
 @dataclass(frozen=True, slots=True)
+class CommitApprovalMetadata:
+    """Exact non-secret metadata bound to a commit approval."""
+
+    expected_branch: str | None
+    expected_head: str | None
+    reviewed_files: tuple[Path, ...]
+    reviewed_content_fingerprint: str
+    commit_message: str
+
+
+@dataclass(frozen=True, slots=True)
 class ApprovalRequest:
     """One tool-execution request requiring human approval."""
 
@@ -54,6 +65,7 @@ class ApprovalRequest:
     requested_working_directory: Path | None = None
     purpose: ApprovalPurpose = ApprovalPurpose.IMPLEMENTATION
     verification_checks: tuple[VerificationApprovalCheck, ...] = ()
+    commit_metadata: CommitApprovalMetadata | None = None
 
 
 @dataclass(frozen=True, slots=True)

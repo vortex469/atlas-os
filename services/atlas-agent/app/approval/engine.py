@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from app.approval.exceptions import ApprovalValidationError
 from app.approval.models import (
@@ -12,6 +13,7 @@ from app.approval.models import (
     ApprovalRequest,
     ApprovalResult,
     ApprovalStatus,
+    CommitApprovalMetadata,
     VerificationApprovalCheck,
     VerificationApprovalEnvironment,
 )
@@ -84,6 +86,7 @@ class ApprovalEngine:
             requested_working_directory=request.requested_working_directory,
             purpose=request.purpose,
             verification_checks=self._normalize_verification_checks(request),
+            commit_metadata=self._normalize_commit_metadata(request),
         )
 
         # Validate the ApprovalDecision
@@ -200,3 +203,62 @@ class ApprovalEngine:
             )
 
         return tuple(normalized)
+
+    @staticmethod
+    def _normalize_commit_metadata(
+        request: ApprovalRequest,
+    ) -> CommitApprovalMetadata | None:
+        if request.purpose is not ApprovalPurpose.COMMIT:
+            if request.commit_metadata is not None:
+                raise ApprovalValidationError(
+                    "Only commit approvals may contain commit metadata"
+                )
+            return None
+
+        if request.workflow_id is None or not request.workflow_id.strip():
+            raise ApprovalValidationError("Commit approvals require a workflow_id")
+        if request.verification_checks:
+            raise ApprovalValidationError(
+                "Commit approvals must not contain verification checks"
+            )
+        metadata = request.commit_metadata
+        if metadata is None:
+            raise ApprovalValidationError(
+                "Commit approvals require commit metadata"
+            )
+        if not metadata.reviewed_files:
+            raise ApprovalValidationError(
+                "Commit approval reviewed files must not be empty"
+            )
+        normalized_files = []
+        for path in metadata.reviewed_files:
+            if path.is_absolute() or path == Path(".") or ".." in path.parts:
+                raise ApprovalValidationError(
+                    "Commit approval reviewed files must be repository-relative"
+                )
+            if path in normalized_files:
+                raise ApprovalValidationError(
+                    "Commit approval reviewed files must be unique"
+                )
+            normalized_files.append(path)
+        if _SHA256_DIGEST.fullmatch(metadata.reviewed_content_fingerprint) is None:
+            raise ApprovalValidationError(
+                "Commit approval fingerprints must be lowercase SHA-256 values"
+            )
+        commit_message = " ".join(metadata.commit_message.split())
+        if not commit_message:
+            raise ApprovalValidationError(
+                "Commit approval commit message must not be blank"
+            )
+        if commit_message != metadata.commit_message:
+            raise ApprovalValidationError(
+                "Commit approval commit message must already be normalized"
+            )
+
+        return CommitApprovalMetadata(
+            expected_branch=metadata.expected_branch,
+            expected_head=metadata.expected_head,
+            reviewed_files=tuple(sorted(normalized_files)),
+            reviewed_content_fingerprint=metadata.reviewed_content_fingerprint,
+            commit_message=commit_message,
+        )

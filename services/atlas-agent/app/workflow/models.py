@@ -11,7 +11,7 @@ from app.context.models import AgentContext
 from app.execution.models import ExecutionResult
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
-from app.repository.models import CommitResult
+from app.repository.models import CommitRequest, CommitResult
 from app.review.models import ArchitectureAssessment, ReviewReport, TestEvidence
 from app.verification.models import VerificationCheck, VerificationReport
 
@@ -24,6 +24,8 @@ class SprintPhase(StrEnum):
     IN_PROGRESS = "in_progress"
     AWAITING_VERIFICATION_APPROVAL = "awaiting_verification_approval"
     VERIFYING = "verifying"
+    AWAITING_COMMIT_APPROVAL = "awaiting_commit_approval"
+    COMMITTING = "committing"
     REVIEWING = "reviewing"
     COMPLETED = "completed"
     BLOCKED = "blocked"
@@ -37,6 +39,8 @@ class WorkflowSessionState(StrEnum):
     EXECUTING = "executing"
     AWAITING_VERIFICATION_APPROVAL = "awaiting_verification_approval"
     VERIFYING = "verifying"
+    AWAITING_COMMIT_APPROVAL = "awaiting_commit_approval"
+    COMMITTING = "committing"
     BLOCKED = "blocked"
     COMPLETED = "completed"
 
@@ -78,6 +82,13 @@ class WorkflowSession:
     context: AgentContext | None = None
     execution_result: ExecutionResult | None = None
     changed_files: tuple[Path, ...] = ()
+    verification_report: VerificationReport | None = None
+    review_report: ReviewReport | None = None
+    commit_request: CommitRequest | None = None
+    reviewed_files: tuple[Path, ...] = ()
+    expected_branch: str | None = None
+    expected_head: str | None = None
+    reviewed_content_fingerprint: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
