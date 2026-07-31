@@ -4,7 +4,11 @@ import logging
 
 from app.context.exceptions import ContextConflictError
 from app.context.models import (
+    ACTION_HISTORY_FAILURE_MESSAGES,
     INTELLIGENCE_FAILURE_MESSAGES,
+    ActionHistoryContext,
+    ActionHistoryEntry,
+    ActionHistoryFailure,
     AgentContext,
     IntelligenceAssessment,
     IntelligenceContext,
@@ -21,7 +25,10 @@ from app.core_client.exceptions import (
     AtlasCoreResponseError,
     AtlasCoreTimeoutError,
 )
-from app.core_client.models import AtlasCoreIntelligenceSummary
+from app.core_client.models import (
+    AtlasCoreActionHistoryEntry,
+    AtlasCoreIntelligenceSummary,
+)
 
 logger = logging.getLogger("atlas-agent")
 
@@ -31,6 +38,8 @@ _INTELLIGENCE_FAILURES = {
     AtlasCoreResponseError: "response_error",
     AtlasCorePayloadError: "payload_error",
 }
+_ACTION_HISTORY_LIMIT = 25
+_ACTION_HISTORY_MESSAGE_LIMIT = 240
 
 
 class ContextEngine:
@@ -50,6 +59,7 @@ class ContextEngine:
             raise ContextConflictError(f"Atlas mismatch: health reported {health.atlas}, status reported {status.atlas}")
 
         intelligence = await self._get_intelligence()
+        action_history = await self._get_action_history()
 
         # Normalize services data
         normalized_services = {}
@@ -71,6 +81,7 @@ class ContextEngine:
             release=status.release,
             services=normalized_services,
             intelligence=intelligence,
+            action_history=action_history,
         )
 
     async def _get_intelligence(self) -> IntelligenceContext:
@@ -90,6 +101,26 @@ class ContextEngine:
             )
 
         return self._normalize_intelligence(summary)
+
+    async def _get_action_history(self) -> ActionHistoryContext:
+        try:
+            entries = await self.core_client.get_action_history(
+                limit=_ACTION_HISTORY_LIMIT,
+            )
+        except AtlasCoreClientError as error:
+            logger.warning(
+                "Atlas action history enrichment failed",
+                exc_info=error,
+            )
+            code = _INTELLIGENCE_FAILURES[type(error)]
+            return ActionHistoryContext(
+                failure=ActionHistoryFailure(
+                    code=code,
+                    message=ACTION_HISTORY_FAILURE_MESSAGES[code],
+                )
+            )
+
+        return self._normalize_action_history(entries)
 
     @staticmethod
     def _normalize_intelligence(
@@ -130,3 +161,37 @@ class ContextEngine:
                 for recommendation in summary.recommendations
             ),
         )
+
+    @staticmethod
+    def _normalize_action_history(
+        entries: tuple[AtlasCoreActionHistoryEntry, ...],
+    ) -> ActionHistoryContext:
+        return ActionHistoryContext(
+            entries=tuple(
+                ActionHistoryEntry(
+                    identifier=entry.id,
+                    provider_id=entry.provider_id,
+                    provider_name=entry.provider_name,
+                    action_id=entry.action_id,
+                    action_label=entry.action_label,
+                    status=entry.status,
+                    success=entry.success,
+                    message=_bounded_message(entry.message),
+                    confirmed=entry.confirmed,
+                    destructive=entry.destructive,
+                    parameter_names=tuple(entry.parameter_names),
+                    request_id=entry.request_id,
+                    started_at=entry.started_at,
+                    completed_at=entry.completed_at,
+                    duration_ms=entry.duration_ms,
+                )
+                for entry in entries
+            )
+        )
+
+
+def _bounded_message(message: str) -> str:
+    normalized = " ".join(message.split())
+    if len(normalized) <= _ACTION_HISTORY_MESSAGE_LIMIT:
+        return normalized
+    return normalized[: _ACTION_HISTORY_MESSAGE_LIMIT - 1].rstrip() + "…"

@@ -1,4 +1,5 @@
 """Context models for Atlas Agent."""
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -10,6 +11,15 @@ INTELLIGENCE_FAILURE_MESSAGES = {
         "Atlas intelligence returned an unsuccessful response."
     ),
     "payload_error": "Atlas intelligence returned an invalid payload.",
+}
+
+ACTION_HISTORY_FAILURE_MESSAGES = {
+    "connection_error": "Atlas action history connection failed.",
+    "timeout": "Atlas action history request timed out.",
+    "response_error": (
+        "Atlas action history returned an unsuccessful response."
+    ),
+    "payload_error": "Atlas action history returned an invalid payload.",
 }
 
 
@@ -98,6 +108,59 @@ class IntelligenceContext(BaseModel):
     failure: IntelligenceFailure | None = None
 
 
+class ActionHistoryEntry(BaseModel):
+    """One sanitized provider action history entry from Atlas Core."""
+
+    model_config = ConfigDict(frozen=True)
+
+    identifier: str
+    provider_id: str
+    provider_name: str
+    action_id: str
+    action_label: str
+    status: Literal["succeeded", "failed"]
+    success: bool
+    message: str
+    confirmed: bool
+    destructive: bool
+    parameter_names: tuple[str, ...] = ()
+    request_id: str | None = None
+    started_at: datetime
+    completed_at: datetime
+    duration_ms: float
+
+
+class ActionHistoryFailure(BaseModel):
+    """Stable representation of unavailable action history."""
+
+    model_config = ConfigDict(frozen=True)
+
+    code: Literal[
+        "connection_error",
+        "timeout",
+        "response_error",
+        "payload_error",
+    ]
+    message: str
+
+    @model_validator(mode="after")
+    def validate_stable_message(self) -> "ActionHistoryFailure":
+        if self.message != ACTION_HISTORY_FAILURE_MESSAGES[self.code]:
+            raise ValueError(
+                "Action history failure message must match its code"
+            )
+        return self
+
+
+class ActionHistoryContext(BaseModel):
+    """Bounded advisory Atlas provider action history context."""
+
+    model_config = ConfigDict(frozen=True)
+
+    entries: tuple[ActionHistoryEntry, ...] = ()
+    failure: ActionHistoryFailure | None = None
+
+
 class AgentContext(BaseModel):
     """Complete context for the Atlas Agent."""
 
@@ -109,3 +172,4 @@ class AgentContext(BaseModel):
     release: str
     services: dict[str, ServiceHealth]
     intelligence: IntelligenceContext | None = None
+    action_history: ActionHistoryContext | None = None

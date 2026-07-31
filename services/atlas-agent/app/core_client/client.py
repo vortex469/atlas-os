@@ -13,6 +13,7 @@ from .exceptions import (
     AtlasCoreTimeoutError,
 )
 from .models import (
+    AtlasCoreActionHistoryEntry,
     AtlasCoreHealth,
     AtlasCoreIntelligenceSummary,
     AtlasCoreStatus,
@@ -104,6 +105,50 @@ class AtlasCoreClient:
         except (json.JSONDecodeError, ValidationError) as e:
             raise AtlasCorePayloadError(
                 f"Invalid payload fetching intelligence from {url}: {e!s}"
+            )
+
+    async def get_action_history(
+        self,
+        *,
+        limit: int = 25,
+    ) -> tuple[AtlasCoreActionHistoryEntry, ...]:
+        url = f"{self._base_url}/api/v1/ops/actions"
+        try:
+            response = await self._get_client().get(
+                url,
+                params={"limit": limit},
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, list):
+                raise AtlasCorePayloadError(
+                    f"Invalid payload fetching action history from {url}: expected list"
+                )
+            return tuple(
+                AtlasCoreActionHistoryEntry.model_validate(item)
+                for item in payload
+            )
+        except httpx.TimeoutException as e:
+            raise AtlasCoreTimeoutError(
+                f"Timeout fetching action history from {url}: {e!s}"
+            )
+        except httpx.ConnectError as e:
+            raise AtlasCoreConnectionError(
+                f"Connection error fetching action history from {url}: {e!s}"
+            )
+        except httpx.RequestError as e:
+            raise AtlasCoreConnectionError(
+                f"Request error fetching action history from {url}: {e!s}"
+            )
+        except httpx.HTTPStatusError as e:
+            raise AtlasCoreResponseError(
+                f"HTTP {response.status_code} fetching action history "
+                f"from {url}: {e!s}"
+            )
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise AtlasCorePayloadError(
+                f"Invalid payload fetching action history from {url}: {e!s}"
             )
 
     async def validate_connection(self) -> None:

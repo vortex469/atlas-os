@@ -1,11 +1,15 @@
 """Tests for deterministic implementation planning."""
 
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from app.context.models import (
+    ActionHistoryContext,
+    ActionHistoryEntry,
+    ActionHistoryFailure,
     AgentContext,
     IntelligenceAssessment,
     IntelligenceContext,
@@ -83,6 +87,34 @@ def make_service(
     return ServiceHealth(
         provider_id=provider_id,
         status=status,
+    )
+
+
+def make_action_entry(
+    entry_id: str,
+    *,
+    status: str = "failed",
+    success: bool = False,
+    destructive: bool = False,
+    request_id: str | None = None,
+) -> ActionHistoryEntry:
+    timestamp = datetime(2026, 7, 31, 16, 0, tzinfo=timezone.utc)
+    return ActionHistoryEntry(
+        identifier=entry_id,
+        provider_id="docker",
+        provider_name="Docker",
+        action_id="restart-container",
+        action_label="Restart Container",
+        status=status,
+        success=success,
+        message="Free-form message must not qualify risks.",
+        confirmed=True,
+        destructive=destructive,
+        parameter_names=("container",),
+        request_id=request_id,
+        started_at=timestamp,
+        completed_at=timestamp,
+        duration_ms=1.0,
     )
 
 
@@ -346,6 +378,114 @@ def test_intelligence_evidence_does_not_change_plan_execution_inputs() -> None:
     assert enriched.scope_items == baseline.scope_items
     assert enriched.affected_files == baseline.affected_files
     assert enriched.required_tests == baseline.required_tests
+
+
+def test_failed_action_history_adds_bounded_structured_risks() -> None:
+    entries = tuple(
+        make_action_entry(f"entry-{index}", request_id=f"request-{index}")
+        for index in range(7)
+    )
+    context = make_context(
+        {},
+        intelligence=None,
+    ).model_copy(
+        update={
+            "action_history": ActionHistoryContext(entries=entries),
+        }
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert len(plan.risks) == 5
+    assert {risk.code for risk in plan.risks} == {
+        "atlas-action-history-failure"
+    }
+    assert all("Free-form" not in risk.summary for risk in plan.risks)
+
+
+def test_successful_destructive_action_history_adds_no_risk() -> None:
+    context = make_context(
+        {},
+        intelligence=None,
+    ).model_copy(
+        update={
+            "action_history": ActionHistoryContext(
+                entries=(
+                    make_action_entry(
+                        "destructive-success",
+                        status="succeeded",
+                        success=True,
+                        destructive=True,
+                    ),
+                )
+            ),
+        }
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert plan.risks == ()
+
+
+def test_action_history_risks_are_deduplicated_by_structured_key() -> None:
+    first = make_action_entry("first", request_id="request-1")
+    duplicate = first.model_copy(update={"identifier": "second"})
+    context = make_context(
+        {},
+        intelligence=None,
+    ).model_copy(
+        update={
+            "action_history": ActionHistoryContext(
+                entries=(first, duplicate),
+            ),
+        }
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert len(plan.risks) == 1
+
+
+def test_action_history_failure_adds_one_stable_risk() -> None:
+    context = make_context(
+        {},
+        intelligence=None,
+    ).model_copy(
+        update={
+            "action_history": ActionHistoryContext(
+                failure=ActionHistoryFailure(
+                    code="timeout",
+                    message="Atlas action history request timed out.",
+                )
+            ),
+        }
+    )
+
+    plan = PlanningEngine().plan(
+        make_checkpoint(risks=()),
+        make_snapshot(),
+        context=context,
+    )
+
+    assert plan.risks == (
+        PlanRisk(
+            code="atlas-action-history-unavailable",
+            summary="Atlas action history request timed out.",
+            source="atlas-knowledge",
+        ),
+    )
 
 
 def test_normalizes_whitespace_and_duplicates() -> None:

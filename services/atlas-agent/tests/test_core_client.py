@@ -77,6 +77,29 @@ def create_mock_intelligence_response():
     }
 
 
+def create_mock_action_history_response():
+    """Create a valid action history response payload."""
+    return [
+        {
+            "id": "entry-1",
+            "provider_id": "docker",
+            "provider_name": "Docker",
+            "action_id": "restart-container",
+            "action_label": "Restart Container",
+            "status": "failed",
+            "success": False,
+            "message": "Container restart failed.",
+            "confirmed": True,
+            "destructive": True,
+            "parameter_names": ["container"],
+            "request_id": "request-1",
+            "started_at": "2026-07-31T16:00:00+00:00",
+            "completed_at": "2026-07-31T16:00:01+00:00",
+            "duration_ms": 1000.0,
+        }
+    ]
+
+
 @pytest.fixture
 def mock_health_response():
     """Mock a valid health response."""
@@ -172,6 +195,46 @@ def test_get_intelligence_summary_uses_supported_endpoint() -> None:
 
     assert isinstance(result, AtlasCoreIntelligenceSummary)
     assert result.recommendations[0].title == "Review provider health"
+
+
+def test_get_action_history_uses_supported_endpoint() -> None:
+    """Action history retrieval uses the versioned read-only endpoint."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/api/v1/ops/actions"
+        assert request.url.params["limit"] == "25"
+        return httpx.Response(
+            200,
+            json=create_mock_action_history_response(),
+        )
+
+    with httpx.MockTransport(handler) as transport:
+        client = httpx.AsyncClient(transport=transport)
+        atlas_client = AtlasCoreClient(
+            settings=create_test_settings(),
+            client=client,
+        )
+
+        result = asyncio.run(atlas_client.get_action_history(limit=25))
+
+    assert result[0].status == "failed"
+    assert result[0].parameter_names == ("container",)
+
+
+def test_action_history_payload_error_preserves_exception_semantics() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"invalid": "payload"})
+
+    with httpx.MockTransport(handler) as transport:
+        client = httpx.AsyncClient(transport=transport)
+        atlas_client = AtlasCoreClient(
+            settings=create_test_settings(),
+            client=client,
+        )
+
+        with pytest.raises(AtlasCorePayloadError):
+            asyncio.run(atlas_client.get_action_history())
 
 
 @pytest.mark.parametrize(

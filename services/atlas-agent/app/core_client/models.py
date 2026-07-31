@@ -1,4 +1,5 @@
-from typing import Any
+from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -56,3 +57,21 @@ class AtlasCoreIntelligenceSummary(BaseModel):
     findings: tuple[AtlasCoreIntelligenceFinding, ...] = ()
     assessments: tuple[AtlasCoreIntelligenceAssessment, ...] = ()
     recommendations: tuple[AtlasCoreIntelligenceRecommendation, ...] = ()
+
+
+class AtlasCoreActionHistoryEntry(BaseModel):
+    id: str
+    provider_id: str
+    provider_name: str
+    action_id: str
+    action_label: str
+    status: Literal["succeeded", "failed"]
+    success: bool
+    message: str
+    confirmed: bool
+    destructive: bool
+    parameter_names: tuple[str, ...] = ()
+    request_id: str | None = None
+    started_at: datetime
+    completed_at: datetime
+    duration_ms: float

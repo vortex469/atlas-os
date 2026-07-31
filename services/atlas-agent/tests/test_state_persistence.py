@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from app.approval.models import (
     ApprovalStatus,
 )
 from app.approval.repository import ApprovalRepository
+from app.context.models import ActionHistoryContext, ActionHistoryEntry, AgentContext
 from app.execution.models import EnvironmentVariable
 from app.persistence.snapshot import (
     AgentStatePersistenceCoordinator,
@@ -211,6 +213,56 @@ def test_full_workflow_and_approval_round_trip_redacts_env(tmp_path: Path) -> No
         ),
     )
     assert recovered_approvals.get_request(approval.identifier) is not None
+
+
+def test_action_history_context_round_trips_in_workflow_snapshot(
+    tmp_path: Path,
+) -> None:
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = coordinator(tmp_path, workflow_state, approvals)
+    persistence.initialize()
+    timestamp = datetime(2026, 7, 31, 16, 0, tzinfo=timezone.utc)
+    context = AgentContext(
+        atlas="atlas",
+        assistant="orion",
+        engine="atlas-core",
+        release="test",
+        services={},
+        action_history=ActionHistoryContext(
+            entries=(
+                ActionHistoryEntry(
+                    identifier="entry-1",
+                    provider_id="docker",
+                    provider_name="Docker",
+                    action_id="restart-container",
+                    action_label="Restart Container",
+                    status="failed",
+                    success=False,
+                    message="Container restart failed after bounded timeout.",
+                    confirmed=True,
+                    destructive=True,
+                    parameter_names=("container",),
+                    request_id="request-1",
+                    started_at=timestamp,
+                    completed_at=timestamp,
+                    duration_ms=12.5,
+                ),
+            ),
+        ),
+    )
+    stored_session = replace(
+        session(tmp_path, WorkflowSessionState.COMPLETED),
+        context=context,
+    )
+    persistence.mutate_workflow(lambda workflow: workflow.create_session(stored_session))
+
+    recovered_workflow = WorkflowStateStore()
+    coordinator(tmp_path, recovered_workflow, ApprovalRepository()).initialize()
+
+    recovered_session = recovered_workflow.get_session(stored_session.identifier)
+    assert recovered_session is not None
+    assert recovered_session.context == context
 
 
 def test_claimed_state_recovers_to_blocked_and_persists(tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 """Test for context engine."""
 
 import asyncio
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,7 +16,10 @@ from app.core_client.exceptions import (
     AtlasCoreResponseError,
     AtlasCoreTimeoutError,
 )
-from app.core_client.models import AtlasCoreIntelligenceSummary
+from app.core_client.models import (
+    AtlasCoreActionHistoryEntry,
+    AtlasCoreIntelligenceSummary,
+)
 
 
 def make_intelligence_summary() -> AtlasCoreIntelligenceSummary:
@@ -46,6 +50,30 @@ def make_intelligence_summary() -> AtlasCoreIntelligenceSummary:
                 }
             ],
         }
+    )
+
+
+def make_action_history_entry(
+    *,
+    message: str = "Action failed.",
+) -> AtlasCoreActionHistoryEntry:
+    timestamp = datetime(2026, 7, 31, 16, 0, tzinfo=timezone.utc)
+    return AtlasCoreActionHistoryEntry(
+        id="entry-1",
+        provider_id="docker",
+        provider_name="Docker",
+        action_id="restart-container",
+        action_label="Restart Container",
+        status="failed",
+        success=False,
+        message=message,
+        confirmed=True,
+        destructive=True,
+        parameter_names=("container",),
+        request_id="request-1",
+        started_at=timestamp,
+        completed_at=timestamp,
+        duration_ms=1.0,
     )
 
 
@@ -81,6 +109,9 @@ def test_get_context():
     mock_client.get_intelligence_summary.return_value = (
         make_intelligence_summary()
     )
+    mock_client.get_action_history.return_value = (
+        make_action_history_entry(message="  Action   failed.  "),
+    )
 
     engine = ContextEngine(mock_client)
     context = asyncio.run(engine.get_context())
@@ -97,9 +128,12 @@ def test_get_context():
         context.intelligence.recommendations[0].title
         == "Review provider"
     )
+    assert context.action_history is not None
+    assert context.action_history.entries[0].message == "Action failed."
     mock_client.get_health.assert_awaited_once_with()
     mock_client.get_status.assert_awaited_once_with()
     mock_client.get_intelligence_summary.assert_awaited_once_with()
+    mock_client.get_action_history.assert_awaited_once_with(limit=25)
     
     # Test normalized AgentContext fields
     assert hasattr(context, "atlas")
@@ -243,6 +277,7 @@ def test_intelligence_failure_preserves_essential_context(
     client.get_health.return_value = health
     client.get_status.return_value = status
     client.get_intelligence_summary.side_effect = error
+    client.get_action_history.return_value = ()
 
     context = asyncio.run(ContextEngine(client).get_context())
 
@@ -254,3 +289,50 @@ def test_intelligence_failure_preserves_essential_context(
     assert context.intelligence.failure.message == message
     assert "raw" not in context.intelligence.failure.message
     client.get_intelligence_summary.assert_awaited_once_with()
+
+
+def test_action_history_failure_preserves_essential_context() -> None:
+    service = MagicMock(
+        provider_id="provider",
+        status="healthy",
+        latency_ms=None,
+        http_status=200,
+        message=None,
+        details={},
+    )
+    health = MagicMock(atlas="atlas", services={"service": service})
+    status = MagicMock(
+        atlas="atlas",
+        assistant="assistant",
+        engine="engine",
+        release="1.0",
+    )
+    client = AsyncMock()
+    client.get_health.return_value = health
+    client.get_status.return_value = status
+    client.get_intelligence_summary.return_value = make_intelligence_summary()
+    client.get_action_history.side_effect = AtlasCoreTimeoutError("raw timeout")
+
+    context = asyncio.run(ContextEngine(client).get_context())
+
+    assert context.atlas == "atlas"
+    assert context.intelligence is not None
+    assert context.action_history is not None
+    assert context.action_history.failure is not None
+    assert context.action_history.failure.code == "timeout"
+    assert (
+        context.action_history.failure.message
+        == "Atlas action history request timed out."
+    )
+    assert "raw" not in context.action_history.failure.message
+
+
+def test_action_history_messages_are_bounded() -> None:
+    context = ContextEngine._normalize_action_history(
+        (
+            make_action_history_entry(message="word " * 100),
+        )
+    )
+
+    assert len(context.entries[0].message) <= 240
+    assert context.entries[0].message.endswith("…")

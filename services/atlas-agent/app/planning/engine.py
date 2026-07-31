@@ -13,6 +13,7 @@ from app.planning.models import (
 from app.repository.models import RepositorySnapshot
 
 _INTELLIGENCE_RISK_LIMIT = 5
+_ACTION_HISTORY_RISK_LIMIT = 5
 _QUALIFYING_INTELLIGENCE_STATES = frozenset(
     {
         "actionable",
@@ -206,18 +207,35 @@ class PlanningEngine:
             )
 
         intelligence = context.intelligence
-        if intelligence is None:
-            return tuple(risks)
+        if intelligence is not None:
+            risks.extend(PlanningEngine._intelligence_risks(intelligence))
 
+        action_history = context.action_history
+        if action_history is not None:
+            if action_history.failure is not None:
+                risks.append(
+                    PlanRisk(
+                        code="atlas-action-history-unavailable",
+                        summary=action_history.failure.message,
+                        source="atlas-knowledge",
+                    )
+                )
+            else:
+                risks.extend(
+                    PlanningEngine._action_history_risks(action_history.entries)
+                )
+        return tuple(risks)
+
+    @staticmethod
+    def _intelligence_risks(intelligence) -> tuple[PlanRisk, ...]:
         if intelligence.failure is not None:
-            risks.append(
+            return (
                 PlanRisk(
                     code="atlas-intelligence-unavailable",
                     summary=intelligence.failure.message,
                     source="atlas-knowledge",
-                )
+                ),
             )
-            return tuple(risks)
 
         knowledge_risks: list[PlanRisk] = []
         evidence_keys: set[tuple[object, ...]] = set()
@@ -248,7 +266,7 @@ class PlanningEngine:
                 ),
             )
             if len(knowledge_risks) == _INTELLIGENCE_RISK_LIMIT:
-                return (*risks, *knowledge_risks)
+                return tuple(knowledge_risks)
 
         for assessment in intelligence.assessments:
             if (
@@ -273,7 +291,7 @@ class PlanningEngine:
                 ),
             )
             if len(knowledge_risks) == _INTELLIGENCE_RISK_LIMIT:
-                return (*risks, *knowledge_risks)
+                return tuple(knowledge_risks)
 
         for recommendation in intelligence.recommendations:
             key = (
@@ -296,8 +314,39 @@ class PlanningEngine:
             if len(knowledge_risks) == _INTELLIGENCE_RISK_LIMIT:
                 break
 
-        risks.extend(knowledge_risks)
-        return tuple(risks)
+        return tuple(knowledge_risks)
+
+    @staticmethod
+    def _action_history_risks(entries) -> tuple[PlanRisk, ...]:
+        action_risks: list[PlanRisk] = []
+        evidence_keys: set[tuple[object, ...]] = set()
+        for entry in entries:
+            if entry.status != "failed" and entry.success is not False:
+                continue
+            key = (
+                entry.provider_id,
+                entry.action_id,
+                entry.status,
+                entry.completed_at,
+                entry.request_id or entry.identifier,
+            )
+            if key in evidence_keys:
+                continue
+            evidence_keys.add(key)
+            action_risks.append(
+                PlanRisk(
+                    code="atlas-action-history-failure",
+                    summary=(
+                        f"Atlas provider action '{entry.action_label}' "
+                        f"from '{entry.provider_name}' failed "
+                        f"({entry.request_id or entry.identifier})"
+                    ),
+                    source="atlas-knowledge",
+                )
+            )
+            if len(action_risks) == _ACTION_HISTORY_RISK_LIMIT:
+                break
+        return tuple(action_risks)
 
     @staticmethod
     def _append_intelligence_risk(
