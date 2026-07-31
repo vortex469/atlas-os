@@ -4,19 +4,28 @@ import logging
 
 from fastapi import FastAPI
 
+from app.approval.engine import ApprovalEngine
 from app.approval.repository import ApprovalRepository
 from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
+from app.execution.engine import ExecutionEngine
+from app.execution.runner import SubprocessRunner
 from app.model_providers.ollama import OllamaProvider
 from app.model_service.service import ModelService
 from app.planning.advisor import PlanningAdvisor
+from app.planning.engine import PlanningEngine
 from app.repository.inspector import GitInspector
+from app.review.engine import ReviewEngine
 from app.routes.approval import router as approval_router
 from app.routes.health import router as health_router
 from app.routes.status import router as status_router
+from app.routes.workflow import router as workflow_router
+from app.verification.engine import VerificationEngine
 from app.version import AGENT_VERSION
+from app.workflow.engine import WorkflowEngine
+from app.workflow.orchestrator import WorkflowOrchestrator
 from app.workflow.state import WorkflowStateStore
 
 logger = logging.getLogger("atlas-agent")
@@ -70,17 +79,41 @@ def create_app() -> FastAPI:
         model_service=model_service,
     )
 
+    workflow_state = WorkflowStateStore()
+    approval_repository = ApprovalRepository()
+    runner = SubprocessRunner()
+    context_engine = ContextEngine(core_client)
+    workflow_engine = WorkflowEngine(
+        repository_inspector_factory=GitInspector,
+        planning_engine=PlanningEngine(),
+        execution_engine=ExecutionEngine(runner),
+        verification_engine=VerificationEngine(runner),
+        review_engine=ReviewEngine(),
+        approval_engine=ApprovalEngine(),
+        approval_repository=approval_repository,
+        state_store=workflow_state,
+        planning_mode=settings.planning_mode,
+        planning_advisor=planning_advisor,
+    )
+    workflow_orchestrator = WorkflowOrchestrator(
+        workflow_engine=workflow_engine,
+        context_engine=context_engine,
+        atlas_core_required=settings.atlas_core_required,
+    )
+
     container = ApplicationContainer(
         settings=settings,
         repository_inspector=GitInspector(
             repository_root=settings.repository_root,
         ),
-        workflow_state=WorkflowStateStore(),
+        workflow_state=workflow_state,
         core_client=core_client,
-        context_engine=ContextEngine(core_client),
-        approval_repository=ApprovalRepository(),
+        context_engine=context_engine,
+        approval_repository=approval_repository,
         model_service=model_service,
         planning_advisor=planning_advisor,
+        workflow_engine=workflow_engine,
+        workflow_orchestrator=workflow_orchestrator,
     )
 
     application = FastAPI(
@@ -91,6 +124,7 @@ def create_app() -> FastAPI:
     application.include_router(health_router)
     application.include_router(status_router)
     application.include_router(approval_router)
+    application.include_router(workflow_router)
 
     return application
 

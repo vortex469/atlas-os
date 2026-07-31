@@ -9,6 +9,8 @@ from app.core_client.client import AtlasCoreClient
 from app.model_service.service import ModelService
 from app.planning.advisor import PlanningAdvisor
 from app.repository.inspector import GitInspector
+from app.workflow.engine import WorkflowEngine
+from app.workflow.orchestrator import WorkflowOrchestrator
 from app.workflow.state import WorkflowStateStore
 
 
@@ -24,3 +26,5 @@ class ApplicationContainer:
     approval_repository: ApprovalRepository
     model_service: ModelService
     planning_advisor: PlanningAdvisor
+    workflow_engine: WorkflowEngine
+    workflow_orchestrator: WorkflowOrchestrator
