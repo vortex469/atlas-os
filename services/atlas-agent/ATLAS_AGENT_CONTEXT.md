@@ -34,7 +34,13 @@ Architecture
 Planning
 ↓
 
-Implementation
+Awaiting implementation approval
+↓
+
+Implementation execution
+↓
+
+Awaiting verification approval
 ↓
 
 Verification
@@ -43,7 +49,7 @@ Verification
 Review
 ↓
 
-Human Approval
+Awaiting commit approval
 ↓
 
 Commit
@@ -144,9 +150,19 @@ AI may recommend.
 
 AI never approves on behalf of a human.
 
-The current implementation pauses before implementation execution and resumes
-only after a matching approval. Verification commands and the final
-deterministic Git commit do not yet have independent approval boundaries.
+The current implementation pauses independently before implementation
+execution, verification commands, and the final deterministic Git commit.
+Missing or pending approvals keep the workflow waiting. Rejected, invalid, or
+mismatched approvals block the workflow.
+
+Resume is stage-aware and idempotent: implementation does not replay after the
+verification pause, verification and review do not replay after the commit
+pause, and commit executes at most once. Atomic compare-and-swap transitions
+protect each side-effect stage. Execution, verification, review, and commit
+artifacts persist in the immutable workflow session between approval pauses.
+Commit approval is bound to immutable repository evidence: expected branch,
+expected HEAD, exact reviewed changed paths, a content/status fingerprint, and
+the commit message. Repository drift before commit blocks the workflow.
 
 ---
 
@@ -174,7 +190,8 @@ replace it.
 - A9 is complete.
 - A10 is partially complete; A10.1 synchronizes documentation.
 - A11 is functionally complete.
-- A12 and A13 are partially complete.
+- A12 is complete for its currently defined approval-boundary scope.
+- A13 is partially complete.
 - A14 is complete for its listed Mission Control status scope and overlaps A7;
   pending approval data is loaded, but its decision card is not mounted in the
   current status panel.
@@ -186,5 +203,11 @@ and status data and are represented deterministically in `AgentContext`.
 Intelligence content is evidence only and cannot alter execution or approval
 inputs.
 
-After A10.1, the roadmap leaves the ordering between the next bounded A8
-increment and A12 granular approval work to human selection.
+Approval and workflow repositories remain in memory, so process-restart recovery
+is still not implemented.
+
+The roadmap leaves ordering between the remaining unfinished tracks to human
+selection. Based on the existing roadmap, those tracks include broader A8
+knowledge capabilities, A10 production-readiness evidence, A13 model-assisted
+review/model selection, A15 process-restart recovery and broader development-loop
+hardening, and Docker policy beyond the current A12 scope.

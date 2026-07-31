@@ -29,7 +29,9 @@ Engines do not call Atlas Core independently.
 ### Write Operations and External Commands Require Approval
 
 All write operations and external command execution require human approval
-before proceeding. This ensures that no changes are made without proper oversight.
+before proceeding. Implementation execution, verification commands, and the
+final deterministic Git commit each have independent approval boundaries. This
+ensures that no changes are made without proper oversight.
 
 ### Model Providers and Tool Executors Are Replaceable
 
@@ -49,4 +51,37 @@ message.
 
 Intelligence content cannot modify executable commands, arguments,
 environment, working directories, execution policy, approval state,
-verification commands, or deterministic commit behavior.
+verification commands, commit approval evidence, or deterministic commit
+behavior.
+
+### Approval Boundary Resume Semantics
+
+The production workflow is:
+
+```text
+planned
+→ awaiting implementation approval
+→ executing
+→ awaiting verification approval
+→ verifying
+→ reviewing
+→ awaiting commit approval
+→ committing
+→ completed
+```
+
+Workflow resume is stage-aware and idempotent. Implementation does not replay
+after the verification approval pause, verification and review do not replay
+after the commit approval pause, and commit executes at most once. Atomic
+compare-and-swap transitions protect each side-effect stage. Execution,
+verification, review, and commit artifacts persist in the immutable workflow
+session between approval pauses.
+
+Commit approval is bound to immutable repository evidence including expected
+branch, expected HEAD, exact reviewed changed paths, a content/status
+fingerprint, and commit message. Repository drift before commit blocks the
+workflow. Missing or pending approvals keep the workflow waiting. Rejected,
+invalid, or mismatched approvals block the workflow.
+
+Approval and workflow repositories remain in memory, so process-restart recovery
+is not implemented.

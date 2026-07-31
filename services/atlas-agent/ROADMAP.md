@@ -299,7 +299,7 @@ tracked by A10.1.
 
 ## A12 — Approval-Gated Tool Execution
 
-Status: partially complete
+Status: complete for the currently defined approval-boundary scope
 
 Goal
 
@@ -310,10 +310,35 @@ Capabilities
 - Git, Ruff, pytest, npm, and Docker execution
 - explicit safety boundaries and approvals
 
-Implementation execution through the current Codex tool policy is
-approval-gated. Verification commands and the final deterministic Git commit do
-not yet have independent approval boundaries. The broader Ruff, pytest, npm,
-Git, and Docker approval matrix remains unfinished.
+Implementation execution through the current Codex tool policy, verification
+commands, and the final deterministic Git commit now have independent approval
+boundaries. The implemented production workflow is:
+
+```text
+planned
+→ awaiting implementation approval
+→ executing
+→ awaiting verification approval
+→ verifying
+→ reviewing
+→ awaiting commit approval
+→ committing
+→ completed
+```
+
+Resume is stage-aware and idempotent. Implementation does not replay after the
+verification pause, verification and review do not replay after the commit
+pause, and commit executes at most once. Atomic compare-and-swap transitions
+protect each side-effect stage, and execution, verification, review, and commit
+artifacts persist in the immutable workflow session between approval pauses.
+Commit approval is bound to immutable repository evidence: expected branch,
+expected HEAD, exact reviewed changed paths, a content/status fingerprint, and
+the commit message. Repository drift before commit blocks the workflow.
+Missing or pending approvals keep the workflow waiting; rejected, invalid, or
+mismatched approvals block the workflow.
+
+The broader Docker execution policy remains outside the current implemented
+scope.
 
 ---
 
@@ -372,16 +397,19 @@ Capabilities
 - retain human approval at defined write boundaries
 
 The current workflow covers inspection, planning, approval pause/resume,
-controlled implementation, verification, review, and deterministic commit
-handling. Granular approval boundaries for verification commands and the final
-commit remain unfinished.
+controlled implementation, independently approved verification, deterministic
+review, independently approved commit, and deterministic commit handling. Its
+approval and workflow repositories remain in memory, so process-restart recovery
+is still not implemented.
 
 ---
 
 ## Next Implementation Checkpoint
 
-A10.1 synchronizes documentation only. After it, both a further bounded A8
-knowledge increment and A12 granular approval work remain valid next steps.
-The existing roadmap does not define a sub-checkpoint ordering between those
-unfinished tracks, so the next implementation checkpoint is pending human
-selection.
+A12 granular approval work is complete for its currently defined scope. Based on
+the existing roadmap, the remaining unfinished checkpoints include A8 broader
+knowledge capabilities, A10 production-readiness evidence, A13 model-assisted
+review/model selection, A15 process-restart recovery and broader development-loop
+hardening, and Docker policy work outside the current A12 scope. The roadmap does
+not define a sub-checkpoint ordering between those unfinished tracks, so the next
+implementation checkpoint is pending human selection.

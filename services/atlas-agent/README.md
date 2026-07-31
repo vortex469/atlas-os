@@ -182,7 +182,13 @@ Architecture
 Planning
     ↓
 
-Implementation
+Awaiting implementation approval
+    ↓
+
+Implementation execution
+    ↓
+
+Awaiting verification approval
     ↓
 
 Verification
@@ -191,10 +197,24 @@ Verification
 Review
     ↓
 
-Human Approval
+Awaiting commit approval
     ↓
 
 Commit
+
+The production workflow states are:
+
+```text
+planned
+→ awaiting implementation approval
+→ executing
+→ awaiting verification approval
+→ verifying
+→ reviewing
+→ awaiting commit approval
+→ committing
+→ completed
+```
 
 Every engineering change must pass through this workflow.
 
@@ -215,10 +235,21 @@ Atlas Agent may verify changes.
 
 Atlas Agent may review changes.
 
-Implementation execution is currently approval-gated. After approval, a
-successful workflow may run verification, review the resulting change, and
-create its deterministic Git commit. Verification commands and the final Git
-commit do not yet have independent approval boundaries.
+Implementation execution, verification commands, and the final deterministic
+Git commit each have independent approval boundaries. Missing or pending
+approvals keep the workflow waiting. Rejected, invalid, or mismatched approvals
+block the workflow.
+
+Resume is stage-aware and idempotent. Implementation does not replay after the
+verification approval pause, verification and review do not replay after the
+commit approval pause, and commit executes at most once. Atomic compare-and-swap
+state transitions protect each side-effect stage. Execution, verification,
+review, and commit artifacts persist in the immutable workflow session between
+approval pauses.
+
+Commit approval is bound to immutable repository evidence: expected branch,
+expected HEAD, exact reviewed changed paths, a content/status fingerprint, and
+the commit message. Repository drift before commit blocks the workflow.
 
 ---
 
@@ -254,7 +285,8 @@ For checkpoint details, see [ROADMAP.md](./ROADMAP.md).
 - A9 is complete.
 - A10 is partially complete.
 - A11 is functionally complete.
-- A12 and A13 are partially complete.
+- A12 is complete for its currently defined approval-boundary scope.
+- A13 is partially complete.
 - A14 is complete for its currently listed status scope; it overlaps the
   earlier A7 Mission Control checkpoint. Pending approval data and decision UI
   exist, but the decision card is not mounted in the current status panel.
@@ -287,10 +319,11 @@ runtime environment, repository root, development version marker, and
 the workflow and verification states supported by the service.
 
 Starting a workflow performs deterministic planning and returns an approval
-request without executing the implementation. After a matching approval
-decision is stored, the resume endpoint claims the workflow once and runs
-controlled execution, verification, deterministic review, and deterministic
-commit handling. Failures publish a blocked result and stop later stages.
+request without executing the implementation. Resume is stage-aware: each
+approved side-effect stage is atomically claimed once, artifacts are retained in
+the immutable workflow session, and later resumes continue from the current
+approval boundary rather than replaying completed stages. Approval and workflow
+repositories remain in memory, so process-restart recovery is not implemented.
 
 ---
 

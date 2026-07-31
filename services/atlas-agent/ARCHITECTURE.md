@@ -75,15 +75,17 @@ selection, and autonomous model-driven execution are future capabilities.
 
 The Execution Engine validates repository and executable boundaries before
 running the approved implementation command. The current policy permits Codex
-implementation execution. Verification commands and the final Git commit do
-not yet have independent approval boundaries.
+implementation execution. Implementation execution, verification commands, and
+the final deterministic Git commit each have independent approval boundaries.
 
 ### Mission Control
 
 Mission Control displays repository, sprint, verification, and review state.
 Its Agent data hook loads pending approvals, and its approval card can submit
-decisions, but that card is not mounted in the current status panel. Workflow
-execution remains an Atlas Agent responsibility.
+decisions, but that card is not mounted in the current status panel. Commit
+approval is additive to the existing approval API surface. Workflow execution
+remains an Atlas Agent responsibility, and the approval decision UI remains a
+separate usability and integration concern.
 
 ## Context Model
 
@@ -97,11 +99,12 @@ Engines consume normalized context and do not call Atlas Core independently.
 Atlas Core context is captured exactly once before workflow planning. The
 immutable snapshot is stored with the workflow session and is passed to
 planning, verification, and review. Resuming a workflow reuses the stored
-snapshot and never retrieves fresh Atlas Core context. When Atlas Core is
-optional, retrieval failures preserve repository-only workflows; required mode
-blocks before planning. An asynchronous application-composition layer retrieves
-the context and then invokes the synchronous Workflow Engine. The read-only
-integration does not poll or retry.
+snapshot and never retrieves fresh Atlas Core context. Execution, verification,
+review, and commit artifacts also persist in the immutable workflow session
+between approval pauses. When Atlas Core is optional, retrieval failures preserve
+repository-only workflows; required mode blocks before planning. An asynchronous
+application-composition layer retrieves the context and then invokes the
+synchronous Workflow Engine. The read-only integration does not poll or retry.
 
 Health and status are essential context. Intelligence summary retrieval is
 advisory enrichment. Recognized intelligence failures are logged and recorded
@@ -110,6 +113,36 @@ remains usable. Planning may emit one unavailable-intelligence risk or at most
 five ordered, deduplicated intelligence evidence risks. Intelligence content
 cannot alter commands, arguments, environment, working directories, approval
 state, execution policy, verification commands, or commit behavior.
+
+## Workflow State and Approval Boundaries
+
+The production workflow states are:
+
+```text
+planned
+→ awaiting implementation approval
+→ executing
+→ awaiting verification approval
+→ verifying
+→ reviewing
+→ awaiting commit approval
+→ committing
+→ completed
+```
+
+Workflow resume is stage-aware and idempotent. Implementation does not replay
+after the verification approval pause, verification and review do not replay
+after the commit approval pause, and commit executes at most once. Atomic
+compare-and-swap transitions protect each side-effect stage.
+
+Commit approval is bound to immutable repository evidence including expected
+branch, expected HEAD, exact reviewed changed paths, a content/status
+fingerprint, and commit message. Repository drift before commit blocks the
+workflow. Missing or pending approvals keep the workflow waiting. Rejected,
+invalid, or mismatched approvals block the workflow.
+
+Approval and workflow repositories are still in-memory repositories, so
+process-restart recovery is not implemented.
 
 ## Dependency Flow
 
@@ -132,13 +165,13 @@ while Atlas Agent provides a consistent orchestration layer for engineering work
 - Model providers and tool executors remain replaceable behind interfaces
 - Writes and external command execution require explicit approval
 
-The final principle describes the target architecture. Currently,
-implementation execution is approval-gated, while verification commands and
-the final commit do not yet have separate approval decisions.
+The final principle is implemented for the current approval-boundary scope:
+implementation execution, verification commands, and the final deterministic
+Git commit each require separate approval decisions.
 
 ## Future Development
 
 Genuinely unfinished capabilities include broader historical knowledge,
-additional bounded Knowledge Engine integration, granular approval boundaries
-for verification and commit operations, model-assisted review, and model
-selection.
+additional bounded Knowledge Engine integration, Docker policy beyond the
+current approval-boundary scope, model-assisted review, model selection, and
+process-restart recovery for in-memory workflow and approval repositories.
