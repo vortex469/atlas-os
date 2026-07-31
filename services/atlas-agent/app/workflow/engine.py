@@ -32,6 +32,7 @@ from app.planning.models import ImplementationPlan
 from app.repository.committer import GitCommitter
 from app.repository.inspector import GitInspector
 from app.repository.models import CommitRequest, RepositorySnapshot
+from app.review.advisor import ReviewAdvisor
 from app.review.engine import ReviewEngine
 from app.review.models import ReviewRequest, ReviewStatus
 from app.verification.engine import VerificationEngine
@@ -66,14 +67,22 @@ class WorkflowEngine:
         repository_committer_factory: Callable[[Path], GitCommitter] = GitCommitter,
         planning_mode: str = "deterministic",
         planning_advisor: PlanningAdvisor | None = None,
+        review_mode: str = "deterministic",
+        review_advisor: ReviewAdvisor | None = None,
         state_persistence: AgentStatePersistenceCoordinator | None = None,
     ) -> None:
         if planning_mode not in ("deterministic", "model-assisted"):
             raise ValueError(f"Unsupported planning mode: {planning_mode}")
+        if review_mode not in ("deterministic", "model-assisted"):
+            raise ValueError(f"Unsupported review mode: {review_mode}")
 
         if planning_mode == "model-assisted" and planning_advisor is None:
             raise ValueError(
                 "Model-assisted planning requires a planning advisor"
+            )
+        if review_mode == "model-assisted" and review_advisor is None:
+            raise ValueError(
+                "Model-assisted review requires a review advisor"
             )
 
         self._repository_inspector_factory = repository_inspector_factory
@@ -88,6 +97,8 @@ class WorkflowEngine:
         self._repository_committer_factory = repository_committer_factory
         self._planning_mode = planning_mode
         self._planning_advisor = planning_advisor
+        self._review_mode = review_mode
+        self._review_advisor = review_advisor
         self._state_persistence = state_persistence
 
     def block_before_planning(
@@ -639,6 +650,31 @@ class WorkflowEngine:
                 error_message="Review failed",
             )
 
+        review_analysis: ModelResponse | None = None
+        if self._review_mode == "model-assisted":
+            assert self._review_advisor is not None
+            try:
+                review_analysis = self._review_advisor.analyze(
+                    request=review_request,
+                    report=review_report,
+                )
+            except Exception:
+                logger.exception("Model-assisted review analysis failed")
+                self._transition_session(
+                    workflow_id,
+                    WorkflowSessionState.VERIFYING,
+                    WorkflowSessionState.BLOCKED,
+                    verification_report=verification_report,
+                    review_report=review_report,
+                )
+                return self._blocked_session_result(
+                    session=session,
+                    execution_result=execution_result,
+                    verification_report=verification_report,
+                    review_report=review_report,
+                    error_message="Model-assisted review analysis failed",
+                )
+
         commit_request = CommitRequest(
             repository_root=plan.repository_root,
             expected_branch=plan.branch,
@@ -663,6 +699,7 @@ class WorkflowEngine:
             artifacts = {
                 "verification_report": verification_report,
                 "review_report": review_report,
+                "review_analysis": review_analysis,
                 "commit_request": commit_request,
                 "reviewed_files": evidence.reviewed_files,
                 "expected_branch": evidence.expected_branch,
@@ -723,6 +760,7 @@ class WorkflowEngine:
             plan=plan,
             context=context,
             planning_analysis=session.planning_analysis,
+            review_analysis=review_analysis,
             approval_request=commit_approval,
             execution_result=execution_result,
             verification_report=verification_report,
@@ -838,6 +876,7 @@ class WorkflowEngine:
             plan=session.plan,
             context=session.context,
             planning_analysis=session.planning_analysis,
+            review_analysis=session.review_analysis,
             approval_request=expected_approval,
             execution_result=session.execution_result,
             verification_report=session.verification_report,
@@ -1125,6 +1164,7 @@ class WorkflowEngine:
             plan=session.plan,
             context=session.context,
             planning_analysis=session.planning_analysis,
+            review_analysis=session.review_analysis,
             approval_request=approval_request,
             execution_result=session.execution_result,
         )
@@ -1145,6 +1185,7 @@ class WorkflowEngine:
             plan=session.plan,
             context=session.context,
             planning_analysis=session.planning_analysis,
+            review_analysis=session.review_analysis,
             approval_request=approval_request,
             execution_result=session.execution_result,
             verification_report=session.verification_report,
@@ -1210,6 +1251,7 @@ class WorkflowEngine:
             plan=session.plan,
             context=session.context,
             planning_analysis=session.planning_analysis,
+            review_analysis=session.review_analysis,
             execution_result=execution_result or session.execution_result,
             verification_report=verification_report,
             review_report=review_report,
@@ -1233,6 +1275,7 @@ class WorkflowEngine:
             plan=session.plan,
             context=session.context,
             planning_analysis=session.planning_analysis,
+            review_analysis=session.review_analysis,
             execution_result=session.execution_result,
             verification_report=session.verification_report,
             review_report=session.review_report,

@@ -15,10 +15,12 @@ from app.approval.models import (
     ApprovalPurpose,
     ApprovalRequest,
     ApprovalStatus,
+    CommitApprovalMetadata,
 )
 from app.approval.repository import ApprovalRepository
 from app.context.models import ActionHistoryContext, ActionHistoryEntry, AgentContext
 from app.execution.models import EnvironmentVariable
+from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import (
     AgentStatePersistenceCoordinator,
     StatePersistenceError,
@@ -263,6 +265,86 @@ def test_action_history_context_round_trips_in_workflow_snapshot(
     recovered_session = recovered_workflow.get_session(stored_session.identifier)
     assert recovered_session is not None
     assert recovered_session.context == context
+
+
+def test_review_analysis_round_trips_in_workflow_snapshot(tmp_path: Path) -> None:
+    workflow_state = WorkflowStateStore()
+    persistence = coordinator(tmp_path, workflow_state, ApprovalRepository())
+    persistence.initialize()
+    analysis = ModelResponse(
+        text="Advisory review analysis.",
+        model="test-model",
+        provider_id="test-provider",
+    )
+    stored_session = replace(
+        session(tmp_path, WorkflowSessionState.AWAITING_COMMIT_APPROVAL),
+        review_report=ReviewReport(
+            request_id="review-a15",
+            checkpoint_id="A15.1",
+            status=ReviewStatus.APPROVED,
+            findings=(),
+            recommendations=(),
+        ),
+        review_analysis=analysis,
+        commit_request=CommitRequest(
+            repository_root=tmp_path,
+            expected_branch="feature/atlas-agent",
+            expected_head="abc123",
+            paths=(Path("app/workflow/engine.py"),),
+            message="feat(agent): workflow recovery",
+        ),
+        reviewed_files=(Path("app/workflow/engine.py"),),
+        expected_branch="feature/atlas-agent",
+        expected_head="abc123",
+        reviewed_content_fingerprint="a" * 64,
+    )
+    approval = approval_request(
+        stored_session.identifier,
+        ApprovalPurpose.COMMIT,
+        root=tmp_path,
+    )
+    approval = replace(
+        approval,
+        commit_metadata=CommitApprovalMetadata(
+            expected_branch="feature/atlas-agent",
+            expected_head="abc123",
+            reviewed_files=(Path("app/workflow/engine.py"),),
+            reviewed_content_fingerprint="a" * 64,
+            commit_message="feat(agent): workflow recovery",
+        ),
+    )
+
+    persistence.mutate_aggregate(
+        lambda workflow, approvals: (
+            workflow.create_session(stored_session),
+            approvals.save_request(approval),
+        )
+    )
+
+    recovered_workflow = WorkflowStateStore()
+    coordinator(tmp_path, recovered_workflow, ApprovalRepository()).initialize()
+
+    recovered_session = recovered_workflow.get_session(stored_session.identifier)
+    assert recovered_session is not None
+    assert recovered_session.review_analysis == analysis
+
+
+def test_old_snapshot_without_review_analysis_loads_none(tmp_path: Path) -> None:
+    workflow_state = WorkflowStateStore()
+    persistence = coordinator(tmp_path, workflow_state, ApprovalRepository())
+    persistence.initialize()
+    stored_session = session(tmp_path, WorkflowSessionState.COMPLETED)
+    persistence.mutate_workflow(lambda workflow: workflow.create_session(stored_session))
+    payload = json.loads(persistence.snapshot_path.read_text())
+    del payload["workflow_state"]["sessions"][stored_session.identifier]["review_analysis"]
+    persistence.snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    recovered_workflow = WorkflowStateStore()
+    coordinator(tmp_path, recovered_workflow, ApprovalRepository()).initialize()
+
+    recovered_session = recovered_workflow.get_session(stored_session.identifier)
+    assert recovered_session is not None
+    assert recovered_session.review_analysis is None
 
 
 def test_claimed_state_recovers_to_blocked_and_persists(tmp_path: Path) -> None:

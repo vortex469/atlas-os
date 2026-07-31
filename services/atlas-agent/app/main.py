@@ -18,6 +18,7 @@ from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
 from app.repository.inspector import GitInspector
+from app.review.advisor import ReviewAdvisor
 from app.review.engine import ReviewEngine
 from app.routes.approval import router as approval_router
 from app.routes.health import router as health_router
@@ -79,6 +80,9 @@ def create_app() -> FastAPI:
     planning_advisor = PlanningAdvisor(
         model_service=model_service,
     )
+    review_advisor = ReviewAdvisor(
+        model_service=model_service,
+    )
 
     workflow_state = WorkflowStateStore()
     approval_repository = ApprovalRepository()
@@ -101,6 +105,8 @@ def create_app() -> FastAPI:
         state_store=workflow_state,
         planning_mode=settings.planning_mode,
         planning_advisor=planning_advisor,
+        review_mode=settings.review_mode,
+        review_advisor=review_advisor,
         state_persistence=state_persistence,
     )
     workflow_orchestrator = WorkflowOrchestrator(
@@ -120,6 +126,7 @@ def create_app() -> FastAPI:
         approval_repository=approval_repository,
         model_service=model_service,
         planning_advisor=planning_advisor,
+        review_advisor=review_advisor,
         workflow_engine=workflow_engine,
         workflow_orchestrator=workflow_orchestrator,
         state_persistence=state_persistence,

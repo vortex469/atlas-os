@@ -79,6 +79,7 @@ class WorkflowSession:
     plan: ImplementationPlan
     state: WorkflowSessionState
     planning_analysis: ModelResponse | None = None
+    review_analysis: ModelResponse | None = None
     context: AgentContext | None = None
     execution_result: ExecutionResult | None = None
     changed_files: tuple[Path, ...] = ()
@@ -100,6 +101,7 @@ class WorkflowResult:
     plan: ImplementationPlan | None = None
     context: AgentContext | None = None
     planning_analysis: ModelResponse | None = None
+    review_analysis: ModelResponse | None = None
     approval_request: ApprovalRequest | None = None
     execution_result: ExecutionResult | None = None
     verification_report: VerificationReport | None = None

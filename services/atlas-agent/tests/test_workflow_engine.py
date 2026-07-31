@@ -18,6 +18,7 @@ from app.approval.repository import ApprovalRepository
 from app.context.models import AgentContext, ServiceHealth
 from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
+from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.models import (
@@ -26,6 +27,7 @@ from app.repository.models import (
     ReviewedChange,
     ReviewedChangeEvidence,
 )
+from app.review.advisor import ReviewAdvisor
 from app.review.models import ReviewReport, ReviewStatus
 from app.verification.models import (
     VerificationCheck,
@@ -230,6 +232,8 @@ def make_engine(
     review_report: ReviewReport,
     planning_mode: str = "deterministic",
     planning_advisor: PlanningAdvisor | None = None,
+    review_mode: str = "deterministic",
+    review_advisor: ReviewAdvisor | None = None,
 ) -> tuple[WorkflowEngine, Mock, Mock, Mock, Mock, Mock, Mock]:
     inspector = Mock()
     inspector.inspect.return_value = make_snapshot(root)
@@ -266,6 +270,8 @@ def make_engine(
         state_store=state_store,
         planning_mode=planning_mode,
         planning_advisor=planning_advisor,
+        review_mode=review_mode,
+        review_advisor=review_advisor,
     )
 
     return (
@@ -475,6 +481,17 @@ def test_model_assisted_advisor_failure_blocks_before_execution(
         SprintPhase.PLANNED,
         SprintPhase.BLOCKED,
     ]
+
+
+def test_invalid_review_mode_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Unsupported review mode"):
+        make_engine(
+            tmp_path,
+            execution_result=make_execution_result(tmp_path),
+            verification_report=make_verification_report(tmp_path),
+            review_report=make_review_report(),
+            review_mode="unsupported",
+        )
 
 
 def test_planning_failure_blocks_before_approval_creation(
@@ -796,6 +813,8 @@ def make_resume_engine(
     after_snapshot: RepositorySnapshot | None = None,
     commit_error: Exception | None = None,
     context: AgentContext | None = None,
+    review_mode: str = "deterministic",
+    review_advisor: ReviewAdvisor | None = None,
 ) -> tuple[
     WorkflowEngine,
     WorkflowStateStore,
@@ -871,6 +890,8 @@ def make_resume_engine(
         approval_repository=approval_repository,
         state_store=state_store,
         repository_committer_factory=committer_factory,
+        review_mode=review_mode,
+        review_advisor=review_advisor,
     )
     return (
         engine,
@@ -1016,6 +1037,248 @@ def test_resume_reuses_snapshot_without_context_acquisition(
     assert commit_request is not None
     assert commit_request.paths == review_request.changed_files
     assert commit_request.message == "feat(agent): workflow automation"
+
+
+def test_deterministic_review_mode_never_calls_review_advisor(
+    tmp_path: Path,
+) -> None:
+    review_advisor = Mock(spec=ReviewAdvisor)
+    (
+        engine,
+        _,
+        approval_repository,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = make_resume_engine(
+        tmp_path,
+        review_advisor=review_advisor,
+    )
+
+    _, result = approve_verification_and_resume(engine, approval_repository)
+
+    review_advisor.analyze.assert_not_called()
+    assert result.review_analysis is None
+
+
+def test_model_assisted_review_runs_once_after_deterministic_review(
+    tmp_path: Path,
+) -> None:
+    review_report = make_review_report()
+    analysis = ModelResponse(
+        text="Review advisory only.",
+        model="test-model",
+        provider_id="test-provider",
+    )
+    review_advisor = Mock(spec=ReviewAdvisor)
+    review_advisor.analyze.return_value = analysis
+    (
+        engine,
+        state_store,
+        approval_repository,
+        _,
+        _,
+        _,
+        _,
+        review_engine,
+    ) = make_resume_engine(
+        tmp_path,
+        review_report=review_report,
+        review_mode="model-assisted",
+        review_advisor=review_advisor,
+    )
+
+    _, result = approve_verification_and_resume(engine, approval_repository)
+
+    review_request = review_engine.review.call_args.args[0]
+    review_advisor.analyze.assert_called_once_with(
+        request=review_request,
+        report=review_report,
+    )
+    assert result.review_report is review_report
+    assert result.review_report.status is ReviewStatus.APPROVED
+    assert result.review_analysis is analysis
+    session = state_store.get_session("workflow-a15-3")
+    assert session is not None
+    assert session.review_report is review_report
+    assert session.review_analysis is analysis
+    assert session.state is WorkflowSessionState.AWAITING_COMMIT_APPROVAL
+
+
+def test_model_assisted_review_failure_blocks_before_commit_approval(
+    tmp_path: Path,
+) -> None:
+    review_advisor = Mock(spec=ReviewAdvisor)
+    review_advisor.analyze.side_effect = RuntimeError("sensitive model failure")
+    (
+        engine,
+        state_store,
+        approval_repository,
+        _,
+        _,
+        _,
+        _,
+        review_engine,
+    ) = make_resume_engine(
+        tmp_path,
+        review_mode="model-assisted",
+        review_advisor=review_advisor,
+    )
+
+    _, result = approve_verification_and_resume(engine, approval_repository)
+
+    review_engine.review.assert_called_once()
+    review_advisor.analyze.assert_called_once()
+    assert result.sprint.phase is SprintPhase.BLOCKED
+    assert result.error_message == "Model-assisted review analysis failed"
+    assert "sensitive model failure" not in result.error_message
+    assert result.review_report is not None
+    assert result.review_analysis is None
+    assert approval_repository.get_request("approval-commit-workflow-a15-3") is None
+    session = state_store.get_session("workflow-a15-3")
+    assert session is not None
+    assert session.state is WorkflowSessionState.BLOCKED
+    assert session.verification_report is result.verification_report
+    assert session.review_report is result.review_report
+    assert session.review_analysis is None
+    assert session.commit_request is None
+
+
+def test_commit_resume_reuses_review_analysis_without_model_call(
+    tmp_path: Path,
+) -> None:
+    analysis = ModelResponse(
+        text="Persisted advisory review.",
+        model="test-model",
+        provider_id="test-provider",
+    )
+    review_advisor = Mock(spec=ReviewAdvisor)
+    review_advisor.analyze.return_value = analysis
+    (
+        engine,
+        _,
+        approval_repository,
+        _,
+        _,
+        _,
+        verification_engine,
+        review_engine,
+    ) = make_resume_engine(
+        tmp_path,
+        review_mode="model-assisted",
+        review_advisor=review_advisor,
+    )
+
+    _, boundary = approve_verification_and_resume(engine, approval_repository)
+    assert boundary.review_analysis is analysis
+    review_advisor.analyze.reset_mock()
+    verification_engine.verify.reset_mock()
+    review_engine.review.reset_mock()
+    commit_request = boundary.approval_request
+    assert commit_request is not None
+    assert approval_repository.update_decision(
+        commit_request.identifier,
+        ApprovalDecision(
+            request=commit_request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.sprint.phase is SprintPhase.COMPLETED
+    assert result.review_analysis is analysis
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+    review_advisor.analyze.assert_not_called()
+
+
+def test_restart_commit_resume_reuses_review_analysis_without_model_call(
+    tmp_path: Path,
+) -> None:
+    state_dir = tmp_path / "state"
+    analysis = ModelResponse(
+        text="Persisted advisory review.",
+        model="test-model",
+        provider_id="test-provider",
+    )
+    initial_review_advisor = Mock(spec=ReviewAdvisor)
+    initial_review_advisor.analyze.return_value = analysis
+    (
+        initial_engine,
+        state_store,
+        approval_repository,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = make_resume_engine(
+        tmp_path,
+        review_mode="model-assisted",
+        review_advisor=initial_review_advisor,
+    )
+    _, boundary = approve_verification_and_resume(initial_engine, approval_repository)
+    assert boundary.review_analysis is analysis
+    persistence = AgentStatePersistenceCoordinator(
+        state_dir=state_dir,
+        workflow_state=state_store,
+        approval_repository=approval_repository,
+    )
+    persistence.persist_current_state()
+
+    recovered_state = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    recovered_persistence = AgentStatePersistenceCoordinator(
+        state_dir=state_dir,
+        workflow_state=recovered_state,
+        approval_repository=recovered_approvals,
+    )
+    recovered_persistence.initialize()
+    commit_request = boundary.approval_request
+    assert commit_request is not None
+    assert recovered_approvals.update_decision(
+        commit_request.identifier,
+        ApprovalDecision(
+            request=commit_request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+    inspector = Mock()
+    inspector.reviewed_change_evidence.return_value = make_reviewed_evidence(tmp_path)
+    inspector_factory = Mock(return_value=inspector)
+    verification_engine = Mock()
+    review_engine = Mock()
+    review_advisor = Mock(spec=ReviewAdvisor)
+    committer = Mock()
+    committer.commit.return_value = make_commit_result(tmp_path)
+    engine = WorkflowEngine(
+        repository_inspector_factory=inspector_factory,
+        planning_engine=Mock(),
+        execution_engine=Mock(),
+        verification_engine=verification_engine,
+        review_engine=review_engine,
+        approval_engine=ApprovalEngine(),
+        approval_repository=recovered_approvals,
+        state_store=recovered_state,
+        repository_committer_factory=Mock(return_value=committer),
+        review_mode="model-assisted",
+        review_advisor=review_advisor,
+        state_persistence=recovered_persistence,
+    )
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.sprint.phase is SprintPhase.COMPLETED
+    assert result.review_analysis == analysis
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+    review_advisor.analyze.assert_not_called()
+    committer.commit.assert_called_once()
 
 
 @pytest.mark.parametrize(

@@ -146,6 +146,7 @@ class WorkflowExecutionResponse(BaseModel):
     plan: ImplementationPlan | None = None
     context: AgentContext | None = None
     planning_analysis: ModelResponse | None = None
+    review_analysis: ModelResponse | None = None
     approval_request: ApprovalRequest | None = None
     execution_result: ExecutionResult | None = None
     verification_report: VerificationReport | None = None

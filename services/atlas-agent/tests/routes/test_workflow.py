@@ -15,6 +15,7 @@ from app.approval.models import (
 )
 from app.config.settings import Settings
 from app.main import create_app
+from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.routes import workflow as workflow_routes
 from app.workflow.engine import WorkflowEngine
@@ -73,6 +74,7 @@ def workflow_result(
     *,
     phase: SprintPhase,
     error_message: str | None = None,
+    review_analysis: ModelResponse | None = None,
 ) -> WorkflowResult:
     checkpoint = RoadmapCheckpoint(
         identifier="A16",
@@ -150,6 +152,7 @@ def workflow_result(
             phase=phase,
         ),
         plan=plan,
+        review_analysis=review_analysis,
         approval_request=approval_request,
         error_message=error_message,
     )
@@ -304,6 +307,31 @@ def test_resume_returns_commit_approval_boundary(
     assert metadata["reviewed_content_fingerprint"] == "a" * 64
 
 
+def test_workflow_response_serializes_review_analysis(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, workflow_engine, _ = make_client(tmp_path, monkeypatch)
+    workflow_engine.resume.return_value = workflow_result(
+        tmp_path,
+        phase=SprintPhase.AWAITING_COMMIT_APPROVAL,
+        review_analysis=ModelResponse(
+            text="Advisory review analysis.",
+            model="test-model",
+            provider_id="test-provider",
+        ),
+    )
+
+    response = client.post("/api/v1/agent/workflows/workflow-a16/resume")
+
+    assert response.status_code == 200
+    assert response.json()["review_analysis"] == {
+        "text": "Advisory review analysis.",
+        "model": "test-model",
+        "provider_id": "test-provider",
+    }
+
+
 def test_invalid_request_returns_422_without_starting_workflow(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -324,6 +352,7 @@ def test_invalid_request_returns_422_without_starting_workflow(
         ("Workflow not found", 404, "workflow_not_found"),
         ("Workflow already completed", 409, "invalid_workflow_state"),
         ("Approval rejected", 424, "workflow_blocked"),
+        ("Model-assisted review analysis failed", 424, "workflow_blocked"),
     ),
 )
 def test_resume_maps_domain_failures_to_deterministic_statuses(

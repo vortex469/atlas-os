@@ -19,6 +19,7 @@ def clear_validated_environment(monkeypatch) -> None:
         "ATLAS_AGENT_OLLAMA_BASE_URL",
         "ATLAS_AGENT_OLLAMA_DEFAULT_MODEL",
         "ATLAS_AGENT_PLANNING_MODE",
+        "ATLAS_AGENT_REVIEW_MODE",
         "ATLAS_CORE_REQUIRED",
     ):
         monkeypatch.delenv(variable, raising=False)
@@ -37,6 +38,7 @@ def test_settings_use_defaults(monkeypatch) -> None:
     assert settings.state_dir.name == "atlas-agent"
     assert settings.ollama_base_url == "http://127.0.0.1:11434"
     assert settings.ollama_default_model == "qwen3-coder-atlas:latest"
+    assert settings.review_mode == "deterministic"
     assert settings.atlas_core_required is False
 
 
@@ -71,6 +73,10 @@ def test_settings_accept_valid_environment_overrides(
         "ATLAS_AGENT_PLANNING_MODE",
         "Model-Assisted",
     )
+    monkeypatch.setenv(
+        "ATLAS_AGENT_REVIEW_MODE",
+        "Model-Assisted",
+    )
 
     settings = Settings.from_environment()
 
@@ -82,6 +88,7 @@ def test_settings_accept_valid_environment_overrides(
     assert settings.ollama_base_url == "http://ollama.example:11434"
     assert settings.ollama_default_model == "test-model:latest"
     assert settings.planning_mode == "model-assisted"
+    assert settings.review_mode == "model-assisted"
 
 def test_settings_reject_non_integer_port(monkeypatch) -> None:
     clear_validated_environment(monkeypatch)
@@ -141,6 +148,20 @@ def test_settings_reject_invalid_planning_mode(monkeypatch) -> None:
     with pytest.raises(
         ValueError,
         match="ATLAS_AGENT_PLANNING_MODE must be one of:",
+    ):
+        Settings.from_environment()
+
+
+def test_settings_reject_invalid_review_mode(monkeypatch) -> None:
+    clear_validated_environment(monkeypatch)
+    monkeypatch.setenv(
+        "ATLAS_AGENT_REVIEW_MODE",
+        "autonomous",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="ATLAS_AGENT_REVIEW_MODE must be one of:",
     ):
         Settings.from_environment()
 

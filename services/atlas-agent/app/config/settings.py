@@ -99,6 +99,24 @@ def _load_planning_mode() -> str:
     return planning_mode
 
 
+def _load_review_mode() -> str:
+    """Load and validate the configured review mode."""
+
+    review_mode = os.getenv(
+        "ATLAS_AGENT_REVIEW_MODE",
+        "deterministic",
+    ).strip().lower()
+
+    if review_mode not in ("deterministic", "model-assisted"):
+        supported = "deterministic, model-assisted"
+        raise ValueError(
+            "ATLAS_AGENT_REVIEW_MODE must be one of: "
+            f"{supported}"
+        )
+
+    return review_mode
+
+
 def _load_atlas_core_required() -> bool:
     """Load whether workflows require Atlas Core context."""
 
@@ -133,6 +151,7 @@ class Settings:
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_default_model: str = "qwen3-coder-atlas:latest"
     planning_mode: str = "deterministic"
+    review_mode: str = "deterministic"
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -157,6 +176,7 @@ class Settings:
             environment=_load_environment(),
             log_level=_load_log_level(),
             planning_mode=_load_planning_mode(),
+            review_mode=_load_review_mode(),
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),
             port=_load_port(),
             repository_root=repository_root,
