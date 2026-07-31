@@ -35,3 +35,18 @@ before proceeding. This ensures that no changes are made without proper oversigh
 
 The underlying model providers and tool executors remain replaceable.
 This allows for flexibility in implementation while maintaining the overall architecture.
+
+### Atlas Intelligence Is Advisory Enrichment
+
+Atlas intelligence is retrieved only through the supported read-only Atlas Core
+intelligence summary API. It supplies bounded evidence for planning and is not
+an autonomous instruction source.
+
+Recognized intelligence connection, timeout, response, and payload failures
+preserve otherwise valid Atlas Core health and status context. The failure is
+logged and represented in `AgentContext` with a stable code and predefined
+message.
+
+Intelligence content cannot modify executable commands, arguments,
+environment, working directories, execution policy, approval state,
+verification commands, or deterministic commit behavior.

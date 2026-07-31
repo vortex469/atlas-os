@@ -144,6 +144,10 @@ AI may recommend.
 
 AI never approves on behalf of a human.
 
+The current implementation pauses before implementation execution and resumes
+only after a matching approval. Verification commands and the final
+deterministic Git commit do not yet have independent approval boundaries.
+
 ---
 
 # Design Philosophy
@@ -163,14 +167,24 @@ replace it.
 ---
 
 # Current Implementation Status
-A12.6 Documentation Sync is complete.
 
-The documentation now reflects the completed approval workflow,
-including approval lifecycle, workflow pause/resume behavior,
-and Mission Control visibility.
+- A0–A7 are complete.
+- A8 is partially complete with bounded advisory Atlas intelligence summary
+  integration.
+- A9 is complete.
+- A10 is partially complete; A10.1 synchronizes documentation.
+- A11 is functionally complete.
+- A12 and A13 are partially complete.
+- A14 is complete for its listed Mission Control status scope and overlaps A7;
+  pending approval data is loaded, but its decision card is not mounted in the
+  current status panel.
+- A15 is partially complete.
 
-The current implementation is complete through A10.
+Atlas Core health and status are essential context. Intelligence is optional
+advisory enrichment: recognized intelligence failures preserve valid health
+and status data and are represented deterministically in `AgentContext`.
+Intelligence content is evidence only and cannot alter execution or approval
+inputs.
 
-A11 — Atlas Core Integration is the next checkpoint.
-
-A12–A15 are the approved long-term direction.
+After A10.1, the roadmap leaves the ordering between the next bounded A8
+increment and A12 granular approval work to human selection.
