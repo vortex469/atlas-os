@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _DEFAULT_REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+_DEFAULT_STATE_DIR = Path(
+    os.getenv("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))
+) / "atlas-agent"
 _ALLOWED_ENVIRONMENTS = frozenset(
     {
         "development",
@@ -122,6 +125,7 @@ class Settings:
     host: str = "127.0.0.1"
     port: int = 8090
     repository_root: Path = _DEFAULT_REPOSITORY_ROOT
+    state_dir: Path = _DEFAULT_STATE_DIR
     atlas_core_host: str = "127.0.0.1"
     atlas_core_port: int = 8643
     atlas_core_timeout_seconds: float = 10.0
@@ -141,6 +145,13 @@ class Settings:
             )
         ).expanduser().resolve()
 
+        state_dir = Path(
+            os.getenv(
+                "ATLAS_AGENT_STATE_DIR",
+                str(_DEFAULT_STATE_DIR),
+            )
+        ).expanduser().resolve()
+
         return cls(
             app_name=os.getenv("ATLAS_AGENT_APP_NAME", "Atlas Agent"),
             environment=_load_environment(),
@@ -149,6 +160,7 @@ class Settings:
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),
             port=_load_port(),
             repository_root=repository_root,
+            state_dir=state_dir,
             atlas_core_host=os.getenv("ATLAS_CORE_HOST", "127.0.0.1"),
             atlas_core_port=int(os.getenv("ATLAS_CORE_PORT", "8643")),
             atlas_core_timeout_seconds=float(os.getenv("ATLAS_CORE_TIMEOUT_SECONDS", "10.0")),

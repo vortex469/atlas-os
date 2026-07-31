@@ -17,6 +17,10 @@ def _repository(request: Request) -> ApprovalRepository:
     return request.app.state.container.approval_repository
 
 
+def _state_persistence(request: Request):
+    return getattr(request.app.state.container, "state_persistence", None)
+
+
 def _engine() -> ApprovalEngine:
     """Get the approval engine instance."""
     return ApprovalEngine()
@@ -54,7 +58,13 @@ async def create_approval_request(request: Request, approval_request: ApprovalRe
             detail=str(exc),
         ) from exc
 
-    identifier = repository.save_request(result.decision.request)
+    persistence = _state_persistence(request)
+    if persistence is None:
+        identifier = repository.save_request(result.decision.request)
+    else:
+        identifier = persistence.mutate_approval(
+            lambda approvals: approvals.save_request(result.decision.request)
+        )
 
     return {
         "identifier": identifier,
@@ -139,7 +149,13 @@ async def submit_approval_decision(
             detail="Approval request not found",
         )
 
-    success = repository.update_decision(request_id, result.decision)
+    persistence = _state_persistence(request)
+    if persistence is None:
+        success = repository.update_decision(request_id, result.decision)
+    else:
+        success = persistence.mutate_approval(
+            lambda approvals: approvals.update_decision(request_id, result.decision)
+        )
     if not success:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

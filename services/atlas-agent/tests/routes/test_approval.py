@@ -7,8 +7,9 @@ from app.main import create_app
 
 
 @pytest.fixture
-def client():
+def client(tmp_path, monkeypatch):
     """Create a test client."""
+    monkeypatch.setenv("ATLAS_AGENT_STATE_DIR", str(tmp_path / "state"))
     app = create_app()
     return TestClient(app)
 

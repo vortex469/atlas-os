@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
+from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
@@ -21,8 +23,9 @@ from app.approval.models import (
 from app.approval.repository import ApprovalRepository
 from app.context.models import AgentContext
 from app.execution.engine import ExecutionEngine
-from app.execution.models import ExecutionRequest, ExecutionStatus
+from app.execution.models import EnvironmentVariable, ExecutionRequest, ExecutionStatus
 from app.model_providers.models import ModelResponse
+from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
 from app.planning.models import ImplementationPlan
@@ -32,7 +35,7 @@ from app.repository.models import CommitRequest, RepositorySnapshot
 from app.review.engine import ReviewEngine
 from app.review.models import ReviewRequest, ReviewStatus
 from app.verification.engine import VerificationEngine
-from app.verification.models import VerificationStatus
+from app.verification.models import VerificationCheck, VerificationStatus
 from app.workflow.models import (
     SprintPhase,
     SprintStatus,
@@ -63,6 +66,7 @@ class WorkflowEngine:
         repository_committer_factory: Callable[[Path], GitCommitter] = GitCommitter,
         planning_mode: str = "deterministic",
         planning_advisor: PlanningAdvisor | None = None,
+        state_persistence: AgentStatePersistenceCoordinator | None = None,
     ) -> None:
         if planning_mode not in ("deterministic", "model-assisted"):
             raise ValueError(f"Unsupported planning mode: {planning_mode}")
@@ -84,6 +88,7 @@ class WorkflowEngine:
         self._repository_committer_factory = repository_committer_factory
         self._planning_mode = planning_mode
         self._planning_advisor = planning_advisor
+        self._state_persistence = state_persistence
 
     def block_before_planning(
         self,
@@ -99,7 +104,7 @@ class WorkflowEngine:
             goal=request.checkpoint.goal,
             phase=SprintPhase.BLOCKED,
         )
-        self._state_store.publish_sprint(blocked_status)
+        self._publish_sprint(blocked_status)
         return WorkflowResult(
             sprint=blocked_status,
             error_message=error_message,
@@ -120,7 +125,7 @@ class WorkflowEngine:
             goal=request.checkpoint.goal,
             phase=SprintPhase.PLANNED,
         )
-        self._state_store.publish_sprint(planned_status)
+        self._publish_sprint(planned_status)
 
         inspector = self._repository_inspector_factory(request.repository_root)
         try:
@@ -138,7 +143,7 @@ class WorkflowEngine:
                 goal=request.checkpoint.goal,
                 phase=SprintPhase.BLOCKED,
             )
-            self._state_store.publish_sprint(blocked_status)
+            self._publish_sprint(blocked_status)
 
             return WorkflowResult(
                 sprint=blocked_status,
@@ -159,7 +164,7 @@ class WorkflowEngine:
                     goal=request.checkpoint.goal,
                     phase=SprintPhase.BLOCKED,
                 )
-                self._state_store.publish_sprint(blocked_status)
+                self._publish_sprint(blocked_status)
 
                 return WorkflowResult(
                     sprint=blocked_status,
@@ -194,14 +199,22 @@ class WorkflowEngine:
             context=context,
         )
 
-        session_created = False
         try:
-            self._state_store.create_session(session)
-            session_created = True
-            self._approval_repository.save_request(approval_request)
+            if self._state_persistence is None:
+                self._state_store.create_session(session)
+                try:
+                    self._approval_repository.save_request(approval_request)
+                except Exception:
+                    self._state_store.delete_session(workflow_id)
+                    raise
+            else:
+                self._state_persistence.mutate_aggregate(
+                    lambda workflow, approvals: (
+                        workflow.create_session(session),
+                        approvals.save_request(approval_request),
+                    )
+                )
         except Exception:
-            if session_created:
-                self._state_store.delete_session(workflow_id)
             logger.exception("Pre-execution approval storage failed")
             blocked_status = SprintStatus(
                 checkpoint_id=request.checkpoint.identifier,
@@ -209,7 +222,7 @@ class WorkflowEngine:
                 goal=request.checkpoint.goal,
                 phase=SprintPhase.BLOCKED,
             )
-            self._state_store.publish_sprint(blocked_status)
+            self._publish_sprint(blocked_status)
 
             return WorkflowResult(
                 sprint=blocked_status,
@@ -224,7 +237,7 @@ class WorkflowEngine:
             goal=request.checkpoint.goal,
             phase=SprintPhase.AWAITING_APPROVAL,
         )
-        self._state_store.publish_sprint(awaiting_approval_status)
+        self._publish_sprint(awaiting_approval_status)
 
         return WorkflowResult(
             sprint=awaiting_approval_status,
@@ -315,7 +328,7 @@ class WorkflowEngine:
                 error_message="Approval is invalid",
             )
 
-        if not self._state_store.transition_session(
+        if not self._transition_session(
             workflow_id,
             WorkflowSessionState.AWAITING_APPROVAL,
             WorkflowSessionState.EXECUTING,
@@ -339,7 +352,7 @@ class WorkflowEngine:
         plan = session.plan
         context = session.context
         in_progress_status = self._status(session, SprintPhase.IN_PROGRESS)
-        self._state_store.publish_sprint(in_progress_status)
+        self._publish_sprint(in_progress_status)
 
         inspector = self._repository_inspector_factory(request.repository_root)
         try:
@@ -404,7 +417,29 @@ class WorkflowEngine:
 
         try:
             verification_approval = self._verification_approval_request(session)
-            self._approval_repository.save_request(verification_approval)
+            if self._state_persistence is None:
+                self._approval_repository.save_request(verification_approval)
+                transition_ok = self._state_store.transition_session(
+                    workflow_id,
+                    WorkflowSessionState.EXECUTING,
+                    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                    execution_result=execution_result,
+                    changed_files=changed_files,
+                )
+            else:
+                def pause_for_verification(workflow, approvals):
+                    approvals.save_request(verification_approval)
+                    return workflow.transition_session(
+                        workflow_id,
+                        WorkflowSessionState.EXECUTING,
+                        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                        execution_result=execution_result,
+                        changed_files=changed_files,
+                    )
+
+                transition_ok = self._state_persistence.mutate_aggregate(
+                    pause_for_verification
+                )
         except Exception:
             logger.exception("Verification approval storage failed")
             self._block_claimed_session(
@@ -417,13 +452,7 @@ class WorkflowEngine:
                 error_message="Verification approval storage failed",
             )
 
-        if not self._state_store.transition_session(
-            workflow_id,
-            WorkflowSessionState.EXECUTING,
-            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
-            execution_result=execution_result,
-            changed_files=changed_files,
-        ):
+        if not transition_ok:
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
@@ -434,7 +463,7 @@ class WorkflowEngine:
             session,
             SprintPhase.AWAITING_VERIFICATION_APPROVAL,
         )
-        self._state_store.publish_sprint(awaiting_status)
+        self._publish_sprint(awaiting_status)
         return WorkflowResult(
             sprint=awaiting_status,
             plan=plan,
@@ -495,7 +524,7 @@ class WorkflowEngine:
                 error_message="Approval rejected",
             )
 
-        if not self._state_store.transition_session(
+        if not self._transition_session(
             workflow_id,
             WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
             WorkflowSessionState.VERIFYING,
@@ -521,13 +550,26 @@ class WorkflowEngine:
             )
 
         verifying_status = self._status(session, SprintPhase.VERIFYING)
-        self._state_store.publish_sprint(verifying_status)
+        self._publish_sprint(verifying_status)
 
         try:
+            verification_checks = self._rehydrate_verification_checks(
+                request.verification_checks
+            )
             verification_report = self._verification_engine.verify(
                 repository_root=request.repository_root,
-                checks=request.verification_checks,
+                checks=verification_checks,
                 context=context,
+            )
+        except ValueError as exc:
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.VERIFYING,
+            )
+            return self._blocked_session_result(
+                session=session,
+                execution_result=execution_result,
+                error_message=str(exc),
             )
         except Exception:
             logger.exception("Workflow verification failed")
@@ -541,7 +583,7 @@ class WorkflowEngine:
                 error_message="Workflow verification failed",
             )
 
-        self._state_store.publish_verification(verification_report)
+        self._publish_verification(verification_report)
 
         if verification_report.status is not VerificationStatus.PASSED:
             self._block_claimed_session(
@@ -556,7 +598,7 @@ class WorkflowEngine:
             )
 
         reviewing_status = self._status(session, SprintPhase.REVIEWING)
-        self._state_store.publish_sprint(reviewing_status)
+        self._publish_sprint(reviewing_status)
         review_request = ReviewRequest(
             identifier=request.review_identifier,
             plan=plan,
@@ -582,7 +624,7 @@ class WorkflowEngine:
                 error_message="Workflow review failed",
             )
 
-        self._state_store.publish_review(review_report)
+        self._publish_review(review_report)
 
         if review_report.status is not ReviewStatus.APPROVED:
             self._block_claimed_session(
@@ -618,7 +660,36 @@ class WorkflowEngine:
                 commit_request=commit_request,
                 fingerprint=evidence.fingerprint,
             )
-            self._approval_repository.save_request(commit_approval)
+            artifacts = {
+                "verification_report": verification_report,
+                "review_report": review_report,
+                "commit_request": commit_request,
+                "reviewed_files": evidence.reviewed_files,
+                "expected_branch": evidence.expected_branch,
+                "expected_head": evidence.expected_head,
+                "reviewed_content_fingerprint": evidence.fingerprint,
+            }
+            if self._state_persistence is None:
+                self._approval_repository.save_request(commit_approval)
+                transition_ok = self._state_store.transition_session(
+                    workflow_id,
+                    WorkflowSessionState.VERIFYING,
+                    WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+                    **artifacts,
+                )
+            else:
+                def pause_for_commit(workflow, approvals):
+                    approvals.save_request(commit_approval)
+                    return workflow.transition_session(
+                        workflow_id,
+                        WorkflowSessionState.VERIFYING,
+                        WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+                        **artifacts,
+                    )
+
+                transition_ok = self._state_persistence.mutate_aggregate(
+                    pause_for_commit
+                )
         except Exception:
             logger.exception("Commit approval storage failed")
             self._block_claimed_session(
@@ -633,18 +704,7 @@ class WorkflowEngine:
                 error_message="Commit approval storage failed",
             )
 
-        if not self._state_store.transition_session(
-            workflow_id,
-            WorkflowSessionState.VERIFYING,
-            WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
-            verification_report=verification_report,
-            review_report=review_report,
-            commit_request=commit_request,
-            reviewed_files=evidence.reviewed_files,
-            expected_branch=evidence.expected_branch,
-            expected_head=evidence.expected_head,
-            reviewed_content_fingerprint=evidence.fingerprint,
-        ):
+        if not transition_ok:
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
@@ -656,7 +716,7 @@ class WorkflowEngine:
             session,
             SprintPhase.AWAITING_COMMIT_APPROVAL,
         )
-        self._state_store.publish_sprint(awaiting_commit_status)
+        self._publish_sprint(awaiting_commit_status)
 
         return WorkflowResult(
             sprint=awaiting_commit_status,
@@ -712,7 +772,7 @@ class WorkflowEngine:
                 session=session,
                 error_message="Approval rejected",
             )
-        if not self._state_store.transition_session(
+        if not self._transition_session(
             workflow_id,
             WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
             WorkflowSessionState.COMMITTING,
@@ -723,7 +783,7 @@ class WorkflowEngine:
             )
 
         committing_status = self._status(session, SprintPhase.COMMITTING)
-        self._state_store.publish_sprint(committing_status)
+        self._publish_sprint(committing_status)
         try:
             current = self._repository_inspector_factory(
                 commit_request.repository_root
@@ -766,13 +826,13 @@ class WorkflowEngine:
                 error_message="Workflow commit failed",
             )
 
-        self._state_store.transition_session(
+        self._transition_session(
             workflow_id,
             WorkflowSessionState.COMMITTING,
             WorkflowSessionState.COMPLETED,
         )
         completed_status = self._status(session, SprintPhase.COMPLETED)
-        self._state_store.publish_sprint(completed_status)
+        self._publish_sprint(completed_status)
         return WorkflowResult(
             sprint=completed_status,
             plan=session.plan,
@@ -807,7 +867,9 @@ class WorkflowEngine:
                         name=variable.name,
                         value_digest=sha256(
                             variable.value.encode("utf-8")
-                        ).hexdigest(),
+                        ).hexdigest()
+                        if not variable.redacted
+                        else variable.value_digest or "",
                     )
                     for variable in check.environment
                 ),
@@ -835,6 +897,95 @@ class WorkflowEngine:
                 status=ApprovalStatus.PENDING,
             )
         ).decision.request
+
+    def _publish_sprint(self, status: SprintStatus) -> None:
+        if self._state_persistence is None:
+            self._state_store.publish_sprint(status)
+            return
+        self._state_persistence.mutate_workflow(
+            lambda workflow: workflow.publish_sprint(status)
+        )
+
+    def _publish_verification(self, report) -> None:
+        if self._state_persistence is None:
+            self._state_store.publish_verification(report)
+            return
+        self._state_persistence.mutate_workflow(
+            lambda workflow: workflow.publish_verification(report)
+        )
+
+    def _publish_review(self, report) -> None:
+        if self._state_persistence is None:
+            self._state_store.publish_review(report)
+            return
+        self._state_persistence.mutate_workflow(
+            lambda workflow: workflow.publish_review(report)
+        )
+
+    def _transition_session(
+        self,
+        identifier: str,
+        expected_state: WorkflowSessionState,
+        new_state: WorkflowSessionState,
+        **artifacts: object,
+    ) -> bool:
+        if self._state_persistence is None:
+            return self._state_store.transition_session(
+                identifier,
+                expected_state,
+                new_state,
+                **artifacts,
+            )
+        return self._state_persistence.mutate_workflow(
+            lambda workflow: workflow.transition_session(
+                identifier,
+                expected_state,
+                new_state,
+                **artifacts,
+            )
+        )
+
+    def _save_approval_request(self, request: ApprovalRequest) -> str:
+        if self._state_persistence is None:
+            return self._approval_repository.save_request(request)
+        return self._state_persistence.mutate_approval(
+            lambda approvals: approvals.save_request(request)
+        )
+
+    @staticmethod
+    def _rehydrate_verification_checks(
+        checks: tuple[VerificationCheck, ...],
+    ) -> tuple[VerificationCheck, ...]:
+        rehydrated: list[VerificationCheck] = []
+        for check in checks:
+            environment: list[EnvironmentVariable] = []
+            for variable in check.environment:
+                if not variable.redacted:
+                    environment.append(variable)
+                    continue
+                raw_value = os.environ.get(variable.name)
+                if raw_value is None:
+                    raise ValueError(
+                        "verification environment value is unavailable after restart"
+                    )
+                digest = sha256(raw_value.encode("utf-8")).hexdigest()
+                if digest != variable.value_digest:
+                    raise ValueError(
+                        "verification environment value digest mismatch after restart"
+                    )
+                environment.append(
+                    EnvironmentVariable(
+                        name=variable.name,
+                        value=raw_value,
+                    )
+                )
+            rehydrated.append(
+                replace(
+                    check,
+                    environment=tuple(environment),
+                )
+            )
+        return tuple(rehydrated)
 
     def _commit_approval_request(
         self,
@@ -952,7 +1103,7 @@ class WorkflowEngine:
         workflow_id: str,
         expected_state: WorkflowSessionState,
     ) -> None:
-        self._state_store.transition_session(
+        self._transition_session(
             workflow_id,
             expected_state,
             WorkflowSessionState.BLOCKED,
@@ -968,7 +1119,7 @@ class WorkflowEngine:
             session,
             SprintPhase.AWAITING_VERIFICATION_APPROVAL,
         )
-        self._state_store.publish_sprint(awaiting_status)
+        self._publish_sprint(awaiting_status)
         return WorkflowResult(
             sprint=awaiting_status,
             plan=session.plan,
@@ -988,7 +1139,7 @@ class WorkflowEngine:
             session,
             SprintPhase.AWAITING_COMMIT_APPROVAL,
         )
-        self._state_store.publish_sprint(awaiting_status)
+        self._publish_sprint(awaiting_status)
         return WorkflowResult(
             sprint=awaiting_status,
             plan=session.plan,
@@ -1006,7 +1157,7 @@ class WorkflowEngine:
         session: WorkflowSession,
         error_message: str,
     ) -> WorkflowResult:
-        if not self._state_store.transition_session(
+        if not self._transition_session(
             session.identifier,
             WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
             WorkflowSessionState.BLOCKED,
@@ -1026,7 +1177,7 @@ class WorkflowEngine:
         session: WorkflowSession,
         error_message: str,
     ) -> WorkflowResult:
-        if not self._state_store.transition_session(
+        if not self._transition_session(
             session.identifier,
             WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
             WorkflowSessionState.BLOCKED,
@@ -1052,7 +1203,7 @@ class WorkflowEngine:
         review_report=None,
     ) -> WorkflowResult:
         blocked_status = self._status(session, SprintPhase.BLOCKED)
-        self._state_store.publish_sprint(blocked_status)
+        self._publish_sprint(blocked_status)
 
         return WorkflowResult(
             sprint=blocked_status,
@@ -1100,7 +1251,7 @@ class WorkflowEngine:
             goal="Resume an approved workflow.",
             phase=SprintPhase.BLOCKED,
         )
-        self._state_store.publish_sprint(blocked_status)
+        self._publish_sprint(blocked_status)
         return WorkflowResult(
             sprint=blocked_status,
             error_message=error_message,

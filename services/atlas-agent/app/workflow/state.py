@@ -11,6 +11,13 @@ from app.workflow.models import (
     WorkflowSessionState,
 )
 
+WorkflowStateSnapshot = tuple[
+    SprintStatus | None,
+    VerificationReport | None,
+    ReviewReport | None,
+    dict[str, WorkflowSession],
+]
+
 
 class WorkflowStateStore:
     """Store the latest immutable workflow artifacts in memory."""
@@ -21,6 +28,27 @@ class WorkflowStateStore:
         self._verification: VerificationReport | None = None
         self._review: ReviewReport | None = None
         self._sessions: dict[str, WorkflowSession] = {}
+
+    def export_snapshot(self) -> WorkflowStateSnapshot:
+        """Return a shallow immutable snapshot of current workflow state."""
+
+        with self._lock:
+            return (
+                self._sprint,
+                self._verification,
+                self._review,
+                dict(self._sessions),
+            )
+
+    def replace_snapshot(self, snapshot: WorkflowStateSnapshot) -> None:
+        """Replace current workflow state with a validated snapshot."""
+
+        sprint, verification, review, sessions = snapshot
+        with self._lock:
+            self._sprint = sprint
+            self._verification = verification
+            self._review = review
+            self._sessions = dict(sessions)
 
     def create_session(self, session: WorkflowSession) -> None:
         """Store a uniquely identified immutable workflow session."""

@@ -23,6 +23,21 @@ class ApprovalRepository:
         self._storage = storage if storage is not None else {}
         self._lock = RLock()
 
+    def export_snapshot(self) -> dict[str, ApprovalResult]:
+        """Return a shallow immutable snapshot of approvals."""
+
+        with self._lock:
+            return dict(self._storage)
+
+    def replace_snapshot(
+        self,
+        snapshot: MutableMapping[str, ApprovalResult],
+    ) -> None:
+        """Replace current approvals with a validated snapshot."""
+
+        with self._lock:
+            self._storage = dict(snapshot)
+
     def save_request(self, request: ApprovalRequest) -> str:
         """Save a new approval request and return its identifier.
 

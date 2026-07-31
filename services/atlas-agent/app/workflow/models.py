@@ -89,6 +89,7 @@ class WorkflowSession:
     expected_branch: str | None = None
     expected_head: str | None = None
     reviewed_content_fingerprint: str | None = None
+    blocked_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

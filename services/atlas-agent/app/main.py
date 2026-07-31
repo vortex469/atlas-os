@@ -14,6 +14,7 @@ from app.execution.engine import ExecutionEngine
 from app.execution.runner import SubprocessRunner
 from app.model_providers.ollama import OllamaProvider
 from app.model_service.service import ModelService
+from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
 from app.repository.inspector import GitInspector
@@ -81,6 +82,12 @@ def create_app() -> FastAPI:
 
     workflow_state = WorkflowStateStore()
     approval_repository = ApprovalRepository()
+    state_persistence = AgentStatePersistenceCoordinator(
+        state_dir=settings.state_dir,
+        workflow_state=workflow_state,
+        approval_repository=approval_repository,
+    )
+    state_persistence.initialize()
     runner = SubprocessRunner()
     context_engine = ContextEngine(core_client)
     workflow_engine = WorkflowEngine(
@@ -94,6 +101,7 @@ def create_app() -> FastAPI:
         state_store=workflow_state,
         planning_mode=settings.planning_mode,
         planning_advisor=planning_advisor,
+        state_persistence=state_persistence,
     )
     workflow_orchestrator = WorkflowOrchestrator(
         workflow_engine=workflow_engine,
@@ -114,6 +122,7 @@ def create_app() -> FastAPI:
         planning_advisor=planning_advisor,
         workflow_engine=workflow_engine,
         workflow_orchestrator=workflow_orchestrator,
+        state_persistence=state_persistence,
     )
 
     application = FastAPI(

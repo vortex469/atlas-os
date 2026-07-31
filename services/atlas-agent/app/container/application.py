@@ -7,6 +7,7 @@ from app.config.settings import Settings
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
 from app.model_service.service import ModelService
+from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
 from app.repository.inspector import GitInspector
 from app.workflow.engine import WorkflowEngine
@@ -28,3 +29,4 @@ class ApplicationContainer:
     planning_advisor: PlanningAdvisor
     workflow_engine: WorkflowEngine
     workflow_orchestrator: WorkflowOrchestrator
+    state_persistence: AgentStatePersistenceCoordinator | None = None

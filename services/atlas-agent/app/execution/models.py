@@ -22,6 +22,8 @@ class EnvironmentVariable:
 
     name: str
     value: str
+    value_digest: str | None = None
+    redacted: bool = False
 
 
 @dataclass(frozen=True, slots=True)
