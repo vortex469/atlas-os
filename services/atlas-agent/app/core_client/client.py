@@ -30,6 +30,7 @@ class AtlasCoreClient:
     ) -> None:
         self.settings = settings
         self._client = client
+        self._owns_client = client is None
         self._base_url = f"http://{settings.atlas_core_host}:{settings.atlas_core_port}"
         self._timeout = httpx.Timeout(settings.atlas_core_timeout_seconds)
 
@@ -53,7 +54,7 @@ class AtlasCoreClient:
             raise AtlasCorePayloadError(f"Invalid payload fetching health from {url}: {e!s}")
 
     async def get_status(self) -> AtlasCoreStatus:
-        url = f"{self._base_url}/api/v1/status"
+        url = f"{self._base_url}/api/v1/status/"
         try:
             response = await self._get_client().get(url, timeout=self._timeout)
             response.raise_for_status()
@@ -75,8 +76,9 @@ class AtlasCoreClient:
         await self.get_health()
 
     async def close(self) -> None:
-        if self._client is None:
-            await self._get_client().aclose()
+        if self._owns_client and self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     async def __aenter__(self) -> Self:
         return self

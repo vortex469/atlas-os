@@ -1,7 +1,7 @@
 """Tests for AtlasCoreClient."""
 
 import asyncio
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -110,7 +110,7 @@ def test_get_status_parsing_valid_response(atlas_core_client, mock_status_respon
 
     # Create mock transport with proper handler
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/api/v1/status"
+        assert request.url.path == "/api/v1/status/"
         return httpx.Response(200, json=mock_status_response)
 
     with httpx.MockTransport(handler) as transport:
@@ -179,39 +179,39 @@ def test_injected_client_not_closed_by_close(atlas_core_client, mock_client):
     assert not injected_client.aclose.called
 
 
-def test_internally_created_client_closed_by_close(atlas_core_client):
+def test_internally_created_client_closed_by_close(monkeypatch):
     """Test that internally created AsyncClient is closed by close()."""
-    # Create a mock transport to intercept calls
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=create_mock_health_response())
+    internal_client = MagicMock(spec=httpx.AsyncClient)
+    internal_client.aclose = AsyncMock()
+    monkeypatch.setattr(
+        "app.core_client.client.httpx.AsyncClient",
+        lambda: internal_client,
+    )
+    atlas_client = AtlasCoreClient(settings=create_test_settings())
 
-    with httpx.MockTransport(handler) as transport:
-        # Inject the mock transport into the client
-        client = httpx.AsyncClient(transport=transport)
-        atlas_client = AtlasCoreClient(settings=create_test_settings(), client=client)
+    assert atlas_client._get_client() is internal_client
 
-        # Call close - should close the internally created client
-        asyncio.run(atlas_client.close())
+    asyncio.run(atlas_client.close())
 
-        # The internally created client's aclose method should have been called
-        # Note: We're testing through the client interface, so we need to check
-        # that a proper close was called on the client
+    internal_client.aclose.assert_awaited_once_with()
+    assert atlas_client._client is None
 
 
-def test_context_manager_closes_internally_owned_client(atlas_core_client):
+def test_context_manager_closes_internally_owned_client(monkeypatch):
     """Test that async context-manager use closes an internally owned client."""
-    # Create a mock transport to intercept calls
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=create_mock_health_response())
+    internal_client = MagicMock(spec=httpx.AsyncClient)
+    internal_client.aclose = AsyncMock()
+    monkeypatch.setattr(
+        "app.core_client.client.httpx.AsyncClient",
+        lambda: internal_client,
+    )
+    atlas_client = AtlasCoreClient(settings=create_test_settings())
+    atlas_client._get_client()
 
-    with httpx.MockTransport(handler) as transport:
-        # Inject the mock transport into the client
-        client = httpx.AsyncClient(transport=transport)
-        atlas_client = AtlasCoreClient(settings=create_test_settings(), client=client)
+    asyncio.run(atlas_client.__aenter__())
+    asyncio.run(atlas_client.__aexit__(None, None, None))
 
-        # Use the context manager - this will close the internally owned client
-        asyncio.run(atlas_client.__aenter__())
-        asyncio.run(atlas_client.__aexit__(None, None, None))
+    internal_client.aclose.assert_awaited_once_with()
 
 
 def test_context_manager_does_not_close_injected_client(atlas_core_client, mock_client):
