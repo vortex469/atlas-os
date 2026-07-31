@@ -1,13 +1,20 @@
 """Tests for the approval engine."""
 
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
 import pytest
 
 from app.approval.engine import ApprovalEngine, ApprovalValidationError
 from app.approval.models import (
     ApprovalDecision,
+    ApprovalPurpose,
     ApprovalRequest,
     ApprovalStatus,
+    VerificationApprovalCheck,
+    VerificationApprovalEnvironment,
 )
+from app.approval.repository import ApprovalRepository
 
 
 def test_pending_decision_accepted_without_reviewer():
@@ -446,3 +453,130 @@ def test_rejected_decision_with_blank_reason_rejected():
 
     with pytest.raises(ApprovalValidationError, match="Rejected decisions must have a nonblank reason"):
         engine.evaluate(decision)
+
+
+def test_verification_approval_preserves_ordered_normalized_metadata() -> None:
+    request = ApprovalRequest(
+        identifier=" approval-verification ",
+        workflow_id=" workflow-a12-1 ",
+        checkpoint_id=" A12.1 ",
+        title=" Approve verification ",
+        requested_tool=" verification ",
+        requested_command=(" verification-suite ", " pytest "),
+        requested_working_directory=Path("/workspace/atlas"),
+        rationale=" Exact checks ",
+        purpose=ApprovalPurpose.VERIFICATION,
+        verification_checks=(
+            VerificationApprovalCheck(
+                identifier=" pytest ",
+                command=(" python ", "-m", " pytest "),
+                working_directory=Path("/workspace/atlas"),
+                timeout_seconds=120,
+                environment=(
+                    VerificationApprovalEnvironment(
+                        name=" ATLAS_ENV ",
+                        value_digest="a" * 64,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    result = ApprovalEngine().evaluate(
+        ApprovalDecision(request=request, status=ApprovalStatus.PENDING)
+    )
+
+    normalized = result.decision.request
+    assert normalized.workflow_id == "workflow-a12-1"
+    assert normalized.purpose is ApprovalPurpose.VERIFICATION
+    assert normalized.verification_checks[0].command == (
+        "python",
+        "-m",
+        "pytest",
+    )
+    assert normalized.verification_checks[0].environment[0].name == "ATLAS_ENV"
+
+
+def test_verification_approval_rejects_invalid_digest() -> None:
+    request = ApprovalRequest(
+        identifier="approval-verification",
+        workflow_id="workflow-a12-1",
+        checkpoint_id="A12.1",
+        title="Approve verification",
+        requested_tool="verification",
+        requested_command=("verification-suite", "pytest"),
+        rationale="Exact checks",
+        purpose=ApprovalPurpose.VERIFICATION,
+        verification_checks=(
+            VerificationApprovalCheck(
+                identifier="pytest",
+                command=("python", "-m", "pytest"),
+                working_directory=Path("/workspace/atlas"),
+                timeout_seconds=None,
+                environment=(
+                    VerificationApprovalEnvironment(
+                        name="ATLAS_ENV",
+                        value_digest="secret",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    with pytest.raises(
+        ApprovalValidationError,
+        match="lowercase SHA-256",
+    ):
+        ApprovalEngine().evaluate(
+            ApprovalDecision(request=request, status=ApprovalStatus.PENDING)
+        )
+
+
+def test_repository_terminal_decision_is_immutable_under_concurrency() -> None:
+    repository = ApprovalRepository()
+    request = ApprovalRequest(
+        identifier="approval-a12-1",
+        checkpoint_id="A12.1",
+        title="Approve implementation",
+        requested_tool="codex",
+        requested_command=("codex", "implement"),
+        rationale="Exact implementation.",
+    )
+    repository.save_request(request)
+    decisions = (
+        ApprovalDecision(
+            request=request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="reviewer-a",
+        ),
+        ApprovalDecision(
+            request=request,
+            status=ApprovalStatus.REJECTED,
+            reviewer="reviewer-b",
+            reason="Rejected.",
+        ),
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = tuple(
+            executor.map(
+                lambda decision: repository.update_decision(
+                    request.identifier,
+                    decision,
+                ),
+                decisions,
+            )
+        )
+
+    assert sorted(results) == [False, True]
+    stored = repository.get_request(request.identifier)
+    assert stored is not None
+    assert stored.decision in decisions
+    assert not repository.update_decision(
+        request.identifier,
+        ApprovalDecision(
+            request=request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="replacement",
+        ),
+    )

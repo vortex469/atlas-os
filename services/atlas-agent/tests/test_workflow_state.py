@@ -218,12 +218,12 @@ def test_session_transition_replaces_state_and_preserves_artifacts(
     assert store.transition_session(
         session.identifier,
         WorkflowSessionState.PLANNED,
-        WorkflowSessionState.IN_PROGRESS,
+        WorkflowSessionState.EXECUTING,
     )
 
     transitioned = store.get_session(session.identifier)
     assert transitioned is not session
-    assert transitioned.state is WorkflowSessionState.IN_PROGRESS
+    assert transitioned.state is WorkflowSessionState.EXECUTING
     assert transitioned.request is session.request
     assert transitioned.plan is session.plan
     assert transitioned.planning_analysis is session.planning_analysis
@@ -237,14 +237,38 @@ def test_session_transition_requires_expected_state(tmp_path: Path) -> None:
     assert not store.transition_session(
         session.identifier,
         WorkflowSessionState.AWAITING_APPROVAL,
-        WorkflowSessionState.IN_PROGRESS,
+        WorkflowSessionState.EXECUTING,
     )
     assert store.get_session(session.identifier) is session
     assert not store.transition_session(
         "missing",
         WorkflowSessionState.PLANNED,
-        WorkflowSessionState.IN_PROGRESS,
+        WorkflowSessionState.EXECUTING,
     )
+
+
+def test_session_transition_stores_artifacts_with_waiting_state_atomically(
+    tmp_path: Path,
+) -> None:
+    store = WorkflowStateStore()
+    session = make_session(tmp_path)
+    execution_result = Mock()
+    changed_files = (Path("app/workflow/engine.py"),)
+    store.create_session(session)
+
+    assert store.transition_session(
+        session.identifier,
+        WorkflowSessionState.PLANNED,
+        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        execution_result=execution_result,
+        changed_files=changed_files,
+    )
+
+    stored = store.get_session(session.identifier)
+    assert stored is not None
+    assert stored.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    assert stored.execution_result is execution_result
+    assert stored.changed_files == changed_files
 
 
 def test_concurrent_session_transition_allows_one_claim(
@@ -265,7 +289,7 @@ def test_concurrent_session_transition_allows_one_claim(
         return store.transition_session(
             session.identifier,
             WorkflowSessionState.AWAITING_APPROVAL,
-            WorkflowSessionState.IN_PROGRESS,
+            WorkflowSessionState.EXECUTING,
         )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -274,5 +298,5 @@ def test_concurrent_session_transition_allows_one_claim(
     assert sorted(results) == [False, True]
     assert (
         store.get_session(session.identifier).state
-        is WorkflowSessionState.IN_PROGRESS
+        is WorkflowSessionState.EXECUTING
     )

@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 
 from app.approval.engine import ApprovalEngine
 from app.approval.exceptions import ApprovalValidationError
-from app.approval.models import ApprovalDecision, ApprovalRequest
+from app.approval.models import ApprovalDecision, ApprovalRequest, ApprovalStatus
 from app.approval.repository import ApprovalRepository
 
 router = APIRouter(prefix="/api/v1/agent/approval", tags=["approval"])
@@ -42,10 +42,10 @@ async def create_approval_request(request: Request, approval_request: ApprovalRe
     engine = _engine()
     
     try:
-        engine.evaluate(
+        result = engine.evaluate(
             ApprovalDecision(
                 request=approval_request,
-                status="pending",
+                status=ApprovalStatus.PENDING,
             )
         )
     except ApprovalValidationError as exc:
@@ -54,7 +54,7 @@ async def create_approval_request(request: Request, approval_request: ApprovalRe
             detail=str(exc),
         ) from exc
 
-    identifier = repository.save_request(approval_request)
+    identifier = repository.save_request(result.decision.request)
 
     return {
         "identifier": identifier,
@@ -133,11 +133,17 @@ async def submit_approval_decision(
             detail=str(exc),
         ) from exc
 
-    success = repository.update_decision(request_id, decision)
-    if not success:
+    if repository.get_request(request_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Approval request not found",
+        )
+
+    success = repository.update_decision(request_id, result.decision)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Approval decision conflicts with the stored request",
         )
 
     return {
@@ -147,4 +153,3 @@ async def submit_approval_decision(
         "reviewer": result.decision.reviewer or "",
         "reason": result.decision.reason or "",
     }
-        

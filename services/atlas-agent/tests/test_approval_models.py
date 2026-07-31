@@ -11,6 +11,11 @@ from app.approval import (
     ApprovalResult,
     ApprovalStatus,
 )
+from app.approval.models import (
+    ApprovalPurpose,
+    VerificationApprovalCheck,
+    VerificationApprovalEnvironment,
+)
 
 
 def make_request() -> ApprovalRequest:
@@ -48,6 +53,38 @@ def test_approval_request_construction_and_equality() -> None:
     assert request == make_request()
     assert request.workflow_id is None
     assert request.requested_working_directory is None
+    assert request.purpose is ApprovalPurpose.IMPLEMENTATION
+    assert request.verification_checks == ()
+
+
+def test_verification_approval_binds_non_secret_stage_metadata() -> None:
+    environment = VerificationApprovalEnvironment(
+        name="ATLAS_TOKEN",
+        value_digest="a" * 64,
+    )
+    check = VerificationApprovalCheck(
+        identifier="pytest",
+        command=("python", "-m", "pytest", "-q"),
+        working_directory=Path("/workspace/atlas"),
+        timeout_seconds=120,
+        environment=(environment,),
+    )
+    request = ApprovalRequest(
+        identifier="approval-verification-a12-1",
+        workflow_id="workflow-a12-1",
+        checkpoint_id="A12.1",
+        title="Approve verification",
+        requested_tool="verification",
+        requested_command=("verification-suite", "pytest"),
+        requested_working_directory=Path("/workspace/atlas"),
+        rationale="Approve exact verification checks.",
+        purpose=ApprovalPurpose.VERIFICATION,
+        verification_checks=(check,),
+    )
+
+    assert request.verification_checks == (check,)
+    assert environment.name == "ATLAS_TOKEN"
+    assert not hasattr(environment, "value")
 
 
 def test_approval_request_accepts_workflow_operation_binding() -> None:

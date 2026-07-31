@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.approval.models import ApprovalRequest
+from app.approval.models import (
+    ApprovalPurpose,
+    ApprovalRequest,
+    VerificationApprovalCheck,
+)
 from app.config.settings import Settings
 from app.main import create_app
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
@@ -97,6 +101,26 @@ def workflow_result(
             requested_command=("codex", "implement"),
             requested_working_directory=repository,
             rationale="Approve the exact planned implementation operation.",
+        )
+    elif phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL:
+        approval_request = ApprovalRequest(
+            identifier="approval-verification-workflow-a16",
+            workflow_id="workflow-a16",
+            checkpoint_id="A16",
+            title="Approve verification",
+            requested_tool="verification",
+            requested_command=("verification-suite", "pytest"),
+            requested_working_directory=repository,
+            rationale="Approve the exact ordered verification checks.",
+            purpose=ApprovalPurpose.VERIFICATION,
+            verification_checks=(
+                VerificationApprovalCheck(
+                    identifier="pytest",
+                    command=("python", "-m", "pytest", "-q"),
+                    working_directory=repository,
+                    timeout_seconds=None,
+                ),
+            ),
         )
     return WorkflowResult(
         sprint=SprintStatus(
@@ -216,6 +240,27 @@ def test_resume_offloads_engine_and_returns_completed_result(
     assert calls == [(workflow_engine.resume, ("workflow-a16",))]
     workflow_engine.resume.assert_called_once_with("workflow-a16")
     workflow_orchestrator.run.assert_not_awaited()
+
+
+def test_resume_returns_verification_approval_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, workflow_engine, _ = make_client(tmp_path, monkeypatch)
+    workflow_engine.resume.return_value = workflow_result(
+        tmp_path,
+        phase=SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+    )
+
+    response = client.post("/api/v1/agent/workflows/workflow-a16/resume")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sprint"]["phase"] == "awaiting_verification_approval"
+    assert body["approval_request"]["purpose"] == "verification"
+    assert body["approval_request"]["verification_checks"][0][
+        "identifier"
+    ] == "pytest"
 
 
 def test_invalid_request_returns_422_without_starting_workflow(

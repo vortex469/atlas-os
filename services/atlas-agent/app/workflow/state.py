@@ -54,8 +54,9 @@ class WorkflowStateStore:
         identifier: str,
         expected_state: WorkflowSessionState,
         new_state: WorkflowSessionState,
+        **artifacts: object,
     ) -> bool:
-        """Atomically replace a session when its current state matches."""
+        """Atomically replace state and artifacts when current state matches."""
 
         with self._lock:
             session = self._sessions.get(identifier)
@@ -63,7 +64,11 @@ class WorkflowStateStore:
             if session is None or session.state is not expected_state:
                 return False
 
-            self._sessions[identifier] = replace(session, state=new_state)
+            self._sessions[identifier] = replace(
+                session,
+                state=new_state,
+                **artifacts,
+            )
             return True
 
     def publish_sprint(self, status: SprintStatus) -> None:

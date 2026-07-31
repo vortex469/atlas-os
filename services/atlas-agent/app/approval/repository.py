@@ -3,22 +3,25 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from dataclasses import dataclass
+from threading import RLock
 
-from app.approval.models import ApprovalDecision, ApprovalRequest, ApprovalResult
+from app.approval.models import (
+    ApprovalDecision,
+    ApprovalRequest,
+    ApprovalResult,
+    ApprovalStatus,
+)
 
 
-@dataclass(frozen=True, slots=True)
 class ApprovalRepository:
     """Repository for storing approval requests and decisions."""
 
-    # In-memory storage - this is temporary until persistence is implemented
-    _storage: MutableMapping[str, ApprovalResult] = None
-
-    def __post_init__(self) -> None:
-        """Initialize the repository with empty storage if needed."""
-        if self._storage is None:
-            object.__setattr__(self, "_storage", {})
+    def __init__(
+        self,
+        storage: MutableMapping[str, ApprovalResult] | None = None,
+    ) -> None:
+        self._storage = storage if storage is not None else {}
+        self._lock = RLock()
 
     def save_request(self, request: ApprovalRequest) -> str:
         """Save a new approval request and return its identifier.
@@ -29,14 +32,17 @@ class ApprovalRepository:
         Returns:
             The identifier of the saved request.
         """
-        # In a real implementation this would be persisted to storage
         identifier = request.identifier
-        decision = ApprovalDecision(
-            request=request,
-            status="pending"
-        )
-        result = ApprovalResult(decision=decision)
-        self._storage[identifier] = result
+        with self._lock:
+            if identifier in self._storage:
+                raise ValueError(
+                    f"Approval request already exists: {identifier}"
+                )
+            decision = ApprovalDecision(
+                request=request,
+                status=ApprovalStatus.PENDING,
+            )
+            self._storage[identifier] = ApprovalResult(decision=decision)
         return identifier
 
     def get_request(self, identifier: str) -> ApprovalResult | None:
@@ -48,7 +54,8 @@ class ApprovalRepository:
         Returns:
             The approval result or None if not found.
         """
-        return self._storage.get(identifier)
+        with self._lock:
+            return self._storage.get(identifier)
 
     def update_decision(self, identifier: str, decision: ApprovalDecision) -> bool:
         """Update an approval decision.
@@ -60,12 +67,17 @@ class ApprovalRepository:
         Returns:
             True if the update was successful, False otherwise.
         """
-        if identifier not in self._storage:
-            return False
+        with self._lock:
+            current = self._storage.get(identifier)
+            if current is None:
+                return False
+            if current.decision.status is not ApprovalStatus.PENDING:
+                return False
+            if decision.request != current.decision.request:
+                return False
 
-        result = ApprovalResult(decision=decision)
-        self._storage[identifier] = result
-        return True
+            self._storage[identifier] = ApprovalResult(decision=decision)
+            return True
 
     def get_pending_requests(self) -> list[ApprovalResult]:
         """Get all pending approval requests.
@@ -73,8 +85,9 @@ class ApprovalRepository:
         Returns:
             A list of pending approval results.
         """
-        pending = []
-        for result in self._storage.values():
-            if result.decision.status == "pending":
-                pending.append(result)
-        return pending
+        with self._lock:
+            return [
+                result
+                for result in self._storage.values()
+                if result.decision.status is ApprovalStatus.PENDING
+            ]

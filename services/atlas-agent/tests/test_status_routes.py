@@ -248,6 +248,7 @@ def test_agent_info_returns_runtime_information(
             "planned",
             "awaiting_approval",
             "in_progress",
+            "awaiting_verification_approval",
             "verifying",
             "reviewing",
             "completed",

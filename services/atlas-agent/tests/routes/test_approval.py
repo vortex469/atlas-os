@@ -144,3 +144,43 @@ def test_submit_approval_decision_invalid(client):
     
     response = client.post("/api/v1/agent/approval/test-request-5/decision", json=decision_data)
     assert response.status_code == 400
+
+
+def test_route_stores_normalized_request_and_terminal_decision(client):
+    request_data = {
+        "identifier": " normalized-request ",
+        "checkpoint_id": " A12.1 ",
+        "title": " Verification approval ",
+        "requested_tool": " verification ",
+        "requested_command": [" verification-suite ", " pytest "],
+        "rationale": " Exact checks ",
+    }
+
+    created = client.post(
+        "/api/v1/agent/approval/request",
+        json=request_data,
+    )
+    assert created.status_code == 200
+    stored = client.get(
+        "/api/v1/agent/approval/normalized-request"
+    ).json()["request"]
+    assert stored["identifier"] == "normalized-request"
+    assert stored["requested_command"] == ["verification-suite", "pytest"]
+
+    decision_data = {
+        "request": stored,
+        "status": "approved",
+        "reviewer": " operator ",
+    }
+    first = client.post(
+        "/api/v1/agent/approval/normalized-request/decision",
+        json=decision_data,
+    )
+    repeated = client.post(
+        "/api/v1/agent/approval/normalized-request/decision",
+        json=decision_data,
+    )
+
+    assert first.status_code == 200
+    assert first.json()["reviewer"] == "operator"
+    assert repeated.status_code == 409

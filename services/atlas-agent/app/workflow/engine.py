@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
 
 from app.approval.engine import ApprovalEngine
-from app.approval.models import ApprovalDecision, ApprovalRequest
+from app.approval.models import (
+    ApprovalDecision,
+    ApprovalPurpose,
+    ApprovalRequest,
+    ApprovalStatus,
+    VerificationApprovalCheck,
+    VerificationApprovalEnvironment,
+)
 from app.approval.repository import ApprovalRepository
 from app.context.models import AgentContext
 from app.execution.engine import ExecutionEngine
@@ -226,7 +234,7 @@ class WorkflowEngine:
         )
 
     def resume(self, workflow_id: str) -> WorkflowResult:
-        """Resume one approved workflow from its stored implementation plan."""
+        """Resume one workflow from its current approval boundary."""
 
         session = self._state_store.get_session(workflow_id)
 
@@ -236,24 +244,39 @@ class WorkflowEngine:
                 error_message="Workflow not found",
             )
 
-        if session.state is WorkflowSessionState.IN_PROGRESS:
-            return self._blocked_session_result(
+        if session.state in {
+            WorkflowSessionState.EXECUTING,
+            WorkflowSessionState.VERIFYING,
+        }:
+            return self._session_error_result(
                 session=session,
                 error_message="Workflow already in progress",
             )
 
         if session.state is WorkflowSessionState.COMPLETED:
-            return self._blocked_session_result(
+            return self._session_error_result(
                 session=session,
                 error_message="Workflow already completed",
             )
 
-        if session.state is not WorkflowSessionState.AWAITING_APPROVAL:
-            return self._blocked_session_result(
-                session=session,
-                error_message="Workflow is not resumable",
-            )
+        if session.state is WorkflowSessionState.AWAITING_APPROVAL:
+            return self._resume_implementation(session)
+        if (
+            session.state
+            is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+        ):
+            return self._resume_verification(session)
 
+        return self._blocked_session_result(
+            session=session,
+            error_message="Workflow is not resumable",
+        )
+
+    def _resume_implementation(
+        self,
+        session: WorkflowSession,
+    ) -> WorkflowResult:
+        workflow_id = session.identifier
         approval_identifier = f"approval-{workflow_id}"
         approval_result = self._approval_repository.get_request(
             approval_identifier
@@ -291,15 +314,18 @@ class WorkflowEngine:
         if not self._state_store.transition_session(
             workflow_id,
             WorkflowSessionState.AWAITING_APPROVAL,
-            WorkflowSessionState.IN_PROGRESS,
+            WorkflowSessionState.EXECUTING,
         ):
-            return self._blocked_session_result(
+            return self._session_error_result(
                 session=session,
                 error_message="Workflow already resumed",
             )
 
         if not evaluated_approval.approved:
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.EXECUTING,
+            )
             return self._blocked_session_result(
                 session=session,
                 error_message="Approval rejected",
@@ -317,7 +343,10 @@ class WorkflowEngine:
             self._validate_pre_execution_snapshot(before_execution, plan)
         except Exception:
             logger.exception("Workflow repository validation failed")
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.EXECUTING,
+            )
             return self._blocked_session_result(
                 session=session,
                 error_message="Workflow repository validation failed",
@@ -334,14 +363,20 @@ class WorkflowEngine:
             execution_result = self._execution_engine.execute(execution_request)
         except Exception:
             logger.exception("Workflow execution failed")
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.EXECUTING,
+            )
             return self._blocked_session_result(
                 session=session,
                 error_message="Workflow execution failed",
             )
 
         if execution_result.status is not ExecutionStatus.SUCCEEDED:
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.EXECUTING,
+            )
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
@@ -353,11 +388,132 @@ class WorkflowEngine:
             changed_files = self._workflow_changed_files(after_execution, plan)
         except Exception:
             logger.exception("Workflow change inspection failed")
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.EXECUTING,
+            )
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
                 error_message="Workflow change inspection failed",
+            )
+
+        try:
+            verification_approval = self._verification_approval_request(session)
+            self._approval_repository.save_request(verification_approval)
+        except Exception:
+            logger.exception("Verification approval storage failed")
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.EXECUTING,
+            )
+            return self._blocked_session_result(
+                session=session,
+                execution_result=execution_result,
+                error_message="Verification approval storage failed",
+            )
+
+        if not self._state_store.transition_session(
+            workflow_id,
+            WorkflowSessionState.EXECUTING,
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            execution_result=execution_result,
+            changed_files=changed_files,
+        ):
+            return self._blocked_session_result(
+                session=session,
+                execution_result=execution_result,
+                error_message="Workflow state transition failed",
+            )
+
+        awaiting_status = self._status(
+            session,
+            SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+        )
+        self._state_store.publish_sprint(awaiting_status)
+        return WorkflowResult(
+            sprint=awaiting_status,
+            plan=plan,
+            context=context,
+            planning_analysis=session.planning_analysis,
+            approval_request=verification_approval,
+            execution_result=execution_result,
+        )
+
+    def _resume_verification(
+        self,
+        session: WorkflowSession,
+    ) -> WorkflowResult:
+        workflow_id = session.identifier
+        approval_identifier = f"approval-verification-{workflow_id}"
+        approval_result = self._approval_repository.get_request(
+            approval_identifier
+        )
+
+        if approval_result is None:
+            return self._waiting_verification_result(session)
+
+        approval_request = approval_result.decision.request
+        try:
+            expected_request = self._verification_approval_request(session)
+        except Exception:
+            logger.exception("Workflow approval validation failed")
+            return self._block_verification_session(
+                session=session,
+                error_message="Approval is invalid",
+            )
+        if approval_request != expected_request:
+            return self._block_verification_session(
+                session=session,
+                error_message="Approval does not match workflow",
+            )
+
+        try:
+            evaluated_approval = self._approval_engine.evaluate(
+                approval_result.decision
+            )
+        except Exception:
+            logger.exception("Workflow approval validation failed")
+            return self._block_verification_session(
+                session=session,
+                error_message="Approval is invalid",
+            )
+
+        if evaluated_approval.decision.status is ApprovalStatus.PENDING:
+            return self._waiting_verification_result(
+                session,
+                approval_request=approval_request,
+            )
+
+        if not evaluated_approval.approved:
+            return self._block_verification_session(
+                session=session,
+                error_message="Approval rejected",
+            )
+
+        if not self._state_store.transition_session(
+            workflow_id,
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            WorkflowSessionState.VERIFYING,
+        ):
+            return self._session_error_result(
+                session=session,
+                error_message="Workflow already resumed",
+            )
+
+        request = session.request
+        plan = session.plan
+        context = session.context
+        execution_result = session.execution_result
+        changed_files = session.changed_files
+        if execution_result is None or not changed_files:
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.VERIFYING,
+            )
+            return self._blocked_session_result(
+                session=session,
+                error_message="Workflow execution artifacts are missing",
             )
 
         verifying_status = self._status(session, SprintPhase.VERIFYING)
@@ -371,7 +527,10 @@ class WorkflowEngine:
             )
         except Exception:
             logger.exception("Workflow verification failed")
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.VERIFYING,
+            )
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
@@ -381,7 +540,10 @@ class WorkflowEngine:
         self._state_store.publish_verification(verification_report)
 
         if verification_report.status is not VerificationStatus.PASSED:
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.VERIFYING,
+            )
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
@@ -405,7 +567,10 @@ class WorkflowEngine:
             review_report = self._review_engine.review(review_request)
         except Exception:
             logger.exception("Workflow review failed")
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.VERIFYING,
+            )
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
@@ -416,7 +581,10 @@ class WorkflowEngine:
         self._state_store.publish_review(review_report)
 
         if review_report.status is not ReviewStatus.APPROVED:
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.VERIFYING,
+            )
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
@@ -438,7 +606,10 @@ class WorkflowEngine:
             ).commit(commit_request)
         except Exception:
             logger.exception("Workflow commit failed")
-            self._block_claimed_session(workflow_id)
+            self._block_claimed_session(
+                workflow_id,
+                WorkflowSessionState.VERIFYING,
+            )
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,
@@ -449,7 +620,7 @@ class WorkflowEngine:
 
         self._state_store.transition_session(
             workflow_id,
-            WorkflowSessionState.IN_PROGRESS,
+            WorkflowSessionState.VERIFYING,
             WorkflowSessionState.COMPLETED,
         )
         completed_status = self._status(session, SprintPhase.COMPLETED)
@@ -466,6 +637,57 @@ class WorkflowEngine:
             review_report=review_report,
             commit_result=commit_result,
         )
+
+    def _verification_approval_request(
+        self,
+        session: WorkflowSession,
+    ) -> ApprovalRequest:
+        checks = tuple(
+            VerificationApprovalCheck(
+                identifier=check.identifier,
+                command=check.argv,
+                working_directory=(
+                    check.working_directory.resolve(strict=False)
+                    if check.working_directory.is_absolute()
+                    else (
+                        session.plan.repository_root
+                        / check.working_directory
+                    ).resolve(strict=False)
+                ),
+                timeout_seconds=check.timeout_seconds,
+                environment=tuple(
+                    VerificationApprovalEnvironment(
+                        name=variable.name,
+                        value_digest=sha256(
+                            variable.value.encode("utf-8")
+                        ).hexdigest(),
+                    )
+                    for variable in check.environment
+                ),
+            )
+            for check in session.request.verification_checks
+        )
+        request = ApprovalRequest(
+            identifier=f"approval-verification-{session.identifier}",
+            workflow_id=session.identifier,
+            checkpoint_id=session.plan.checkpoint_id,
+            title=f"Approve verification of {session.plan.title}",
+            requested_tool="verification",
+            requested_command=(
+                "verification-suite",
+                *(check.identifier for check in checks),
+            ),
+            requested_working_directory=session.plan.repository_root,
+            rationale="Approve the exact ordered verification checks.",
+            purpose=ApprovalPurpose.VERIFICATION,
+            verification_checks=checks,
+        )
+        return self._approval_engine.evaluate(
+            ApprovalDecision(
+                request=request,
+                status=ApprovalStatus.PENDING,
+            )
+        ).decision.request
 
     @staticmethod
     def _validate_pre_execution_snapshot(
@@ -536,6 +758,7 @@ class WorkflowEngine:
 
         return (
             approval_request.identifier == approval_identifier
+            and approval_request.purpose is ApprovalPurpose.IMPLEMENTATION
             and approval_request.workflow_id == session.identifier
             and approval_request.checkpoint_id == session.plan.checkpoint_id
             and approval_request.requested_tool == request.execution_argv[0]
@@ -544,11 +767,55 @@ class WorkflowEngine:
             == request.execution_workdir
         )
 
-    def _block_claimed_session(self, workflow_id: str) -> None:
+    def _block_claimed_session(
+        self,
+        workflow_id: str,
+        expected_state: WorkflowSessionState,
+    ) -> None:
         self._state_store.transition_session(
             workflow_id,
-            WorkflowSessionState.IN_PROGRESS,
+            expected_state,
             WorkflowSessionState.BLOCKED,
+        )
+
+    def _waiting_verification_result(
+        self,
+        session: WorkflowSession,
+        *,
+        approval_request: ApprovalRequest | None = None,
+    ) -> WorkflowResult:
+        awaiting_status = self._status(
+            session,
+            SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+        )
+        self._state_store.publish_sprint(awaiting_status)
+        return WorkflowResult(
+            sprint=awaiting_status,
+            plan=session.plan,
+            context=session.context,
+            planning_analysis=session.planning_analysis,
+            approval_request=approval_request,
+            execution_result=session.execution_result,
+        )
+
+    def _block_verification_session(
+        self,
+        *,
+        session: WorkflowSession,
+        error_message: str,
+    ) -> WorkflowResult:
+        if not self._state_store.transition_session(
+            session.identifier,
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            WorkflowSessionState.BLOCKED,
+        ):
+            return self._session_error_result(
+                session=session,
+                error_message="Workflow already resumed",
+            )
+        return self._blocked_session_result(
+            session=session,
+            error_message=error_message,
         )
 
     def _blocked_session_result(
@@ -566,10 +833,31 @@ class WorkflowEngine:
         return WorkflowResult(
             sprint=blocked_status,
             plan=session.plan,
+            context=session.context,
             planning_analysis=session.planning_analysis,
-            execution_result=execution_result,
+            execution_result=execution_result or session.execution_result,
             verification_report=verification_report,
             review_report=review_report,
+            error_message=error_message,
+        )
+
+    def _session_error_result(
+        self,
+        *,
+        session: WorkflowSession,
+        error_message: str,
+    ) -> WorkflowResult:
+        phase = {
+            WorkflowSessionState.EXECUTING: SprintPhase.IN_PROGRESS,
+            WorkflowSessionState.VERIFYING: SprintPhase.VERIFYING,
+            WorkflowSessionState.COMPLETED: SprintPhase.COMPLETED,
+        }.get(session.state, SprintPhase.BLOCKED)
+        return WorkflowResult(
+            sprint=self._status(session, phase),
+            plan=session.plan,
+            context=session.context,
+            planning_analysis=session.planning_analysis,
+            execution_result=session.execution_result,
             error_message=error_message,
         )
 

@@ -13,6 +13,33 @@ class ApprovalStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class ApprovalPurpose(StrEnum):
+    """Purpose of one human approval boundary."""
+
+    IMPLEMENTATION = "implementation"
+    VERIFICATION = "verification"
+    COMMIT = "commit"
+
+
+@dataclass(frozen=True, slots=True)
+class VerificationApprovalEnvironment:
+    """Non-secret environment metadata bound to a verification approval."""
+
+    name: str
+    value_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class VerificationApprovalCheck:
+    """Exact non-secret verification check metadata requiring approval."""
+
+    identifier: str
+    command: tuple[str, ...]
+    working_directory: Path
+    timeout_seconds: float | None
+    environment: tuple[VerificationApprovalEnvironment, ...] = ()
+
+
 @dataclass(frozen=True, slots=True)
 class ApprovalRequest:
     """One tool-execution request requiring human approval."""
@@ -25,6 +52,8 @@ class ApprovalRequest:
     rationale: str
     workflow_id: str | None = None
     requested_working_directory: Path | None = None
+    purpose: ApprovalPurpose = ApprovalPurpose.IMPLEMENTATION
+    verification_checks: tuple[VerificationApprovalCheck, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

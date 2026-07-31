@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from app.approval.exceptions import ApprovalValidationError
 from app.approval.models import (
     ApprovalDecision,
+    ApprovalPurpose,
     ApprovalRequest,
     ApprovalResult,
     ApprovalStatus,
+    VerificationApprovalCheck,
+    VerificationApprovalEnvironment,
 )
+
+_SHA256_DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +76,14 @@ class ApprovalEngine:
             requested_tool=requested_tool,
             requested_command=tuple(normalized_requested_command),
             rationale=rationale,
+            workflow_id=(
+                request.workflow_id.strip()
+                if request.workflow_id is not None
+                else None
+            ),
+            requested_working_directory=request.requested_working_directory,
+            purpose=request.purpose,
+            verification_checks=self._normalize_verification_checks(request),
         )
 
         # Validate the ApprovalDecision
@@ -105,3 +119,84 @@ class ApprovalEngine:
         )
 
         return ApprovalResult(decision=normalized_decision)
+
+    @staticmethod
+    def _normalize_verification_checks(
+        request: ApprovalRequest,
+    ) -> tuple[VerificationApprovalCheck, ...]:
+        if request.purpose is not ApprovalPurpose.VERIFICATION:
+            if request.verification_checks:
+                raise ApprovalValidationError(
+                    "Only verification approvals may contain verification checks"
+                )
+            return ()
+
+        if request.workflow_id is None or not request.workflow_id.strip():
+            raise ApprovalValidationError(
+                "Verification approvals require a workflow_id"
+            )
+        if not request.verification_checks:
+            raise ApprovalValidationError(
+                "Verification approvals require at least one check"
+            )
+
+        normalized: list[VerificationApprovalCheck] = []
+        identifiers: set[str] = set()
+        for check in request.verification_checks:
+            identifier = check.identifier.strip()
+            if not identifier:
+                raise ApprovalValidationError(
+                    "Verification approval check identifier cannot be blank"
+                )
+            if identifier in identifiers:
+                raise ApprovalValidationError(
+                    "Verification approval check identifiers must be unique"
+                )
+            if not check.command or any(
+                not argument.strip() for argument in check.command
+            ):
+                raise ApprovalValidationError(
+                    "Verification approval commands must contain nonblank items"
+                )
+            if (
+                check.timeout_seconds is not None
+                and check.timeout_seconds <= 0
+            ):
+                raise ApprovalValidationError(
+                    "Verification approval timeout must be positive"
+                )
+
+            environment: list[VerificationApprovalEnvironment] = []
+            environment_names: set[str] = set()
+            for variable in check.environment:
+                name = variable.name.strip()
+                if not name or name in environment_names:
+                    raise ApprovalValidationError(
+                        "Verification approval environment names must be "
+                        "nonblank and unique"
+                    )
+                if _SHA256_DIGEST.fullmatch(variable.value_digest) is None:
+                    raise ApprovalValidationError(
+                        "Verification approval environment digests must be "
+                        "lowercase SHA-256 values"
+                    )
+                environment_names.add(name)
+                environment.append(
+                    VerificationApprovalEnvironment(
+                        name=name,
+                        value_digest=variable.value_digest,
+                    )
+                )
+
+            identifiers.add(identifier)
+            normalized.append(
+                VerificationApprovalCheck(
+                    identifier=identifier,
+                    command=tuple(argument.strip() for argument in check.command),
+                    working_directory=check.working_directory,
+                    timeout_seconds=check.timeout_seconds,
+                    environment=tuple(environment),
+                )
+            )
+
+        return tuple(normalized)

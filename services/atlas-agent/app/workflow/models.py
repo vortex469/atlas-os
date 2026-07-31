@@ -22,6 +22,7 @@ class SprintPhase(StrEnum):
     PLANNED = "planned"
     AWAITING_APPROVAL = "awaiting_approval"
     IN_PROGRESS = "in_progress"
+    AWAITING_VERIFICATION_APPROVAL = "awaiting_verification_approval"
     VERIFYING = "verifying"
     REVIEWING = "reviewing"
     COMPLETED = "completed"
@@ -33,7 +34,9 @@ class WorkflowSessionState(StrEnum):
 
     PLANNED = "planned"
     AWAITING_APPROVAL = "awaiting_approval"
-    IN_PROGRESS = "in_progress"
+    EXECUTING = "executing"
+    AWAITING_VERIFICATION_APPROVAL = "awaiting_verification_approval"
+    VERIFYING = "verifying"
     BLOCKED = "blocked"
     COMPLETED = "completed"
 
@@ -73,6 +76,8 @@ class WorkflowSession:
     state: WorkflowSessionState
     planning_analysis: ModelResponse | None = None
     context: AgentContext | None = None
+    execution_result: ExecutionResult | None = None
+    changed_files: tuple[Path, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,5 +1,6 @@
 """Tests for Atlas Agent workflow orchestration."""
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -8,12 +9,14 @@ import pytest
 from app.approval.engine import ApprovalEngine
 from app.approval.models import (
     ApprovalDecision,
+    ApprovalPurpose,
     ApprovalRequest,
+    ApprovalResult,
     ApprovalStatus,
 )
 from app.approval.repository import ApprovalRepository
 from app.context.models import AgentContext, ServiceHealth
-from app.execution.models import ExecutionResult, ExecutionStatus
+from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
 from app.planning.advisor import PlanningAdvisor
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
@@ -28,6 +31,7 @@ from app.workflow.engine import WorkflowEngine
 from app.workflow.models import (
     SprintPhase,
     WorkflowRequest,
+    WorkflowResult,
     WorkflowSession,
     WorkflowSessionState,
 )
@@ -177,6 +181,9 @@ def make_request(root: Path) -> WorkflowRequest:
                 identifier="pytest",
                 argv=("python", "-m", "pytest"),
                 working_directory=root,
+                environment=(
+                    EnvironmentVariable(name="ATLAS_ENV", value="test"),
+                ),
             ),
         ),
         review_identifier="review-a9",
@@ -853,11 +860,29 @@ def make_resume_engine(
     )
 
 
+def approve_verification_and_resume(
+    engine: WorkflowEngine,
+    approval_repository: ApprovalRepository,
+) -> tuple[WorkflowResult, WorkflowResult]:
+    implementation_result = engine.resume("workflow-a15-3")
+    verification_request = implementation_result.approval_request
+    assert verification_request is not None
+    assert approval_repository.update_decision(
+        verification_request.identifier,
+        ApprovalDecision(
+            request=verification_request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+    return implementation_result, engine.resume("workflow-a15-3")
+
+
 def test_approved_workflow_resumes_exact_stored_plan(tmp_path: Path) -> None:
     (
         engine,
         state_store,
-        _,
+        approval_repository,
         inspector_factory,
         planning_engine,
         execution_engine,
@@ -866,8 +891,15 @@ def test_approved_workflow_resumes_exact_stored_plan(tmp_path: Path) -> None:
     ) = make_resume_engine(tmp_path)
     session = state_store.get_session("workflow-a15-3")
 
-    result = engine.resume("workflow-a15-3")
+    implementation_result, result = approve_verification_and_resume(
+        engine,
+        approval_repository,
+    )
 
+    assert (
+        implementation_result.sprint.phase
+        is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    )
     assert result.sprint.phase is SprintPhase.COMPLETED
     assert result.plan is session.plan
     assert result.execution_result is not None
@@ -898,7 +930,7 @@ def test_resume_reuses_snapshot_without_context_acquisition(
     (
         engine,
         _,
-        _,
+        approval_repository,
         _,
         _,
         _,
@@ -909,7 +941,7 @@ def test_resume_reuses_snapshot_without_context_acquisition(
         context=context,
     )
 
-    result = engine.resume("workflow-a15-3")
+    _, result = approve_verification_and_resume(engine, approval_repository)
 
     verification_engine.verify.assert_called_once_with(
         repository_root=tmp_path,
@@ -932,7 +964,8 @@ def test_resume_reuses_snapshot_without_context_acquisition(
 @pytest.mark.parametrize(
     ("state", "error"),
     (
-        (WorkflowSessionState.IN_PROGRESS, "Workflow already in progress"),
+        (WorkflowSessionState.EXECUTING, "Workflow already in progress"),
+        (WorkflowSessionState.VERIFYING, "Workflow already in progress"),
         (WorkflowSessionState.COMPLETED, "Workflow already completed"),
         (WorkflowSessionState.BLOCKED, "Workflow is not resumable"),
     ),
@@ -1019,13 +1052,12 @@ def test_mismatched_approval_leaves_workflow_awaiting(
     }
     values[field] = value
     mismatched = ApprovalRequest(**values)
-    approval_repository.update_decision(
-        mismatched.identifier,
-        ApprovalDecision(
+    approval_repository._storage[mismatched.identifier] = ApprovalResult(
+        decision=ApprovalDecision(
             request=mismatched,
             status=ApprovalStatus.APPROVED,
             reviewer="tester",
-        ),
+        )
     )
 
     result = engine.resume("workflow-a15-3")
@@ -1062,13 +1094,29 @@ def test_unapproved_decision_claims_then_blocks(
 
 
 def test_duplicate_resume_does_not_replay_execution(tmp_path: Path) -> None:
-    engine, _, _, _, _, execution_engine, _, _ = make_resume_engine(tmp_path)
+    engine, _, approval_repository, _, _, execution_engine, _, _ = (
+        make_resume_engine(tmp_path)
+    )
 
     first = engine.resume("workflow-a15-3")
+    repeated = engine.resume("workflow-a15-3")
+    verification_request = first.approval_request
+    assert verification_request is not None
+    assert approval_repository.update_decision(
+        verification_request.identifier,
+        ApprovalDecision(
+            request=verification_request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
     second = engine.resume("workflow-a15-3")
+    third = engine.resume("workflow-a15-3")
 
-    assert first.sprint.phase is SprintPhase.COMPLETED
-    assert second.error_message == "Workflow already completed"
+    assert first.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert repeated.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert second.sprint.phase is SprintPhase.COMPLETED
+    assert third.error_message == "Workflow already completed"
     execution_engine.execute.assert_called_once()
 
 
@@ -1095,7 +1143,7 @@ def test_execution_failure_blocks_and_stops_pipeline(tmp_path: Path) -> None:
 
 
 def test_verification_failure_blocks_before_review(tmp_path: Path) -> None:
-    engine, state_store, _, _, _, _, _, review_engine = make_resume_engine(
+    engine, state_store, approval_repository, _, _, _, _, review_engine = make_resume_engine(
         tmp_path,
         verification_report=make_verification_report(
             tmp_path,
@@ -1103,7 +1151,7 @@ def test_verification_failure_blocks_before_review(tmp_path: Path) -> None:
         ),
     )
 
-    result = engine.resume("workflow-a15-3")
+    _, result = approve_verification_and_resume(engine, approval_repository)
 
     assert result.error_message == "Verification failed"
     assert (
@@ -1114,14 +1162,14 @@ def test_verification_failure_blocks_before_review(tmp_path: Path) -> None:
 
 
 def test_review_rejection_blocks_workflow(tmp_path: Path) -> None:
-    engine, state_store, _, _, _, _, _, _ = make_resume_engine(
+    engine, state_store, approval_repository, _, _, _, _, _ = make_resume_engine(
         tmp_path,
         review_report=make_review_report(
             status=ReviewStatus.CHANGES_REQUIRED,
         ),
     )
 
-    result = engine.resume("workflow-a15-3")
+    _, result = approve_verification_and_resume(engine, approval_repository)
 
     assert result.error_message == "Review failed"
     assert (
@@ -1158,13 +1206,13 @@ def test_preexisting_untracked_logs_are_permitted(tmp_path: Path) -> None:
         tmp_path,
         untracked_files=("logs/",),
     )
-    engine, _, _, _, _, _, _, review_engine = make_resume_engine(
+    engine, _, approval_repository, _, _, _, _, review_engine = make_resume_engine(
         tmp_path,
         before_snapshot=before,
         after_snapshot=after,
     )
 
-    result = engine.resume("workflow-a15-3")
+    _, result = approve_verification_and_resume(engine, approval_repository)
 
     assert result.sprint.phase is SprintPhase.COMPLETED
     review_request = review_engine.review.call_args.args[0]
@@ -1200,7 +1248,7 @@ def test_out_of_plan_change_blocks_before_verification(
 def test_post_execution_head_validation_is_deferred_to_committer(
     tmp_path: Path,
 ) -> None:
-    engine, _, _, _, _, _, _, review_engine = make_resume_engine(
+    engine, _, approval_repository, _, _, _, _, review_engine = make_resume_engine(
         tmp_path,
         after_snapshot=make_changed_snapshot(
             tmp_path,
@@ -1208,7 +1256,7 @@ def test_post_execution_head_validation_is_deferred_to_committer(
         ),
     )
 
-    result = engine.resume("workflow-a15-3")
+    _, result = approve_verification_and_resume(engine, approval_repository)
 
     assert result.sprint.phase is SprintPhase.COMPLETED
     review_engine.review.assert_called_once()
@@ -1243,12 +1291,12 @@ def test_no_committable_change_blocks_before_verification(
 def test_commit_failure_blocks_and_preserves_completed_artifacts(
     tmp_path: Path,
 ) -> None:
-    engine, state_store, _, _, _, _, _, _ = make_resume_engine(
+    engine, state_store, approval_repository, _, _, _, _, _ = make_resume_engine(
         tmp_path,
         commit_error=RuntimeError("git identity missing"),
     )
 
-    result = engine.resume("workflow-a15-3")
+    _, result = approve_verification_and_resume(engine, approval_repository)
 
     assert result.error_message == "Workflow commit failed"
     assert result.execution_result is not None
@@ -1262,13 +1310,160 @@ def test_commit_failure_blocks_and_preserves_completed_artifacts(
 
 
 def test_review_rejection_never_calls_committer(tmp_path: Path) -> None:
-    engine, _, _, _, _, _, _, _ = make_resume_engine(
+    engine, _, approval_repository, _, _, _, _, _ = make_resume_engine(
         tmp_path,
         review_report=make_review_report(
             status=ReviewStatus.CHANGES_REQUIRED,
         ),
     )
 
-    engine.resume("workflow-a15-3")
+    approve_verification_and_resume(engine, approval_repository)
 
     engine._repository_committer_factory.assert_not_called()
+
+
+def test_implementation_pauses_with_persisted_verification_artifacts(
+    tmp_path: Path,
+) -> None:
+    (
+        engine,
+        state_store,
+        approval_repository,
+        _,
+        _,
+        execution_engine,
+        verification_engine,
+        review_engine,
+    ) = make_resume_engine(tmp_path)
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert result.approval_request is not None
+    assert result.approval_request.purpose is ApprovalPurpose.VERIFICATION
+    check = result.approval_request.verification_checks[0]
+    assert check.command == ("python", "-m", "pytest")
+    assert check.environment[0].name == "ATLAS_ENV"
+    assert check.environment[0].value_digest != "test"
+    assert len(check.environment[0].value_digest) == 64
+    session = state_store.get_session("workflow-a15-3")
+    assert session is not None
+    assert session.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    assert session.execution_result is result.execution_result
+    assert session.changed_files == (Path("app/workflow/engine.py"),)
+    stored = approval_repository.get_request(result.approval_request.identifier)
+    assert stored is not None
+    execution_engine.execute.assert_called_once()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
+    engine._repository_committer_factory.assert_not_called()
+
+
+def test_pending_or_missing_verification_approval_remains_waiting(
+    tmp_path: Path,
+) -> None:
+    engine, state_store, repository, _, _, execution_engine, verifier, _ = (
+        make_resume_engine(tmp_path)
+    )
+    implementation = engine.resume("workflow-a15-3")
+    approval_request = implementation.approval_request
+    assert approval_request is not None
+
+    pending = engine.resume("workflow-a15-3")
+    repository._storage.pop(approval_request.identifier)
+    missing = engine.resume("workflow-a15-3")
+
+    assert pending.error_message is None
+    assert missing.error_message is None
+    assert pending.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert missing.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    )
+    execution_engine.execute.assert_called_once()
+    verifier.verify.assert_not_called()
+
+
+@pytest.mark.parametrize("mismatched", (False, True))
+def test_rejected_or_mismatched_verification_approval_blocks(
+    tmp_path: Path,
+    mismatched: bool,
+) -> None:
+    engine, state_store, repository, _, _, execution_engine, verifier, _ = (
+        make_resume_engine(tmp_path)
+    )
+    implementation = engine.resume("workflow-a15-3")
+    request = implementation.approval_request
+    assert request is not None
+    if mismatched:
+        values = {
+            name: getattr(request, name)
+            for name in ApprovalRequest.__dataclass_fields__
+        }
+        values["checkpoint_id"] = "A12.2"
+        wrong_request = ApprovalRequest(**values)
+        repository._storage[request.identifier] = ApprovalResult(
+            decision=ApprovalDecision(
+                request=wrong_request,
+                status=ApprovalStatus.APPROVED,
+                reviewer="tester",
+            )
+        )
+    else:
+        assert repository.update_decision(
+            request.identifier,
+            ApprovalDecision(
+                request=request,
+                status=ApprovalStatus.REJECTED,
+                reviewer="tester",
+                reason="Verification not approved.",
+            ),
+        )
+
+    result = engine.resume("workflow-a15-3")
+
+    expected = (
+        "Approval does not match workflow"
+        if mismatched
+        else "Approval rejected"
+    )
+    assert result.error_message == expected
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.BLOCKED
+    )
+    execution_engine.execute.assert_called_once()
+    verifier.verify.assert_not_called()
+
+
+def test_concurrent_verification_resume_runs_stage_once(
+    tmp_path: Path,
+) -> None:
+    engine, _, repository, _, _, execution_engine, verifier, reviewer = (
+        make_resume_engine(tmp_path)
+    )
+    implementation = engine.resume("workflow-a15-3")
+    request = implementation.approval_request
+    assert request is not None
+    assert repository.update_decision(
+        request.identifier,
+        ApprovalDecision(
+            request=request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = tuple(
+            executor.map(lambda _: engine.resume("workflow-a15-3"), range(2))
+        )
+
+    assert sum(
+        result.sprint.phase is SprintPhase.COMPLETED for result in results
+    ) == 1
+    execution_engine.execute.assert_called_once()
+    verifier.verify.assert_called_once()
+    reviewer.review.assert_called_once()
+    engine._repository_committer_factory.return_value.commit.assert_called_once()
