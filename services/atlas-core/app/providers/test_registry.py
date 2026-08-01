@@ -126,6 +126,50 @@ def test_registry_returns_stable_workspace_order() -> None:
     ]
 
 
+def test_replace_updates_only_one_provider() -> None:
+    registry = ProviderRegistry()
+    original = MockProvider(provider_id="target", name="Original")
+    other = MockProvider(provider_id="other", name="Other")
+    replacement = MockProvider(provider_id="target", name="Replacement")
+
+    registry.register_many([original, other])
+    registry.replace(replacement)
+
+    assert registry.get("target") is replacement
+    assert registry.get("other") is other
+    assert registry.ids() == ("target", "other")
+
+
+def test_replace_all_atomically_replaces_contents() -> None:
+    registry = ProviderRegistry()
+    original = MockProvider(provider_id="original", name="Original")
+    replacement = MockProvider(provider_id="replacement", name="Replacement")
+
+    registry.register(original)
+    registry.replace_all([replacement])
+
+    assert not registry.contains("original")
+    assert registry.get("replacement") is replacement
+    assert registry.ids() == ("replacement",)
+
+
+def test_replace_all_duplicate_provider_ids_leave_existing_registry_intact() -> None:
+    registry = ProviderRegistry()
+    original = MockProvider(provider_id="original", name="Original")
+    first = MockProvider(provider_id="duplicate", name="First")
+    second = MockProvider(provider_id="duplicate", name="Second")
+
+    registry.register(original)
+
+    with pytest.raises(
+        ProviderAlreadyRegisteredError,
+        match="already registered",
+    ):
+        registry.replace_all([first, second])
+
+    assert registry.ids() == ("original",)
+    assert registry.get("original") is original
+
 def test_provider_health_contract() -> None:
     import asyncio
 

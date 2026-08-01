@@ -221,6 +221,7 @@ def _metadata_from_declaration(
     provider_id: str,
     service: Mapping[str, Any],
 ) -> MetadataContext:
+    legacy_service = dict(service)
     return MetadataContext(
         consumer_id=provider_id,
         consumer_type="provider",
@@ -235,9 +236,25 @@ def _metadata_from_declaration(
         metadata={
             "critical": bool(service.get("critical", False)),
             "role": service.get("role"),
+            "provider_type": _provider_type_for_provider(provider_id),
+            "legacy_service": legacy_service,
         },
     )
 
+
+def _provider_type_for_provider(provider_id: str) -> str:
+    known_provider_types = {
+        "frigate",
+        "n8n",
+        "obsidian",
+        "ollama",
+        "opnsense",
+        "proxmox",
+        "qdrant",
+    }
+    if provider_id in known_provider_types:
+        return provider_id
+    return "inventory"
 
 def _display_name(provider_id: str) -> str:
     return provider_id.replace("_", " ").replace("-", " ").title()
