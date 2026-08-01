@@ -2,7 +2,7 @@
 
 Atlas is an intent-driven infrastructure operating system. Other tools show what is; Atlas understands what should be.
 
-These principles guide the Provider Management Framework and future Atlas features. They describe the product direction Atlas should follow as Mission Control becomes the normal way to manage infrastructure intent.
+These principles guide the Provider Management Framework, Atlas Runtime Foundation, and future Atlas features. They describe the product direction Atlas should follow as Mission Control becomes the normal way to manage infrastructure intent. The runtime-state boundary for these principles is defined in [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md).
 
 ## 1. Intent over state
 
@@ -26,7 +26,7 @@ Atlas asks the user for intent and remembers the answer. After the user chooses 
 
 Mission Control is the normal configuration interface.
 
-Files remain available for advanced operators, automation, backup, and review, but routine provider configuration should not require editing YAML. Normal users should be able to express intent safely through Mission Control.
+Files remain available for advanced operators, automation, backup, and review, but routine provider configuration should not require editing YAML. Normal users should be able to express intent safely through Mission Control, and those changes should write runtime state rather than tracked repository files.
 
 ## 5. Consistent provider experience
 
@@ -78,6 +78,6 @@ The long-term direction is that users discover resources, set intent, review fin
 
 ## Provider Management Framework direction
 
-The Provider Management Framework is the planned product layer that applies these principles across Atlas providers. Its goal is to move provider management from file-first configuration to discoverable, reviewable, user-approved intent management in Mission Control.
+The Provider Management Framework is the planned product layer that applies these principles across Atlas providers. Its goal is to move provider management from file-first configuration to discoverable, reviewable, user-approved intent management in Mission Control. It sits on Atlas Runtime Foundation, which separates immutable defaults from mutable runtime state so normal Mission Control changes do not dirty the Git checkout.
 
-Initial work should distinguish clearly between current behavior and planned behavior. Atlas already has provider discovery, findings, policy loading, and Mission Control visibility in several areas. The Provider Management Framework is the next major milestone that will make those capabilities consistent, editable, and understandable for normal users.
+Initial work should distinguish clearly between current behavior and planned behavior. Atlas already has provider discovery, findings, policy loading, and Mission Control visibility in several areas. Atlas Runtime Foundation is the active architecture milestone that defines where user-owned state lives; the Provider Management Framework remains the subsystem that makes provider capabilities consistent, editable, and understandable for normal users.

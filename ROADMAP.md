@@ -3,7 +3,7 @@
 Atlas is in the Foundry development phase. Completed work is recorded in
 `CHANGELOG.md`; this file describes direction rather than a release
 promise. Product direction is guided by the
-[Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md).
+[Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md) and the [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md).
 
 ## Foundry release hardening
 
@@ -13,9 +13,20 @@ promise. Product direction is guided by the
 - Operational deployment guidance
 
 
+## Atlas Runtime Foundation
+
+Active major Atlas milestone.
+
+- Define immutable defaults under `config/` and mutable runtime state under `data/`
+- Keep shipped templates read-only in production
+- Move normal Mission Control writes to runtime state so they must not dirty the Git checkout
+- Initialize missing runtime configuration from validated templates without overwriting existing user state
+- Make runtime policy storage explicit with `ATLAS_POLICY_FILE` and `ATLAS_POLICY_TEMPLATE_FILE`
+- Include runtime configuration in backup and restore with backward compatibility for version-1 database-only backups
+
 ## Provider Management Framework
 
-Next major Atlas milestone.
+Runtime Foundation subsystem.
 
 - Build an intent-driven Mission Control experience for provider management
 - Discover provider resources automatically before asking users for policy

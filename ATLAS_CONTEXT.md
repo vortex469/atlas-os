@@ -3,7 +3,7 @@
 ## Vision
 
 Atlas OS is a local-first, intent-driven infrastructure operating system designed to monitor,
-reason about, and automate a homelab environment. Other tools show what is; Atlas understands what should be. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md).
+reason about, and automate a homelab environment. Other tools show what is; Atlas understands what should be. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md) and [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md).
 
 Assistant: Orion
 
@@ -48,11 +48,29 @@ Implemented
 
 # Configuration
 
+Current behavior still reads shipped configuration and policies from tracked files. The planned Atlas Runtime Foundation boundary is:
+
+Immutable defaults
+
 config/
 
     atlas.yaml
 
     policies.yaml
+
+Mutable runtime state
+
+data/
+
+    config/
+
+    databases/
+
+    history/
+
+    cache/
+
+    knowledge/
 
 inventory/
 
@@ -216,16 +234,18 @@ Current
 
 # Current Sprint
 
-Foundry Release Hardening
+Atlas Runtime Foundation
 
-Next major milestone
+Active major milestone
 
-- Provider Management Framework
-- Mission Control policy management for provider resources
-- Needs Review workflows for newly discovered resources
+- Define immutable defaults in `config/` and runtime state in `data/`
+- Make runtime policy storage explicit with `ATLAS_POLICY_FILE`
+- Preserve Provider Management Framework as the subsystem for provider resources and user intent
+- Mission Control policy management for provider resources must write runtime state, not repository files
+- Needs Review workflows for newly discovered resources remain derived, not persisted
 - AI suggests intent changes; users decide and approve policy updates
 
-Current behavior still relies on `config/policies.yaml` for several operational expectations. The planned direction is to make Mission Control the normal configuration interface while keeping files available for advanced operators.
+Current behavior still relies on `config/policies.yaml` for several operational expectations. The planned architecture is to initialize `/opt/atlas/data/config/policies.yaml` from the tracked template, then make runtime state authoritative so Mission Control changes must not dirty the Git checkout.
 
 ---
 

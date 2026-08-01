@@ -6,7 +6,7 @@
 
 **A conversational infrastructure platform for understanding, operating, and automating modern infrastructure.**
 
-Atlas is an intent-driven infrastructure operating system. Other tools show what is; Atlas understands what should be. The product principles behind that direction are documented in [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md).
+Atlas is an intent-driven infrastructure operating system. Other tools show what is; Atlas understands what should be. The product principles behind that direction are documented in [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md), and the planned boundary between immutable defaults and runtime state is defined in [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md).
 
 ![Status](https://img.shields.io/badge/status-active%20development-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -92,7 +92,7 @@ Automation without understanding creates surprises.
 
 Atlas is designed to eliminate those surprises.
 
-Atlas evaluates infrastructure against user intent, not raw state alone. A stopped resource is not automatically a problem; it becomes a warning when Atlas knows the user expected it to be running. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md) for the planned product model behind Provider Management Framework work.
+Atlas evaluates infrastructure against user intent, not raw state alone. A stopped resource is not automatically a problem; it becomes a warning when Atlas knows the user expected it to be running. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md) for the planned product model behind Provider Management Framework work, and [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md) for the planned storage boundary that keeps Mission Control writes out of tracked repository configuration.
 
 ---
 
@@ -182,10 +182,12 @@ Current capabilities:
 
 Planned direction:
 
-- Provider Management Framework as the next major Atlas milestone
-- Mission Control management for provider connection, discovery, resources, monitoring, actions, and diagnostics
+- Atlas Runtime Foundation as the active major milestone for separating immutable defaults from mutable runtime state
+- Provider Management Framework as a Runtime Foundation subsystem for provider connection, discovery, resources, monitoring, actions, and diagnostics
+- Mission Control management for provider resources without normal users editing YAML
 - Needs Review workflows for newly discovered resources before Atlas remembers user intent
 - AI suggests policy improvements, while users decide and approve changes
+- Normal Mission Control changes must not dirty the Git checkout
 
 ---
 
