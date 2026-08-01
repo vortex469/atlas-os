@@ -1,6 +1,8 @@
 """Atlas Agent FastAPI application."""
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
@@ -46,6 +48,16 @@ def configure_logging(settings: Settings) -> None:
         level=log_level,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    """Manage application-owned resources for the FastAPI lifecycle."""
+
+    try:
+        yield
+    finally:
+        await application.state.container.core_client.close()
 
 
 def create_app() -> FastAPI:
@@ -135,6 +147,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title=settings.app_name,
         version=AGENT_VERSION,
+        lifespan=lifespan,
     )
     application.state.container = container
     application.include_router(health_router)

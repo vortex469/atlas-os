@@ -3,7 +3,7 @@
 import logging
 import subprocess
 from dataclasses import replace
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from fastapi.testclient import TestClient
 
@@ -25,6 +25,17 @@ def run_git(repository, *arguments: str) -> None:
     )
 
 
+def create_test_application(tmp_path, monkeypatch):
+    """Create an Atlas Agent application bound to a temporary Git repository."""
+
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    run_git(repository, "init")
+    settings = Settings(repository_root=repository.resolve())
+    monkeypatch.setattr("app.main.load_settings", lambda: settings)
+    return create_app()
+
+
 def test_health() -> None:
     """The health endpoint reports that Atlas Agent is healthy."""
 
@@ -37,6 +48,74 @@ def test_health() -> None:
         "status": "healthy",
         "service": "atlas-agent",
     }
+
+
+def test_lifespan_startup_exposes_application_container(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Application startup preserves the shared dependency container."""
+
+    application = create_test_application(tmp_path, monkeypatch)
+
+    with TestClient(application) as client:
+        assert client.app.state.container is application.state.container
+
+
+def test_lifespan_shutdown_closes_core_client_once(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Application shutdown closes the owned Atlas Core client exactly once."""
+
+    application = create_test_application(tmp_path, monkeypatch)
+    core_client = Mock()
+    core_client.close = AsyncMock()
+    application.state.container = replace(
+        application.state.container,
+        core_client=core_client,
+    )
+
+    with TestClient(application):
+        pass
+
+    core_client.close.assert_awaited_once_with()
+
+
+def test_lifespan_shutdown_handles_uninitialized_core_client(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Shutdown succeeds when the Atlas Core HTTP client was never initialized."""
+
+    application = create_test_application(tmp_path, monkeypatch)
+    core_client = application.state.container.core_client
+
+    assert core_client._client is None
+
+    with TestClient(application):
+        pass
+
+    assert core_client._client is None
+
+
+def test_lifespan_shutdown_closes_initialized_core_client(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Shutdown closes an owned Atlas Core HTTP client created during runtime."""
+
+    application = create_test_application(tmp_path, monkeypatch)
+    core_client = application.state.container.core_client
+    http_client = core_client._get_client()
+
+    assert not http_client.is_closed
+
+    with TestClient(application):
+        pass
+
+    assert http_client.is_closed
+    assert core_client._client is None
 
 
 def test_diagnostics_reports_runtime_capabilities(
