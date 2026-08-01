@@ -84,6 +84,78 @@ def test_context_engine_init():
     assert engine.core_client == mock_client
 
 
+def make_context_client(
+    *,
+    health_state: str,
+    status_state: str,
+) -> AsyncMock:
+    service = MagicMock(
+        provider_id="provider",
+        status="healthy",
+        latency_ms=None,
+        http_status=200,
+        message=None,
+        details={},
+    )
+    health = MagicMock(atlas=health_state, services={"service": service})
+    status = MagicMock(
+        atlas=status_state,
+        assistant="assistant",
+        engine="engine",
+        release="1.0",
+    )
+    client = AsyncMock()
+    client.get_health.return_value = health
+    client.get_status.return_value = status
+    client.get_intelligence_summary.return_value = make_intelligence_summary()
+    client.get_action_history.return_value = ()
+    return client
+
+
+@pytest.mark.parametrize(
+    ("health_state", "status_state"),
+    (
+        ("healthy", "online"),
+        ("degraded", "offline"),
+        ("healthy", "healthy"),
+        ("offline", "offline"),
+    ),
+)
+def test_atlas_availability_states_are_compatible(
+    health_state: str,
+    status_state: str,
+) -> None:
+    client = make_context_client(
+        health_state=health_state,
+        status_state=status_state,
+    )
+
+    context = asyncio.run(ContextEngine(client).get_context())
+
+    assert context.atlas == status_state
+    assert context.services["service"].status == "healthy"
+
+
+@pytest.mark.parametrize(
+    ("health_state", "status_state"),
+    (
+        ("healthy", "offline"),
+        ("degraded", "online"),
+    ),
+)
+def test_atlas_availability_states_reject_genuine_conflicts(
+    health_state: str,
+    status_state: str,
+) -> None:
+    client = make_context_client(
+        health_state=health_state,
+        status_state=status_state,
+    )
+
+    with pytest.raises(ContextConflictError):
+        asyncio.run(ContextEngine(client).get_context())
+
+
 def test_get_context():
     """Test get_context method."""
     # Mock the core client responses

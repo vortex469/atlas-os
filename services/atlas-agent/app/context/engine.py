@@ -40,6 +40,14 @@ _INTELLIGENCE_FAILURES = {
 }
 _ACTION_HISTORY_LIMIT = 25
 _ACTION_HISTORY_MESSAGE_LIMIT = 240
+_AVAILABLE_HEALTH_STATES = frozenset({"healthy"})
+_AVAILABLE_STATUS_STATES = frozenset({"online"})
+_UNAVAILABLE_HEALTH_STATES = frozenset(
+    {"critical", "degraded", "offline", "unknown"}
+)
+_UNAVAILABLE_STATUS_STATES = frozenset(
+    {"critical", "degraded", "offline", "unknown"}
+)
 
 
 class ContextEngine:
@@ -55,8 +63,11 @@ class ContextEngine:
         status = await self.core_client.get_status()
 
         # Check for atlas mismatch
-        if health.atlas != status.atlas:
-            raise ContextConflictError(f"Atlas mismatch: health reported {health.atlas}, status reported {status.atlas}")
+        if not _atlas_states_compatible(health.atlas, status.atlas):
+            raise ContextConflictError(
+                "Atlas mismatch: "
+                f"health reported {health.atlas}, status reported {status.atlas}"
+            )
 
         intelligence = await self._get_intelligence()
         action_history = await self._get_action_history()
@@ -195,3 +206,20 @@ def _bounded_message(message: str) -> str:
     if len(normalized) <= _ACTION_HISTORY_MESSAGE_LIMIT:
         return normalized
     return normalized[: _ACTION_HISTORY_MESSAGE_LIMIT - 1].rstrip() + "…"
+
+
+def _atlas_states_compatible(health_state: str, status_state: str) -> bool:
+    health = _normalize_atlas_state(health_state)
+    status = _normalize_atlas_state(status_state)
+
+    if health == status:
+        return True
+    if health in _AVAILABLE_HEALTH_STATES:
+        return status in _AVAILABLE_STATUS_STATES
+    if health in _UNAVAILABLE_HEALTH_STATES:
+        return status in _UNAVAILABLE_STATUS_STATES
+    return False
+
+
+def _normalize_atlas_state(state: str) -> str:
+    return state.strip().lower()
