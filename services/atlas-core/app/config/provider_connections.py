@@ -171,6 +171,43 @@ def update_provider_connection_values(
     return get_provider_connection_values(normalized_provider_id, resolved_file)
 
 
+def replace_provider_connection_values(
+    provider_id: str,
+    values: dict[str, Any],
+    connection_file: Path | None = None,
+) -> dict[str, Any]:
+    """Replace one provider connection mapping atomically.
+
+    This is intentionally narrower than a document-level replace. It is used by
+    connection orchestration rollback to restore the exact prior runtime values
+    for one provider while preserving unrelated provider sections.
+    """
+
+    normalized_provider_id = _validate_provider_id(provider_id)
+    _validate_connection_values(values)
+    resolved_file = connection_file or ensure_provider_connection_file()
+    resolved_file.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = resolved_file.with_name(f".{resolved_file.name}.lock")
+
+    with lock_file.open("w", encoding="utf-8") as lock_stream:
+        fcntl.flock(lock_stream.fileno(), fcntl.LOCK_EX)
+        try:
+            document = _load_connection_mapping(resolved_file)
+            providers = document.setdefault("providers", {})
+            provider_section = providers.setdefault(normalized_provider_id, {})
+            if not isinstance(provider_section, dict):
+                raise ProviderConnectionValidationError(
+                    "provider connection section must be a mapping.",
+                )
+            provider_section["connection"] = copy.deepcopy(values)
+            ProviderConnectionDocument.model_validate(document)
+            _atomic_write_connection_document(document, resolved_file)
+        finally:
+            fcntl.flock(lock_stream.fileno(), fcntl.LOCK_UN)
+
+    return get_provider_connection_values(normalized_provider_id, resolved_file)
+
+
 def _load_connection_mapping(connection_file: Path) -> dict[str, Any]:
     load_provider_connections(connection_file)
     with connection_file.open("r", encoding="utf-8") as stream:

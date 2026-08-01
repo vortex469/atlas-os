@@ -5,7 +5,15 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from app.context import AtlasContext
+from app.context import AtlasContext, ConnectionContext, SecretContext
+from app.models.connections import (
+    ProviderConnectionField,
+    ProviderConnectionSchema,
+    TestProviderConnectionRequest,
+    TestProviderConnectionResult,
+    UpdateProviderConnectionRequest,
+    UpdateProviderConnectionResult,
+)
 from app.models.resources import (
     ProviderExpectationOption,
     ProviderResource,
@@ -94,6 +102,89 @@ class ProxmoxProvider(Provider):
             status=str(status.get("status", "online")),
             message="Proxmox is reachable.",
             details=status,
+        )
+
+    def connection_schema(self) -> ProviderConnectionSchema:
+        connection = self.atlas_context.connection
+        secrets = self.atlas_context.secrets
+        field_sources = connection.metadata.get("field_sources", {}) if connection else {}
+        return ProviderConnectionSchema(
+            provider_id=PROVIDER_ID,
+            provider_name=self.metadata.name,
+            fields=[
+                ProviderConnectionField(
+                    key="host",
+                    label="Host",
+                    kind="host",
+                    required=True,
+                    current_value=connection.host if connection else None,
+                    source=_field_source(field_sources, "host", connection.source if connection else None),
+                ),
+                ProviderConnectionField(
+                    key="port",
+                    label="Port",
+                    kind="port",
+                    required=True,
+                    current_value=connection.port if connection else None,
+                    source=_field_source(field_sources, "port", connection.source if connection else None),
+                    validation={"min": 1, "max": 65535},
+                ),
+                ProviderConnectionField(
+                    key="node",
+                    label="Node",
+                    kind="string",
+                    required=True,
+                    current_value=connection.node if connection else None,
+                    source=_field_source(field_sources, "node", connection.source if connection else None),
+                ),
+                ProviderConnectionField(
+                    key="verify_tls",
+                    label="Verify TLS",
+                    kind="boolean",
+                    required=True,
+                    current_value=connection.verify_tls if connection else None,
+                    source=_field_source(field_sources, "verify_tls", connection.source if connection else None),
+                ),
+                _secret_field("user", "User", secrets),
+                _secret_field("token_name", "Token Name", secrets),
+                _secret_field("token_value", "Token Value", secrets),
+            ],
+            editable=True,
+            testable=True,
+        )
+
+    async def test_connection(
+        self,
+        request: TestProviderConnectionRequest,
+    ) -> TestProviderConnectionResult:
+        started_at = datetime.now(UTC)
+        try:
+            candidate_context = _candidate_context(self.atlas_context, request.values)
+            status = _call_proxmox_status(candidate_context)
+        except (OSError, RuntimeError, ValueError) as error:
+            return TestProviderConnectionResult(
+                provider_id=PROVIDER_ID,
+                status="failure",
+                message="Unable to reach Proxmox with the supplied connection values.",
+                tested_at=started_at,
+                diagnostics={"error": _sanitize_error(error, request.values)},
+            )
+
+        return TestProviderConnectionResult(
+            provider_id=PROVIDER_ID,
+            status="success",
+            message="Proxmox connection test succeeded.",
+            tested_at=started_at,
+            latency_ms=0.0,
+            diagnostics={"status": str(status.get("status", "online"))},
+        )
+
+    async def update_connection(
+        self,
+        request: UpdateProviderConnectionRequest,
+    ) -> UpdateProviderConnectionResult:
+        raise NotImplementedError(
+            "Proxmox connection updates are orchestrated by ProviderConnectionService.",
         )
 
     def expectation_options(
@@ -285,6 +376,84 @@ def _metadata_from_context(atlas_context: AtlasContext) -> ProviderMetadata:
             }
         ),
     )
+
+
+def _field_source(
+    field_sources: Mapping[str, Any],
+    field_name: str,
+    fallback: str | None,
+) -> str | None:
+    value = field_sources.get(field_name)
+    return str(value) if value is not None else fallback
+
+
+def _secret_field(
+    name: str,
+    label: str,
+    secrets: Mapping[str, Any],
+) -> ProviderConnectionField:
+    secret = secrets.get(name)
+    configured = bool(secret and secret.configured)
+    source = str(secret.source) if secret is not None else "missing"
+    return ProviderConnectionField(
+        key=name,
+        label=label,
+        kind="secret",
+        required=True,
+        editable=True,
+        secret=True,
+        secret_state="configured" if configured else "missing",
+        source=source,
+    )
+
+
+def _candidate_context(
+    atlas_context: AtlasContext,
+    values: Mapping[str, Any],
+) -> AtlasContext:
+    connection_updates = {
+        key: values[key]
+        for key in ("host", "port", "node", "verify_tls")
+        if key in values
+    }
+    secret_updates = {
+        key: str(values[key])
+        for key in ("user", "token_name", "token_value")
+        if values.get(key)
+    }
+    connection = atlas_context.connection
+    connection_data = connection.model_dump() if connection is not None else {}
+    connection_data.update(connection_updates)
+    connection_data["source"] = "runtime"
+    secrets = dict(atlas_context.secrets)
+    for name, value in secret_updates.items():
+        existing = secrets.get(name)
+        secret_data = existing.model_dump() if existing is not None else {"name": name}
+        secret_data.update(
+            {
+                "source": "runtime",
+                "configured": True,
+                "value": value,
+                "redacted": "********",
+            },
+        )
+        secrets[name] = SecretContext.model_validate(secret_data)
+    return atlas_context.model_copy(
+        update={
+            "connection": ConnectionContext.model_validate(connection_data),
+            "secrets": secrets,
+        },
+    )
+
+
+def _sanitize_error(error: Exception, values: Mapping[str, Any]) -> str:
+    message = str(error)
+    if not message:
+        return error.__class__.__name__
+    for value in values.values():
+        if isinstance(value, str) and value:
+            message = message.replace(value, "[redacted]")
+    return message[:240]
 
 
 def _call_proxmox_status(atlas_context: AtlasContext) -> dict:

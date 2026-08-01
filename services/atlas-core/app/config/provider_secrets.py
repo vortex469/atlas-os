@@ -190,6 +190,40 @@ def update_provider_secrets(
             fcntl.flock(lock_stream.fileno(), fcntl.LOCK_UN)
 
 
+def replace_provider_secret_values(
+    provider_id: str,
+    secrets: dict[str, str],
+    secret_file: Path | None = None,
+) -> None:
+    """Replace one provider secret mapping atomically for rollback.
+
+    Secret values remain confined to the protected runtime secret store and are
+    never included in diagnostics or error messages.
+    """
+
+    normalized_provider_id = _validate_identifier(provider_id, "provider_id")
+    normalized_secrets = _validate_replacements(secrets)
+    resolved_file = secret_file or ensure_provider_secret_file()
+    if not resolved_file.exists():
+        ensure_provider_secret_file(resolved_file)
+    resolved_file.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = resolved_file.with_name(f".{resolved_file.name}.lock")
+
+    with lock_file.open("w", encoding="utf-8") as lock_stream:
+        fcntl.flock(lock_stream.fileno(), fcntl.LOCK_EX)
+        try:
+            document = _load_secret_mapping(resolved_file)
+            providers = document.setdefault("providers", {})
+            provider_section = providers.setdefault(normalized_provider_id, {})
+            if not isinstance(provider_section, dict):
+                raise ProviderSecretValidationError("provider secret section must be a mapping.")
+            provider_section["secrets"] = dict(normalized_secrets)
+            ProviderSecretDocument.model_validate(document)
+            _atomic_write_secret_document(document, resolved_file)
+        finally:
+            fcntl.flock(lock_stream.fileno(), fcntl.LOCK_UN)
+
+
 def _load_secret_mapping(secret_file: Path) -> dict:
     load_provider_secrets(secret_file)
     with secret_file.open("r", encoding="utf-8") as stream:
