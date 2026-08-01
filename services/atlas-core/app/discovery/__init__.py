@@ -1,3 +1,16 @@
+from app.discovery.exceptions import (
+    DiscoveryCatalogDocumentError,
+    DiscoveryCatalogDuplicateError,
+    DiscoveryCatalogError,
+    DiscoveryCatalogPathError,
+    DiscoveryCatalogValidationError,
+    DiscoveryCatalogYamlError,
+)
+from app.discovery.loader import (
+    DEFAULT_DISCOVERY_CATALOG_DIR,
+    LoadedCatalog,
+    YamlCatalogLoader,
+)
 from app.discovery.models import (
     CATALOG_SCHEMA_VERSION,
     DISCOVERY_ID_PATTERN,
@@ -20,20 +33,29 @@ from app.discovery.models import (
 
 __all__ = [
     "CATALOG_SCHEMA_VERSION",
+    "DEFAULT_DISCOVERY_CATALOG_DIR",
     "DISCOVERY_ID_PATTERN",
     "CapabilityReference",
     "CatalogEntry",
     "CatalogProvenance",
     "CatalogSourceType",
     "CatalogTrustLevel",
+    "DiscoveryCatalogDocumentError",
+    "DiscoveryCatalogDuplicateError",
+    "DiscoveryCatalogError",
+    "DiscoveryCatalogPathError",
+    "DiscoveryCatalogValidationError",
+    "DiscoveryCatalogYamlError",
     "DiscoveryItem",
     "DiscoveryItemStatus",
     "DiscoveryItemType",
     "DiscoveryRelationship",
     "DiscoveryRelationshipType",
     "DiscoveryRequirements",
+    "LoadedCatalog",
     "NetworkRequirements",
     "PlatformRequirements",
     "PortRequirement",
     "ResourceRequirements",
+    "YamlCatalogLoader",
 ]
