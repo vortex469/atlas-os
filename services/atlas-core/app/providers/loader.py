@@ -43,4 +43,15 @@ def load_provider_registry():
 
         provider_registry.register(provider)
 
+    if not provider_registry.contains("proxmox"):
+        provider_registry.register(
+            ProxmoxProvider(
+                {
+                    "name": "Proxmox",
+                    "description": "Virtualization provider for Proxmox guests.",
+                    "critical": True,
+                }
+            )
+        )
+
     return provider_registry

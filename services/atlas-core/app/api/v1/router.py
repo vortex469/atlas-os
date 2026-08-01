@@ -12,10 +12,10 @@ from app.routes.homeassistant import router as homeassistant_router
 from app.routes.intelligence import router as intelligence_router
 from app.routes.ops import router as ops_router
 from app.routes.policies import router as policies_router
+from app.routes.provider_resources import router as provider_resources_router
 from app.routes.providers import router as providers_router
 from app.routes.proxmox import router as proxmox_router
 from app.routes.status import router as status_router
-
 
 router = APIRouter(prefix="/api/v1")
 
@@ -34,6 +34,7 @@ def api_discovery() -> APIDiscovery:
             "dashboard": "/api/v1/dashboard",
             "status": "/api/v1/status",
             "providers": "/api/v1/providers",
+            "provider_resources": "/api/v1/providers/{provider_id}/resources",
             "ai": "/api/v1/ai",
             "operations": "/api/v1/ops",
             "policies": "/api/v1/policies",
@@ -47,6 +48,7 @@ def api_discovery() -> APIDiscovery:
 router.include_router(analysis_router)
 router.include_router(health_router)
 router.include_router(providers_router)
+router.include_router(provider_resources_router)
 router.include_router(ops_router)
 router.include_router(policies_router)
 router.include_router(docker_router)

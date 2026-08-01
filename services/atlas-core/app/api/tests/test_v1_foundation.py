@@ -12,6 +12,12 @@ def test_api_v1_foundation_routes_are_registered() -> None:
     assert "/api/v1/health" in paths
     assert "/api/v1/dashboard" in paths
     assert "/api/v1/status/" in paths
+    assert "/api/v1/providers/{provider_id}/resources" in paths
+    assert "/api/v1/providers/{provider_id}/discovery/refresh" in paths
+    assert (
+        "/api/v1/providers/{provider_id}/resources/"
+        "{resource_id}/expectation"
+    ) in paths
 
 
 def test_legacy_dashboard_routes_remain_registered() -> None:
