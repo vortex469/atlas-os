@@ -222,6 +222,7 @@ def _metadata_from_declaration(
     service: Mapping[str, Any],
 ) -> MetadataContext:
     legacy_service = dict(service)
+    critical = _critical_for_provider(provider_id, service)
     return MetadataContext(
         consumer_id=provider_id,
         consumer_type="provider",
@@ -229,12 +230,12 @@ def _metadata_from_declaration(
         description=str(service.get("description") or ""),
         version="1.0.0",
         workspace=_workspace_for_provider(provider_id),
-        priority=("critical" if bool(service.get("critical", False)) else "normal"),
+        priority=_priority_for_provider(provider_id, critical),
         icon=_icon_for_provider(provider_id),
         capabilities=frozenset(_capabilities_for_provider(provider_id)),
         source="inventory" if service else "defaults",
         metadata={
-            "critical": bool(service.get("critical", False)),
+            "critical": critical,
             "role": service.get("role"),
             "provider_type": _provider_type_for_provider(provider_id),
             "legacy_service": legacy_service,
@@ -257,15 +258,39 @@ def _provider_type_for_provider(provider_id: str) -> str:
     return "inventory"
 
 def _display_name(provider_id: str) -> str:
+    names = {
+        "opnsense": "OPNsense",
+        "n8n": "n8n",
+    }
+    if provider_id in names:
+        return names[provider_id]
     return provider_id.replace("_", " ").replace("-", " ").title()
 
 
 def _workspace_for_provider(provider_id: str) -> str:
-    if provider_id in {"home_assistant", "n8n"}:
+    if provider_id in {"home_assistant", "n8n", "frigate"}:
         return "automation"
     if provider_id in {"obsidian", "qdrant"}:
         return "knowledge"
+    if provider_id == "ollama":
+        return "developer"
     return "operations"
+
+
+def _critical_for_provider(
+    provider_id: str,
+    service: Mapping[str, Any],
+) -> bool:
+    default = provider_id == "opnsense"
+    return bool(service.get("critical", default))
+
+
+def _priority_for_provider(provider_id: str, critical: bool) -> str:
+    if critical:
+        return "critical"
+    if provider_id in {"frigate", "n8n", "qdrant", "ollama", "opnsense"}:
+        return "high"
+    return "normal"
 
 
 def _icon_for_provider(provider_id: str) -> str:
@@ -292,6 +317,10 @@ def _capabilities_for_provider(provider_id: str) -> tuple[str, ...]:
             "diagnostics",
             "actions",
         )
+    if provider_id == "opnsense":
+        return ("health", "actions", "configuration")
+    if provider_id in {"frigate", "n8n", "qdrant", "obsidian", "ollama"}:
+        return ("health", "findings", "actions", "metrics", "configuration")
     return ("health",)
 
 

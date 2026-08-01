@@ -102,29 +102,29 @@ def default_provider_factory_registry() -> ProviderFactoryRegistry:
         "inventory",
         lambda context, service: InventoryServiceProvider(
             context.consumer_id,
-            dict(service),
+            context,
         ),
     )
     factories: dict[str, ProviderFactory] = {
         "frigate": LegacyProviderFactory(
             "frigate",
-            lambda context, service: FrigateProvider(dict(service)),
+            lambda context, service: FrigateProvider(context),
         ),
         "n8n": LegacyProviderFactory(
             "n8n",
-            lambda context, service: N8nProvider(dict(service)),
+            lambda context, service: N8nProvider(context),
         ),
         "obsidian": LegacyProviderFactory(
             "obsidian",
-            lambda context, service: ObsidianProvider(dict(service)),
+            lambda context, service: ObsidianProvider(context),
         ),
         "ollama": LegacyProviderFactory(
             "ollama",
-            lambda context, service: OllamaProvider(dict(service)),
+            lambda context, service: OllamaProvider(context),
         ),
         "opnsense": LegacyProviderFactory(
             "opnsense",
-            lambda context, service: OPNsenseProvider(dict(service)),
+            lambda context, service: OPNsenseProvider(context),
         ),
         "proxmox": LegacyProviderFactory(
             "proxmox",
@@ -132,7 +132,7 @@ def default_provider_factory_registry() -> ProviderFactoryRegistry:
         ),
         "qdrant": LegacyProviderFactory(
             "qdrant",
-            lambda context, service: QdrantProvider(dict(service)),
+            lambda context, service: QdrantProvider(context),
         ),
         "inventory": inventory_factory,
     }

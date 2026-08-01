@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import os
+from collections.abc import Callable
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urljoin
 
 import httpx
 
 from app.config.policies import get_n8n_policy
 from app.config.policy_models import N8nPolicy, PolicySeverity
+from app.context import AtlasContext
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -18,6 +19,15 @@ from app.providers import (
     ProviderPriority,
     ProviderWorkspace,
 )
+from app.providers.context_helpers import (
+    base_url_from_context,
+    context_from_legacy_service,
+    legacy_service,
+    metadata_from_context,
+    secret_value,
+    timeout_from_context,
+    tls_verification_from_context,
+)
 
 
 class N8nProvider(Provider):
@@ -25,46 +35,41 @@ class N8nProvider(Provider):
 
     def __init__(
         self,
-        service: dict[str, Any],
+        service: AtlasContext | dict[str, Any],
         *,
         api_key: str | None = None,
-        timeout_seconds: float = 10.0,
+        timeout_seconds: float | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         policy_getter: Callable[[], N8nPolicy] = get_n8n_policy,
     ) -> None:
-        self._service = service
-        self._api_key = (
-            api_key
-            if api_key is not None
-            else os.getenv("N8N_API_KEY")
+        # Temporary compatibility seam for direct legacy constructors.
+        self.atlas_context = (
+            service
+            if isinstance(service, AtlasContext)
+            else context_from_legacy_service("n8n", service)
         )
-        self._timeout_seconds = timeout_seconds
+        service_config = legacy_service(self.atlas_context)
+        self._api_key = api_key or secret_value(self.atlas_context, "api_key")
+        self._timeout_seconds = timeout_seconds or timeout_from_context(
+            self.atlas_context,
+        )
         self._transport = transport
         self._policy_getter = policy_getter
         self._max_workflows = self._positive_int(
-            service.get("max_workflows", 250),
+            service_config.get("max_workflows", 250),
             "max_workflows",
         )
-        protocol = service.get("protocol", "http")
-        host = service["host"]
-        port = service.get("port", 5678)
-        self._base_url = f"{protocol}://{host}:{port}/"
-
-        self._metadata = ProviderMetadata(
-            id="n8n",
-            name=service.get("name", "n8n"),
-            version="1.0.0",
-            description=(
-                "Workflow automation health and inventory provider."
-            ),
-            workspace=ProviderWorkspace.AUTOMATION,
-            icon="workflow",
-            priority=(
-                ProviderPriority.CRITICAL
-                if service.get("critical", False)
-                else ProviderPriority.HIGH
-            ),
-            capabilities=frozenset(
+        self._base_url = base_url_from_context(
+            self.atlas_context,
+            default_port=5678,
+        )
+        self._metadata = metadata_from_context(
+            self.atlas_context,
+            default_description="Workflow automation health and inventory provider.",
+            default_workspace=ProviderWorkspace.AUTOMATION,
+            default_icon="workflow",
+            default_priority=ProviderPriority.HIGH,
+            default_capabilities=frozenset(
                 {
                     ProviderCapability.HEALTH,
                     ProviderCapability.FINDINGS,
@@ -83,10 +88,7 @@ class N8nProvider(Provider):
         return urljoin(self._base_url, path.lstrip("/"))
 
     def _tls_verification(self) -> bool | str:
-        ca_bundle = self._service.get("ca_bundle")
-        if ca_bundle:
-            return str(ca_bundle)
-        return bool(self._service.get("verify_tls", True))
+        return tls_verification_from_context(self.atlas_context)
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json"}
@@ -354,13 +356,13 @@ class N8nProvider(Provider):
         payload: object,
     ) -> tuple[list[dict[str, object]], str | None]:
         if not isinstance(payload, dict):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "n8n returned an invalid workflows response."
             )
         data = payload.get("data")
         cursor = payload.get("nextCursor")
         if not isinstance(data, list):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "n8n returned an invalid workflows list."
             )
         if cursor is not None and not isinstance(cursor, str):
@@ -404,7 +406,7 @@ class N8nProvider(Provider):
     @staticmethod
     def _positive_int(value: object, field: str) -> int:
         if isinstance(value, bool):
-            raise ValueError(f"{field} must be a positive integer.")
+            raise ValueError(f"{field} must be a positive integer.")  # noqa: TRY004
         try:
             parsed = int(value)
         except (TypeError, ValueError) as error:

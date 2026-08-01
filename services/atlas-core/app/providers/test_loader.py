@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from app.context import AtlasContext, MetadataContext, RuntimeContext
+from app.context import (
+    AtlasContext,
+    ConnectionContext,
+    MetadataContext,
+    RuntimeContext,
+    SecretContext,
+)
 from app.providers import (
     Provider,
     ProviderCapability,
@@ -15,9 +21,15 @@ from app.providers.factory import (
     ProviderFactoryNotFoundError,
     ProviderFactoryRegistry,
 )
+from app.providers.frigate import FrigateProvider
 from app.providers.inventory_provider import InventoryServiceProvider
 from app.providers.loader import build_providers_from_contexts, load_provider_registry
+from app.providers.n8n import N8nProvider
+from app.providers.obsidian import ObsidianProvider
+from app.providers.ollama import OllamaProvider
+from app.providers.opnsense import OPNsenseProvider
 from app.providers.proxmox import ProxmoxProvider
+from app.providers.qdrant import QdrantProvider
 from app.providers.registry import ProviderRegistry
 
 
@@ -94,6 +106,54 @@ def atlas_context(
                 "legacy_service": service or {"name": name or consumer_id.title()},
             },
         ),
+        runtime=RuntimeContext(),
+        generation=f"generation-{consumer_id}",
+    )
+
+
+def http_atlas_context(
+    consumer_id: str,
+    *,
+    provider_type: str,
+    port: int,
+    secrets: dict[str, str] | None = None,
+    path: str | None = None,
+) -> AtlasContext:
+    return AtlasContext(
+        metadata=MetadataContext(
+            consumer_id=consumer_id,
+            consumer_type="provider",
+            name=f"Context {consumer_id}",
+            metadata={
+                "provider_type": provider_type,
+                "legacy_service": {
+                    "name": f"Legacy {consumer_id}",
+                    "host": "legacy.local",
+                    "port": 1,
+                },
+            },
+        ),
+        connection=ConnectionContext(
+            mode="https",
+            host=f"{consumer_id}.context.local",
+            port=port,
+            path=path,
+            health_endpoint="/ready",
+            expected_status=204,
+            verify_tls=False,
+            source="runtime",
+            metadata={"expected_statuses": (204, 418)},
+        ),
+        secrets={
+            name: SecretContext(
+                name=name,
+                source="runtime",
+                configured=True,
+                redacted="********",
+                value=value,
+            )
+            for name, value in (secrets or {}).items()
+        },
         runtime=RuntimeContext(),
         generation=f"generation-{consumer_id}",
     )
@@ -184,6 +244,67 @@ def test_context_metadata_wins_and_legacy_data_remains_available_for_proxmox() -
         "Proxmox Legacy"
     )
     assert provider.atlas_context is context  # type: ignore[attr-defined]
+
+
+def test_http_provider_factories_pass_atlas_context_and_context_values() -> None:
+    contexts = (
+        http_atlas_context(
+            "opnsense",
+            provider_type="opnsense",
+            port=8443,
+            secrets={"api_key": "opn-key", "api_secret": "opn-secret"},
+        ),
+        http_atlas_context(
+            "frigate",
+            provider_type="frigate",
+            port=8971,
+            secrets={"api_token": "frigate-token"},
+        ),
+        http_atlas_context(
+            "n8n",
+            provider_type="n8n",
+            port=5678,
+            secrets={"api_key": "n8n-key"},
+        ),
+        http_atlas_context(
+            "qdrant",
+            provider_type="qdrant",
+            port=6333,
+            secrets={"api_key": "qdrant-key"},
+        ),
+        http_atlas_context("ollama", provider_type="ollama", port=11434),
+        http_atlas_context(
+            "obsidian",
+            provider_type="obsidian",
+            port=1,
+            path="/vault/context",
+        ),
+        http_atlas_context("grafana", provider_type="inventory", port=3000),
+    )
+
+    providers = build_providers_from_contexts(contexts)
+    providers_by_id = {provider.metadata.id: provider for provider in providers}
+
+    assert isinstance(providers_by_id["opnsense"], OPNsenseProvider)
+    assert isinstance(providers_by_id["frigate"], FrigateProvider)
+    assert isinstance(providers_by_id["n8n"], N8nProvider)
+    assert isinstance(providers_by_id["qdrant"], QdrantProvider)
+    assert isinstance(providers_by_id["ollama"], OllamaProvider)
+    assert isinstance(providers_by_id["obsidian"], ObsidianProvider)
+    assert isinstance(providers_by_id["grafana"], InventoryServiceProvider)
+
+    for context in contexts:
+        provider = providers_by_id[context.consumer_id]
+        assert provider.atlas_context is context  # type: ignore[attr-defined]
+        assert provider.metadata.name == f"Context {context.consumer_id}"
+
+    assert providers_by_id["opnsense"]._base_url == "https://opnsense.context.local:8443/"  # type: ignore[attr-defined]
+    assert providers_by_id["frigate"]._headers()["Authorization"] == "Bearer frigate-token"  # type: ignore[attr-defined]
+    assert providers_by_id["n8n"]._headers()["X-N8N-API-KEY"] == "n8n-key"  # type: ignore[attr-defined]
+    assert providers_by_id["qdrant"]._headers()["api-key"] == "qdrant-key"  # type: ignore[attr-defined]
+    assert providers_by_id["ollama"]._base_url == "https://ollama.context.local:11434/"  # type: ignore[attr-defined]
+    assert providers_by_id["obsidian"]._vault_path.as_posix() == "/vault/context"  # type: ignore[attr-defined]
+    assert providers_by_id["grafana"].atlas_context.connection.health_endpoint == "/ready"  # type: ignore[union-attr]
 
 
 def test_provider_ordering_remains_deterministic_after_load() -> None:

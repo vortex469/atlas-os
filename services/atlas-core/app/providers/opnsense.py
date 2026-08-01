@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from time import perf_counter
 from typing import Any
@@ -10,6 +9,7 @@ import httpx
 
 from app.config.policies import get_opnsense_policy
 from app.config.policy_models import OPNsensePolicy, PolicySeverity
+from app.context import AtlasContext
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -19,6 +19,14 @@ from app.providers import (
     ProviderPriority,
     ProviderWorkspace,
 )
+from app.providers.context_helpers import (
+    base_url_from_context,
+    context_from_legacy_service,
+    metadata_from_context,
+    secret_value,
+    timeout_from_context,
+    tls_verification_from_context,
+)
 
 
 class OPNsenseProvider(Provider):
@@ -26,7 +34,7 @@ class OPNsenseProvider(Provider):
 
     def __init__(
         self,
-        service: dict[str, Any],
+        service: AtlasContext | dict[str, Any],
         *,
         api_key: str | None = None,
         api_secret: str | None = None,
@@ -36,46 +44,34 @@ class OPNsenseProvider(Provider):
             [], OPNsensePolicy
         ] = get_opnsense_policy,
     ) -> None:
-        self._service = service
-        self._api_key = (
-            api_key
-            if api_key is not None
-            else os.getenv("OPNSENSE_API_KEY")
+        # Temporary compatibility seam for direct legacy constructors.
+        self.atlas_context = (
+            service
+            if isinstance(service, AtlasContext)
+            else context_from_legacy_service("opnsense", service)
         )
-        self._api_secret = (
-            api_secret
-            if api_secret is not None
-            else os.getenv("OPNSENSE_API_SECRET")
+        self._api_key = api_key or secret_value(self.atlas_context, "api_key")
+        self._api_secret = api_secret or secret_value(
+            self.atlas_context,
+            "api_secret",
         )
-        self._timeout_seconds = timeout_seconds
+        self._timeout_seconds = timeout_seconds or timeout_from_context(
+            self.atlas_context,
+        )
         self._transport = transport
         self._policy_getter = policy_getter
-
-        protocol = service.get("protocol", "https")
-        host = service["host"]
-        port = service.get("port", 443)
-        self._base_url = f"{protocol}://{host}:{port}/"
-
-        self._metadata = ProviderMetadata(
-            id="opnsense",
-            name=service.get("name", "OPNsense"),
-            version="1.0.0",
-            description=(
-                "Firewall health and firmware status provider."
-            ),
-            workspace=ProviderWorkspace.OPERATIONS,
-            icon="shield",
-            priority=(
-                ProviderPriority.CRITICAL
-                if service.get("critical", True)
-                else ProviderPriority.HIGH
-            ),
-            capabilities=frozenset(
-                {
-                    ProviderCapability.HEALTH,
-                    ProviderCapability.ACTIONS,
-                    ProviderCapability.CONFIGURATION,
-                },
+        self._base_url = base_url_from_context(
+            self.atlas_context,
+            default_port=443,
+        )
+        self._metadata = metadata_from_context(
+            self.atlas_context,
+            default_description="Firewall health and firmware status provider.",
+            default_workspace=ProviderWorkspace.OPERATIONS,
+            default_icon="shield",
+            default_priority=ProviderPriority.CRITICAL,
+            default_capabilities=frozenset(
+                {ProviderCapability.HEALTH, ProviderCapability.ACTIONS, ProviderCapability.CONFIGURATION},
             ),
         )
 
@@ -87,12 +83,7 @@ class OPNsenseProvider(Provider):
         return urljoin(self._base_url, path.lstrip("/"))
 
     def _tls_verification(self) -> bool | str:
-        ca_bundle = self._service.get("ca_bundle")
-
-        if ca_bundle:
-            return str(ca_bundle)
-
-        return bool(self._service.get("verify_tls", True))
+        return tls_verification_from_context(self.atlas_context)
 
     async def get_health(self) -> ProviderHealth:
         if not self._api_key or not self._api_secret:

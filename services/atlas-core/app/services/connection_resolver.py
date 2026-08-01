@@ -94,6 +94,7 @@ def _connection_from_mapping(
         ca_bundle=_string_or_none(value.get("ca_bundle")),
         metadata={
             "role": value.get("role"),
+            "expected_statuses": _expected_statuses(value.get("expected_status")),
         },
     )
 
@@ -116,3 +117,11 @@ def _expected_status(value: object) -> int | None:
     if isinstance(value, int):
         return value
     return None
+
+
+def _expected_statuses(value: object) -> tuple[int, ...]:
+    if isinstance(value, list):
+        return tuple(int(item) for item in value)
+    if isinstance(value, int):
+        return (int(value),)
+    return (200,)
