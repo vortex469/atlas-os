@@ -112,7 +112,10 @@ def validate_candidate_for_planning(
             )
         )
 
-    classification = classify_recommendation_class(candidate.recommendation_class)
+    try:
+        classification = classify_recommendation_class(candidate.recommendation_class)
+    except ValueError:
+        classification = None
     if classification is None:
         findings.append(
             _finding(

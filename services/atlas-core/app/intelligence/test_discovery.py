@@ -220,6 +220,7 @@ def test_required_unknown_produces_one_informational_finding() -> None:
     )
     assert finding.details == {
         "source_subsystem": "discovery",
+        "recommendation_class": "investigate_compatibility",
         "catalog_item_id": "frigate",
         "target_id": "atlas",
         "target_type": "atlas_environment",

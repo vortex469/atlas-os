@@ -208,6 +208,7 @@ def _finding(
 ) -> Finding:
     details: dict[str, object] = {
         "source_subsystem": "discovery",
+        "recommendation_class": recommendation_class.replace("-", "_"),
         "catalog_item_id": assessment.item_id,
         "target_id": assessment.target_id,
         "target_type": assessment.target_type,

@@ -18,7 +18,7 @@ from app.execution_candidates.models import (
 @pytest.mark.parametrize(
     ("recommendation_class", "category", "intent", "approval"),
     [
-        ("deploy-container", ExecutionCategory.INSTALL, ExecutionIntent.INSTALL_CONTAINER, ApprovalLevel.ELEVATED),
+        ("install-container", ExecutionCategory.INSTALL, ExecutionIntent.INSTALL_CONTAINER, ApprovalLevel.ELEVATED),
         ("install-provider", ExecutionCategory.INSTALL, ExecutionIntent.INSTALL_PROVIDER, ApprovalLevel.ELEVATED),
         ("configure-service", ExecutionCategory.CONFIGURE, ExecutionIntent.CONFIGURE_SERVICE, ApprovalLevel.STANDARD),
         ("enable-integration", ExecutionCategory.CONFIGURE, ExecutionIntent.ENABLE_INTEGRATION, ApprovalLevel.ELEVATED),
