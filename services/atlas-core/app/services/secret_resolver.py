@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from pathlib import Path
 
+from app.config.provider_secrets import (
+    ProviderSecretStoreError,
+    get_provider_secret_value,
+)
 from app.context import MetadataContext, SecretContext
 
 _SECRET_ENVIRONMENT: dict[str, dict[str, str]] = {
@@ -30,15 +35,17 @@ _SECRET_ENVIRONMENT: dict[str, dict[str, str]] = {
 
 
 class SecretContextResolver:
-    """Resolve Atlas secret contexts from runtime placeholders or env vars."""
+    """Resolve Atlas secret contexts from runtime store or environment."""
 
     def __init__(
         self,
         environ: Mapping[str, str] | None = None,
         runtime_secrets: Mapping[str, Mapping[str, str]] | None = None,
+        runtime_secret_file: Path | None = None,
     ) -> None:
         self._environ = environ
         self._runtime_secrets = runtime_secrets or {}
+        self._runtime_secret_file = runtime_secret_file
 
     def resolve_secrets(
         self,
@@ -56,7 +63,7 @@ class SecretContextResolver:
         name: str,
         variable: str,
     ) -> SecretContext:
-        runtime_value = self._runtime_secrets.get(provider_id, {}).get(name)
+        runtime_value = self._runtime_secret(provider_id, name)
         if runtime_value:
             return SecretContext(
                 name=name,
@@ -82,6 +89,19 @@ class SecretContextResolver:
             configured=False,
             redacted=None,
         )
+
+    def _runtime_secret(self, provider_id: str, name: str) -> str | None:
+        runtime_value = self._runtime_secrets.get(provider_id, {}).get(name)
+        if runtime_value:
+            return runtime_value
+        try:
+            return get_provider_secret_value(
+                provider_id,
+                name,
+                self._runtime_secret_file,
+            )
+        except ProviderSecretStoreError as error:
+            raise RuntimeError("runtime provider secret store is invalid.") from error
 
     def _environment(self) -> Mapping[str, str]:
         if self._environ is not None:

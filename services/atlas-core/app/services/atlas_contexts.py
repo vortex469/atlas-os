@@ -44,6 +44,8 @@ class LegacyAtlasContextResolver:
             str,
             Mapping[str, str],
         ] | None = None,
+        runtime_connection_file: Path | None = None,
+        runtime_secret_file: Path | None = None,
     ) -> None:
         self._settings = settings
         self._inventory = inventory
@@ -51,6 +53,8 @@ class LegacyAtlasContextResolver:
         self._data_root = Path(data_root)
         self._runtime_connection_overrides = runtime_connection_overrides or {}
         self._runtime_secret_overrides = runtime_secret_overrides or {}
+        self._runtime_connection_file = runtime_connection_file
+        self._runtime_secret_file = runtime_secret_file
 
     def resolve_context(self, consumer_id: str) -> AtlasContext:
         declarations = self._provider_declarations()
@@ -134,6 +138,21 @@ class LegacyAtlasContextResolver:
                     field="connection",
                 ),
             )
+            field_sources = connection.metadata.get("field_sources", {})
+            if isinstance(field_sources, Mapping):
+                for field_name, field_source in sorted(field_sources.items()):
+                    items.append(
+                        DiagnosticsContextItem(
+                            code="connection-field-resolved",
+                            message=(
+                                f"Connection field '{field_name}' resolved from "
+                                f"{field_source}."
+                            ),
+                            severity="info",
+                            source=field_source,  # type: ignore[arg-type]
+                            field=f"connection.{field_name}",
+                        ),
+                    )
 
         for secret_name, secret in secrets.items():
             if secret.configured:
@@ -211,12 +230,14 @@ class LegacyAtlasContextResolver:
             settings=self._settings,
             inventory=self._load_inventory(),
             runtime_overrides=self._runtime_connection_overrides,
+            runtime_connection_file=self._runtime_connection_file,
         )
 
     def _secret_resolver(self) -> SecretContextResolver:
         return SecretContextResolver(
             environ=self._environ,
             runtime_secrets=self._runtime_secret_overrides,
+            runtime_secret_file=self._runtime_secret_file,
         )
 
     def _runtime_resolver(self) -> RuntimeContextResolver:
@@ -355,6 +376,7 @@ def _stable_generation(
                 "source": secret.source,
                 "configured": secret.configured,
                 "redacted": secret.redacted,
+                "value_digest": _secret_value_digest(secret),
             }
             for name, secret in sorted(secrets.items())
         },
@@ -363,6 +385,13 @@ def _stable_generation(
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:16]
+
+
+def _secret_value_digest(secret: SecretContext) -> str | None:
+    value = secret.reveal()
+    if value is None:
+        return None
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 __all__ = [

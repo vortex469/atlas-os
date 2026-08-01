@@ -9,7 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 ContextSource = Literal[
     "runtime",
+    "atlas_yaml",
     "environment",
+    "default",
     "defaults",
     "inventory",
     "settings",
