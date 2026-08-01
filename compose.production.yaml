@@ -75,6 +75,8 @@ services:
     depends_on:
       atlas-core:
         condition: service_healthy
+      atlas-agent:
+        condition: service_healthy
     ports:
       - "${ATLAS_HTTP_BIND:-127.0.0.1}:${ATLAS_HTTP_PORT:-8080}:8080"
     read_only: true
