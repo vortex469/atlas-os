@@ -4,6 +4,12 @@ from typing import Any
 
 from pydantic import Field
 
+from app.discovery.compatibility import (
+    CompatibilityAssessment,
+    CompatibilityCheckType,
+    CompatibilityFindingSeverity,
+    CompatibilityStatus,
+)
 from app.discovery.models import (
     CATALOG_SCHEMA_VERSION,
     CatalogProvenance,
@@ -108,6 +114,45 @@ class DiscoveryMetadataResponse(DiscoveryCenterModel):
     schema_version: int = CATALOG_SCHEMA_VERSION
 
 
+class DiscoveryCompatibilityEvidenceResponse(DiscoveryCenterModel):
+    """Public compatibility evidence without provider internals."""
+
+    id: str
+    check_type: CompatibilityCheckType
+    subject: str
+    status: CompatibilityStatus
+    message: str
+    source: str
+    requirement: str | None = None
+    observed: str | None = None
+    observed_fact_id: str | None = None
+
+
+class DiscoveryCompatibilityFindingResponse(DiscoveryCenterModel):
+    """Public compatibility finding referencing evidence by id."""
+
+    id: str
+    check_type: CompatibilityCheckType
+    severity: CompatibilityFindingSeverity
+    status: CompatibilityStatus
+    subject: str
+    message: str
+    evidence_ids: tuple[str, ...]
+
+
+class DiscoveryCompatibilityAssessmentResponse(DiscoveryCenterModel):
+    """Public read-only compatibility assessment response."""
+
+    item_id: str
+    target_id: str
+    target_type: str
+    status: CompatibilityStatus
+    checked_at: str
+    findings: tuple[DiscoveryCompatibilityFindingResponse, ...] = ()
+    evidence: tuple[DiscoveryCompatibilityEvidenceResponse, ...] = ()
+    unknown_facts: tuple[str, ...] = ()
+
+
 def entry_to_response(entry) -> DiscoveryCatalogEntryResponse:
     item = entry.item
     return DiscoveryCatalogEntryResponse(
@@ -163,4 +208,43 @@ def search_result_to_response(
         item=entry_to_response(result.entry).item,
         entry=entry_to_response(result.entry),
         evidence=tuple(search_evidence_to_response(item) for item in result.evidence),
+    )
+
+
+def compatibility_assessment_to_response(
+    assessment: CompatibilityAssessment,
+) -> DiscoveryCompatibilityAssessmentResponse:
+    return DiscoveryCompatibilityAssessmentResponse(
+        item_id=assessment.item_id,
+        target_id=assessment.target_id,
+        target_type=assessment.target_type,
+        status=assessment.status,
+        checked_at=assessment.checked_at.isoformat(),
+        findings=tuple(
+            DiscoveryCompatibilityFindingResponse(
+                id=finding.id,
+                check_type=finding.check_type,
+                severity=finding.severity,
+                status=finding.status,
+                subject=finding.subject,
+                message=finding.message,
+                evidence_ids=finding.evidence_ids,
+            )
+            for finding in assessment.findings
+        ),
+        evidence=tuple(
+            DiscoveryCompatibilityEvidenceResponse(
+                id=evidence.id,
+                check_type=evidence.check_type,
+                subject=evidence.subject,
+                status=evidence.status,
+                message=evidence.message,
+                source=evidence.source,
+                requirement=evidence.requirement,
+                observed=evidence.observed,
+                observed_fact_id=evidence.observed_fact_id,
+            )
+            for evidence in assessment.evidence
+        ),
+        unknown_facts=assessment.unknown_facts,
     )

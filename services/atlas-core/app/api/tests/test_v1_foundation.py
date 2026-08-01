@@ -22,6 +22,7 @@ def test_api_v1_foundation_routes_are_registered() -> None:
     assert "/api/v1/discovery/items" in paths
     assert "/api/v1/discovery/items/{item_id}" in paths
     assert "/api/v1/discovery/items/{item_id}/relationships" in paths
+    assert "/api/v1/discovery/items/{item_id}/compatibility" in paths
     assert "/api/v1/discovery/search" in paths
 
 

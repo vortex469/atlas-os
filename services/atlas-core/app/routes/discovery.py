@@ -8,9 +8,11 @@ from pydantic import ValidationError
 from app.discovery.api_models import (
     DiscoveryCatalogEntryResponse,
     DiscoveryCatalogPageResponse,
+    DiscoveryCompatibilityAssessmentResponse,
     DiscoveryMetadataResponse,
     DiscoveryRelationshipCollectionResponse,
     DiscoverySearchPageResponse,
+    compatibility_assessment_to_response,
     entry_to_response,
     relationship_to_response,
     search_result_to_response,
@@ -27,6 +29,10 @@ from app.services.discovery import (
     DiscoveryItemNotFoundError,
     get_discovery_service,
     paginate,
+)
+from app.services.discovery_compatibility import (
+    DiscoveryCompatibilityContextUnavailableError,
+    get_discovery_compatibility_service,
 )
 
 router = APIRouter(prefix="/discovery", tags=["Discovery"])
@@ -53,6 +59,15 @@ def _item_not_found(error: DiscoveryItemNotFoundError) -> HTTPException:
 
 def _validation_error(error: ValidationError | ValueError) -> HTTPException:
     return HTTPException(status_code=422, detail="Discovery query validation failed.")
+
+
+def _compatibility_unavailable(
+    error: DiscoveryCompatibilityContextUnavailableError,
+) -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail="Discovery compatibility context is unavailable.",
+    )
 
 
 @router.get(
@@ -156,6 +171,31 @@ def get_discovery_item_relationships(
         incoming=tuple(relationship_to_response(item) for item in incoming),
         outgoing=tuple(relationship_to_response(item) for item in outgoing),
     )
+
+
+@router.get(
+    "/items/{item_id}/compatibility",
+    response_model=DiscoveryCompatibilityAssessmentResponse,
+    responses={404: {"model": APIError}, 503: {"model": APIError}},
+    summary="Read deterministic Discovery item compatibility",
+)
+def get_discovery_item_compatibility(
+    item_id: str,
+    target: Annotated[str, Query(min_length=1, max_length=120)] = "atlas",
+) -> DiscoveryCompatibilityAssessmentResponse:
+    try:
+        assessment = get_discovery_compatibility_service().assess_item(
+            item_id,
+            target=target,
+        )
+    except DiscoveryItemNotFoundError as error:
+        raise _item_not_found(error) from error
+    except DiscoveryCatalogUnavailableError as error:
+        raise _catalog_unavailable(error) from error
+    except DiscoveryCompatibilityContextUnavailableError as error:
+        raise _compatibility_unavailable(error) from error
+
+    return compatibility_assessment_to_response(assessment)
 
 
 @router.get(
