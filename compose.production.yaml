@@ -12,6 +12,9 @@ services:
     environment:
       ATLAS_POLICY_FILE: /opt/atlas/data/config/policies.yaml
       ATLAS_POLICY_TEMPLATE_FILE: /opt/atlas/config/policies.yaml
+      ATLAS_PROVIDER_CONNECTION_FILE: /opt/atlas/data/config/provider-connections.yaml
+      ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE: /opt/atlas/config/provider-connections.yaml
+      ATLAS_PROVIDER_SECRET_FILE: /opt/atlas/data/secrets/provider-connections.yaml
     volumes:
       - ./config/atlas.yaml:/opt/atlas/config/atlas.yaml:ro
       - ./config/policies.yaml:/opt/atlas/config/policies.yaml:ro

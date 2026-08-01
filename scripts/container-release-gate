@@ -13,6 +13,8 @@ GATE_KEY_FILE="$GATE_DIRECTORY/tls.key"
 GATE_HTPASSWD_FILE="$GATE_DIRECTORY/htpasswd"
 GATE_PROJECT="atlas-release-gate-$$"
 POLICY_TEMPLATE_FILE="$ATLAS_ROOT/config/policies.yaml"
+ATLAS_CONFIG_FILE="$ATLAS_ROOT/config/atlas.yaml"
+INVENTORY_FILE="$ATLAS_ROOT/inventory/services.yaml"
 
 for executable in docker curl openssl; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -91,6 +93,8 @@ export ATLAS_HTPASSWD_FILE="$GATE_HTPASSWD_FILE"
 export DOCKER_GID
 DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
 policy_template_checksum_before="$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')"
+atlas_config_checksum_before="$(sha256sum "$ATLAS_CONFIG_FILE" | awk '{print $1}')"
+inventory_checksum_before="$(sha256sum "$INVENTORY_FILE" | awk '{print $1}')"
 
 compose=(
     docker compose
@@ -234,6 +238,100 @@ resource = next(item for item in resources if item.resource_id == "109")
 assert resource.expectation.value == "stopped"
 assert resource.expectation.label == "Expected Stopped"
 PY
+test "$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')" = \
+    "$policy_template_checksum_before"
+
+echo "Checking Atlas Core provider connection runtime storage"
+docker exec -i "$core_container" python - <<'PY'
+import os
+
+assert os.environ["ATLAS_PROVIDER_CONNECTION_FILE"] == "/opt/atlas/data/config/provider-connections.yaml"
+assert os.environ["ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE"] == "/opt/atlas/config/provider-connections.yaml"
+assert os.environ["ATLAS_PROVIDER_SECRET_FILE"] == "/opt/atlas/data/secrets/provider-connections.yaml"
+PY
+docker exec -i "$core_container" python - <<'PY'
+from pathlib import Path
+
+from app.config.provider_connections import (
+    ensure_provider_connection_file,
+    load_provider_connections,
+)
+from app.config.provider_secrets import ensure_provider_secret_file, load_provider_secrets
+
+connection_file = ensure_provider_connection_file()
+secret_file = ensure_provider_secret_file()
+assert connection_file == Path("/opt/atlas/data/config/provider-connections.yaml")
+assert secret_file == Path("/opt/atlas/data/secrets/provider-connections.yaml")
+assert connection_file.exists()
+assert secret_file.exists()
+assert connection_file.parent.is_dir()
+assert secret_file.parent.is_dir()
+assert load_provider_connections(connection_file).version == 1
+assert load_provider_secrets(secret_file).version == 1
+secret_stat = secret_file.stat()
+assert secret_stat.st_uid == 10001
+assert secret_stat.st_gid == 10001
+assert secret_stat.st_mode & 0o777 == 0o600
+probe = secret_file.parent / ".release-gate-write-test"
+probe.write_text("ok", encoding="utf-8")
+probe.unlink()
+PY
+! docker exec "$agent_container" test -e /opt/atlas/data/secrets/provider-connections.yaml
+curl --fail --silent --show-error "$base_url/api/v1/providers/proxmox/connection" \
+    | python -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "proxmox"; assert fields["host"]["current_value"]; assert fields["user"]["secret"] is True; assert fields["user"]["current_value"] is None; assert fields["token_value"]["current_value"] is None'
+curl --fail --silent --show-error "$base_url/api/v1/providers/docker/connection" \
+    | python -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "docker"; assert data["editable"] is False; assert data["metadata"]["update_supported"] is False; assert data["metadata"]["privileged_local_runtime"] is True; assert fields["path"]["editable"] is False'
+docker exec -i "$core_container" python - <<'PY'
+import asyncio
+
+from app.models.connections import UpdateProviderConnectionRequest
+from app.providers.loader import load_provider_registry
+from app.services.provider_connections import ProviderConnectionService
+import app.providers.proxmox as proxmox_module
+
+
+def fake_guests():
+    return {
+        "node": "release-gate",
+        "running": 0,
+        "stopped": 1,
+        "guests": [
+            {
+                "vmid": 109,
+                "name": "release-gate-guest",
+                "type": "lxc",
+                "status": "stopped",
+            },
+        ],
+    }
+
+
+load_provider_registry()
+proxmox_module.get_proxmox_guests = fake_guests
+service = ProviderConnectionService()
+schema = service.connection_schema("proxmox")
+host = next(field.current_value for field in schema.fields if field.key == "host")
+assert host
+result = asyncio.run(
+    service.update_connection(
+        "proxmox",
+        UpdateProviderConnectionRequest(confirmed=True, values={"host": host}),
+        require_test=False,
+    )
+)
+fields = {field.key: field for field in result.connection_schema.fields}
+assert fields["host"].current_value == host
+assert fields["host"].source == "runtime"
+schema = service.connection_schema("proxmox")
+fields = {field.key: field for field in schema.fields}
+assert fields["host"].source == "runtime"
+resources = asyncio.run(service._registry.get("proxmox").list_resources()).resources
+assert resources
+PY
+test "$(sha256sum "$ATLAS_CONFIG_FILE" | awk '{print $1}')" = \
+    "$atlas_config_checksum_before"
+test "$(sha256sum "$INVENTORY_FILE" | awk '{print $1}')" = \
+    "$inventory_checksum_before"
 test "$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')" = \
     "$policy_template_checksum_before"
 

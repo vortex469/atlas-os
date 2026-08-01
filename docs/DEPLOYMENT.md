@@ -50,6 +50,30 @@ Operators may override those paths for custom deployments, but the
 runtime path must be writable by the non-root Atlas Core user and the
 template path should remain read-only.
 
+Provider connection settings follow the same runtime-state boundary. The
+tracked `config/atlas.yaml`, `inventory/services.yaml`, and environment
+variables remain legacy fallback sources. Mission Control writes provider
+connection changes to runtime files in the `atlas-data` volume only:
+
+```dotenv
+ATLAS_PROVIDER_CONNECTION_FILE=/opt/atlas/data/config/provider-connections.yaml
+ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE=/opt/atlas/config/provider-connections.yaml
+ATLAS_PROVIDER_SECRET_FILE=/opt/atlas/data/secrets/provider-connections.yaml
+```
+
+The non-secret provider connection store initializes as an empty validated
+version-1 document when no read-only template exists. Atlas never needs a
+writable bind mount for `config/atlas.yaml` or `inventory/services.yaml`.
+Runtime connection values override legacy config field-by-field, so omitted
+runtime values continue to fall back to shipped configuration and inventory.
+Provider secrets are stored separately under
+`/opt/atlas/data/secrets/provider-connections.yaml`, owned by the Atlas Core
+UID/GID `10001:10001` and mode `0600`. Secret values override environment
+secrets individually, are never returned by the API, and are not mounted into
+Atlas Agent. Docker is modeled as a privileged local Unix-socket connection;
+Mission Control may display its socket path and diagnostics, but the socket
+path is not editable in this phase.
+
 ## Choose an ingress mode
 
 The Core container accesses the host Docker API through its socket. Set
@@ -205,9 +229,14 @@ Include `-f compose.https.yaml` when stopping an HTTPS deployment.
 
 The `atlas-data` named volume contains action history, provider
 intelligence telemetry, and runtime policy state under
-`/opt/atlas/data/config/policies.yaml`. Deleting that volume permanently
-removes both databases and user-owned runtime policy changes. The tracked
-`config/policies.yaml` file remains only the immutable template.
+`/opt/atlas/data/config/policies.yaml`. It also contains provider connection
+runtime state under `/opt/atlas/data/config/provider-connections.yaml` and
+provider connection secrets under
+`/opt/atlas/data/secrets/provider-connections.yaml`. Deleting that volume
+permanently removes databases, user-owned runtime policy changes, provider
+connection overrides, and provider connection secrets. The tracked
+`config/policies.yaml`, `config/atlas.yaml`, and `inventory/services.yaml`
+files remain immutable defaults or legacy fallback sources.
 
 ## Back up and restore data
 
