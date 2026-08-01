@@ -5,6 +5,9 @@ from app.discovery.exceptions import (
     DiscoveryCatalogPathError,
     DiscoveryCatalogValidationError,
     DiscoveryCatalogYamlError,
+    DiscoveryRepositoryDuplicateError,
+    DiscoveryRepositoryError,
+    DiscoveryRepositoryValidationError,
 )
 from app.discovery.loader import (
     DEFAULT_DISCOVERY_CATALOG_DIR,
@@ -30,10 +33,24 @@ from app.discovery.models import (
     PortRequirement,
     ResourceRequirements,
 )
+from app.discovery.repository import (
+    DiscoveryRelationshipReference,
+    DiscoveryRepository,
+    InMemoryDiscoveryRepository,
+)
+from app.discovery.search import (
+    DEFAULT_SEARCH_WEIGHTS,
+    DiscoverySearchEvidence,
+    DiscoverySearchQuery,
+    DiscoverySearchResult,
+    SearchWeights,
+    search_repository,
+)
 
 __all__ = [
     "CATALOG_SCHEMA_VERSION",
     "DEFAULT_DISCOVERY_CATALOG_DIR",
+    "DEFAULT_SEARCH_WEIGHTS",
     "DISCOVERY_ID_PATTERN",
     "CapabilityReference",
     "CatalogEntry",
@@ -50,12 +67,23 @@ __all__ = [
     "DiscoveryItemStatus",
     "DiscoveryItemType",
     "DiscoveryRelationship",
+    "DiscoveryRelationshipReference",
     "DiscoveryRelationshipType",
+    "DiscoveryRepository",
+    "DiscoveryRepositoryDuplicateError",
+    "DiscoveryRepositoryError",
+    "DiscoveryRepositoryValidationError",
     "DiscoveryRequirements",
+    "DiscoverySearchEvidence",
+    "DiscoverySearchQuery",
+    "DiscoverySearchResult",
+    "InMemoryDiscoveryRepository",
     "LoadedCatalog",
     "NetworkRequirements",
     "PlatformRequirements",
     "PortRequirement",
     "ResourceRequirements",
+    "SearchWeights",
     "YamlCatalogLoader",
+    "search_repository",
 ]

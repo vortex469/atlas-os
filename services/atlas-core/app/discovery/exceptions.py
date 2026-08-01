@@ -23,3 +23,15 @@ class DiscoveryCatalogValidationError(DiscoveryCatalogError):
 
 class DiscoveryCatalogDuplicateError(DiscoveryCatalogError):
     """Raised when catalog entries contain duplicate identifiers."""
+
+
+class DiscoveryRepositoryError(RuntimeError):
+    """Base exception for Discovery Center repository failures."""
+
+
+class DiscoveryRepositoryDuplicateError(DiscoveryRepositoryError):
+    """Raised when repository entries contain duplicate identifiers."""
+
+
+class DiscoveryRepositoryValidationError(DiscoveryRepositoryError):
+    """Raised when repository relationship or index validation fails."""
