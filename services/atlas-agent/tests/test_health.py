@@ -2,11 +2,14 @@
 
 import logging
 import subprocess
+from dataclasses import replace
+from unittest.mock import Mock
 
 from fastapi.testclient import TestClient
 
 from app.config.settings import Settings
 from app.main import create_app
+from app.repository.exceptions import InvalidRepositoryError, RepositoryInspectionError
 from app.version import AGENT_VERSION
 
 
@@ -89,6 +92,66 @@ def test_diagnostics_reports_null_for_detached_head(
 
     assert response.status_code == 200
     assert response.json()["git_branch"] is None
+
+
+def test_diagnostics_returns_controlled_error_for_invalid_repository(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Diagnostics expose stable errors when repository validation fails."""
+
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    run_git(repository, "init")
+    settings = Settings(repository_root=repository.resolve())
+    monkeypatch.setattr("app.main.load_settings", lambda: settings)
+    application = create_app()
+    inspector = Mock()
+    inspector.inspect.side_effect = InvalidRepositoryError("invalid repository")
+    application.state.container = replace(
+        application.state.container,
+        repository_inspector=inspector,
+    )
+
+    response = TestClient(application).get("/diagnostics")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "repository_diagnostics_unavailable",
+            "message": "Repository diagnostics are unavailable",
+        }
+    }
+
+
+def test_diagnostics_returns_controlled_error_for_repository_inspection_failure(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Diagnostics expose stable errors when Git inspection fails."""
+
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    run_git(repository, "init")
+    settings = Settings(repository_root=repository.resolve())
+    monkeypatch.setattr("app.main.load_settings", lambda: settings)
+    application = create_app()
+    inspector = Mock()
+    inspector.inspect.side_effect = RepositoryInspectionError("git failed")
+    application.state.container = replace(
+        application.state.container,
+        repository_inspector=inspector,
+    )
+
+    response = TestClient(application).get("/diagnostics")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "code": "repository_diagnostics_unavailable",
+            "message": "Repository diagnostics are unavailable",
+        }
+    }
 
 
 def test_create_app_logs_startup_diagnostics(

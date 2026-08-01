@@ -133,6 +133,46 @@ def _load_atlas_core_required() -> bool:
         ) from exc
 
 
+def _load_atlas_core_port() -> int:
+    """Load and validate the configured Atlas Core port."""
+
+    raw_port = os.getenv("ATLAS_CORE_PORT", "8643")
+
+    try:
+        port = int(raw_port)
+    except ValueError as exc:
+        raise ValueError(
+            "ATLAS_CORE_PORT must be an integer"
+        ) from exc
+
+    if not 1 <= port <= 65535:
+        raise ValueError(
+            "ATLAS_CORE_PORT must be between 1 and 65535"
+        )
+
+    return port
+
+
+def _load_atlas_core_timeout_seconds() -> float:
+    """Load and validate the configured Atlas Core timeout."""
+
+    raw_timeout = os.getenv("ATLAS_CORE_TIMEOUT_SECONDS", "10.0")
+
+    try:
+        timeout = float(raw_timeout)
+    except ValueError as exc:
+        raise ValueError(
+            "ATLAS_CORE_TIMEOUT_SECONDS must be numeric"
+        ) from exc
+
+    if timeout <= 0:
+        raise ValueError(
+            "ATLAS_CORE_TIMEOUT_SECONDS must be greater than zero"
+        )
+
+    return timeout
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     """Atlas Agent runtime settings."""
@@ -182,8 +222,8 @@ class Settings:
             repository_root=repository_root,
             state_dir=state_dir,
             atlas_core_host=os.getenv("ATLAS_CORE_HOST", "127.0.0.1"),
-            atlas_core_port=int(os.getenv("ATLAS_CORE_PORT", "8643")),
-            atlas_core_timeout_seconds=float(os.getenv("ATLAS_CORE_TIMEOUT_SECONDS", "10.0")),
+            atlas_core_port=_load_atlas_core_port(),
+            atlas_core_timeout_seconds=_load_atlas_core_timeout_seconds(),
             atlas_core_required=_load_atlas_core_required(),
             ollama_base_url=os.getenv(
                 "ATLAS_AGENT_OLLAMA_BASE_URL",

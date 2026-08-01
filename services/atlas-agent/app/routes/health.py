@@ -1,9 +1,10 @@
 """Atlas Agent health and diagnostics endpoints."""
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
 from app.approval.engine import ApprovalEngine
+from app.repository.exceptions import InvalidRepositoryError, RepositoryInspectionError
 from app.version import AGENT_VERSION
 from app.workflow.engine import WorkflowEngine
 
@@ -33,7 +34,16 @@ async def health() -> dict[str, str]:
 async def diagnostics(request: Request) -> DiagnosticsResponse:
     """Return read-only Atlas Agent runtime diagnostics."""
 
-    snapshot = request.app.state.container.repository_inspector.inspect()
+    try:
+        snapshot = request.app.state.container.repository_inspector.inspect()
+    except (InvalidRepositoryError, RepositoryInspectionError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "repository_diagnostics_unavailable",
+                "message": "Repository diagnostics are unavailable",
+            },
+        ) from exc
 
     return DiagnosticsResponse(
         version=AGENT_VERSION,
