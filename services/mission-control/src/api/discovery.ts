@@ -1,0 +1,75 @@
+import { atlas } from "./atlas";
+import type {
+    DiscoveryCatalogEntry,
+    DiscoveryCatalogPage,
+    DiscoveryListQuery,
+    DiscoveryMetadata,
+    DiscoveryRelationshipCollection,
+    DiscoveryRelationshipType,
+    DiscoverySearchPage,
+    DiscoverySearchQuery,
+} from "../types/discovery";
+
+const DEFAULT_LIMIT = 25;
+
+export async function getDiscoveryMetadata(): Promise<DiscoveryMetadata> {
+    const response = await atlas.get<DiscoveryMetadata>("/discovery");
+
+    return response.data;
+}
+
+export async function listDiscoveryItems(
+    query: DiscoveryListQuery = {},
+): Promise<DiscoveryCatalogPage> {
+    const response = await atlas.get<DiscoveryCatalogPage>("/discovery/items", {
+        params: discoveryParams(query),
+    });
+
+    return response.data;
+}
+
+export async function searchDiscoveryItems(
+    query: DiscoverySearchQuery,
+): Promise<DiscoverySearchPage> {
+    const response = await atlas.get<DiscoverySearchPage>("/discovery/search", {
+        params: discoveryParams(query),
+    });
+
+    return response.data;
+}
+
+export async function getDiscoveryItem(
+    itemId: string,
+): Promise<DiscoveryCatalogEntry> {
+    const response = await atlas.get<DiscoveryCatalogEntry>(
+        `/discovery/items/${encodeURIComponent(itemId)}`,
+    );
+
+    return response.data;
+}
+
+export async function getDiscoveryRelationships(
+    itemId: string,
+    relationshipType?: DiscoveryRelationshipType,
+): Promise<DiscoveryRelationshipCollection> {
+    const response = await atlas.get<DiscoveryRelationshipCollection>(
+        `/discovery/items/${encodeURIComponent(itemId)}/relationships`,
+        {
+            params: relationshipType ? { type: relationshipType } : undefined,
+        },
+    );
+
+    return response.data;
+}
+
+function discoveryParams(query: DiscoveryListQuery | DiscoverySearchQuery) {
+    return {
+        q: "q" in query ? query.q : undefined,
+        limit: query.limit ?? DEFAULT_LIMIT,
+        offset: query.offset ?? 0,
+        type: query.type || undefined,
+        status: query.status || undefined,
+        tag: query.tag || undefined,
+        capability: query.capability || undefined,
+    };
+}
