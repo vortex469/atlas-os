@@ -86,8 +86,11 @@ def test_load_text_returns_catalog_entry_without_mutating_source() -> None:
     assert entry.provenance.source == "app/discovery/catalog/postgres.yaml"
 
 
-def test_default_missing_catalog_path_returns_empty_catalog() -> None:
-    catalog = YamlCatalogLoader().load()
+def test_missing_implicit_catalog_path_returns_empty_catalog(tmp_path: Path) -> None:
+    loader = YamlCatalogLoader(tmp_path / "missing-default-catalog")
+    loader._explicit_catalog_path = False
+
+    catalog = loader.load()
 
     assert catalog == LoadedCatalog()
 

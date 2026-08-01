@@ -1,0 +1,27 @@
+schema_version: 1
+item:
+  id: atlas-agent
+  type: service
+  status: active
+  name: Atlas Agent
+  description: Atlas Agent is the approval-controlled execution boundary for planned Atlas changes.
+  tags:
+    - atlas
+    - automation
+  capabilities:
+    - id: approved-change-execution
+    - id: verification-workflow
+  relationships:
+    - type: integrates_with
+      target: atlas-core
+      required: true
+      description: Atlas Agent interacts with Atlas Core for approved planning, execution, verification, review, and commit workflows.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-atlas-agent
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Atlas platform component; executable work still requires an approval boundary.

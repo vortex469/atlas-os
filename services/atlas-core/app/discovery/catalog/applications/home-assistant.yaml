@@ -1,0 +1,43 @@
+schema_version: 1
+item:
+  id: home-assistant
+  type: application
+  status: active
+  name: Home Assistant
+  description: Home Assistant is a local-first home automation platform for integrating devices, automations, and household services.
+  aliases:
+    - hass
+  tags:
+    - home-automation
+    - iot
+  capabilities:
+    - id: home-automation
+    - id: device-integration
+  requirements:
+    capabilities:
+      - id: container-orchestration
+    network:
+      ports:
+        - port: 8123
+          protocol: tcp
+          direction: inbound
+          required: false
+          description: Common Home Assistant web interface port; exposure depends on deployment.
+  relationships:
+    - type: integrates_with
+      target: mqtt
+      required: false
+      description: Home Assistant can integrate with an MQTT broker for device and event messaging.
+    - type: integrates_with
+      target: postgresql
+      required: false
+      description: Home Assistant can use PostgreSQL as an external recorder database.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-home-assistant
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Optional integrations are modeled as relationships, not installation recommendations.

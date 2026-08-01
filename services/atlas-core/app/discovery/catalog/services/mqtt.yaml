@@ -1,0 +1,32 @@
+schema_version: 1
+item:
+  id: mqtt
+  type: service
+  status: active
+  name: MQTT Broker
+  description: MQTT is a lightweight message broker pattern used by home automation, IoT, and event-driven services.
+  aliases:
+    - mosquitto
+  tags:
+    - messaging
+    - iot
+  capabilities:
+    - id: mqtt-broker
+    - id: publish-subscribe-messaging
+  requirements:
+    network:
+      ports:
+        - port: 1883
+          protocol: tcp
+          direction: inbound
+          required: false
+          description: Common MQTT service port; exposure depends on deployment.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-mqtt
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Represents the broker capability rather than a specific MQTT implementation.

@@ -1,0 +1,25 @@
+schema_version: 1
+item:
+  id: coral-usb
+  type: hardware_device
+  status: active
+  name: Coral USB Accelerator
+  description: Coral USB Accelerator is a hardware device that can provide Edge TPU acceleration for supported local inference workloads.
+  aliases:
+    - google-coral-usb
+  tags:
+    - hardware
+    - accelerator
+    - edge-tpu
+  capabilities:
+    - id: edge-tpu-acceleration
+    - id: local-inference-acceleration
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-coral-usb
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Hardware capability entry; compatibility evaluation is deferred to later Discovery Center milestones.

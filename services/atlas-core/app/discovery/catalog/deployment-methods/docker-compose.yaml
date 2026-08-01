@@ -1,0 +1,24 @@
+schema_version: 1
+item:
+  id: docker-compose
+  type: deployment_method
+  status: active
+  name: Docker Compose
+  description: Docker Compose is a local container deployment method used to define and run multi-container application stacks.
+  aliases:
+    - compose
+  tags:
+    - deployment
+    - containers
+  capabilities:
+    - id: container-orchestration
+    - id: local-compose-deployment
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-docker-compose
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Deployment method capability; entries should not assume Docker Compose is the only supported deployment option.
