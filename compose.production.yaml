@@ -28,6 +28,45 @@ services:
     expose:
       - "8643"
 
+  atlas-agent:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-agent.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      atlas-core:
+        condition: service_healthy
+    environment:
+      ATLAS_AGENT_ENVIRONMENT: production
+      ATLAS_AGENT_HOST: 0.0.0.0
+      ATLAS_AGENT_PORT: "8090"
+      ATLAS_AGENT_REPOSITORY_ROOT: /workspace/repository
+      ATLAS_AGENT_STATE_DIR: /opt/atlas/agent-state
+      ATLAS_CORE_HOST: atlas-core
+      ATLAS_CORE_PORT: "8643"
+      ATLAS_CORE_REQUIRED: "false"
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: /workspace/repository
+    volumes:
+      - ${ATLAS_REPOSITORY_HOST_PATH:?set ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository
+      - atlas-agent-state:/opt/atlas/agent-state
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8090"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
   mission-control:
     build:
       context: .
@@ -47,4 +86,5 @@ services:
       - no-new-privileges:true
 
 volumes:
+  atlas-agent-state:
   atlas-data:
