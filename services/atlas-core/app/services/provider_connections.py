@@ -3,8 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from time import perf_counter
 from typing import Any
+from uuid import uuid4
 
+from app.actions.history import record_provider_action_audit
+from app.actions.models import ProviderActionAuditEntry
 from app.config.inventory import load_inventory
 from app.config.provider_connections import (
     get_provider_connection_values,
@@ -32,12 +36,46 @@ from app.providers.factory import (
     default_provider_factory_registry,
     provider_type_from_context,
 )
-from app.providers.registry import ProviderRegistry, provider_registry
+from app.providers.registry import (
+    ProviderNotFoundError,
+    ProviderRegistry,
+    provider_registry,
+)
 from app.services.atlas_contexts import LegacyAtlasContextResolver
 
 
 class ProviderConnectionServiceError(RuntimeError):
     """Stable sanitized internal connection orchestration failure."""
+
+
+class ProviderConnectionProviderNotFoundError(ProviderConnectionServiceError):
+    """Raised when a provider ID is not registered."""
+
+
+class ProviderConnectionNotSupportedError(ProviderConnectionServiceError):
+    """Raised when a provider does not support connection management."""
+
+
+class ProviderConnectionConfirmationRequiredError(ProviderConnectionServiceError):
+    """Raised when an unconfirmed live or mutating connection operation is rejected."""
+
+
+class ProviderConnectionReadOnlyError(ProviderConnectionServiceError):
+    """Raised when a provider exposes read-only connection metadata."""
+
+
+class ProviderConnectionValidationError(ProviderConnectionServiceError):
+    """Raised when candidate connection values are invalid."""
+
+
+class ProviderConnectionOperationError(ProviderConnectionServiceError):
+    """Raised when test, persistence, context, build, or replacement fails."""
+
+
+TEST_PROVIDER_CONNECTION_ACTION_ID = "test-provider-connection"
+TEST_PROVIDER_CONNECTION_ACTION_LABEL = "Test Provider Connection"
+UPDATE_PROVIDER_CONNECTION_ACTION_ID = "update-provider-connection"
+UPDATE_PROVIDER_CONNECTION_ACTION_LABEL = "Update Provider Connection"
 
 
 _CONTEXT_RESOLVER_FACTORY = Callable[[Path | None, Path | None], LegacyAtlasContextResolver]
@@ -71,11 +109,49 @@ class ProviderConnectionService:
         self,
         provider_id: str,
         request: TestProviderConnectionRequest,
+        *,
+        request_id: str | None = None,
     ) -> TestProviderConnectionResult:
         provider = self._provider(provider_id)
         adapter = self._adapter(provider)
-        self._validate_candidate(adapter.connection_schema(), request.values)
-        return await adapter.test_connection(request)
+        schema = adapter.connection_schema()
+        started_at = datetime.now(UTC)
+        started_timer = perf_counter()
+        try:
+            self._validate_candidate(schema, request.values)
+            if not request.confirmed:
+                raise ProviderConnectionConfirmationRequiredError(
+                    "Provider connection tests require confirmed=true.",
+                )
+            result = await adapter.test_connection(request)
+        except ProviderConnectionServiceError as error:
+            _record_connection_audit(
+                provider=provider,
+                action_id=TEST_PROVIDER_CONNECTION_ACTION_ID,
+                action_label=TEST_PROVIDER_CONNECTION_ACTION_LABEL,
+                success=False,
+                message=str(error),
+                confirmed=request.confirmed,
+                parameter_names=_parameter_names(schema, request.values),
+                request_id=request_id,
+                started_at=started_at,
+                started_timer=started_timer,
+            )
+            raise
+
+        _record_connection_audit(
+            provider=provider,
+            action_id=TEST_PROVIDER_CONNECTION_ACTION_ID,
+            action_label=TEST_PROVIDER_CONNECTION_ACTION_LABEL,
+            success=result.status == "success",
+            message=result.message,
+            confirmed=request.confirmed,
+            parameter_names=_parameter_names(schema, request.values),
+            request_id=request_id,
+            started_at=started_at,
+            started_timer=started_timer,
+        )
+        return result
 
     async def update_connection(
         self,
@@ -83,30 +159,40 @@ class ProviderConnectionService:
         request: UpdateProviderConnectionRequest,
         *,
         require_test: bool = True,
+        request_id: str | None = None,
     ) -> UpdateProviderConnectionResult:
-        if not request.confirmed:
-            raise ProviderConnectionServiceError("connection update requires confirmation.")
-
         old_provider = self._provider(provider_id)
         adapter = self._adapter(old_provider)
         schema = adapter.connection_schema()
-        if not schema.editable or schema.metadata.get("update_supported") is False:
-            raise ProviderConnectionServiceError("provider connection updates are not supported.")
-        self._validate_candidate(schema, request.values)
-
-        if require_test:
-            test_result = await adapter.test_connection(
-                TestProviderConnectionRequest(values=request.values, confirmed=True),
-            )
-            if test_result.status == "failure":
-                raise ProviderConnectionServiceError("candidate provider connection test failed.")
-
-        connection_values, secret_values = _split_values(schema, request.values)
+        started_at = datetime.now(UTC)
+        started_timer = perf_counter()
         previous_connection = get_provider_connection_values(provider_id, self._connection_file)
         previous_secrets = _read_provider_secrets(provider_id, self._secret_file)
-        old_registered = self._registry.get(provider_id)
+        old_registered = old_provider
 
         try:
+            if not request.confirmed:
+                raise ProviderConnectionConfirmationRequiredError(
+                    "Provider connection updates require confirmed=true.",
+                )
+
+            if not schema.editable or schema.metadata.get("update_supported") is False:
+                raise ProviderConnectionReadOnlyError(
+                    "provider connection is read-only.",
+                )
+            self._validate_candidate(schema, request.values)
+
+            if require_test:
+                test_result = await adapter.test_connection(
+                    TestProviderConnectionRequest(values=request.values, confirmed=True),
+                )
+                if test_result.status == "failure":
+                    raise ProviderConnectionOperationError(
+                        "candidate provider connection test failed.",
+                    )
+
+            connection_values, secret_values = _split_values(schema, request.values)
+
             if connection_values:
                 update_provider_connection_values(
                     provider_id,
@@ -124,9 +210,53 @@ class ProviderConnectionService:
             if replacement.metadata.id != provider_id:
                 raise ProviderConnectionServiceError("replacement provider identity mismatch.")
             self._registry.replace(replacement)
+        except (
+            ProviderConnectionConfirmationRequiredError,
+            ProviderConnectionReadOnlyError,
+            ProviderConnectionValidationError,
+        ) as error:
+            _record_connection_audit(
+                provider=old_provider,
+                action_id=UPDATE_PROVIDER_CONNECTION_ACTION_ID,
+                action_label=UPDATE_PROVIDER_CONNECTION_ACTION_LABEL,
+                success=False,
+                message=str(error),
+                confirmed=request.confirmed,
+                parameter_names=_parameter_names(schema, request.values),
+                request_id=request_id,
+                started_at=started_at,
+                started_timer=started_timer,
+            )
+            raise
         except Exception as error:
             self._rollback(provider_id, previous_connection, previous_secrets, old_registered)
-            raise ProviderConnectionServiceError(_sanitize_error(error)) from error
+            wrapped = ProviderConnectionOperationError(_sanitize_error(error))
+            _record_connection_audit(
+                provider=old_provider,
+                action_id=UPDATE_PROVIDER_CONNECTION_ACTION_ID,
+                action_label=UPDATE_PROVIDER_CONNECTION_ACTION_LABEL,
+                success=False,
+                message=str(wrapped),
+                confirmed=request.confirmed,
+                parameter_names=_parameter_names(schema, request.values),
+                request_id=request_id,
+                started_at=started_at,
+                started_timer=started_timer,
+            )
+            raise wrapped from error
+
+        _record_connection_audit(
+            provider=self._registry.get(provider_id),
+            action_id=UPDATE_PROVIDER_CONNECTION_ACTION_ID,
+            action_label=UPDATE_PROVIDER_CONNECTION_ACTION_LABEL,
+            success=True,
+            message="Provider connection updated.",
+            confirmed=request.confirmed,
+            parameter_names=_parameter_names(schema, request.values),
+            request_id=request_id,
+            started_at=started_at,
+            started_timer=started_timer,
+        )
 
         return UpdateProviderConnectionResult(
             provider_id=provider_id,
@@ -138,12 +268,14 @@ class ProviderConnectionService:
     def _provider(self, provider_id: str) -> Provider:
         try:
             return self._registry.get(provider_id)
-        except Exception as error:
-            raise ProviderConnectionServiceError("provider is not registered.") from error
+        except ProviderNotFoundError as error:
+            raise ProviderConnectionProviderNotFoundError("provider is not registered.") from error
 
     def _adapter(self, provider: Provider) -> ProviderConnectionAdapter:
         if not isinstance(provider, ProviderConnectionAdapter):
-            raise ProviderConnectionServiceError("provider does not support connection management.")
+            raise ProviderConnectionNotSupportedError(
+                "provider does not support connection management.",
+            )
         return provider
 
     def _resolve_context(self, provider_id: str) -> AtlasContext:
@@ -183,20 +315,26 @@ class ProviderConnectionService:
         fields = {field.key: field for field in schema.fields}
         unknown = set(values) - set(fields)
         if unknown:
-            raise ProviderConnectionServiceError("candidate connection contains unsupported fields.")
+            raise ProviderConnectionValidationError(
+                "candidate connection contains unsupported fields.",
+            )
         for key, value in values.items():
             field = fields[key]
             if not field.editable:
-                raise ProviderConnectionServiceError("candidate connection contains read-only fields.")
+                raise ProviderConnectionValidationError(
+                    "candidate connection contains read-only fields.",
+                )
             if field.kind == "port" and value is not None:
                 try:
                     port = int(value)
                 except (TypeError, ValueError) as error:
-                    raise ProviderConnectionServiceError("candidate port is invalid.") from error
+                    raise ProviderConnectionValidationError("candidate port is invalid.") from error
                 if port < 1 or port > 65535:
-                    raise ProviderConnectionServiceError("candidate port is invalid.")
+                    raise ProviderConnectionValidationError("candidate port is invalid.")
             if field.secret and value == "":
-                raise ProviderConnectionServiceError("empty secret values are not valid updates.")
+                raise ProviderConnectionValidationError(
+                    "empty secret values are not valid updates.",
+                )
 
 
 def _default_context_resolver_factory(
@@ -234,6 +372,54 @@ def _read_provider_secrets(provider_id: str, secret_file: Path | None) -> dict[s
         if value is not None:
             secrets[name] = value
     return secrets
+
+
+def _parameter_names(
+    schema: ProviderConnectionSchema,
+    values: Mapping[str, Any],
+) -> list[str]:
+    fields = {field.key: field for field in schema.fields}
+    names: list[str] = ["confirmed"]
+    for key in sorted(values):
+        field = fields.get(key)
+        prefix = "secret" if field is not None and field.secret else "field"
+        names.append(f"{prefix}:{key}")
+    return names
+
+
+def _record_connection_audit(
+    *,
+    provider: Provider,
+    action_id: str,
+    action_label: str,
+    success: bool,
+    message: str,
+    confirmed: bool,
+    parameter_names: list[str],
+    request_id: str | None,
+    started_at: datetime,
+    started_timer: float,
+) -> None:
+    completed_at = datetime.now(UTC)
+    record_provider_action_audit(
+        ProviderActionAuditEntry(
+            id=uuid4().hex,
+            provider_id=provider.metadata.id,
+            provider_name=provider.metadata.name,
+            action_id=action_id,
+            action_label=action_label,
+            status="succeeded" if success else "failed",
+            success=success,
+            message=message,
+            confirmed=confirmed,
+            destructive=False,
+            parameter_names=parameter_names,
+            request_id=request_id,
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=round((perf_counter() - started_timer) * 1000, 2),
+        ),
+    )
 
 
 def _sanitize_error(error: Exception) -> str:
