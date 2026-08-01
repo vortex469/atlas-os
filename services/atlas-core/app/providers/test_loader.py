@@ -162,7 +162,7 @@ def test_provider_receives_expected_atlas_context() -> None:
     assert provider.atlas_context is context  # type: ignore[attr-defined]
 
 
-def test_legacy_constructor_data_remains_available_for_proxmox() -> None:
+def test_context_metadata_wins_and_legacy_data_remains_available_for_proxmox() -> None:
     context = atlas_context(
         "proxmox",
         provider_type="proxmox",
@@ -176,8 +176,13 @@ def test_legacy_constructor_data_remains_available_for_proxmox() -> None:
     provider = build_providers_from_contexts((context,))[0]
 
     assert isinstance(provider, ProxmoxProvider)
-    assert provider.metadata.name == "Proxmox Legacy"
-    assert provider.metadata.description == "Legacy constructor data."
+    assert provider.metadata.name == "Proxmox"
+    assert provider.metadata.description == (
+        "Virtualization provider for Proxmox guests."
+    )
+    assert provider.atlas_context.metadata.metadata["legacy_service"]["name"] == (
+        "Proxmox Legacy"
+    )
     assert provider.atlas_context is context  # type: ignore[attr-defined]
 
 

@@ -6,6 +6,13 @@ from pathlib import Path
 import pytest
 
 from app.config import policies as policy_config
+from app.context import (
+    AtlasContext,
+    ConnectionContext,
+    MetadataContext,
+    RuntimeContext,
+    SecretContext,
+)
 from app.providers.capabilities import ProviderCapability
 from app.providers.proxmox import ProxmoxProvider
 from app.providers.resources import ProviderExpectationAdapter, ProviderResourceAdapter
@@ -253,3 +260,204 @@ def test_update_resource_expectation_persists_policy(
     assert result.resource_id == "109"
     assert result.expectation.value == "ignored"
     assert "expected: ignored" in policy_file.read_text(encoding="utf-8")
+
+
+class RecordingIntentService:
+    def __init__(self, expectations: dict[str, str] | None = None) -> None:
+        self.expectations = expectations or {}
+        self.updated: list[tuple[str, str]] = []
+
+    def list_guest_expectations(self) -> dict[str, str]:
+        return dict(self.expectations)
+
+    def update_guest_expectation(
+        self,
+        resource_id: str,
+        expectation: str,
+    ) -> str:
+        self.updated.append((resource_id, expectation))
+        self.expectations[resource_id] = expectation
+        return expectation
+
+
+def proxmox_context(
+    *,
+    host: str = "context-proxmox.local",
+    port: int = 8006,
+    node: str = "context-node",
+    verify_tls: bool = False,
+    token_value: str | None = "context-token-value",
+    intent_service: RecordingIntentService | None = None,
+    name: str = "Context Proxmox",
+) -> AtlasContext:
+    secrets = {
+        "user": SecretContext(
+            name="user",
+            source="environment",
+            configured=True,
+            redacted="********",
+            value="context-user",
+        ),
+        "token_name": SecretContext(
+            name="token_name",
+            source="environment",
+            configured=True,
+            redacted="********",
+            value="context-token-name",
+        ),
+    }
+    if token_value is not None:
+        secrets["token_value"] = SecretContext(
+            name="token_value",
+            source="environment",
+            configured=True,
+            redacted="********",
+            value=token_value,
+        )
+    else:
+        secrets["token_value"] = SecretContext(
+            name="token_value",
+            source="missing",
+            configured=False,
+        )
+
+    return AtlasContext(
+        metadata=MetadataContext(
+            consumer_id="proxmox",
+            consumer_type="provider",
+            name=name,
+            description="Context description.",
+            workspace="operations",
+            priority="critical",
+            icon="server",
+            capabilities=frozenset(
+                {
+                    "health",
+                    "discovery",
+                    "resources",
+                    "monitoring",
+                    "diagnostics",
+                    "actions",
+                }
+            ),
+        ),
+        connection=ConnectionContext(
+            mode="https",
+            host=host,
+            port=port,
+            node=node,
+            verify_tls=verify_tls,
+            source="settings",
+        ),
+        secrets=secrets,
+        runtime=RuntimeContext(
+            intent_reader=intent_service,
+            intent_writer=intent_service,
+        ),
+        generation=f"test-{host}-{port}-{node}",
+    )
+
+
+def test_proxmox_client_uses_connection_and_secrets_from_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.clients import proxmox_client
+
+    captured: dict[str, object] = {}
+
+    class FakeProxmoxAPI:
+        def __init__(self, host: str, **kwargs: object) -> None:
+            captured["host"] = host
+            captured.update(kwargs)
+
+    monkeypatch.setattr(proxmox_client, "ProxmoxAPI", FakeProxmoxAPI)
+
+    proxmox_client.get_proxmox_client(
+        proxmox_context(
+            host="ctx-a.local",
+            port=9443,
+            node="node-a",
+            verify_tls=True,
+        )
+    )
+
+    assert captured == {
+        "host": "ctx-a.local",
+        "user": "context-user",
+        "token_name": "context-token-name",
+        "token_value": "context-token-value",
+        "port": 9443,
+        "verify_ssl": True,
+    }
+
+
+def test_changing_context_changes_proxmox_client_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.clients import proxmox_client
+
+    hosts: list[str] = []
+
+    class FakeProxmoxAPI:
+        def __init__(self, host: str, **kwargs: object) -> None:
+            hosts.append(host)
+
+    monkeypatch.setattr(proxmox_client, "ProxmoxAPI", FakeProxmoxAPI)
+
+    proxmox_client.get_proxmox_client(proxmox_context(host="first.local"))
+    proxmox_client.get_proxmox_client(proxmox_context(host="second.local"))
+
+    assert hosts == ["first.local", "second.local"]
+
+
+def test_missing_proxmox_secret_degrades_health_without_exposing_value() -> None:
+    provider = ProxmoxProvider(proxmox_context(token_value=None))
+
+    health = asyncio.run(provider.get_health())
+
+    assert health.status == "offline"
+    assert "token_value" in health.details["error"]
+    assert "context-token" not in repr(health.model_dump())
+
+
+def test_provider_metadata_comes_from_context_and_is_context_aware() -> None:
+    provider = ProxmoxProvider(proxmox_context(name="Context Named Proxmox"))
+
+    assert provider.metadata.name == "Context Named Proxmox"
+    assert provider.metadata.description == "Context description."
+    assert provider.atlas_context.consumer_id == "proxmox"
+    assert {
+        ProviderCapability.HEALTH,
+        ProviderCapability.DISCOVERY,
+        ProviderCapability.RESOURCES,
+        ProviderCapability.MONITORING,
+        ProviderCapability.DIAGNOSTICS,
+        ProviderCapability.ACTIONS,
+    }.issubset(provider.metadata.capabilities)
+
+
+def test_resource_listing_reads_expectations_through_context_runtime_intent_reader(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.providers.proxmox as proxmox_provider
+
+    intent_service = RecordingIntentService({"109": "stopped"})
+    monkeypatch.setattr(proxmox_provider, "get_proxmox_guests", guest_inventory)
+
+    resources = resources_by_id(
+        ProxmoxProvider(proxmox_context(intent_service=intent_service))
+    )
+
+    assert resources["109"].expectation.value == "stopped"
+    assert resources["109"].configured is True
+    assert resources["100"].needs_review is True
+
+
+def test_expectation_update_uses_context_runtime_intent_writer() -> None:
+    intent_service = RecordingIntentService()
+    provider = ProxmoxProvider(proxmox_context(intent_service=intent_service))
+
+    result = asyncio.run(provider.update_resource_expectation("109", "ignored"))
+
+    assert result.expectation.value == "ignored"
+    assert intent_service.updated == [("109", "ignored")]

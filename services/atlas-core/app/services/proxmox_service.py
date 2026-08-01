@@ -1,14 +1,24 @@
+from __future__ import annotations
+
+from typing import Any
+
 from app.clients.proxmox_client import get_proxmox_client
-from app.config.settings import settings
-
-def bytes_to_gib(value: int | float) -> float:
-    return round(value / (1024 ** 3), 2)
+from app.context import AtlasContext
+from app.services.atlas_contexts import LegacyAtlasContextResolver
 
 
-def get_proxmox_status() -> dict:
-    client = get_proxmox_client()
-    node = settings.proxmox.node
-    status = client.nodes(node).status.get()
+def bytes_to_gib(value: float) -> float:
+    return round(value / (1024**3), 2)
+
+
+def get_proxmox_status(
+    atlas_context: AtlasContext | None = None,
+    client: Any | None = None,
+) -> dict:
+    context = _proxmox_context(atlas_context)
+    proxmox_client = client or get_proxmox_client(context)
+    node = _proxmox_node(context)
+    status = proxmox_client.nodes(node).status.get()
 
     memory = status.get("memory", {})
     used_memory = memory.get("used", 0)
@@ -32,12 +42,16 @@ def get_proxmox_status() -> dict:
     }
 
 
-def get_proxmox_guests() -> dict:
-    client = get_proxmox_client()
-    node = settings.proxmox.node
+def get_proxmox_guests(
+    atlas_context: AtlasContext | None = None,
+    client: Any | None = None,
+) -> dict:
+    context = _proxmox_context(atlas_context)
+    proxmox_client = client or get_proxmox_client(context)
+    node = _proxmox_node(context)
     guests = []
 
-    for vm in client.nodes(node).qemu.get():
+    for vm in proxmox_client.nodes(node).qemu.get():
         guests.append(
             {
                 "vmid": vm["vmid"],
@@ -51,7 +65,7 @@ def get_proxmox_guests() -> dict:
             }
         )
 
-    for container in client.nodes(node).lxc.get():
+    for container in proxmox_client.nodes(node).lxc.get():
         guests.append(
             {
                 "vmid": container["vmid"],
@@ -86,3 +100,20 @@ def get_proxmox_guests() -> dict:
         ),
         "guests": guests,
     }
+
+
+def _proxmox_context(
+    atlas_context: AtlasContext | None,
+) -> AtlasContext:
+    # Temporary compatibility seam for legacy routes and tests that call this
+    # service directly before all callers are context-aware.
+    return atlas_context or LegacyAtlasContextResolver().resolve_context(
+        "proxmox",
+    )
+
+
+def _proxmox_node(atlas_context: AtlasContext) -> str:
+    connection = atlas_context.connection
+    if connection is None or not connection.node:
+        raise RuntimeError("Proxmox node is not configured.")
+    return connection.node

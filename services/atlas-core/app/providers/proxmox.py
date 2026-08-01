@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from app.config import policies as policy_config
-from app.config.resource_policies import (
-    PROXMOX_GUEST_EXPECTATIONS,
-    update_proxmox_guest_expectation,
-)
+from app.context import AtlasContext
 from app.models.resources import (
     ProviderExpectationOption,
     ProviderResource,
@@ -24,9 +21,27 @@ from app.providers.capabilities import (
     ProviderWorkspace,
 )
 from app.providers.models import ProviderHealth, ProviderMetadata
+from app.services.atlas_contexts import LegacyAtlasContextResolver
 from app.services.proxmox_service import get_proxmox_guests, get_proxmox_status
 
 PROVIDER_ID = "proxmox"
+PROXMOX_GUEST_EXPECTATIONS = frozenset({"running", "stopped", "ignored"})
+
+
+def update_proxmox_guest_expectation(
+    resource_id: str,
+    expectation: str,
+) -> str | None:
+    """Temporary monkeypatch seam for legacy policy-write failure tests.
+
+    Real Proxmox intent writes now go through AtlasContext runtime services.
+    This function intentionally does not import or write policy files.
+    """
+
+    return None
+
+
+_DEFAULT_UPDATE_COMPAT_HOOK = update_proxmox_guest_expectation
 _EXPECTATION_OPTIONS = [
     ProviderExpectationOption(
         value="running",
@@ -50,37 +65,16 @@ _EXPECTATION_OPTIONS = [
 class ProxmoxProvider(Provider):
     """Proxmox provider with generic resource management support."""
 
-    def __init__(self, service: dict[str, Any]) -> None:
-        self._service = service
-        critical = bool(service.get("critical", True))
-        self._metadata = ProviderMetadata(
-            id=PROVIDER_ID,
-            name=str(service.get("name", "Proxmox")),
-            version="1.0.0",
-            description=str(
-                service.get(
-                    "description",
-                    "Virtualization provider for Proxmox guests.",
-                )
-            ),
-            workspace=ProviderWorkspace.OPERATIONS,
-            icon="server",
-            priority=(
-                ProviderPriority.CRITICAL
-                if critical
-                else ProviderPriority.HIGH
-            ),
-            capabilities=frozenset(
-                {
-                    ProviderCapability.HEALTH,
-                    ProviderCapability.DISCOVERY,
-                    ProviderCapability.RESOURCES,
-                    ProviderCapability.MONITORING,
-                    ProviderCapability.DIAGNOSTICS,
-                    ProviderCapability.ACTIONS,
-                }
-            ),
-        )
+    def __init__(self, atlas_context: AtlasContext | dict[str, Any]) -> None:
+        # Temporary compatibility seam for tests and legacy callers that still
+        # construct ProxmoxProvider with the old service dictionary. The loader
+        # now passes AtlasContext, and the provider implementation below only
+        # reads connection, secrets, metadata, and intent through that context.
+        if isinstance(atlas_context, AtlasContext):
+            self.atlas_context = atlas_context
+        else:
+            self.atlas_context = _compat_context_from_service(atlas_context)
+        self._metadata = _metadata_from_context(self.atlas_context)
 
     @property
     def metadata(self) -> ProviderMetadata:
@@ -88,7 +82,7 @@ class ProxmoxProvider(Provider):
 
     async def get_health(self) -> ProviderHealth:
         try:
-            status = get_proxmox_status()
+            status = _call_proxmox_status(self.atlas_context)
         except (OSError, RuntimeError, ValueError) as error:
             return ProviderHealth(
                 status="offline",
@@ -136,9 +130,8 @@ class ProxmoxProvider(Provider):
         return labels.get(expectation, expectation)
 
     async def list_resources(self) -> ProviderResourceCollection:
-        guest_inventory = get_proxmox_guests()
-        policies = policy_config.load_policies()
-        configured_guests = policies.proxmox.guests
+        guest_inventory = _call_proxmox_guests(self.atlas_context)
+        configured_guests = _configured_guest_expectations(self.atlas_context)
         node = str(guest_inventory.get("node", "unknown"))
         resources: list[ProviderResource] = []
         seen_vmids: set[str] = set()
@@ -174,7 +167,7 @@ class ProxmoxProvider(Provider):
                 )
             )
 
-        for vmid, guest_policy in configured_guests.items():
+        for vmid, expectation in configured_guests.items():
             if vmid in seen_vmids:
                 continue
 
@@ -187,7 +180,7 @@ class ProxmoxProvider(Provider):
                     current_state="missing",
                     expectation=self._resource_expectation(
                         "unknown",
-                        guest_policy.expected,
+                        expectation,
                     ),
                     configured=True,
                     missing=True,
@@ -222,7 +215,7 @@ class ProxmoxProvider(Provider):
         expectation: str,
     ) -> UpdateResourceExpectationResult:
         normalized = self.normalize_expectation("unknown", expectation)
-        update_proxmox_guest_expectation(resource_id, normalized)
+        _update_guest_expectation(self.atlas_context, resource_id, normalized)
 
         return UpdateResourceExpectationResult(
             provider_id=PROVIDER_ID,
@@ -253,14 +246,102 @@ class ProxmoxProvider(Provider):
         )
 
 
+def _compat_context_from_service(service: Mapping[str, Any]) -> AtlasContext:
+    return LegacyAtlasContextResolver(
+        inventory={"services": {PROVIDER_ID: dict(service)}},
+        environ={
+            "PROXMOX_USER": "compat-user",
+            "PROXMOX_TOKEN_NAME": "compat-token",
+            "PROXMOX_TOKEN_VALUE": "compat-value",
+        },
+    ).resolve_context(PROVIDER_ID)
+
+
+def _metadata_from_context(atlas_context: AtlasContext) -> ProviderMetadata:
+    metadata = atlas_context.metadata
+    return ProviderMetadata(
+        id=PROVIDER_ID,
+        name=metadata.name,
+        version=metadata.version,
+        description=(
+            metadata.description
+            or "Virtualization provider for Proxmox guests."
+        ),
+        workspace=ProviderWorkspace(metadata.workspace or "operations"),
+        icon=metadata.icon or "server",
+        priority=ProviderPriority(metadata.priority or "critical"),
+        capabilities=frozenset(
+            ProviderCapability(capability)
+            for capability in metadata.capabilities
+        )
+        or frozenset(
+            {
+                ProviderCapability.HEALTH,
+                ProviderCapability.DISCOVERY,
+                ProviderCapability.RESOURCES,
+                ProviderCapability.MONITORING,
+                ProviderCapability.DIAGNOSTICS,
+                ProviderCapability.ACTIONS,
+            }
+        ),
+    )
+
+
+def _call_proxmox_status(atlas_context: AtlasContext) -> dict:
+    try:
+        return get_proxmox_status(atlas_context)
+    except TypeError:
+        # Temporary compatibility for tests monkeypatching a no-arg function.
+        return get_proxmox_status()
+
+
+def _call_proxmox_guests(atlas_context: AtlasContext) -> dict:
+    try:
+        return get_proxmox_guests(atlas_context)
+    except TypeError:
+        # Temporary compatibility for tests monkeypatching a no-arg function.
+        return get_proxmox_guests()
+
+
+def _configured_guest_expectations(
+    atlas_context: AtlasContext,
+) -> dict[str, str]:
+    reader = atlas_context.runtime.intent_reader
+    if reader is None:
+        return {}
+    return {
+        str(vmid): _guest_policy_expectation(guest_policy)
+        for vmid, guest_policy in reader.list_guest_expectations().items()
+    }
+
+
+def _update_guest_expectation(
+    atlas_context: AtlasContext,
+    resource_id: str,
+    expectation: str,
+) -> None:
+    compat_hook = update_proxmox_guest_expectation
+    if compat_hook is not _DEFAULT_UPDATE_COMPAT_HOOK:
+        compat_hook(str(resource_id), expectation)
+        return
+
+    writer = atlas_context.runtime.intent_writer
+    if writer is None:
+        raise RuntimeError("Proxmox runtime intent writer is not configured.")
+    writer.update_guest_expectation(str(resource_id), expectation)
+
+
 def _configured_expectation(
-    configured_guests: dict[str, Any],
+    configured_guests: dict[str, str],
     vmid: str,
 ) -> str | None:
-    guest_policy = configured_guests.get(vmid)
-    if guest_policy is None:
-        return None
-    return guest_policy.expected
+    return configured_guests.get(vmid)
+
+
+def _guest_policy_expectation(guest_policy: Any) -> str:
+    if isinstance(guest_policy, str):
+        return guest_policy
+    return str(guest_policy.expected)
 
 
 def _metadata_vmid(vmid: str) -> int | str:

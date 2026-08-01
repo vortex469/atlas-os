@@ -87,6 +87,8 @@ class RuntimeContext(AtlasContextModel):
     knowledge_root: Path = Path("/opt/atlas/data/knowledge")
     consumer_data_root: Path | None = None
     consumer_cache_root: Path | None = None
+    intent_reader: Any | None = Field(default=None, exclude=True, repr=False)
+    intent_writer: Any | None = Field(default=None, exclude=True, repr=False)
     metadata: Mapping[str, Any] = Field(default_factory=dict)
 
 

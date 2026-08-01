@@ -128,7 +128,7 @@ def default_provider_factory_registry() -> ProviderFactoryRegistry:
         ),
         "proxmox": LegacyProviderFactory(
             "proxmox",
-            lambda context, service: ProxmoxProvider(dict(service)),
+            lambda context, service: ProxmoxProvider(context),
         ),
         "qdrant": LegacyProviderFactory(
             "qdrant",
