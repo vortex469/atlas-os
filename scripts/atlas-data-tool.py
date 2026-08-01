@@ -8,12 +8,14 @@ import re
 import shutil
 import sqlite3
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 DATABASES = ("action_history.db", "provider_intelligence.db")
+RUNTIME_FILES = ("config/policies.yaml",)
 MANIFEST_NAME = "manifest.json"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
+SUPPORTED_FORMAT_VERSIONS = {1, FORMAT_VERSION}
 BACKUP_NAME_PATTERN = re.compile(
     r"^atlas-data-(?P<timestamp>\d{8}T\d{6}Z)$"
 )
@@ -25,6 +27,19 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def safe_relative_path(value: object) -> Path:
+    if not isinstance(value, str) or not value:
+        raise RuntimeError("runtime file path is invalid")
+
+    relative = PurePosixPath(value)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise RuntimeError(f"unsafe runtime file path: {value}")
+    if any(part in {"", "."} for part in relative.parts):
+        raise RuntimeError(f"unsafe runtime file path: {value}")
+
+    return Path(*relative.parts)
 
 
 def integrity(path: Path) -> str:
@@ -54,7 +69,8 @@ def sqlite_backup(source: Path, destination: Path) -> None:
 
 def create_backup(source: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=False)
-    records: list[dict[str, object]] = []
+    database_records: list[dict[str, object]] = []
+    runtime_file_records: list[dict[str, object]] = []
 
     for filename in DATABASES:
         source_path = source / filename
@@ -68,9 +84,25 @@ def create_backup(source: Path, destination: Path) -> None:
             raise RuntimeError(
                 f"backup integrity check failed for {filename}: {result}"
             )
-        records.append(
+        database_records.append(
             {
                 "filename": filename,
+                "sha256": sha256(destination_path),
+                "size": destination_path.stat().st_size,
+            }
+        )
+
+    for filename in RUNTIME_FILES:
+        source_path = source / safe_relative_path(filename)
+        if not source_path.is_file():
+            continue
+
+        destination_path = destination / safe_relative_path(filename)
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source_path, destination_path)
+        runtime_file_records.append(
+            {
+                "path": filename,
                 "sha256": sha256(destination_path),
                 "size": destination_path.stat().st_size,
             }
@@ -79,7 +111,8 @@ def create_backup(source: Path, destination: Path) -> None:
     manifest = {
         "format_version": FORMAT_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "databases": records,
+        "databases": database_records,
+        "files": runtime_file_records,
     }
     manifest_path = destination / MANIFEST_NAME
     manifest_path.write_text(
@@ -91,7 +124,8 @@ def create_backup(source: Path, destination: Path) -> None:
 def verify_backup(backup: Path) -> dict[str, object]:
     manifest_path = backup / MANIFEST_NAME
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("format_version") != FORMAT_VERSION:
+    format_version = manifest.get("format_version")
+    if format_version not in SUPPORTED_FORMAT_VERSIONS:
         raise RuntimeError("unsupported backup format version")
 
     records = manifest.get("databases")
@@ -106,15 +140,33 @@ def verify_backup(backup: Path) -> dict[str, object]:
     if filenames != set(DATABASES):
         raise RuntimeError("backup manifest database set is invalid")
 
-    expected_files = {*DATABASES, MANIFEST_NAME}
-    actual_files = {
-        path.name
-        for path in backup.iterdir()
+    file_records = manifest.get("files", [])
+    if format_version == 1 and "files" not in manifest:
+        file_records = []
+    if not isinstance(file_records, list):
+        raise RuntimeError("backup manifest file records are invalid")
+
+    expected_paths = {Path(filename) for filename in DATABASES}
+    expected_paths.add(Path(MANIFEST_NAME))
+    runtime_paths: set[Path] = set()
+
+    for record in file_records:
+        if not isinstance(record, dict):
+            raise RuntimeError("backup manifest file record is invalid")
+        relative_path = safe_relative_path(record.get("path"))
+        if relative_path.as_posix() not in RUNTIME_FILES:
+            raise RuntimeError(f"unexpected runtime file path: {relative_path}")
+        runtime_paths.add(relative_path)
+        expected_paths.add(relative_path)
+
+    actual_paths = {
+        path.relative_to(backup)
+        for path in backup.rglob("*")
         if path.is_file()
     }
-    if actual_files != expected_files:
-        unexpected = sorted(actual_files - expected_files)
-        missing = sorted(expected_files - actual_files)
+    if actual_paths != expected_paths:
+        unexpected = sorted(path.as_posix() for path in actual_paths - expected_paths)
+        missing = sorted(path.as_posix() for path in expected_paths - actual_paths)
         raise RuntimeError(
             f"backup file set is invalid; unexpected={unexpected}, "
             f"missing={missing}"
@@ -139,11 +191,33 @@ def verify_backup(backup: Path) -> dict[str, object]:
                 f"backup integrity check failed for {filename}: {result}"
             )
 
+    for record in file_records:
+        relative_path = safe_relative_path(record.get("path"))
+        if relative_path not in runtime_paths:
+            raise RuntimeError(f"backup runtime file not registered: {relative_path}")
+        path = backup / relative_path
+        if not path.is_file():
+            raise RuntimeError(f"backup runtime file not found: {relative_path}")
+        if path.stat().st_size != record.get("size"):
+            raise RuntimeError(f"backup runtime file size mismatch: {relative_path}")
+        if sha256(path) != record.get("sha256"):
+            raise RuntimeError(f"backup runtime file checksum mismatch: {relative_path}")
+
     return manifest
 
 
+def atomic_restore_file(source: Path, target: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = target.with_name(f".{target.name}.restore")
+    if temporary_path.exists():
+        temporary_path.unlink()
+    shutil.copyfile(source, temporary_path)
+    os.chmod(temporary_path, 0o600)
+    os.replace(temporary_path, target)
+
+
 def restore_backup(backup: Path, target: Path) -> None:
-    verify_backup(backup)
+    manifest = verify_backup(backup)
     target.mkdir(parents=True, exist_ok=True)
 
     for filename in DATABASES:
@@ -162,6 +236,10 @@ def restore_backup(backup: Path, target: Path) -> None:
             journal = target / f"{filename}{suffix}"
             if journal.exists():
                 journal.unlink()
+
+    for record in manifest.get("files", []):
+        relative_path = safe_relative_path(record.get("path"))
+        atomic_restore_file(backup / relative_path, target / relative_path)
 
 
 def prune_backups(
@@ -251,8 +329,10 @@ def main() -> None:
         create_backup(args.source, args.destination)
     elif args.command == "verify":
         manifest = verify_backup(args.backup)
+        file_count = len(manifest.get("files", []))
         print(
             f"Backup verified: {len(manifest['databases'])} databases, "
+            f"{file_count} runtime files, "
             f"created {manifest['created_at']}"
         )
     elif args.command == "restore":

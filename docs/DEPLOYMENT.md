@@ -225,12 +225,15 @@ separate media:
 ./scripts/atlas-data-backup /mnt/atlas-backups
 ```
 
-Each backup contains both SQLite databases and a versioned
-`manifest.json` with sizes and SHA-256 checksums. The command uses
-SQLite's online backup API, so WAL-mode writes can continue without
-producing an inconsistent file copy.
+Each backup contains both SQLite databases, runtime policy files such as
+`config/policies.yaml`, and a versioned `manifest.json` with separate
+database and runtime file entries, sizes, and SHA-256 checksums. The
+command uses SQLite's online backup API for databases, so WAL-mode writes
+can continue without producing an inconsistent database copy. Runtime
+file entries are verified by safe relative path and checksum.
 
-Restore replaces both databases and removes their stale WAL and shared
+Restore replaces both databases, restores included runtime files
+atomically under the Atlas data root, and removes stale WAL and shared
 memory sidecars. Stop every container using the volume first:
 
 ```bash
@@ -244,9 +247,12 @@ docker compose -f compose.production.yaml up -d
 Include `-f compose.https.yaml` in the `down` and `up` commands for an
 HTTPS deployment. The restore command refuses to run while a container
 uses the target volume, validates the manifest, checks every checksum,
-and runs SQLite integrity checks before replacing live database files.
-Set `ATLAS_DATA_VOLUME` only when the Compose project uses a non-default
-volume name.
+rejects unsafe runtime file paths, and runs SQLite integrity checks before
+replacing live database files. Version-1 database-only backups remain
+valid; they simply do not restore runtime policy files, allowing Atlas to
+initialize missing runtime policy from the read-only template on next
+startup. Set `ATLAS_DATA_VOLUME` only when the Compose project uses a
+non-default volume name.
 
 ### Schedule backups
 

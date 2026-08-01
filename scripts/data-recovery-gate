@@ -18,16 +18,18 @@ docker run \
     --rm \
     --mount "type=volume,src=$GATE_VOLUME,dst=/data" \
     "$PYTHON_IMAGE" \
-    python -c '
-import sqlite3
+    python -c 'import sqlite3
 from pathlib import Path
+
+policy_path = Path("/data/config/policies.yaml")
+policy_path.parent.mkdir(parents=True, exist_ok=True)
+policy_path.write_text("proxmox:\n  guests:\n    \"109\":\n      expected: stopped\n", encoding="utf-8")
 for filename in ("action_history.db", "provider_intelligence.db"):
     connection = sqlite3.connect(Path("/data") / filename)
     connection.execute("CREATE TABLE records (value TEXT NOT NULL)")
     connection.execute("INSERT INTO records VALUES (\"before-backup\")")
     connection.commit()
-    connection.close()
-'
+    connection.close()'
 
 ATLAS_DATA_VOLUME="$GATE_VOLUME" \
     "$SCRIPT_DIRECTORY/atlas-data-backup" "$GATE_DIRECTORY"
@@ -41,6 +43,54 @@ backup_directory="$(
         -quit
 )"
 test -n "$backup_directory"
+test -f "$backup_directory/config/policies.yaml"
+grep -q 'expected: stopped' "$backup_directory/config/policies.yaml"
+python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$backup_directory" \
+    | grep -q '1 runtime files'
+
+corrupt_backup="$GATE_DIRECTORY/atlas-data-20000103T000000Z"
+cp -a -- "$backup_directory" "$corrupt_backup"
+printf '%s\n' 'corrupted policy' >"$corrupt_backup/config/policies.yaml"
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$corrupt_backup"; then
+    echo "Corrupt runtime policy backup unexpectedly verified" >&2
+    exit 1
+fi
+rm -rf -- "$corrupt_backup"
+
+unsafe_backup="$GATE_DIRECTORY/atlas-data-20000104T000000Z"
+cp -a -- "$backup_directory" "$unsafe_backup"
+python3 - "$unsafe_backup/manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+manifest["files"][0]["path"] = "../policies.yaml"
+manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+PY
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$unsafe_backup"; then
+    echo "Unsafe runtime policy backup unexpectedly verified" >&2
+    exit 1
+fi
+rm -rf -- "$unsafe_backup"
+
+v1_backup="$GATE_DIRECTORY/atlas-data-20000105T000000Z"
+cp -a -- "$backup_directory" "$v1_backup"
+rm -rf -- "$v1_backup/config"
+python3 - "$v1_backup/manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+manifest["format_version"] = 1
+manifest.pop("files", None)
+manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+PY
+python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$v1_backup" \
+    | grep -q '0 runtime files'
 
 cp -a -- "$backup_directory" "$GATE_DIRECTORY/atlas-data-20000101T000000Z"
 cp -a -- "$backup_directory" "$GATE_DIRECTORY/atlas-data-20000102T000000Z"
@@ -66,15 +116,15 @@ docker run \
     --rm \
     --mount "type=volume,src=$GATE_VOLUME,dst=/data" \
     "$PYTHON_IMAGE" \
-    python -c '
-import sqlite3
+    python -c 'import sqlite3
 from pathlib import Path
+
 for filename in ("action_history.db", "provider_intelligence.db"):
     connection = sqlite3.connect(Path("/data") / filename)
     connection.execute("UPDATE records SET value = \"after-backup\"")
     connection.commit()
     connection.close()
-'
+Path("/data/config/policies.yaml").write_text("proxmox:\n  guests:\n    \"109\":\n      expected: running\n", encoding="utf-8")'
 
 ATLAS_DATA_VOLUME="$GATE_VOLUME" \
 ATLAS_DATA_UID=0 \
@@ -86,9 +136,9 @@ docker run \
     --rm \
     --mount "type=volume,src=$GATE_VOLUME,dst=/data,readonly" \
     "$PYTHON_IMAGE" \
-    python -c '
-import sqlite3
+    python -c 'import sqlite3
 from pathlib import Path
+
 for filename in ("action_history.db", "provider_intelligence.db"):
     database_path = Path("/data") / filename
     connection = sqlite3.connect(
@@ -98,6 +148,26 @@ for filename in ("action_history.db", "provider_intelligence.db"):
     value = connection.execute("SELECT value FROM records").fetchone()[0]
     connection.close()
     assert value == "before-backup", (filename, value)
-'
+policy = Path("/data/config/policies.yaml").read_text(encoding="utf-8")
+assert "expected: stopped" in policy, policy'
+
+restored_policy_copy="$GATE_DIRECTORY/restored-policies.yaml"
+docker run \
+    --rm \
+    --mount "type=volume,src=$GATE_VOLUME,dst=/data,readonly" \
+    --mount "type=bind,src=$GATE_DIRECTORY,dst=/out" \
+    "$PYTHON_IMAGE" \
+    python -c 'from pathlib import Path; Path("/out/restored-policies.yaml").write_text(Path("/data/config/policies.yaml").read_text(encoding="utf-8"), encoding="utf-8")'
+atlas_core_python="python3"
+if [[ -x "$SCRIPT_DIRECTORY/../services/atlas-core/.venv/bin/python" ]]; then
+    atlas_core_python="$SCRIPT_DIRECTORY/../services/atlas-core/.venv/bin/python"
+elif [[ -x "$SCRIPT_DIRECTORY/../.venv/bin/python" ]]; then
+    atlas_core_python="$SCRIPT_DIRECTORY/../.venv/bin/python"
+fi
+PYTHONPATH="$SCRIPT_DIRECTORY/../services/atlas-core" \
+ATLAS_POLICY_FILE="$restored_policy_copy" \
+ATLAS_POLICY_TEMPLATE_FILE="$GATE_DIRECTORY/missing-template.yaml" \
+    "$atlas_core_python" \
+    -c 'from app.config.policies import load_policies; assert load_policies().proxmox.guests["109"].expected == "stopped"'
 
 echo "Atlas data recovery gate passed"
