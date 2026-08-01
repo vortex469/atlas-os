@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 import os
+from collections.abc import Callable
 from time import perf_counter
 from typing import Any
 from urllib.parse import urljoin
@@ -117,7 +117,7 @@ class OPNsenseProvider(Provider):
                 transport=self._transport,
                 auth=(self._api_key, self._api_secret),
             ) as client:
-                response = await client.get(
+                response = await client.post(
                     self._url("/api/core/firmware/status"),
                     headers={"Accept": "application/json"},
                 )
@@ -125,7 +125,7 @@ class OPNsenseProvider(Provider):
                 payload = response.json()
 
             if not isinstance(payload, dict):
-                raise ValueError(
+                raise TypeError(
                     "OPNsense returned an invalid status response.",
                 )
 
@@ -151,6 +151,9 @@ class OPNsenseProvider(Provider):
                         "product_version",
                     ),
                     "updates": payload.get("updates"),
+                    "all_packages": payload.get("all_packages"),
+                    "all_sets": payload.get("all_sets"),
+                    "status_reboot": payload.get("status_reboot"),
                     "upgrade_needs_reboot": payload.get(
                         "upgrade_needs_reboot",
                     ),
@@ -177,7 +180,7 @@ class OPNsenseProvider(Provider):
                     "credentials_configured": True,
                 },
             )
-        except (httpx.HTTPError, ValueError) as error:
+        except (httpx.HTTPError, TypeError, ValueError) as error:
             return ProviderHealth(
                 status="offline",
                 latency_ms=round(
@@ -245,12 +248,7 @@ class OPNsenseProvider(Provider):
 
         policy = self._policy_getter()
         findings: list[Finding] = []
-        updates_value = health.details.get("updates")
-
-        try:
-            update_count = int(updates_value or 0)
-        except (TypeError, ValueError):
-            update_count = 0
+        update_count = self._pending_update_count(health.details)
 
         if update_count > 0:
             update_severity: PolicySeverity = "info"
@@ -286,10 +284,7 @@ class OPNsenseProvider(Provider):
                 ),
             )
 
-        reboot_value = str(
-            health.details.get("upgrade_needs_reboot") or "",
-        ).lower()
-        if reboot_value in {"1", "true", "yes"}:
+        if self._reboot_required(health.details):
             severity, affects_health, penalty = (
                 self._finding_settings(
                     policy.reboot_required_severity,
@@ -317,6 +312,59 @@ class OPNsenseProvider(Provider):
             )
 
         return findings
+
+    @classmethod
+    def _pending_update_count(cls, details: dict[str, Any]) -> int:
+        firmware_status = str(details.get("firmware_status") or "").lower()
+        has_authoritative_fields = any(
+            key in details and details[key] is not None
+            for key in ("all_packages", "all_sets", "status_reboot")
+        )
+
+        if firmware_status == "none":
+            return 0
+
+        if has_authoritative_fields:
+            if firmware_status not in {"update", "upgrade"}:
+                return 0
+
+            return cls._collection_count(
+                details.get("all_packages"),
+            ) + cls._collection_count(details.get("all_sets"))
+
+        updates_value = details.get("updates")
+        try:
+            return int(updates_value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @classmethod
+    def _reboot_required(cls, details: dict[str, Any]) -> bool:
+        firmware_status = str(details.get("firmware_status") or "").lower()
+        has_authoritative_fields = any(
+            key in details and details[key] is not None
+            for key in ("all_packages", "all_sets", "status_reboot")
+        )
+
+        if firmware_status == "none":
+            return False
+
+        if has_authoritative_fields:
+            if firmware_status not in {"update", "upgrade"}:
+                return False
+            return cls._truthy(details.get("status_reboot"))
+
+        return cls._truthy(details.get("upgrade_needs_reboot"))
+
+    @staticmethod
+    def _collection_count(value: Any) -> int:
+        if isinstance(value, dict | list | tuple | set):
+            return len(value)
+        return 0
+
+    @staticmethod
+    def _truthy(value: Any) -> bool:
+        return str(value or "").lower() in {"1", "true", "yes"}
 
     @staticmethod
     def _finding_settings(
