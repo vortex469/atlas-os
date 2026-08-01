@@ -1,3 +1,8 @@
+from app.execution_candidates.api_models import (
+    ExecutionCandidatePageResponse,
+    ExecutionCandidateResponse,
+    candidate_to_response,
+)
 from app.execution_candidates.classification import (
     EXECUTABLE_RECOMMENDATION_CLASSES,
     NON_EXECUTABLE_RECOMMENDATION_CLASSES,
@@ -35,6 +40,8 @@ __all__ = [
     "NON_EXECUTABLE_RECOMMENDATION_CLASSES",
     "ApprovalLevel",
     "ExecutionCandidate",
+    "ExecutionCandidatePageResponse",
+    "ExecutionCandidateResponse",
     "ExecutionCandidateStatus",
     "ExecutionCategory",
     "ExecutionClassification",
@@ -48,6 +55,7 @@ __all__ = [
     "ProjectionStatus",
     "RecommendationClass",
     "build_execution_candidate_id",
+    "candidate_to_response",
     "category_for_intent",
     "classify_recommendation_class",
     "execution_candidate_from_finding",

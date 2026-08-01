@@ -8,6 +8,7 @@ from app.routes.analysis import router as analysis_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.discovery import router as discovery_router
 from app.routes.docker import router as docker_router
+from app.routes.execution_candidates import router as execution_candidates_router
 from app.routes.health import router as health_router
 from app.routes.homeassistant import router as homeassistant_router
 from app.routes.intelligence import router as intelligence_router
@@ -39,6 +40,7 @@ def api_discovery() -> APIDiscovery:
             "provider_connections": "/api/v1/providers/{provider_id}/connection",
             "provider_resources": "/api/v1/providers/{provider_id}/resources",
             "discovery": "/api/v1/discovery/items",
+            "execution_candidates": "/api/v1/execution-candidates",
             "ai": "/api/v1/ai",
             "operations": "/api/v1/ops",
             "policies": "/api/v1/policies",
@@ -55,6 +57,7 @@ router.include_router(providers_router)
 router.include_router(provider_connections_router)
 router.include_router(provider_resources_router)
 router.include_router(discovery_router)
+router.include_router(execution_candidates_router)
 router.include_router(ops_router)
 router.include_router(policies_router)
 router.include_router(docker_router)

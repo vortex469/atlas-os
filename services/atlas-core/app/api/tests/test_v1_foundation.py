@@ -9,6 +9,11 @@ EXPECTED_DISCOVERY_PATHS = {
     "/api/v1/discovery/search",
 }
 
+EXPECTED_EXECUTION_CANDIDATE_PATHS = {
+    "/api/v1/execution-candidates",
+    "/api/v1/execution-candidates/{candidate_id}",
+}
+
 INTERNAL_DISCOVERY_SCHEMA_NAMES = {
     "CapabilityReference",
     "CatalogEntry",
@@ -40,6 +45,7 @@ def test_api_v1_foundation_routes_are_registered() -> None:
         "{resource_id}/expectation"
     ) in paths
     assert EXPECTED_DISCOVERY_PATHS.issubset(paths)
+    assert EXPECTED_EXECUTION_CANDIDATE_PATHS.issubset(paths)
 
 
 def test_discovery_endpoint_set_is_stable() -> None:
@@ -62,6 +68,38 @@ def test_discovery_routes_are_read_only() -> None:
     assert discovery_paths
     for methods in discovery_paths.values():
         assert set(methods) == {"get"}
+
+
+def test_execution_candidate_endpoint_set_is_stable() -> None:
+    candidate_paths = {
+        path for path in schema_paths() if path.startswith("/api/v1/execution-candidates")
+    }
+
+    assert candidate_paths == EXPECTED_EXECUTION_CANDIDATE_PATHS
+
+
+def test_execution_candidate_routes_are_read_only() -> None:
+    schema = app.openapi()
+
+    candidate_paths = {
+        path: methods
+        for path, methods in schema["paths"].items()
+        if path.startswith("/api/v1/execution-candidates")
+    }
+
+    assert candidate_paths
+    for methods in candidate_paths.values():
+        assert set(methods) == {"get"}
+
+
+def test_execution_candidate_openapi_uses_public_response_dtos() -> None:
+    schema_names = set(app.openapi()["components"]["schemas"])
+
+    assert "ExecutionCandidate" not in schema_names
+    assert "ProjectionResult" not in schema_names
+    assert "ExecutionEligibilityResult" not in schema_names
+    assert "ExecutionCandidateResponse" in schema_names
+    assert "ExecutionCandidatePageResponse" in schema_names
 
 
 def test_discovery_openapi_uses_public_response_dtos() -> None:
