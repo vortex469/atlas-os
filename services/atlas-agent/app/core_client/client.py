@@ -17,6 +17,7 @@ from .models import (
     AtlasCoreHealth,
     AtlasCoreIntelligenceSummary,
     AtlasCoreStatus,
+    CoreCandidatePlanningIntakeResponse,
 )
 
 __all__ = [
@@ -149,6 +150,46 @@ class AtlasCoreClient:
         except (json.JSONDecodeError, ValidationError) as e:
             raise AtlasCorePayloadError(
                 f"Invalid payload fetching action history from {url}: {e!s}"
+            )
+
+    async def validate_candidate_planning_intake(
+        self,
+        candidate_id: str,
+        *,
+        expected_candidate_fingerprint: str | None = None,
+    ) -> CoreCandidatePlanningIntakeResponse:
+        url = f"{self._base_url}/api/v1/execution-candidates/{candidate_id}/planning-intake"
+        payload = {
+            "expected_candidate_fingerprint": expected_candidate_fingerprint,
+        }
+        try:
+            response = await self._get_client().post(
+                url,
+                json=payload,
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+            return CoreCandidatePlanningIntakeResponse.model_validate(response.json())
+        except httpx.TimeoutException as e:
+            raise AtlasCoreTimeoutError(
+                f"Timeout validating candidate planning intake from {url}: {e!s}"
+            )
+        except httpx.ConnectError as e:
+            raise AtlasCoreConnectionError(
+                f"Connection error validating candidate planning intake from {url}: {e!s}"
+            )
+        except httpx.RequestError as e:
+            raise AtlasCoreConnectionError(
+                f"Request error validating candidate planning intake from {url}: {e!s}"
+            )
+        except httpx.HTTPStatusError as e:
+            raise AtlasCoreResponseError(
+                f"HTTP {response.status_code} validating candidate planning intake "
+                f"from {url}: {e!s}"
+            )
+        except (json.JSONDecodeError, ValidationError) as e:
+            raise AtlasCorePayloadError(
+                f"Invalid payload validating candidate planning intake from {url}: {e!s}"
             )
 
     async def validate_connection(self) -> None:

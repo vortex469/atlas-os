@@ -59,6 +59,43 @@ class AtlasCoreIntelligenceSummary(BaseModel):
     recommendations: tuple[AtlasCoreIntelligenceRecommendation, ...] = ()
 
 
+
+
+class CoreExecutionCandidateSnapshot(BaseModel):
+    id: str
+    source_recommendation_id: str
+    source_subsystem: str
+    recommendation_class: str
+    catalog_item_id: str | None = None
+    target_id: str
+    target_type: str
+    execution_category: str
+    execution_intent: str
+    status: str
+    required_approval_level: str
+    rationale: str
+    constraints: tuple[str, ...] = ()
+    evidence_ids: tuple[str, ...] = ()
+    compatibility_assessment_id: str | None = None
+    compatibility_status: str | None = None
+    relationship_ids: tuple[str, ...] = ()
+    created_at: datetime
+    expires_at: datetime | None = None
+
+
+class CoreCandidatePlanningIntakeRequest(BaseModel):
+    expected_candidate_fingerprint: str | None = None
+
+
+class CoreCandidatePlanningIntakeResponse(BaseModel):
+    status: str
+    candidate_id: str
+    planning_allowed: bool
+    reason_codes: tuple[str, ...] = ()
+    current_candidate_fingerprint: str | None = None
+    current_candidate: CoreExecutionCandidateSnapshot | None = None
+
+
 class AtlasCoreActionHistoryEntry(BaseModel):
     id: str
     provider_id: str

@@ -18,6 +18,13 @@ from app.approval.models import (
     CommitApprovalMetadata,
 )
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.models import (
+    CandidatePlanningSession,
+    CandidatePlanningSessionStatus,
+    CandidateSnapshot,
+    CoreCandidatePlanningIntakeStatus,
+)
+from app.candidate_planning.state import CandidatePlanningStateStore
 from app.context.models import ActionHistoryContext, ActionHistoryEntry, AgentContext
 from app.execution.models import EnvironmentVariable
 from app.model_providers.models import ModelResponse
@@ -146,11 +153,48 @@ def coordinator(
     state_dir: Path,
     workflow_state: WorkflowStateStore | None = None,
     approvals: ApprovalRepository | None = None,
+    candidate_planning: CandidatePlanningStateStore | None = None,
 ) -> AgentStatePersistenceCoordinator:
     return AgentStatePersistenceCoordinator(
         state_dir=state_dir,
         workflow_state=workflow_state or WorkflowStateStore(),
         approval_repository=approvals or ApprovalRepository(),
+        candidate_planning_state=candidate_planning,
+    )
+
+
+def candidate_planning_session() -> CandidatePlanningSession:
+    timestamp = datetime(2026, 8, 1, 23, 45, tzinfo=timezone.utc)
+    snapshot = CandidateSnapshot(
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        source_recommendation_id="finding-1",
+        source_subsystem="orion",
+        recommendation_class="update_compose_stack",
+        catalog_item_id="frigate",
+        target_id="atlas-compose",
+        target_type="repository",
+        execution_category="update",
+        execution_intent="update-compose-stack",
+        required_approval_level="standard",
+        rationale="Update compose stack.",
+        constraints=("requires-current-evidence",),
+        evidence_ids=("evidence-1",),
+        compatibility_assessment_id="assessment-1",
+        compatibility_status="compatible",
+        relationship_ids=("relationship-1",),
+        expires_at=None,
+        intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+        intake_reason_codes=(),
+        intake_timestamp=timestamp,
+    )
+    return CandidatePlanningSession(
+        identifier="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        status=CandidatePlanningSessionStatus.READY_FOR_PLANNING,
+        snapshot=snapshot,
+        created_at=timestamp,
     )
 
 
@@ -163,6 +207,44 @@ def test_missing_snapshot_starts_empty(tmp_path: Path) -> None:
 
     assert workflow_state.get_sprint() is None
     assert approvals.get_pending_requests() == []
+
+
+def test_candidate_planning_session_round_trips_without_workflow_side_effects(
+    tmp_path: Path,
+) -> None:
+    candidate_state = CandidatePlanningStateStore()
+    persistence = coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        candidate_state,
+    )
+    persistence.initialize()
+    stored_session = candidate_planning_session()
+
+    persistence.mutate_candidate_planning(
+        lambda state: state.create_session(stored_session)
+    )
+
+    raw_json = persistence.snapshot_path.read_text()
+    assert "candidate_planning" in raw_json
+    assert "secret" not in raw_json.lower()
+    assert "command" not in raw_json.lower()
+
+    recovered_candidate_state = CandidatePlanningStateStore()
+    recovered_workflow_state = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    recovered = coordinator(
+        tmp_path,
+        recovered_workflow_state,
+        recovered_approvals,
+        recovered_candidate_state,
+    )
+    recovered.initialize()
+
+    assert recovered_candidate_state.get_session(stored_session.identifier) == stored_session
+    assert recovered_workflow_state.export_snapshot()[3] == {}
+    assert recovered_approvals.get_pending_requests() == []
 
 
 def test_full_workflow_and_approval_round_trip_redacts_env(tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 """Tests for AtlasCoreClient."""
 
 import asyncio
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
@@ -220,6 +221,68 @@ def test_get_action_history_uses_supported_endpoint() -> None:
 
     assert result[0].status == "failed"
     assert result[0].parameter_names == ("container",)
+
+
+def test_validate_candidate_planning_intake_posts_authoritative_request() -> None:
+    """Candidate planning intake sends only candidate identity and fingerprint."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == (
+            "/api/v1/execution-candidates/candidate-1/planning-intake"
+        )
+        assert json.loads(request.content) == {
+            "expected_candidate_fingerprint": "candidate-fingerprint-v1:old"
+        }
+        return httpx.Response(
+            200,
+            json={
+                "status": "accepted_for_planning",
+                "candidate_id": "candidate-1",
+                "planning_allowed": True,
+                "reason_codes": [],
+                "current_candidate_fingerprint": "candidate-fingerprint-v1:new",
+                "current_candidate": {
+                    "id": "candidate-1",
+                    "source_recommendation_id": "finding-1",
+                    "source_subsystem": "orion",
+                    "recommendation_class": "update_compose_stack",
+                    "catalog_item_id": "frigate",
+                    "target_id": "atlas-compose",
+                    "target_type": "repository",
+                    "execution_category": "update",
+                    "execution_intent": "update-compose-stack",
+                    "status": "eligible",
+                    "required_approval_level": "standard",
+                    "rationale": "Update the compose stack.",
+                    "constraints": ["requires-current-evidence"],
+                    "evidence_ids": ["evidence-1"],
+                    "compatibility_assessment_id": "assessment-1",
+                    "compatibility_status": "compatible",
+                    "relationship_ids": ["relationship-1"],
+                    "created_at": "2026-08-01T23:45:00+00:00",
+                    "expires_at": None,
+                },
+            },
+        )
+
+    with httpx.MockTransport(handler) as transport:
+        client = httpx.AsyncClient(transport=transport)
+        atlas_client = AtlasCoreClient(
+            settings=create_test_settings(),
+            client=client,
+        )
+
+        result = asyncio.run(
+            atlas_client.validate_candidate_planning_intake(
+                "candidate-1",
+                expected_candidate_fingerprint="candidate-fingerprint-v1:old",
+            )
+        )
+
+    assert result.status == "accepted_for_planning"
+    assert result.current_candidate is not None
+    assert result.current_candidate.execution_intent == "update-compose-stack"
 
 
 def test_action_history_payload_error_preserves_exception_semantics() -> None:

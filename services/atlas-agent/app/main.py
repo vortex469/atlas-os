@@ -8,6 +8,8 @@ from fastapi import FastAPI
 
 from app.approval.engine import ApprovalEngine
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.service import CandidatePlanningService
+from app.candidate_planning.state import CandidatePlanningStateStore
 from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
 from app.context.engine import ContextEngine
@@ -23,6 +25,7 @@ from app.repository.inspector import GitInspector
 from app.review.advisor import ReviewAdvisor
 from app.review.engine import ReviewEngine
 from app.routes.approval import router as approval_router
+from app.routes.candidate_planning import router as candidate_planning_router
 from app.routes.health import router as health_router
 from app.routes.status import router as status_router
 from app.routes.workflow import router as workflow_router
@@ -98,12 +101,19 @@ def create_app() -> FastAPI:
 
     workflow_state = WorkflowStateStore()
     approval_repository = ApprovalRepository()
+    candidate_planning_state = CandidatePlanningStateStore()
     state_persistence = AgentStatePersistenceCoordinator(
         state_dir=settings.state_dir,
         workflow_state=workflow_state,
         approval_repository=approval_repository,
+        candidate_planning_state=candidate_planning_state,
     )
     state_persistence.initialize()
+    candidate_planning_service = CandidatePlanningService(
+        core_client=core_client,
+        state_store=candidate_planning_state,
+        state_persistence=state_persistence,
+    )
     runner = SubprocessRunner()
     context_engine = ContextEngine(core_client)
     workflow_engine = WorkflowEngine(
@@ -133,9 +143,11 @@ def create_app() -> FastAPI:
             repository_root=settings.repository_root,
         ),
         workflow_state=workflow_state,
+        candidate_planning_state=candidate_planning_state,
         core_client=core_client,
         context_engine=context_engine,
         approval_repository=approval_repository,
+        candidate_planning_service=candidate_planning_service,
         model_service=model_service,
         planning_advisor=planning_advisor,
         review_advisor=review_advisor,
@@ -154,6 +166,7 @@ def create_app() -> FastAPI:
     application.include_router(status_router)
     application.include_router(approval_router)
     application.include_router(workflow_router)
+    application.include_router(candidate_planning_router)
 
     return application
 

@@ -6,7 +6,9 @@ import json
 import os
 from collections.abc import Callable, MutableMapping
 from dataclasses import replace
+from datetime import datetime
 from hashlib import sha256
+from inspect import signature
 from pathlib import Path
 from threading import RLock
 from typing import Any, TypeVar
@@ -22,6 +24,16 @@ from app.approval.models import (
     VerificationApprovalEnvironment,
 )
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.models import (
+    CandidatePlanningSession,
+    CandidatePlanningSessionStatus,
+    CandidateSnapshot,
+    CoreCandidatePlanningIntakeStatus,
+)
+from app.candidate_planning.state import (
+    CandidatePlanningStateSnapshot,
+    CandidatePlanningStateStore,
+)
 from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
@@ -154,6 +166,29 @@ class CandidateApprovalRepository:
         return dict(self.storage)
 
 
+class CandidatePlanningSessionsState:
+    """Mutable candidate-planning session state used inside aggregate transactions."""
+
+    def __init__(self, snapshot: CandidatePlanningStateSnapshot) -> None:
+        self.sessions = dict(snapshot)
+
+    def create_session(self, session: CandidatePlanningSession) -> None:
+        if not session.identifier.strip():
+            raise ValueError("Candidate planning session identifier must not be blank")
+        if session.identifier in self.sessions:
+            raise ValueError(
+                "Candidate planning session identifier already exists: "
+                f"{session.identifier}"
+            )
+        self.sessions[session.identifier] = session
+
+    def get_session(self, identifier: str) -> CandidatePlanningSession | None:
+        return self.sessions.get(identifier)
+
+    def snapshot(self) -> CandidatePlanningStateSnapshot:
+        return dict(self.sessions)
+
+
 class AgentStatePersistenceCoordinator:
     """Own the unified file-backed workflow and approval snapshot."""
 
@@ -163,11 +198,13 @@ class AgentStatePersistenceCoordinator:
         state_dir: Path,
         workflow_state: WorkflowStateStore,
         approval_repository: ApprovalRepository,
+        candidate_planning_state: CandidatePlanningStateStore | None = None,
     ) -> None:
         self._state_dir = state_dir
         self._snapshot_path = state_dir / SNAPSHOT_FILENAME
         self._workflow_state = workflow_state
         self._approval_repository = approval_repository
+        self._candidate_planning_state = candidate_planning_state
         self._lock = RLock()
 
     @property
@@ -184,9 +221,10 @@ class AgentStatePersistenceCoordinator:
             if not self._snapshot_path.exists():
                 return
             payload = self._read_snapshot()
-            workflow_snapshot, approval_snapshot = self._decode_payload(payload)
+            workflow_snapshot, approval_snapshot, candidate_planning_snapshot = self._decode_payload(payload)
             workflow_candidate = CandidateWorkflowState(workflow_snapshot)
             approval_candidate = CandidateApprovalRepository(approval_snapshot)
+            candidate_planning_candidate = CandidatePlanningSessionsState(candidate_planning_snapshot)
             transformed = self._recover_claimed_sessions(workflow_candidate)
             self._validate_aggregate(workflow_candidate, approval_candidate)
             if transformed:
@@ -194,10 +232,13 @@ class AgentStatePersistenceCoordinator:
                     self._encode_payload(
                         workflow_candidate.snapshot(),
                         approval_candidate.snapshot(),
+                        candidate_planning_candidate.snapshot(),
                     )
                 )
             self._workflow_state.replace_snapshot(workflow_candidate.snapshot())
             self._approval_repository.replace_snapshot(approval_candidate.snapshot())
+            if self._candidate_planning_state is not None:
+                self._candidate_planning_state.replace_snapshot(candidate_planning_candidate.snapshot())
 
     def persist_current_state(self) -> None:
         """Persist the current live stores as one validated snapshot."""
@@ -209,21 +250,39 @@ class AgentStatePersistenceCoordinator:
             approval_candidate = CandidateApprovalRepository(
                 self._approval_repository.export_snapshot()
             )
-            self._commit_candidates(workflow_candidate, approval_candidate)
+            candidate_planning_candidate = CandidatePlanningSessionsState(
+                self._candidate_planning_state.export_snapshot()
+                if self._candidate_planning_state is not None
+                else {}
+            )
+            self._commit_candidates(workflow_candidate, approval_candidate, candidate_planning_candidate)
 
     def mutate_workflow(self, mutation: Callable[[CandidateWorkflowState], T]) -> T:
         """Apply and persist one workflow-only mutation atomically."""
 
-        return self.mutate_aggregate(lambda workflow, _approvals: mutation(workflow))
+        return self.mutate_aggregate(lambda workflow, _approvals, _candidate_planning: mutation(workflow))
 
     def mutate_approval(self, mutation: Callable[[CandidateApprovalRepository], T]) -> T:
         """Apply and persist one approval-only mutation atomically."""
 
-        return self.mutate_aggregate(lambda _workflow, approvals: mutation(approvals))
+        return self.mutate_aggregate(lambda _workflow, approvals, _candidate_planning: mutation(approvals))
+
+    def mutate_candidate_planning(
+        self,
+        mutation: Callable[[CandidatePlanningSessionsState], T],
+    ) -> T:
+        """Apply and persist one candidate-planning-only mutation atomically."""
+
+        return self.mutate_aggregate(
+            lambda _workflow, _approvals, candidate_planning: mutation(candidate_planning)
+        )
 
     def mutate_aggregate(
         self,
-        mutation: Callable[[CandidateWorkflowState, CandidateApprovalRepository], T],
+        mutation: Callable[
+            [CandidateWorkflowState, CandidateApprovalRepository, CandidatePlanningSessionsState],
+            T,
+        ],
     ) -> T:
         """Apply one aggregate mutation with durable rollback semantics."""
 
@@ -234,21 +293,48 @@ class AgentStatePersistenceCoordinator:
             approval_candidate = CandidateApprovalRepository(
                 self._approval_repository.export_snapshot()
             )
-            result = mutation(workflow_candidate, approval_candidate)
-            self._commit_candidates(workflow_candidate, approval_candidate)
+            candidate_planning_candidate = CandidatePlanningSessionsState(
+                self._candidate_planning_state.export_snapshot()
+                if self._candidate_planning_state is not None
+                else {}
+            )
+            parameter_count = len(signature(mutation).parameters)
+            if parameter_count == 2:
+                result = mutation(workflow_candidate, approval_candidate)  # type: ignore[misc]
+            else:
+                result = mutation(
+                    workflow_candidate,
+                    approval_candidate,
+                    candidate_planning_candidate,
+                )
+            self._commit_candidates(
+                workflow_candidate,
+                approval_candidate,
+                candidate_planning_candidate,
+            )
             return result
 
     def _commit_candidates(
         self,
         workflow_candidate: CandidateWorkflowState,
         approval_candidate: CandidateApprovalRepository,
+        candidate_planning_candidate: CandidatePlanningSessionsState,
     ) -> None:
         self._validate_aggregate(workflow_candidate, approval_candidate)
         workflow_snapshot = workflow_candidate.snapshot()
         approval_snapshot = approval_candidate.snapshot()
-        self._write_payload(self._encode_payload(workflow_snapshot, approval_snapshot))
+        candidate_planning_snapshot = candidate_planning_candidate.snapshot()
+        self._write_payload(
+            self._encode_payload(
+                workflow_snapshot,
+                approval_snapshot,
+                candidate_planning_snapshot,
+            )
+        )
         self._workflow_state.replace_snapshot(workflow_snapshot)
         self._approval_repository.replace_snapshot(approval_snapshot)
+        if self._candidate_planning_state is not None:
+            self._candidate_planning_state.replace_snapshot(candidate_planning_snapshot)
 
     def _prepare_state_dir(self) -> None:
         try:
@@ -311,13 +397,21 @@ class AgentStatePersistenceCoordinator:
         self,
         workflow_snapshot: WorkflowStateSnapshot,
         approval_snapshot: dict[str, ApprovalResult],
+        candidate_planning_snapshot: CandidatePlanningStateSnapshot | None = None,
     ) -> dict[str, Any]:
         sprint, verification, review, sessions = workflow_snapshot
+        candidate_planning_snapshot = candidate_planning_snapshot or {}
         return {
             "application": APPLICATION,
             "approvals": {
                 identifier: _encode_approval_result(result)
                 for identifier, result in sorted(approval_snapshot.items())
+            },
+            "candidate_planning": {
+                "sessions": {
+                    identifier: _encode_candidate_planning_session(session)
+                    for identifier, session in sorted(candidate_planning_snapshot.items())
+                },
             },
             "schema_version": SCHEMA_VERSION,
             "workflow_state": {
@@ -334,7 +428,7 @@ class AgentStatePersistenceCoordinator:
     def _decode_payload(
         self,
         payload: dict[str, Any],
-    ) -> tuple[WorkflowStateSnapshot, dict[str, ApprovalResult]]:
+    ) -> tuple[WorkflowStateSnapshot, dict[str, ApprovalResult], CandidatePlanningStateSnapshot]:
         if payload.get("schema_version") != SCHEMA_VERSION:
             raise StatePersistenceError("Persisted Agent state schema is unsupported")
         if payload.get("application") != APPLICATION:
@@ -350,13 +444,25 @@ class AgentStatePersistenceCoordinator:
             identifier: _decode_approval_result(result_payload)
             for identifier, result_payload in approvals_payload.items()
         }
+        candidate_planning_payload = payload.get("candidate_planning", {})
+        if candidate_planning_payload is None:
+            candidate_planning_payload = {}
+        if not isinstance(candidate_planning_payload, dict):
+            raise StatePersistenceError("Invalid candidate planning state")
+        candidate_sessions_payload = candidate_planning_payload.get("sessions", {})
+        if not isinstance(candidate_sessions_payload, dict):
+            raise StatePersistenceError("Invalid candidate planning sessions")
+        candidate_planning = {
+            identifier: _decode_candidate_planning_session(session_payload)
+            for identifier, session_payload in candidate_sessions_payload.items()
+        }
         workflow_snapshot: WorkflowStateSnapshot = (
             _decode_sprint_status(workflow_state.get("sprint")),
             _decode_verification_report(workflow_state.get("verification")),
             _decode_review_report(workflow_state.get("review")),
             sessions,
         )
-        return workflow_snapshot, approvals
+        return workflow_snapshot, approvals, candidate_planning
 
     def _recover_claimed_sessions(
         self,
@@ -716,6 +822,106 @@ def _encode_context(context: AgentContext | None) -> dict[str, Any] | None:
 
 def _decode_context(payload: Any) -> AgentContext | None:
     return None if payload is None else AgentContext.model_validate(payload)
+
+
+def _encode_datetime(value: datetime | None) -> str | None:
+    return None if value is None else value.isoformat()
+
+
+def _decode_optional_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise StatePersistenceError("Invalid datetime value")
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise StatePersistenceError("Invalid datetime value") from exc
+
+
+def _decode_datetime(value: Any) -> datetime:
+    decoded = _decode_optional_datetime(value)
+    if decoded is None:
+        raise StatePersistenceError("Missing datetime value")
+    return decoded
+
+
+def _encode_candidate_snapshot(snapshot: CandidateSnapshot) -> dict[str, Any]:
+    return {
+        "candidate_fingerprint": snapshot.candidate_fingerprint,
+        "candidate_id": snapshot.candidate_id,
+        "catalog_item_id": snapshot.catalog_item_id,
+        "compatibility_assessment_id": snapshot.compatibility_assessment_id,
+        "compatibility_status": snapshot.compatibility_status,
+        "constraints": list(snapshot.constraints),
+        "evidence_ids": list(snapshot.evidence_ids),
+        "execution_category": snapshot.execution_category,
+        "execution_intent": snapshot.execution_intent,
+        "expires_at": _encode_datetime(snapshot.expires_at),
+        "intake_reason_codes": list(snapshot.intake_reason_codes),
+        "intake_status": snapshot.intake_status.value,
+        "intake_timestamp": _encode_datetime(snapshot.intake_timestamp),
+        "rationale": snapshot.rationale,
+        "recommendation_class": snapshot.recommendation_class,
+        "relationship_ids": list(snapshot.relationship_ids),
+        "required_approval_level": snapshot.required_approval_level,
+        "source_recommendation_id": snapshot.source_recommendation_id,
+        "source_subsystem": snapshot.source_subsystem,
+        "target_id": snapshot.target_id,
+        "target_type": snapshot.target_type,
+    }
+
+
+def _decode_candidate_snapshot(payload: dict[str, Any]) -> CandidateSnapshot:
+    return CandidateSnapshot(
+        candidate_id=_require_str(payload, "candidate_id"),
+        candidate_fingerprint=_require_str(payload, "candidate_fingerprint"),
+        source_recommendation_id=_require_str(payload, "source_recommendation_id"),
+        source_subsystem=_require_str(payload, "source_subsystem"),
+        recommendation_class=_require_str(payload, "recommendation_class"),
+        catalog_item_id=payload.get("catalog_item_id"),
+        target_id=_require_str(payload, "target_id"),
+        target_type=_require_str(payload, "target_type"),
+        execution_category=_require_str(payload, "execution_category"),
+        execution_intent=_require_str(payload, "execution_intent"),
+        required_approval_level=_require_str(payload, "required_approval_level"),
+        rationale=_require_str(payload, "rationale"),
+        constraints=_tuple_str(payload.get("constraints", [])),
+        evidence_ids=_tuple_str(payload.get("evidence_ids", [])),
+        compatibility_assessment_id=payload.get("compatibility_assessment_id"),
+        compatibility_status=payload.get("compatibility_status"),
+        relationship_ids=_tuple_str(payload.get("relationship_ids", [])),
+        expires_at=_decode_optional_datetime(payload.get("expires_at")),
+        intake_status=CoreCandidatePlanningIntakeStatus(_require_str(payload, "intake_status")),
+        intake_reason_codes=_tuple_str(payload.get("intake_reason_codes", [])),
+        intake_timestamp=_decode_datetime(payload.get("intake_timestamp")),
+    )
+
+
+def _encode_candidate_planning_session(session: CandidatePlanningSession) -> dict[str, Any]:
+    return {
+        "candidate_fingerprint": session.candidate_fingerprint,
+        "candidate_id": session.candidate_id,
+        "created_at": _encode_datetime(session.created_at),
+        "identifier": session.identifier,
+        "snapshot": _encode_candidate_snapshot(session.snapshot),
+        "status": session.status.value,
+        "unsupported_reason": session.unsupported_reason,
+    }
+
+
+def _decode_candidate_planning_session(payload: Any) -> CandidatePlanningSession:
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid candidate planning session")
+    return CandidatePlanningSession(
+        identifier=_require_str(payload, "identifier"),
+        candidate_id=_require_str(payload, "candidate_id"),
+        candidate_fingerprint=_require_str(payload, "candidate_fingerprint"),
+        status=CandidatePlanningSessionStatus(_require_str(payload, "status")),
+        snapshot=_decode_candidate_snapshot(_require_dict(payload, "snapshot")),
+        created_at=_decode_datetime(payload.get("created_at")),
+        unsupported_reason=payload.get("unsupported_reason"),
+    )
 
 
 def _encode_model_response(response: ModelResponse | None) -> dict[str, Any] | None:

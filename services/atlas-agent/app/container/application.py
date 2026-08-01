@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.service import CandidatePlanningService
+from app.candidate_planning.state import CandidatePlanningStateStore
 from app.config.settings import Settings
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
@@ -25,6 +27,8 @@ class ApplicationContainer:
     context_engine: ContextEngine
     repository_inspector: GitInspector
     workflow_state: WorkflowStateStore
+    candidate_planning_state: CandidatePlanningStateStore
+    candidate_planning_service: CandidatePlanningService
     approval_repository: ApprovalRepository
     model_service: ModelService
     planning_advisor: PlanningAdvisor
