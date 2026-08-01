@@ -1391,17 +1391,153 @@ def test_mismatched_approval_leaves_workflow_awaiting(
     execution_engine.execute.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "approval_status",
-    (ApprovalStatus.PENDING, ApprovalStatus.REJECTED),
-)
-def test_unapproved_decision_claims_then_blocks(
+def test_pending_implementation_approval_does_not_mutate_or_execute(
     tmp_path: Path,
-    approval_status: ApprovalStatus,
+) -> None:
+    engine, state_store, approval_repository, _, _, execution_engine, _, _ = (
+        make_resume_engine(
+            tmp_path,
+            approval_status=ApprovalStatus.PENDING,
+        )
+    )
+    stored = approval_repository.get_request("approval-workflow-a15-3")
+    assert stored is not None
+
+    result = engine.resume("workflow-a15-3")
+
+    assert result.error_message == "Approval pending"
+    assert result.sprint.phase is SprintPhase.AWAITING_APPROVAL
+    assert result.approval_request == stored.decision.request
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.AWAITING_APPROVAL
+    )
+    assert (
+        approval_repository.get_request("approval-workflow-a15-3").decision.status
+        is ApprovalStatus.PENDING
+    )
+    assert result.execution_result is None
+    execution_engine.execute.assert_not_called()
+
+
+def test_approval_after_premature_implementation_resume_continues(
+    tmp_path: Path,
+) -> None:
+    engine, state_store, approval_repository, _, _, execution_engine, verifier, _ = (
+        make_resume_engine(
+            tmp_path,
+            approval_status=ApprovalStatus.PENDING,
+        )
+    )
+    pending = approval_repository.get_request("approval-workflow-a15-3")
+    assert pending is not None
+
+    premature = engine.resume("workflow-a15-3")
+    assert premature.error_message == "Approval pending"
+    assert approval_repository.update_decision(
+        pending.decision.request.identifier,
+        ApprovalDecision(
+            request=pending.decision.request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+    result = engine.resume("workflow-a15-3")
+
+    assert result.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert result.error_message is None
+    assert (
+        state_store.get_session("workflow-a15-3").state
+        is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    )
+    execution_engine.execute.assert_called_once()
+    verifier.verify.assert_not_called()
+
+
+def test_restart_after_premature_implementation_resume_preserves_pending_approval(
+    tmp_path: Path,
+) -> None:
+    state_dir = tmp_path / "state"
+    engine, state_store, approval_repository, _, _, execution_engine, _, _ = (
+        make_resume_engine(
+            tmp_path,
+            approval_status=ApprovalStatus.PENDING,
+        )
+    )
+    pending = approval_repository.get_request("approval-workflow-a15-3")
+    assert pending is not None
+
+    premature = engine.resume("workflow-a15-3")
+    persistence = AgentStatePersistenceCoordinator(
+        state_dir=state_dir,
+        workflow_state=state_store,
+        approval_repository=approval_repository,
+    )
+    persistence.persist_current_state()
+
+    recovered_state = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    recovered_persistence = AgentStatePersistenceCoordinator(
+        state_dir=state_dir,
+        workflow_state=recovered_state,
+        approval_repository=recovered_approvals,
+    )
+    recovered_persistence.initialize()
+    recovered_pending = recovered_approvals.get_request("approval-workflow-a15-3")
+    assert recovered_pending is not None
+    assert recovered_pending.decision.status is ApprovalStatus.PENDING
+    assert (
+        recovered_state.get_session("workflow-a15-3").state
+        is WorkflowSessionState.AWAITING_APPROVAL
+    )
+
+    assert premature.error_message == "Approval pending"
+    assert approval_repository.get_request("approval-workflow-a15-3") is not None
+    execution_engine.execute.assert_not_called()
+    assert recovered_approvals.update_decision(
+        recovered_pending.decision.request.identifier,
+        ApprovalDecision(
+            request=recovered_pending.decision.request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+    inspector = Mock()
+    inspector.inspect.side_effect = (
+        make_snapshot(tmp_path),
+        make_changed_snapshot(tmp_path),
+    )
+    recovered_execution_engine = Mock()
+    recovered_execution_engine.execute.return_value = make_execution_result(tmp_path)
+    recovered_engine = WorkflowEngine(
+        repository_inspector_factory=Mock(return_value=inspector),
+        planning_engine=Mock(),
+        execution_engine=recovered_execution_engine,
+        verification_engine=Mock(),
+        review_engine=Mock(),
+        approval_engine=ApprovalEngine(),
+        approval_repository=recovered_approvals,
+        state_store=recovered_state,
+        state_persistence=recovered_persistence,
+    )
+
+    result = recovered_engine.resume("workflow-a15-3")
+
+    assert result.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert result.error_message is None
+    assert (
+        recovered_state.get_session("workflow-a15-3").state
+        is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    )
+    recovered_execution_engine.execute.assert_called_once()
+
+
+def test_rejected_implementation_approval_still_blocks(
+    tmp_path: Path,
 ) -> None:
     engine, state_store, _, _, _, execution_engine, _, _ = make_resume_engine(
         tmp_path,
-        approval_status=approval_status,
+        approval_status=ApprovalStatus.REJECTED,
     )
 
     result = engine.resume("workflow-a15-3")

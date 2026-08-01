@@ -413,6 +413,7 @@ def test_invalid_request_returns_422_without_starting_workflow(
     (
         ("Workflow not found", 404, "workflow_not_found"),
         ("Workflow already completed", 409, "invalid_workflow_state"),
+        ("Approval pending", 424, "workflow_blocked"),
         ("Approval rejected", 424, "workflow_blocked"),
         ("Model-assisted review analysis failed", 424, "workflow_blocked"),
     ),

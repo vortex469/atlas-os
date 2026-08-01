@@ -339,6 +339,12 @@ class WorkflowEngine:
                 error_message="Approval is invalid",
             )
 
+        if evaluated_approval.decision.status is ApprovalStatus.PENDING:
+            return self._pending_implementation_result(
+                session,
+                approval_request=approval_request,
+            )
+
         if not self._transition_session(
             workflow_id,
             WorkflowSessionState.AWAITING_APPROVAL,
@@ -1167,6 +1173,23 @@ class WorkflowEngine:
             review_analysis=session.review_analysis,
             approval_request=approval_request,
             execution_result=session.execution_result,
+        )
+
+    def _pending_implementation_result(
+        self,
+        session: WorkflowSession,
+        *,
+        approval_request: ApprovalRequest,
+    ) -> WorkflowResult:
+        awaiting_status = self._status(session, SprintPhase.AWAITING_APPROVAL)
+        self._publish_sprint(awaiting_status)
+        return WorkflowResult(
+            sprint=awaiting_status,
+            plan=session.plan,
+            context=session.context,
+            planning_analysis=session.planning_analysis,
+            approval_request=approval_request,
+            error_message="Approval pending",
         )
 
     def _waiting_commit_result(
