@@ -43,6 +43,16 @@ Runtime Foundation subsystem.
 - Best-practice recommendations
 - Cross-provider infrastructure relationships
 
+## Discovery Center
+
+Planned provider-neutral catalog and compatibility subsystem. D0 architecture and planning docs live in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md).
+
+- Define structured local catalog knowledge for applications, services, container images, AI models, integrations, hardware devices, and deployment methods
+- Keep curated YAML as the initial authoritative source
+- Evaluate compatibility through deterministic, evidence-based checks before semantic or AI-based behavior
+- Preserve Orion as the owner of recommendations and Atlas Agent as the future execution boundary
+- Keep Discovery Center read-only by default
+
 ## Deployment Platform
 
 - Approval workflows

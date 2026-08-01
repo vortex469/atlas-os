@@ -241,6 +241,7 @@ Active major milestone
 - Define immutable defaults in `config/` and runtime state in `data/`
 - Make runtime policy storage explicit with `ATLAS_POLICY_FILE`
 - Preserve Provider Management Framework as the subsystem for provider resources and user intent
+- Plan Discovery Center as the provider-neutral catalog and compatibility subsystem; D0 docs are in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md)
 - Mission Control policy management for provider resources must write runtime state, not repository files
 - Needs Review workflows for newly discovered resources remain derived, not persisted
 - AI suggests intent changes; users decide and approve policy updates

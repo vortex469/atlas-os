@@ -184,6 +184,7 @@ Planned direction:
 
 - Atlas Runtime Foundation as the active major milestone for separating immutable defaults from mutable runtime state
 - Provider Management Framework as a Runtime Foundation subsystem for provider connection, discovery, resources, monitoring, actions, and diagnostics
+- Discovery Center as the planned provider-neutral catalog and compatibility subsystem, documented in [Discovery Center Architecture](docs/discovery-center/ARCHITECTURE.md)
 - Mission Control management for provider resources without normal users editing YAML
 - Needs Review workflows for newly discovered resources before Atlas remembers user intent
 - AI suggests policy improvements, while users decide and approve changes
