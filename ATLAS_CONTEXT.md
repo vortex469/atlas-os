@@ -2,8 +2,8 @@
 
 ## Vision
 
-Atlas OS is a local-first infrastructure operating system designed to monitor,
-reason about, and automate a homelab environment.
+Atlas OS is a local-first, intent-driven infrastructure operating system designed to monitor,
+reason about, and automate a homelab environment. Other tools show what is; Atlas understands what should be. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md).
 
 Assistant: Orion
 
@@ -218,9 +218,14 @@ Current
 
 Foundry Release Hardening
 
-Next work
+Next major milestone
 
-- Push release candidate and confirm remote CI
+- Provider Management Framework
+- Mission Control policy management for provider resources
+- Needs Review workflows for newly discovered resources
+- AI suggests intent changes; users decide and approve policy updates
+
+Current behavior still relies on `config/policies.yaml` for several operational expectations. The planned direction is to make Mission Control the normal configuration interface while keeping files available for advanced operators.
 
 ---
 

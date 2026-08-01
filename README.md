@@ -6,6 +6,8 @@
 
 **A conversational infrastructure platform for understanding, operating, and automating modern infrastructure.**
 
+Atlas is an intent-driven infrastructure operating system. Other tools show what is; Atlas understands what should be. The product principles behind that direction are documented in [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md).
+
 ![Status](https://img.shields.io/badge/status-active%20development-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Release](https://img.shields.io/badge/release-Foundry-orange)
@@ -89,6 +91,8 @@ Observe
 Automation without understanding creates surprises.
 
 Atlas is designed to eliminate those surprises.
+
+Atlas evaluates infrastructure against user intent, not raw state alone. A stopped resource is not automatically a problem; it becomes a warning when Atlas knows the user expected it to be running. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md) for the planned product model behind Provider Management Framework work.
 
 ---
 
@@ -175,6 +179,13 @@ Current capabilities:
 - Read-only Frigate camera health and version telemetry
 - Aggregated dashboard, health, and AI status
 - Modular architecture
+
+Planned direction:
+
+- Provider Management Framework as the next major Atlas milestone
+- Mission Control management for provider connection, discovery, resources, monitoring, actions, and diagnostics
+- Needs Review workflows for newly discovered resources before Atlas remembers user intent
+- AI suggests policy improvements, while users decide and approve changes
 
 ---
 
