@@ -141,8 +141,15 @@ fingerprint, and commit message. Repository drift before commit blocks the
 workflow. Missing or pending approvals keep the workflow waiting. Rejected,
 invalid, or mismatched approvals block the workflow.
 
-Approval and workflow repositories are still in-memory repositories, so
-process-restart recovery is not implemented.
+Workflow and approval state is persisted as a local file-backed aggregate
+snapshot under `ATLAS_AGENT_STATE_DIR`. Approval-boundary workflows survive
+process restart. Interrupted `EXECUTING`, `VERIFYING`, and `COMMITTING`
+side-effect stages recover as blocked rather than being replayed.
+
+This persistence is local and single-process. It does not provide a distributed
+store, database, multi-process coordination, or cross-host recovery. Redacted
+verification environment values require matching current environment values
+after restart, and corrupt or unsupported snapshots block startup.
 
 ## Dependency Flow
 
@@ -174,4 +181,4 @@ Git commit each require separate approval decisions.
 Genuinely unfinished capabilities include broader historical knowledge,
 additional bounded Knowledge Engine integration, Docker policy beyond the
 current approval-boundary scope, model-assisted review, model selection, and
-process-restart recovery for in-memory workflow and approval repositories.
+broader development-loop hardening.

@@ -322,8 +322,18 @@ Starting a workflow performs deterministic planning and returns an approval
 request without executing the implementation. Resume is stage-aware: each
 approved side-effect stage is atomically claimed once, artifacts are retained in
 the immutable workflow session, and later resumes continue from the current
-approval boundary rather than replaying completed stages. Approval and workflow
-repositories remain in memory, so process-restart recovery is not implemented.
+approval boundary rather than replaying completed stages. Workflow and approval
+state is persisted as a local file-backed aggregate snapshot under
+`ATLAS_AGENT_STATE_DIR`. Approval-boundary workflows survive process restart,
+while interrupted `EXECUTING`, `VERIFYING`, and `COMMITTING` side-effect stages
+recover as blocked rather than being replayed.
+
+The local snapshot is single-process file-backed persistence for Atlas Agent's
+own workflow coordination state. It is not broader Atlas platform persistence,
+and it does not provide a distributed store, database, multi-process
+coordination, or cross-host recovery. Redacted verification environment values
+must match current environment values after restart before verification can
+continue. Corrupt or unsupported snapshots block startup.
 
 ---
 

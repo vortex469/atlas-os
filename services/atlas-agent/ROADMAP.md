@@ -398,9 +398,17 @@ Capabilities
 
 The current workflow covers inspection, planning, approval pause/resume,
 controlled implementation, independently approved verification, deterministic
-review, independently approved commit, and deterministic commit handling. Its
-approval and workflow repositories remain in memory, so process-restart recovery
-is still not implemented.
+review, independently approved commit, and deterministic commit handling.
+Workflow and approval state is persisted as a local file-backed aggregate
+snapshot under `ATLAS_AGENT_STATE_DIR`. Approval-boundary workflows survive
+process restart. Interrupted `EXECUTING`, `VERIFYING`, and `COMMITTING`
+side-effect stages recover as blocked rather than being replayed.
+
+The implemented persistence is local and single-process. It does not provide a
+distributed store, database, multi-process coordination, or cross-host recovery.
+Redacted verification environment values require matching current environment
+values after restart, and corrupt or unsupported snapshots block startup.
+Broader A15 development-loop hardening remains unfinished.
 
 ---
 
@@ -409,7 +417,7 @@ is still not implemented.
 A12 granular approval work is complete for its currently defined scope. Based on
 the existing roadmap, the remaining unfinished checkpoints include A8 broader
 knowledge capabilities, A10 production-readiness evidence, A13 model-assisted
-review/model selection, A15 process-restart recovery and broader development-loop
-hardening, and Docker policy work outside the current A12 scope. The roadmap does
-not define a sub-checkpoint ordering between those unfinished tracks, so the next
-implementation checkpoint is pending human selection.
+review/model selection, A15 broader development-loop hardening, and Docker policy
+work outside the current A12 scope. The roadmap does not define a sub-checkpoint
+ordering between those unfinished tracks, so the next implementation checkpoint
+is pending human selection.

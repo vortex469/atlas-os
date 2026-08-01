@@ -203,11 +203,19 @@ and status data and are represented deterministically in `AgentContext`.
 Intelligence content is evidence only and cannot alter execution or approval
 inputs.
 
-Approval and workflow repositories remain in memory, so process-restart recovery
-is still not implemented.
+Workflow and approval state is persisted as a local file-backed aggregate
+snapshot under `ATLAS_AGENT_STATE_DIR`. Approval-boundary workflows survive
+process restart. Interrupted `EXECUTING`, `VERIFYING`, and `COMMITTING`
+side-effect stages recover as blocked rather than being replayed. This is local
+single-process file-backed persistence for Atlas Agent workflow coordination
+state only; Atlas Agent still does not own broader Atlas platform persistence. It
+does not provide a distributed store, database, multi-process coordination, or
+cross-host recovery. Redacted verification environment values require matching
+current environment values after restart, and corrupt or unsupported snapshots
+block startup.
 
 The roadmap leaves ordering between the remaining unfinished tracks to human
 selection. Based on the existing roadmap, those tracks include broader A8
 knowledge capabilities, A10 production-readiness evidence, A13 model-assisted
-review/model selection, A15 process-restart recovery and broader development-loop
-hardening, and Docker policy beyond the current A12 scope.
+review/model selection, A15 broader development-loop hardening, and Docker policy
+beyond the current A12 scope.
