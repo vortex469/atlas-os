@@ -83,6 +83,7 @@ export ATLAS_HTTP_BIND=127.0.0.1
 export ATLAS_HTTP_PORT=0
 export ATLAS_HTTPS_BIND=127.0.0.1
 export ATLAS_HTTPS_PORT=0
+export ATLAS_REPOSITORY_HOST_PATH="${ATLAS_REPOSITORY_HOST_PATH:-$ATLAS_ROOT}"
 export ATLAS_TLS_CERT_FILE="$GATE_CERT_FILE"
 export ATLAS_TLS_KEY_FILE="$GATE_KEY_FILE"
 export ATLAS_HTPASSWD_FILE="$GATE_HTPASSWD_FILE"
@@ -112,10 +113,11 @@ echo "Starting isolated production stack"
 "${compose[@]}" up --detach --wait --wait-timeout 90
 
 core_container="$("${compose[@]}" ps --quiet atlas-core)"
+agent_container="$("${compose[@]}" ps --quiet atlas-agent)"
 mission_container="$("${compose[@]}" ps --quiet mission-control)"
 edge_container="$("${compose[@]}" ps --quiet atlas-edge)"
 
-for container in "$core_container" "$mission_container" "$edge_container"; do
+for container in "$core_container" "$agent_container" "$mission_container" "$edge_container"; do
     test -n "$container"
     test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$container")" = "true"
     test "$(docker inspect --format '{{json .HostConfig.CapDrop}}' "$container")" = '["ALL"]'
@@ -129,6 +131,20 @@ for container in "$core_container" "$mission_container" "$edge_container"; do
     test "$container_user" != "0"
     test "$container_user" != "root"
 done
+
+echo "Checking Atlas Agent container hardening and mounts"
+test "$(docker inspect --format '{{json .HostConfig.PortBindings}}' "$agent_container")" = '{}'
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/workspace/repository"}}{{.Type}} {{.Source}}{{end}}{{end}}' \
+    "$agent_container")" = "bind $ATLAS_REPOSITORY_HOST_PATH"
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/opt/atlas/agent-state"}}{{.Type}}{{end}}{{end}}' \
+    "$agent_container")" = "volume"
+! docker inspect \
+    --format '{{range .Mounts}}{{println .Destination}}{{end}}' \
+    "$agent_container" \
+    | grep -qx '/var/run/docker.sock'
+docker exec "$agent_container" python -c "from pathlib import Path; path = Path('/opt/atlas/agent-state/.release-gate-write-test'); path.write_text('ok'); path.unlink()"
 
 published_address="$("${compose[@]}" port mission-control 8080)"
 published_port="${published_address##*:}"
@@ -150,6 +166,10 @@ curl --fail --silent --show-error "$base_url/api/v1" \
     | grep -q '"release":"Foundry"'
 curl --fail --silent --show-error --head "$base_url/" \
     | grep -qi '^X-Content-Type-Options: nosniff'
+curl --fail --silent --show-error "$base_url/agent-api/health" \
+    | grep -q '"service":"atlas-agent"'
+curl --fail --silent --show-error "$base_url/agent-api/api/v1/agent/repository" \
+    | grep -q '"root":"/workspace/repository"'
 
 echo "Checking authenticated HTTPS ingress"
 test "$(curl \
@@ -174,6 +194,14 @@ curl \
     --user 'atlas:release-gate' \
     "$https_base_url/api/v1" \
     | grep -q '"release":"Foundry"'
+curl \
+    --cacert "$GATE_CERT_FILE" \
+    --fail \
+    --silent \
+    --show-error \
+    --user 'atlas:release-gate' \
+    "$https_base_url/agent-api/health" \
+    | grep -q '"service":"atlas-agent"'
 curl \
     --cacert "$GATE_CERT_FILE" \
     --fail \
