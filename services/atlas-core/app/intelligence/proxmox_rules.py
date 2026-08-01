@@ -1,5 +1,5 @@
+from app.config.policies import get_expected_guest_state, is_expected_guest
 from app.intelligence.findings import Finding, Severity
-from app.config.policies import is_expected_guest
 
 CPU_WARNING_PERCENT = 85
 CPU_CRITICAL_PERCENT = 95
@@ -12,6 +12,7 @@ def evaluate_proxmox(
     status: dict,
     guests: dict,
     expected_guest_checker=is_expected_guest,
+    expected_guest_state_getter=get_expected_guest_state,
 ) -> list[Finding]:
     findings: list[Finding] = []
 
@@ -147,6 +148,11 @@ def evaluate_proxmox(
             continue
 
         vmid = guest.get("vmid")
+
+        expected_state = expected_guest_state_getter(vmid)
+
+        if expected_state in {"ignored", "stopped"}:
+            continue
 
         if expected_guest_checker(vmid, "stopped"):
             continue

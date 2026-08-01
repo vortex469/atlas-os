@@ -3,12 +3,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-
 ExpectedState = Literal["running", "stopped"]
+ProxmoxGuestExpectedState = Literal["running", "stopped", "ignored"]
 
 
 class GuestPolicy(BaseModel):
-    expected: ExpectedState
+    expected: ProxmoxGuestExpectedState
 
 
 class ProxmoxPolicy(BaseModel):

@@ -5,6 +5,7 @@ from app.providers.n8n import N8nProvider
 from app.providers.obsidian import ObsidianProvider
 from app.providers.ollama import OllamaProvider
 from app.providers.opnsense import OPNsenseProvider
+from app.providers.proxmox import ProxmoxProvider
 from app.providers.qdrant import QdrantProvider
 from app.providers.registry import provider_registry
 
@@ -30,6 +31,8 @@ def load_provider_registry():
             provider = FrigateProvider(service)
         elif service_id == "obsidian":
             provider = ObsidianProvider(service)
+        elif service_id == "proxmox":
+            provider = ProxmoxProvider(service)
         elif service_id == "qdrant":
             provider = QdrantProvider(service)
         else:
