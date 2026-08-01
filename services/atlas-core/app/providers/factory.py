@@ -6,6 +6,7 @@ from typing import Any, Protocol, runtime_checkable
 from app.context import AtlasContext
 from app.providers.base import Provider
 from app.providers.frigate import FrigateProvider
+from app.providers.homeassistant import HomeAssistantProvider
 from app.providers.inventory_provider import InventoryServiceProvider
 from app.providers.n8n import N8nProvider
 from app.providers.obsidian import ObsidianProvider
@@ -109,6 +110,10 @@ def default_provider_factory_registry() -> ProviderFactoryRegistry:
         "frigate": LegacyProviderFactory(
             "frigate",
             lambda context, service: FrigateProvider(context),
+        ),
+        "home_assistant": LegacyProviderFactory(
+            "home_assistant",
+            lambda context, service: HomeAssistantProvider(context),
         ),
         "n8n": LegacyProviderFactory(
             "n8n",

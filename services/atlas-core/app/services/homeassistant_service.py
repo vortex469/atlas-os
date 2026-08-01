@@ -4,11 +4,14 @@ from app.clients.homeassistant_client import (
     get_api_status,
     get_states,
 )
+from app.context import AtlasContext
 
 
-def get_homeassistant_status() -> dict:
-    api = get_api_status()
-    states = get_states()
+def get_homeassistant_status(
+    atlas_context: AtlasContext | None = None,
+) -> dict:
+    api = get_api_status(atlas_context)
+    states = get_states(atlas_context)
 
     domains = Counter(
         state["entity_id"].split(".", 1)[0]
@@ -80,8 +83,10 @@ def get_homeassistant_status() -> dict:
         "unavailable_entities": unavailable,
     }
 
-def get_unavailable_entities() -> dict:
-    states = get_states()
+def get_unavailable_entities(
+    atlas_context: AtlasContext | None = None,
+) -> dict:
+    states = get_states(atlas_context)
 
     grouped: dict[str, list[dict]] = defaultdict(list)
 

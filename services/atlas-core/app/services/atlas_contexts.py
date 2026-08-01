@@ -246,6 +246,7 @@ def _metadata_from_declaration(
 def _provider_type_for_provider(provider_id: str) -> str:
     known_provider_types = {
         "frigate",
+        "home_assistant",
         "n8n",
         "obsidian",
         "ollama",
@@ -319,6 +320,8 @@ def _capabilities_for_provider(provider_id: str) -> tuple[str, ...]:
         )
     if provider_id == "opnsense":
         return ("health", "actions", "configuration")
+    if provider_id == "home_assistant":
+        return ("health", "findings", "metrics", "configuration")
     if provider_id in {"frigate", "n8n", "qdrant", "obsidian", "ollama"}:
         return ("health", "findings", "actions", "metrics", "configuration")
     return ("health",)

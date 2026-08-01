@@ -22,6 +22,7 @@ from app.providers.factory import (
     ProviderFactoryRegistry,
 )
 from app.providers.frigate import FrigateProvider
+from app.providers.homeassistant import HomeAssistantProvider
 from app.providers.inventory_provider import InventoryServiceProvider
 from app.providers.loader import build_providers_from_contexts, load_provider_registry
 from app.providers.n8n import N8nProvider
@@ -261,6 +262,12 @@ def test_http_provider_factories_pass_atlas_context_and_context_values() -> None
             secrets={"api_token": "frigate-token"},
         ),
         http_atlas_context(
+            "home_assistant",
+            provider_type="home_assistant",
+            port=8123,
+            secrets={"token": "ha-token"},
+        ),
+        http_atlas_context(
             "n8n",
             provider_type="n8n",
             port=5678,
@@ -287,6 +294,7 @@ def test_http_provider_factories_pass_atlas_context_and_context_values() -> None
 
     assert isinstance(providers_by_id["opnsense"], OPNsenseProvider)
     assert isinstance(providers_by_id["frigate"], FrigateProvider)
+    assert isinstance(providers_by_id["home-assistant"], HomeAssistantProvider)
     assert isinstance(providers_by_id["n8n"], N8nProvider)
     assert isinstance(providers_by_id["qdrant"], QdrantProvider)
     assert isinstance(providers_by_id["ollama"], OllamaProvider)
@@ -294,12 +302,13 @@ def test_http_provider_factories_pass_atlas_context_and_context_values() -> None
     assert isinstance(providers_by_id["grafana"], InventoryServiceProvider)
 
     for context in contexts:
-        provider = providers_by_id[context.consumer_id]
+        provider = providers_by_id[context.consumer_id.replace("_", "-")]
         assert provider.atlas_context is context  # type: ignore[attr-defined]
         assert provider.metadata.name == f"Context {context.consumer_id}"
 
     assert providers_by_id["opnsense"]._base_url == "https://opnsense.context.local:8443/"  # type: ignore[attr-defined]
     assert providers_by_id["frigate"]._headers()["Authorization"] == "Bearer frigate-token"  # type: ignore[attr-defined]
+    assert providers_by_id["home-assistant"].atlas_context.secrets["token"].reveal() == "ha-token"  # type: ignore[attr-defined]
     assert providers_by_id["n8n"]._headers()["X-N8N-API-KEY"] == "n8n-key"  # type: ignore[attr-defined]
     assert providers_by_id["qdrant"]._headers()["api-key"] == "qdrant-key"  # type: ignore[attr-defined]
     assert providers_by_id["ollama"]._base_url == "https://ollama.context.local:11434/"  # type: ignore[attr-defined]
