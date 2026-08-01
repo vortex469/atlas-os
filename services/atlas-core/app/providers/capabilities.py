@@ -11,6 +11,11 @@ class ProviderCapability(StrEnum):
     METRICS = "metrics"
     LOGS = "logs"
     CONFIGURATION = "configuration"
+    CONNECTION = "connection"
+    DISCOVERY = "discovery"
+    RESOURCES = "resources"
+    MONITORING = "monitoring"
+    DIAGNOSTICS = "diagnostics"
 
 
 class ProviderWorkspace(StrEnum):
