@@ -169,6 +169,7 @@ class WorkflowErrorResponse(BaseModel):
 
 
 _ERROR_RESPONSES = {
+    status.HTTP_400_BAD_REQUEST: {"model": WorkflowErrorResponse},
     status.HTTP_404_NOT_FOUND: {"model": WorkflowErrorResponse},
     status.HTTP_409_CONFLICT: {"model": WorkflowErrorResponse},
     status.HTTP_424_FAILED_DEPENDENCY: {"model": WorkflowErrorResponse},
@@ -187,6 +188,27 @@ def _start_workflow(
     workflow_request: WorkflowRequest,
 ) -> WorkflowResult:
     return asyncio.run(orchestrator.run(workflow_request))
+
+
+def _validate_repository_root_boundary(
+    request: Request,
+    workflow_request: WorkflowExecutionRequest,
+) -> None:
+    """Reject workflow starts outside the configured repository root."""
+
+    configured_root = request.app.state.container.settings.repository_root.resolve()
+    requested_root = workflow_request.repository_root.expanduser().resolve()
+
+    if requested_root == configured_root:
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail={
+            "code": "repository_root_mismatch",
+            "message": "Workflow repository root must match the configured repository root",
+        },
+    )
 
 
 def _raise_for_failure(result: WorkflowResult) -> None:
@@ -218,6 +240,8 @@ async def start_workflow(
     workflow_request: WorkflowExecutionRequest,
 ) -> WorkflowResult:
     """Plan one workflow and pause it for explicit approval."""
+
+    _validate_repository_root_boundary(request, workflow_request)
 
     try:
         result = await run_in_threadpool(

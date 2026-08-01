@@ -170,6 +170,7 @@ def make_client(
     workflow_orchestrator.run = AsyncMock()
     application.state.container = replace(
         application.state.container,
+        settings=Settings(repository_root=tmp_path.resolve()),
         workflow_engine=workflow_engine,
         workflow_orchestrator=workflow_orchestrator,
     )
@@ -235,6 +236,67 @@ def test_start_offloads_domain_conversion_and_pauses_for_approval(
     assert submitted.execution_argv == ("codex", "implement")
     assert submitted.verification_checks[0].environment[0].name == "ATLAS_ENV"
     workflow_engine.resume.assert_not_called()
+
+
+def test_start_accepts_exact_configured_repository_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, _, workflow_orchestrator = make_client(tmp_path, monkeypatch)
+    workflow_orchestrator.run.return_value = workflow_result(
+        tmp_path,
+        phase=SprintPhase.AWAITING_APPROVAL,
+    )
+
+    response = client.post(
+        "/api/v1/agent/workflows",
+        json=request_body(tmp_path.resolve()),
+    )
+
+    assert response.status_code == 202
+    workflow_orchestrator.run.assert_awaited_once()
+
+
+def test_start_accepts_equivalent_normalized_repository_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, _, workflow_orchestrator = make_client(tmp_path, monkeypatch)
+    workflow_orchestrator.run.return_value = workflow_result(
+        tmp_path,
+        phase=SprintPhase.AWAITING_APPROVAL,
+    )
+    equivalent_path = tmp_path / "."
+
+    response = client.post(
+        "/api/v1/agent/workflows",
+        json=request_body(equivalent_path),
+    )
+
+    assert response.status_code == 202
+    workflow_orchestrator.run.assert_awaited_once()
+
+
+def test_start_rejects_repository_path_outside_configured_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, container, _, workflow_orchestrator = make_client(tmp_path, monkeypatch)
+    different_repository = tmp_path.parent / f"{tmp_path.name}-other"
+    different_repository.mkdir()
+    body = request_body(different_repository)
+
+    response = client.post("/api/v1/agent/workflows", json=body)
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": {
+            "code": "repository_root_mismatch",
+            "message": "Workflow repository root must match the configured repository root",
+        }
+    }
+    workflow_orchestrator.run.assert_not_awaited()
+    assert container.workflow_state.get_sprint() is None
 
 
 def test_resume_offloads_engine_and_returns_completed_result(
