@@ -12,6 +12,7 @@ EXPECTED_DISCOVERY_PATHS = {
 EXPECTED_EXECUTION_CANDIDATE_PATHS = {
     "/api/v1/execution-candidates",
     "/api/v1/execution-candidates/{candidate_id}",
+    "/api/v1/execution-candidates/{candidate_id}/planning-intake",
 }
 
 INTERNAL_DISCOVERY_SCHEMA_NAMES = {
@@ -78,18 +79,14 @@ def test_execution_candidate_endpoint_set_is_stable() -> None:
     assert candidate_paths == EXPECTED_EXECUTION_CANDIDATE_PATHS
 
 
-def test_execution_candidate_routes_are_read_only() -> None:
+def test_execution_candidate_routes_expose_expected_methods() -> None:
     schema = app.openapi()
 
-    candidate_paths = {
-        path: methods
-        for path, methods in schema["paths"].items()
-        if path.startswith("/api/v1/execution-candidates")
-    }
-
-    assert candidate_paths
-    for methods in candidate_paths.values():
-        assert set(methods) == {"get"}
+    assert set(schema["paths"]["/api/v1/execution-candidates"]) == {"get"}
+    assert set(schema["paths"]["/api/v1/execution-candidates/{candidate_id}"]) == {"get"}
+    assert set(
+        schema["paths"]["/api/v1/execution-candidates/{candidate_id}/planning-intake"]
+    ) == {"post"}
 
 
 def test_execution_candidate_openapi_uses_public_response_dtos() -> None:
@@ -98,6 +95,8 @@ def test_execution_candidate_openapi_uses_public_response_dtos() -> None:
     assert "ExecutionCandidate" not in schema_names
     assert "ProjectionResult" not in schema_names
     assert "ExecutionEligibilityResult" not in schema_names
+    assert "CandidatePlanningIntakeResult" in schema_names
+    assert "CandidatePlanningIntakeRequest" in schema_names
     assert "ExecutionCandidateResponse" in schema_names
     assert "ExecutionCandidatePageResponse" in schema_names
 

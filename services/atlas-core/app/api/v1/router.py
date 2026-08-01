@@ -8,6 +8,9 @@ from app.routes.analysis import router as analysis_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.discovery import router as discovery_router
 from app.routes.docker import router as docker_router
+from app.routes.execution_candidate_intake import (
+    router as execution_candidate_intake_router,
+)
 from app.routes.execution_candidates import router as execution_candidates_router
 from app.routes.health import router as health_router
 from app.routes.homeassistant import router as homeassistant_router
@@ -58,6 +61,7 @@ router.include_router(provider_connections_router)
 router.include_router(provider_resources_router)
 router.include_router(discovery_router)
 router.include_router(execution_candidates_router)
+router.include_router(execution_candidate_intake_router)
 router.include_router(ops_router)
 router.include_router(policies_router)
 router.include_router(docker_router)

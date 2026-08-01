@@ -17,6 +17,13 @@ from app.execution_candidates.eligibility import (
     ExecutionEligibilityResult,
     validate_candidate_for_planning,
 )
+from app.execution_candidates.fingerprint import build_candidate_fingerprint
+from app.execution_candidates.intake import (
+    CandidatePlanningIntakeReasonCode,
+    CandidatePlanningIntakeRequest,
+    CandidatePlanningIntakeResult,
+    CandidatePlanningIntakeStatus,
+)
 from app.execution_candidates.models import (
     ApprovalLevel,
     ExecutionCandidate,
@@ -39,6 +46,10 @@ __all__ = [
     "EXECUTABLE_RECOMMENDATION_CLASSES",
     "NON_EXECUTABLE_RECOMMENDATION_CLASSES",
     "ApprovalLevel",
+    "CandidatePlanningIntakeReasonCode",
+    "CandidatePlanningIntakeRequest",
+    "CandidatePlanningIntakeResult",
+    "CandidatePlanningIntakeStatus",
     "ExecutionCandidate",
     "ExecutionCandidatePageResponse",
     "ExecutionCandidateResponse",
@@ -54,6 +65,7 @@ __all__ = [
     "ProjectionResult",
     "ProjectionStatus",
     "RecommendationClass",
+    "build_candidate_fingerprint",
     "build_execution_candidate_id",
     "candidate_to_response",
     "category_for_intent",

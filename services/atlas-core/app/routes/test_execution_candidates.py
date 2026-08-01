@@ -353,9 +353,11 @@ def test_execution_candidate_openapi_is_get_only() -> None:
     assert set(paths) == {
         "/api/v1/execution-candidates",
         "/api/v1/execution-candidates/{candidate_id}",
+        "/api/v1/execution-candidates/{candidate_id}/planning-intake",
     }
-    for methods in paths.values():
-        assert set(methods) == {"get"}
+    assert set(paths["/api/v1/execution-candidates"]) == {"get"}
+    assert set(paths["/api/v1/execution-candidates/{candidate_id}"]) == {"get"}
+    assert set(paths["/api/v1/execution-candidates/{candidate_id}/planning-intake"]) == {"post"}
 
 
 def test_execution_candidate_openapi_uses_public_dtos_only() -> None:
