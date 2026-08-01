@@ -12,7 +12,12 @@ from pathlib import Path, PurePosixPath
 
 
 DATABASES = ("action_history.db", "provider_intelligence.db")
-RUNTIME_FILES = ("config/policies.yaml",)
+RUNTIME_FILES = (
+    "config/policies.yaml",
+    "config/provider-connections.yaml",
+    "secrets/provider-connections.yaml",
+)
+SECRET_RUNTIME_FILES = {"secrets/provider-connections.yaml"}
 MANIFEST_NAME = "manifest.json"
 FORMAT_VERSION = 2
 SUPPORTED_FORMAT_VERSIONS = {1, FORMAT_VERSION}
@@ -101,12 +106,14 @@ def create_backup(source: Path, destination: Path) -> None:
 
         destination_path = destination / safe_relative_path(filename)
         destination_path.parent.mkdir(parents=True, exist_ok=True)
+        validate_runtime_file(source_path, filename, source_path.stat().st_mode & 0o777)
         shutil.copyfile(source_path, destination_path)
         runtime_file_records.append(
             {
                 "path": filename,
                 "sha256": sha256(destination_path),
                 "size": destination_path.stat().st_size,
+                "mode": source_path.stat().st_mode & 0o777,
             }
         )
 
@@ -152,6 +159,8 @@ def verify_backup(backup: Path) -> dict[str, object]:
         for record in records
         if isinstance(record, dict)
     }
+    if len(filenames) != len(records):
+        raise RuntimeError("backup manifest database records contain duplicates")
     if filenames != set(DATABASES):
         raise RuntimeError("backup manifest database set is invalid")
 
@@ -171,6 +180,9 @@ def verify_backup(backup: Path) -> dict[str, object]:
         relative_path = safe_relative_path(record.get("path"))
         if relative_path.as_posix() not in RUNTIME_FILES:
             raise RuntimeError(f"unexpected runtime file path: {relative_path}")
+        if relative_path in runtime_paths:
+            raise RuntimeError(f"duplicate runtime file path: {relative_path}")
+        validate_runtime_manifest_record(relative_path.as_posix(), record)
         runtime_paths.add(relative_path)
         expected_paths.add(relative_path)
 
@@ -217,17 +229,23 @@ def verify_backup(backup: Path) -> dict[str, object]:
             raise RuntimeError(f"backup runtime file size mismatch: {relative_path}")
         if sha256(path) != record.get("sha256"):
             raise RuntimeError(f"backup runtime file checksum mismatch: {relative_path}")
+        mode = record.get("mode")
+        validate_runtime_file(
+            path,
+            relative_path.as_posix(),
+            mode if isinstance(mode, int) else 0o600,
+        )
 
     return manifest
 
 
-def atomic_restore_file(source: Path, target: Path) -> None:
+def atomic_restore_file(source: Path, target: Path, mode: int = 0o600) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = target.with_name(f".{target.name}.restore")
     if temporary_path.exists():
         temporary_path.unlink()
     shutil.copyfile(source, temporary_path)
-    os.chmod(temporary_path, 0o600)
+    os.chmod(temporary_path, mode)
     os.replace(temporary_path, target)
 
 
@@ -254,7 +272,121 @@ def restore_backup(backup: Path, target: Path) -> None:
 
     for record in manifest.get("files", []):
         relative_path = safe_relative_path(record.get("path"))
-        atomic_restore_file(backup / relative_path, target / relative_path)
+        restore_mode = 0o600 if relative_path.as_posix() in SECRET_RUNTIME_FILES else 0o600
+        atomic_restore_file(backup / relative_path, target / relative_path, restore_mode)
+
+
+def validate_runtime_manifest_record(relative_path: str, record: dict[str, object]) -> None:
+    mode = record.get("mode")
+    if mode is not None and not isinstance(mode, int):
+        raise RuntimeError(f"backup runtime file mode is invalid: {relative_path}")
+    if relative_path in SECRET_RUNTIME_FILES and mode not in (None, 0o600):
+        raise RuntimeError(f"backup runtime secret file mode is invalid: {relative_path}")
+
+
+def validate_runtime_file(path: Path, relative_path: str, mode: int) -> None:
+    if relative_path == "config/provider-connections.yaml":
+        document = load_provider_store_document(path, relative_path)
+        if document.get("version") != 1:
+            raise RuntimeError("provider connection store version is invalid")
+        if not isinstance(document.get("providers", {}), dict):
+            raise RuntimeError("provider connection store providers are invalid")
+        for provider_id, entry in document.get("providers", {}).items():
+            validate_identifier(provider_id, "provider id")
+            if not isinstance(entry, dict) or not isinstance(entry.get("connection", {}), dict):
+                raise RuntimeError("provider connection store entry is invalid")
+    elif relative_path == "secrets/provider-connections.yaml":
+        if mode != 0o600:
+            raise RuntimeError("provider secret store mode is invalid")
+        document = load_provider_store_document(path, relative_path)
+        if document.get("version") != 1:
+            raise RuntimeError("provider secret store version is invalid")
+        if not isinstance(document.get("providers", {}), dict):
+            raise RuntimeError("provider secret store providers are invalid")
+        for provider_id, entry in document.get("providers", {}).items():
+            validate_identifier(provider_id, "provider id")
+            if not isinstance(entry, dict) or not isinstance(entry.get("secrets", {}), dict):
+                raise RuntimeError("provider secret store entry is invalid")
+            for secret_name, secret_value in entry.get("secrets", {}).items():
+                validate_identifier(secret_name, "secret name")
+                if not isinstance(secret_value, str) or secret_value == "":
+                    raise RuntimeError("provider secret store value is invalid")
+
+
+def load_provider_store_document(path: Path, relative_path: str) -> dict[str, object]:
+    """Parse the strict provider store YAML subset Atlas writes.
+
+    The backup helper runs in a minimal Python image with no third-party YAML
+    dependency. Provider connection stores are versioned Atlas-owned files with
+    a narrow shape, so verification accepts only that explicit subset.
+    """
+
+    document: dict[str, object] = {"version": None, "providers": {}}
+    current_provider: str | None = None
+    current_section: str | None = None
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if "[" in raw_line or "]" in raw_line:
+            raise RuntimeError(f"runtime file is malformed: {relative_path}")
+        indent = len(raw_line) - len(raw_line.lstrip(" "))
+        line = raw_line.strip()
+
+        if indent == 0 and line == "version: 1":
+            document["version"] = 1
+        elif indent == 0 and line in {"providers:", "providers: {}"}:
+            continue
+        elif indent == 2 and line.endswith(":"):
+            provider_id = line[:-1]
+            validate_identifier(provider_id, "provider id")
+            providers = document["providers"]
+            assert isinstance(providers, dict)
+            providers[provider_id] = {}
+            current_provider = provider_id
+            current_section = None
+        elif indent == 4 and line in {"connection:", "secrets:"}:
+            if current_provider is None:
+                raise RuntimeError(f"runtime file is malformed: {relative_path}")
+            current_section = line[:-1]
+            providers = document["providers"]
+            assert isinstance(providers, dict)
+            entry = providers[current_provider]
+            assert isinstance(entry, dict)
+            entry[current_section] = {}
+        elif indent == 6 and ":" in line:
+            if current_provider is None or current_section is None:
+                raise RuntimeError(f"runtime file is malformed: {relative_path}")
+            key, value = line.split(":", 1)
+            key = key.strip().strip('"')
+            value = value.strip().strip('"')
+            validate_identifier(key, "field name")
+            providers = document["providers"]
+            assert isinstance(providers, dict)
+            entry = providers[current_provider]
+            assert isinstance(entry, dict)
+            section = entry[current_section]
+            assert isinstance(section, dict)
+            section[key] = parse_scalar(value)
+        else:
+            raise RuntimeError(f"runtime file is malformed: {relative_path}")
+
+    return document
+
+
+def parse_scalar(value: str) -> object:
+    if value.lower() == "true":
+        return True
+    if value.lower() == "false":
+        return False
+    if re.fullmatch(r"\d+", value):
+        return int(value)
+    return value
+
+
+def validate_identifier(value: object, label: str) -> None:
+    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", value):
+        raise RuntimeError(f"provider connection {label} is invalid")
 
 
 def prune_backups(

@@ -255,11 +255,16 @@ separate media:
 ```
 
 Each backup contains both SQLite databases, runtime policy files such as
-`config/policies.yaml`, and a versioned `manifest.json` with separate
-database and runtime file entries, sizes, and SHA-256 checksums. The
-command uses SQLite's online backup API for databases, so WAL-mode writes
-can continue without producing an inconsistent database copy. Runtime
-file entries are verified by safe relative path and checksum.
+`config/policies.yaml`, provider connection overrides such as
+`config/provider-connections.yaml`, provider connection secrets such as
+`secrets/provider-connections.yaml`, and a versioned `manifest.json` with
+separate database and runtime file entries, sizes, modes, and SHA-256
+checksums. The command uses SQLite's online backup API for databases, so
+WAL-mode writes can continue without producing an inconsistent database
+copy. Runtime file entries are verified by safe relative path, checksum,
+expected file set, and store-specific structure. Existing version-1
+database-only backups, and backups created before provider connection
+stores existed, remain restorable.
 
 Runtime policy files are owned by the Atlas container user and may be
 mode `0600`. The backup command therefore reads the Atlas data volume
@@ -272,7 +277,9 @@ ownership helper mounts only that incomplete backup directory and uses
 only the `CHOWN` capability to set the backup directory and files back to
 the invoking host UID/GID and keeps them readable by the Atlas restore
 UID. Operators can then read, move, and remove the artifacts normally
-without weakening runtime policy permissions.
+without weakening live runtime permissions. Backup directories that
+include `secrets/provider-connections.yaml` contain provider credentials
+and must be protected like any other secret-bearing backup artifact.
 
 Restore replaces both databases, restores included runtime files
 atomically under the Atlas data root, and removes stale WAL and shared
@@ -291,12 +298,14 @@ HTTPS deployment. The restore command refuses to run while a container
 uses the target volume, validates the manifest, checks every checksum,
 rejects unsafe runtime file paths, and runs SQLite integrity checks before
 replacing live database files. Version-1 database-only backups remain
-valid; they simply do not restore runtime policy files, allowing Atlas to
-initialize missing runtime policy from the read-only template on next
-startup. Set `ATLAS_DATA_VOLUME` only when the Compose project uses a
-non-default volume name. Restore runs as the Atlas data UID, default
-`10001`, so restored runtime files remain Atlas-owned and runtime policy
-files keep mode `0600`.
+valid; they simply do not restore runtime policy or provider connection
+files, allowing Atlas to initialize missing runtime policy from the
+read-only template and missing provider connection stores from immutable
+templates or empty validated stores on next startup. Set
+`ATLAS_DATA_VOLUME` only when the Compose project uses a non-default
+volume name. Restore runs as the Atlas data UID, default `10001`, so
+restored runtime files remain Atlas-owned. Runtime policy and provider
+secret files keep mode `0600`.
 
 ### Schedule backups
 
