@@ -131,15 +131,33 @@ docker compose -f compose.production.yaml ps
 docker compose -f compose.production.yaml logs -f
 ```
 
-Validate Compose without rendering secret values:
+Validate Compose without rendering secret values. A clean checkout has no
+`.env`; use the tracked `.env.example` only for Compose render validation:
 
 ```bash
-docker compose -f compose.production.yaml \
-  config --no-env-resolution --quiet
+ATLAS_ENV_FILE=.env.example \
+ATLAS_REPOSITORY_HOST_PATH="$PWD" \
+docker compose -f compose.production.yaml config --quiet
 ```
 
 For HTTPS mode, include `-f compose.https.yaml` and set the three
-required credential-file variables.
+required credential-file variables:
+
+```bash
+ATLAS_ENV_FILE=.env.example \
+ATLAS_REPOSITORY_HOST_PATH="$PWD" \
+ATLAS_TLS_CERT_FILE=/path/to/atlas.crt \
+ATLAS_TLS_KEY_FILE=/path/to/atlas.key \
+ATLAS_HTPASSWD_FILE=/path/to/atlas.htpasswd \
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  config --quiet
+```
+
+`.env.example` contains placeholder values suitable for render validation
+only. Real production deployments still require a real `.env` or an
+operator-selected `ATLAS_ENV_FILE` containing valid credentials.
 
 Run the complete container release gate:
 
