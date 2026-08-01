@@ -176,6 +176,47 @@ The final principle is implemented for the current approval-boundary scope:
 implementation execution, verification commands, and the final deterministic
 Git commit each require separate approval decisions.
 
+## Production Deployment Architecture
+
+Atlas Agent provides its own production service deployment artifacts without
+owning the broader Atlas platform deployment strategy.
+
+`deploy/docker/atlas-agent.Dockerfile` builds a dedicated Atlas Agent image from
+Python 3.12 slim. The base runtime includes Python, Uvicorn through the service
+runtime dependencies, and Git for repository inspection and commit operations.
+It intentionally excludes Codex, Ruff, pytest, Node/npm, Docker, and other
+project-specific verification or implementation toolchains. Those executables
+are operator-provided when a managed repository workflow requires them.
+
+`compose.production.yaml` defines the `atlas-agent` service. The service is
+network-internal only, exposes container port 8090 to peer services, and does
+not publish a host port. It depends on a healthy `atlas-core`, has an internal
+`GET /health` health check, and uses the same production hardening profile as
+other Atlas services: read-only root filesystem, `/tmp` tmpfs, dropped Linux
+capabilities, and `no-new-privileges:true`.
+
+The managed repository mount separates host and container paths. Operators set
+`ATLAS_REPOSITORY_HOST_PATH` for Compose. The application receives only
+`ATLAS_AGENT_REPOSITORY_ROOT=/workspace/repository`, and Compose mounts the host
+path at `/workspace/repository`. Atlas Agent therefore never depends on the host
+filesystem layout. Workflow and approval snapshots use the `atlas-agent-state`
+named volume mounted at `/opt/atlas/agent-state`.
+
+Mission Control is the internal reverse proxy for Atlas Agent. Its Nginx config
+proxies `/agent-api/` to `http://atlas-agent:8090/` and strips the prefix. HTTPS
+traffic continues through `atlas-edge` to Mission Control and then to Atlas
+Agent:
+
+```text
+client -> atlas-edge -> mission-control -> atlas-agent
+```
+
+The container release gate covers the Atlas Agent production path by validating
+Compose, building the image, starting the stack, waiting for health, checking
+hardening and mounts, confirming there are no published Atlas Agent host ports,
+and smoke-testing `/agent-api/health` and repository status over HTTP plus
+authenticated `/agent-api/health` over HTTPS.
+
 ## Future Development
 
 Genuinely unfinished capabilities include broader historical knowledge,

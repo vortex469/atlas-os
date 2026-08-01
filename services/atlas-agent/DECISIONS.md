@@ -92,3 +92,30 @@ This persistence is local and single-process. It does not provide a distributed
 store, database, multi-process coordination, or cross-host recovery. Redacted
 verification environment values require matching current environment values
 after restart, and corrupt or unsupported snapshots block startup.
+
+### Production Service Deployment Boundary
+
+Atlas Agent owns its service-specific production deployment artifacts, not the
+broader Atlas platform deployment strategy.
+
+The dedicated production image is built by `deploy/docker/atlas-agent.Dockerfile`
+from Python 3.12 slim. The runtime contains Python, Uvicorn through the service
+runtime dependencies, Atlas Agent, and Git. Project-specific workflow tools such
+as Codex, Ruff, pytest, Node/npm, Docker, and repository-specific verification
+toolchains are intentionally not bundled and must be provided by the operator
+when a workflow requires them.
+
+Production Compose uses two repository path concepts. `ATLAS_REPOSITORY_HOST_PATH`
+is a Compose-only operator-selected host path. Atlas Agent receives
+`ATLAS_AGENT_REPOSITORY_ROOT=/workspace/repository`, and Compose mounts the host
+path at `/workspace/repository`. The application therefore remains independent
+of the host filesystem layout. Local workflow and approval snapshots are stored
+on the `atlas-agent-state` volume.
+
+Atlas Agent is exposed only inside the production Docker network on port 8090.
+Mission Control proxies `/agent-api/` to Atlas Agent and strips that prefix.
+HTTPS traffic continues through `atlas-edge` to Mission Control and then to
+Atlas Agent. Production health checks use `/health`, and the release gate covers
+image build, production and HTTPS Compose validation, health, hardening, mount
+checks, absence of published Atlas Agent host ports, the writable
+`atlas-agent-state` volume, and `/agent-api` HTTP and HTTPS smoke tests.

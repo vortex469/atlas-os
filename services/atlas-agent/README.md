@@ -104,13 +104,14 @@ Atlas Agent owns:
 - verification
 - review
 - engineering reports
+- its own service deployment artifacts
 
 Atlas Agent does not own:
 
 - authentication
 - authorization
-- persistence
-- deployment
+- broader Atlas platform persistence
+- broader Atlas platform deployment strategy
 - cloud infrastructure
 - CI systems
 - package management
@@ -283,14 +284,17 @@ For checkpoint details, see [ROADMAP.md](./ROADMAP.md).
 - A8 is partially complete. Its first production slice consumes bounded Atlas
   intelligence summary evidence through Atlas Core.
 - A9 is complete.
-- A10 is partially complete.
+- A10 is partially complete. Production deployment artifacts are implemented;
+  recorded release acceptance testing and remaining operational-readiness
+  evidence are still unfinished.
 - A11 is functionally complete.
 - A12 is complete for its currently defined approval-boundary scope.
 - A13 is partially complete.
 - A14 is complete for its currently listed status scope; it overlaps the
   earlier A7 Mission Control checkpoint. Pending approval data and decision UI
   exist, but the decision card is not mounted in the current status panel.
-- A15 is partially complete.
+- A15 is partially complete. Production service deployment exists; broader
+  approval-gated development-loop hardening remains unfinished.
 
 ---
 
@@ -334,6 +338,60 @@ and it does not provide a distributed store, database, multi-process
 coordination, or cross-host recovery. Redacted verification environment values
 must match current environment values after restart before verification can
 continue. Corrupt or unsupported snapshots block startup.
+
+---
+
+# Production Deployment
+
+Atlas Agent has dedicated production service deployment artifacts while still
+leaving the broader Atlas platform deployment strategy to the existing Atlas
+release and operations layers.
+
+The production image is built from `deploy/docker/atlas-agent.Dockerfile` using
+the repository's Python 3.12 slim convention. The image contains the Python
+runtime, Uvicorn, Atlas Agent runtime dependencies, and Git. It intentionally
+does not bundle project-specific workflow tools such as Codex, Ruff, pytest,
+Node/npm, Docker, or repository-specific verification toolchains. Those tools
+are operator-provided in the managed repository environment when workflows need
+them.
+
+`compose.production.yaml` defines the `atlas-agent` service. The service is
+internal-only on port 8090 with no published host port, depends on a healthy
+`atlas-core`, runs with a read-only root filesystem, a `/tmp` tmpfs, all Linux
+capabilities dropped, and `no-new-privileges:true`. Production health checks use
+`GET /health` inside the container.
+
+Repository mounting uses two distinct paths:
+
+- `ATLAS_REPOSITORY_HOST_PATH` is a Compose-only host path selected by the
+  operator.
+- `ATLAS_AGENT_REPOSITORY_ROOT=/workspace/repository` is the container path used
+  by the Atlas Agent application.
+
+Compose mounts `${ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository` and passes
+`ATLAS_AGENT_REPOSITORY_ROOT=/workspace/repository`. The application never needs
+to know the host filesystem layout. Workflow and approval snapshots are stored
+on the named `atlas-agent-state` volume mounted at `/opt/atlas/agent-state` and
+configured through `ATLAS_AGENT_STATE_DIR`.
+
+Mission Control proxies `/agent-api/` to Atlas Agent and strips the prefix, so
+`/agent-api/health` reaches `/health` and
+`/agent-api/api/v1/agent/repository` reaches `/api/v1/agent/repository`.
+HTTPS deployments continue to flow through `atlas-edge`:
+
+```text
+client -> atlas-edge -> mission-control -> atlas-agent
+```
+
+`atlas-edge` does not need a separate Atlas Agent route because Mission Control
+is the internal reverse proxy for `/agent-api/`.
+
+The container release gate builds Atlas Agent, validates production and HTTPS
+Compose configuration, starts the production stack, waits for Atlas Agent health,
+checks container hardening and mounts, verifies that Atlas Agent has no
+published host ports, confirms the writable `atlas-agent-state` volume, and
+smoke-tests `/agent-api/health` plus the repository endpoint through Mission
+Control. It also checks authenticated HTTPS ingress through `atlas-edge`.
 
 ---
 

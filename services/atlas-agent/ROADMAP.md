@@ -241,10 +241,14 @@ Deliverables
 - Performance validation
 - Operational readiness
 
-Configuration validation, diagnostics, structured failures, and broad automated
-tests are implemented. Documentation synchronization is A10.1. Recorded
-performance validation and remaining operational-readiness evidence are still
-unfinished.
+Configuration validation, diagnostics, structured failures, broad automated
+tests, and production deployment artifacts are implemented. Atlas Agent now has
+a dedicated production Dockerfile, a production Compose service, an
+`atlas-agent-state` persistent volume, internal-only service exposure, Mission
+Control `/agent-api/` proxying, HTTPS flow through `atlas-edge`, production
+health checks, container hardening, and container release-gate coverage.
+Recorded release acceptance testing, performance validation, and remaining
+operational-readiness evidence are still unfinished.
 
 ---
 
@@ -408,6 +412,19 @@ The implemented persistence is local and single-process. It does not provide a
 distributed store, database, multi-process coordination, or cross-host recovery.
 Redacted verification environment values require matching current environment
 values after restart, and corrupt or unsupported snapshots block startup.
+
+The production deployment path for this service is implemented.
+`compose.production.yaml` runs Atlas Agent from the dedicated production image,
+mounts the operator-selected `ATLAS_REPOSITORY_HOST_PATH` at
+`/workspace/repository`, passes
+`ATLAS_AGENT_REPOSITORY_ROOT=/workspace/repository`, persists local workflow
+state on `atlas-agent-state`, and keeps the service internal-only behind Mission
+Control's `/agent-api/` proxy. HTTPS traffic flows through `atlas-edge` to
+Mission Control and then Atlas Agent. The production image includes Python,
+Uvicorn, Atlas Agent, and Git only; Codex, Ruff, pytest, Node/npm, Docker, and
+other project-specific workflow tools remain operator-provided rather than
+bundled.
+
 Broader A15 development-loop hardening remains unfinished.
 
 ---
@@ -416,8 +433,9 @@ Broader A15 development-loop hardening remains unfinished.
 
 A12 granular approval work is complete for its currently defined scope. Based on
 the existing roadmap, the remaining unfinished checkpoints include A8 broader
-knowledge capabilities, A10 production-readiness evidence, A13 model-assisted
-review/model selection, A15 broader development-loop hardening, and Docker policy
-work outside the current A12 scope. The roadmap does not define a sub-checkpoint
-ordering between those unfinished tracks, so the next implementation checkpoint
-is pending human selection.
+knowledge capabilities, A10 release acceptance and operational-readiness
+evidence, A13 model-assisted review/model selection, A15 broader
+development-loop hardening, and Docker execution policy work outside the current
+A12 scope. The roadmap does not define a sub-checkpoint ordering between those
+unfinished tracks, so the next implementation checkpoint is pending human
+selection.
