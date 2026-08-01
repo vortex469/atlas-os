@@ -4,6 +4,8 @@ import pytest
 
 from app.config import policies as policy_config
 from app.config.policies import (
+    DEFAULT_POLICY_FILE,
+    DEFAULT_POLICY_TEMPLATE_FILE,
     PolicyLoadError,
     get_expected_container_state,
     get_expected_guest_state,
@@ -13,13 +15,153 @@ from app.config.policies import (
     get_n8n_policy,
     get_obsidian_policy,
     get_opnsense_policy,
+    get_policy_file,
+    get_policy_template_file,
     get_qdrant_policy,
     load_policies,
 )
 
 
 def write_policy(policy_file: Path, content: str) -> None:
+    policy_file.parent.mkdir(parents=True, exist_ok=True)
     policy_file.write_text(content, encoding="utf-8")
+
+
+def test_default_runtime_and_template_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ATLAS_POLICY_FILE", raising=False)
+    monkeypatch.delenv("ATLAS_POLICY_TEMPLATE_FILE", raising=False)
+
+    assert get_policy_file() == DEFAULT_POLICY_FILE
+    assert get_policy_template_file() == DEFAULT_POLICY_TEMPLATE_FILE
+
+
+def test_policy_path_environment_overrides(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_policy = tmp_path / "runtime" / "policies.yaml"
+    template_policy = tmp_path / "templates" / "policies.yaml"
+    monkeypatch.setenv("ATLAS_POLICY_FILE", str(runtime_policy))
+    monkeypatch.setenv("ATLAS_POLICY_TEMPLATE_FILE", str(template_policy))
+
+    assert get_policy_file() == runtime_policy
+    assert get_policy_template_file() == template_policy
+
+
+def test_first_run_initializes_runtime_policy_from_valid_template(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_policy = tmp_path / "runtime" / "config" / "policies.yaml"
+    template_policy = tmp_path / "config" / "policies.yaml"
+    monkeypatch.setenv("ATLAS_POLICY_FILE", str(runtime_policy))
+    monkeypatch.setenv("ATLAS_POLICY_TEMPLATE_FILE", str(template_policy))
+    write_policy(
+        template_policy,
+        """
+proxmox:
+  guests:
+    "109":
+      expected: stopped
+docker:
+  containers:
+    atlas-core:
+      expected: running
+""".lstrip(),
+    )
+
+    policies = load_policies()
+
+    assert runtime_policy.exists()
+    assert runtime_policy.read_text(encoding="utf-8") == template_policy.read_text(
+        encoding="utf-8",
+    )
+    assert policies.proxmox.guests["109"].expected == "stopped"
+    assert policies.docker.containers["atlas-core"].expected == "running"
+
+
+def test_existing_runtime_policy_is_not_overwritten(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_policy = tmp_path / "runtime" / "config" / "policies.yaml"
+    template_policy = tmp_path / "config" / "policies.yaml"
+    monkeypatch.setenv("ATLAS_POLICY_FILE", str(runtime_policy))
+    monkeypatch.setenv("ATLAS_POLICY_TEMPLATE_FILE", str(template_policy))
+    write_policy(
+        runtime_policy,
+        """
+proxmox:
+  guests:
+    "109":
+      expected: running
+""".lstrip(),
+    )
+    write_policy(
+        template_policy,
+        """
+proxmox:
+  guests:
+    "109":
+      expected: stopped
+""".lstrip(),
+    )
+
+    policies = load_policies()
+
+    assert policies.proxmox.guests["109"].expected == "running"
+    assert "expected: running" in runtime_policy.read_text(encoding="utf-8")
+
+
+def test_runtime_parent_directory_is_created(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_policy = tmp_path / "missing" / "nested" / "policies.yaml"
+    template_policy = tmp_path / "config" / "policies.yaml"
+    monkeypatch.setenv("ATLAS_POLICY_FILE", str(runtime_policy))
+    monkeypatch.setenv("ATLAS_POLICY_TEMPLATE_FILE", str(template_policy))
+    write_policy(template_policy, "homeassistant:\n  ignored_entities: []\n")
+
+    load_policies()
+
+    assert runtime_policy.parent.is_dir()
+    assert runtime_policy.exists()
+
+
+def test_invalid_template_blocks_runtime_initialization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_policy = tmp_path / "runtime" / "policies.yaml"
+    template_policy = tmp_path / "config" / "policies.yaml"
+    monkeypatch.setenv("ATLAS_POLICY_FILE", str(runtime_policy))
+    monkeypatch.setenv("ATLAS_POLICY_TEMPLATE_FILE", str(template_policy))
+    write_policy(template_policy, "docker:\n  containers:\n    atlas-core:\n      expected: paused\n")
+
+    with pytest.raises(PolicyLoadError, match="policy initialization failed"):
+        load_policies()
+
+    assert not runtime_policy.exists()
+
+
+def test_invalid_runtime_policy_blocks_loading(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_policy = tmp_path / "runtime" / "policies.yaml"
+    template_policy = tmp_path / "config" / "policies.yaml"
+    monkeypatch.setenv("ATLAS_POLICY_FILE", str(runtime_policy))
+    monkeypatch.setenv("ATLAS_POLICY_TEMPLATE_FILE", str(template_policy))
+    write_policy(runtime_policy, "docker:\n  containers:\n    atlas-core:\n      expected: paused\n")
+    write_policy(template_policy, "docker:\n  containers: {}\n")
+
+    with pytest.raises(PolicyLoadError, match="policy reload failed"):
+        load_policies()
+
+    assert "expected: paused" in runtime_policy.read_text(encoding="utf-8")
 
 
 def test_policy_changes_reload_without_process_restart(

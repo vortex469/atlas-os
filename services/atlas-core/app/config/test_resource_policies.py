@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from app.config.policies import PolicyLoadError
+from app.config.policies import PolicyLoadError, load_policies
 from app.config.resource_policies import (
     ResourcePolicyValidationError,
     update_proxmox_guest_expectation,
@@ -15,6 +15,11 @@ from app.config.resource_policies import (
 def read_policy(policy_file: Path) -> dict:
     with policy_file.open("r", encoding="utf-8") as policy_stream:
         return yaml.safe_load(policy_stream)
+
+
+def write_policy(policy_file: Path, content: str) -> None:
+    policy_file.parent.mkdir(parents=True, exist_ok=True)
+    policy_file.write_text(content, encoding="utf-8")
 
 
 def test_policy_update_preserves_unrelated_yaml_sections(
@@ -111,3 +116,54 @@ def test_missing_policy_file_can_be_created(tmp_path: Path) -> None:
     assert read_policy(policy_file)["proxmox"]["guests"]["109"] == {
         "expected": "running"
     }
+
+
+def test_runtime_policy_update_is_immediately_visible(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_policy = tmp_path / "runtime" / "config" / "policies.yaml"
+    template_policy = tmp_path / "config" / "policies.yaml"
+    monkeypatch.setenv("ATLAS_POLICY_FILE", str(runtime_policy))
+    monkeypatch.setenv("ATLAS_POLICY_TEMPLATE_FILE", str(template_policy))
+    write_policy(template_policy, "proxmox:\n  guests: {}\n")
+
+    update_proxmox_guest_expectation("109", "stopped")
+
+    assert load_policies().proxmox.guests["109"].expected == "stopped"
+
+
+def test_runtime_policy_update_preserves_template_sections(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_policy = tmp_path / "runtime" / "config" / "policies.yaml"
+    template_policy = tmp_path / "config" / "policies.yaml"
+    monkeypatch.setenv("ATLAS_POLICY_FILE", str(runtime_policy))
+    monkeypatch.setenv("ATLAS_POLICY_TEMPLATE_FILE", str(template_policy))
+    write_policy(
+        template_policy,
+        """
+proxmox:
+  guests:
+    "101":
+      expected: running
+docker:
+  containers:
+    atlas-core:
+      expected: running
+homeassistant:
+  ignored_entities:
+    - sensor.noisy
+""".lstrip(),
+    )
+
+    update_proxmox_guest_expectation("109", "ignored")
+
+    policy = read_policy(runtime_policy)
+    assert policy["proxmox"]["guests"]["101"] == {"expected": "running"}
+    assert policy["proxmox"]["guests"]["109"] == {"expected": "ignored"}
+    assert policy["docker"]["containers"]["atlas-core"] == {
+        "expected": "running",
+    }
+    assert policy["homeassistant"]["ignored_entities"] == ["sensor.noisy"]

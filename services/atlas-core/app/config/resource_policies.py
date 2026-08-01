@@ -38,7 +38,10 @@ def update_proxmox_guest_expectation(
             f"{', '.join(sorted(PROXMOX_GUEST_EXPECTATIONS))}."
         )
 
-    resolved_policy_file = policy_file or policy_config.POLICY_FILE
+    if policy_file is None:
+        resolved_policy_file = policy_config.ensure_runtime_policy_file()
+    else:
+        resolved_policy_file = policy_file
     resolved_policy_file.parent.mkdir(parents=True, exist_ok=True)
     lock_file = resolved_policy_file.with_name(
         f".{resolved_policy_file.name}.lock"
