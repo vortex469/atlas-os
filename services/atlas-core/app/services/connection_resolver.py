@@ -55,6 +55,27 @@ class ConnectionContextResolver:
                 verify_tls=mode == "https",
             )
 
+        if provider_id == "docker":
+            socket_uri = self._settings.docker.socket
+            socket_path = socket_uri.removeprefix("unix://")
+            return ConnectionContext(
+                mode="unix",
+                configured=bool(socket_path),
+                source="settings",
+                path=socket_path,
+                timeout_seconds=10.0,
+                metadata={
+                    "socket_uri": socket_uri,
+                    "privileged_local_runtime": True,
+                    "editable": False,
+                    "permission_model": "supplemental_group",
+                    "warning": (
+                        "Docker socket access is privileged even when the "
+                        "bind mount is read-only."
+                    ),
+                },
+            )
+
         service = self._service(provider_id)
         if service is None:
             return None

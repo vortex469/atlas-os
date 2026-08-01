@@ -27,6 +27,7 @@ def settings(
     proxmox_node: str = "vorex469",
     proxmox_verify_ssl: bool = False,
     home_assistant_url: str = "http://10.10.40.140:8123",
+    docker_socket: str = "unix:///var/run/docker.sock",
 ) -> Settings:
     return Settings(
         atlas=AtlasSettings(release="Foundry"),
@@ -38,7 +39,7 @@ def settings(
             verify_ssl=proxmox_verify_ssl,
         ),
         home_assistant=HomeAssistantSettings(url=home_assistant_url),
-        docker=DockerSettings(),
+        docker=DockerSettings(socket=docker_socket),
         inventory=InventorySettings(file="/opt/atlas/inventory/services.yaml"),
     )
 
@@ -136,6 +137,23 @@ def test_home_assistant_context_resolves_url_from_settings_and_token_from_enviro
     assert context.connection.port == 8123
     assert context.secrets["token"].source == "environment"
     assert context.secrets["token"].configured is True
+
+
+def test_docker_context_resolves_fixed_unix_socket_from_settings() -> None:
+    context = resolver(
+        config=settings(docker_socket="unix:///run/custom-docker.sock"),
+    ).resolve_context("docker")
+
+    assert context.metadata.name == "Docker"
+    assert context.connection is not None
+    assert context.connection.mode == "unix"
+    assert context.connection.source == "settings"
+    assert context.connection.path == "/run/custom-docker.sock"
+    assert context.connection.metadata["socket_uri"] == "unix:///run/custom-docker.sock"
+    assert context.connection.metadata["privileged_local_runtime"] is True
+    assert context.connection.metadata["editable"] is False
+    assert context.connection.metadata["permission_model"] == "supplemental_group"
+    assert context.secrets == {}
 
 
 def test_generic_inventory_provider_resolves_connection_from_inventory() -> None:
@@ -255,7 +273,7 @@ def test_unknown_provider_returns_stable_resolution_error() -> None:
 def test_resolving_all_contexts_preserves_inventory_order_and_default_proxmox() -> None:
     contexts = resolver(inv={"services": {"hermes": inventory()["services"]["hermes"]}}).resolve_all_contexts()
 
-    assert [context.consumer_id for context in contexts] == ["hermes", "proxmox"]
+    assert [context.consumer_id for context in contexts] == ["hermes", "proxmox", "docker"]
 
 
 def test_resolving_contexts_does_not_mutate_provider_registry() -> None:

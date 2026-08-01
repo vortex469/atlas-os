@@ -17,6 +17,7 @@ from app.providers import (
     ProviderPriority,
     ProviderWorkspace,
 )
+from app.providers.docker import DockerProvider
 from app.providers.factory import (
     ProviderFactoryNotFoundError,
     ProviderFactoryRegistry,
@@ -250,6 +251,12 @@ def test_context_metadata_wins_and_legacy_data_remains_available_for_proxmox() -
 def test_http_provider_factories_pass_atlas_context_and_context_values() -> None:
     contexts = (
         http_atlas_context(
+            "docker",
+            provider_type="docker",
+            port=1,
+            path="/var/run/docker.sock",
+        ),
+        http_atlas_context(
             "opnsense",
             provider_type="opnsense",
             port=8443,
@@ -292,6 +299,7 @@ def test_http_provider_factories_pass_atlas_context_and_context_values() -> None
     providers = build_providers_from_contexts(contexts)
     providers_by_id = {provider.metadata.id: provider for provider in providers}
 
+    assert isinstance(providers_by_id["docker"], DockerProvider)
     assert isinstance(providers_by_id["opnsense"], OPNsenseProvider)
     assert isinstance(providers_by_id["frigate"], FrigateProvider)
     assert isinstance(providers_by_id["home-assistant"], HomeAssistantProvider)
@@ -306,6 +314,9 @@ def test_http_provider_factories_pass_atlas_context_and_context_values() -> None
         assert provider.atlas_context is context  # type: ignore[attr-defined]
         assert provider.metadata.name == f"Context {context.consumer_id}"
 
+    assert providers_by_id["docker"].metadata.capabilities >= frozenset(
+        {ProviderCapability.HEALTH, ProviderCapability.CONNECTION},
+    )
     assert providers_by_id["opnsense"]._base_url == "https://opnsense.context.local:8443/"  # type: ignore[attr-defined]
     assert providers_by_id["frigate"]._headers()["Authorization"] == "Bearer frigate-token"  # type: ignore[attr-defined]
     assert providers_by_id["home-assistant"].atlas_context.secrets["token"].reveal() == "ha-token"  # type: ignore[attr-defined]

@@ -5,6 +5,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from app.context import AtlasContext
 from app.providers.base import Provider
+from app.providers.docker import DockerProvider
 from app.providers.frigate import FrigateProvider
 from app.providers.homeassistant import HomeAssistantProvider
 from app.providers.inventory_provider import InventoryServiceProvider
@@ -107,6 +108,10 @@ def default_provider_factory_registry() -> ProviderFactoryRegistry:
         ),
     )
     factories: dict[str, ProviderFactory] = {
+        "docker": LegacyProviderFactory(
+            "docker",
+            lambda context, service: DockerProvider(context),
+        ),
         "frigate": LegacyProviderFactory(
             "frigate",
             lambda context, service: FrigateProvider(context),

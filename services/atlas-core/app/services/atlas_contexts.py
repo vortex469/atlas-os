@@ -189,6 +189,12 @@ class LegacyAtlasContextResolver:
                 "description": "Virtualization provider for Proxmox guests.",
                 "critical": True,
             }
+        if "docker" not in declarations:
+            declarations["docker"] = {
+                "name": "Docker",
+                "description": "Docker engine health and container inventory provider.",
+                "critical": True,
+            }
 
         return declarations
 
@@ -247,6 +253,7 @@ def _provider_type_for_provider(provider_id: str) -> str:
     known_provider_types = {
         "frigate",
         "home_assistant",
+        "docker",
         "n8n",
         "obsidian",
         "ollama",
@@ -296,6 +303,7 @@ def _priority_for_provider(provider_id: str, critical: bool) -> str:
 
 def _icon_for_provider(provider_id: str) -> str:
     icons = {
+        "docker": "container",
         "proxmox": "server",
         "home_assistant": "home",
         "opnsense": "shield",
@@ -318,6 +326,8 @@ def _capabilities_for_provider(provider_id: str) -> tuple[str, ...]:
             "diagnostics",
             "actions",
         )
+    if provider_id == "docker":
+        return ("health", "findings", "metrics", "connection", "diagnostics")
     if provider_id == "opnsense":
         return ("health", "actions", "configuration")
     if provider_id == "home_assistant":

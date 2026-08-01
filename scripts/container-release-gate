@@ -148,6 +148,29 @@ test "$(docker inspect \
     | grep -qx '/var/run/docker.sock'
 docker exec "$agent_container" python -c "from pathlib import Path; path = Path('/opt/atlas/agent-state/.release-gate-write-test'); path.write_text('ok'); path.unlink()"
 
+echo "Checking Atlas Core Docker socket access and hardening"
+test "$(docker exec "$core_container" id -u)" = "10001"
+docker exec "$core_container" sh -c "id -G | tr ' ' '\n' | grep -qx '$DOCKER_GID'"
+docker exec "$core_container" test -S /var/run/docker.sock
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/var/run/docker.sock"}}{{.RW}}{{end}}{{end}}' \
+    "$core_container")" = "false"
+docker exec "$core_container" python - <<'PY'
+from app.services.atlas_contexts import LegacyAtlasContextResolver
+from app.clients.docker_client import create_docker_client, docker_connection_diagnostics
+
+context = LegacyAtlasContextResolver().resolve_context("docker")
+diagnostics = docker_connection_diagnostics(context)
+assert context.connection is not None
+assert context.connection.mode == "unix"
+assert context.connection.path == "/var/run/docker.sock"
+assert diagnostics["privileged_local_runtime"] is True
+assert diagnostics["editable"] is False
+assert diagnostics["socket_exists"] is True
+client = create_docker_client(context)
+assert client.ping() is True
+PY
+
 published_address="$("${compose[@]}" port mission-control 8080)"
 published_port="${published_address##*:}"
 base_url="http://127.0.0.1:$published_port"
