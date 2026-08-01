@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { FindingCard } from "../components/FindingCard";
 import { ProviderActions } from "../components/ProviderActions";
+import { ProviderConnection } from "../components/ProviderConnection";
 import { ProviderOverview } from "../components/ProviderOverview";
 import { ProviderPolicyDetails } from "../components/ProviderPolicyDetails";
 import { ProviderResources } from "../components/ProviderResources";
@@ -173,6 +174,10 @@ export function ProviderPage() {
                         provider={provider}
                         onActionCompleted={refresh}
                     />
+
+                    {provider.capabilities.includes("connection") && (
+                        <ProviderConnection provider={provider} />
+                    )}
 
                     {provider.capabilities.includes("resources") && (
                         <ProviderResources provider={provider} />
