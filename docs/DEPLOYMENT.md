@@ -232,6 +232,19 @@ command uses SQLite's online backup API for databases, so WAL-mode writes
 can continue without producing an inconsistent database copy. Runtime
 file entries are verified by safe relative path and checksum.
 
+Runtime policy files are owned by the Atlas container user and may be
+mode `0600`. The backup command therefore reads the Atlas data volume
+from a disposable helper running as the Atlas UID `10001`, with no
+network, a read-only root filesystem, all capabilities dropped,
+`no-new-privileges`, no Docker socket, the Atlas data volume mounted
+read-only, and only the incomplete backup destination mounted writable.
+Before the incomplete backup is renamed into place, a second disposable
+ownership helper mounts only that incomplete backup directory and uses
+only the `CHOWN` capability to set the backup directory and files back to
+the invoking host UID/GID and keeps them readable by the Atlas restore
+UID. Operators can then read, move, and remove the artifacts normally
+without weakening runtime policy permissions.
+
 Restore replaces both databases, restores included runtime files
 atomically under the Atlas data root, and removes stale WAL and shared
 memory sidecars. Stop every container using the volume first:
@@ -252,7 +265,9 @@ replacing live database files. Version-1 database-only backups remain
 valid; they simply do not restore runtime policy files, allowing Atlas to
 initialize missing runtime policy from the read-only template on next
 startup. Set `ATLAS_DATA_VOLUME` only when the Compose project uses a
-non-default volume name.
+non-default volume name. Restore runs as the Atlas data UID, default
+`10001`, so restored runtime files remain Atlas-owned and runtime policy
+files keep mode `0600`.
 
 ### Schedule backups
 

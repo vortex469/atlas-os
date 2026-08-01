@@ -68,7 +68,9 @@ def sqlite_backup(source: Path, destination: Path) -> None:
 
 
 def create_backup(source: Path, destination: Path) -> None:
-    destination.mkdir(parents=True, exist_ok=False)
+    destination.mkdir(parents=True, exist_ok=True)
+    if any(destination.iterdir()):
+        raise RuntimeError(f"backup destination is not empty: {destination}")
     database_records: list[dict[str, object]] = []
     runtime_file_records: list[dict[str, object]] = []
 
@@ -119,6 +121,19 @@ def create_backup(source: Path, destination: Path) -> None:
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def apply_owner(path: Path, uid: int, gid: int) -> None:
+    if uid < 0 or gid < 0:
+        raise RuntimeError("output owner uid and gid must be non-negative")
+
+    for current, directories, filenames in os.walk(path):
+        current_path = Path(current)
+        os.chown(current_path, uid, gid)
+        for name in directories:
+            os.chown(current_path / name, uid, gid)
+        for name in filenames:
+            os.chown(current_path / name, uid, gid)
 
 
 def verify_backup(backup: Path) -> dict[str, object]:
@@ -298,9 +313,16 @@ def parse_args() -> argparse.Namespace:
     backup_parser = subparsers.add_parser("backup")
     backup_parser.add_argument("source", type=Path)
     backup_parser.add_argument("destination", type=Path)
+    backup_parser.add_argument("--output-owner-uid", type=int)
+    backup_parser.add_argument("--output-owner-gid", type=int)
 
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("backup", type=Path)
+
+    chown_parser = subparsers.add_parser("chown")
+    chown_parser.add_argument("path", type=Path)
+    chown_parser.add_argument("uid", type=int)
+    chown_parser.add_argument("gid", type=int)
 
     restore_parser = subparsers.add_parser("restore")
     restore_parser.add_argument("backup", type=Path)
@@ -327,6 +349,12 @@ def main() -> None:
     args = parse_args()
     if args.command == "backup":
         create_backup(args.source, args.destination)
+        if args.output_owner_uid is not None or args.output_owner_gid is not None:
+            if args.output_owner_uid is None or args.output_owner_gid is None:
+                raise RuntimeError(
+                    "both --output-owner-uid and --output-owner-gid are required"
+                )
+            apply_owner(args.destination, args.output_owner_uid, args.output_owner_gid)
     elif args.command == "verify":
         manifest = verify_backup(args.backup)
         file_count = len(manifest.get("files", []))
@@ -335,6 +363,8 @@ def main() -> None:
             f"{file_count} runtime files, "
             f"created {manifest['created_at']}"
         )
+    elif args.command == "chown":
+        apply_owner(args.path, args.uid, args.gid)
     elif args.command == "restore":
         restore_backup(args.backup, args.target)
         print("Backup restored and verified")
