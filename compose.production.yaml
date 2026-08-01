@@ -9,6 +9,9 @@ services:
     env_file:
       - path: ${ATLAS_ENV_FILE:-.env}
         required: true
+    environment:
+      ATLAS_POLICY_FILE: /opt/atlas/data/config/policies.yaml
+      ATLAS_POLICY_TEMPLATE_FILE: /opt/atlas/config/policies.yaml
     volumes:
       - ./config/atlas.yaml:/opt/atlas/config/atlas.yaml:ro
       - ./config/policies.yaml:/opt/atlas/config/policies.yaml:ro

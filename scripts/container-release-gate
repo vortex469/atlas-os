@@ -12,6 +12,7 @@ GATE_CERT_FILE="$GATE_DIRECTORY/tls.crt"
 GATE_KEY_FILE="$GATE_DIRECTORY/tls.key"
 GATE_HTPASSWD_FILE="$GATE_DIRECTORY/htpasswd"
 GATE_PROJECT="atlas-release-gate-$$"
+POLICY_TEMPLATE_FILE="$ATLAS_ROOT/config/policies.yaml"
 
 for executable in docker curl openssl; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -89,6 +90,7 @@ export ATLAS_TLS_KEY_FILE="$GATE_KEY_FILE"
 export ATLAS_HTPASSWD_FILE="$GATE_HTPASSWD_FILE"
 export DOCKER_GID
 DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+policy_template_checksum_before="$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')"
 
 compose=(
     docker compose
@@ -156,6 +158,61 @@ https_base_url="https://127.0.0.1:$https_published_port"
 test "$(docker inspect \
     --format '{{(index .HostConfig.PortBindings "8080/tcp" 0).HostIp}}' \
     "$mission_container")" = "127.0.0.1"
+
+echo "Checking Atlas Core runtime policy storage"
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/opt/atlas/config/policies.yaml"}}{{.RW}}{{end}}{{end}}' \
+    "$core_container")" = "false"
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/opt/atlas/data"}}{{.RW}}{{end}}{{end}}' \
+    "$core_container")" = "true"
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/opt/atlas/data"}}{{.Type}}{{end}}{{end}}' \
+    "$core_container")" = "volume"
+docker exec "$core_container" python -c "import os; assert os.environ['ATLAS_POLICY_FILE'] == '/opt/atlas/data/config/policies.yaml'; assert os.environ['ATLAS_POLICY_TEMPLATE_FILE'] == '/opt/atlas/config/policies.yaml'"
+docker exec "$core_container" python -c "from pathlib import Path; import os; assert not os.access('/opt/atlas/config/policies.yaml', os.W_OK); assert os.access('/opt/atlas/data', os.W_OK); Path('/opt/atlas/data/config').mkdir(parents=True, exist_ok=True); probe = Path('/opt/atlas/data/config/.release-gate-write-test'); probe.write_text('ok'); probe.unlink()"
+curl --fail --silent --show-error "$base_url/api/v1/policies/status" \
+    | grep -q '"status":"healthy"'
+docker exec "$core_container" test -f /opt/atlas/data/config/policies.yaml
+docker exec "$core_container" cmp -s \
+    /opt/atlas/config/policies.yaml \
+    /opt/atlas/data/config/policies.yaml
+curl --fail --silent --show-error \
+    --request PUT \
+    --header 'Content-Type: application/json' \
+    --data '{"expectation":"stopped","confirmed":true}' \
+    "$base_url/api/v1/providers/proxmox/resources/109/expectation" \
+    | grep -q '"resource_id":"109"'
+curl --fail --silent --show-error "$base_url/api/v1/policies" \
+    | grep -q '"109":{"expected":"stopped"}'
+docker exec -i "$core_container" python - <<'PY'
+from app.providers.proxmox import ProxmoxProvider
+import app.providers.proxmox as proxmox_module
+
+def fake_guests():
+    return {
+        "node": "release-gate",
+        "running": 0,
+        "stopped": 1,
+        "guests": [
+            {
+                "vmid": 109,
+                "name": "release-gate-guest",
+                "type": "lxc",
+                "status": "stopped",
+            },
+        ],
+    }
+
+proxmox_module.get_proxmox_guests = fake_guests
+provider = ProxmoxProvider({"name": "Proxmox"})
+resources = __import__("asyncio").run(provider.list_resources()).resources
+resource = next(item for item in resources if item.resource_id == "109")
+assert resource.expectation.value == "stopped"
+assert resource.expectation.label == "Expected Stopped"
+PY
+test "$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')" = \
+    "$policy_template_checksum_before"
 
 echo "Checking Mission Control, API proxy, and SPA fallback"
 curl --fail --silent --show-error "$base_url/" \

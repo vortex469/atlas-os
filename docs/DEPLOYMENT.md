@@ -30,6 +30,26 @@ Do not commit `.env`. Review `config/policies.yaml` and
 `inventory/services.yaml`; the repository values are examples and may
 contain environment-specific addresses.
 
+Atlas treats files under `config/` as immutable defaults in production.
+`config/policies.yaml` is mounted read-only as the shipped policy
+template. On first use, Atlas validates that template and initializes the
+runtime policy at `/opt/atlas/data/config/policies.yaml` inside the
+`atlas-data` volume. Mission Control and API policy writes update the
+runtime policy only, so normal user changes do not dirty the Git
+checkout. Existing runtime policy files are never overwritten by a new
+template during startup.
+
+The production Compose file sets the runtime policy paths explicitly:
+
+```dotenv
+ATLAS_POLICY_FILE=/opt/atlas/data/config/policies.yaml
+ATLAS_POLICY_TEMPLATE_FILE=/opt/atlas/config/policies.yaml
+```
+
+Operators may override those paths for custom deployments, but the
+runtime path must be writable by the non-root Atlas Core user and the
+template path should remain read-only.
+
 ## Choose an ingress mode
 
 The Core container accesses the host Docker API through its socket. Set
@@ -183,9 +203,11 @@ docker compose -f compose.production.yaml down
 
 Include `-f compose.https.yaml` when stopping an HTTPS deployment.
 
-The `atlas-data` named volume contains action history and provider
-intelligence telemetry. Deleting that volume permanently removes both
-databases.
+The `atlas-data` named volume contains action history, provider
+intelligence telemetry, and runtime policy state under
+`/opt/atlas/data/config/policies.yaml`. Deleting that volume permanently
+removes both databases and user-owned runtime policy changes. The tracked
+`config/policies.yaml` file remains only the immutable template.
 
 ## Back up and restore data
 
