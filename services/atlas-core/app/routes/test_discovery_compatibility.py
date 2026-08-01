@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
+import app.discovery.compatibility as compatibility_module
 from app.discovery.compatibility import CompatibilityContext
 from app.discovery.loader import LoadedCatalog
 from app.discovery.models import (
@@ -11,7 +14,7 @@ from app.discovery.models import (
 )
 from app.main import app
 from app.routes import discovery as route_module
-from app.services.discovery import DiscoveryCatalogService
+from app.services.discovery import get_discovery_service
 from app.services.discovery_compatibility import DiscoveryCompatibilityService
 from app.testing import ASGITestClient
 
@@ -39,6 +42,12 @@ class FailingBuilder:
         raise RuntimeError("internal path /opt/atlas/config/private.yaml")
 
 
+class FixedDateTime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        return datetime(2026, 1, 1, 12, 0, tzinfo=tz or UTC)
+
+
 def entry() -> CatalogEntry:
     return CatalogEntry(
         item=DiscoveryItem(
@@ -54,7 +63,7 @@ def entry() -> CatalogEntry:
 
 
 def install_service(monkeypatch, context: CompatibilityContext | None = None) -> None:
-    discovery_service = DiscoveryCatalogService(StaticLoader((entry(),)))
+    discovery_service = get_discovery_service().__class__(StaticLoader((entry(),)))
     compatibility_service = DiscoveryCompatibilityService(
         discovery_service=discovery_service,
         context_builder=StaticBuilder(context or CompatibilityContext()),
@@ -101,6 +110,42 @@ def test_compatibility_route_preserves_unknowns(monkeypatch) -> None:
     assert body["evidence"][1]["status"] == "insufficient_information"
 
 
+def test_builtin_frigate_compatibility_contract_is_stable_and_sanitized(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(compatibility_module, "datetime", FixedDateTime)
+
+    first = client.get("/api/v1/discovery/items/frigate/compatibility")
+    second = client.get("/api/v1/discovery/items/frigate/compatibility")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+
+    body = first.json()
+    assert body["item_id"] == "frigate"
+    assert body["status"] == "insufficient_information"
+    assert "score" not in first.text.lower()
+
+    evidence_ids = {item["id"] for item in body["evidence"]}
+    assert evidence_ids
+    for finding in body["findings"]:
+        assert set(finding["evidence_ids"]).issubset(evidence_ids)
+
+    private_fragments = (
+        "/opt/atlas",
+        "/var/",
+        "frigate.yaml",
+        "ValidationError",
+        "parser",
+        "password",
+        "secret",
+        "token",
+    )
+    for fragment in private_fragments:
+        assert fragment not in first.text
+
+
 def test_compatibility_route_missing_item_returns_404(monkeypatch) -> None:
     install_service(monkeypatch, CompatibilityContext())
 
@@ -111,7 +156,7 @@ def test_compatibility_route_missing_item_returns_404(monkeypatch) -> None:
 
 
 def test_compatibility_route_sanitizes_context_failure(monkeypatch) -> None:
-    discovery_service = DiscoveryCatalogService(StaticLoader((entry(),)))
+    discovery_service = get_discovery_service().__class__(StaticLoader((entry(),)))
     compatibility_service = DiscoveryCompatibilityService(
         discovery_service=discovery_service,
         context_builder=FailingBuilder(),

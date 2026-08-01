@@ -181,7 +181,7 @@ Deliverables:
 - Environment projection inputs
 - Provider-resource projection inputs
 - Evidence and unmet requirement reporting
-- `compatible`, `incompatible`, `degraded`, `unknown`, and `needs-review` statuses
+- `compatible`, `compatible_with_warnings`, `insufficient_information`, and `incompatible` statuses
 
 Non-goals:
 

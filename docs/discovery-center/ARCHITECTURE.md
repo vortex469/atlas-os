@@ -131,13 +131,14 @@ Requirements must be structured enough for deterministic compatibility checks.
 
 Compatibility is an evidence-backed status, not a recommendation.
 
-Initial statuses:
+Implemented statuses:
 
 - compatible
+- compatible_with_warnings
+- insufficient_information
 - incompatible
-- degraded
-- unknown
-- needs-review
+
+Unknown information is represented as `insufficient_information`. Unknown facts are not treated as success or warning.
 
 A compatibility result should include:
 
@@ -166,18 +167,18 @@ Rules:
 
 ## Repository and service boundaries
 
-The planned backend implementation should live under a provider-neutral Atlas Core namespace, likely:
+The backend implementation lives under a provider-neutral Atlas Core namespace:
 
 ```text
-services/atlas-core/app/discovery_center/
+services/atlas-core/app/discovery/
 ```
 
 Initial runtime code should be independent of provider implementations. Provider data should enter Discovery Center through explicit projections rather than Discovery Center importing provider clients directly.
 
-Planned catalog data may live under:
+Implemented catalog data lives under:
 
 ```text
-services/atlas-core/app/discovery_center/catalog/
+services/atlas-core/app/discovery/catalog/
 ```
 
 or another reviewed source path selected in D1-D2. Runtime indexes and private catalogs, when implemented, should follow Atlas Runtime Foundation and use `data/knowledge/` or another documented runtime state location.
@@ -186,17 +187,18 @@ or another reviewed source path selected in D1-D2. Runtime indexes and private c
 
 The initial API should be read-only.
 
-Possible future routes:
+Implemented D7.5 routes:
 
 ```text
+GET /api/v1/discovery
 GET /api/v1/discovery/items
 GET /api/v1/discovery/items/{item_id}
+GET /api/v1/discovery/items/{item_id}/relationships
+GET /api/v1/discovery/items/{item_id}/compatibility
 GET /api/v1/discovery/search
-POST /api/v1/discovery/compatibility/check
-GET /api/v1/discovery/catalog/status
 ```
 
-The compatibility check can be a `POST` because it accepts structured input, but it must remain read-only and must not write runtime state, secrets, policies, configuration, ports, containers, or packages.
+The compatibility endpoint uses the current Atlas compatibility context and remains read-only. It must not write runtime state, secrets, policies, configuration, ports, containers, or packages. See [Discovery Center API Contract](API.md).
 
 ## Security boundaries
 
@@ -223,7 +225,7 @@ Offline-first rules:
 - Local YAML catalog loads deterministically.
 - Search and compatibility checks work from local data first.
 - Dynamic sources are optional supplements.
-- Missing external metadata should produce `unknown` or `needs-review`, not a hard failure when local data is sufficient.
+- Missing external metadata should produce `insufficient_information`, not a hard failure when local data is sufficient.
 - Online enrichment must be cached and provenance-tagged before use in future phases.
 
 ## Catalog trust and provenance

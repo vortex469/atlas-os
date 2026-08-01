@@ -2,6 +2,7 @@ import { atlas } from "./atlas";
 import type {
     DiscoveryCatalogEntry,
     DiscoveryCatalogPage,
+    DiscoveryCompatibilityAssessment,
     DiscoveryListQuery,
     DiscoveryMetadata,
     DiscoveryRelationshipCollection,
@@ -56,6 +57,21 @@ export async function getDiscoveryRelationships(
         `/discovery/items/${encodeURIComponent(itemId)}/relationships`,
         {
             params: relationshipType ? { type: relationshipType } : undefined,
+        },
+    );
+
+    return response.data;
+}
+
+export async function getDiscoveryCompatibility(
+    itemId: string,
+    target?: string,
+): Promise<DiscoveryCompatibilityAssessment> {
+    const normalizedTarget = target?.trim();
+    const response = await atlas.get<DiscoveryCompatibilityAssessment>(
+        `/discovery/items/${encodeURIComponent(itemId)}/compatibility`,
+        {
+            params: normalizedTarget ? { target: normalizedTarget } : undefined,
         },
     );
 

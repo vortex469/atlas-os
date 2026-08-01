@@ -12,15 +12,96 @@ from app.discovery.compatibility import (
 )
 from app.discovery.models import (
     CATALOG_SCHEMA_VERSION,
-    CatalogProvenance,
+    CatalogSourceType,
+    CatalogTrustLevel,
     DiscoveryCenterModel,
     DiscoveryItemStatus,
     DiscoveryItemType,
-    DiscoveryRelationship,
-    DiscoveryRequirements,
+    DiscoveryRelationshipType,
 )
 from app.discovery.repository import DiscoveryRelationshipReference
 from app.discovery.search import DiscoverySearchEvidence, DiscoverySearchResult
+
+
+class DiscoveryCapabilityReferenceResponse(DiscoveryCenterModel):
+    """Public API projection of a capability reference."""
+
+    id: str
+
+
+class DiscoveryResourceRequirementsResponse(DiscoveryCenterModel):
+    """Public API projection of resource requirements."""
+
+    cpu_cores_min: float | None = None
+    memory_mb_min: int | None = None
+    storage_gb_min: float | None = None
+    gpu_required: bool = False
+    gpu_memory_gb_min: float | None = None
+
+
+class DiscoveryPlatformRequirementsResponse(DiscoveryCenterModel):
+    """Public API projection of platform requirements."""
+
+    architectures: tuple[str, ...] = ()
+    operating_systems: tuple[str, ...] = ()
+    runtimes: tuple[str, ...] = ()
+    devices: tuple[str, ...] = ()
+
+
+class DiscoveryPortRequirementResponse(DiscoveryCenterModel):
+    """Public API projection of a port requirement."""
+
+    port: int
+    protocol: str
+    direction: str
+    required: bool
+    description: str = ""
+
+
+class DiscoveryNetworkRequirementsResponse(DiscoveryCenterModel):
+    """Public API projection of network requirements."""
+
+    ports: tuple[DiscoveryPortRequirementResponse, ...] = ()
+    requires_internet: bool = False
+    requires_lan: bool = False
+    notes: tuple[str, ...] = ()
+
+
+class DiscoveryRequirementsResponse(DiscoveryCenterModel):
+    """Public API projection of Discovery requirements."""
+
+    capabilities: tuple[DiscoveryCapabilityReferenceResponse, ...] = ()
+    resources: DiscoveryResourceRequirementsResponse = Field(
+        default_factory=DiscoveryResourceRequirementsResponse,
+    )
+    platform: DiscoveryPlatformRequirementsResponse = Field(
+        default_factory=DiscoveryPlatformRequirementsResponse,
+    )
+    network: DiscoveryNetworkRequirementsResponse = Field(
+        default_factory=DiscoveryNetworkRequirementsResponse,
+    )
+
+
+class DiscoveryRelationshipResponse(DiscoveryCenterModel):
+    """Public API projection of a Discovery relationship."""
+
+    type: DiscoveryRelationshipType
+    target: str
+    required: bool = True
+    minimum_version: str | None = None
+    maximum_version: str | None = None
+    description: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DiscoveryCatalogProvenanceResponse(DiscoveryCenterModel):
+    """Public API projection of catalog provenance."""
+
+    source_type: CatalogSourceType
+    source: str
+    entry_id: str | None = None
+    version: str | None = None
+    trust_level: CatalogTrustLevel
 
 
 class DiscoveryItemResponse(DiscoveryCenterModel):
@@ -37,8 +118,10 @@ class DiscoveryItemResponse(DiscoveryCenterModel):
     homepage_url: str | None = None
     documentation_url: str | None = None
     capabilities: tuple[str, ...] = ()
-    requirements: DiscoveryRequirements = Field(default_factory=DiscoveryRequirements)
-    relationships: tuple[DiscoveryRelationship, ...] = ()
+    requirements: DiscoveryRequirementsResponse = Field(
+        default_factory=DiscoveryRequirementsResponse,
+    )
+    relationships: tuple[DiscoveryRelationshipResponse, ...] = ()
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -47,7 +130,7 @@ class DiscoveryCatalogEntryResponse(DiscoveryCenterModel):
 
     schema_version: int
     item: DiscoveryItemResponse
-    provenance: CatalogProvenance
+    provenance: DiscoveryCatalogProvenanceResponse
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -93,7 +176,7 @@ class DiscoveryRelationshipReferenceResponse(DiscoveryCenterModel):
 
     source_item_id: str
     target: str
-    relationship: DiscoveryRelationship
+    relationship: DiscoveryRelationshipResponse
     resolved_target_item_id: str | None = None
     resolved: bool
 
@@ -153,6 +236,65 @@ class DiscoveryCompatibilityAssessmentResponse(DiscoveryCenterModel):
     unknown_facts: tuple[str, ...] = ()
 
 
+def requirements_to_response(requirements) -> DiscoveryRequirementsResponse:
+    return DiscoveryRequirementsResponse(
+        capabilities=tuple(
+            DiscoveryCapabilityReferenceResponse(id=capability.id)
+            for capability in requirements.capabilities
+        ),
+        resources=DiscoveryResourceRequirementsResponse(
+            cpu_cores_min=requirements.resources.cpu_cores_min,
+            memory_mb_min=requirements.resources.memory_mb_min,
+            storage_gb_min=requirements.resources.storage_gb_min,
+            gpu_required=requirements.resources.gpu_required,
+            gpu_memory_gb_min=requirements.resources.gpu_memory_gb_min,
+        ),
+        platform=DiscoveryPlatformRequirementsResponse(
+            architectures=requirements.platform.architectures,
+            operating_systems=requirements.platform.operating_systems,
+            runtimes=requirements.platform.runtimes,
+            devices=requirements.platform.devices,
+        ),
+        network=DiscoveryNetworkRequirementsResponse(
+            ports=tuple(
+                DiscoveryPortRequirementResponse(
+                    port=port.port,
+                    protocol=port.protocol,
+                    direction=port.direction,
+                    required=port.required,
+                    description=port.description,
+                )
+                for port in requirements.network.ports
+            ),
+            requires_internet=requirements.network.requires_internet,
+            requires_lan=requirements.network.requires_lan,
+            notes=requirements.network.notes,
+        ),
+    )
+
+
+def relationship_domain_to_response(relationship) -> DiscoveryRelationshipResponse:
+    return DiscoveryRelationshipResponse(
+        type=relationship.type,
+        target=relationship.target,
+        required=relationship.required,
+        minimum_version=relationship.minimum_version,
+        maximum_version=relationship.maximum_version,
+        description=relationship.description,
+        metadata=dict(relationship.metadata),
+    )
+
+
+def provenance_to_response(provenance) -> DiscoveryCatalogProvenanceResponse:
+    return DiscoveryCatalogProvenanceResponse(
+        source_type=provenance.source_type,
+        source=provenance.source,
+        entry_id=provenance.entry_id,
+        version=provenance.version,
+        trust_level=provenance.trust_level,
+    )
+
+
 def entry_to_response(entry) -> DiscoveryCatalogEntryResponse:
     item = entry.item
     return DiscoveryCatalogEntryResponse(
@@ -169,11 +311,14 @@ def entry_to_response(entry) -> DiscoveryCatalogEntryResponse:
             homepage_url=item.homepage_url,
             documentation_url=item.documentation_url,
             capabilities=tuple(capability.id for capability in item.capabilities),
-            requirements=item.requirements,
-            relationships=item.relationships,
+            requirements=requirements_to_response(item.requirements),
+            relationships=tuple(
+                relationship_domain_to_response(relationship)
+                for relationship in item.relationships
+            ),
             metadata=dict(item.metadata),
         ),
-        provenance=entry.provenance,
+        provenance=provenance_to_response(entry.provenance),
         metadata=dict(entry.metadata),
     )
 
@@ -184,7 +329,7 @@ def relationship_to_response(
     return DiscoveryRelationshipReferenceResponse(
         source_item_id=reference.source_item_id,
         target=reference.target,
-        relationship=reference.relationship,
+        relationship=relationship_domain_to_response(reference.relationship),
         resolved_target_item_id=reference.resolved_target_item_id,
         resolved=reference.resolved,
     )
@@ -204,9 +349,10 @@ def search_evidence_to_response(
 def search_result_to_response(
     result: DiscoverySearchResult,
 ) -> DiscoverySearchResultResponse:
+    response_entry = entry_to_response(result.entry)
     return DiscoverySearchResultResponse(
-        item=entry_to_response(result.entry).item,
-        entry=entry_to_response(result.entry),
+        item=response_entry.item,
+        entry=response_entry,
         evidence=tuple(search_evidence_to_response(item) for item in result.evidence),
     )
 

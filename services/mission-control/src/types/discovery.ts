@@ -25,6 +25,26 @@ export type DiscoveryRelationshipType =
     | "compatible_with"
     | "incompatible_with";
 
+export type DiscoveryCompatibilityStatus =
+    | "compatible"
+    | "compatible_with_warnings"
+    | "insufficient_information"
+    | "incompatible";
+
+export type DiscoveryCompatibilityFindingSeverity =
+    | "blocker"
+    | "warning"
+    | "info"
+    | "unknown";
+
+export type DiscoveryCompatibilityCheckType =
+    | "capability"
+    | "resource"
+    | "platform"
+    | "network"
+    | "relationship"
+    | "catalog";
+
 export type DiscoveryCapabilityReference = {
     id: string;
 };
@@ -154,6 +174,39 @@ export type DiscoveryMetadata = {
     catalog_loaded: boolean;
     entry_count: number;
     schema_version: number;
+};
+
+export type DiscoveryCompatibilityEvidence = {
+    id: string;
+    check_type: DiscoveryCompatibilityCheckType;
+    subject: string;
+    status: DiscoveryCompatibilityStatus;
+    message: string;
+    source: string;
+    requirement?: string | null;
+    observed?: string | null;
+    observed_fact_id?: string | null;
+};
+
+export type DiscoveryCompatibilityFinding = {
+    id: string;
+    check_type: DiscoveryCompatibilityCheckType;
+    severity: DiscoveryCompatibilityFindingSeverity;
+    status: DiscoveryCompatibilityStatus;
+    subject: string;
+    message: string;
+    evidence_ids: string[];
+};
+
+export type DiscoveryCompatibilityAssessment = {
+    item_id: string;
+    target_id: string;
+    target_type: string;
+    status: DiscoveryCompatibilityStatus;
+    checked_at: string;
+    findings: DiscoveryCompatibilityFinding[];
+    evidence: DiscoveryCompatibilityEvidence[];
+    unknown_facts: string[];
 };
 
 export type DiscoveryListQuery = {

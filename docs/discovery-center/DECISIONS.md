@@ -90,7 +90,7 @@ Context: Atlas is local-first and must remain useful without internet access.
 
 Decision: Discovery Center must operate from local curated catalog data first.
 
-Consequences: Dynamic source adapters are optional future supplements. Missing online data should produce unknown or needs-review compatibility where appropriate, not break local catalog use.
+Consequences: Dynamic source adapters are optional future supplements. Missing online data should produce insufficient information where appropriate, not break local catalog use.
 
 ## DC-D0-010: Community and private catalogs are future work
 
