@@ -202,6 +202,14 @@ _CANDIDATE_EXECUTION_ERRORS = {
     "review_failed",
     "secret_like_change_detected",
     "commit_approval_creation_failed",
+    "commit_approval_missing",
+    "commit_not_approved",
+    "commit_approval_evidence_mismatch",
+    "reviewed_evidence_mismatch",
+    "changed_files_drift",
+    "review_evidence_mismatch",
+    "commit_failed",
+    "commit_result_mismatch",
 }
 
 
@@ -249,6 +257,8 @@ def _raise_for_failure(result: WorkflowResult) -> None:
             "approval_not_granted",
             "verification_approval_missing",
             "verification_not_approved",
+            "commit_approval_missing",
+            "commit_not_approved",
             "core_unavailable",
         }:
             status_code = status.HTTP_409_CONFLICT

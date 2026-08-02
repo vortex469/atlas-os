@@ -21,6 +21,10 @@ from app.approval.models import (
     VerificationApprovalEnvironment,
 )
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.commit import (
+    CandidateCommitFailureCode,
+    CandidateCommitValidator,
+)
 from app.candidate_planning.execution import (
     CandidateExecutionFailureCode,
     CandidateExecutionValidationResult,
@@ -86,6 +90,7 @@ class WorkflowEngine:
         candidate_execution_validator: CandidateExecutionValidator | None = None,
         candidate_verification_validator: CandidateVerificationValidator | None = None,
         candidate_review_adapter: CandidateReviewAdapter | None = None,
+        candidate_commit_validator: CandidateCommitValidator | None = None,
     ) -> None:
         if planning_mode not in ("deterministic", "model-assisted"):
             raise ValueError(f"Unsupported planning mode: {planning_mode}")
@@ -119,6 +124,7 @@ class WorkflowEngine:
         self._candidate_execution_validator = candidate_execution_validator
         self._candidate_verification_validator = candidate_verification_validator
         self._candidate_review_adapter = candidate_review_adapter
+        self._candidate_commit_validator = candidate_commit_validator
 
     def block_before_planning(
         self,
@@ -299,6 +305,20 @@ class WorkflowEngine:
             )
 
         if session.state is WorkflowSessionState.COMPLETED:
+            if session.source is WorkflowSource.CANDIDATE and session.commit_result is not None:
+                completed_status = self._status(session, SprintPhase.COMPLETED)
+                self._publish_sprint(completed_status)
+                return WorkflowResult(
+                    sprint=completed_status,
+                    plan=session.plan,
+                    context=session.context,
+                    planning_analysis=session.planning_analysis,
+                    review_analysis=session.review_analysis,
+                    execution_result=session.execution_result,
+                    verification_report=session.verification_report,
+                    review_report=session.review_report,
+                    commit_result=session.commit_result,
+                )
             return self._session_error_result(
                 session=session,
                 error_message="Workflow already completed",
@@ -1367,6 +1387,9 @@ class WorkflowEngine:
         )
 
     def _resume_commit(self, session: WorkflowSession) -> WorkflowResult:
+        if session.source is WorkflowSource.CANDIDATE:
+            return self._resume_candidate_commit(session)
+
         workflow_id = session.identifier
         approval_identifier = f"approval-commit-{workflow_id}"
         approval_result = self._approval_repository.get_request(approval_identifier)
@@ -1467,8 +1490,181 @@ class WorkflowEngine:
             workflow_id,
             WorkflowSessionState.COMMITTING,
             WorkflowSessionState.COMPLETED,
+            commit_result=commit_result,
         )
         completed_status = self._status(session, SprintPhase.COMPLETED)
+        self._publish_sprint(completed_status)
+        return WorkflowResult(
+            sprint=completed_status,
+            plan=session.plan,
+            context=session.context,
+            planning_analysis=session.planning_analysis,
+            review_analysis=session.review_analysis,
+            approval_request=expected_approval,
+            execution_result=session.execution_result,
+            verification_report=session.verification_report,
+            review_report=session.review_report,
+            commit_result=commit_result,
+        )
+
+    def _candidate_commit_failure_result(
+        self,
+        session: WorkflowSession,
+        validation,
+    ) -> WorkflowResult:
+        code = validation.failure_code or CandidateCommitFailureCode.COMMIT_APPROVAL_EVIDENCE_MISMATCH
+        if validation.retryable:
+            return self._candidate_session_result(
+                session=session,
+                phase=SprintPhase.AWAITING_COMMIT_APPROVAL,
+                error_message=code.value,
+            )
+        return self._block_candidate_commit_session(
+            session=session,
+            error_message=code.value,
+        )
+
+    def _block_candidate_commit_session(
+        self,
+        *,
+        session: WorkflowSession,
+        error_message: str,
+    ) -> WorkflowResult:
+        self._transition_session(
+            session.identifier,
+            session.state,
+            WorkflowSessionState.BLOCKED,
+            blocked_reason=error_message,
+        )
+        return self._candidate_session_result(
+            session=session,
+            phase=SprintPhase.BLOCKED,
+            error_message=error_message,
+        )
+
+    def _resume_candidate_commit(self, session: WorkflowSession) -> WorkflowResult:
+        """Commit one exact approved candidate change set."""
+
+        if self._candidate_commit_validator is None:
+            return self._block_candidate_commit_session(
+                session=session,
+                error_message=CandidateCommitFailureCode.COMMIT_APPROVAL_EVIDENCE_MISMATCH.value,
+            )
+        approval_identifier = f"approval-commit-{session.identifier}"
+        approval_result = self._approval_repository.get_request(approval_identifier)
+        evaluated_approval = None
+        if approval_result is not None:
+            try:
+                evaluated_approval = self._approval_engine.evaluate(
+                    approval_result.decision
+                )
+            except Exception:
+                logger.exception("Candidate commit approval validation failed")
+                return self._block_candidate_commit_session(
+                    session=session,
+                    error_message=CandidateCommitFailureCode.COMMIT_APPROVAL_EVIDENCE_MISMATCH.value,
+                )
+        expected_approval = None
+        if session.commit_request is not None and session.reviewed_content_fingerprint is not None:
+            try:
+                expected_approval = self._commit_approval_request(
+                    session=session,
+                    commit_request=session.commit_request,
+                    fingerprint=session.reviewed_content_fingerprint,
+                )
+            except Exception:
+                logger.exception("Candidate commit approval reconstruction failed")
+                return self._block_candidate_commit_session(
+                    session=session,
+                    error_message=CandidateCommitFailureCode.COMMIT_APPROVAL_EVIDENCE_MISMATCH.value,
+                )
+
+        validation = self._candidate_commit_validator.validate(
+            workflow=session,
+            approval_result=evaluated_approval,
+            expected_approval=expected_approval,
+        )
+        if not validation.approved:
+            return self._candidate_commit_failure_result(session, validation)
+        commit_request = validation.commit_request
+        if commit_request is None:
+            return self._block_candidate_commit_session(
+                session=session,
+                error_message=CandidateCommitFailureCode.COMMIT_APPROVAL_EVIDENCE_MISMATCH.value,
+            )
+        if not self._transition_session(
+            session.identifier,
+            WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+            WorkflowSessionState.COMMITTING,
+        ):
+            return self._session_error_result(
+                session=session,
+                error_message="Workflow already resumed",
+            )
+
+        claimed_session = replace(session, state=WorkflowSessionState.COMMITTING)
+        committing_status = self._status(claimed_session, SprintPhase.COMMITTING)
+        self._publish_sprint(committing_status)
+        try:
+            commit_result = self._repository_committer_factory(
+                commit_request.repository_root
+            ).commit(commit_request)
+        except Exception:
+            logger.exception("Candidate commit failed")
+            self._transition_session(
+                session.identifier,
+                WorkflowSessionState.COMMITTING,
+                WorkflowSessionState.BLOCKED,
+                blocked_reason=CandidateCommitFailureCode.COMMIT_FAILED.value,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
+                error_message=CandidateCommitFailureCode.COMMIT_FAILED.value,
+            )
+
+        result_validation = self._candidate_commit_validator.validate_commit_result(
+            workflow=session,
+            commit_result=commit_result,
+        )
+        if not result_validation.approved:
+            code = (
+                result_validation.failure_code
+                or CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH
+            )
+            self._transition_session(
+                session.identifier,
+                WorkflowSessionState.COMMITTING,
+                WorkflowSessionState.BLOCKED,
+                commit_result=commit_result,
+                blocked_reason=code.value,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
+                commit_result=commit_result,
+                error_message=code.value,
+            )
+
+        if not self._transition_session(
+            session.identifier,
+            WorkflowSessionState.COMMITTING,
+            WorkflowSessionState.COMPLETED,
+            commit_result=commit_result,
+        ):
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
+                commit_result=commit_result,
+                error_message=CandidateCommitFailureCode.PERSISTENCE_FAILED.value,
+            )
+        completed_status = self._status(claimed_session, SprintPhase.COMPLETED)
         self._publish_sprint(completed_status)
         return WorkflowResult(
             sprint=completed_status,

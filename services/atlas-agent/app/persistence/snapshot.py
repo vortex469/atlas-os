@@ -49,7 +49,7 @@ from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, PlanRisk, RoadmapCheckpoint
-from app.repository.models import CommitRequest
+from app.repository.models import CommitRequest, CommitResult
 from app.review.models import (
     ArchitectureAssessment,
     ReviewCategory,
@@ -1331,6 +1331,34 @@ def _decode_commit_request(payload: Any) -> CommitRequest | None:
     )
 
 
+def _encode_commit_result(result: CommitResult | None) -> dict[str, Any] | None:
+    if result is None:
+        return None
+    return {
+        "branch": result.branch,
+        "commit_sha": result.commit_sha,
+        "committed_files": [_path(path) for path in result.committed_files],
+        "message": result.message,
+        "parent_head": result.parent_head,
+        "repository_root": _path(result.repository_root),
+    }
+
+
+def _decode_commit_result(payload: Any) -> CommitResult | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid commit result")
+    return CommitResult(
+        repository_root=_decode_path(payload.get("repository_root")),
+        branch=payload.get("branch"),
+        parent_head=payload.get("parent_head"),
+        commit_sha=_require_str(payload, "commit_sha"),
+        message=_require_str(payload, "message"),
+        committed_files=_tuple_path(payload.get("committed_files", [])),
+    )
+
+
 def _encode_candidate_workflow_metadata(
     metadata: CandidateWorkflowMetadata | None,
 ) -> dict[str, Any] | None:
@@ -1623,6 +1651,7 @@ def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
         ),
         "changed_files": [_path(path) for path in session.changed_files],
         "commit_request": _encode_commit_request(session.commit_request),
+        "commit_result": _encode_commit_result(session.commit_result),
         "context": _encode_context(session.context),
         "execution_result": _encode_execution_result(session.execution_result),
         "expected_branch": session.expected_branch,
@@ -1676,6 +1705,7 @@ def _decode_workflow_session(payload: Any) -> WorkflowSession:
             payload.get("candidate_review_result")
         ),
         commit_request=_decode_commit_request(payload.get("commit_request")),
+        commit_result=_decode_commit_result(payload.get("commit_result")),
         reviewed_files=_tuple_path(payload.get("reviewed_files", [])),
         expected_branch=payload.get("expected_branch"),
         expected_head=payload.get("expected_head"),

@@ -137,6 +137,7 @@ class WorkflowSession:
     review_report: ReviewReport | None = None
     candidate_review_result: CandidateReviewResult | None = None
     commit_request: CommitRequest | None = None
+    commit_result: CommitResult | None = None
     reviewed_files: tuple[Path, ...] = ()
     expected_branch: str | None = None
     expected_head: str | None = None
