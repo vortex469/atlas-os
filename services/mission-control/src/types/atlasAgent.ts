@@ -50,3 +50,48 @@ export interface ReviewReport {
     findings: ReviewFinding[];
     recommendations: string[];
 }
+
+export interface CandidatePlanningRequest {
+    candidate_id: string;
+    expected_candidate_fingerprint?: string | null;
+}
+
+export interface CandidatePlanningFailure {
+    code: string;
+    message: string;
+}
+
+export interface CandidatePlanApiResponse {
+    identifier: string;
+    session_id: string;
+    candidate_id: string;
+    candidate_fingerprint: string;
+    title: string;
+    objective: string;
+    assumptions: string[];
+    constraints: string[];
+    proposed_steps: string[];
+    likely_affected_components: string[];
+    likely_affected_files: string[];
+    verification_strategy: string[];
+    rollback_considerations: string[];
+    unresolved_questions: string[];
+    evidence_ids: string[];
+    created_at: string;
+    repository_branch: string | null;
+    repository_head: string | null;
+    revalidated_candidate_fingerprint: string;
+}
+
+export interface CandidatePlanningResponse {
+    session_id: string | null;
+    candidate_id: string;
+    status: string;
+    planning_allowed: boolean;
+    intake_status: string;
+    intake_reason_codes: string[];
+    candidate_fingerprint: string | null;
+    unsupported_reason: string | null;
+    plan: CandidatePlanApiResponse | null;
+    planning_failure: CandidatePlanningFailure | null;
+}

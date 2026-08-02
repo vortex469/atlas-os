@@ -27,6 +27,7 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - OPNsense health and diagnostics through the provider workspace
 - Frigate camera health and version telemetry
 - Forge deployment analysis workspace
+- Execution candidate browsing and planning-only Atlas Agent intake
 
 ## Development
 
@@ -53,6 +54,6 @@ npm run build
 
 ## Phase 3 boundary
 
-Mission Control can display Atlas Agent and Discovery state, but it does not currently expose candidate execution controls for the Phase 3 workflow. It must not imply support for push, tag, release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
+Mission Control can display Atlas Agent, Discovery, and execution-candidate state. It can ask Atlas Agent to create or reuse a planning-only session for an eligible candidate, but it does not currently expose plan generation, workflow conversion, approval controls, implementation controls, or candidate execution controls. It must not imply support for push, tag, release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
 
-The supported Phase 3 execution intent is `update-compose-stack`, and execution remains approval-gated inside Atlas Agent.
+The supported Atlas Agent candidate intent is `update-compose-stack`, and all candidate planning is revalidated authoritatively by Atlas Agent and Atlas Core.

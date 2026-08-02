@@ -1,6 +1,8 @@
 import axios, { isAxiosError } from "axios";
 
 import type {
+    CandidatePlanningRequest,
+    CandidatePlanningResponse,
     RepositoryStatus,
     ReviewReport,
     SprintStatus,
@@ -62,6 +64,35 @@ export async function getReviewReport(): Promise<ReviewReport | null> {
     try {
         const response = await atlasAgent.get<ReviewReport>(
             "/api/v1/agent/review",
+        );
+
+        return response.data;
+    } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+
+        throw error;
+    }
+}
+
+export async function createCandidatePlanningSession(
+    request: CandidatePlanningRequest,
+): Promise<CandidatePlanningResponse> {
+    const response = await atlasAgent.post<CandidatePlanningResponse>(
+        "/candidate-planning",
+        request,
+    );
+
+    return response.data;
+}
+
+export async function getCandidatePlanningSession(
+    sessionId: string,
+): Promise<CandidatePlanningResponse | null> {
+    try {
+        const response = await atlasAgent.get<CandidatePlanningResponse>(
+            `/candidate-planning/${encodeURIComponent(sessionId)}`,
         );
 
         return response.data;

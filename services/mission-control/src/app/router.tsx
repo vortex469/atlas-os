@@ -2,6 +2,8 @@ import { createBrowserRouter } from "react-router-dom";
 
 import { DiscoveryItemPage } from "../pages/DiscoveryItemPage";
 import { DiscoveryPage } from "../pages/DiscoveryPage";
+import { ExecutionCandidateDetailPage } from "../pages/ExecutionCandidateDetailPage";
+import { ExecutionCandidatesPage } from "../pages/ExecutionCandidatesPage";
 import { ForgePage } from "../pages/ForgePage";
 import { MainLayout } from "../layouts/MainLayout";
 import { ActionHistoryDetailPage } from "../pages/ActionHistoryDetailPage";
@@ -37,6 +39,14 @@ export const router = createBrowserRouter([
             {
                 path: "discovery/items/:itemId",
                 element: <DiscoveryItemPage />,
+            },
+            {
+                path: "execution-candidates",
+                element: <ExecutionCandidatesPage />,
+            },
+            {
+                path: "execution-candidates/:candidateId",
+                element: <ExecutionCandidateDetailPage />,
             },
             {
                 path: "forge",
