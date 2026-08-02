@@ -42,7 +42,13 @@ from app.verification.models import (
     VerificationStatus,
 )
 from app.workflow.engine import WorkflowEngine
-from app.workflow.models import WorkflowRequest, WorkflowSession, WorkflowSessionState
+from app.workflow.models import (
+    CandidateWorkflowMetadata,
+    WorkflowRequest,
+    WorkflowSession,
+    WorkflowSessionState,
+    WorkflowSource,
+)
 from app.workflow.state import WorkflowStateStore
 
 
@@ -310,6 +316,98 @@ def test_candidate_plan_round_trips_after_restart(tmp_path: Path) -> None:
     assert recovered_session is not None
     assert recovered_session.plan == stored_session.plan
     assert recovered_session.planning_status is CandidatePlanningSessionStatus.PLAN_READY
+
+
+def test_candidate_workflow_shell_linkage_round_trips_after_restart(tmp_path: Path) -> None:
+    candidate_state = CandidatePlanningStateStore()
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = coordinator(tmp_path, workflow_state, approvals, candidate_state)
+    persistence.initialize()
+    stored_plan = candidate_plan(tmp_path)
+    converted_at = datetime(2026, 8, 1, 23, 48, tzinfo=timezone.utc)
+    plan_fingerprint = "candidate-plan-fingerprint-v1:" + "b" * 64
+    workflow_id = "candidate-workflow-1"
+    approval_id = f"approval-{workflow_id}"
+    stored_session = replace(
+        candidate_planning_session(),
+        planning_status=CandidatePlanningSessionStatus.PLAN_READY,
+        plan=stored_plan,
+        workflow_session_id=workflow_id,
+        implementation_approval_request_id=approval_id,
+        candidate_plan_fingerprint=plan_fingerprint,
+        workflow_conversion_status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+        workflow_conversion_completed_at=converted_at,
+    )
+    metadata = CandidateWorkflowMetadata(
+        candidate_planning_session_id=stored_session.identifier,
+        candidate_id=stored_session.candidate_id,
+        candidate_fingerprint=stored_session.candidate_fingerprint,
+        candidate_plan_id=stored_plan.identifier,
+        candidate_plan_fingerprint=plan_fingerprint,
+        source_recommendation_id=stored_session.snapshot.source_recommendation_id,
+        source_subsystem=stored_session.snapshot.source_subsystem,
+        catalog_item_id=stored_session.snapshot.catalog_item_id,
+        target_id=stored_session.snapshot.target_id,
+        target_type=stored_session.snapshot.target_type,
+        execution_category=stored_session.snapshot.execution_category,
+        execution_intent=stored_session.snapshot.execution_intent,
+        evidence_ids=stored_session.snapshot.evidence_ids,
+        compatibility_assessment_id=stored_session.snapshot.compatibility_assessment_id,
+        compatibility_status=stored_session.snapshot.compatibility_status,
+        relationship_ids=stored_session.snapshot.relationship_ids,
+        conversion_timestamp=converted_at,
+        core_revalidation_status="accepted_for_planning",
+        core_revalidation_fingerprint=stored_session.candidate_fingerprint,
+    )
+    workflow = WorkflowSession(
+        identifier=workflow_id,
+        request=None,
+        plan=None,
+        state=WorkflowSessionState.AWAITING_APPROVAL,
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=metadata,
+    )
+    approval = ApprovalRequest(
+        identifier=approval_id,
+        workflow_id=workflow_id,
+        checkpoint_id=stored_plan.identifier,
+        title="Approve candidate workflow shell",
+        requested_tool="atlas-agent",
+        requested_command=(),
+        requested_working_directory=tmp_path,
+        rationale="No executable command is approved by this request.",
+    )
+
+    persistence.mutate_aggregate(
+        lambda workflow_tx, approvals_tx, candidate_tx: (
+            candidate_tx.create_session(stored_session),
+            workflow_tx.create_session(workflow),
+            approvals_tx.save_request(approval),
+        )
+    )
+
+    recovered_candidate_state = CandidatePlanningStateStore()
+    recovered_workflow_state = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    recovered = coordinator(
+        tmp_path,
+        recovered_workflow_state,
+        recovered_approvals,
+        recovered_candidate_state,
+    )
+    recovered.initialize()
+
+    assert recovered_candidate_state.get_session(stored_session.identifier) == stored_session
+    recovered_workflow = recovered_workflow_state.get_session(workflow_id)
+    assert recovered_workflow == workflow
+    assert recovered_workflow is not None
+    assert recovered_workflow.source is WorkflowSource.CANDIDATE
+    assert recovered_workflow.request is None
+    assert recovered_workflow.plan is None
+    recovered_approval = recovered_approvals.get_request(approval_id)
+    assert recovered_approval is not None
+    assert recovered_approval.decision.request.requested_command == ()
 
 
 def test_full_workflow_and_approval_round_trip_redacts_env(tmp_path: Path) -> None:

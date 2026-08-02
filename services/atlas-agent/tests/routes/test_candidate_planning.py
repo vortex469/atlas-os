@@ -13,6 +13,7 @@ from app.candidate_planning.models import (
     CandidatePlanningSessionStatus,
     CandidatePlanResponse,
     CandidateSnapshot,
+    CandidateWorkflowConversionResponse,
     CoreCandidatePlanningIntakeStatus,
 )
 from app.candidate_planning.service import CandidatePlanningServiceError
@@ -27,6 +28,7 @@ class FakeCandidatePlanningService:
         self.requests = []
         self.session = None
         self.plan = None
+        self.workflow_response = None
 
     async def create_planning_session(self, request):
         self.requests.append(request)
@@ -45,6 +47,12 @@ class FakeCandidatePlanningService:
         if self.error is not None:
             raise self.error
         return self.response
+
+    async def convert_plan_to_workflow_shell(self, session_id: str, request):
+        self.requests.append((session_id, request))
+        if self.error is not None:
+            raise self.error
+        return self.workflow_response
 
 
 def make_client(monkeypatch, tmp_path: Path, service: FakeCandidatePlanningService) -> TestClient:
@@ -107,6 +115,24 @@ def planned_response(tmp_path: Path) -> CandidatePlanResponse:
         intake_reason_codes=(),
         candidate_fingerprint="candidate-fingerprint-v1:aaa",
         plan=plan,
+    )
+
+
+def workflow_response(tmp_path: Path) -> CandidateWorkflowConversionResponse:
+    plan = planned_response(tmp_path).plan
+    assert plan is not None
+    return CandidateWorkflowConversionResponse(
+        candidate_planning_session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        candidate_plan_id=plan.identifier,
+        candidate_plan_fingerprint="candidate-plan-fingerprint-v1:abc",
+        workflow_session_id="candidate-workflow-1",
+        workflow_status="awaiting_approval",
+        implementation_approval_request_id="approval-candidate-workflow-1",
+        conversion_status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+        core_revalidation_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+        reason_codes=(),
     )
 
 
@@ -206,6 +232,7 @@ def test_openapi_exposes_planning_only_endpoint(monkeypatch, tmp_path: Path) -> 
     assert set(schema["paths"]["/candidate-planning"]) == {"post"}
     assert set(schema["paths"]["/candidate-planning/{session_id}"]) == {"get"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/plan"]) == {"get", "post"}
+    assert set(schema["paths"]["/candidate-planning/{session_id}/workflow"]) == {"post"}
     route_schema = schema["paths"]["/candidate-planning"]["post"]
     assert "workflow" not in route_schema["operationId"].lower()
 
@@ -234,3 +261,38 @@ def test_get_plan_route_returns_existing_plan_without_generation(monkeypatch, tm
     assert response.status_code == 200
     assert response.json()["identifier"] == "candidate-plan-output-candidate-plan-1"
     assert service.requests == []
+
+
+def test_workflow_conversion_route_accepts_only_expected_fingerprints(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.workflow_response = workflow_response(tmp_path)
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post(
+        "/candidate-planning/candidate-plan-1/workflow",
+        json={
+            "expected_candidate_fingerprint": "candidate-fingerprint-v1:aaa",
+            "expected_plan_fingerprint": "candidate-plan-fingerprint-v1:abc",
+        },
+    )
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["conversion_status"] == "workflow_created"
+    assert payload["workflow_session_id"] == "candidate-workflow-1"
+    assert service.requests[0][0] == "candidate-plan-1"
+    assert service.requests[0][1].expected_candidate_fingerprint == "candidate-fingerprint-v1:aaa"
+    assert service.requests[0][1].expected_plan_fingerprint == "candidate-plan-fingerprint-v1:abc"
+
+
+def test_workflow_conversion_route_rejects_caller_commands(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.workflow_response = workflow_response(tmp_path)
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post(
+        "/candidate-planning/candidate-plan-1/workflow",
+        json={"execution_argv": ["docker", "compose", "up"]},
+    )
+
+    assert response.status_code == 422

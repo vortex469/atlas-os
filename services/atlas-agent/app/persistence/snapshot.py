@@ -58,11 +58,13 @@ from app.verification.models import (
     VerificationStatus,
 )
 from app.workflow.models import (
+    CandidateWorkflowMetadata,
     SprintPhase,
     SprintStatus,
     WorkflowRequest,
     WorkflowSession,
     WorkflowSessionState,
+    WorkflowSource,
 )
 from app.workflow.state import WorkflowStateSnapshot, WorkflowStateStore
 
@@ -681,7 +683,9 @@ def _decode_plan_risk(payload: dict[str, Any]) -> PlanRisk:
     )
 
 
-def _encode_plan(plan: ImplementationPlan) -> dict[str, Any]:
+def _encode_plan(plan: ImplementationPlan | None) -> dict[str, Any] | None:
+    if plan is None:
+        return None
     return {
         "affected_files": [_path(path) for path in plan.affected_files],
         "branch": plan.branch,
@@ -709,6 +713,14 @@ def _decode_plan(payload: dict[str, Any]) -> ImplementationPlan:
         required_tests=_tuple_str(payload.get("required_tests", [])),
         risks=tuple(_decode_plan_risk(item) for item in payload.get("risks", [])),
     )
+
+
+def _decode_optional_plan(payload: Any) -> ImplementationPlan | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid implementation plan")
+    return _decode_plan(payload)
 
 
 def _encode_env(variable: EnvironmentVariable) -> dict[str, Any]:
@@ -785,7 +797,9 @@ def _decode_test_evidence(payload: dict[str, Any]) -> TestEvidence:
     )
 
 
-def _encode_workflow_request(request: WorkflowRequest) -> dict[str, Any]:
+def _encode_workflow_request(request: WorkflowRequest | None) -> dict[str, Any] | None:
+    if request is None:
+        return None
     return {
         "architecture_assessments": [
             _encode_architecture_assessment(item)
@@ -827,6 +841,14 @@ def _decode_workflow_request(payload: dict[str, Any]) -> WorkflowRequest:
             _decode_test_evidence(item) for item in payload.get("test_evidence", [])
         ),
     )
+
+
+def _decode_optional_workflow_request(payload: Any) -> WorkflowRequest | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid workflow request")
+    return _decode_workflow_request(payload)
 
 
 def _encode_context(context: AgentContext | None) -> dict[str, Any] | None:
@@ -997,8 +1019,10 @@ def _encode_candidate_planning_session(session: CandidatePlanningSession) -> dic
     return {
         "candidate_fingerprint": session.candidate_fingerprint,
         "candidate_id": session.candidate_id,
+        "candidate_plan_fingerprint": session.candidate_plan_fingerprint,
         "created_at": _encode_datetime(session.created_at),
         "identifier": session.identifier,
+        "implementation_approval_request_id": session.implementation_approval_request_id,
         "last_revalidation_fingerprint": session.last_revalidation_fingerprint,
         "last_revalidation_status": session.last_revalidation_status.value
         if session.last_revalidation_status is not None
@@ -1011,6 +1035,13 @@ def _encode_candidate_planning_session(session: CandidatePlanningSession) -> dic
         "snapshot": _encode_candidate_snapshot(session.snapshot),
         "status": session.status.value,
         "unsupported_reason": session.unsupported_reason,
+        "workflow_conversion_completed_at": _encode_datetime(
+            session.workflow_conversion_completed_at
+        ),
+        "workflow_conversion_status": session.workflow_conversion_status.value
+        if session.workflow_conversion_status is not None
+        else None,
+        "workflow_session_id": session.workflow_session_id,
     }
 
 
@@ -1042,6 +1073,17 @@ def _decode_candidate_planning_session(payload: Any) -> CandidatePlanningSession
         )
         if payload.get("last_revalidation_status") is not None
         else None,
+        workflow_session_id=payload.get("workflow_session_id"),
+        implementation_approval_request_id=payload.get("implementation_approval_request_id"),
+        candidate_plan_fingerprint=payload.get("candidate_plan_fingerprint"),
+        workflow_conversion_status=CandidatePlanningSessionStatus(
+            payload["workflow_conversion_status"]
+        )
+        if payload.get("workflow_conversion_status") is not None
+        else None,
+        workflow_conversion_completed_at=_decode_optional_datetime(
+            payload.get("workflow_conversion_completed_at")
+        ),
     )
 
 
@@ -1240,9 +1282,68 @@ def _decode_commit_request(payload: Any) -> CommitRequest | None:
     )
 
 
+def _encode_candidate_workflow_metadata(
+    metadata: CandidateWorkflowMetadata | None,
+) -> dict[str, Any] | None:
+    if metadata is None:
+        return None
+    return {
+        "candidate_fingerprint": metadata.candidate_fingerprint,
+        "candidate_id": metadata.candidate_id,
+        "candidate_plan_fingerprint": metadata.candidate_plan_fingerprint,
+        "candidate_plan_id": metadata.candidate_plan_id,
+        "candidate_planning_session_id": metadata.candidate_planning_session_id,
+        "catalog_item_id": metadata.catalog_item_id,
+        "compatibility_assessment_id": metadata.compatibility_assessment_id,
+        "compatibility_status": metadata.compatibility_status,
+        "conversion_timestamp": _encode_datetime(metadata.conversion_timestamp),
+        "core_revalidation_fingerprint": metadata.core_revalidation_fingerprint,
+        "core_revalidation_status": metadata.core_revalidation_status,
+        "evidence_ids": list(metadata.evidence_ids),
+        "execution_category": metadata.execution_category,
+        "execution_intent": metadata.execution_intent,
+        "relationship_ids": list(metadata.relationship_ids),
+        "source_recommendation_id": metadata.source_recommendation_id,
+        "source_subsystem": metadata.source_subsystem,
+        "target_id": metadata.target_id,
+        "target_type": metadata.target_type,
+    }
+
+
+def _decode_candidate_workflow_metadata(
+    payload: Any,
+) -> CandidateWorkflowMetadata | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid candidate workflow metadata")
+    return CandidateWorkflowMetadata(
+        candidate_planning_session_id=_require_str(payload, "candidate_planning_session_id"),
+        candidate_id=_require_str(payload, "candidate_id"),
+        candidate_fingerprint=_require_str(payload, "candidate_fingerprint"),
+        candidate_plan_id=_require_str(payload, "candidate_plan_id"),
+        candidate_plan_fingerprint=_require_str(payload, "candidate_plan_fingerprint"),
+        source_recommendation_id=_require_str(payload, "source_recommendation_id"),
+        source_subsystem=_require_str(payload, "source_subsystem"),
+        catalog_item_id=payload.get("catalog_item_id"),
+        target_id=_require_str(payload, "target_id"),
+        target_type=_require_str(payload, "target_type"),
+        execution_category=_require_str(payload, "execution_category"),
+        execution_intent=_require_str(payload, "execution_intent"),
+        evidence_ids=_tuple_str(payload.get("evidence_ids", [])),
+        compatibility_assessment_id=payload.get("compatibility_assessment_id"),
+        compatibility_status=payload.get("compatibility_status"),
+        relationship_ids=_tuple_str(payload.get("relationship_ids", [])),
+        conversion_timestamp=_decode_datetime(payload.get("conversion_timestamp")),
+        core_revalidation_status=_require_str(payload, "core_revalidation_status"),
+        core_revalidation_fingerprint=_require_str(payload, "core_revalidation_fingerprint"),
+    )
+
+
 def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
     return {
         "blocked_reason": session.blocked_reason,
+        "candidate_metadata": _encode_candidate_workflow_metadata(session.candidate_metadata),
         "changed_files": [_path(path) for path in session.changed_files],
         "commit_request": _encode_commit_request(session.commit_request),
         "context": _encode_context(session.context),
@@ -1257,6 +1358,7 @@ def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
         "review_report": _encode_review_report(session.review_report),
         "reviewed_content_fingerprint": session.reviewed_content_fingerprint,
         "reviewed_files": [_path(path) for path in session.reviewed_files],
+        "source": session.source.value,
         "state": session.state.value,
         "verification_report": _encode_verification_report(session.verification_report),
     }
@@ -1267,9 +1369,13 @@ def _decode_workflow_session(payload: Any) -> WorkflowSession:
         raise StatePersistenceError("Invalid workflow session")
     return WorkflowSession(
         identifier=_require_str(payload, "identifier"),
-        request=_decode_workflow_request(_require_dict(payload, "request")),
-        plan=_decode_plan(_require_dict(payload, "plan")),
+        request=_decode_optional_workflow_request(payload.get("request")),
+        plan=_decode_optional_plan(payload.get("plan")),
         state=WorkflowSessionState(_require_str(payload, "state")),
+        source=WorkflowSource(payload.get("source", WorkflowSource.ROADMAP.value)),
+        candidate_metadata=_decode_candidate_workflow_metadata(
+            payload.get("candidate_metadata")
+        ),
         planning_analysis=_decode_model_response(payload.get("planning_analysis")),
         review_analysis=_decode_model_response(payload.get("review_analysis")),
         context=_decode_context(payload.get("context")),

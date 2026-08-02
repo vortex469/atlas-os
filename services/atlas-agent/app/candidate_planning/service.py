@@ -7,6 +7,12 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.approval.models import ApprovalPurpose, ApprovalRequest
+from app.candidate_planning.conversion import (
+    build_candidate_workflow_id,
+    candidate_plan_fingerprint,
+    validate_candidate_plan_safe,
+)
 from app.candidate_planning.models import (
     CandidatePlanningContext,
     CandidatePlanningFailureCode,
@@ -15,6 +21,8 @@ from app.candidate_planning.models import (
     CandidatePlanRequest,
     CandidatePlanResponse,
     CandidateSnapshot,
+    CandidateWorkflowConversionRequest,
+    CandidateWorkflowConversionResponse,
     CoreCandidatePlanningIntakeStatus,
     build_candidate_planning_session_id,
     is_supported_execution_intent,
@@ -30,12 +38,20 @@ from app.core_client.exceptions import AtlasCoreClientError
 from app.core_client.models import CoreCandidatePlanningIntakeResponse
 from app.persistence.snapshot import (
     AgentStatePersistenceCoordinator,
+    CandidateApprovalRepository,
     CandidatePlanningSessionsState,
+    CandidateWorkflowState,
     StatePersistenceError,
 )
 from app.planning.exceptions import PlanningValidationError
 from app.repository.exceptions import RepositoryInspectionError
 from app.repository.inspector import GitInspector
+from app.workflow.models import (
+    CandidateWorkflowMetadata,
+    WorkflowSession,
+    WorkflowSessionState,
+    WorkflowSource,
+)
 
 
 class CandidatePlanningServiceError(RuntimeError):
@@ -153,6 +169,94 @@ def _rejection_response(
         intake_reason_codes=tuple(sorted(intake.reason_codes)),
         candidate_fingerprint=intake.current_candidate_fingerprint,
     )
+
+
+def _conversion_failure(
+    *,
+    session_id: str,
+    candidate_id: str,
+    status: CandidatePlanningSessionStatus,
+    code: CandidatePlanningFailureCode,
+    message: str,
+    candidate_fingerprint: str | None = None,
+    plan_id: str | None = None,
+    plan_fingerprint: str | None = None,
+    core_status: CoreCandidatePlanningIntakeStatus | None = None,
+) -> CandidateWorkflowConversionResponse:
+    from app.candidate_planning.models import CandidatePlanningFailure
+
+    return CandidateWorkflowConversionResponse(
+        candidate_planning_session_id=session_id,
+        candidate_id=candidate_id,
+        candidate_fingerprint=candidate_fingerprint,
+        candidate_plan_id=plan_id,
+        candidate_plan_fingerprint=plan_fingerprint,
+        workflow_session_id=None,
+        workflow_status=None,
+        implementation_approval_request_id=None,
+        conversion_status=status,
+        core_revalidation_status=core_status,
+        reason_codes=(code.value,),
+        failure=CandidatePlanningFailure(code=code, message=message),
+    )
+
+
+def _conversion_failure_from_session(
+    session: CandidatePlanningSession,
+    status: CandidatePlanningSessionStatus,
+    code: CandidatePlanningFailureCode,
+    message: str,
+    *,
+    plan_fingerprint: str | None = None,
+    core_status: CoreCandidatePlanningIntakeStatus | None = None,
+) -> CandidateWorkflowConversionResponse:
+    return _conversion_failure(
+        session_id=session.identifier,
+        candidate_id=session.candidate_id,
+        status=status,
+        code=code,
+        message=message,
+        candidate_fingerprint=session.candidate_fingerprint,
+        plan_id=session.plan.identifier if session.plan is not None else None,
+        plan_fingerprint=plan_fingerprint,
+        core_status=core_status,
+    )
+
+
+def _conversion_response_from_session(
+    session: CandidatePlanningSession,
+    *,
+    status: CandidatePlanningSessionStatus,
+    core_status: CoreCandidatePlanningIntakeStatus | None,
+) -> CandidateWorkflowConversionResponse:
+    return CandidateWorkflowConversionResponse(
+        candidate_planning_session_id=session.identifier,
+        candidate_id=session.candidate_id,
+        candidate_fingerprint=session.candidate_fingerprint,
+        candidate_plan_id=session.plan.identifier if session.plan is not None else None,
+        candidate_plan_fingerprint=session.candidate_plan_fingerprint,
+        workflow_session_id=session.workflow_session_id,
+        workflow_status=WorkflowSessionState.AWAITING_APPROVAL.value
+        if session.workflow_session_id is not None
+        else None,
+        implementation_approval_request_id=session.implementation_approval_request_id,
+        conversion_status=status,
+        core_revalidation_status=core_status,
+        reason_codes=(),
+    )
+
+
+def _conversion_code_for_intake(
+    status: CoreCandidatePlanningIntakeStatus,
+) -> CandidatePlanningFailureCode:
+    mapping = {
+        CoreCandidatePlanningIntakeStatus.STALE: CandidatePlanningFailureCode.CANDIDATE_STALE,
+        CoreCandidatePlanningIntakeStatus.EXPIRED: CandidatePlanningFailureCode.CANDIDATE_EXPIRED,
+        CoreCandidatePlanningIntakeStatus.NOT_ELIGIBLE: CandidatePlanningFailureCode.CANDIDATE_NOT_ELIGIBLE,
+        CoreCandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE: CandidatePlanningFailureCode.EVIDENCE_UNAVAILABLE,
+        CoreCandidatePlanningIntakeStatus.NOT_FOUND: CandidatePlanningFailureCode.SESSION_NOT_FOUND,
+    }
+    return mapping.get(status, CandidatePlanningFailureCode.WORKFLOW_TRANSLATION_UNSUPPORTED)
 
 
 class CandidatePlanningService:
@@ -305,6 +409,259 @@ class CandidatePlanningService:
             else started.last_revalidation_status,
         )
         return _response_from_session(self._persist_session_update(completed))
+
+    async def convert_plan_to_workflow_shell(
+        self,
+        session_id: str,
+        request: CandidateWorkflowConversionRequest,
+    ) -> CandidateWorkflowConversionResponse:
+        """Convert one plan-ready candidate session into an approval-gated workflow shell."""
+
+        session = self._state_store.get_session(session_id)
+        if session is None:
+            return _conversion_failure(
+                session_id=session_id,
+                candidate_id=session_id,
+                status=CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                code=CandidatePlanningFailureCode.SESSION_NOT_FOUND,
+                message="Candidate planning session was not found.",
+            )
+        if session.workflow_session_id is not None:
+            return _conversion_response_from_session(
+                session,
+                status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+                core_status=session.last_revalidation_status,
+            )
+        if session.planning_status is not CandidatePlanningSessionStatus.PLAN_READY:
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                CandidatePlanningFailureCode.PLAN_NOT_READY,
+                "Candidate plan is not ready for workflow conversion.",
+            )
+        if session.plan is None:
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                CandidatePlanningFailureCode.PLAN_NOT_READY,
+                "Candidate planning session has no persisted plan.",
+            )
+        plan_fingerprint = candidate_plan_fingerprint(session.plan)
+        if (
+            request.expected_candidate_fingerprint is not None
+            and request.expected_candidate_fingerprint != session.candidate_fingerprint
+        ):
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.STALE_BEFORE_WORKFLOW,
+                CandidatePlanningFailureCode.CANDIDATE_FINGERPRINT_MISMATCH,
+                "Candidate fingerprint did not match the persisted session.",
+                plan_fingerprint=plan_fingerprint,
+            )
+        if (
+            request.expected_plan_fingerprint is not None
+            and request.expected_plan_fingerprint != plan_fingerprint
+        ):
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                CandidatePlanningFailureCode.PLAN_FINGERPRINT_MISMATCH,
+                "Candidate plan fingerprint did not match the persisted plan.",
+                plan_fingerprint=plan_fingerprint,
+            )
+        try:
+            validate_candidate_plan_safe(session.plan)
+        except ValueError:
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                CandidatePlanningFailureCode.PLAN_INTEGRITY_FAILED,
+                "Candidate plan failed workflow-shell safety validation.",
+                plan_fingerprint=plan_fingerprint,
+            )
+        try:
+            intake = await self._core_client.validate_candidate_planning_intake(
+                session.candidate_id,
+                expected_candidate_fingerprint=session.candidate_fingerprint,
+            )
+        except AtlasCoreClientError as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.ATLAS_CORE_UNAVAILABLE,
+                "Atlas Core planning intake is unavailable.",
+            ) from error
+        if intake.status != CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING.value:
+            code = _conversion_code_for_intake(CoreCandidatePlanningIntakeStatus(intake.status))
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.STALE_BEFORE_WORKFLOW,
+                code,
+                "Atlas Core did not accept candidate workflow revalidation.",
+                plan_fingerprint=plan_fingerprint,
+                core_status=CoreCandidatePlanningIntakeStatus(intake.status),
+            )
+        try:
+            snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
+        except CandidatePlanningServiceError:
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                CandidatePlanningFailureCode.WORKFLOW_TRANSLATION_UNSUPPORTED,
+                "Atlas Core returned an invalid planning-intake response.",
+                plan_fingerprint=plan_fingerprint,
+            )
+        if not _matches_workflow_snapshot(session.snapshot, snapshot):
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.STALE_BEFORE_WORKFLOW,
+                CandidatePlanningFailureCode.CANDIDATE_STALE,
+                "Candidate changed before workflow conversion.",
+                plan_fingerprint=plan_fingerprint,
+                core_status=snapshot.intake_status,
+            )
+        if snapshot.candidate_fingerprint != session.candidate_fingerprint:
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.STALE_BEFORE_WORKFLOW,
+                CandidatePlanningFailureCode.CANDIDATE_FINGERPRINT_MISMATCH,
+                "Candidate fingerprint changed before workflow conversion.",
+                plan_fingerprint=plan_fingerprint,
+                core_status=snapshot.intake_status,
+            )
+        if not is_supported_execution_intent(session.snapshot.execution_intent):
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                CandidatePlanningFailureCode.UNSUPPORTED_INTENT,
+                "Atlas Agent cannot convert this execution intent yet.",
+                plan_fingerprint=plan_fingerprint,
+                core_status=snapshot.intake_status,
+            )
+        resolver = self._repository_resolver
+        if resolver is None or resolver.resolve(
+            target_id=session.snapshot.target_id,
+            target_type=session.snapshot.target_type,
+        ) is None:
+            return _conversion_failure_from_session(
+                session,
+                CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                CandidatePlanningFailureCode.REPOSITORY_MAPPING_UNAVAILABLE,
+                "Candidate target does not map to a trusted Agent repository.",
+                plan_fingerprint=plan_fingerprint,
+                core_status=snapshot.intake_status,
+            )
+        return self._persist_workflow_shell(
+            session,
+            plan_fingerprint=plan_fingerprint,
+            revalidated=snapshot,
+        )
+
+    def _persist_workflow_shell(
+        self,
+        session: CandidatePlanningSession,
+        *,
+        plan_fingerprint: str,
+        revalidated: CandidateSnapshot,
+    ) -> CandidateWorkflowConversionResponse:
+        if self._state_persistence is None:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Candidate workflow shell requires aggregate persistence.",
+            )
+        assert session.plan is not None
+        workflow_id = build_candidate_workflow_id(
+            candidate_planning_session_id=session.identifier,
+            candidate_fingerprint=session.candidate_fingerprint,
+            plan_fingerprint=plan_fingerprint,
+        )
+        approval_id = f"approval-{workflow_id}"
+        converted_at = self._clock()
+        metadata = CandidateWorkflowMetadata(
+            candidate_planning_session_id=session.identifier,
+            candidate_id=session.candidate_id,
+            candidate_fingerprint=session.candidate_fingerprint,
+            candidate_plan_id=session.plan.identifier,
+            candidate_plan_fingerprint=plan_fingerprint,
+            source_recommendation_id=session.snapshot.source_recommendation_id,
+            source_subsystem=session.snapshot.source_subsystem,
+            catalog_item_id=session.snapshot.catalog_item_id,
+            target_id=session.snapshot.target_id,
+            target_type=session.snapshot.target_type,
+            execution_category=session.snapshot.execution_category,
+            execution_intent=session.snapshot.execution_intent,
+            evidence_ids=session.snapshot.evidence_ids,
+            compatibility_assessment_id=session.snapshot.compatibility_assessment_id,
+            compatibility_status=session.snapshot.compatibility_status,
+            relationship_ids=session.snapshot.relationship_ids,
+            conversion_timestamp=converted_at,
+            core_revalidation_status=revalidated.intake_status.value,
+            core_revalidation_fingerprint=revalidated.candidate_fingerprint,
+        )
+        workflow = WorkflowSession(
+            identifier=workflow_id,
+            request=None,
+            plan=None,
+            state=WorkflowSessionState.AWAITING_APPROVAL,
+            source=WorkflowSource.CANDIDATE,
+            candidate_metadata=metadata,
+        )
+        approval = ApprovalRequest(
+            identifier=approval_id,
+            workflow_id=workflow_id,
+            checkpoint_id=session.plan.identifier,
+            title=f"Approve candidate workflow shell for {session.plan.title}",
+            requested_tool="atlas-agent",
+            requested_command=(),
+            requested_working_directory=session.plan.repository_root,
+            rationale=(
+                "Approve preparation of future implementation work from the reviewed "
+                "candidate plan. No executable command is approved by this request."
+            ),
+            purpose=ApprovalPurpose.IMPLEMENTATION,
+        )
+
+        def mutate(
+            workflow_state: CandidateWorkflowState,
+            approvals: CandidateApprovalRepository,
+            candidate_planning: CandidatePlanningSessionsState,
+        ) -> CandidatePlanningSession:
+            current = candidate_planning.get_session(session.identifier)
+            if current is None:
+                raise ValueError("Candidate planning session disappeared during conversion")
+            if current.workflow_session_id is not None:
+                return current
+            if current.planning_status is not CandidatePlanningSessionStatus.PLAN_READY:
+                raise ValueError("Candidate planning session is no longer plan-ready")
+            if current.plan is None:
+                raise ValueError("Candidate planning session no longer has a plan")
+            if candidate_plan_fingerprint(current.plan) != plan_fingerprint:
+                raise ValueError("Candidate plan fingerprint changed during conversion")
+            workflow_state.create_session(workflow)
+            approvals.save_request(approval)
+            updated = replace(
+                current,
+                workflow_session_id=workflow_id,
+                implementation_approval_request_id=approval_id,
+                candidate_plan_fingerprint=plan_fingerprint,
+                workflow_conversion_status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+                workflow_conversion_completed_at=converted_at,
+                last_revalidation_fingerprint=revalidated.candidate_fingerprint,
+                last_revalidation_status=revalidated.intake_status,
+            )
+            candidate_planning.replace_session(updated)
+            return updated
+
+        try:
+            updated_session = self._state_persistence.mutate_aggregate(mutate)
+        except (OSError, ValueError, StatePersistenceError) as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Candidate workflow shell could not be persisted.",
+            ) from error
+        return _conversion_response_from_session(
+            updated_session,
+            status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+            core_status=revalidated.intake_status,
+        )
 
     def _store_create_or_reuse(
         self,
@@ -478,4 +835,14 @@ def _matches_session_snapshot(
         and expected.target_id == actual.target_id
         and expected.target_type == actual.target_type
         and expected.execution_intent == actual.execution_intent
+    )
+
+
+def _matches_workflow_snapshot(
+    expected: CandidateSnapshot,
+    actual: CandidateSnapshot,
+) -> bool:
+    return (
+        _matches_session_snapshot(expected, actual)
+        and expected.required_approval_level == actual.required_approval_level
     )

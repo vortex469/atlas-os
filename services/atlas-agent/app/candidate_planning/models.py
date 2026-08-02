@@ -22,6 +22,9 @@ class CandidatePlanningSessionStatus(StrEnum):
     PLANNING_FAILED = "planning_failed"
     PLANNING_NOT_SUPPORTED = "planning_not_supported"
     STALE_BEFORE_PLANNING = "stale_before_planning"
+    WORKFLOW_CREATED = "workflow_created"
+    STALE_BEFORE_WORKFLOW = "stale_before_workflow"
+    WORKFLOW_CONVERSION_FAILED = "workflow_conversion_failed"
 
 
 class CoreCandidatePlanningIntakeStatus(StrEnum):
@@ -58,6 +61,12 @@ class CandidatePlanningFailureCode(StrEnum):
     REPOSITORY_INSPECTION_FAILED = "repository_inspection_failed"
     PLANNING_VALIDATION_FAILED = "planning_validation_failed"
     UNSAFE_PLAN_CONTENT = "unsafe_plan_content"
+    PLAN_NOT_READY = "plan_not_ready"
+    CANDIDATE_FINGERPRINT_MISMATCH = "candidate_fingerprint_mismatch"
+    PLAN_FINGERPRINT_MISMATCH = "plan_fingerprint_mismatch"
+    PLAN_INTEGRITY_FAILED = "plan_integrity_failed"
+    WORKFLOW_TRANSLATION_UNSUPPORTED = "workflow_translation_unsupported"
+    APPROVAL_CREATION_FAILED = "approval_creation_failed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +193,11 @@ class CandidatePlanningSession:
     planning_completed_at: datetime | None = None
     last_revalidation_fingerprint: str | None = None
     last_revalidation_status: CoreCandidatePlanningIntakeStatus | None = None
+    workflow_session_id: str | None = None
+    implementation_approval_request_id: str | None = None
+    candidate_plan_fingerprint: str | None = None
+    workflow_conversion_status: CandidatePlanningSessionStatus | None = None
+    workflow_conversion_completed_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,6 +214,32 @@ class CandidatePlanResponse:
     unsupported_reason: str | None = None
     plan: CandidatePlan | None = None
     planning_failure: CandidatePlanningFailure | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateWorkflowConversionRequest:
+    """Request to convert a plan-ready candidate session into a workflow shell."""
+
+    expected_candidate_fingerprint: str | None = None
+    expected_plan_fingerprint: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateWorkflowConversionResponse:
+    """Response for candidate workflow-shell conversion."""
+
+    candidate_planning_session_id: str
+    candidate_id: str
+    candidate_fingerprint: str | None
+    candidate_plan_id: str | None
+    candidate_plan_fingerprint: str | None
+    workflow_session_id: str | None
+    workflow_status: str | None
+    implementation_approval_request_id: str | None
+    conversion_status: CandidatePlanningSessionStatus
+    core_revalidation_status: CoreCandidatePlanningIntakeStatus | None
+    reason_codes: tuple[str, ...] = ()
+    failure: CandidatePlanningFailure | None = None
 
 
 def build_candidate_planning_session_id(

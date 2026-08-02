@@ -12,6 +12,8 @@ from app.candidate_planning.models import (
     CandidatePlanningFailure,
     CandidatePlanRequest,
     CandidatePlanResponse,
+    CandidateWorkflowConversionRequest,
+    CandidateWorkflowConversionResponse,
 )
 from app.candidate_planning.service import CandidatePlanningServiceError
 
@@ -36,6 +38,38 @@ class CandidatePlanningRequest(BaseModel):
 class CandidatePlanningFailureResponse(BaseModel):
     code: str
     message: str
+
+
+class CandidateWorkflowRequest(BaseModel):
+    """Validated request to create a workflow shell from a candidate plan."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_candidate_fingerprint: str | None = None
+    expected_plan_fingerprint: str | None = None
+
+    def to_domain(self) -> CandidateWorkflowConversionRequest:
+        return CandidateWorkflowConversionRequest(
+            expected_candidate_fingerprint=self.expected_candidate_fingerprint,
+            expected_plan_fingerprint=self.expected_plan_fingerprint,
+        )
+
+
+class CandidateWorkflowResponse(BaseModel):
+    """Serialized workflow-shell conversion response."""
+
+    candidate_planning_session_id: str
+    candidate_id: str
+    candidate_fingerprint: str | None
+    candidate_plan_id: str | None
+    candidate_plan_fingerprint: str | None
+    workflow_session_id: str | None
+    workflow_status: str | None
+    implementation_approval_request_id: str | None
+    conversion_status: str
+    core_revalidation_status: str | None
+    reason_codes: tuple[str, ...]
+    failure: CandidatePlanningFailureResponse | None = None
 
 
 class CandidatePlanApiResponse(BaseModel):
@@ -140,6 +174,27 @@ def _to_response(response: CandidatePlanResponse) -> CandidatePlanningResponse:
     )
 
 
+def _workflow_response(
+    response: CandidateWorkflowConversionResponse,
+) -> CandidateWorkflowResponse:
+    return CandidateWorkflowResponse(
+        candidate_planning_session_id=response.candidate_planning_session_id,
+        candidate_id=response.candidate_id,
+        candidate_fingerprint=response.candidate_fingerprint,
+        candidate_plan_id=response.candidate_plan_id,
+        candidate_plan_fingerprint=response.candidate_plan_fingerprint,
+        workflow_session_id=response.workflow_session_id,
+        workflow_status=response.workflow_status,
+        implementation_approval_request_id=response.implementation_approval_request_id,
+        conversion_status=response.conversion_status.value,
+        core_revalidation_status=response.core_revalidation_status.value
+        if response.core_revalidation_status is not None
+        else None,
+        reason_codes=response.reason_codes,
+        failure=_failure_response(response.failure),
+    )
+
+
 @router.post(
     "",
     response_model=CandidatePlanningResponse,
@@ -227,3 +282,29 @@ async def get_candidate_plan(
     if plan is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
     return _plan_response(plan)
+
+
+@router.post(
+    "/{session_id}/workflow",
+    response_model=CandidateWorkflowResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={status.HTTP_503_SERVICE_UNAVAILABLE: {"model": CandidatePlanningErrorResponse}},
+)
+async def create_candidate_workflow_shell(
+    request: Request,
+    session_id: str,
+    conversion_request: CandidateWorkflowRequest | None = None,
+) -> CandidateWorkflowResponse:
+    """Create or return an approval-gated workflow shell without executable commands."""
+
+    try:
+        response = await request.app.state.container.candidate_planning_service.convert_plan_to_workflow_shell(
+            session_id,
+            (conversion_request or CandidateWorkflowRequest()).to_domain(),
+        )
+    except CandidatePlanningServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": exc.code.value, "message": exc.message},
+        ) from exc
+    return _workflow_response(response)

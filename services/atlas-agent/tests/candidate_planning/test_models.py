@@ -56,7 +56,10 @@ def test_candidate_planning_status_vocabulary_remains_planning_only() -> None:
         "planning_not_supported",
         "ready_for_planning",
         "stale_before_planning",
+        "stale_before_workflow",
         "unsupported_intent",
+        "workflow_conversion_failed",
+        "workflow_created",
     }
 
 

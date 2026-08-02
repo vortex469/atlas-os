@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
@@ -45,6 +46,39 @@ class WorkflowSessionState(StrEnum):
     COMPLETED = "completed"
 
 
+class WorkflowSource(StrEnum):
+    """Authoritative origin of a workflow session."""
+
+    ROADMAP = "roadmap"
+    CANDIDATE = "candidate"
+    MANUAL = "manual"
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateWorkflowMetadata:
+    """Immutable audit linkage for a candidate-derived workflow shell."""
+
+    candidate_planning_session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    candidate_plan_id: str
+    candidate_plan_fingerprint: str
+    source_recommendation_id: str
+    source_subsystem: str
+    catalog_item_id: str | None
+    target_id: str
+    target_type: str
+    execution_category: str
+    execution_intent: str
+    evidence_ids: tuple[str, ...]
+    compatibility_assessment_id: str | None
+    compatibility_status: str | None
+    relationship_ids: tuple[str, ...]
+    conversion_timestamp: datetime
+    core_revalidation_status: str
+    core_revalidation_fingerprint: str
+
+
 @dataclass(frozen=True, slots=True)
 class SprintStatus:
     """Current Atlas Agent sprint status."""
@@ -75,9 +109,11 @@ class WorkflowSession:
     """Immutable identity and artifacts for one planned workflow."""
 
     identifier: str
-    request: WorkflowRequest
-    plan: ImplementationPlan
+    request: WorkflowRequest | None
+    plan: ImplementationPlan | None
     state: WorkflowSessionState
+    source: WorkflowSource = WorkflowSource.ROADMAP
+    candidate_metadata: CandidateWorkflowMetadata | None = None
     planning_analysis: ModelResponse | None = None
     review_analysis: ModelResponse | None = None
     context: AgentContext | None = None
