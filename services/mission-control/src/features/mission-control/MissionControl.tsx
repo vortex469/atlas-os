@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AtlasAgentPanel } from "../../components/AtlasAgentPanel";
 import { DashboardHeader } from "../../components/DashboardHeader";
@@ -64,18 +64,23 @@ function formatStateLabel(value: string): string {
 async function fetchAllWorkflowSummary(): Promise<WorkflowListResponse> {
     const pageSize = 200;
     let offset = 0;
-    let total = 0;
     const collected: WorkflowSummary[] = [];
 
-    do {
+    while (true) {
         const page = await listWorkflows({ limit: pageSize, offset });
         collected.push(...page.items);
-        total = page.total;
+        const total = page.total;
         offset += page.items.length;
+        if (total <= collected.length) {
+            break;
+        }
         if (page.items.length === 0) {
             break;
         }
-    } while (offset < total);
+        if (page.items.length < pageSize) {
+            break;
+        }
+    }
 
     return {
         items: collected,
@@ -134,10 +139,14 @@ export function MissionControl() {
     const [overviewLoading, setOverviewLoading] = useState(false);
     const [overviewError, setOverviewError] = useState<string | null>(null);
 
+    const isLoadingOperationalOverview = useRef(false);
+
     const loadOperationalOverview = useCallback(async () => {
-        if (overviewLoading) {
+        if (isLoadingOperationalOverview.current) {
             return;
         }
+
+        isLoadingOperationalOverview.current = true;
 
         setOverviewLoading(true);
         setOverviewError(null);
@@ -175,12 +184,13 @@ export function MissionControl() {
             );
         } finally {
             setOverviewLoading(false);
+            isLoadingOperationalOverview.current = false;
         }
-    }, [overviewLoading]);
+    }, []);
 
     useEffect(() => {
         if (lastUpdated !== null) {
-            void loadOperationalOverview();
+            void Promise.resolve().then(() => loadOperationalOverview());
         }
     }, [lastUpdated, loadOperationalOverview]);
 
@@ -188,7 +198,7 @@ export function MissionControl() {
         await Promise.all([refresh(), loadOperationalOverview()]);
     }
 
-    const workflows = workflowSummary?.items ?? [];
+    const workflows = useMemo(() => workflowSummary?.items ?? [], [workflowSummary]);
     const workflowInboxRows = useMemo(
         () => getWorkflowInboxRows(workflows),
         [workflows],
