@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import {
+    createCandidateWorkflowShell,
     generateCandidatePlan,
     getAtlasAgentErrorMessage,
     getCandidatePlan,
@@ -10,6 +11,7 @@ import {
 import type {
     CandidatePlanApiResponse,
     CandidatePlanningResponse,
+    CandidateWorkflowResponse,
 } from "../types/atlasAgent";
 
 const SUPPORTED_INTENT = "update-compose-stack";
@@ -22,6 +24,9 @@ export function PlanningSessionPage() {
     const [error, setError] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generateError, setGenerateError] = useState<string | null>(null);
+    const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(null);
+    const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
+    const [workflowError, setWorkflowError] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -94,6 +99,30 @@ export function PlanningSessionPage() {
         }
     }
 
+    async function createWorkflow() {
+        if (!session || session.status !== "plan_ready" || isCreatingWorkflow) {
+            return;
+        }
+
+        setIsCreatingWorkflow(true);
+        setWorkflowError(null);
+
+        try {
+            const response = await createCandidateWorkflowShell(sessionId);
+            setWorkflow(response);
+        } catch (requestError) {
+            console.error(`Unable to create workflow shell for ${sessionId}:`, requestError);
+            setWorkflowError(
+                getAtlasAgentErrorMessage(
+                    requestError,
+                    "Atlas Agent could not create a workflow shell.",
+                ),
+            );
+        } finally {
+            setIsCreatingWorkflow(false);
+        }
+    }
+
     if (isLoading) {
         return (
             <main className="mx-auto max-w-6xl p-8">
@@ -132,7 +161,7 @@ export function PlanningSessionPage() {
                         This page can generate and display a read-only candidate plan. It cannot create workflows, approve changes, execute changes, generate implementation requests, verify changes, or commit code.
                     </p>
                 </div>
-                <PlanningRail current={plan ? "Candidate Plan" : "Planning Session"} />
+                <PlanningRail current={workflow ? "Workflow" : plan ? "Candidate Plan" : "Planning Session"} />
             </header>
 
             <section aria-labelledby="session-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -181,8 +210,66 @@ export function PlanningSessionPage() {
                 )}
                 {plan && <PlanViewer plan={plan} />}
             </section>
+
+            {plan && (
+                <section aria-labelledby="workflow-shell-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                    <h2 id="workflow-shell-heading" className="text-lg font-semibold text-white">Workflow shell</h2>
+                    <p className="mt-2 text-sm text-slate-400">
+                        Create Workflow asks Atlas Agent to create or return an approval-gated workflow shell. Mission Control sends only the planning session ID and does not send commands, workflow payloads, implementation requests, approval fields, or repository paths.
+                    </p>
+                    {session.status === "plan_ready" && !workflow && (
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <button type="button" onClick={createWorkflow} disabled={isCreatingWorkflow} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
+                                {isCreatingWorkflow ? "Creating workflow..." : "Create Workflow"}
+                            </button>
+                            {isCreatingWorkflow && <p className="text-sm text-slate-400">Creating workflow...</p>}
+                        </div>
+                    )}
+                    {workflowError && (
+                        <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+                            <p className="font-semibold text-red-300">Workflow creation failed</p>
+                            <p className="mt-1 text-sm text-red-200/80">{workflowError}</p>
+                        </div>
+                    )}
+                    {workflow && <WorkflowCreationResult workflow={workflow} />}
+                </section>
+            )}
         </main>
     );
+}
+
+function WorkflowCreationResult({ workflow }: { workflow: CandidateWorkflowResponse }) {
+    const isSuccessful = workflow.workflow_session_id !== null && workflow.failure === null;
+
+    return (
+        <div role={isSuccessful ? "status" : "alert"} className={["mt-4 rounded-lg border p-4", isSuccessful ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"].join(" ")}>
+            <p className={isSuccessful ? "font-semibold text-emerald-200" : "font-semibold text-amber-200"}>{workflowMessage(workflow)}</p>
+            <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                <Detail label="Workflow ID" value={workflow.workflow_session_id ?? "Not available"} />
+                <Detail label="Workflow status" value={workflow.workflow_status ? formatLabel(workflow.workflow_status) : "Not available"} />
+                <Detail label="Implementation approval pending" value={workflow.implementation_approval_request_id ? "Yes" : "Not reported"} />
+                <Detail label="Conversion status" value={formatLabel(workflow.conversion_status)} />
+            </dl>
+            {workflow.reason_codes.length > 0 && <p className="mt-3 text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
+            {workflow.failure && <p className="mt-3 text-sm text-slate-400">Failure: {workflow.failure.code} - {workflow.failure.message}</p>}
+            {workflow.workflow_session_id && (
+                <Link to={`/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}/workflow`} state={{ workflow }} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    Open Workflow
+                </Link>
+            )}
+        </div>
+    );
+}
+
+function workflowMessage(workflow: CandidateWorkflowResponse): string {
+    if (workflow.workflow_session_id && workflow.failure === null) return "Workflow created.";
+    if (workflow.conversion_status === "workflow_exists") return "Workflow already exists.";
+    if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "Stale candidate.";
+    if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "Plan mismatch.";
+    if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Unsupported intent.";
+    if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable.";
+    if (workflow.failure?.code === "persistence_failed") return "Persistence failure.";
+    return "Workflow creation did not complete.";
 }
 
 function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {
@@ -208,7 +295,7 @@ function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {
     );
 }
 
-function PlanningRail({ current }: { current: "Planning Session" | "Candidate Plan" }) {
+function PlanningRail({ current }: { current: "Planning Session" | "Candidate Plan" | "Workflow" }) {
     const steps = [
         "Execution Candidate",
         "Planning Session",
@@ -220,8 +307,11 @@ function PlanningRail({ current }: { current: "Planning Session" | "Candidate Pl
         "Commit",
     ];
     const complete = new Set(["Execution Candidate", "Planning Session"]);
-    if (current === "Candidate Plan") {
+    if (current === "Candidate Plan" || current === "Workflow") {
         complete.add("Candidate Plan");
+    }
+    if (current === "Workflow") {
+        complete.add("Workflow");
     }
 
     return (

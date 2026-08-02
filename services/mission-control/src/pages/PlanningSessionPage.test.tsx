@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+    createCandidateWorkflowShell,
     generateCandidatePlan,
     getCandidatePlan,
     getCandidatePlanningSession,
@@ -11,10 +12,12 @@ import {
 import type {
     CandidatePlanApiResponse,
     CandidatePlanningResponse,
+    CandidateWorkflowResponse,
 } from "../types/atlasAgent";
 import { PlanningSessionPage } from "./PlanningSessionPage";
 
 vi.mock("../api/atlas-agent", () => ({
+    createCandidateWorkflowShell: vi.fn(),
     generateCandidatePlan: vi.fn(),
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) =>
         error instanceof Error ? error.message : fallback,
@@ -23,6 +26,7 @@ vi.mock("../api/atlas-agent", () => ({
 }));
 
 const mockedGetCandidatePlanningSession = vi.mocked(getCandidatePlanningSession);
+const mockedCreateCandidateWorkflowShell = vi.mocked(createCandidateWorkflowShell);
 const mockedGenerateCandidatePlan = vi.mocked(generateCandidatePlan);
 const mockedGetCandidatePlan = vi.mocked(getCandidatePlan);
 
@@ -67,6 +71,24 @@ function plan(overrides: Partial<CandidatePlanApiResponse> = {}): CandidatePlanA
     };
 }
 
+function workflow(overrides: Partial<CandidateWorkflowResponse> = {}): CandidateWorkflowResponse {
+    return {
+        candidate_planning_session_id: "candidate-plan-1",
+        candidate_id: "candidate-1",
+        candidate_fingerprint: "fingerprint-1",
+        candidate_plan_id: "plan-1",
+        candidate_plan_fingerprint: "plan-fingerprint-1",
+        workflow_session_id: "workflow-1",
+        workflow_status: "approval_pending",
+        implementation_approval_request_id: "approval-1",
+        conversion_status: "workflow_created",
+        core_revalidation_status: "accepted_for_planning",
+        reason_codes: [],
+        failure: null,
+        ...overrides,
+    };
+}
+
 function renderPage() {
     return render(
         <MemoryRouter initialEntries={["/candidate-planning/candidate-plan-1"]}>
@@ -82,6 +104,7 @@ describe("PlanningSessionPage", () => {
         vi.resetAllMocks();
         mockedGetCandidatePlanningSession.mockResolvedValue(session());
         mockedGenerateCandidatePlan.mockResolvedValue(session({ status: "plan_ready", plan: plan() }));
+        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow());
         mockedGetCandidatePlan.mockResolvedValue(plan());
     });
 
@@ -121,7 +144,7 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("Restore previous compose file.")).toBeInTheDocument();
         expect(screen.getByText("Confirm maintenance window.")).toBeInTheDocument();
         expect(screen.getByText("evidence-1")).toBeInTheDocument();
-        expect(screen.queryByText(/argv|shell|approval id|execution metadata/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/argv|execution metadata/i)).not.toBeInTheDocument();
     });
 
     it("blocks duplicate Generate Plan requests", async () => {
@@ -182,6 +205,66 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
         cleanup();
         renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Agent unavailable");
+    });
+
+    it("creates a workflow shell from a plan-ready session", async () => {
+        const user = userEvent.setup();
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan() }));
+        renderPage();
+
+        await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
+
+        await waitFor(() => expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1"));
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
+        expect(await screen.findByText("Workflow created.")).toBeInTheDocument();
+        expect(screen.getByText("Workflow ID")).toBeInTheDocument();
+        expect(screen.getByText("workflow-1")).toBeInTheDocument();
+        expect(screen.getByText("Approval Pending")).toBeInTheDocument();
+        expect(screen.getByText("Implementation approval pending")).toBeInTheDocument();
+        expect(screen.getByText("Yes")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Open Workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
+        expect(screen.getByText("Workflow ✔")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
+    });
+
+    it("blocks duplicate Create Workflow submissions", async () => {
+        const user = userEvent.setup();
+        let resolveRequest!: (value: CandidateWorkflowResponse) => void;
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan() }));
+        mockedCreateCandidateWorkflowShell.mockReturnValue(new Promise((resolve) => {
+            resolveRequest = resolve;
+        }));
+        renderPage();
+
+        const button = await screen.findByRole("button", { name: "Create Workflow" });
+        await user.dblClick(button);
+
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
+        expect(screen.getAllByText("Creating workflow...").length).toBeGreaterThan(0);
+        resolveRequest(workflow());
+        expect(await screen.findByText("Workflow created.")).toBeInTheDocument();
+    });
+
+    it("handles workflow creation errors and rejected conversion states", async () => {
+        const user = userEvent.setup();
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan() }));
+        mockedCreateCandidateWorkflowShell.mockResolvedValueOnce(workflow({
+            workflow_session_id: null,
+            workflow_status: null,
+            conversion_status: "workflow_exists",
+            implementation_approval_request_id: null,
+            failure: { code: "conflicting_active_session", message: "Workflow already exists" },
+        }));
+        renderPage();
+
+        await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
+        expect(await screen.findByText("Workflow already exists.")).toBeInTheDocument();
+
+        mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Agent unavailable"));
+        cleanup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("Agent unavailable");
     });
 

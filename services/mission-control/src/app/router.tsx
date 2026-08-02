@@ -12,6 +12,8 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { OperationsPage } from "../pages/OperationsPage";
 import { PlanningSessionPage } from "../pages/PlanningSessionPage";
 import { ProviderPage } from "../pages/ProviderPage";
+import { WorkflowPage } from "../pages/WorkflowPage";
+import { WorkflowShellPage } from "../pages/WorkflowShellPage";
 export const router = createBrowserRouter([
     {
         path: "/",
@@ -52,6 +54,14 @@ export const router = createBrowserRouter([
             {
                 path: "candidate-planning/:sessionId",
                 element: <PlanningSessionPage />,
+            },
+            {
+                path: "candidate-planning/:sessionId/workflow",
+                element: <WorkflowShellPage />,
+            },
+            {
+                path: "workflows/:workflowId",
+                element: <WorkflowPage />,
             },
             {
                 path: "forge",

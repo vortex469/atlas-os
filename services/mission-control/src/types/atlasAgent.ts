@@ -95,3 +95,57 @@ export interface CandidatePlanningResponse {
     plan: CandidatePlanApiResponse | null;
     planning_failure: CandidatePlanningFailure | null;
 }
+
+export interface CandidateWorkflowRequest {
+    expected_candidate_fingerprint?: string | null;
+    expected_plan_fingerprint?: string | null;
+}
+
+export interface CandidateWorkflowResponse {
+    candidate_planning_session_id: string;
+    candidate_id: string;
+    candidate_fingerprint: string | null;
+    candidate_plan_id: string | null;
+    candidate_plan_fingerprint: string | null;
+    workflow_session_id: string | null;
+    workflow_status: string | null;
+    implementation_approval_request_id: string | null;
+    conversion_status: string;
+    core_revalidation_status: string | null;
+    reason_codes: string[];
+    failure: CandidatePlanningFailure | null;
+}
+
+export interface WorkflowImplementationRequestSummary {
+    immutable_request_id: string;
+    tool: string;
+    working_directory: string;
+    affected_files: string[];
+    repository: string;
+    translator_version: string | null;
+}
+
+export interface WorkflowDetailResponse {
+    workflow_id: string;
+    workflow_source: string;
+    workflow_state: string;
+    planning_session_id: string | null;
+    candidate_id: string | null;
+    candidate_fingerprint: string | null;
+    plan_fingerprint: string | null;
+    implementation_approval_status: string;
+    repository: string | null;
+    working_directory: string | null;
+    translator_version: string | null;
+    affected_files: string[];
+    implementation_request: WorkflowImplementationRequestSummary | null;
+}
+
+export type WorkflowImplementationDecision = "approve" | "reject";
+
+export interface WorkflowImplementationApprovalResponse {
+    workflow_id: string;
+    workflow_state: string;
+    implementation_approval_status: string;
+    message: string | null;
+}

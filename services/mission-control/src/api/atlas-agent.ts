@@ -4,10 +4,15 @@ import type {
     CandidatePlanApiResponse,
     CandidatePlanningRequest,
     CandidatePlanningResponse,
+    CandidateWorkflowRequest,
+    CandidateWorkflowResponse,
     RepositoryStatus,
     ReviewReport,
     SprintStatus,
     VerificationReport,
+    WorkflowDetailResponse,
+    WorkflowImplementationApprovalResponse,
+    WorkflowImplementationDecision,
 } from "../types/atlasAgent";
 
 const ATLAS_AGENT_API_BASE_URL =
@@ -132,6 +137,48 @@ export async function getCandidatePlan(
 
         throw error;
     }
+}
+
+export async function createCandidateWorkflowShell(
+    sessionId: string,
+    request?: CandidateWorkflowRequest,
+): Promise<CandidateWorkflowResponse> {
+    const response = await atlasAgent.post<CandidateWorkflowResponse>(
+        `/candidate-planning/${encodeURIComponent(sessionId)}/workflow`,
+        request,
+    );
+
+    return response.data;
+}
+
+export async function getWorkflowDetail(
+    workflowId: string,
+): Promise<WorkflowDetailResponse | null> {
+    try {
+        const response = await atlasAgent.get<WorkflowDetailResponse>(
+            `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/implementation-request`,
+        );
+
+        return response.data;
+    } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+
+        throw error;
+    }
+}
+
+export async function submitWorkflowImplementationApproval(
+    workflowId: string,
+    decision: WorkflowImplementationDecision,
+): Promise<WorkflowImplementationApprovalResponse> {
+    const response = await atlasAgent.post<WorkflowImplementationApprovalResponse>(
+        `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/implementation-approval`,
+        { workflow_id: workflowId, decision },
+    );
+
+    return response.data;
 }
 
 export function getAtlasAgentErrorMessage(

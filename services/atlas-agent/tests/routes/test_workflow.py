@@ -1,6 +1,7 @@
 """Tests for workflow execution routes."""
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
@@ -8,11 +9,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.approval.models import (
+    ApprovalDecision,
     ApprovalPurpose,
     ApprovalRequest,
+    ApprovalResult,
+    ApprovalStatus,
     CommitApprovalMetadata,
     VerificationApprovalCheck,
 )
+from app.candidate_planning.models import CandidateImplementationRequest
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
 from app.candidate_planning.verification import CandidateVerificationFailureCode
@@ -23,10 +28,14 @@ from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.routes import workflow as workflow_routes
 from app.workflow.engine import WorkflowEngine
 from app.workflow.models import (
+    CandidateWorkflowMetadata,
     SprintPhase,
     SprintStatus,
     WorkflowRequest,
     WorkflowResult,
+    WorkflowSession,
+    WorkflowSessionState,
+    WorkflowSource,
 )
 from app.workflow.orchestrator import WorkflowOrchestrator
 
@@ -526,3 +535,167 @@ def test_unexpected_failure_returns_sanitized_500(
         "detail": {"code": "internal_failure", "message": message}
     }
     assert "sensitive" not in response.text
+
+
+def candidate_workflow_session(repository: Path) -> WorkflowSession:
+    implementation = CandidateImplementationRequest(
+        identifier="impl-request-123",
+        workflow_session_id="workflow-123",
+        candidate_planning_session_id="candidate-plan-123",
+        candidate_id="candidate-123",
+        candidate_fingerprint="candidate-fingerprint-123",
+        candidate_plan_id="plan-123",
+        candidate_plan_fingerprint="plan-fingerprint-123",
+        execution_intent="update-compose-stack",
+        repository_root=repository,
+        repository_branch="feature/atlas-agent",
+        repository_head="abc123",
+        argv=("docker-compose", "up", "-d"),
+        working_directory=repository / "services/demo",
+        affected_files=(Path("compose.yaml"), Path("services/demo/Dockerfile")),
+        evidence_ids=("evidence-1",),
+        compatibility_assessment_id="compat-1",
+        compatibility_status="compatible",
+        translator_version="candidate-translator-v1",
+        generated_at=datetime(2026, 8, 2, tzinfo=UTC),
+    )
+    metadata = CandidateWorkflowMetadata(
+        candidate_planning_session_id="candidate-plan-123",
+        candidate_id="candidate-123",
+        candidate_fingerprint="candidate-fingerprint-123",
+        candidate_plan_id="plan-123",
+        candidate_plan_fingerprint="plan-fingerprint-123",
+        source_recommendation_id="recommendation-123",
+        source_subsystem="discovery",
+        catalog_item_id="catalog-1",
+        target_id="compose-stack-1",
+        target_type="compose_stack",
+        execution_category="maintenance",
+        execution_intent="update-compose-stack",
+        evidence_ids=("evidence-1",),
+        compatibility_assessment_id="compat-1",
+        compatibility_status="compatible",
+        relationship_ids=("rel-1",),
+        conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
+        core_revalidation_status="accepted_for_planning",
+        core_revalidation_fingerprint="candidate-fingerprint-123",
+    )
+    return WorkflowSession(
+        identifier="workflow-123",
+        request=None,
+        plan=None,
+        state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=metadata,
+        candidate_implementation_request=implementation,
+        candidate_implementation_approval_id="approval-workflow-123",
+    )
+
+
+def save_candidate_workflow(container, workflow: WorkflowSession) -> None:
+    approval = ApprovalRequest(
+        identifier="approval-workflow-123",
+        workflow_id=workflow.identifier,
+        checkpoint_id="impl-request-123",
+        title="Approve exact candidate implementation request",
+        requested_tool="docker-compose",
+        requested_command=("docker-compose", "up", "-d"),
+        requested_working_directory=workflow.candidate_implementation_request.working_directory,
+        rationale="Approve exact implementation request.",
+    )
+    container.workflow_state.delete_session(workflow.identifier)
+    approvals = container.approval_repository.export_snapshot()
+    approvals.pop("approval-workflow-123", None)
+    container.approval_repository.replace_snapshot(approvals)
+    container.workflow_state.create_session(workflow)
+    container.approval_repository.save_request(approval)
+
+
+def test_candidate_workflow_implementation_request_is_read_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    save_candidate_workflow(container, candidate_workflow_session(tmp_path))
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/implementation-request")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_id"] == "workflow-123"
+    assert body["workflow_state"] == "awaiting_implementation_approval"
+    assert body["planning_session_id"] == "candidate-plan-123"
+    assert body["candidate_id"] == "candidate-123"
+    assert body["candidate_fingerprint"] == "candidate-fingerprint-123"
+    assert body["plan_fingerprint"] == "plan-fingerprint-123"
+    assert body["implementation_approval_status"] == "pending"
+    assert body["repository"] == str(tmp_path)
+    assert body["working_directory"] == str(tmp_path / "services/demo")
+    assert body["translator_version"] == "candidate-translator-v1"
+    assert body["affected_files"] == ["compose.yaml", "services/demo/Dockerfile"]
+    assert body["implementation_request"] == {
+        "immutable_request_id": "impl-request-123",
+        "tool": "docker-compose",
+        "working_directory": str(tmp_path / "services/demo"),
+        "affected_files": ["compose.yaml", "services/demo/Dockerfile"],
+        "repository": str(tmp_path),
+        "translator_version": "candidate-translator-v1",
+    }
+    assert "argv" not in body
+    assert "requested_command" not in body
+
+
+def test_candidate_workflow_implementation_approval_accepts_only_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = candidate_workflow_session(tmp_path)
+    save_candidate_workflow(container, workflow)
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/implementation-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {
+        "workflow_id": "workflow-123",
+        "workflow_state": "awaiting_implementation_approval",
+        "implementation_approval_status": "approved",
+        "message": "Implementation approved. Execution is now available.",
+    }
+    result = container.approval_repository.get_request("approval-workflow-123")
+    assert result.decision.status is ApprovalStatus.APPROVED
+
+
+def test_candidate_workflow_implementation_approval_rejects_extra_payload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    save_candidate_workflow(container, candidate_workflow_session(tmp_path))
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/implementation-approval",
+        json={
+            "workflow_id": "workflow-123",
+            "decision": "approve",
+            "argv": ["docker-compose", "up", "-d"],
+        },
+    )
+
+    assert response.status_code == 422
+    result = container.approval_repository.get_request("approval-workflow-123")
+    assert result.decision.status is ApprovalStatus.PENDING
+
+
+def test_candidate_workflow_implementation_approval_conflict_after_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = candidate_workflow_session(tmp_path)
+    save_candidate_workflow(container, workflow)
+    stored = container.approval_repository.get_request("approval-workflow-123")
+    container.approval_repository.update_decision(
+        "approval-workflow-123",
+        ApprovalDecision(request=stored.decision.request, status=ApprovalStatus.REJECTED),
+    )
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/implementation-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "approval_already_decided"

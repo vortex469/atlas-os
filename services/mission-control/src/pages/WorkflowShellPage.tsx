@@ -1,0 +1,130 @@
+import { Link, useLocation, useParams } from "react-router-dom";
+
+import type { CandidateWorkflowResponse } from "../types/atlasAgent";
+
+type WorkflowLocationState = {
+    workflow?: CandidateWorkflowResponse;
+};
+
+export function WorkflowShellPage() {
+    const { sessionId = "" } = useParams<{ sessionId: string }>();
+    const location = useLocation();
+    const workflow = (location.state as WorkflowLocationState | null)?.workflow ?? null;
+
+    if (!workflow) {
+        return (
+            <main className="mx-auto max-w-6xl space-y-6 p-8">
+                <WorkflowRail />
+                <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
+                    <p className="font-semibold text-amber-200">Workflow summary unavailable</p>
+                    <p className="mt-1 text-sm text-slate-300">
+                        Mission Control can display the workflow shell summary returned by Create Workflow. Return to the planning session and create or reopen the workflow from that response.
+                    </p>
+                    <Link to={`/candidate-planning/${encodeURIComponent(sessionId)}`} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Back to planning session
+                    </Link>
+                </div>
+            </main>
+        );
+    }
+
+    return (
+        <main className="mx-auto max-w-6xl space-y-8 p-8">
+            <header className="space-y-4">
+                <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow Shell</p>
+                    <h1 className="mt-3 break-all text-3xl font-bold text-white">
+                        Workflow {workflow.workflow_session_id ?? "not created"}
+                    </h1>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                        Read-only workflow shell summary from Atlas Agent. Mission Control does not create implementation requests, approve changes, execute changes, verify changes, review changes, or commit code from this page.
+                    </p>
+                </div>
+                <WorkflowRail />
+            </header>
+
+            <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
+                        <p className="mt-1 text-sm text-slate-400">{workflow.workflow_session_id ? "Workflow created." : workflowMessage(workflow)}</p>
+                    </div>
+                    <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">
+                        {workflow.workflow_status ? formatLabel(workflow.workflow_status) : formatLabel(workflow.conversion_status)}
+                    </span>
+                </div>
+                <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                    <Detail label="Workflow ID" value={workflow.workflow_session_id ?? "Not available"} />
+                    <Detail label="Workflow source" value="Atlas Agent candidate planning" />
+                    <Detail label="Workflow state" value={workflow.workflow_status ? formatLabel(workflow.workflow_status) : "Not available"} />
+                    <Detail label="Candidate ID" value={workflow.candidate_id} />
+                    <Detail label="Candidate fingerprint" value={workflow.candidate_fingerprint ?? "Not available"} />
+                    <Detail label="Plan fingerprint" value={workflow.candidate_plan_fingerprint ?? "Not available"} />
+                    <Detail label="Implementation approval status" value={workflow.implementation_approval_request_id ? "Pending" : "Not reported"} />
+                    <Detail label="Planning Session ID" value={workflow.candidate_planning_session_id} />
+                    <Detail label="Creation time" value="Not exposed by Atlas Agent API" />
+                </dl>
+                {workflow.reason_codes.length > 0 && <p className="mt-4 text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
+                {workflow.failure && <p className="mt-4 text-sm text-slate-400">Failure: {workflow.failure.code} - {workflow.failure.message}</p>}
+                {workflow.workflow_session_id && (
+                    <Link to={`/workflows/${encodeURIComponent(workflow.workflow_session_id)}`} className="mt-5 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Open Workflow
+                    </Link>
+                )}
+            </section>
+        </main>
+    );
+}
+
+function WorkflowRail() {
+    const steps = [
+        "Execution Candidate",
+        "Planning Session",
+        "Candidate Plan",
+        "Workflow",
+        "Implementation",
+        "Verification",
+        "Review",
+        "Commit",
+    ];
+    const complete = new Set(["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow"]);
+
+    return (
+        <section aria-label="Read-only workflow rail" className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+            <ol className="grid gap-2 text-sm md:grid-cols-4 xl:grid-cols-8">
+                {steps.map((step) => {
+                    const isWorkflow = step === "Workflow";
+                    const isComplete = complete.has(step);
+                    return (
+                        <li key={step} className={[
+                            "rounded-lg border px-3 py-2",
+                            isWorkflow ? "border-blue-400 bg-blue-500/10 text-blue-200" : isComplete ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950/50 text-slate-500",
+                        ].join(" ")}
+                        >
+                            <span className="block font-medium">{step}{isComplete ? " ✔" : " ○"}</span>
+                            <span className="text-xs">{isComplete ? "Read-only" : "Disabled"}</span>
+                        </li>
+                    );
+                })}
+            </ol>
+        </section>
+    );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+    return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{value}</dd></div>;
+}
+
+function workflowMessage(workflow: CandidateWorkflowResponse): string {
+    if (workflow.conversion_status === "workflow_exists") return "Workflow already exists.";
+    if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "Stale candidate.";
+    if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "Plan mismatch.";
+    if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Unsupported intent.";
+    if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable.";
+    if (workflow.failure?.code === "persistence_failed") return "Persistence failure.";
+    return "Workflow creation did not complete.";
+}
+
+function formatLabel(value: string): string {
+    return value.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
