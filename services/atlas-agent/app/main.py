@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.approval.engine import ApprovalEngine
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.execution import CandidateExecutionValidator
 from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.service import CandidatePlanningService
 from app.candidate_planning.state import CandidatePlanningStateStore
@@ -118,6 +119,14 @@ def create_app() -> FastAPI:
             repository_root=settings.repository_root,
         ),
     )
+    repository_resolver = RepositoryResolver(
+        repository_root=settings.repository_root,
+    )
+    candidate_execution_validator = CandidateExecutionValidator(
+        core_client=core_client,
+        candidate_state=candidate_planning_state,
+        repository_resolver=repository_resolver,
+    )
     runner = SubprocessRunner()
     context_engine = ContextEngine(core_client)
     workflow_engine = WorkflowEngine(
@@ -134,6 +143,7 @@ def create_app() -> FastAPI:
         review_mode=settings.review_mode,
         review_advisor=review_advisor,
         state_persistence=state_persistence,
+        candidate_execution_validator=candidate_execution_validator,
     )
     workflow_orchestrator = WorkflowOrchestrator(
         workflow_engine=workflow_engine,

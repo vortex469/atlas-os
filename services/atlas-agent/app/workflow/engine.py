@@ -21,14 +21,20 @@ from app.approval.models import (
     VerificationApprovalEnvironment,
 )
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.execution import (
+    CandidateExecutionFailureCode,
+    CandidateExecutionValidationResult,
+    CandidateExecutionValidator,
+)
 from app.context.models import AgentContext
 from app.execution.engine import ExecutionEngine
+from app.execution.exceptions import ExecutionValidationError
 from app.execution.models import EnvironmentVariable, ExecutionRequest, ExecutionStatus
 from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
-from app.planning.models import ImplementationPlan
+from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.committer import GitCommitter
 from app.repository.inspector import GitInspector
 from app.repository.models import CommitRequest, RepositorySnapshot
@@ -71,6 +77,7 @@ class WorkflowEngine:
         review_mode: str = "deterministic",
         review_advisor: ReviewAdvisor | None = None,
         state_persistence: AgentStatePersistenceCoordinator | None = None,
+        candidate_execution_validator: CandidateExecutionValidator | None = None,
     ) -> None:
         if planning_mode not in ("deterministic", "model-assisted"):
             raise ValueError(f"Unsupported planning mode: {planning_mode}")
@@ -101,6 +108,7 @@ class WorkflowEngine:
         self._review_mode = review_mode
         self._review_advisor = review_advisor
         self._state_persistence = state_persistence
+        self._candidate_execution_validator = candidate_execution_validator
 
     def block_before_planning(
         self,
@@ -288,11 +296,17 @@ class WorkflowEngine:
 
         if session.state is WorkflowSessionState.AWAITING_APPROVAL:
             if session.source is WorkflowSource.CANDIDATE:
-                return self._blocked_session_result(
+                return self._candidate_session_result(
                     session=session,
+                    phase=SprintPhase.BLOCKED,
                     error_message="Candidate workflow is not ready for implementation execution",
                 )
             return self._resume_implementation(session)
+        if (
+            session.state
+            is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
+        ):
+            return self._resume_candidate_implementation(session)
         if (
             session.state
             is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
@@ -492,6 +506,177 @@ class WorkflowEngine:
             plan=plan,
             context=context,
             planning_analysis=session.planning_analysis,
+            approval_request=verification_approval,
+            execution_result=execution_result,
+        )
+
+    def _resume_candidate_implementation(
+        self,
+        session: WorkflowSession,
+    ) -> WorkflowResult:
+        """Execute one approved immutable candidate implementation request."""
+
+        if self._candidate_execution_validator is None:
+            return self._block_candidate_session(
+                session=session,
+                error_message=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
+            )
+        approval_result = None
+        approval_id = session.candidate_implementation_approval_id
+        if approval_id is not None:
+            approval_result = self._approval_repository.get_request(approval_id)
+            if approval_result is not None:
+                try:
+                    approval_result = self._approval_engine.evaluate(
+                        approval_result.decision
+                    )
+                except Exception:
+                    logger.exception("Candidate approval validation failed")
+                    return self._block_candidate_session(
+                        session=session,
+                        error_message=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
+                    )
+
+        validation = self._candidate_execution_validator.validate(
+            workflow=session,
+            approval_result=approval_result,
+        )
+        if not validation.approved:
+            return self._candidate_validation_failure_result(session, validation)
+
+        execution_request = validation.execution_request
+        implementation_plan = validation.implementation_plan
+        if execution_request is None or implementation_plan is None:
+            return self._block_candidate_session(
+                session=session,
+                error_message=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
+            )
+        workflow_request = self._candidate_workflow_request(
+            execution_request=execution_request,
+            plan=implementation_plan,
+        )
+        if not self._transition_session(
+            session.identifier,
+            WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+            WorkflowSessionState.EXECUTING,
+            request=workflow_request,
+            plan=implementation_plan,
+        ):
+            return self._session_error_result(
+                session=session,
+                error_message="Workflow already resumed",
+            )
+
+        claimed_session = replace(
+            session,
+            state=WorkflowSessionState.EXECUTING,
+            request=workflow_request,
+            plan=implementation_plan,
+        )
+        in_progress_status = self._status(claimed_session, SprintPhase.IN_PROGRESS)
+        self._publish_sprint(in_progress_status)
+
+        try:
+            execution_result = self._execution_engine.execute(execution_request)
+        except ExecutionValidationError:
+            logger.exception("Candidate execution denied by tool policy")
+            self._block_claimed_session(
+                session.identifier,
+                WorkflowSessionState.EXECUTING,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                error_message=CandidateExecutionFailureCode.TOOL_POLICY_DENIED.value,
+            )
+        except Exception:
+            logger.exception("Candidate execution failed")
+            self._block_claimed_session(
+                session.identifier,
+                WorkflowSessionState.EXECUTING,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                error_message=CandidateExecutionFailureCode.EXECUTION_FAILED.value,
+            )
+
+        if execution_result.status is not ExecutionStatus.SUCCEEDED:
+            self._transition_session(
+                session.identifier,
+                WorkflowSessionState.EXECUTING,
+                WorkflowSessionState.BLOCKED,
+                execution_result=execution_result,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=execution_result,
+                error_message=CandidateExecutionFailureCode.EXECUTION_FAILED.value,
+            )
+
+        try:
+            inspector = self._repository_inspector_factory(
+                execution_request.plan.repository_root
+            )
+            after_execution = inspector.inspect()
+            changed_files = self._workflow_changed_files(
+                after_execution,
+                implementation_plan,
+            )
+            verification_approval = self._candidate_verification_approval_request(
+                claimed_session
+            )
+            if self._state_persistence is None:
+                self._approval_repository.save_request(verification_approval)
+                transition_ok = self._state_store.transition_session(
+                    session.identifier,
+                    WorkflowSessionState.EXECUTING,
+                    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                    execution_result=execution_result,
+                    changed_files=changed_files,
+                )
+            else:
+
+                def pause_for_verification(workflow, approvals):
+                    approvals.save_request(verification_approval)
+                    return workflow.transition_session(
+                        session.identifier,
+                        WorkflowSessionState.EXECUTING,
+                        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                        execution_result=execution_result,
+                        changed_files=changed_files,
+                    )
+
+                transition_ok = self._state_persistence.mutate_aggregate(
+                    pause_for_verification
+                )
+        except Exception:
+            logger.exception("Candidate verification approval storage failed")
+            self._block_claimed_session(
+                session.identifier,
+                WorkflowSessionState.EXECUTING,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=execution_result,
+                error_message=CandidateExecutionFailureCode.PERSISTENCE_FAILED.value,
+            )
+
+        if not transition_ok:
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=execution_result,
+                error_message="Workflow state transition failed",
+            )
+
+        awaiting_status = self._status(
+            claimed_session,
+            SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+        )
+        self._publish_sprint(awaiting_status)
+        return WorkflowResult(
+            sprint=awaiting_status,
+            plan=implementation_plan,
+            context=claimed_session.context,
+            planning_analysis=claimed_session.planning_analysis,
             approval_request=verification_approval,
             execution_result=execution_result,
         )
@@ -1070,6 +1255,117 @@ class WorkflowEngine:
                 status=ApprovalStatus.PENDING,
             )
         ).decision.request
+
+    @staticmethod
+    def _candidate_workflow_request(
+        *,
+        execution_request: ExecutionRequest,
+        plan: ImplementationPlan,
+    ) -> WorkflowRequest:
+        checkpoint = RoadmapCheckpoint(
+            identifier=plan.checkpoint_id,
+            title=plan.title,
+            goal=plan.goal,
+            scope_items=plan.scope_items,
+            affected_files=plan.affected_files,
+            required_tests=plan.required_tests,
+            risks=tuple(risk.description for risk in plan.risks),
+        )
+        return WorkflowRequest(
+            checkpoint=checkpoint,
+            repository_root=plan.repository_root,
+            execution_identifier=execution_request.identifier,
+            execution_argv=execution_request.argv,
+            execution_workdir=execution_request.working_directory,
+            verification_checks=(),
+            review_identifier=f"candidate-review-{execution_request.identifier}",
+        )
+
+    @staticmethod
+    def _candidate_verification_approval_request(
+        session: WorkflowSession,
+    ) -> ApprovalRequest:
+        assert session.plan is not None
+        return ApprovalRequest(
+            identifier=f"approval-verification-{session.identifier}",
+            workflow_id=session.identifier,
+            checkpoint_id=session.plan.checkpoint_id,
+            title=f"Approve verification of {session.plan.title}",
+            requested_tool="verification",
+            requested_command=("verification-suite",),
+            requested_working_directory=session.plan.repository_root,
+            rationale="Approve the future candidate verification phase.",
+            purpose=ApprovalPurpose.VERIFICATION,
+        )
+
+    def _candidate_validation_failure_result(
+        self,
+        session: WorkflowSession,
+        validation: CandidateExecutionValidationResult,
+    ) -> WorkflowResult:
+        code = validation.failure_code or CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH
+        if validation.should_block:
+            return self._block_candidate_session(
+                session=session,
+                error_message=code.value,
+            )
+        return self._candidate_session_result(
+            session=session,
+            phase=SprintPhase.AWAITING_APPROVAL,
+            error_message=code.value,
+        )
+
+    def _block_candidate_session(
+        self,
+        *,
+        session: WorkflowSession,
+        error_message: str,
+    ) -> WorkflowResult:
+        self._transition_session(
+            session.identifier,
+            session.state,
+            WorkflowSessionState.BLOCKED,
+            blocked_reason=error_message,
+        )
+        return self._candidate_session_result(
+            session=session,
+            phase=SprintPhase.BLOCKED,
+            error_message=error_message,
+        )
+
+    def _candidate_session_result(
+        self,
+        *,
+        session: WorkflowSession,
+        phase: SprintPhase,
+        error_message: str | None = None,
+    ) -> WorkflowResult:
+        if session.request is not None:
+            sprint = self._status(session, phase)
+        else:
+            metadata = session.candidate_metadata
+            sprint = SprintStatus(
+                checkpoint_id=session.identifier,
+                title="Candidate Implementation",
+                goal=(
+                    f"Execute candidate {metadata.candidate_id}"
+                    if metadata is not None
+                    else "Execute candidate implementation"
+                ),
+                phase=phase,
+            )
+        self._publish_sprint(sprint)
+        return WorkflowResult(
+            sprint=sprint,
+            plan=session.plan,
+            context=session.context,
+            planning_analysis=session.planning_analysis,
+            review_analysis=session.review_analysis,
+            execution_result=session.execution_result,
+            verification_report=session.verification_report,
+            review_report=session.review_report,
+            error_message=error_message,
+        )
 
     @staticmethod
     def _validate_pre_execution_snapshot(

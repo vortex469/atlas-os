@@ -181,6 +181,18 @@ _INVALID_STATE_ERRORS = {
     "Workflow is not resumable",
     "Workflow already resumed",
 }
+_CANDIDATE_EXECUTION_ERRORS = {
+    "approval_missing",
+    "approval_not_granted",
+    "approval_evidence_mismatch",
+    "candidate_stale",
+    "plan_stale",
+    "repository_stale",
+    "core_unavailable",
+    "tool_policy_denied",
+    "execution_failed",
+    "persistence_failed",
+}
 
 
 def _start_workflow(
@@ -220,6 +232,11 @@ def _raise_for_failure(result: WorkflowResult) -> None:
     elif result.error_message in _INVALID_STATE_ERRORS:
         code = "invalid_workflow_state"
         status_code = status.HTTP_409_CONFLICT
+    elif result.error_message in _CANDIDATE_EXECUTION_ERRORS:
+        code = result.error_message
+        status_code = status.HTTP_424_FAILED_DEPENDENCY
+        if result.error_message in {"approval_not_granted", "core_unavailable"}:
+            status_code = status.HTTP_409_CONFLICT
     else:
         code = "workflow_blocked"
         status_code = status.HTTP_424_FAILED_DEPENDENCY

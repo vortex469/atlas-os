@@ -862,3 +862,44 @@ def test_failed_validation_leaves_live_state_unchanged(tmp_path: Path) -> None:
         )
 
     assert workflow_state.get_session("workflow-a15") is None
+
+
+def test_interrupted_candidate_execution_recovers_blocked_and_not_replayable(tmp_path: Path) -> None:
+    workflow_state = WorkflowStateStore()
+    candidate_session = replace(
+        session(tmp_path, WorkflowSessionState.EXECUTING, identifier="candidate-workflow-1"),
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=CandidateWorkflowMetadata(
+            candidate_planning_session_id="candidate-plan-1",
+            candidate_id="candidate-1",
+            candidate_fingerprint="candidate-fingerprint-v1:aaa",
+            candidate_plan_id="candidate-plan-output-candidate-plan-1",
+            candidate_plan_fingerprint="plan-fingerprint-v1:aaa",
+            source_recommendation_id="finding-1",
+            source_subsystem="orion",
+            catalog_item_id="frigate",
+            target_id="atlas-compose",
+            target_type="repository",
+            execution_category="update",
+            execution_intent="update-compose-stack",
+            evidence_ids=("evidence-1",),
+            compatibility_assessment_id="assessment-1",
+            compatibility_status="compatible",
+            relationship_ids=("relationship-1",),
+            conversion_timestamp=datetime(2026, 8, 2, tzinfo=timezone.utc),
+            core_revalidation_status="accepted_for_planning",
+            core_revalidation_fingerprint="candidate-fingerprint-v1:aaa",
+        ),
+    )
+    persistence = coordinator(tmp_path / "state", workflow_state=workflow_state)
+    persistence.initialize()
+    persistence.mutate_workflow(lambda workflow: workflow.create_session(candidate_session))
+
+    restored_workflow = WorkflowStateStore()
+    restored = coordinator(tmp_path / "state", workflow_state=restored_workflow)
+    restored.initialize()
+
+    restored_session = restored_workflow.get_session("candidate-workflow-1")
+    assert restored_session is not None
+    assert restored_session.state is WorkflowSessionState.BLOCKED
+    assert restored_session.blocked_reason == "implementation interrupted by process restart"

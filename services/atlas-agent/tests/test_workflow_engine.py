@@ -1,6 +1,7 @@
 """Tests for Atlas Agent workflow orchestration."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock, call
 
@@ -15,8 +16,20 @@ from app.approval.models import (
     ApprovalStatus,
 )
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.execution import (
+    CandidateExecutionFailureCode,
+    CandidateExecutionValidationResult,
+    implementation_plan_from_candidate_request,
+)
+from app.candidate_planning.implementation import TRANSLATOR_VERSION
+from app.candidate_planning.models import CandidateImplementationRequest
 from app.context.models import AgentContext, ServiceHealth
-from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
+from app.execution.models import (
+    EnvironmentVariable,
+    ExecutionRequest,
+    ExecutionResult,
+    ExecutionStatus,
+)
 from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
@@ -36,11 +49,13 @@ from app.verification.models import (
 )
 from app.workflow.engine import WorkflowEngine
 from app.workflow.models import (
+    CandidateWorkflowMetadata,
     SprintPhase,
     WorkflowRequest,
     WorkflowResult,
     WorkflowSession,
     WorkflowSessionState,
+    WorkflowSource,
 )
 from app.workflow.state import WorkflowStateStore
 
@@ -2149,3 +2164,265 @@ def test_concurrent_verification_resume_runs_stage_once(
     verifier.verify.assert_called_once()
     reviewer.review.assert_called_once()
     engine._repository_committer_factory.return_value.commit.assert_not_called()
+
+
+def make_candidate_request(root: Path) -> CandidateImplementationRequest:
+    return CandidateImplementationRequest(
+        identifier="candidate-implementation-v1-aaa",
+        workflow_session_id="candidate-workflow-1",
+        candidate_planning_session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        candidate_plan_id="candidate-plan-output-candidate-plan-1",
+        candidate_plan_fingerprint="plan-fingerprint-v1:aaa",
+        execution_intent="update-compose-stack",
+        repository_root=root,
+        repository_branch="feature/atlas-agent",
+        repository_head="abc123",
+        argv=("codex", "implement", "approved prompt"),
+        working_directory=root,
+        affected_files=(Path("compose.production.yaml"),),
+        evidence_ids=("evidence-1",),
+        compatibility_assessment_id="assessment-1",
+        compatibility_status="compatible",
+        translator_version=TRANSLATOR_VERSION,
+        generated_at=datetime(2026, 8, 2, tzinfo=UTC),
+    )
+
+
+def make_candidate_workflow(root: Path) -> WorkflowSession:
+    request = make_candidate_request(root)
+    return WorkflowSession(
+        identifier="candidate-workflow-1",
+        request=None,
+        plan=None,
+        state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=CandidateWorkflowMetadata(
+            candidate_planning_session_id=request.candidate_planning_session_id,
+            candidate_id=request.candidate_id,
+            candidate_fingerprint=request.candidate_fingerprint,
+            candidate_plan_id=request.candidate_plan_id,
+            candidate_plan_fingerprint=request.candidate_plan_fingerprint,
+            source_recommendation_id="finding-1",
+            source_subsystem="orion",
+            catalog_item_id="frigate",
+            target_id="atlas-compose",
+            target_type="repository",
+            execution_category="update",
+            execution_intent=request.execution_intent,
+            evidence_ids=request.evidence_ids,
+            compatibility_assessment_id=request.compatibility_assessment_id,
+            compatibility_status=request.compatibility_status,
+            relationship_ids=("relationship-1",),
+            conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
+            core_revalidation_status="accepted_for_planning",
+            core_revalidation_fingerprint=request.candidate_fingerprint,
+        ),
+        candidate_implementation_request=request,
+        candidate_implementation_approval_id="approval-candidate-workflow-1",
+    )
+
+
+def make_candidate_approval(root: Path) -> ApprovalRequest:
+    request = make_candidate_request(root)
+    return ApprovalRequest(
+        identifier="approval-candidate-workflow-1",
+        workflow_id="candidate-workflow-1",
+        checkpoint_id=request.identifier,
+        title="Approve exact candidate implementation request",
+        requested_tool=request.argv[0],
+        requested_command=request.argv,
+        requested_working_directory=request.working_directory,
+        rationale="Human-readable context only.",
+        purpose=ApprovalPurpose.IMPLEMENTATION,
+    )
+
+
+class FakeCandidateValidator:
+    def __init__(self, result: CandidateExecutionValidationResult) -> None:
+        self.result = result
+        self.calls = 0
+
+    def validate(self, *, workflow, approval_result):
+        self.calls += 1
+        return self.result
+
+
+def make_candidate_engine(
+    root: Path,
+    *,
+    validation: CandidateExecutionValidationResult | None = None,
+    execution_status: ExecutionStatus = ExecutionStatus.SUCCEEDED,
+) -> tuple[
+    WorkflowEngine,
+    WorkflowStateStore,
+    ApprovalRepository,
+    Mock,
+    Mock,
+    Mock,
+    FakeCandidateValidator,
+]:
+    state_store = WorkflowStateStore()
+    state_store.create_session(make_candidate_workflow(root))
+    approval_repository = ApprovalRepository()
+    approval_request = make_candidate_approval(root)
+    approval_repository.save_request(approval_request)
+    assert approval_repository.update_decision(
+        approval_request.identifier,
+        ApprovalDecision(
+            request=approval_request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+    implementation_request = make_candidate_request(root)
+    plan = implementation_plan_from_candidate_request(implementation_request)
+    execution_request = ExecutionRequest(
+        identifier=implementation_request.identifier,
+        plan=plan,
+        argv=implementation_request.argv,
+        working_directory=implementation_request.working_directory,
+    )
+    candidate_validator = FakeCandidateValidator(
+        validation
+        or CandidateExecutionValidationResult(
+            approved=True,
+            implementation_request=implementation_request,
+            implementation_plan=plan,
+            execution_request=execution_request,
+            repository_snapshot=make_snapshot(root),
+        )
+    )
+    inspector = Mock()
+    inspector.inspect.return_value = make_changed_snapshot(
+        root,
+        modified_files=("compose.production.yaml",),
+    )
+    execution_engine = Mock()
+    execution_engine.execute.return_value = make_execution_result(
+        root,
+        status=execution_status,
+        error="failed" if execution_status is not ExecutionStatus.SUCCEEDED else None,
+    )
+    verification_engine = Mock()
+    review_engine = Mock()
+    engine = WorkflowEngine(
+        repository_inspector_factory=Mock(return_value=inspector),
+        planning_engine=Mock(),
+        execution_engine=execution_engine,
+        verification_engine=verification_engine,
+        review_engine=review_engine,
+        approval_engine=ApprovalEngine(),
+        approval_repository=approval_repository,
+        state_store=state_store,
+        candidate_execution_validator=candidate_validator,
+    )
+    return (
+        engine,
+        state_store,
+        approval_repository,
+        execution_engine,
+        verification_engine,
+        review_engine,
+        candidate_validator,
+    )
+
+
+def test_candidate_approved_request_executes_and_stops_at_verification_approval(tmp_path: Path) -> None:
+    engine, state_store, approvals, execution_engine, verifier, reviewer, validator = make_candidate_engine(tmp_path)
+
+    result = engine.resume("candidate-workflow-1")
+
+    assert result.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert result.execution_result is not None
+    assert result.approval_request is not None
+    assert result.approval_request.identifier == "approval-verification-candidate-workflow-1"
+    assert result.approval_request.requested_tool == "verification"
+    assert result.approval_request.requested_command == ("verification-suite",)
+    session = state_store.get_session("candidate-workflow-1")
+    assert session is not None
+    assert session.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    assert session.request is not None
+    assert session.plan is not None
+    assert session.execution_result is not None
+    assert approvals.get_request("approval-verification-candidate-workflow-1") is not None
+    execution_engine.execute.assert_called_once()
+    executed_request = execution_engine.execute.call_args.args[0]
+    assert executed_request.argv == ("codex", "implement", "approved prompt")
+    assert executed_request.working_directory == tmp_path
+    verifier.verify.assert_not_called()
+    reviewer.review.assert_not_called()
+    assert validator.calls == 1
+
+
+def test_candidate_pending_validation_does_not_claim_or_execute(tmp_path: Path) -> None:
+    validation = CandidateExecutionValidationResult(
+        approved=False,
+        failure_code=CandidateExecutionFailureCode.CORE_UNAVAILABLE,
+        retryable=True,
+        should_block=False,
+    )
+    engine, state_store, _, execution_engine, verifier, reviewer, _ = make_candidate_engine(
+        tmp_path,
+        validation=validation,
+    )
+
+    result = engine.resume("candidate-workflow-1")
+
+    assert result.error_message == "core_unavailable"
+    assert state_store.get_session("candidate-workflow-1").state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
+    execution_engine.execute.assert_not_called()
+    verifier.verify.assert_not_called()
+    reviewer.review.assert_not_called()
+
+
+def test_candidate_validation_block_prevents_execution(tmp_path: Path) -> None:
+    validation = CandidateExecutionValidationResult(
+        approved=False,
+        failure_code=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH,
+        should_block=True,
+    )
+    engine, state_store, _, execution_engine, _, _, _ = make_candidate_engine(
+        tmp_path,
+        validation=validation,
+    )
+
+    result = engine.resume("candidate-workflow-1")
+
+    assert result.error_message == "approval_evidence_mismatch"
+    assert state_store.get_session("candidate-workflow-1").state is WorkflowSessionState.BLOCKED
+    execution_engine.execute.assert_not_called()
+
+
+def test_candidate_failed_execution_blocks_without_verification_approval(tmp_path: Path) -> None:
+    engine, state_store, approvals, execution_engine, verifier, reviewer, _ = make_candidate_engine(
+        tmp_path,
+        execution_status=ExecutionStatus.FAILED,
+    )
+
+    result = engine.resume("candidate-workflow-1")
+
+    assert result.error_message == "execution_failed"
+    session = state_store.get_session("candidate-workflow-1")
+    assert session.state is WorkflowSessionState.BLOCKED
+    assert session.execution_result is not None
+    assert approvals.get_request("approval-verification-candidate-workflow-1") is None
+    execution_engine.execute.assert_called_once()
+    verifier.verify.assert_not_called()
+    reviewer.review.assert_not_called()
+
+
+def test_concurrent_candidate_resumes_execute_once(tmp_path: Path) -> None:
+    engine, state_store, _, execution_engine, verifier, reviewer, _ = make_candidate_engine(tmp_path)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = tuple(
+            executor.map(lambda _: engine.resume("candidate-workflow-1"), range(2))
+        )
+
+    assert sum(result.execution_result is not None for result in results) == 1
+    assert state_store.get_session("candidate-workflow-1").state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    execution_engine.execute.assert_called_once()
+    verifier.verify.assert_not_called()
+    reviewer.review.assert_not_called()
