@@ -12,6 +12,8 @@ services:
     environment:
       ATLAS_POLICY_FILE: /opt/atlas/data/config/policies.yaml
       ATLAS_POLICY_TEMPLATE_FILE: /opt/atlas/config/policies.yaml
+      ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE: ${ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE:-false}
+      ATLAS_CONFIRM_DEVELOPMENT_CANDIDATE_FIXTURE: ${ATLAS_CONFIRM_DEVELOPMENT_CANDIDATE_FIXTURE:-false}
       ATLAS_PROVIDER_CONNECTION_FILE: /opt/atlas/data/config/provider-connections.yaml
       ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE: /opt/atlas/config/provider-connections.yaml
       ATLAS_PROVIDER_SECRET_FILE: /opt/atlas/data/secrets/provider-connections.yaml

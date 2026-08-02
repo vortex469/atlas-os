@@ -17,6 +17,10 @@ from app.execution_candidates.intake import (
     CandidatePlanningIntakeStatus,
 )
 from app.execution_candidates.models import ExecutionCandidate, ExecutionCandidateStatus
+from app.intelligence.development_fixture import (
+    development_fixture_enabled_and_validated,
+    fixture_evidence_ids,
+)
 from app.services.execution_candidates import (
     ExecutionCandidateCollectionError,
     ExecutionCandidateNotFoundError,
@@ -62,7 +66,13 @@ def _result(
 
 def _default_evidence_resolver(candidate: ExecutionCandidate) -> tuple[str, ...]:
     del candidate
-    return ()
+
+    try:
+        development_fixture_enabled_and_validated()
+    except RuntimeError:
+        return ()
+
+    return fixture_evidence_ids()
 
 
 def _map_reason(reason: ExecutionEligibilityReason) -> CandidatePlanningIntakeReasonCode:

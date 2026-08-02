@@ -20,6 +20,7 @@ from app.execution_candidates.models import (
     ExecutionIntent,
     build_execution_candidate_id,
 )
+from app.intelligence import development_fixture as fixture
 from app.services.execution_candidate_intake import (
     ExecutionCandidatePlanningIntakeError,
     validate_candidate_planning_intake,
@@ -147,6 +148,104 @@ async def test_missing_independent_evidence_returns_evidence_unavailable() -> No
     assert result.status == CandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE
     assert result.planning_allowed is False
     assert result.reason_codes == (CandidatePlanningIntakeReasonCode.EVIDENCE_UNAVAILABLE,)
+
+
+@pytest.mark.anyio
+async def test_missing_fixture_evidence_is_not_resolved_when_fixture_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE", raising=False)
+    current = candidate(evidence_ids=(fixture.DEVELOPMENT_FIXTURE_EVIDENCE_ID,))
+
+    result = await validate_candidate_planning_intake(
+        current.id,
+        CandidatePlanningIntakeRequest(),
+        now=NOW,
+        candidate_resolver=resolver(current),
+    )
+
+    assert result.status == CandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE
+    assert result.reason_codes == (CandidatePlanningIntakeReasonCode.EVIDENCE_UNAVAILABLE,)
+
+
+@pytest.mark.anyio
+async def test_fixture_evidence_is_resolved_for_planning_intake_when_fixture_is_enabled_and_valid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE", "true")
+    monkeypatch.setenv("ATLAS_CORE_ENVIRONMENT", "development")
+    monkeypatch.delenv("ATLAS_CONFIRM_DEVELOPMENT_CANDIDATE_FIXTURE", raising=False)
+
+    current = candidate(evidence_ids=(fixture.DEVELOPMENT_FIXTURE_EVIDENCE_ID,))
+
+    result = await validate_candidate_planning_intake(
+        current.id,
+        CandidatePlanningIntakeRequest(),
+        now=NOW,
+        candidate_resolver=resolver(current),
+    )
+
+    assert result.status == CandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING
+    assert result.planning_allowed is True
+
+
+@pytest.mark.anyio
+async def test_fixture_candidate_in_production_without_confirmation_is_not_resolved_for_intake(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE", "true")
+    monkeypatch.setenv("ATLAS_CORE_ENVIRONMENT", "production")
+    monkeypatch.delenv("ATLAS_CONFIRM_DEVELOPMENT_CANDIDATE_FIXTURE", raising=False)
+
+    current = candidate(evidence_ids=(fixture.DEVELOPMENT_FIXTURE_EVIDENCE_ID,))
+
+    result = await validate_candidate_planning_intake(
+        current.id,
+        CandidatePlanningIntakeRequest(),
+        now=NOW,
+        candidate_resolver=resolver(current),
+    )
+
+    assert result.status == CandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE
+    assert result.reason_codes == (CandidatePlanningIntakeReasonCode.EVIDENCE_UNAVAILABLE,)
+
+
+@pytest.mark.anyio
+async def test_candidate_evidence_ids_alone_are_not_sufficient_for_default_planning_intake_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE", raising=False)
+    current = candidate(evidence_ids=("non-fixture-evidence-id",))
+
+    result = await validate_candidate_planning_intake(
+        current.id,
+        CandidatePlanningIntakeRequest(),
+        now=NOW,
+        candidate_resolver=resolver(current),
+    )
+
+    assert result.status == CandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE
+    assert result.reason_codes == (CandidatePlanningIntakeReasonCode.EVIDENCE_UNAVAILABLE,)
+
+
+@pytest.mark.anyio
+async def test_explicit_evidence_resolver_remains_authoritative_for_fixture_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE", "true")
+    monkeypatch.setenv("ATLAS_CORE_ENVIRONMENT", "development")
+    monkeypatch.delenv("ATLAS_CONFIRM_DEVELOPMENT_CANDIDATE_FIXTURE", raising=False)
+    current = candidate(evidence_ids=(fixture.DEVELOPMENT_FIXTURE_EVIDENCE_ID,))
+
+    result = await validate_candidate_planning_intake(
+        current.id,
+        CandidatePlanningIntakeRequest(),
+        now=NOW,
+        candidate_resolver=resolver(current),
+        evidence_resolver=lambda candidate: (),
+    )
+
+    assert result.status == CandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE
 
 
 @pytest.mark.anyio

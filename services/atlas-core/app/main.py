@@ -26,6 +26,9 @@ from app.routes.ops import router as ops_router
 from app.routes.policies import router as policies_router
 from app.routes.providers import router as providers_router
 from app.routes.proxmox import router as proxmox_router
+from app.intelligence.development_fixture import (
+    development_fixture_enabled_and_validated,
+)
 
 
 configure_logging()
@@ -37,6 +40,7 @@ async def lifespan(app: FastAPI):
     logger.info("Atlas Core starting")
     validate_configuration()
     logger.info("Atlas configuration validated")
+    development_fixture_enabled_and_validated()
 
     load_provider_registry()
     logger.info("Provider registry initialized")

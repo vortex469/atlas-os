@@ -5,13 +5,12 @@ from datetime import UTC, datetime
 import pytest
 
 from app.execution_candidates.models import ExecutionIntent
-from app.intelligence.findings import Finding, Severity
 from app.intelligence.development_fixture import (
     DEVELOPMENT_FIXTURE_EVIDENCE_ID,
     DEVELOPMENT_FIXTURE_ID,
 )
+from app.intelligence.findings import Finding, Severity
 from app.services import execution_candidates as service
-
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 

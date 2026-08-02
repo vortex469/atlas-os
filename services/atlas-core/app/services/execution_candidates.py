@@ -17,6 +17,10 @@ from app.intelligence.coordinator import (
     collect_findings,
     collect_provider_findings_with_telemetry,
 )
+from app.intelligence.development_fixture import (
+    collect_development_candidate_findings,
+    fixture_evidence_ids,
+)
 from app.intelligence.findings import Finding
 
 logger = get_logger("atlas.execution_candidates")
@@ -98,6 +102,7 @@ async def collect_current_findings() -> tuple[Finding, ...]:
         except Exception:
             logger.exception("Unable to collect Discovery compatibility findings for candidates")
         findings.extend(_performance_findings(telemetry))
+        findings.extend(collect_development_candidate_findings())
     except Exception as error:
         raise ExecutionCandidateCollectionError(
             "Unable to collect current intelligence findings."
@@ -114,6 +119,13 @@ async def collect_current_execution_candidates(
     """Project the current read-only candidate set from current findings."""
 
     projection_time = now or datetime.now(UTC)
+
+    if available_evidence_ids is None:
+        available_evidence_ids = ()
+    augmented_evidence_ids = tuple(
+        sorted(set(available_evidence_ids) | set(fixture_evidence_ids()))
+    )
+
     try:
         findings = finding_collector() if finding_collector is not None else await collect_current_findings()
     except Exception as error:
@@ -125,7 +137,7 @@ async def collect_current_execution_candidates(
 
     results = project_execution_candidates(
         findings,
-        available_evidence_ids=available_evidence_ids,
+        available_evidence_ids=augmented_evidence_ids,
         now=projection_time,
     )
     candidates: list[ExecutionCandidate] = []
