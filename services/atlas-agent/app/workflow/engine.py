@@ -26,6 +26,12 @@ from app.candidate_planning.execution import (
     CandidateExecutionValidationResult,
     CandidateExecutionValidator,
 )
+from app.candidate_planning.verification import (
+    CandidateReviewAdapter,
+    CandidateVerificationFailureCode,
+    CandidateVerificationValidator,
+    build_verification_evidence,
+)
 from app.context.models import AgentContext
 from app.execution.engine import ExecutionEngine
 from app.execution.exceptions import ExecutionValidationError
@@ -78,6 +84,8 @@ class WorkflowEngine:
         review_advisor: ReviewAdvisor | None = None,
         state_persistence: AgentStatePersistenceCoordinator | None = None,
         candidate_execution_validator: CandidateExecutionValidator | None = None,
+        candidate_verification_validator: CandidateVerificationValidator | None = None,
+        candidate_review_adapter: CandidateReviewAdapter | None = None,
     ) -> None:
         if planning_mode not in ("deterministic", "model-assisted"):
             raise ValueError(f"Unsupported planning mode: {planning_mode}")
@@ -109,6 +117,8 @@ class WorkflowEngine:
         self._review_advisor = review_advisor
         self._state_persistence = state_persistence
         self._candidate_execution_validator = candidate_execution_validator
+        self._candidate_verification_validator = candidate_verification_validator
+        self._candidate_review_adapter = candidate_review_adapter
 
     def block_before_planning(
         self,
@@ -681,10 +691,402 @@ class WorkflowEngine:
             execution_result=execution_result,
         )
 
+    def _resume_candidate_verification(
+        self,
+        session: WorkflowSession,
+    ) -> WorkflowResult:
+        """Run exact approved candidate verification and deterministic review."""
+
+        if (
+            self._candidate_verification_validator is None
+            or self._candidate_review_adapter is None
+        ):
+            return self._block_candidate_verification_session(
+                session=session,
+                error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
+            )
+
+        plan = session.candidate_verification_plan
+        approval_identifier = f"approval-verification-{session.identifier}"
+        if plan is None:
+            prepared = self._prepare_candidate_verification_plan(session)
+            if prepared.error_message is not None or prepared.approval_request is not None:
+                return prepared
+            refreshed = self._state_store.get_session(session.identifier)
+            if refreshed is None:
+                return self._block_candidate_verification_session(
+                    session=session,
+                    error_message=CandidateVerificationFailureCode.PERSISTENCE_FAILED.value,
+                )
+            session = refreshed
+
+        approval_result = self._approval_repository.get_request(approval_identifier)
+        validation = self._candidate_verification_validator.validate_for_execution(
+            workflow=session,
+            approval_result=approval_result,
+        )
+        if not validation.approved:
+            return self._candidate_verification_failure_result(session, validation)
+
+        if not self._transition_session(
+            session.identifier,
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            WorkflowSessionState.VERIFYING,
+        ):
+            return self._session_error_result(
+                session=session,
+                error_message="Workflow already resumed",
+            )
+
+        claimed_session = replace(session, state=WorkflowSessionState.VERIFYING)
+        verifying_status = self._status(claimed_session, SprintPhase.VERIFYING)
+        self._publish_sprint(verifying_status)
+
+        verification_plan = validation.plan
+        if verification_plan is None:
+            self._block_claimed_session(session.identifier, WorkflowSessionState.VERIFYING)
+            return self._blocked_session_result(
+                session=claimed_session,
+                error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
+            )
+
+        started_at = self._candidate_verification_validator._clock()
+        try:
+            verification_report = self._verification_engine.verify(
+                repository_root=verification_plan.repository_root,
+                checks=validation.checks,
+                context=session.context,
+            )
+        except Exception:
+            logger.exception("Candidate verification failed")
+            self._block_claimed_session(session.identifier, WorkflowSessionState.VERIFYING)
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                error_message=CandidateVerificationFailureCode.VERIFICATION_FAILED.value,
+            )
+        completed_at = self._candidate_verification_validator._clock()
+        verification_evidence = build_verification_evidence(
+            plan=verification_plan,
+            workflow=session,
+            report=verification_report,
+            started_at=started_at,
+            completed_at=completed_at,
+        )
+        self._publish_verification(verification_report)
+
+        if verification_report.status is not VerificationStatus.PASSED:
+            self._transition_session(
+                session.identifier,
+                WorkflowSessionState.VERIFYING,
+                WorkflowSessionState.BLOCKED,
+                verification_report=verification_report,
+                candidate_verification_evidence=verification_evidence,
+                blocked_reason=CandidateVerificationFailureCode.VERIFICATION_FAILED.value,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=verification_report,
+                error_message=CandidateVerificationFailureCode.VERIFICATION_FAILED.value,
+            )
+
+        reviewing_status = self._status(claimed_session, SprintPhase.REVIEWING)
+        self._publish_sprint(reviewing_status)
+        commit_request = CommitRequest(
+            repository_root=verification_plan.repository_root,
+            expected_branch=verification_plan.repository_branch,
+            expected_head=verification_plan.base_head,
+            paths=verification_plan.changed_files,
+            message="feat(agent): update compose stack candidate",
+        )
+        try:
+            evidence = self._repository_inspector_factory(
+                verification_plan.repository_root
+            ).reviewed_change_evidence(
+                reviewed_files=commit_request.paths,
+                expected_branch=commit_request.expected_branch,
+                expected_head=commit_request.expected_head,
+                commit_message=commit_request.message,
+            )
+            review_result = self._candidate_review_adapter.review(
+                workflow=session,
+                verification_plan=verification_plan,
+                verification_evidence=verification_evidence,
+                verification_report=verification_report,
+                reviewed_content_fingerprint=evidence.fingerprint,
+            )
+        except Exception:
+            logger.exception("Candidate review failed")
+            self._transition_session(
+                session.identifier,
+                WorkflowSessionState.VERIFYING,
+                WorkflowSessionState.BLOCKED,
+                verification_report=verification_report,
+                candidate_verification_evidence=verification_evidence,
+                blocked_reason=CandidateVerificationFailureCode.REVIEW_FAILED.value,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=verification_report,
+                error_message=CandidateVerificationFailureCode.REVIEW_FAILED.value,
+            )
+
+        if not review_result.approved or review_result.review_report is None:
+            code = review_result.failure_code or CandidateVerificationFailureCode.REVIEW_FAILED
+            self._transition_session(
+                session.identifier,
+                WorkflowSessionState.VERIFYING,
+                WorkflowSessionState.BLOCKED,
+                verification_report=verification_report,
+                candidate_verification_evidence=verification_evidence,
+                candidate_review_result=review_result.candidate_review_result,
+                blocked_reason=code.value,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=verification_report,
+                review_report=review_result.review_report,
+                error_message=code.value,
+            )
+
+        review_report = review_result.review_report
+        self._publish_review(review_report)
+        commit_approval = self._commit_approval_request(
+            session=session,
+            commit_request=commit_request,
+            fingerprint=evidence.fingerprint,
+        )
+        artifacts = {
+            "verification_report": verification_report,
+            "candidate_verification_evidence": verification_evidence,
+            "review_report": review_report,
+            "candidate_review_result": review_result.candidate_review_result,
+            "commit_request": commit_request,
+            "reviewed_files": evidence.reviewed_files,
+            "expected_branch": evidence.expected_branch,
+            "expected_head": evidence.expected_head,
+            "reviewed_content_fingerprint": evidence.fingerprint,
+        }
+        try:
+            if self._state_persistence is None:
+                self._approval_repository.save_request(commit_approval)
+                transition_ok = self._state_store.transition_session(
+                    session.identifier,
+                    WorkflowSessionState.VERIFYING,
+                    WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+                    **artifacts,
+                )
+            else:
+
+                def pause_for_commit(workflow, approvals):
+                    approvals.save_request(commit_approval)
+                    return workflow.transition_session(
+                        session.identifier,
+                        WorkflowSessionState.VERIFYING,
+                        WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+                        **artifacts,
+                    )
+
+                transition_ok = self._state_persistence.mutate_aggregate(
+                    pause_for_commit
+                )
+        except Exception:
+            logger.exception("Candidate commit approval storage failed")
+            self._transition_session(
+                session.identifier,
+                WorkflowSessionState.VERIFYING,
+                WorkflowSessionState.BLOCKED,
+                verification_report=verification_report,
+                candidate_verification_evidence=verification_evidence,
+                review_report=review_report,
+                candidate_review_result=review_result.candidate_review_result,
+                blocked_reason=CandidateVerificationFailureCode.COMMIT_APPROVAL_CREATION_FAILED.value,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=verification_report,
+                review_report=review_report,
+                error_message=CandidateVerificationFailureCode.COMMIT_APPROVAL_CREATION_FAILED.value,
+            )
+
+        if not transition_ok:
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=verification_report,
+                review_report=review_report,
+                error_message=CandidateVerificationFailureCode.PERSISTENCE_FAILED.value,
+            )
+        awaiting_commit_status = self._status(
+            claimed_session,
+            SprintPhase.AWAITING_COMMIT_APPROVAL,
+        )
+        self._publish_sprint(awaiting_commit_status)
+        return WorkflowResult(
+            sprint=awaiting_commit_status,
+            plan=session.plan,
+            context=session.context,
+            planning_analysis=session.planning_analysis,
+            approval_request=commit_approval,
+            execution_result=session.execution_result,
+            verification_report=verification_report,
+            review_report=review_report,
+        )
+
+    def _prepare_candidate_verification_plan(
+        self,
+        session: WorkflowSession,
+    ) -> WorkflowResult:
+        assert self._candidate_verification_validator is not None
+        built = self._candidate_verification_validator.build_plan(session)
+        if not built.approved or built.plan is None or built.approval_request is None:
+            return self._candidate_verification_failure_result(session, built)
+        exact = built.approval_request
+        placeholder = self._candidate_verification_validator.placeholder_approval_request(
+            session
+        )
+        approval_identifier = exact.identifier
+        try:
+            if self._state_persistence is None:
+                current = self._approval_repository.get_request(approval_identifier)
+                if current is None:
+                    self._approval_repository.save_request(exact)
+                elif current.decision.request == placeholder:
+                    ok = self._approval_repository.supersede_pending_request(
+                        identifier=approval_identifier,
+                        expected_request=placeholder,
+                        replacement_request=exact,
+                    )
+                    if not ok:
+                        return self._block_candidate_verification_session(
+                            session=session,
+                            error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
+                        )
+                elif current.decision.request != exact:
+                    return self._block_candidate_verification_session(
+                        session=session,
+                        error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
+                    )
+                current_session = self._state_store.get_session(session.identifier)
+                if current_session is None:
+                    raise ValueError("Workflow session missing")
+                persisted = self._state_store.transition_session(
+                    session.identifier,
+                    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                    candidate_verification_plan=built.plan,
+                )
+                if not persisted:
+                    return self._block_candidate_verification_session(
+                        session=session,
+                        error_message=CandidateVerificationFailureCode.PERSISTENCE_FAILED.value,
+                    )
+            else:
+
+                def persist_plan_and_approval(workflow, approvals):
+                    current_session = workflow.get_session(session.identifier)
+                    if current_session is None:
+                        raise ValueError("Workflow session missing")
+                    current = approvals.get_request(approval_identifier)
+                    if current is None:
+                        approvals.save_request(exact)
+                    elif current.decision.request == placeholder:
+                        ok = approvals.supersede_pending_request(
+                            identifier=approval_identifier,
+                            expected_request=placeholder,
+                            replacement_request=exact,
+                        )
+                        if not ok:
+                            return False
+                    elif current.decision.request != exact:
+                        return False
+                    workflow.sessions[session.identifier] = replace(
+                        current_session,
+                        candidate_verification_plan=built.plan,
+                    )
+                    return True
+
+                ok = self._state_persistence.mutate_aggregate(
+                    persist_plan_and_approval
+                )
+                if not ok:
+                    return self._block_candidate_verification_session(
+                        session=session,
+                        error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
+                    )
+        except Exception:
+            logger.exception("Candidate verification approval preparation failed")
+            return self._block_candidate_verification_session(
+                session=session,
+                error_message=CandidateVerificationFailureCode.PERSISTENCE_FAILED.value,
+            )
+        awaiting_status = self._status(
+            session,
+            SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+        )
+        self._publish_sprint(awaiting_status)
+        return WorkflowResult(
+            sprint=awaiting_status,
+            plan=session.plan,
+            context=session.context,
+            planning_analysis=session.planning_analysis,
+            approval_request=exact,
+            execution_result=session.execution_result,
+        )
+
+    def _candidate_verification_failure_result(
+        self,
+        session: WorkflowSession,
+        validation,
+    ) -> WorkflowResult:
+        code = validation.failure_code or CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH
+        message = code.value
+        if validation.retryable:
+            return self._candidate_session_result(
+                session=session,
+                phase=SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+                error_message=message,
+            )
+        if validation.should_block:
+            return self._block_candidate_verification_session(
+                session=session,
+                error_message=message,
+            )
+        return self._candidate_session_result(
+            session=session,
+            phase=SprintPhase.BLOCKED,
+            error_message=message,
+        )
+
+    def _block_candidate_verification_session(
+        self,
+        *,
+        session: WorkflowSession,
+        error_message: str,
+    ) -> WorkflowResult:
+        self._transition_session(
+            session.identifier,
+            session.state,
+            WorkflowSessionState.BLOCKED,
+            blocked_reason=error_message,
+        )
+        return self._candidate_session_result(
+            session=session,
+            phase=SprintPhase.BLOCKED,
+            error_message=error_message,
+        )
+
     def _resume_verification(
         self,
         session: WorkflowSession,
     ) -> WorkflowResult:
+        if session.source is WorkflowSource.CANDIDATE:
+            return self._resume_candidate_verification(session)
+
         workflow_id = session.identifier
         approval_identifier = f"approval-verification-{workflow_id}"
         approval_result = self._approval_repository.get_request(

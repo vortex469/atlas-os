@@ -192,6 +192,16 @@ _CANDIDATE_EXECUTION_ERRORS = {
     "tool_policy_denied",
     "execution_failed",
     "persistence_failed",
+    "verification_approval_missing",
+    "verification_not_approved",
+    "verification_evidence_mismatch",
+    "changed_files_out_of_scope",
+    "changed_files_digest_mismatch",
+    "implementation_request_mismatch",
+    "verification_failed",
+    "review_failed",
+    "secret_like_change_detected",
+    "commit_approval_creation_failed",
 }
 
 
@@ -235,7 +245,12 @@ def _raise_for_failure(result: WorkflowResult) -> None:
     elif result.error_message in _CANDIDATE_EXECUTION_ERRORS:
         code = result.error_message
         status_code = status.HTTP_424_FAILED_DEPENDENCY
-        if result.error_message in {"approval_not_granted", "core_unavailable"}:
+        if result.error_message in {
+            "approval_not_granted",
+            "verification_approval_missing",
+            "verification_not_approved",
+            "core_unavailable",
+        }:
             status_code = status.HTTP_409_CONFLICT
     else:
         code = "workflow_blocked"

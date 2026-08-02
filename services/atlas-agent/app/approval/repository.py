@@ -94,6 +94,36 @@ class ApprovalRepository:
             self._storage[identifier] = ApprovalResult(decision=decision)
             return True
 
+    def supersede_pending_request(
+        self,
+        *,
+        identifier: str,
+        expected_request: ApprovalRequest,
+        replacement_request: ApprovalRequest,
+    ) -> bool:
+        """Replace one pending approval only when its exact request matches.
+
+        Terminal approvals remain immutable. This is intentionally narrow for
+        replacing legacy candidate verification placeholders with exact plans.
+        """
+
+        if replacement_request.identifier != identifier:
+            return False
+        with self._lock:
+            current = self._storage.get(identifier)
+            if current is None:
+                return False
+            if current.decision.status is not ApprovalStatus.PENDING:
+                return False
+            if current.decision.request != expected_request:
+                return False
+            decision = ApprovalDecision(
+                request=replacement_request,
+                status=ApprovalStatus.PENDING,
+            )
+            self._storage[identifier] = ApprovalResult(decision=decision)
+            return True
+
     def get_pending_requests(self) -> list[ApprovalResult]:
         """Get all pending approval requests.
 

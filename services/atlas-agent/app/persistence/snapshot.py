@@ -38,6 +38,13 @@ from app.candidate_planning.state import (
     CandidatePlanningStateSnapshot,
     CandidatePlanningStateStore,
 )
+from app.candidate_planning.verification import (
+    CandidateReviewResult,
+    CandidateVerificationCheckEvidence,
+    CandidateVerificationEvidence,
+    CandidateVerificationFailureCode,
+    CandidateVerificationPlan,
+)
 from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
@@ -166,6 +173,26 @@ class CandidateApprovalRepository:
             return False
         if decision.request != current.decision.request:
             return False
+        self.storage[identifier] = ApprovalResult(decision=decision)
+        return True
+
+    def supersede_pending_request(
+        self,
+        *,
+        identifier: str,
+        expected_request: ApprovalRequest,
+        replacement_request: ApprovalRequest,
+    ) -> bool:
+        if replacement_request.identifier != identifier:
+            return False
+        current = self.storage.get(identifier)
+        if current is None:
+            return False
+        if current.decision.status is not ApprovalStatus.PENDING:
+            return False
+        if current.decision.request != expected_request:
+            return False
+        decision = ApprovalDecision(request=replacement_request, status=ApprovalStatus.PENDING)
         self.storage[identifier] = ApprovalResult(decision=decision)
         return True
 
@@ -1420,6 +1447,163 @@ def _decode_candidate_implementation_request(
     )
 
 
+def _encode_candidate_verification_plan(plan: CandidateVerificationPlan | None) -> dict[str, Any] | None:
+    if plan is None:
+        return None
+    return {
+        "identifier": plan.identifier,
+        "workflow_session_id": plan.workflow_session_id,
+        "candidate_planning_session_id": plan.candidate_planning_session_id,
+        "candidate_id": plan.candidate_id,
+        "candidate_fingerprint": plan.candidate_fingerprint,
+        "candidate_plan_id": plan.candidate_plan_id,
+        "candidate_plan_fingerprint": plan.candidate_plan_fingerprint,
+        "implementation_request_id": plan.implementation_request_id,
+        "execution_result_id": plan.execution_result_id,
+        "repository_root": _path(plan.repository_root),
+        "repository_branch": plan.repository_branch,
+        "base_head": plan.base_head,
+        "post_execution_head": plan.post_execution_head,
+        "changed_files": [_path(path) for path in plan.changed_files],
+        "changed_files_digest": plan.changed_files_digest,
+        "approved_affected_files": [_path(path) for path in plan.approved_affected_files],
+        "verification_checks": [_encode_verification_check(check) for check in plan.verification_checks],
+        "verifier_version": plan.verifier_version,
+        "generated_at": _encode_datetime(plan.generated_at),
+    }
+
+
+def _decode_candidate_verification_plan(payload: Any) -> CandidateVerificationPlan | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid candidate verification plan")
+    return CandidateVerificationPlan(
+        identifier=_require_str(payload, "identifier"),
+        workflow_session_id=_require_str(payload, "workflow_session_id"),
+        candidate_planning_session_id=_require_str(payload, "candidate_planning_session_id"),
+        candidate_id=_require_str(payload, "candidate_id"),
+        candidate_fingerprint=_require_str(payload, "candidate_fingerprint"),
+        candidate_plan_id=_require_str(payload, "candidate_plan_id"),
+        candidate_plan_fingerprint=_require_str(payload, "candidate_plan_fingerprint"),
+        implementation_request_id=_require_str(payload, "implementation_request_id"),
+        execution_result_id=_require_str(payload, "execution_result_id"),
+        repository_root=_decode_path(payload.get("repository_root")),
+        repository_branch=payload.get("repository_branch"),
+        base_head=_require_str(payload, "base_head"),
+        post_execution_head=_require_str(payload, "post_execution_head"),
+        changed_files=_tuple_path(payload.get("changed_files", [])),
+        changed_files_digest=_require_str(payload, "changed_files_digest"),
+        approved_affected_files=_tuple_path(payload.get("approved_affected_files", [])),
+        verification_checks=tuple(_decode_verification_check(item) for item in payload.get("verification_checks", [])),
+        verifier_version=_require_str(payload, "verifier_version"),
+        generated_at=_decode_datetime(payload.get("generated_at")),
+    )
+
+
+def _encode_candidate_verification_evidence(evidence: CandidateVerificationEvidence | None) -> dict[str, Any] | None:
+    if evidence is None:
+        return None
+    return {
+        "identifier": evidence.identifier,
+        "verification_plan_id": evidence.verification_plan_id,
+        "workflow_id": evidence.workflow_id,
+        "candidate_id": evidence.candidate_id,
+        "candidate_fingerprint": evidence.candidate_fingerprint,
+        "plan_fingerprint": evidence.plan_fingerprint,
+        "implementation_request_id": evidence.implementation_request_id,
+        "changed_files_digest": evidence.changed_files_digest,
+        "repository_branch": evidence.repository_branch,
+        "repository_head": evidence.repository_head,
+        "check_results": [
+            {
+                "identifier": item.identifier,
+                "status": item.status.value,
+                "return_code": item.return_code,
+                "stdout_digest": item.stdout_digest,
+                "stderr_digest": item.stderr_digest,
+                "output_truncated": item.output_truncated,
+                "duration_seconds": item.duration_seconds,
+                "error": item.error,
+            }
+            for item in evidence.check_results
+        ],
+        "status": evidence.status.value,
+        "started_at": _encode_datetime(evidence.started_at),
+        "completed_at": _encode_datetime(evidence.completed_at),
+        "verifier_version": evidence.verifier_version,
+    }
+
+
+def _decode_candidate_verification_evidence(payload: Any) -> CandidateVerificationEvidence | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid candidate verification evidence")
+    return CandidateVerificationEvidence(
+        identifier=_require_str(payload, "identifier"),
+        verification_plan_id=_require_str(payload, "verification_plan_id"),
+        workflow_id=_require_str(payload, "workflow_id"),
+        candidate_id=_require_str(payload, "candidate_id"),
+        candidate_fingerprint=_require_str(payload, "candidate_fingerprint"),
+        plan_fingerprint=_require_str(payload, "plan_fingerprint"),
+        implementation_request_id=_require_str(payload, "implementation_request_id"),
+        changed_files_digest=_require_str(payload, "changed_files_digest"),
+        repository_branch=payload.get("repository_branch"),
+        repository_head=payload.get("repository_head"),
+        check_results=tuple(
+            CandidateVerificationCheckEvidence(
+                identifier=_require_str(item, "identifier"),
+                status=VerificationStatus(_require_str(item, "status")),
+                return_code=item.get("return_code"),
+                stdout_digest=_require_str(item, "stdout_digest"),
+                stderr_digest=_require_str(item, "stderr_digest"),
+                output_truncated=bool(item.get("output_truncated")),
+                duration_seconds=float(item.get("duration_seconds", 0.0)),
+                error=item.get("error"),
+            )
+            for item in payload.get("check_results", [])
+        ),
+        status=VerificationStatus(_require_str(payload, "status")),
+        started_at=_decode_datetime(payload.get("started_at")),
+        completed_at=_decode_datetime(payload.get("completed_at")),
+        verifier_version=_require_str(payload, "verifier_version"),
+    )
+
+
+def _encode_candidate_review_result(result: CandidateReviewResult | None) -> dict[str, Any] | None:
+    if result is None:
+        return None
+    return {
+        "identifier": result.identifier,
+        "verification_plan_id": result.verification_plan_id,
+        "verification_evidence_id": result.verification_evidence_id,
+        "workflow_id": result.workflow_id,
+        "status": result.status.value,
+        "failure_code": result.failure_code.value if result.failure_code else None,
+        "reviewed_content_fingerprint": result.reviewed_content_fingerprint,
+        "generated_at": _encode_datetime(result.generated_at),
+    }
+
+
+def _decode_candidate_review_result(payload: Any) -> CandidateReviewResult | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid candidate review result")
+    failure_code = payload.get("failure_code")
+    return CandidateReviewResult(
+        identifier=_require_str(payload, "identifier"),
+        verification_plan_id=_require_str(payload, "verification_plan_id"),
+        verification_evidence_id=_require_str(payload, "verification_evidence_id"),
+        workflow_id=_require_str(payload, "workflow_id"),
+        status=ReviewStatus(_require_str(payload, "status")),
+        failure_code=CandidateVerificationFailureCode(failure_code) if failure_code else None,
+        reviewed_content_fingerprint=payload.get("reviewed_content_fingerprint"),
+        generated_at=_decode_datetime(payload.get("generated_at")),
+    )
+
+
 def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
     return {
         "blocked_reason": session.blocked_reason,
@@ -1428,6 +1612,15 @@ def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
             session.candidate_implementation_request
         ),
         "candidate_metadata": _encode_candidate_workflow_metadata(session.candidate_metadata),
+        "candidate_review_result": _encode_candidate_review_result(
+            session.candidate_review_result
+        ),
+        "candidate_verification_evidence": _encode_candidate_verification_evidence(
+            session.candidate_verification_evidence
+        ),
+        "candidate_verification_plan": _encode_candidate_verification_plan(
+            session.candidate_verification_plan
+        ),
         "changed_files": [_path(path) for path in session.changed_files],
         "commit_request": _encode_commit_request(session.commit_request),
         "context": _encode_context(session.context),
@@ -1472,7 +1665,16 @@ def _decode_workflow_session(payload: Any) -> WorkflowSession:
         execution_result=_decode_execution_result(payload.get("execution_result")),
         changed_files=_tuple_path(payload.get("changed_files", [])),
         verification_report=_decode_verification_report(payload.get("verification_report")),
+        candidate_verification_plan=_decode_candidate_verification_plan(
+            payload.get("candidate_verification_plan")
+        ),
+        candidate_verification_evidence=_decode_candidate_verification_evidence(
+            payload.get("candidate_verification_evidence")
+        ),
         review_report=_decode_review_report(payload.get("review_report")),
+        candidate_review_result=_decode_candidate_review_result(
+            payload.get("candidate_review_result")
+        ),
         commit_request=_decode_commit_request(payload.get("commit_request")),
         reviewed_files=_tuple_path(payload.get("reviewed_files", [])),
         expected_branch=payload.get("expected_branch"),

@@ -19,6 +19,11 @@ from app.verification.models import VerificationCheck, VerificationReport
 
 if TYPE_CHECKING:
     from app.candidate_planning.models import CandidateImplementationRequest
+    from app.candidate_planning.verification import (
+        CandidateReviewResult,
+        CandidateVerificationEvidence,
+        CandidateVerificationPlan,
+    )
 
 
 class SprintPhase(StrEnum):
@@ -127,7 +132,10 @@ class WorkflowSession:
     execution_result: ExecutionResult | None = None
     changed_files: tuple[Path, ...] = ()
     verification_report: VerificationReport | None = None
+    candidate_verification_plan: CandidateVerificationPlan | None = None
+    candidate_verification_evidence: CandidateVerificationEvidence | None = None
     review_report: ReviewReport | None = None
+    candidate_review_result: CandidateReviewResult | None = None
     commit_request: CommitRequest | None = None
     reviewed_files: tuple[Path, ...] = ()
     expected_branch: str | None = None
