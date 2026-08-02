@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Event
 from unittest.mock import Mock, call
 
 import pytest
@@ -2151,14 +2152,29 @@ def test_concurrent_verification_resume_runs_stage_once(
             reviewer="tester",
         ),
     )
+    verification_entered = Event()
+    release_verification = Event()
+    verification_report = make_verification_report(tmp_path)
+
+    def verify_once(**kwargs) -> VerificationReport:
+        verification_entered.set()
+        assert release_verification.wait(timeout=5)
+        return verification_report
+
+    verifier.verify.side_effect = verify_once
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        results = tuple(
-            executor.map(lambda _: engine.resume("workflow-a15-3"), range(2))
-        )
+        first = executor.submit(engine.resume, "workflow-a15-3")
+        assert verification_entered.wait(timeout=5)
+        second = executor.submit(engine.resume, "workflow-a15-3")
+        release_verification.set()
+        results = (first.result(timeout=5), second.result(timeout=5))
 
     assert sum(
         result.sprint.phase is SprintPhase.AWAITING_COMMIT_APPROVAL for result in results
+    ) == 1
+    assert sum(
+        result.sprint.phase is not SprintPhase.AWAITING_COMMIT_APPROVAL for result in results
     ) == 1
     execution_engine.execute.assert_called_once()
     verifier.verify.assert_called_once()

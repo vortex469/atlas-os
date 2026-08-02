@@ -50,6 +50,10 @@ from app.workflow.models import (
     WorkflowSource,
 )
 from app.workflow.state import WorkflowStateStore
+from tests.candidate_planning.test_audit import (
+    _complete_workflow,
+    _planning_session_with_plan,
+)
 
 
 def checkpoint() -> RoadmapCheckpoint:
@@ -316,6 +320,49 @@ def test_candidate_plan_round_trips_after_restart(tmp_path: Path) -> None:
     assert recovered_session is not None
     assert recovered_session.plan == stored_session.plan
     assert recovered_session.planning_status is CandidatePlanningSessionStatus.PLAN_READY
+
+
+@pytest.mark.parametrize("status", tuple(CandidatePlanningSessionStatus))
+def test_candidate_planning_status_matrix_round_trips(
+    tmp_path: Path,
+    status: CandidatePlanningSessionStatus,
+) -> None:
+    candidate_state = CandidatePlanningStateStore()
+    persistence = coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        candidate_state,
+    )
+    persistence.initialize()
+    base = candidate_planning_session()
+    stored_session = replace(
+        base,
+        status=status,
+        planning_status=status,
+        plan=candidate_plan(tmp_path)
+        if status
+        in {
+            CandidatePlanningSessionStatus.PLAN_READY,
+            CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+            CandidatePlanningSessionStatus.IMPLEMENTATION_READY,
+        }
+        else None,
+    )
+
+    persistence.mutate_candidate_planning(
+        lambda state: state.create_session(stored_session)
+    )
+
+    recovered_candidate_state = CandidatePlanningStateStore()
+    coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        recovered_candidate_state,
+    ).initialize()
+
+    assert recovered_candidate_state.get_session(stored_session.identifier) == stored_session
 
 
 def test_candidate_workflow_shell_linkage_round_trips_after_restart(tmp_path: Path) -> None:
@@ -592,6 +639,70 @@ def test_old_snapshot_without_review_analysis_loads_none(tmp_path: Path) -> None
     assert recovered_session.review_analysis is None
 
 
+def test_old_snapshot_without_candidate_planning_loads_empty_candidate_state(
+    tmp_path: Path,
+) -> None:
+    workflow_state = WorkflowStateStore()
+    persistence = coordinator(tmp_path, workflow_state, ApprovalRepository())
+    persistence.initialize()
+    stored_session = session(tmp_path, WorkflowSessionState.COMPLETED)
+    persistence.mutate_workflow(lambda workflow: workflow.create_session(stored_session))
+    payload = json.loads(persistence.snapshot_path.read_text())
+    del payload["candidate_planning"]
+    persistence.snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    recovered_candidate_state = CandidatePlanningStateStore()
+    coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        recovered_candidate_state,
+    ).initialize()
+
+    assert recovered_candidate_state.export_snapshot() == {}
+
+
+def test_completed_candidate_workflow_artifacts_recover_after_restart(
+    tmp_path: Path,
+) -> None:
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    candidate_state = CandidatePlanningStateStore()
+    persistence = coordinator(tmp_path, workflow_state, approvals, candidate_state)
+    persistence.initialize()
+    workflow = _complete_workflow(tmp_path)
+    planning = _planning_session_with_plan(tmp_path, workflow)
+
+    persistence.mutate_aggregate(
+        lambda workflow_tx, approvals_tx, candidate_tx: (
+            candidate_tx.create_session(planning),
+            workflow_tx.create_session(workflow),
+        )
+    )
+
+    recovered_workflow = WorkflowStateStore()
+    recovered_candidate = CandidatePlanningStateStore()
+    coordinator(
+        tmp_path,
+        recovered_workflow,
+        ApprovalRepository(),
+        recovered_candidate,
+    ).initialize()
+
+    recovered = recovered_workflow.get_session(workflow.identifier)
+    assert recovered is not None
+    assert recovered.state is WorkflowSessionState.COMPLETED
+    assert recovered.candidate_metadata == workflow.candidate_metadata
+    assert recovered.candidate_implementation_request == workflow.candidate_implementation_request
+    assert recovered.execution_result == workflow.execution_result
+    assert recovered.candidate_verification_plan == workflow.candidate_verification_plan
+    assert recovered.candidate_verification_evidence == workflow.candidate_verification_evidence
+    assert recovered.candidate_review_result == workflow.candidate_review_result
+    assert recovered.commit_request == workflow.commit_request
+    assert recovered.commit_result == workflow.commit_result
+    assert recovered_candidate.get_session(planning.identifier) == planning
+
+
 def test_claimed_state_recovers_to_blocked_and_persists(tmp_path: Path) -> None:
     workflow_state = WorkflowStateStore()
     approvals = ApprovalRepository()
@@ -611,6 +722,118 @@ def test_claimed_state_recovers_to_blocked_and_persists(tmp_path: Path) -> None:
     assert recovered_session.blocked_reason == "implementation interrupted by process restart"
     persisted = json.loads(recovered.snapshot_path.read_text())
     assert persisted["workflow_state"]["sessions"][claimed.identifier]["state"] == "blocked"
+
+
+@pytest.mark.parametrize(
+    ("state", "expected_state"),
+    (
+        (WorkflowSessionState.AWAITING_APPROVAL, WorkflowSessionState.AWAITING_APPROVAL),
+        (
+            WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+            WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        ),
+        (WorkflowSessionState.EXECUTING, WorkflowSessionState.BLOCKED),
+        (
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        ),
+        (WorkflowSessionState.VERIFYING, WorkflowSessionState.BLOCKED),
+        (
+            WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+            WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+        ),
+        (WorkflowSessionState.COMMITTING, WorkflowSessionState.BLOCKED),
+        (WorkflowSessionState.BLOCKED, WorkflowSessionState.BLOCKED),
+        (WorkflowSessionState.COMPLETED, WorkflowSessionState.COMPLETED),
+    ),
+)
+def test_workflow_recovery_state_matrix(
+    tmp_path: Path,
+    state: WorkflowSessionState,
+    expected_state: WorkflowSessionState,
+) -> None:
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = coordinator(tmp_path, workflow_state, approvals)
+    persistence.initialize()
+    stored_session = _session_for_recovery_matrix(tmp_path, state)
+
+    def mutate(workflow_tx, approvals_tx):
+        workflow_tx.create_session(stored_session)
+        approval = _approval_for_recovery_state(stored_session, state, tmp_path)
+        if approval is not None:
+            approvals_tx.save_request(approval)
+
+    persistence.mutate_aggregate(mutate)
+
+    recovered_state = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    coordinator(tmp_path, recovered_state, recovered_approvals).initialize()
+
+    recovered_session = recovered_state.get_session(stored_session.identifier)
+    assert recovered_session is not None
+    assert recovered_session.state is expected_state
+    if expected_state is state and _approval_for_recovery_state(stored_session, state, tmp_path) is not None:
+        assert recovered_approvals.get_request(
+            _approval_for_recovery_state(stored_session, state, tmp_path).identifier
+        ) is not None
+
+
+def _session_for_recovery_matrix(
+    root: Path,
+    state: WorkflowSessionState,
+) -> WorkflowSession:
+    base = session(root, state)
+    if state is WorkflowSessionState.AWAITING_COMMIT_APPROVAL:
+        return replace(
+            base,
+            review_report=ReviewReport(
+                request_id="review-a15",
+                checkpoint_id="A15.1",
+                status=ReviewStatus.APPROVED,
+                findings=(),
+                recommendations=(),
+            ),
+            commit_request=CommitRequest(
+                repository_root=root,
+                expected_branch="feature/atlas-agent",
+                expected_head="abc123",
+                paths=(Path("app/workflow/engine.py"),),
+                message="feat(agent): workflow recovery",
+            ),
+            reviewed_files=(Path("app/workflow/engine.py"),),
+            expected_branch="feature/atlas-agent",
+            expected_head="abc123",
+            reviewed_content_fingerprint="a" * 64,
+        )
+    return base
+
+
+def _approval_for_recovery_state(
+    stored_session: WorkflowSession,
+    state: WorkflowSessionState,
+    root: Path,
+) -> ApprovalRequest | None:
+    if state in {
+        WorkflowSessionState.AWAITING_APPROVAL,
+        WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+    }:
+        return approval_request(stored_session.identifier, ApprovalPurpose.IMPLEMENTATION, root=root)
+    if state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL:
+        return approval_request(stored_session.identifier, ApprovalPurpose.VERIFICATION, root=root)
+    if state is WorkflowSessionState.AWAITING_COMMIT_APPROVAL:
+        approval = approval_request(stored_session.identifier, ApprovalPurpose.COMMIT, root=root)
+        return replace(
+            approval,
+            commit_metadata=CommitApprovalMetadata(
+                expected_branch="feature/atlas-agent",
+                expected_head="abc123",
+                reviewed_files=(Path("app/workflow/engine.py"),),
+                reviewed_content_fingerprint="a" * 64,
+                commit_message="feat(agent): workflow recovery",
+            ),
+        )
+    return None
 
 
 def test_pending_approved_rejected_and_standalone_approvals_recover(tmp_path: Path) -> None:

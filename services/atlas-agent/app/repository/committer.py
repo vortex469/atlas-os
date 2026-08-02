@@ -12,6 +12,8 @@ from app.repository.exceptions import (
 from app.repository.inspector import GitInspector
 from app.repository.models import CommitRequest, CommitResult
 
+_DENIED_COMMIT_PATH_PARTS = frozenset({".git", "jcode", "logs"})
+
 
 class GitCommitter:
     """Create one local commit from an exact reviewed path allowlist."""
@@ -108,20 +110,39 @@ class GitCommitter:
             )
 
         normalized: list[Path] = []
+        repository_parts = self.repository_root.parts
         for path in request.paths:
             if path.is_absolute() or path == Path(".") or ".." in path.parts:
                 raise RepositoryCommitValidationError(
                     f"Commit path must be repository-relative: {path}"
                 )
-            if path.parts and path.parts[0] == "logs":
+            normalized_path = Path(*path.parts) if path.parts else Path("")
+            if not normalized_path.parts:
+                raise RepositoryCommitValidationError("Commit path must not be empty")
+            if normalized_path.parts[0] in _DENIED_COMMIT_PATH_PARTS:
                 raise RepositoryCommitValidationError(
-                    "Commit paths must not include logs/"
+                    f"Commit paths must not include {normalized_path.parts[0]}/"
                 )
-            if path in normalized:
+            resolved_path = (self.repository_root / normalized_path).resolve(strict=False)
+            if not resolved_path.is_relative_to(self.repository_root):
                 raise RepositoryCommitValidationError(
-                    f"Commit paths must be unique: {path}"
+                    "Commit path must not escape the repository"
                 )
-            normalized.append(path)
+            if (
+                "agent-state" in normalized_path.parts
+                or (
+                    "agent-state" in repository_parts
+                    and normalized_path.parts[0] in {"agent-state", "state"}
+                )
+            ):
+                raise RepositoryCommitValidationError(
+                    "Commit paths must not include Atlas Agent state directories"
+                )
+            if normalized_path in normalized:
+                raise RepositoryCommitValidationError(
+                    f"Commit paths must be unique: {normalized_path}"
+                )
+            normalized.append(normalized_path)
 
         return tuple(sorted(normalized))
 

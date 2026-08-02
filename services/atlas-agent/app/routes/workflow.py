@@ -8,6 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.approval.models import ApprovalRequest
+from app.candidate_planning.commit import CandidateCommitFailureCode
+from app.candidate_planning.execution import CandidateExecutionFailureCode
+from app.candidate_planning.verification import CandidateVerificationFailureCode
 from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, ExecutionResult
 from app.model_providers.models import ModelResponse
@@ -31,12 +34,16 @@ router = APIRouter(prefix="/api/v1/agent/workflows", tags=["workflows"])
 class EnvironmentVariableRequest(BaseModel):
     """One environment override for a verification command."""
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1)
     value: str
 
 
 class VerificationCheckRequest(BaseModel):
     """One verification command submitted through the HTTP API."""
+
+    model_config = ConfigDict(extra="forbid")
 
     identifier: str = Field(min_length=1)
     argv: list[str] = Field(min_length=1)
@@ -59,6 +66,8 @@ class VerificationCheckRequest(BaseModel):
 
 class RoadmapCheckpointRequest(BaseModel):
     """Roadmap checkpoint submitted for workflow planning."""
+
+    model_config = ConfigDict(extra="forbid")
 
     identifier: str = Field(min_length=1)
     title: str = Field(min_length=1)
@@ -83,6 +92,8 @@ class RoadmapCheckpointRequest(BaseModel):
 class ArchitectureAssessmentRequest(BaseModel):
     """Caller-supplied architecture evidence."""
 
+    model_config = ConfigDict(extra="forbid")
+
     identifier: str = Field(min_length=1)
     summary: str = Field(min_length=1)
     passed: bool
@@ -96,6 +107,8 @@ class ArchitectureAssessmentRequest(BaseModel):
 class TestEvidenceRequest(BaseModel):
     """Mapping from a required test to a verification check."""
 
+    model_config = ConfigDict(extra="forbid")
+
     requirement: str = Field(min_length=1)
     check_identifier: str = Field(min_length=1)
 
@@ -105,6 +118,8 @@ class TestEvidenceRequest(BaseModel):
 
 class WorkflowExecutionRequest(BaseModel):
     """Validated HTTP request for planning one workflow."""
+
+    model_config = ConfigDict(extra="forbid")
 
     checkpoint: RoadmapCheckpointRequest
     repository_root: Path
@@ -182,34 +197,9 @@ _INVALID_STATE_ERRORS = {
     "Workflow already resumed",
 }
 _CANDIDATE_EXECUTION_ERRORS = {
-    "approval_missing",
-    "approval_not_granted",
-    "approval_evidence_mismatch",
-    "candidate_stale",
-    "plan_stale",
-    "repository_stale",
-    "core_unavailable",
-    "tool_policy_denied",
-    "execution_failed",
-    "persistence_failed",
-    "verification_approval_missing",
-    "verification_not_approved",
-    "verification_evidence_mismatch",
-    "changed_files_out_of_scope",
-    "changed_files_digest_mismatch",
-    "implementation_request_mismatch",
-    "verification_failed",
-    "review_failed",
-    "secret_like_change_detected",
-    "commit_approval_creation_failed",
-    "commit_approval_missing",
-    "commit_not_approved",
-    "commit_approval_evidence_mismatch",
-    "reviewed_evidence_mismatch",
-    "changed_files_drift",
-    "review_evidence_mismatch",
-    "commit_failed",
-    "commit_result_mismatch",
+    *(code.value for code in CandidateExecutionFailureCode),
+    *(code.value for code in CandidateVerificationFailureCode),
+    *(code.value for code in CandidateCommitFailureCode),
 }
 
 

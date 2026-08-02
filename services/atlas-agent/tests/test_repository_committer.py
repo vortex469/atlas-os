@@ -143,6 +143,50 @@ def test_rejects_logs_path_without_staging_it(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    "denied_path",
+    (
+        Path(".git/config"),
+        Path("jcode"),
+        Path("jcode/file.py"),
+        Path("logs"),
+        Path("logs/run.log"),
+        Path("agent-state/snapshot.json"),
+    ),
+)
+def test_rejects_denied_commit_paths_without_staging(
+    tmp_path: Path,
+    denied_path: Path,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    target = repository / denied_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if denied_path.suffix:
+        target.write_text("runtime\n", encoding="utf-8")
+
+    with pytest.raises(RepositoryCommitValidationError):
+        GitCommitter(repository).commit(
+            make_request(repository, head, paths=(denied_path,))
+        )
+
+    assert GitInspector(repository).inspect().staged_files == ()
+
+
+def test_rejects_symlink_escape_path(tmp_path: Path) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.txt").write_text("secret\n", encoding="utf-8")
+    (repository / "escape").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(RepositoryCommitValidationError, match="escape"):
+        GitCommitter(repository).commit(
+            make_request(repository, head, paths=(Path("escape/secret.txt"),))
+        )
+
+    assert GitInspector(repository).inspect().staged_files == ()
+
+
+@pytest.mark.parametrize(
     "paths",
     (
         (),

@@ -13,6 +13,9 @@ from app.approval.models import (
     CommitApprovalMetadata,
     VerificationApprovalCheck,
 )
+from app.candidate_planning.commit import CandidateCommitFailureCode
+from app.candidate_planning.execution import CandidateExecutionFailureCode
+from app.candidate_planning.verification import CandidateVerificationFailureCode
 from app.config.settings import Settings
 from app.main import create_app
 from app.model_providers.models import ModelResponse
@@ -406,6 +409,63 @@ def test_invalid_request_returns_422_without_starting_workflow(
 
     assert response.status_code == 422
     workflow_orchestrator.run.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    (
+        lambda body: body.update({"command_override": ["bash"]}),
+        lambda body: body["checkpoint"].update({"command_override": ["bash"]}),
+        lambda body: body["verification_checks"][0].update({"shell": True}),
+        lambda body: body["verification_checks"][0]["environment"][0].update(
+            {"secret": "value"}
+        ),
+        lambda body: body["architecture_assessments"][0].update({"raw_diff": "secret"}),
+        lambda body: body["test_evidence"][0].update({"argv": ["pytest"]}),
+    ),
+)
+def test_workflow_creation_rejects_extra_caller_controlled_fields(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mutate,
+) -> None:
+    client, _, _, workflow_orchestrator = make_client(tmp_path, monkeypatch)
+    body = request_body(tmp_path)
+    mutate(body)
+
+    response = client.post("/api/v1/agent/workflows", json=body)
+
+    assert response.status_code == 422
+    workflow_orchestrator.run.assert_not_awaited()
+
+
+def test_resume_accepts_no_stage_override_body(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, workflow_engine, _ = make_client(tmp_path, monkeypatch)
+    workflow_engine.resume.return_value = workflow_result(
+        tmp_path,
+        phase=SprintPhase.COMPLETED,
+    )
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-a16/resume",
+        json={"requested_command": ["bash"]},
+    )
+
+    assert response.status_code == 200
+    workflow_engine.resume.assert_called_once_with("workflow-a16")
+
+
+def test_candidate_failure_route_mapping_is_owned_by_candidate_enums() -> None:
+    expected = {
+        *(code.value for code in CandidateExecutionFailureCode),
+        *(code.value for code in CandidateVerificationFailureCode),
+        *(code.value for code in CandidateCommitFailureCode),
+    }
+
+    assert workflow_routes._CANDIDATE_EXECUTION_ERRORS == expected
 
 
 @pytest.mark.parametrize(

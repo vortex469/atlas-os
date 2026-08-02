@@ -10,13 +10,13 @@ from app.approval.engine import ApprovalEngine
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.commit import CandidateCommitValidator
 from app.candidate_planning.execution import CandidateExecutionValidator
+from app.candidate_planning.planner import RepositoryResolver
+from app.candidate_planning.service import CandidatePlanningService
+from app.candidate_planning.state import CandidatePlanningStateStore
 from app.candidate_planning.verification import (
     CandidateReviewAdapter,
     CandidateVerificationValidator,
 )
-from app.candidate_planning.planner import RepositoryResolver
-from app.candidate_planning.service import CandidatePlanningService
-from app.candidate_planning.state import CandidatePlanningStateStore
 from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
 from app.context.engine import ContextEngine
