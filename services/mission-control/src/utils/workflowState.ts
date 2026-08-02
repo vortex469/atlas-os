@@ -12,6 +12,29 @@ export interface WorkflowStateInput {
     timeline?: WorkflowTimelineStage[];
 }
 
+export type WorkflowStatusGroup =
+    | "running"
+    | "waiting_approval"
+    | "waiting_implementation_approval"
+    | "waiting_verification_approval"
+    | "waiting_commit_approval"
+    | "blocked"
+    | "completed"
+    | "unknown";
+
+export type WorkflowLifecycleState =
+    | "awaiting_approval"
+    | "awaiting_implementation_approval"
+    | "executing"
+    | "awaiting_verification_approval"
+    | "verifying"
+    | "awaiting_commit_approval"
+    | "committing"
+    | "blocked"
+    | "completed";
+
+export const WORKFLOW_STATE_UNKNOWN = "unknown" as const;
+
 export const WORKFLOW_STATES = [
     "awaiting_approval",
     "awaiting_implementation_approval",
@@ -23,6 +46,32 @@ export const WORKFLOW_STATES = [
     "blocked",
     "completed",
 ] as const;
+
+const EMPTY_VALUE = "Not exposed";
+const NOT_AVAILABLE_VALUE = "Not available";
+
+export function formatWorkflowValue(value: string | null | undefined, fallback: string = EMPTY_VALUE): string {
+    return value === null || value === undefined || value === "" ? fallback : value;
+}
+
+export function formatFingerprint(value: string | null | undefined): string {
+    return formatWorkflowValue(value, "Not exposed");
+}
+
+export function formatWorkflowStatus(value: string | null | undefined): string {
+    return value === null || value === undefined || value === ""
+        ? NOT_AVAILABLE_VALUE
+        : value
+            .replaceAll("_", " ")
+            .replaceAll("-", " ")
+            .replace(/\b\w/g, (letter) => letter.toUpperCase())
+            .replace("Not reached", "Not reached")
+            .replace("Not_available", "Not available");
+}
+
+export function formatWorkflowLabel(value: string | null | undefined): string {
+    return formatWorkflowStatus(value);
+}
 
 const EMPTY_RAIL: WorkflowRailStage[] = [
     { label: "Candidate", status: "waiting" },
@@ -42,14 +91,6 @@ const STATUS_PRIORITY: WorkflowRailStatus[] = [
     "waiting",
     "completed",
 ];
-
-export function formatWorkflowLabel(value: string | null | undefined): string {
-    if (!value) return "Not exposed";
-    return value
-        .split("_")
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" ");
-}
 
 export function workflowStageLabel(state: string): string {
     switch (state) {
