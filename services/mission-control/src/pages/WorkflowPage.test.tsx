@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     getWorkflowDetail,
     submitWorkflowImplementationApproval,
+    submitWorkflowVerificationApproval,
 } from "../api/atlas-agent";
 import { WorkflowPage } from "./WorkflowPage";
 import type { WorkflowDetailResponse } from "../types/atlasAgent";
@@ -13,10 +14,12 @@ vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowDetail: vi.fn(),
     submitWorkflowImplementationApproval: vi.fn(),
+    submitWorkflowVerificationApproval: vi.fn(),
 }));
 
 const mockedGetWorkflowDetail = vi.mocked(getWorkflowDetail);
 const mockedSubmitWorkflowImplementationApproval = vi.mocked(submitWorkflowImplementationApproval);
+const mockedSubmitWorkflowVerificationApproval = vi.mocked(submitWorkflowVerificationApproval);
 
 function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDetailResponse {
     return {
@@ -63,6 +66,34 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
             changed_files: [],
             execution_request_id: null,
         },
+        verification_plan: {
+            verification_plan_id: "verification-plan-123",
+            verifier_version: "verifier-v1",
+            changed_files_digest: "changed-digest-123",
+            verification_check_ids: ["compose-config", "compose-ps"],
+            command_backed_checks: ["compose-config", "compose-ps"],
+            working_directory: "/opt/atlas/services/demo",
+            repository: "/opt/atlas",
+            verification_status: "awaiting_verification_approval",
+        },
+        verification_evidence: {
+            verification_status: "passed",
+            completed_time: "2026-08-02T17:40:00Z",
+            executed_checks: ["compose-config", "compose-ps"],
+            check_results: [{ identifier: "compose-config", status: "passed", return_code: 0, duration_seconds: 1.2, output_truncated: false }],
+            repository_head: "abc123",
+            changed_files_digest: "changed-digest-123",
+        },
+        review: {
+            review_result: "approved",
+            review_status: "approved",
+            approved: true,
+            evidence_summary: "0 findings, 0 recommendations",
+            changed_files: ["compose.yaml"],
+            review_fingerprint: "review-fingerprint-123",
+            model_assisted_review: "Disabled",
+        },
+        verification_approval_status: "pending",
         ...overrides,
     };
 }
@@ -160,7 +191,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        expect(await screen.findByText(/Approval controls are unavailable/i)).toBeInTheDocument();
+        expect((await screen.findAllByText(/Approval controls are unavailable/i)).length).toBeGreaterThan(0);
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
     });
@@ -170,7 +201,7 @@ describe("WorkflowPage", () => {
 
         expect(await screen.findByText("Implementation ✔")).toBeInTheDocument();
         expect(screen.getByText("Execution ✔")).toBeInTheDocument();
-        expect(screen.getByText("Verification ○")).toBeInTheDocument();
+        expect(screen.getByText("Verification ✔")).toBeInTheDocument();
         expect(screen.getByText("Commit ○")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /verify/i })).not.toBeInTheDocument();
@@ -183,6 +214,65 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Workflow not found");
+    });
+
+    it("renders verification plan, evidence, and deterministic review", async () => {
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Verification Plan" })).toBeInTheDocument();
+        expect(screen.getByText("verification-plan-123")).toBeInTheDocument();
+        expect(screen.getByText("verifier-v1")).toBeInTheDocument();
+        expect(screen.getAllByText("changed-digest-123").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("compose-config, compose-ps").length).toBeGreaterThan(0);
+        expect(screen.getByRole("heading", { name: "Verification Evidence" })).toBeInTheDocument();
+        expect(screen.getByText("abc123")).toBeInTheDocument();
+        expect(screen.getByText("compose-config: passed")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Review" })).toBeInTheDocument();
+        expect(screen.getByText("Deterministic review")).toBeInTheDocument();
+        expect(screen.getByText("review-fingerprint-123")).toBeInTheDocument();
+        expect(screen.getAllByText("Disabled").length).toBeGreaterThan(0);
+    });
+
+    it("submits verification approval with only workflow id and decision", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_verification_approval" }));
+        mockedSubmitWorkflowVerificationApproval.mockResolvedValue({
+            workflow_id: "workflow-123",
+            workflow_state: "awaiting_verification_approval",
+            verification_approval_status: "approved",
+            message: null,
+        });
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Approve Verification" }));
+
+        await screen.findByText("Verification approved. Verification is now available.");
+        expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledTimes(1);
+        expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledWith("workflow-123", "approve");
+        expect(JSON.stringify(mockedSubmitWorkflowVerificationApproval.mock.calls[0])).not.toMatch(/command|check|evidence|changed|review|commit/);
+    });
+
+    it("submits verification rejection and blocks duplicate clicks", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_verification_approval" }));
+        let resolveApproval: (value: Awaited<ReturnType<typeof submitWorkflowVerificationApproval>>) => void = () => undefined;
+        mockedSubmitWorkflowVerificationApproval.mockReturnValue(new Promise((resolve) => {
+            resolveApproval = resolve;
+        }));
+        renderPage();
+
+        const reject = await screen.findByRole("button", { name: "Reject Verification" });
+        fireEvent.click(reject);
+        fireEvent.click(reject);
+
+        expect(await screen.findByText("Submitting verification approval...")).toBeInTheDocument();
+        expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledTimes(1);
+        expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledWith("workflow-123", "reject");
+        resolveApproval({
+            workflow_id: "workflow-123",
+            workflow_state: "awaiting_verification_approval",
+            verification_approval_status: "rejected",
+            message: null,
+        });
+        await screen.findByText("Verification approval rejected.");
     });
 
     it("maps approval error states", async () => {

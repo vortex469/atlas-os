@@ -716,6 +716,62 @@ def test_candidate_workflow_implementation_approval_conflict_after_decision(tmp_
     assert response.json()["detail"]["code"] == "approval_already_decided"
 
 
+def save_verification_approval(container, workflow: WorkflowSession) -> None:
+    approval = ApprovalRequest(
+        identifier=f"approval-verification-{workflow.identifier}",
+        workflow_id=workflow.identifier,
+        checkpoint_id="verification-plan-123",
+        title="Approve verification",
+        requested_tool="verification",
+        requested_command=("verification-suite",),
+        requested_working_directory=workflow.candidate_implementation_request.working_directory,
+        rationale="Approve exact verification.",
+        purpose=ApprovalPurpose.VERIFICATION,
+    )
+    approvals = container.approval_repository.export_snapshot()
+    approvals.pop(approval.identifier, None)
+    container.approval_repository.replace_snapshot(approvals)
+    container.approval_repository.save_request(approval)
+
+
+def test_candidate_workflow_verification_approval_accepts_only_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(candidate_workflow_session(tmp_path), state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL)
+    save_candidate_workflow(container, workflow)
+    save_verification_approval(container, workflow)
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/verification-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "workflow_id": "workflow-123",
+        "workflow_state": "awaiting_verification_approval",
+        "verification_approval_status": "approved",
+        "message": "Verification approved. Verification is now available.",
+    }
+    result = container.approval_repository.get_request("approval-verification-workflow-123")
+    assert result.decision.status is ApprovalStatus.APPROVED
+
+
+def test_candidate_workflow_verification_approval_rejects_extra_payload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(candidate_workflow_session(tmp_path), state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL)
+    save_candidate_workflow(container, workflow)
+    save_verification_approval(container, workflow)
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/verification-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve", "verification_commands": ["pytest"]},
+    )
+
+    assert response.status_code == 422
+    result = container.approval_repository.get_request("approval-verification-workflow-123")
+    assert result.decision.status is ApprovalStatus.PENDING
+
+
 def test_candidate_workflow_implementation_request_includes_execution_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     workflow = replace(

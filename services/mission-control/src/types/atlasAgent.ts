@@ -143,6 +143,36 @@ export interface WorkflowExecutionSummary {
     execution_request_id: string | null;
 }
 
+export interface WorkflowVerificationPlanSummary {
+    verification_plan_id: string | null;
+    verifier_version: string | null;
+    changed_files_digest: string | null;
+    verification_check_ids: string[];
+    command_backed_checks: string[];
+    working_directory: string | null;
+    repository: string | null;
+    verification_status: string;
+}
+
+export interface WorkflowVerificationEvidenceSummary {
+    verification_status: string | null;
+    completed_time: string | null;
+    executed_checks: string[];
+    check_results: Array<Record<string, string | number | boolean | null>>;
+    repository_head: string | null;
+    changed_files_digest: string | null;
+}
+
+export interface WorkflowReviewSummary {
+    review_result: string | null;
+    review_status: string | null;
+    approved: boolean | null;
+    evidence_summary: string | null;
+    changed_files: string[];
+    review_fingerprint: string | null;
+    model_assisted_review: string;
+}
+
 export interface WorkflowDetailResponse {
     workflow_id: string;
     workflow_source: string;
@@ -159,6 +189,10 @@ export interface WorkflowDetailResponse {
     implementation_request: WorkflowImplementationRequestSummary | null;
     timeline: WorkflowTimelineStage[];
     execution: WorkflowExecutionSummary;
+    verification_plan: WorkflowVerificationPlanSummary;
+    verification_evidence: WorkflowVerificationEvidenceSummary;
+    review: WorkflowReviewSummary;
+    verification_approval_status: string;
 }
 
 export type WorkflowImplementationDecision = "approve" | "reject";
@@ -167,5 +201,12 @@ export interface WorkflowImplementationApprovalResponse {
     workflow_id: string;
     workflow_state: string;
     implementation_approval_status: string;
+    message: string | null;
+}
+
+export interface WorkflowVerificationApprovalResponse {
+    workflow_id: string;
+    workflow_state: string;
+    verification_approval_status: string;
     message: string | null;
 }

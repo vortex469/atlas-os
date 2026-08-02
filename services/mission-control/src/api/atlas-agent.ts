@@ -13,6 +13,7 @@ import type {
     WorkflowDetailResponse,
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
+    WorkflowVerificationApprovalResponse,
 } from "../types/atlasAgent";
 
 const ATLAS_AGENT_API_BASE_URL =
@@ -175,6 +176,18 @@ export async function submitWorkflowImplementationApproval(
 ): Promise<WorkflowImplementationApprovalResponse> {
     const response = await atlasAgent.post<WorkflowImplementationApprovalResponse>(
         `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/implementation-approval`,
+        { workflow_id: workflowId, decision },
+    );
+
+    return response.data;
+}
+
+export async function submitWorkflowVerificationApproval(
+    workflowId: string,
+    decision: WorkflowImplementationDecision,
+): Promise<WorkflowVerificationApprovalResponse> {
+    const response = await atlasAgent.post<WorkflowVerificationApprovalResponse>(
+        `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/verification-approval`,
         { workflow_id: workflowId, decision },
     );
 

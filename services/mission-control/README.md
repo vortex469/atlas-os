@@ -32,6 +32,7 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Approval-gated workflow shell creation and read-only workflow summary
 - Read-only immutable implementation request review with exact approve or reject controls
 - Read-only execution timeline and execution result summary
+- Read-only verification plan, verification evidence, deterministic review, and exact verification approval controls
 
 ## Development
 
@@ -58,6 +59,6 @@ npm run build
 
 ## Phase 3 boundary
 
-Mission Control can display Atlas Agent, Discovery, and execution-candidate state. It can ask Atlas Agent to create or reuse a planning-only session for an eligible candidate, generate a read-only candidate plan, create or return an approval-gated workflow shell, display the workflow shell summary, approve or reject the exact immutable implementation request returned by Atlas Agent, and display a read-only execution timeline/result summary. It does not currently expose execution controls, verification controls, review controls, commit controls, or candidate execution controls. It must not imply support for push, tag, release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
+Mission Control can display Atlas Agent, Discovery, and execution-candidate state. It can ask Atlas Agent to create or reuse a planning-only session for an eligible candidate, generate a read-only candidate plan, create or return an approval-gated workflow shell, display the workflow shell summary, approve or reject the exact immutable implementation request returned by Atlas Agent, display a read-only execution timeline/result summary, display read-only verification and deterministic review artifacts, and approve or reject exact verification. It does not currently expose execution controls, manual verification controls, review editing, commit approval creation, commit controls, or candidate execution controls. It must not imply support for push, tag, release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
 
 The supported Atlas Agent candidate intent is `update-compose-stack`, and all candidate planning is revalidated authoritatively by Atlas Agent and Atlas Core.

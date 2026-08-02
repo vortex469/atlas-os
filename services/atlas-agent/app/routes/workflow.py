@@ -199,6 +199,36 @@ class WorkflowExecutionSummaryResponse(BaseModel):
     execution_request_id: str | None
 
 
+class WorkflowVerificationPlanResponse(BaseModel):
+    verification_plan_id: str | None
+    verifier_version: str | None
+    changed_files_digest: str | None
+    verification_check_ids: list[str]
+    command_backed_checks: list[str]
+    working_directory: str | None
+    repository: str | None
+    verification_status: str
+
+
+class WorkflowVerificationEvidenceResponse(BaseModel):
+    verification_status: str | None
+    completed_time: str | None
+    executed_checks: list[str]
+    check_results: list[dict[str, str | int | float | bool | None]]
+    repository_head: str | None
+    changed_files_digest: str | None
+
+
+class WorkflowReviewResponse(BaseModel):
+    review_result: str | None
+    review_status: str | None
+    approved: bool | None
+    evidence_summary: str | None
+    changed_files: list[str]
+    review_fingerprint: str | None
+    model_assisted_review: str
+
+
 class WorkflowDetailResponse(BaseModel):
     """Read-only workflow implementation approval detail."""
 
@@ -217,6 +247,10 @@ class WorkflowDetailResponse(BaseModel):
     implementation_request: WorkflowImplementationRequestSummary | None
     timeline: list[WorkflowTimelineStageResponse]
     execution: WorkflowExecutionSummaryResponse
+    verification_plan: WorkflowVerificationPlanResponse
+    verification_evidence: WorkflowVerificationEvidenceResponse
+    review: WorkflowReviewResponse
+    verification_approval_status: str
 
 
 class WorkflowImplementationApprovalRequest(BaseModel):
@@ -232,6 +266,22 @@ class WorkflowImplementationApprovalResponse(BaseModel):
     workflow_id: str
     workflow_state: str
     implementation_approval_status: str
+    message: str | None = None
+
+
+class WorkflowVerificationApprovalRequest(BaseModel):
+    """Boundary-safe verification approval decision request."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    workflow_id: str = Field(min_length=1)
+    decision: str = Field(pattern="^(approve|reject)$")
+
+
+class WorkflowVerificationApprovalResponse(BaseModel):
+    workflow_id: str
+    workflow_state: str
+    verification_approval_status: str
     message: str | None = None
 
 
@@ -353,6 +403,86 @@ def _workflow_execution_summary(workflow) -> WorkflowExecutionSummaryResponse:
     )
 
 
+def _verification_approval_status(request: Request, workflow) -> str:
+    return _approval_status(request, f"approval-verification-{workflow.identifier}")
+
+
+def _workflow_verification_plan(workflow) -> WorkflowVerificationPlanResponse:
+    plan = workflow.candidate_verification_plan
+    if plan is None:
+        return WorkflowVerificationPlanResponse(
+            verification_plan_id=None,
+            verifier_version=None,
+            changed_files_digest=None,
+            verification_check_ids=[],
+            command_backed_checks=[],
+            working_directory=None,
+            repository=None,
+            verification_status="not_available",
+        )
+    check_ids = [check.identifier for check in plan.verification_checks]
+    return WorkflowVerificationPlanResponse(
+        verification_plan_id=plan.identifier,
+        verifier_version=plan.verifier_version,
+        changed_files_digest=plan.changed_files_digest,
+        verification_check_ids=check_ids,
+        command_backed_checks=check_ids,
+        working_directory=str(plan.verification_checks[0].working_directory) if plan.verification_checks else None,
+        repository=str(plan.repository_root),
+        verification_status=workflow.state.value,
+    )
+
+
+def _workflow_verification_evidence(workflow) -> WorkflowVerificationEvidenceResponse:
+    evidence = workflow.candidate_verification_evidence
+    if evidence is None:
+        return WorkflowVerificationEvidenceResponse(
+            verification_status=None,
+            completed_time=None,
+            executed_checks=[],
+            check_results=[],
+            repository_head=None,
+            changed_files_digest=None,
+        )
+    return WorkflowVerificationEvidenceResponse(
+        verification_status=evidence.status.value,
+        completed_time=evidence.completed_at.isoformat(),
+        executed_checks=[check.identifier for check in evidence.check_results],
+        check_results=[
+            {
+                "identifier": check.identifier,
+                "status": check.status.value,
+                "return_code": check.return_code,
+                "stdout_digest": check.stdout_digest,
+                "stderr_digest": check.stderr_digest,
+                "output_truncated": check.output_truncated,
+                "duration_seconds": check.duration_seconds,
+                "error": check.error,
+            }
+            for check in evidence.check_results
+        ],
+        repository_head=evidence.repository_head,
+        changed_files_digest=evidence.changed_files_digest,
+    )
+
+
+def _workflow_review(workflow) -> WorkflowReviewResponse:
+    result = workflow.candidate_review_result
+    report = workflow.review_report
+    status = result.status.value if result else report.status.value if report else None
+    findings = len(report.findings) if report else 0
+    recommendations = len(report.recommendations) if report else 0
+    return WorkflowReviewResponse(
+        review_result=status,
+        review_status=status,
+        approved=(status == "approved") if status is not None else None,
+        evidence_summary=(f"{findings} findings, {recommendations} recommendations" if report else None),
+        changed_files=[str(path) for path in workflow.changed_files],
+        review_fingerprint=result.reviewed_content_fingerprint if result else None,
+        model_assisted_review="Disabled",
+    )
+
+
 def _stage_status(workflow, stage: str, approval_status: str) -> str:
     state = workflow.state.value
     execution = workflow.execution_result
@@ -426,6 +556,7 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         )
 
     approval_status = _approval_status(request, workflow.candidate_implementation_approval_id)
+    verification_approval = _verification_approval_status(request, workflow)
     return WorkflowDetailResponse(
         workflow_id=workflow.identifier,
         workflow_source=workflow.source.value,
@@ -442,6 +573,10 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         implementation_request=summary,
         timeline=_workflow_timeline(workflow, approval_status),
         execution=_workflow_execution_summary(workflow),
+        verification_plan=_workflow_verification_plan(workflow),
+        verification_evidence=_workflow_verification_evidence(workflow),
+        review=_workflow_review(workflow),
+        verification_approval_status=verification_approval,
     )
 
 
@@ -532,6 +667,74 @@ async def submit_workflow_implementation_approval(
         workflow_state=workflow.state.value,
         implementation_approval_status=decision.status.value,
         message="Implementation approved. Execution is now available." if decision.status is ApprovalStatus.APPROVED else "Approval rejected.",
+    )
+
+
+@router.post(
+    "/{workflow_id}/verification-approval",
+    response_model=WorkflowVerificationApprovalResponse,
+    responses=_ERROR_RESPONSES,
+)
+async def submit_workflow_verification_approval(
+    workflow_id: str,
+    approval_request: WorkflowVerificationApprovalRequest,
+    request: Request,
+) -> WorkflowVerificationApprovalResponse:
+    """Approve or reject the exact verification approval by workflow ID only."""
+
+    if approval_request.workflow_id != workflow_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "workflow_id_mismatch", "message": "Workflow ID must match the route"},
+        )
+    workflow = request.app.state.container.workflow_state.get_session(workflow_id)
+    if workflow is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "workflow_not_found", "message": "Workflow not found"},
+        )
+    if workflow.state is not WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "stale_workflow", "message": "Workflow is not awaiting verification approval"},
+        )
+    approval_id = f"approval-verification-{workflow.identifier}"
+    stored = request.app.state.container.approval_repository.get_request(approval_id)
+    if stored is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "approval_not_found", "message": "Verification approval request not found"},
+        )
+    if stored.decision.status is not ApprovalStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "approval_already_decided", "message": "Approval already decided"},
+        )
+    decision = ApprovalDecision(
+        request=stored.decision.request,
+        status=ApprovalStatus.APPROVED if approval_request.decision == "approve" else ApprovalStatus.REJECTED,
+    )
+    persistence = getattr(request.app.state.container, "state_persistence", None)
+    try:
+        if persistence is None:
+            success = request.app.state.container.approval_repository.update_decision(approval_id, decision)
+        else:
+            success = persistence.mutate_approval(lambda approvals: approvals.update_decision(approval_id, decision))
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "persistence_failure", "message": "Verification approval could not be persisted"},
+        ) from exc
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "approval_already_decided", "message": "Approval already decided"},
+        )
+    return WorkflowVerificationApprovalResponse(
+        workflow_id=workflow.identifier,
+        workflow_state=workflow.state.value,
+        verification_approval_status=decision.status.value,
+        message="Verification approved. Verification is now available." if decision.status is ApprovalStatus.APPROVED else "Verification approval rejected.",
     )
 
 
