@@ -139,6 +139,7 @@ export function WorkflowDashboardPage() {
     }
 
     function refresh() {
+        if (pendingLoad.current || isRefreshing) return;
         void loadDashboard("refresh");
     }
 
