@@ -272,7 +272,7 @@ export function WorkflowAuditPage() {
                     <section key={title} aria-labelledby={`audit-${title}-heading`} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                         <h2 id={`audit-${title}-heading`} className="text-lg font-semibold text-white">{title}</h2>
                         <p className="mt-2 text-sm text-slate-300">Status: {formatStatusLabel(status)}</p>
-                        {isIssue && status !== "completed" && status !== "current" && (
+                        {isIssue && (
                             <p role="alert" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
                                 {status === "missing" ? "Required artifact is missing." : "This stage is inconsistent with audit-chain validation."}
                             </p>
