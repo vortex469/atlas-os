@@ -130,6 +130,157 @@ export interface WorkflowTimelineStage {
     status: "completed" | "current" | "waiting" | "blocked" | "failed" | string;
 }
 
+export type WorkflowAuditStageName =
+    | "candidate"
+    | "planning"
+    | "plan"
+    | "workflow"
+    | "implementation"
+    | "approvals"
+    | "execution"
+    | "verification"
+    | "review"
+    | "commit";
+
+export type WorkflowAuditStageStatus =
+    | "completed"
+    | "current"
+    | "not_reached"
+    | "missing"
+    | "invalid"
+    | string;
+
+export interface WorkflowAuditSection {
+    name: WorkflowAuditStageName;
+    status: WorkflowAuditStageStatus;
+}
+
+export interface WorkflowAuditFailure {
+    valid: boolean;
+    failure_code: string | null;
+    failure_stage: string | null;
+}
+
+export interface WorkflowAuditCandidate {
+    status: string;
+    candidate_id: string | null;
+    candidate_fingerprint: string | null;
+    source_recommendation_id: string | null;
+    target_id: string | null;
+    target_type: string | null;
+}
+
+export interface WorkflowAuditPlanning {
+    status: string;
+    planning_session_id: string | null;
+    planning_state: string | null;
+    planning_status: string | null;
+    created_at: string | null;
+    planning_completed_at: string | null;
+    candidate_plan_id: string | null;
+    candidate_plan_fingerprint: string | null;
+}
+
+export interface WorkflowAuditPlan {
+    status: string;
+    plan_id: string | null;
+    candidate_plan_fingerprint: string | null;
+    likely_affected_files: string[];
+}
+
+export interface WorkflowAuditWorkflow {
+    status: string;
+    workflow_id: string;
+    workflow_source: string;
+    workflow_state: string;
+}
+
+export interface WorkflowAuditImplementation {
+    status: string;
+    implementation_request_id: string | null;
+    execution_intent: string | null;
+    tool: string | null;
+    repository_root: string | null;
+    repository_head: string | null;
+    repository_branch: string | null;
+    working_directory: string | null;
+    affected_files: string[];
+    translator_version: string | null;
+}
+
+export interface WorkflowAuditApproval {
+    status: string;
+    approval_id: string | null;
+}
+
+export interface WorkflowAuditApprovals {
+    status: string;
+    implementation: WorkflowAuditApproval;
+    verification: WorkflowAuditApproval;
+    commit: WorkflowAuditApproval;
+}
+
+export interface WorkflowAuditExecution {
+    status: string;
+    execution_request_id: string | null;
+    execution_status: string | null;
+    changed_files_count: number;
+    changed_files: string[];
+    tool: string | null;
+    repository: string | null;
+}
+
+export interface WorkflowAuditVerification {
+    status: string;
+    verification_plan_id: string | null;
+    verification_evidence_id: string | null;
+    verification_status: string | null;
+    changed_files_digest: string | null;
+    verification_check_ids: string[];
+    repository_head: string | null;
+    verification_started_at: string | null;
+    verification_completed_at: string | null;
+}
+
+export interface WorkflowAuditReview {
+    status: string;
+    review_result_id: string | null;
+    review_report_id: string | null;
+    review_status: string | null;
+    reviewed_content_fingerprint: string | null;
+    changed_files: string[];
+}
+
+export interface WorkflowAuditCommit {
+    status: string;
+    commit_request_id: string | null;
+    reviewed_files: string[];
+    reviewed_content_fingerprint: string | null;
+    expected_branch: string | null;
+    expected_head: string | null;
+    commit_message: string | null;
+    commit_sha: string | null;
+    committed_files: string[];
+}
+
+export interface WorkflowAuditResponse {
+    workflow_id: string;
+    workflow_state: string;
+    workflow_source: string;
+    validation: WorkflowAuditFailure;
+    timeline: WorkflowAuditSection[];
+    candidate: WorkflowAuditCandidate;
+    planning: WorkflowAuditPlanning;
+    plan: WorkflowAuditPlan;
+    workflow: WorkflowAuditWorkflow;
+    implementation: WorkflowAuditImplementation;
+    approvals: WorkflowAuditApprovals;
+    execution: WorkflowAuditExecution;
+    verification: WorkflowAuditVerification;
+    review: WorkflowAuditReview;
+    commit: WorkflowAuditCommit;
+}
+
 export interface WorkflowExecutionSummary {
     execution_status: string | null;
     started_at: string | null;

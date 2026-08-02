@@ -15,6 +15,7 @@ import { ProviderPage } from "../pages/ProviderPage";
 import { WorkflowPage } from "../pages/WorkflowPage";
 import { WorkflowDashboardPage } from "../pages/WorkflowDashboardPage";
 import { WorkflowShellPage } from "../pages/WorkflowShellPage";
+import { WorkflowAuditPage } from "../pages/WorkflowAuditPage";
 export const router = createBrowserRouter([
     {
         path: "/",
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
             {
                 path: "workflows",
                 element: <WorkflowDashboardPage />,
+            },
+            {
+                path: "workflows/:workflowId/audit",
+                element: <WorkflowAuditPage />,
             },
             {
                 path: "workflows/:workflowId",

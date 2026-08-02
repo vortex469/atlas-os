@@ -170,6 +170,15 @@ describe("WorkflowPage", () => {
         expect(screen.getAllByText("compose.yaml, services/demo/Dockerfile").length).toBeGreaterThan(0);
     });
 
+    it("provides Open Audit link to workflow audit explorer", async () => {
+        renderPage();
+
+        expect(await screen.findByRole("link", { name: "Open Audit" })).toHaveAttribute(
+            "href",
+            "/workflows/workflow-123/audit",
+        );
+    });
+
     it("submits approve with only workflow id and decision", async () => {
         mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
             workflow_id: "workflow-123",

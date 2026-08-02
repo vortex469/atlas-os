@@ -6,6 +6,7 @@ import type {
     CandidatePlanningResponse,
     CandidateWorkflowRequest,
     CandidateWorkflowResponse,
+    WorkflowAuditResponse,
     RepositoryStatus,
     ReviewReport,
     SprintStatus,
@@ -161,6 +162,24 @@ export async function getWorkflowDetail(
     try {
         const response = await atlasAgent.get<WorkflowDetailResponse>(
             `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/implementation-request`,
+        );
+
+        return response.data;
+    } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+
+        throw error;
+    }
+}
+
+export async function getWorkflowAudit(
+    workflowId: string,
+): Promise<WorkflowAuditResponse | null> {
+    try {
+        const response = await atlasAgent.get<WorkflowAuditResponse>(
+            `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/audit`,
         );
 
         return response.data;

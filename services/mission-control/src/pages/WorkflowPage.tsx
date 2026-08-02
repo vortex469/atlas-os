@@ -253,6 +253,12 @@ export function WorkflowPage() {
             <Link to="/execution-candidates" className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                 Back to execution candidates
             </Link>
+            <Link
+                to={`/workflows/${workflow.workflow_id}/audit`}
+                className="ml-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+                Open Audit
+            </Link>
         </main>
     );
 }
