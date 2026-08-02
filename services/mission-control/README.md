@@ -34,6 +34,7 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Read-only execution timeline and execution result summary
 - Read-only verification plan, verification evidence, deterministic review, and exact verification approval controls
 - Read-only workflow dashboard with summary counts, filters, refresh, compact workflow rails, and workflow detail links
+- Read-only immutable commit request review with exact approve or reject controls and completed workflow commit result display
 
 ## Development
 
@@ -60,6 +61,6 @@ npm run build
 
 ## Phase 3 boundary
 
-Mission Control can display Atlas Agent, Discovery, execution-candidate, and persisted workflow state. It can ask Atlas Agent to create or reuse a planning-only session for an eligible candidate, generate a read-only candidate plan, create or return an approval-gated workflow shell, display the workflow shell summary, browse persisted workflow summaries, approve or reject the exact immutable implementation request returned by Atlas Agent, display a read-only execution timeline/result summary, display read-only verification and deterministic review artifacts, and approve or reject exact verification. The workflow dashboard is navigation-only and does not submit approval decisions, commands, resume requests, repository paths, evidence, fingerprints, or workflow mutations. Mission Control does not currently expose execution controls, manual verification controls, review editing, commit approval creation, commit controls, or candidate execution controls. It must not imply support for push, tag, release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
+Mission Control can display Atlas Agent, Discovery, execution-candidate, and persisted workflow state. It can ask Atlas Agent to create or reuse a planning-only session for an eligible candidate, generate a read-only candidate plan, create or return an approval-gated workflow shell, display the workflow shell summary, browse persisted workflow summaries, approve or reject the exact immutable implementation request returned by Atlas Agent, display a read-only execution timeline/result summary, display read-only verification and deterministic review artifacts, approve or reject exact verification, display the immutable commit request, approve or reject the exact commit request, and display completed workflow commit results. The workflow dashboard is navigation-only and does not submit approval decisions, commands, resume requests, repository paths, evidence, fingerprints, or workflow mutations. Mission Control does not expose execution controls, manual verification controls, review editing, editable commit messages, editable commit paths, push, tag, amend, release, rollback, or candidate execution controls. It must not imply support for release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
 
 The supported Atlas Agent candidate intent is `update-compose-stack`, and all candidate planning is revalidated authoritatively by Atlas Agent and Atlas Core.

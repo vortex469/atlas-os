@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import {
     getAtlasAgentErrorMessage,
     getWorkflowDetail,
+    submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
     submitWorkflowVerificationApproval,
 } from "../api/atlas-agent";
@@ -11,6 +12,7 @@ import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import type {
     WorkflowDetailResponse,
+    WorkflowCommitApprovalResponse,
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
     WorkflowVerificationApprovalResponse,
@@ -31,6 +33,9 @@ export function WorkflowPage() {
     const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
     const [verificationApprovalError, setVerificationApprovalError] = useState<string | null>(null);
     const [verificationApprovalResult, setVerificationApprovalResult] = useState<WorkflowVerificationApprovalResponse | null>(null);
+    const [isSubmittingCommit, setIsSubmittingCommit] = useState(false);
+    const [commitApprovalError, setCommitApprovalError] = useState<string | null>(null);
+    const [commitApprovalResult, setCommitApprovalResult] = useState<WorkflowCommitApprovalResponse | null>(null);
 
     const loadWorkflow = useCallback(async (mode: LoadMode = "initial") => {
         if (mode === "initial") setIsLoading(true);
@@ -101,6 +106,28 @@ export function WorkflowPage() {
             setIsSubmittingVerification(false);
         }
     }
+
+    async function submitCommitDecision(decision: WorkflowImplementationDecision) {
+        if (!workflow || workflow.workflow_state !== "awaiting_commit_approval" || isSubmittingCommit) return;
+        setIsSubmittingCommit(true);
+        setCommitApprovalError(null);
+        try {
+            const result = await submitWorkflowCommitApproval(workflow.workflow_id, decision);
+            setCommitApprovalResult(result);
+            setWorkflow({
+                ...workflow,
+                workflow_state: result.workflow_state,
+                commit_approval_status: result.commit_approval_status,
+                commit_request: workflow.commit_request
+                    ? { ...workflow.commit_request, commit_approval_status: result.commit_approval_status }
+                    : null,
+            });
+        } catch (error) {
+            setCommitApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Commit approval failed." : "Commit rejection failed."));
+        } finally {
+            setIsSubmittingCommit(false);
+        }
+    }
     if (isLoading) {
         return (
             <main className="mx-auto max-w-6xl p-8">
@@ -135,6 +162,7 @@ export function WorkflowPage() {
 
     const canDecide = workflow.workflow_state === "awaiting_implementation_approval";
     const canDecideVerification = workflow.workflow_state === "awaiting_verification_approval";
+    const canDecideCommit = workflow.workflow_state === "awaiting_commit_approval";
 
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
@@ -184,6 +212,15 @@ export function WorkflowPage() {
                 verificationApprovalResult={verificationApprovalResult}
                 verificationApprovalError={verificationApprovalError}
                 onVerificationDecision={submitVerificationDecision}
+            />
+
+            <CommitSection
+                workflow={workflow}
+                canDecideCommit={canDecideCommit}
+                isSubmittingCommit={isSubmittingCommit}
+                commitApprovalResult={commitApprovalResult}
+                commitApprovalError={commitApprovalError}
+                onCommitDecision={submitCommitDecision}
             />
 
             <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -326,10 +363,84 @@ function VerificationReviewSection({
                 {verificationApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(verificationApprovalError)}</p>}
             </section>
 
-            <section aria-labelledby="commit-disabled-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
-                <h3 id="commit-disabled-heading" className="text-base font-semibold text-white">Commit</h3>
-                <p className="mt-2 text-sm text-slate-400">Commit remains disabled in P4.6. Mission Control does not create commit approval or commit from this page.</p>
+        </section>
+    );
+}
+
+function CommitSection({
+    workflow,
+    canDecideCommit,
+    isSubmittingCommit,
+    commitApprovalResult,
+    commitApprovalError,
+    onCommitDecision,
+}: {
+    workflow: WorkflowDetailResponse;
+    canDecideCommit: boolean;
+    isSubmittingCommit: boolean;
+    commitApprovalResult: WorkflowCommitApprovalResponse | null;
+    commitApprovalError: string | null;
+    onCommitDecision: (decision: WorkflowImplementationDecision) => Promise<void>;
+}) {
+    const request = workflow.commit_request;
+    const result = workflow.commit_result;
+    const isCompleted = workflow.workflow_state === "completed";
+
+    return (
+        <section aria-labelledby="commit-heading" className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            <div>
+                <h2 id="commit-heading" className="text-lg font-semibold text-white">Commit</h2>
+                <p className="mt-2 text-sm text-slate-400">
+                    Read-only commit approval boundary. Mission Control may approve or reject the exact commit request only. It never edits messages, edits paths, pushes, tags, amends, releases, or rolls back.
+                </p>
+            </div>
+
+            <section aria-labelledby="commit-request-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <h3 id="commit-request-heading" className="text-base font-semibold text-white">Commit Request</h3>
+                {request ? (
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Commit Request ID" value={request.commit_request_id} />
+                        <Detail label="Repository" value={request.repository ?? "Not available"} />
+                        <Detail label="Branch" value={request.branch ?? "Not available"} />
+                        <Detail label="Expected HEAD" value={request.expected_head ?? "Not available"} />
+                        <Detail label="Commit message" value={request.commit_message} />
+                        <Detail label="Reviewed files" value={request.reviewed_files.length > 0 ? request.reviewed_files.join(", ") : "None reported"} />
+                        <Detail label="Reviewed-content fingerprint" value={request.reviewed_content_fingerprint} />
+                        <Detail label="Commit approval status" value={formatLabel(request.commit_approval_status)} />
+                    </dl>
+                ) : (
+                    <p className="mt-3 text-sm text-slate-300">Commit request is not available for this workflow.</p>
+                )}
             </section>
+
+            <section aria-labelledby="commit-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <h3 id="commit-approval-heading" className="text-base font-semibold text-white">Commit approval</h3>
+                <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and commit approval decision.</p>
+                {canDecideCommit ? (
+                    <div className="mt-4 flex flex-wrap gap-3">
+                        <button type="button" onClick={() => void onCommitDecision("approve")} disabled={isSubmittingCommit} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Commit</button>
+                        <button type="button" onClick={() => void onCommitDecision("reject")} disabled={isSubmittingCommit} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Commit</button>
+                    </div>
+                ) : (
+                    <p className="mt-4 text-sm text-slate-300">Commit approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
+                )}
+                {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
+                {commitApprovalResult?.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Workflow may now complete through the existing backend resume path.</p>}
+                {commitApprovalResult?.commit_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Commit approval rejected.</p>}
+                {commitApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(commitApprovalError)}</p>}
+            </section>
+
+            {isCompleted && (
+                <section aria-labelledby="completed-workflow-heading" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+                    <h3 id="completed-workflow-heading" className="text-base font-semibold text-emerald-100">Completed workflow</h3>
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Commit SHA" value={result.commit_sha ?? "Not available"} />
+                        <Detail label="Commit message" value={result.commit_message ?? "Not available"} />
+                        <Detail label="Committed files" value={result.committed_files.length > 0 ? result.committed_files.join(", ") : "None reported"} />
+                        <Detail label="Completion time" value={result.completion_time ?? "Not available"} />
+                    </dl>
+                </section>
+            )}
         </section>
     );
 }
@@ -353,6 +464,9 @@ function formatLabel(value: string): string {
 
 function approvalMessage(message: string): string {
     const lower = message.toLowerCase();
+    if (lower.includes("completed")) return "Workflow completed.";
+    if (lower.includes("blocked")) return "Workflow blocked.";
+    if (lower.includes("already rejected")) return "Commit already rejected.";
     if (lower.includes("already approved")) return "Approval already approved.";
     if (lower.includes("already") || lower.includes("conflict")) return "Approval already decided.";
     if (lower.includes("stale")) return "Stale workflow.";

@@ -173,6 +173,24 @@ export interface WorkflowReviewSummary {
     model_assisted_review: string;
 }
 
+export interface WorkflowCommitRequestSummary {
+    commit_request_id: string;
+    repository: string | null;
+    branch: string | null;
+    expected_head: string | null;
+    commit_message: string;
+    reviewed_files: string[];
+    reviewed_content_fingerprint: string;
+    commit_approval_status: string;
+}
+
+export interface WorkflowCommitResultSummary {
+    commit_sha: string | null;
+    commit_message: string | null;
+    committed_files: string[];
+    completion_time: string | null;
+}
+
 export interface WorkflowDetailResponse {
     workflow_id: string;
     workflow_source: string;
@@ -193,6 +211,9 @@ export interface WorkflowDetailResponse {
     verification_evidence: WorkflowVerificationEvidenceSummary;
     review: WorkflowReviewSummary;
     verification_approval_status: string;
+    commit_request: WorkflowCommitRequestSummary | null;
+    commit_result: WorkflowCommitResultSummary;
+    commit_approval_status: string;
 }
 
 export type WorkflowPageResponse = WorkflowDetailResponse;
@@ -252,5 +273,12 @@ export interface WorkflowVerificationApprovalResponse {
     workflow_id: string;
     workflow_state: string;
     verification_approval_status: string;
+    message: string | null;
+}
+
+export interface WorkflowCommitApprovalResponse {
+    workflow_id: string;
+    workflow_state: string;
+    commit_approval_status: string;
     message: string | null;
 }

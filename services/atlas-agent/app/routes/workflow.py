@@ -234,6 +234,24 @@ class WorkflowReviewResponse(BaseModel):
     model_assisted_review: str
 
 
+class WorkflowCommitRequestResponse(BaseModel):
+    commit_request_id: str
+    repository: str | None
+    branch: str | None
+    expected_head: str | None
+    commit_message: str
+    reviewed_files: list[str]
+    reviewed_content_fingerprint: str
+    commit_approval_status: str
+
+
+class WorkflowCommitResultResponse(BaseModel):
+    commit_sha: str | None
+    commit_message: str | None
+    committed_files: list[str]
+    completion_time: str | None
+
+
 class WorkflowDetailResponse(BaseModel):
     """Read-only workflow implementation approval detail."""
 
@@ -256,6 +274,9 @@ class WorkflowDetailResponse(BaseModel):
     verification_evidence: WorkflowVerificationEvidenceResponse
     review: WorkflowReviewResponse
     verification_approval_status: str
+    commit_request: WorkflowCommitRequestResponse | None
+    commit_result: WorkflowCommitResultResponse
+    commit_approval_status: str
 
 
 class WorkflowSummaryResponse(BaseModel):
@@ -310,6 +331,22 @@ class WorkflowVerificationApprovalResponse(BaseModel):
     workflow_id: str
     workflow_state: str
     verification_approval_status: str
+    message: str | None = None
+
+
+class WorkflowCommitApprovalRequest(BaseModel):
+    """Boundary-safe commit approval decision request."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    workflow_id: str = Field(min_length=1)
+    decision: str = Field(pattern="^(approve|reject)$")
+
+
+class WorkflowCommitApprovalResponse(BaseModel):
+    workflow_id: str
+    workflow_state: str
+    commit_approval_status: str
     message: str | None = None
 
 
@@ -435,6 +472,10 @@ def _verification_approval_status(request: Request, workflow) -> str:
     return _approval_status(request, f"approval-verification-{workflow.identifier}")
 
 
+def _commit_approval_status(request: Request, workflow) -> str:
+    return _approval_status(request, f"approval-commit-{workflow.identifier}")
+
+
 def _workflow_verification_plan(workflow) -> WorkflowVerificationPlanResponse:
     plan = workflow.candidate_verification_plan
     if plan is None:
@@ -508,6 +549,50 @@ def _workflow_review(workflow) -> WorkflowReviewResponse:
         changed_files=[str(path) for path in workflow.changed_files],
         review_fingerprint=result.reviewed_content_fingerprint if result else None,
         model_assisted_review="Disabled",
+    )
+
+
+def _workflow_commit_request(
+    request: Request,
+    workflow,
+) -> WorkflowCommitRequestResponse | None:
+    approval = request.app.state.container.approval_repository.get_request(
+        f"approval-commit-{workflow.identifier}"
+    )
+    if approval is None or approval.decision.request.commit_metadata is None:
+        return None
+    approval_request = approval.decision.request
+    metadata = approval_request.commit_metadata
+    return WorkflowCommitRequestResponse(
+        commit_request_id=approval_request.identifier,
+        repository=(
+            str(approval_request.requested_working_directory)
+            if approval_request.requested_working_directory is not None
+            else None
+        ),
+        branch=metadata.expected_branch,
+        expected_head=metadata.expected_head,
+        commit_message=metadata.commit_message,
+        reviewed_files=[str(path) for path in metadata.reviewed_files],
+        reviewed_content_fingerprint=metadata.reviewed_content_fingerprint,
+        commit_approval_status=approval.decision.status.value,
+    )
+
+
+def _workflow_commit_result(workflow) -> WorkflowCommitResultResponse:
+    result = workflow.commit_result
+    if result is None:
+        return WorkflowCommitResultResponse(
+            commit_sha=None,
+            commit_message=None,
+            committed_files=[],
+            completion_time=None,
+        )
+    return WorkflowCommitResultResponse(
+        commit_sha=result.commit_sha,
+        commit_message=result.message,
+        committed_files=[str(path) for path in result.committed_files],
+        completion_time=None,
     )
 
 
@@ -650,6 +735,7 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
 
     approval_status = _approval_status(request, workflow.candidate_implementation_approval_id)
     verification_approval = _verification_approval_status(request, workflow)
+    commit_approval = _commit_approval_status(request, workflow)
     return WorkflowDetailResponse(
         workflow_id=workflow.identifier,
         workflow_source=workflow.source.value,
@@ -670,6 +756,9 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         verification_evidence=_workflow_verification_evidence(workflow),
         review=_workflow_review(workflow),
         verification_approval_status=verification_approval,
+        commit_request=_workflow_commit_request(request, workflow),
+        commit_result=_workflow_commit_result(workflow),
+        commit_approval_status=commit_approval,
     )
 
 
@@ -867,6 +956,88 @@ async def submit_workflow_verification_approval(
         workflow_state=workflow.state.value,
         verification_approval_status=decision.status.value,
         message="Verification approved. Verification is now available." if decision.status is ApprovalStatus.APPROVED else "Verification approval rejected.",
+    )
+
+
+@router.post(
+    "/{workflow_id}/commit-approval",
+    response_model=WorkflowCommitApprovalResponse,
+    responses=_ERROR_RESPONSES,
+)
+async def submit_workflow_commit_approval(
+    workflow_id: str,
+    approval_request: WorkflowCommitApprovalRequest,
+    request: Request,
+) -> WorkflowCommitApprovalResponse:
+    """Approve or reject the exact commit approval by workflow ID only."""
+
+    if approval_request.workflow_id != workflow_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "workflow_id_mismatch", "message": "Workflow ID must match the route"},
+        )
+    workflow = request.app.state.container.workflow_state.get_session(workflow_id)
+    if workflow is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "workflow_not_found", "message": "Workflow not found"},
+        )
+    if workflow.state is WorkflowSessionState.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "workflow_completed", "message": "Workflow completed"},
+        )
+    if workflow.state is WorkflowSessionState.BLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "workflow_blocked", "message": "Workflow blocked"},
+        )
+    if workflow.state is not WorkflowSessionState.AWAITING_COMMIT_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "stale_workflow", "message": "Workflow is not awaiting commit approval"},
+        )
+    approval_id = f"approval-commit-{workflow.identifier}"
+    stored = request.app.state.container.approval_repository.get_request(approval_id)
+    if stored is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "approval_not_found", "message": "Commit approval request not found"},
+        )
+    if stored.decision.status is not ApprovalStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "approval_already_decided", "message": "Commit approval already decided"},
+        )
+    decision = ApprovalDecision(
+        request=stored.decision.request,
+        status=ApprovalStatus.APPROVED if approval_request.decision == "approve" else ApprovalStatus.REJECTED,
+    )
+    persistence = getattr(request.app.state.container, "state_persistence", None)
+    try:
+        if persistence is None:
+            success = request.app.state.container.approval_repository.update_decision(approval_id, decision)
+        else:
+            success = persistence.mutate_approval(lambda approvals: approvals.update_decision(approval_id, decision))
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "persistence_failure", "message": "Commit approval could not be persisted"},
+        ) from exc
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "approval_already_decided", "message": "Commit approval already decided"},
+        )
+    return WorkflowCommitApprovalResponse(
+        workflow_id=workflow.identifier,
+        workflow_state=workflow.state.value,
+        commit_approval_status=decision.status.value,
+        message=(
+            "Commit approved. Workflow may now complete through the existing backend resume path."
+            if decision.status is ApprovalStatus.APPROVED
+            else "Commit approval rejected."
+        ),
     )
 
 

@@ -25,6 +25,7 @@ from app.execution.models import ExecutionResult, ExecutionStatus
 from app.main import create_app
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
+from app.repository.models import CommitRequest, CommitResult
 from app.routes import workflow as workflow_routes
 from app.workflow.engine import WorkflowEngine
 from app.workflow.models import (
@@ -805,6 +806,50 @@ def save_verification_approval(container, workflow: WorkflowSession) -> None:
     container.approval_repository.save_request(approval)
 
 
+def save_commit_approval(container, workflow: WorkflowSession) -> None:
+    approval = ApprovalRequest(
+        identifier=f"approval-commit-{workflow.identifier}",
+        workflow_id=workflow.identifier,
+        checkpoint_id="commit-plan-123",
+        title="Approve commit",
+        requested_tool="git",
+        requested_command=("git-commit", "compose.yaml"),
+        requested_working_directory=workflow.candidate_implementation_request.repository_root,
+        rationale="Approve exact commit.",
+        purpose=ApprovalPurpose.COMMIT,
+        commit_metadata=CommitApprovalMetadata(
+            expected_branch="feature/atlas-agent",
+            expected_head="abc123",
+            reviewed_files=(Path("compose.yaml"), Path("services/demo/Dockerfile")),
+            reviewed_content_fingerprint="a" * 64,
+            commit_message="feat(compose): update stack",
+        ),
+    )
+    approvals = container.approval_repository.export_snapshot()
+    approvals.pop(approval.identifier, None)
+    container.approval_repository.replace_snapshot(approvals)
+    container.approval_repository.save_request(approval)
+
+
+def commit_ready_workflow(workflow: WorkflowSession) -> WorkflowSession:
+    repository = workflow.candidate_implementation_request.repository_root
+    return replace(
+        workflow,
+        state=WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+        commit_request=CommitRequest(
+            repository_root=repository,
+            expected_branch="feature/atlas-agent",
+            expected_head="abc123",
+            paths=(Path("compose.yaml"), Path("services/demo/Dockerfile")),
+            message="feat(compose): update stack",
+        ),
+        reviewed_files=(Path("compose.yaml"), Path("services/demo/Dockerfile")),
+        expected_branch="feature/atlas-agent",
+        expected_head="abc123",
+        reviewed_content_fingerprint="a" * 64,
+    )
+
+
 def test_candidate_workflow_verification_approval_accepts_only_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     workflow = replace(candidate_workflow_session(tmp_path), state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL)
@@ -841,6 +886,105 @@ def test_candidate_workflow_verification_approval_rejects_extra_payload(tmp_path
     assert response.status_code == 422
     result = container.approval_repository.get_request("approval-verification-workflow-123")
     assert result.decision.status is ApprovalStatus.PENDING
+
+
+def test_candidate_workflow_commit_request_is_read_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = commit_ready_workflow(candidate_workflow_session(tmp_path))
+    save_candidate_workflow(container, workflow)
+    save_commit_approval(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/implementation-request")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_state"] == "awaiting_commit_approval"
+    assert body["commit_approval_status"] == "pending"
+    assert body["commit_request"] == {
+        "commit_request_id": "approval-commit-workflow-123",
+        "repository": str(tmp_path),
+        "branch": "feature/atlas-agent",
+        "expected_head": "abc123",
+        "commit_message": "feat(compose): update stack",
+        "reviewed_files": ["compose.yaml", "services/demo/Dockerfile"],
+        "reviewed_content_fingerprint": "a" * 64,
+        "commit_approval_status": "pending",
+    }
+    assert body["commit_result"] == {
+        "commit_sha": None,
+        "commit_message": None,
+        "committed_files": [],
+        "completion_time": None,
+    }
+    assert "requested_command" not in body["commit_request"]
+
+
+def test_candidate_workflow_commit_approval_accepts_only_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = commit_ready_workflow(candidate_workflow_session(tmp_path))
+    save_candidate_workflow(container, workflow)
+    save_commit_approval(container, workflow)
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/commit-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "workflow_id": "workflow-123",
+        "workflow_state": "awaiting_commit_approval",
+        "commit_approval_status": "approved",
+        "message": "Commit approved. Workflow may now complete through the existing backend resume path.",
+    }
+    result = container.approval_repository.get_request("approval-commit-workflow-123")
+    assert result.decision.status is ApprovalStatus.APPROVED
+
+
+def test_candidate_workflow_commit_approval_rejects_extra_payload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = commit_ready_workflow(candidate_workflow_session(tmp_path))
+    save_candidate_workflow(container, workflow)
+    save_commit_approval(container, workflow)
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/commit-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve", "commit_message": "override"},
+    )
+
+    assert response.status_code == 422
+    result = container.approval_repository.get_request("approval-commit-workflow-123")
+    assert result.decision.status is ApprovalStatus.PENDING
+
+
+def test_candidate_workflow_completed_includes_commit_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(
+        commit_ready_workflow(candidate_workflow_session(tmp_path)),
+        state=WorkflowSessionState.COMPLETED,
+        commit_result=CommitResult(
+            repository_root=tmp_path,
+            branch="feature/atlas-agent",
+            parent_head="abc123",
+            commit_sha="def456",
+            message="feat(compose): update stack",
+            committed_files=(Path("compose.yaml"), Path("services/demo/Dockerfile")),
+        ),
+    )
+    save_candidate_workflow(container, workflow)
+    save_commit_approval(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/implementation-request")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_state"] == "completed"
+    assert body["commit_result"] == {
+        "commit_sha": "def456",
+        "commit_message": "feat(compose): update stack",
+        "committed_files": ["compose.yaml", "services/demo/Dockerfile"],
+        "completion_time": None,
+    }
 
 
 def test_candidate_workflow_implementation_request_includes_execution_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

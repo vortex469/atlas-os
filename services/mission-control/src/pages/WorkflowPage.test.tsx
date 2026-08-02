@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     getWorkflowDetail,
+    submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
     submitWorkflowVerificationApproval,
 } from "../api/atlas-agent";
@@ -13,11 +14,13 @@ import type { WorkflowDetailResponse } from "../types/atlasAgent";
 vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowDetail: vi.fn(),
+    submitWorkflowCommitApproval: vi.fn(),
     submitWorkflowImplementationApproval: vi.fn(),
     submitWorkflowVerificationApproval: vi.fn(),
 }));
 
 const mockedGetWorkflowDetail = vi.mocked(getWorkflowDetail);
+const mockedSubmitWorkflowCommitApproval = vi.mocked(submitWorkflowCommitApproval);
 const mockedSubmitWorkflowImplementationApproval = vi.mocked(submitWorkflowImplementationApproval);
 const mockedSubmitWorkflowVerificationApproval = vi.mocked(submitWorkflowVerificationApproval);
 
@@ -94,8 +97,45 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
             model_assisted_review: "Disabled",
         },
         verification_approval_status: "pending",
+        commit_request: null,
+        commit_result: {
+            commit_sha: null,
+            commit_message: null,
+            committed_files: [],
+            completion_time: null,
+        },
+        commit_approval_status: "not_requested",
         ...overrides,
     };
+}
+
+function workflowAwaitingCommit(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDetailResponse {
+    return workflow({
+        workflow_state: "awaiting_commit_approval",
+        commit_approval_status: "pending",
+        commit_request: {
+            commit_request_id: "approval-commit-workflow-123",
+            repository: "/opt/atlas",
+            branch: "feature/atlas-agent",
+            expected_head: "abc123",
+            commit_message: "feat(compose): update stack",
+            reviewed_files: ["compose.yaml", "services/demo/Dockerfile"],
+            reviewed_content_fingerprint: "reviewed-fingerprint-123",
+            commit_approval_status: "pending",
+        },
+        timeline: [
+            { name: "Execution Candidate", status: "completed" },
+            { name: "Planning Session", status: "completed" },
+            { name: "Candidate Plan", status: "completed" },
+            { name: "Workflow", status: "completed" },
+            { name: "Implementation Approval", status: "completed" },
+            { name: "Execution", status: "completed" },
+            { name: "Verification", status: "completed" },
+            { name: "Review", status: "completed" },
+            { name: "Commit", status: "current" },
+        ],
+        ...overrides,
+    });
 }
 
 function renderPage(path = "/workflows/workflow-123") {
@@ -227,7 +267,7 @@ describe("WorkflowPage", () => {
         expect(screen.getAllByText("changed-digest-123").length).toBeGreaterThan(0);
         expect(screen.getAllByText("compose-config, compose-ps").length).toBeGreaterThan(0);
         expect(screen.getByRole("heading", { name: "Verification Evidence" })).toBeInTheDocument();
-        expect(screen.getByText("abc123")).toBeInTheDocument();
+        expect(screen.getAllByText("abc123").length).toBeGreaterThan(0);
         expect(screen.getByText("compose-config: passed")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Review" })).toBeInTheDocument();
         expect(screen.getByText("Deterministic review")).toBeInTheDocument();
@@ -275,6 +315,96 @@ describe("WorkflowPage", () => {
             message: null,
         });
         await screen.findByText("Verification approval rejected.");
+    });
+
+    it("renders commit request and reviewed files read-only", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Commit Request" })).toBeInTheDocument();
+        expect(screen.getByText("approval-commit-workflow-123")).toBeInTheDocument();
+        expect(screen.getAllByText("/opt/atlas").length).toBeGreaterThan(0);
+        expect(screen.getByText("feature/atlas-agent")).toBeInTheDocument();
+        expect(screen.getAllByText("abc123").length).toBeGreaterThan(0);
+        expect(screen.getByText("feat(compose): update stack")).toBeInTheDocument();
+        expect(screen.getAllByText("compose.yaml, services/demo/Dockerfile").length).toBeGreaterThan(0);
+        expect(screen.getByText("reviewed-fingerprint-123")).toBeInTheDocument();
+        expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    });
+
+    it("submits commit approval with only workflow id and decision", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        mockedSubmitWorkflowCommitApproval.mockResolvedValue({
+            workflow_id: "workflow-123",
+            workflow_state: "awaiting_commit_approval",
+            commit_approval_status: "approved",
+            message: null,
+        });
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Approve Commit" }));
+
+        await screen.findByText("Commit approved. Workflow may now complete through the existing backend resume path.");
+        expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledTimes(1);
+        expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledWith("workflow-123", "approve");
+        expect(JSON.stringify(mockedSubmitWorkflowCommitApproval.mock.calls[0])).not.toMatch(/message|path|sha|fingerprint|evidence|repository|push|tag/);
+    });
+
+    it("submits commit rejection and blocks duplicate clicks", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        let resolveApproval: (value: Awaited<ReturnType<typeof submitWorkflowCommitApproval>>) => void = () => undefined;
+        mockedSubmitWorkflowCommitApproval.mockReturnValue(new Promise((resolve) => {
+            resolveApproval = resolve;
+        }));
+        renderPage();
+
+        const reject = await screen.findByRole("button", { name: "Reject Commit" });
+        fireEvent.click(reject);
+        fireEvent.click(reject);
+
+        expect(await screen.findByText("Submitting commit approval...")).toBeInTheDocument();
+        expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledTimes(1);
+        expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledWith("workflow-123", "reject");
+        resolveApproval({
+            workflow_id: "workflow-123",
+            workflow_state: "awaiting_commit_approval",
+            commit_approval_status: "rejected",
+            message: null,
+        });
+        await screen.findByText("Commit approval rejected.");
+    });
+
+    it("renders completed workflow commit result read-only", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit({
+            workflow_state: "completed",
+            commit_approval_status: "approved",
+            commit_result: {
+                commit_sha: "def456",
+                commit_message: "feat(compose): update stack",
+                committed_files: ["compose.yaml", "services/demo/Dockerfile"],
+                completion_time: "2026-08-02T18:00:00Z",
+            },
+        }));
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Completed workflow" })).toBeInTheDocument();
+        expect(screen.getByText("def456")).toBeInTheDocument();
+        expect(screen.getAllByText("feat(compose): update stack").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("compose.yaml, services/demo/Dockerfile").length).toBeGreaterThan(0);
+        expect(screen.getByText("2026-08-02T18:00:00Z")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve Commit" })).not.toBeInTheDocument();
+    });
+
+    it("does not expose push, tag, amend, release, or rollback controls", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        renderPage();
+
+        await screen.findByRole("heading", { name: "Commit Request" });
+        expect(screen.queryByRole("button", { name: /push/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /tag/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /amend/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /release/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /roll back|rollback/i })).not.toBeInTheDocument();
     });
 
     it("maps approval error states", async () => {

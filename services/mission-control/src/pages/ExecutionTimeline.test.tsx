@@ -70,6 +70,14 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
             model_assisted_review: "Disabled",
         },
         verification_approval_status: "not_requested",
+        commit_request: null,
+        commit_result: {
+            commit_sha: null,
+            commit_message: null,
+            committed_files: [],
+            completion_time: null,
+        },
+        commit_approval_status: "not_requested",
         ...overrides,
     };
 }

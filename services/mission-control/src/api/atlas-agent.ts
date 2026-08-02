@@ -10,6 +10,7 @@ import type {
     ReviewReport,
     SprintStatus,
     VerificationReport,
+    WorkflowCommitApprovalResponse,
     WorkflowDetailResponse,
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
@@ -204,6 +205,18 @@ export async function submitWorkflowVerificationApproval(
 ): Promise<WorkflowVerificationApprovalResponse> {
     const response = await atlasAgent.post<WorkflowVerificationApprovalResponse>(
         `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/verification-approval`,
+        { workflow_id: workflowId, decision },
+    );
+
+    return response.data;
+}
+
+export async function submitWorkflowCommitApproval(
+    workflowId: string,
+    decision: WorkflowImplementationDecision,
+): Promise<WorkflowCommitApprovalResponse> {
+    const response = await atlasAgent.post<WorkflowCommitApprovalResponse>(
+        `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/commit-approval`,
         { workflow_id: workflowId, decision },
     );
 
