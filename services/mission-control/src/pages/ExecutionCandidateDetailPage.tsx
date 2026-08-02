@@ -202,6 +202,11 @@ function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
         <div role={isError ? "alert" : "status"} className={["mt-4 rounded-lg border p-4", isError ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"].join(" ")}>
             <p className={isError ? "font-semibold text-amber-200" : "font-semibold text-emerald-200"}>{message}</p>
             {response.session_id && <p className="mt-1 break-all text-sm text-slate-200">Planning session ID: {response.session_id}</p>}
+            {response.session_id && (
+                <Link to={`/candidate-planning/${encodeURIComponent(response.session_id)}`} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    Open planning session
+                </Link>
+            )}
             <p className="mt-1 text-sm text-slate-400">Status: {formatLabel(response.status)}</p>
             <p className="mt-1 text-sm text-slate-400">Intake status: {formatLabel(response.intake_status)}</p>
             {response.intake_reason_codes.length > 0 && <p className="mt-1 text-sm text-slate-400">Reason codes: {response.intake_reason_codes.join(", ")}</p>}

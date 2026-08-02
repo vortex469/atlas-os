@@ -10,6 +10,7 @@ import { ActionHistoryDetailPage } from "../pages/ActionHistoryDetailPage";
 import { MissionControlPage } from "../pages/MissionControlPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OperationsPage } from "../pages/OperationsPage";
+import { PlanningSessionPage } from "../pages/PlanningSessionPage";
 import { ProviderPage } from "../pages/ProviderPage";
 export const router = createBrowserRouter([
     {
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
             {
                 path: "execution-candidates/:candidateId",
                 element: <ExecutionCandidateDetailPage />,
+            },
+            {
+                path: "candidate-planning/:sessionId",
+                element: <PlanningSessionPage />,
             },
             {
                 path: "forge",

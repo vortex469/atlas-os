@@ -28,6 +28,7 @@ TypeScript, and Vite application backed by Atlas Core API v1.
 - Frigate camera health and version telemetry
 - Forge deployment analysis workspace
 - Execution candidate browsing and planning-only Atlas Agent intake
+- Read-only candidate planning session and plan viewer
 
 ## Development
 
@@ -54,6 +55,6 @@ npm run build
 
 ## Phase 3 boundary
 
-Mission Control can display Atlas Agent, Discovery, and execution-candidate state. It can ask Atlas Agent to create or reuse a planning-only session for an eligible candidate, but it does not currently expose plan generation, workflow conversion, approval controls, implementation controls, or candidate execution controls. It must not imply support for push, tag, release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
+Mission Control can display Atlas Agent, Discovery, and execution-candidate state. It can ask Atlas Agent to create or reuse a planning-only session for an eligible candidate, generate a read-only candidate plan, and display that plan. It does not currently expose workflow conversion, approval controls, implementation controls, verification controls, commit controls, or candidate execution controls. It must not imply support for push, tag, release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
 
 The supported Atlas Agent candidate intent is `update-compose-stack`, and all candidate planning is revalidated authoritatively by Atlas Agent and Atlas Core.
