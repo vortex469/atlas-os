@@ -91,7 +91,7 @@ async function fetchAllWorkflowSummary(): Promise<WorkflowListResponse> {
 }
 
 async function fetchExecutionCandidateSummary(): Promise<ExecutionCandidatePage> {
-    const pageSize = 200;
+    const pageSize = 100;
     let offset = 0;
     let hasMore = true;
     const aggregated: ExecutionCandidatePage = {
@@ -110,6 +110,10 @@ async function fetchExecutionCandidateSummary(): Promise<ExecutionCandidatePage>
         aggregated.limit = page.limit;
         hasMore = page.has_more;
         offset += page.candidates.length;
+
+        if (page.candidates.length === 0) {
+            break;
+        }
     }
 
     aggregated.has_more = hasMore;
@@ -152,32 +156,51 @@ export function MissionControl() {
         setOverviewError(null);
 
         try {
-            const [workflows, candidates] = await Promise.all([
+            const [workflowResponse, candidateResponse] = await Promise.allSettled([
                 fetchAllWorkflowSummary(),
                 fetchExecutionCandidateSummary(),
             ]);
 
-            setWorkflowSummary(workflows);
+            const errors: string[] = [];
 
-            const eligible = candidates.candidates.filter(
-                (candidate) => candidate.status === "eligible",
-            ).length;
-            const notEligible = candidates.candidates.filter(
-                (candidate) => candidate.status === "not_eligible",
-            ).length;
-            const expired = candidates.candidates.filter(
-                (candidate) => candidate.status === "expired",
-            ).length;
-            const unsupported = candidates.candidates.filter(
-                isUnsupportedCandidate,
-            ).length;
+            if (workflowResponse.status === "fulfilled") {
+                setWorkflowSummary(workflowResponse.value);
+            } else {
+                errors.push("workflow data");
+            }
 
-            setCandidateSummary({
-                eligible,
-                notEligible,
-                unsupported,
-                expired,
-            });
+            if (candidateResponse.status === "fulfilled") {
+                const candidates = candidateResponse.value.candidates;
+                const eligible = candidates.filter(
+                    (candidate) => candidate.status === "eligible",
+                ).length;
+                const notEligible = candidates.filter(
+                    (candidate) => candidate.status === "not_eligible",
+                ).length;
+                const expired = candidates.filter(
+                    (candidate) => candidate.status === "expired",
+                ).length;
+                const unsupported = candidates.filter(
+                    isUnsupportedCandidate,
+                ).length;
+
+                setCandidateSummary({
+                    eligible,
+                    notEligible,
+                    unsupported,
+                    expired,
+                });
+            } else {
+                errors.push("candidate data");
+            }
+
+            if (errors.length > 0) {
+                setOverviewError(
+                    `Could not refresh ${errors.join(" and ")} for the operator overview.`,
+                );
+            } else {
+                setOverviewError(null);
+            }
         } catch {
             setOverviewError(
                 "Operator command center could not load workflow and candidate summaries.",
