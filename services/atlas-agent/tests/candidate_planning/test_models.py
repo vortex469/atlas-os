@@ -47,10 +47,15 @@ def test_session_id_is_stable_and_uses_full_fingerprint() -> None:
     assert first.startswith("candidate-plan-")
 
 
-def test_p3_7_status_vocabulary_is_planning_only() -> None:
+def test_candidate_planning_status_vocabulary_remains_planning_only() -> None:
     assert {status.value for status in CandidatePlanningSessionStatus} == {
         "intake_rejected",
+        "plan_ready",
+        "planning",
+        "planning_failed",
+        "planning_not_supported",
         "ready_for_planning",
+        "stale_before_planning",
         "unsupported_intent",
     }
 
