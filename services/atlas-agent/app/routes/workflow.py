@@ -8,6 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.approval.models import ApprovalDecision, ApprovalRequest, ApprovalStatus
+from app.candidate_planning.audit import (
+    CandidateAuditApprovals,
+    CandidateAuditChainValidator,
+    CandidateAuditFailureCode,
+)
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
 from app.candidate_planning.verification import CandidateVerificationFailureCode
@@ -32,6 +37,21 @@ from app.workflow.models import (
     WorkflowSessionState,
 )
 from app.workflow.orchestrator import WorkflowOrchestrator
+
+
+_AUDIT_STAGE_ORDER = [
+    "candidate",
+    "planning",
+    "plan",
+    "workflow",
+    "implementation",
+    "approvals",
+    "execution",
+    "verification",
+    "review",
+    "commit",
+]
+_AUDIT_STAGE_RANK = {name: rank for rank, name in enumerate(_AUDIT_STAGE_ORDER)}
 
 router = APIRouter(prefix="/api/v1/agent/workflows", tags=["workflows"])
 
@@ -250,6 +270,137 @@ class WorkflowCommitResultResponse(BaseModel):
     commit_message: str | None
     committed_files: list[str]
     completion_time: str | None
+
+
+class WorkflowAuditFailureResponse(BaseModel):
+    valid: bool
+    failure_code: str | None
+    failure_stage: str | None
+
+
+class WorkflowAuditSection(BaseModel):
+    name: str
+    status: str
+
+
+class WorkflowAuditCandidateResponse(BaseModel):
+    status: str
+    candidate_id: str | None
+    candidate_fingerprint: str | None
+    source_recommendation_id: str | None
+    target_id: str | None
+    target_type: str | None
+
+
+class WorkflowAuditPlanningResponse(BaseModel):
+    status: str
+    planning_session_id: str | None
+    planning_state: str | None
+    planning_status: str | None
+    created_at: str | None
+    planning_completed_at: str | None
+    candidate_plan_id: str | None
+    candidate_plan_fingerprint: str | None
+
+
+class WorkflowAuditPlanResponse(BaseModel):
+    status: str
+    plan_id: str | None
+    candidate_plan_fingerprint: str | None
+    likely_affected_files: list[str]
+
+
+class WorkflowAuditWorkflowResponse(BaseModel):
+    status: str
+    workflow_id: str
+    workflow_source: str
+    workflow_state: str
+
+
+class WorkflowAuditImplementationResponse(BaseModel):
+    status: str
+    implementation_request_id: str | None
+    execution_intent: str | None
+    tool: str | None
+    repository_root: str | None
+    repository_head: str | None
+    repository_branch: str | None
+    working_directory: str | None
+    affected_files: list[str]
+    translator_version: str | None
+
+
+class WorkflowAuditApprovalResponse(BaseModel):
+    status: str
+    approval_id: str | None
+
+
+class WorkflowAuditApprovalsResponse(BaseModel):
+    status: str
+    implementation: WorkflowAuditApprovalResponse
+    verification: WorkflowAuditApprovalResponse
+    commit: WorkflowAuditApprovalResponse
+
+
+class WorkflowAuditExecutionResponse(BaseModel):
+    status: str
+    execution_request_id: str | None
+    execution_status: str | None
+    changed_files_count: int
+    changed_files: list[str]
+    tool: str | None
+    repository: str | None
+
+
+class WorkflowAuditVerificationResponse(BaseModel):
+    status: str
+    verification_plan_id: str | None
+    verification_evidence_id: str | None
+    verification_status: str | None
+    changed_files_digest: str | None
+    verification_check_ids: list[str]
+    repository_head: str | None
+    verification_started_at: str | None
+    verification_completed_at: str | None
+
+
+class WorkflowAuditReviewResponse(BaseModel):
+    status: str
+    review_result_id: str | None
+    review_report_id: str | None
+    review_status: str | None
+    reviewed_content_fingerprint: str | None
+    changed_files: list[str]
+
+
+class WorkflowAuditCommitResponse(BaseModel):
+    status: str
+    commit_request_id: str | None
+    reviewed_files: list[str]
+    reviewed_content_fingerprint: str | None
+    expected_branch: str | None
+    expected_head: str | None
+    commit_message: str | None
+    commit_sha: str | None
+    committed_files: list[str]
+
+
+class WorkflowAuditResponse(BaseModel):
+    workflow_id: str
+    workflow_state: str
+    workflow_source: str
+    validation: WorkflowAuditFailureResponse
+    timeline: list[WorkflowAuditSection]
+    candidate: WorkflowAuditCandidateResponse
+    planning: WorkflowAuditPlanningResponse
+    plan: WorkflowAuditPlanResponse
+    workflow: WorkflowAuditWorkflowResponse
+    implementation: WorkflowAuditImplementationResponse
+    approvals: WorkflowAuditApprovalsResponse
+    execution: WorkflowAuditExecutionResponse
+    verification: WorkflowAuditVerificationResponse
+    review: WorkflowAuditReviewResponse
+    commit: WorkflowAuditCommitResponse
 
 
 class WorkflowDetailResponse(BaseModel):
@@ -594,6 +745,350 @@ def _workflow_commit_result(workflow) -> WorkflowCommitResultResponse:
         committed_files=[str(path) for path in result.committed_files],
         completion_time=None,
     )
+
+
+def _iso_ts(value: object | None) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat()  # type: ignore[union-attr]
+
+
+def _audit_approval_status(request: Request, approval_id: str | None) -> str:
+    result = request.app.state.container.approval_repository.get_request(approval_id)
+    if approval_id is None or result is None:
+        return "not_requested"
+    return result.decision.status.value
+
+
+def _audit_stage_rank_for_state(state: WorkflowSessionState, workflow) -> int:
+    if state in {
+        WorkflowSessionState.COMPLETED,
+        WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+        WorkflowSessionState.COMMITTING,
+    }:
+        return _AUDIT_STAGE_RANK["commit"]
+    if state in {
+        WorkflowSessionState.VERIFYING,
+        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+    }:
+        return _AUDIT_STAGE_RANK["verification"]
+    if state is WorkflowSessionState.EXECUTING:
+        return _AUDIT_STAGE_RANK["execution"]
+    if state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL:
+        return _AUDIT_STAGE_RANK["approvals"]
+    if state in {WorkflowSessionState.AWAITING_APPROVAL, WorkflowSessionState.PLANNED}:
+        return _AUDIT_STAGE_RANK["workflow"]
+    if state is WorkflowSessionState.BLOCKED:
+        if workflow.commit_result is not None:
+            return _AUDIT_STAGE_RANK["commit"]
+        if workflow.review_report is not None or workflow.candidate_review_result is not None:
+            return _AUDIT_STAGE_RANK["review"]
+        if workflow.candidate_verification_evidence is not None or workflow.candidate_verification_plan is not None:
+            return _AUDIT_STAGE_RANK["verification"]
+        if workflow.execution_result is not None:
+            return _AUDIT_STAGE_RANK["execution"]
+        if workflow.candidate_implementation_request is not None:
+            return _AUDIT_STAGE_RANK["implementation"]
+        return _AUDIT_STAGE_RANK["workflow"]
+    return _AUDIT_STAGE_RANK["workflow"]
+
+
+def _section_status(rank: int, current_rank: int, has_value: bool) -> str:
+    if rank > current_rank:
+        return "not_reached"
+    if rank == current_rank and not has_value:
+        return "current"
+    return "completed" if has_value else "missing"
+
+
+def _failure_stage(code: CandidateAuditFailureCode | None) -> str | None:
+    if code is None:
+        return None
+    return {
+        CandidateAuditFailureCode.NOT_CANDIDATE_WORKFLOW: "candidate",
+        CandidateAuditFailureCode.MISSING_CANDIDATE_METADATA: "candidate",
+        CandidateAuditFailureCode.MISSING_PLANNING_SESSION: "planning",
+        CandidateAuditFailureCode.MISSING_CANDIDATE_PLAN: "plan",
+        CandidateAuditFailureCode.MISSING_IMPLEMENTATION_REQUEST: "implementation",
+        CandidateAuditFailureCode.MISSING_IMPLEMENTATION_APPROVAL: "approvals",
+        CandidateAuditFailureCode.MISSING_EXECUTION_RESULT: "execution",
+        CandidateAuditFailureCode.MISSING_VERIFICATION_PLAN: "verification",
+        CandidateAuditFailureCode.MISSING_VERIFICATION_APPROVAL: "approvals",
+        CandidateAuditFailureCode.MISSING_VERIFICATION_EVIDENCE: "verification",
+        CandidateAuditFailureCode.MISSING_REVIEW_RESULT: "review",
+        CandidateAuditFailureCode.MISSING_REVIEW_REPORT: "review",
+        CandidateAuditFailureCode.MISSING_COMMIT_REQUEST: "commit",
+        CandidateAuditFailureCode.MISSING_COMMIT_APPROVAL: "approvals",
+        CandidateAuditFailureCode.MISSING_COMMIT_RESULT: "commit",
+        CandidateAuditFailureCode.IDENTITY_MISMATCH: "candidate",
+        CandidateAuditFailureCode.FINGERPRINT_MISMATCH: "candidate",
+        CandidateAuditFailureCode.APPROVAL_MISMATCH: "approvals",
+        CandidateAuditFailureCode.EXECUTION_MISMATCH: "execution",
+        CandidateAuditFailureCode.VERIFICATION_MISMATCH: "verification",
+        CandidateAuditFailureCode.REVIEW_MISMATCH: "review",
+        CandidateAuditFailureCode.COMMIT_MISMATCH: "commit",
+        CandidateAuditFailureCode.DUPLICATE_IDENTIFIER: "candidate",
+    }.get(code)
+
+
+def _timeline_statuses(
+    current_rank: int,
+    has_candidate: bool,
+    has_planning: bool,
+    has_plan: bool,
+    has_workflow: bool,
+    has_implementation: bool,
+    has_approvals: bool,
+    has_execution: bool,
+    has_verification: bool,
+    has_review: bool,
+    has_commit: bool,
+    failure_stage: str | None,
+) -> list[WorkflowAuditSection]:
+    statuses: dict[str, str] = {
+        "candidate": _section_status(_AUDIT_STAGE_RANK["candidate"], current_rank, has_candidate),
+        "planning": _section_status(_AUDIT_STAGE_RANK["planning"], current_rank, has_planning),
+        "plan": _section_status(_AUDIT_STAGE_RANK["plan"], current_rank, has_plan),
+        "workflow": _section_status(_AUDIT_STAGE_RANK["workflow"], current_rank, has_workflow),
+        "implementation": _section_status(_AUDIT_STAGE_RANK["implementation"], current_rank, has_implementation),
+        "approvals": _section_status(_AUDIT_STAGE_RANK["approvals"], current_rank, has_approvals),
+        "execution": _section_status(_AUDIT_STAGE_RANK["execution"], current_rank, has_execution),
+        "verification": _section_status(_AUDIT_STAGE_RANK["verification"], current_rank, has_verification),
+        "review": _section_status(_AUDIT_STAGE_RANK["review"], current_rank, has_review),
+        "commit": _section_status(_AUDIT_STAGE_RANK["commit"], current_rank, has_commit),
+    }
+    if failure_stage is not None and failure_stage in statuses:
+        statuses[failure_stage] = "invalid"
+    return [WorkflowAuditSection(name=section, status=status) for section, status in statuses.items()]
+
+
+def _reviewed_content_fingerprint(approval_result: object | None) -> str | None:
+    if approval_result is None:
+        return None
+    request = approval_result.decision.request  # type: ignore[union-attr]
+    metadata = request.commit_metadata
+    if metadata is None:
+        return None
+    return metadata.reviewed_content_fingerprint
+
+
+def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse:
+    metadata = workflow.candidate_metadata
+    planning_session = None
+    if metadata is not None:
+        planning_session = request.app.state.container.candidate_planning_state.get_session(
+            metadata.candidate_planning_session_id,
+        )
+
+    audit_approvals = CandidateAuditApprovals(
+        implementation=request.app.state.container.approval_repository.get_request(
+            workflow.candidate_implementation_approval_id,
+        ),
+        verification=request.app.state.container.approval_repository.get_request(
+            f"approval-verification-{workflow.identifier}"
+        ),
+        commit=request.app.state.container.approval_repository.get_request(
+            f"approval-commit-{workflow.identifier}"
+        ),
+    )
+
+    validation = CandidateAuditChainValidator().validate(
+        planning_session=planning_session,
+        workflow=workflow,
+        approvals=audit_approvals,
+    )
+    current_rank = _audit_stage_rank_for_state(workflow.state, workflow)
+    failed_stage = _failure_stage(validation.failure_code)
+
+    plan = planning_session.plan if planning_session is not None else None
+    implementation = workflow.candidate_implementation_request
+    execution = workflow.execution_result
+    verification_plan = workflow.candidate_verification_plan
+    verification_evidence = workflow.candidate_verification_evidence
+    review_result = workflow.candidate_review_result
+    review_report = workflow.review_report
+    commit_request = workflow.commit_request
+    commit_result = workflow.commit_result
+
+    implementation_approval_status = _audit_approval_status(
+        request,
+        workflow.candidate_implementation_approval_id,
+    )
+    verification_approval_status = _audit_approval_status(
+        request,
+        f"approval-verification-{workflow.identifier}",
+    )
+    commit_approval_status = _audit_approval_status(
+        request,
+        f"approval-commit-{workflow.identifier}",
+    )
+
+    has_approvals = implementation_approval_status == "approved"
+    if current_rank >= _AUDIT_STAGE_RANK["verification"]:
+        has_approvals = has_approvals and verification_approval_status == "approved"
+    if current_rank >= _AUDIT_STAGE_RANK["commit"]:
+        has_approvals = has_approvals and commit_approval_status == "approved"
+
+    has_verification = verification_plan is not None and verification_evidence is not None
+    has_review = review_result is not None or review_report is not None
+    has_commit = commit_request is not None and commit_result is not None
+
+    timeline = _timeline_statuses(
+        current_rank=current_rank,
+        has_candidate=metadata is not None,
+        has_planning=planning_session is not None,
+        has_plan=plan is not None,
+        has_workflow=True,
+        has_implementation=implementation is not None,
+        has_approvals=has_approvals,
+        has_execution=execution is not None,
+        has_verification=has_verification,
+        has_review=has_review,
+        has_commit=has_commit,
+        failure_stage=failed_stage,
+    )
+
+    changed_files = [str(path) for path in workflow.changed_files]
+
+    return WorkflowAuditResponse(
+        workflow_id=workflow.identifier,
+        workflow_state=workflow.state.value,
+        workflow_source=workflow.source.value,
+        validation=WorkflowAuditFailureResponse(
+            valid=validation.valid,
+            failure_code=validation.failure_code.value if validation.failure_code else None,
+            failure_stage=failed_stage,
+        ),
+        timeline=timeline,
+        candidate=WorkflowAuditCandidateResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["candidate"], current_rank, metadata is not None),
+            candidate_id=metadata.candidate_id if metadata else None,
+            candidate_fingerprint=metadata.candidate_fingerprint if metadata else None,
+            source_recommendation_id=metadata.source_recommendation_id if metadata else None,
+            target_id=metadata.target_id if metadata else None,
+            target_type=metadata.target_type if metadata else None,
+        ),
+        planning=WorkflowAuditPlanningResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["planning"], current_rank, planning_session is not None),
+            planning_session_id=planning_session.identifier if planning_session is not None else None,
+            planning_state=planning_session.state.value if planning_session is not None else None,
+            planning_status=planning_session.planning_status.value if planning_session is not None else None,
+            created_at=_iso_ts(planning_session.created_at) if planning_session is not None else None,
+            planning_completed_at=_iso_ts(planning_session.planning_completed_at) if planning_session is not None else None,
+            candidate_plan_id=metadata.candidate_plan_id if metadata is not None else None,
+            candidate_plan_fingerprint=metadata.candidate_plan_fingerprint if metadata is not None else None,
+        ),
+        plan=WorkflowAuditPlanResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["plan"], current_rank, plan is not None),
+            plan_id=plan.identifier if plan is not None else None,
+            candidate_plan_fingerprint=(
+                metadata.candidate_plan_fingerprint if metadata is not None else None
+            ),
+            likely_affected_files=[str(path) for path in (plan.affected_files if plan is not None else tuple())],
+        ),
+        workflow=WorkflowAuditWorkflowResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["workflow"], current_rank, True),
+            workflow_id=workflow.identifier,
+            workflow_source=workflow.source.value,
+            workflow_state=workflow.state.value,
+        ),
+        implementation=WorkflowAuditImplementationResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["implementation"], current_rank, implementation is not None),
+            implementation_request_id=implementation.identifier if implementation is not None else None,
+            execution_intent=implementation.execution_intent if implementation is not None else None,
+            tool=implementation.argv[0] if implementation is not None and implementation.argv else None,
+            repository_root=str(implementation.repository_root) if implementation is not None else None,
+            repository_head=implementation.repository_head if implementation is not None else None,
+            repository_branch=implementation.repository_branch if implementation is not None else None,
+            working_directory=str(implementation.working_directory) if implementation is not None else None,
+            affected_files=[str(path) for path in (implementation.affected_files if implementation is not None else tuple())],
+            translator_version=implementation.translator_version if implementation is not None else None,
+        ),
+        approvals=WorkflowAuditApprovalsResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["approvals"], current_rank, has_approvals),
+            implementation=WorkflowAuditApprovalResponse(
+                status=implementation_approval_status,
+                approval_id=workflow.candidate_implementation_approval_id,
+            ),
+            verification=WorkflowAuditApprovalResponse(
+                status=verification_approval_status,
+                approval_id=f"approval-verification-{workflow.identifier}",
+            ),
+            commit=WorkflowAuditApprovalResponse(
+                status=commit_approval_status,
+                approval_id=f"approval-commit-{workflow.identifier}",
+            ),
+        ),
+        execution=WorkflowAuditExecutionResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["execution"], current_rank, execution is not None),
+            execution_request_id=execution.request_id if execution is not None else None,
+            execution_status=execution.status.value if execution is not None else None,
+            changed_files_count=len(changed_files),
+            changed_files=changed_files,
+            tool=execution.argv[0] if execution is not None and execution.argv else None,
+            repository=str(implementation.repository_root) if implementation is not None else None,
+        ),
+        verification=WorkflowAuditVerificationResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["verification"], current_rank, has_verification),
+            verification_plan_id=verification_plan.identifier if verification_plan is not None else None,
+            verification_evidence_id=verification_evidence.identifier if verification_evidence is not None else None,
+            verification_status=verification_evidence.status.value if verification_evidence is not None else None,
+            changed_files_digest=verification_plan.changed_files_digest if verification_plan is not None else None,
+            verification_check_ids=(
+                [check.identifier for check in verification_plan.verification_checks]
+                if verification_plan is not None
+                else []
+            ),
+            repository_head=verification_evidence.repository_head if verification_evidence is not None else None,
+            verification_started_at=_iso_ts(verification_evidence.started_at) if verification_evidence is not None else None,
+            verification_completed_at=_iso_ts(verification_evidence.completed_at) if verification_evidence is not None else None,
+        ),
+        review=WorkflowAuditReviewResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["review"], current_rank, has_review),
+            review_result_id=review_result.identifier if review_result is not None else None,
+            review_report_id=review_report.request_id if review_report is not None else None,
+            review_status=(
+                review_result.status.value
+                if review_result is not None
+                else review_report.status.value if review_report is not None else None
+            ),
+            reviewed_content_fingerprint=(
+                review_result.reviewed_content_fingerprint if review_result is not None else None
+            ),
+            changed_files=changed_files,
+        ),
+        commit=WorkflowAuditCommitResponse(
+            status=_section_status(_AUDIT_STAGE_RANK["commit"], current_rank, has_commit),
+            commit_request_id=commit_request.identifier if commit_request is not None else None,
+            reviewed_files=[str(path) for path in (commit_request.paths if commit_request is not None else tuple())],
+            reviewed_content_fingerprint=_reviewed_content_fingerprint(audit_approvals.commit),
+            expected_branch=commit_request.expected_branch if commit_request is not None else None,
+            expected_head=commit_request.expected_head if commit_request is not None else None,
+            commit_message=commit_request.message if commit_request is not None else None,
+            commit_sha=commit_result.commit_sha if commit_result is not None else None,
+            committed_files=[str(path) for path in (commit_result.committed_files if commit_result is not None else tuple())],
+        ),
+    )
+
+
+@router.get(
+    "/{workflow_id}/audit",
+    response_model=WorkflowAuditResponse,
+    responses=_ERROR_RESPONSES,
+)
+async def get_workflow_audit(
+    request: Request,
+    workflow_id: str,
+) -> WorkflowAuditResponse:
+    """Return the full machine-auditable workflow state chain details."""
+
+    workflow = request.app.state.container.workflow_state.get_session(workflow_id)
+    if workflow is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "workflow_not_found", "message": "Workflow not found"},
+        )
+    return _candidate_audit_detail(request, workflow)
 
 
 def _stage_status(workflow, stage: str, approval_status: str) -> str:

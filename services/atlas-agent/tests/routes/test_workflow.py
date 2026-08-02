@@ -657,6 +657,36 @@ def test_candidate_workflow_implementation_request_is_read_only(tmp_path: Path, 
     assert "requested_command" not in body
 
 
+def test_candidate_workflow_audit_endpoint_returns_machine_readable_chain(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = candidate_workflow_session(tmp_path)
+    save_candidate_workflow(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_id"] == "workflow-123"
+    assert body["workflow_state"] == "awaiting_implementation_approval"
+    assert body["validation"]["valid"] is False
+    assert body["timeline"][0]["name"] == "candidate"
+    assert {section["name"] for section in body["timeline"]} == {
+        "candidate",
+        "planning",
+        "plan",
+        "workflow",
+        "implementation",
+        "approvals",
+        "execution",
+        "verification",
+        "review",
+        "commit",
+    }
+    assert body["approvals"]["implementation"]["approval_id"] == "approval-workflow-123"
+    assert body["implementation"]["repository_root"] == str(tmp_path)
+    assert body["implementation"]["tool"] == "docker-compose"
+
+
 def test_list_workflows_returns_read_only_summaries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     save_candidate_workflow(container, candidate_workflow_session(tmp_path))
