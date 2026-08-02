@@ -35,6 +35,16 @@ const mockedGetVerificationReport = vi.mocked(
 const mockedGetReviewReport = vi.mocked(getReviewReport);
 const mockedGetPendingApprovals = vi.mocked(getPendingApprovals);
 
+function unavailableError(): Error {
+    const error = new Error("Atlas Agent unavailable") as Error & {
+        response: { status: number };
+    };
+
+    error.response = { status: 503 };
+
+    return error;
+}
+
 describe("useAtlasAgent", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -147,5 +157,29 @@ describe("useAtlasAgent", () => {
         expect(result.current.error).toBe(
             "Atlas Agent unavailable.",
         );
+    });
+
+    it("returns a failure when an optional summary endpoint has a 503", async () => {
+        mockedGetRepositoryStatus.mockResolvedValue({
+            root: "/opt/atlas",
+            branch: "feature/atlas-agent",
+            head_commit: "7661770",
+            is_clean: true,
+            modified_files: [],
+            staged_files: [],
+            untracked_files: [],
+        });
+        mockedGetSprintStatus.mockRejectedValue(unavailableError());
+        mockedGetVerificationReport.mockResolvedValue(null);
+        mockedGetReviewReport.mockResolvedValue(null);
+        mockedGetPendingApprovals.mockResolvedValue([]);
+
+        const { result } = renderHook(() => useAtlasAgent());
+
+        await waitFor(() => {
+            expect(result.current.isLoading).toBe(false);
+        });
+
+        expect(result.current.error).toBe("Atlas Agent unavailable");
     });
 });
