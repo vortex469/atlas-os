@@ -23,6 +23,133 @@ import type {
 const ATLAS_AGENT_API_BASE_URL =
     import.meta.env.VITE_ATLAS_AGENT_API_BASE_URL ?? "/agent-api";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+    return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isVerificationCheck(value: unknown): boolean {
+    if (!isRecord(value)) {
+        return false;
+    }
+
+    return (
+        typeof value.identifier === "string"
+        && isStringArray(value.argv)
+        && typeof value.working_directory === "string"
+        && typeof value.status === "string"
+        && (typeof value.return_code === "number" || value.return_code === null)
+        && typeof value.stdout === "string"
+        && typeof value.stderr === "string"
+        && typeof value.duration_seconds === "number"
+        && (typeof value.error === "string" || value.error === null)
+    );
+}
+
+function isReviewFinding(value: unknown): boolean {
+    if (!isRecord(value)) {
+        return false;
+    }
+
+    return (
+        typeof value.code === "string"
+        && typeof value.category === "string"
+        && typeof value.severity === "string"
+        && typeof value.summary === "string"
+        && typeof value.evidence === "string"
+        && typeof value.recommendation === "string"
+    );
+}
+
+function parseSprintStatus(value: unknown): SprintStatus {
+    if (!isRecord(value)) {
+        throw new Error("Malformed sprint status payload.");
+    }
+
+    if (
+        typeof value.checkpoint_id === "string"
+        && typeof value.title === "string"
+        && typeof value.goal === "string"
+        && typeof value.phase === "string"
+    ) {
+        return {
+            checkpoint_id: value.checkpoint_id,
+            title: value.title,
+            goal: value.goal,
+            phase: value.phase,
+        };
+    }
+
+    throw new Error("Malformed sprint status payload.");
+}
+
+function parseVerificationReport(value: unknown): VerificationReport {
+    if (!isRecord(value)) {
+        throw new Error("Malformed verification report payload.");
+    }
+
+    if (
+        typeof value.repository_root !== "string"
+        || typeof value.status !== "string"
+        || typeof value.duration_seconds !== "number"
+        || !Array.isArray(value.results)
+        || !value.results.every(isVerificationCheck)
+    ) {
+        throw new Error("Malformed verification report payload.");
+    }
+
+    return {
+        repository_root: value.repository_root,
+        status: value.status,
+        duration_seconds: value.duration_seconds,
+        results: value.results,
+    } as VerificationReport;
+}
+
+function parseReviewReport(value: unknown): ReviewReport {
+    if (!isRecord(value)) {
+        throw new Error("Malformed review report payload.");
+    }
+
+    if (
+        typeof value.request_id !== "string"
+        || typeof value.checkpoint_id !== "string"
+        || typeof value.status !== "string"
+        || !isStringArray(value.recommendations)
+        || !Array.isArray(value.findings)
+        || !value.findings.every(isReviewFinding)
+    ) {
+        throw new Error("Malformed review report payload.");
+    }
+
+    return {
+        request_id: value.request_id,
+        checkpoint_id: value.checkpoint_id,
+        status: value.status,
+        recommendations: value.recommendations,
+        findings: value.findings,
+    } as ReviewReport;
+}
+
+async function getOptionalSummary<T>(
+    request: () => Promise<{ data: unknown }>,
+    parse: (payload: unknown) => T,
+): Promise<T | null> {
+    try {
+        const response = await request();
+        return parse(response.data);
+    } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+
+        throw error;
+    }
+}
+
 export const atlasAgent = axios.create({
     baseURL: ATLAS_AGENT_API_BASE_URL,
     timeout: 15_000,
@@ -40,51 +167,24 @@ export async function getRepositoryStatus(): Promise<RepositoryStatus> {
 }
 
 export async function getSprintStatus(): Promise<SprintStatus | null> {
-    try {
-        const response = await atlasAgent.get<SprintStatus>(
-            "/api/v1/agent/sprint",
-        );
-
-        return response.data;
-    } catch (error) {
-        if (isAxiosError(error) && error.response?.status === 404) {
-            return null;
-        }
-
-        throw error;
-    }
+    return getOptionalSummary(
+        () => atlasAgent.get<SprintStatus>("/api/v1/agent/sprint"),
+        parseSprintStatus,
+    );
 }
 
 export async function getVerificationReport(): Promise<VerificationReport | null> {
-    try {
-        const response = await atlasAgent.get<VerificationReport>(
-            "/api/v1/agent/verification",
-        );
-
-        return response.data;
-    } catch (error) {
-        if (isAxiosError(error) && error.response?.status === 404) {
-            return null;
-        }
-
-        throw error;
-    }
+    return getOptionalSummary(
+        () => atlasAgent.get<VerificationReport>("/api/v1/agent/verification"),
+        parseVerificationReport,
+    );
 }
 
 export async function getReviewReport(): Promise<ReviewReport | null> {
-    try {
-        const response = await atlasAgent.get<ReviewReport>(
-            "/api/v1/agent/review",
-        );
-
-        return response.data;
-    } catch (error) {
-        if (isAxiosError(error) && error.response?.status === 404) {
-            return null;
-        }
-
-        throw error;
-    }
+    return getOptionalSummary(
+        () => atlasAgent.get<ReviewReport>("/api/v1/agent/review"),
+        parseReviewReport,
+    );
 }
 
 export async function createCandidatePlanningSession(

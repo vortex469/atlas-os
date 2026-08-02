@@ -97,6 +97,7 @@ describe("AtlasAgentPanel", () => {
         expect(
             screen.getByText("Working tree has changes"),
         ).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(
             screen.getAllByText("Not published yet"),
         ).toHaveLength(3);

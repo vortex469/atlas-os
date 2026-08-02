@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
 
 import {
@@ -37,6 +38,39 @@ const initialState: AtlasAgentState = {
     error: null,
 };
 
+async function loadOptionalSummary<T>(
+    loader: () => Promise<T>,
+): Promise<T | null> {
+    try {
+        return await loader();
+    } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+
+        throw error;
+    }
+}
+
+function getAtlasUnavailableMessage(error: unknown): string {
+    if (
+        isAxiosError(error) &&
+        (error.response?.status === 500 || error.response?.status === 503)
+    ) {
+        return "Atlas Agent unavailable";
+    }
+
+    if (isAxiosError(error) && !error.response) {
+        return "Atlas Agent unavailable";
+    }
+
+    if (error instanceof Error) {
+        return "Atlas Agent unavailable";
+    }
+
+    return getAtlasAgentErrorMessage(error, "Atlas Agent unavailable");
+}
+
 export function useAtlasAgent(): AtlasAgentState {
     const [state, setState] =
         useState<AtlasAgentState>(initialState);
@@ -54,9 +88,9 @@ export function useAtlasAgent(): AtlasAgentState {
                     approvals,
                 ] = await Promise.all([
                     getRepositoryStatus(),
-                    getSprintStatus(),
-                    getVerificationReport(),
-                    getReviewReport(),
+                    loadOptionalSummary(() => getSprintStatus()),
+                    loadOptionalSummary(() => getVerificationReport()),
+                    loadOptionalSummary(() => getReviewReport()),
                     getPendingApprovals(),
                 ]);
 
@@ -76,10 +110,7 @@ export function useAtlasAgent(): AtlasAgentState {
                     setState({
                         ...initialState,
                         isLoading: false,
-                        error: getAtlasAgentErrorMessage(
-                            requestError,
-                            "Mission Control could not load Atlas Agent status.",
-                        ),
+                        error: getAtlasUnavailableMessage(requestError),
                     });
                 }
             }

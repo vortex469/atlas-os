@@ -37,10 +37,24 @@ const mockedGetPendingApprovals = vi.mocked(getPendingApprovals);
 
 function unavailableError(): Error {
     const error = new Error("Atlas Agent unavailable") as Error & {
+        isAxiosError: boolean;
         response: { status: number };
     };
 
+    error.isAxiosError = true;
     error.response = { status: 503 };
+
+    return error;
+}
+
+function notFoundError(): Error {
+    const error = new Error("Atlas Agent response not found") as Error & {
+        isAxiosError: boolean;
+        response: { status: number };
+    };
+
+    error.isAxiosError = true;
+    error.response = { status: 404 };
 
     return error;
 }
@@ -155,8 +169,35 @@ describe("useAtlasAgent", () => {
 
         expect(result.current.repository).toBeNull();
         expect(result.current.error).toBe(
-            "Atlas Agent unavailable.",
+            "Atlas Agent unavailable",
         );
+    });
+
+    it("returns null when an optional summary endpoint responds with 404", async () => {
+        mockedGetRepositoryStatus.mockResolvedValue({
+            root: "/opt/atlas",
+            branch: "feature/atlas-agent",
+            head_commit: "7661770",
+            is_clean: true,
+            modified_files: [],
+            staged_files: [],
+            untracked_files: [],
+        });
+        mockedGetSprintStatus.mockRejectedValue(notFoundError());
+        mockedGetVerificationReport.mockResolvedValue(null);
+        mockedGetReviewReport.mockResolvedValue(null);
+        mockedGetPendingApprovals.mockResolvedValue([]);
+
+        const { result } = renderHook(() => useAtlasAgent());
+
+        await waitFor(() => {
+            expect(result.current.isLoading).toBe(false);
+        });
+
+        expect(result.current.error).toBeNull();
+        expect(result.current.sprint).toBeNull();
+        expect(result.current.verification).toBeNull();
+        expect(result.current.review).toBeNull();
     });
 
     it("returns a failure when an optional summary endpoint has a 503", async () => {
