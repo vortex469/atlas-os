@@ -37,5 +37,9 @@ describe("MainLayout", () => {
             "href",
             "/execution-candidates",
         );
+        expect(screen.getByRole("link", { name: /Workflows/i })).toHaveAttribute(
+            "href",
+            "/workflows",
+        );
     });
 });

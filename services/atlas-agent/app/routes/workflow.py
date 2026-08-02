@@ -3,7 +3,7 @@
 import asyncio
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -25,7 +25,12 @@ from app.verification.models import (
     VerificationCheck,
     VerificationReport,
 )
-from app.workflow.models import SprintStatus, WorkflowRequest, WorkflowResult, WorkflowSessionState
+from app.workflow.models import (
+    SprintStatus,
+    WorkflowRequest,
+    WorkflowResult,
+    WorkflowSessionState,
+)
 from app.workflow.orchestrator import WorkflowOrchestrator
 
 router = APIRouter(prefix="/api/v1/agent/workflows", tags=["workflows"])
@@ -251,6 +256,29 @@ class WorkflowDetailResponse(BaseModel):
     verification_evidence: WorkflowVerificationEvidenceResponse
     review: WorkflowReviewResponse
     verification_approval_status: str
+
+
+class WorkflowSummaryResponse(BaseModel):
+    """Read-only persisted workflow summary for Mission Control dashboards."""
+
+    workflow_id: str
+    workflow_source: str
+    workflow_state: str
+    candidate_id: str | None
+    planning_session_id: str | None
+    repository: str | None
+    target_id: str | None
+    last_result_summary: str
+    timeline: list[WorkflowTimelineStageResponse]
+
+
+class WorkflowListResponse(BaseModel):
+    """Paginated list of read-only workflow summaries."""
+
+    items: list[WorkflowSummaryResponse]
+    total: int
+    limit: int
+    offset: int
 
 
 class WorkflowImplementationApprovalRequest(BaseModel):
@@ -498,7 +526,7 @@ def _stage_status(workflow, stage: str, approval_status: str) -> str:
         if state == "executing":
             return "current"
         if execution is None:
-            return "waiting" if approval_status == "approved" else "waiting"
+            return "waiting"
         return "completed" if execution.status.value == "succeeded" else "failed"
     if stage == "Verification":
         if state in {"awaiting_verification_approval", "verifying"}:
@@ -532,6 +560,71 @@ def _workflow_timeline(workflow, approval_status: str) -> list[WorkflowTimelineS
         "Commit",
     ]
     return [WorkflowTimelineStageResponse(name=stage, status=_stage_status(workflow, stage, approval_status)) for stage in stages]
+
+
+def _workflow_repository(workflow) -> str | None:
+    implementation = workflow.candidate_implementation_request
+    if implementation is not None:
+        return str(implementation.repository_root)
+    if workflow.request is not None:
+        return str(workflow.request.repository_root)
+    return None
+
+
+def _last_result_summary(workflow) -> str:
+    if workflow.commit_result is not None:
+        return "Commit completed"
+    if workflow.candidate_review_result is not None:
+        return f"Review {workflow.candidate_review_result.status.value}"
+    if workflow.review_report is not None:
+        return f"Review {workflow.review_report.status.value}"
+    if workflow.candidate_verification_evidence is not None:
+        return f"Verification {workflow.candidate_verification_evidence.status.value}"
+    if workflow.verification_report is not None:
+        return f"Verification {workflow.verification_report.status.value}"
+    if workflow.execution_result is not None:
+        return f"Execution {workflow.execution_result.status.value}"
+    if workflow.blocked_reason:
+        return f"Blocked: {workflow.blocked_reason}"
+    return "No result yet"
+
+
+def _workflow_summary(request: Request, workflow) -> WorkflowSummaryResponse:
+    metadata = workflow.candidate_metadata
+    approval_status = _approval_status(
+        request,
+        workflow.candidate_implementation_approval_id,
+    )
+    return WorkflowSummaryResponse(
+        workflow_id=workflow.identifier,
+        workflow_source=workflow.source.value,
+        workflow_state=workflow.state.value,
+        candidate_id=metadata.candidate_id if metadata else None,
+        planning_session_id=(
+            metadata.candidate_planning_session_id if metadata else None
+        ),
+        repository=_workflow_repository(workflow),
+        target_id=metadata.target_id if metadata else None,
+        last_result_summary=_last_result_summary(workflow),
+        timeline=_workflow_timeline(workflow, approval_status),
+    )
+
+
+def _workflow_summary_matches(
+    item: WorkflowSummaryResponse,
+    *,
+    state: str | None,
+    source: str | None,
+    candidate_id: str | None,
+    workflow_id: str | None,
+) -> bool:
+    if state and item.workflow_state != state:
+        return False
+    if source and item.workflow_source != source:
+        return False
+    if candidate_id and candidate_id.lower() not in (item.candidate_id or "").lower():
+        return False
+    return not (workflow_id and workflow_id.lower() not in item.workflow_id.lower())
 
 
 def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailResponse:
@@ -577,6 +670,45 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         verification_evidence=_workflow_verification_evidence(workflow),
         review=_workflow_review(workflow),
         verification_approval_status=verification_approval,
+    )
+
+
+@router.get("", response_model=WorkflowListResponse, responses=_ERROR_RESPONSES)
+async def list_workflows(
+    request: Request,
+    state: str | None = None,
+    source: str | None = None,
+    candidate_id: str | None = None,
+    workflow_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> WorkflowListResponse:
+    """Return persisted workflow summaries without exposing mutable internals."""
+
+    _sprint, _verification, _review, sessions = (
+        request.app.state.container.workflow_state.export_snapshot()
+    )
+    summaries = [
+        _workflow_summary(request, workflow)
+        for workflow in sessions.values()
+    ]
+    filtered = [
+        item
+        for item in summaries
+        if _workflow_summary_matches(
+            item,
+            state=state,
+            source=source,
+            candidate_id=candidate_id,
+            workflow_id=workflow_id,
+        )
+    ]
+    filtered.sort(key=lambda item: item.workflow_id)
+    return WorkflowListResponse(
+        items=filtered[offset : offset + limit],
+        total=len(filtered),
+        limit=limit,
+        offset=offset,
     )
 
 

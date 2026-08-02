@@ -13,6 +13,7 @@ import { OperationsPage } from "../pages/OperationsPage";
 import { PlanningSessionPage } from "../pages/PlanningSessionPage";
 import { ProviderPage } from "../pages/ProviderPage";
 import { WorkflowPage } from "../pages/WorkflowPage";
+import { WorkflowDashboardPage } from "../pages/WorkflowDashboardPage";
 import { WorkflowShellPage } from "../pages/WorkflowShellPage";
 export const router = createBrowserRouter([
     {
@@ -58,6 +59,10 @@ export const router = createBrowserRouter([
             {
                 path: "candidate-planning/:sessionId/workflow",
                 element: <WorkflowShellPage />,
+            },
+            {
+                path: "workflows",
+                element: <WorkflowDashboardPage />,
             },
             {
                 path: "workflows/:workflowId",

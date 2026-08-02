@@ -195,6 +195,50 @@ export interface WorkflowDetailResponse {
     verification_approval_status: string;
 }
 
+export type WorkflowPageResponse = WorkflowDetailResponse;
+
+export type WorkflowState =
+    | "awaiting_approval"
+    | "awaiting_implementation_approval"
+    | "executing"
+    | "awaiting_verification_approval"
+    | "verifying"
+    | "awaiting_commit_approval"
+    | "committing"
+    | "blocked"
+    | "completed"
+    | string;
+
+export type WorkflowSource = "candidate" | "manual" | string;
+
+export interface WorkflowSummary {
+    workflow_id: string;
+    workflow_source: WorkflowSource;
+    workflow_state: WorkflowState;
+    candidate_id: string | null;
+    planning_session_id: string | null;
+    repository: string | null;
+    target_id: string | null;
+    last_result_summary: string;
+    timeline: WorkflowTimelineStage[];
+}
+
+export interface WorkflowListResponse {
+    items: WorkflowSummary[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
+export interface WorkflowListQuery {
+    state?: string;
+    source?: string;
+    candidate_id?: string;
+    workflow_id?: string;
+    limit?: number;
+    offset?: number;
+}
+
 export type WorkflowImplementationDecision = "approve" | "reject";
 
 export interface WorkflowImplementationApprovalResponse {

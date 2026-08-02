@@ -13,6 +13,8 @@ import type {
     WorkflowDetailResponse,
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
+    WorkflowListQuery,
+    WorkflowListResponse,
     WorkflowVerificationApprovalResponse,
 } from "../types/atlasAgent";
 
@@ -168,6 +170,20 @@ export async function getWorkflowDetail(
 
         throw error;
     }
+}
+
+export async function listWorkflows(
+    query: WorkflowListQuery = {},
+): Promise<WorkflowListResponse> {
+    const params = Object.fromEntries(
+        Object.entries(query).filter(([, value]) => value !== undefined && value !== ""),
+    );
+    const response = await atlasAgent.get<WorkflowListResponse>(
+        "/api/v1/agent/workflows",
+        { params },
+    );
+
+    return response.data;
 }
 
 export async function submitWorkflowImplementationApproval(

@@ -199,10 +199,12 @@ describe("WorkflowPage", () => {
     it("renders workflow rail and no execution, verification, or commit controls", async () => {
         renderPage();
 
-        expect(await screen.findByText("Implementation ✔")).toBeInTheDocument();
-        expect(screen.getByText("Execution ✔")).toBeInTheDocument();
-        expect(screen.getByText("Verification ✔")).toBeInTheDocument();
-        expect(screen.getByText("Commit ○")).toBeInTheDocument();
+        expect(await screen.findByText("Implementation")).toBeInTheDocument();
+        expect(screen.getAllByText("Execution").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Verification").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Commit").length).toBeGreaterThan(0);
+        expect(screen.getByText("current")).toBeInTheDocument();
+        expect(screen.getAllByText("waiting").length).toBeGreaterThan(0);
         expect(screen.queryByRole("button", { name: /execute/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /verify/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();

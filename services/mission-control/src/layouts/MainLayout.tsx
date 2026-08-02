@@ -14,6 +14,7 @@ const navigationItems: NavigationItem[] = [
     { label: "Operations", path: "/operations", enabled: true },
     { label: "Discovery", path: "/discovery", enabled: true },
     { label: "Execution Candidates", path: "/execution-candidates", enabled: true },
+    { label: "Workflows", path: "/workflows", enabled: true },
     { label: "Forge", path: "/forge", enabled: true },
     { label: "Knowledge", path: "/knowledge", enabled: false },
     { label: "Developer", path: "/developer", enabled: false },

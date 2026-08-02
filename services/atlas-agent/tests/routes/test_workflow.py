@@ -12,17 +12,16 @@ from app.approval.models import (
     ApprovalDecision,
     ApprovalPurpose,
     ApprovalRequest,
-    ApprovalResult,
     ApprovalStatus,
     CommitApprovalMetadata,
     VerificationApprovalCheck,
 )
-from app.candidate_planning.models import CandidateImplementationRequest
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
+from app.candidate_planning.models import CandidateImplementationRequest
 from app.candidate_planning.verification import CandidateVerificationFailureCode
-from app.execution.models import ExecutionResult, ExecutionStatus
 from app.config.settings import Settings
+from app.execution.models import ExecutionResult, ExecutionStatus
 from app.main import create_app
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
@@ -655,6 +654,78 @@ def test_candidate_workflow_implementation_request_is_read_only(tmp_path: Path, 
     }
     assert "argv" not in body
     assert "requested_command" not in body
+
+
+def test_list_workflows_returns_read_only_summaries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    save_candidate_workflow(container, candidate_workflow_session(tmp_path))
+
+    response = client.get(
+        "/api/v1/agent/workflows",
+        params={"workflow_id": "workflow-123"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["limit"] == 50
+    assert body["offset"] == 0
+    summary = body["items"][0]
+    assert summary == {
+        "workflow_id": "workflow-123",
+        "workflow_source": "candidate",
+        "workflow_state": "awaiting_implementation_approval",
+        "candidate_id": "candidate-123",
+        "planning_session_id": "candidate-plan-123",
+        "repository": str(tmp_path),
+        "target_id": "compose-stack-1",
+        "last_result_summary": "No result yet",
+        "timeline": summary["timeline"],
+    }
+    assert {stage["name"] for stage in summary["timeline"]} == {
+        "Execution Candidate",
+        "Planning Session",
+        "Candidate Plan",
+        "Workflow",
+        "Implementation Approval",
+        "Execution",
+        "Verification",
+        "Review",
+        "Commit",
+    }
+    assert "candidate_implementation_request" not in summary
+    assert "argv" not in summary
+    assert "requested_command" not in summary
+
+
+def test_list_workflows_filters_and_paginates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = candidate_workflow_session(tmp_path)
+    save_candidate_workflow(container, workflow)
+    second = replace(
+        workflow,
+        identifier="workflow-456",
+        state=WorkflowSessionState.EXECUTING,
+        candidate_implementation_approval_id=None,
+    )
+    container.workflow_state.delete_session(second.identifier)
+    container.workflow_state.create_session(second)
+
+    response = client.get(
+        "/api/v1/agent/workflows",
+        params={
+            "state": "awaiting_implementation_approval",
+            "source": "candidate",
+            "candidate_id": "candidate-123",
+            "limit": 1,
+            "offset": 0,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["workflow_id"] == "workflow-123"
 
 
 def test_candidate_workflow_implementation_approval_accepts_only_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
