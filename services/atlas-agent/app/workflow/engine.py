@@ -44,6 +44,7 @@ from app.workflow.models import (
     WorkflowResult,
     WorkflowSession,
     WorkflowSessionState,
+    WorkflowSource,
 )
 from app.workflow.state import WorkflowStateStore
 
@@ -286,6 +287,11 @@ class WorkflowEngine:
             )
 
         if session.state is WorkflowSessionState.AWAITING_APPROVAL:
+            if session.source is WorkflowSource.CANDIDATE:
+                return self._blocked_session_result(
+                    session=session,
+                    error_message="Candidate workflow is not ready for implementation execution",
+                )
             return self._resume_implementation(session)
         if (
             session.state

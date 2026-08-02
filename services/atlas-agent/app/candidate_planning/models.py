@@ -25,6 +25,10 @@ class CandidatePlanningSessionStatus(StrEnum):
     WORKFLOW_CREATED = "workflow_created"
     STALE_BEFORE_WORKFLOW = "stale_before_workflow"
     WORKFLOW_CONVERSION_FAILED = "workflow_conversion_failed"
+    IMPLEMENTATION_READY = "implementation_ready"
+    IMPLEMENTATION_NOT_SUPPORTED = "implementation_not_supported"
+    IMPLEMENTATION_TRANSLATION_FAILED = "implementation_translation_failed"
+    STALE_BEFORE_IMPLEMENTATION = "stale_before_implementation"
 
 
 class CoreCandidatePlanningIntakeStatus(StrEnum):
@@ -67,6 +71,12 @@ class CandidatePlanningFailureCode(StrEnum):
     PLAN_INTEGRITY_FAILED = "plan_integrity_failed"
     WORKFLOW_TRANSLATION_UNSUPPORTED = "workflow_translation_unsupported"
     APPROVAL_CREATION_FAILED = "approval_creation_failed"
+    IMPLEMENTATION_NOT_SUPPORTED = "implementation_not_supported"
+    REPOSITORY_STALE = "repository_stale"
+    UNSAFE_TRANSLATION = "unsafe_translation"
+    WORKFLOW_NOT_FOUND = "workflow_not_found"
+    WORKFLOW_NOT_CANDIDATE = "workflow_not_candidate"
+    WORKFLOW_STATE_INVALID = "workflow_state_invalid"
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,6 +208,10 @@ class CandidatePlanningSession:
     candidate_plan_fingerprint: str | None = None
     workflow_conversion_status: CandidatePlanningSessionStatus | None = None
     workflow_conversion_completed_at: datetime | None = None
+    implementation_request_id: str | None = None
+    exact_implementation_approval_request_id: str | None = None
+    implementation_translation_status: CandidatePlanningSessionStatus | None = None
+    implementation_translation_completed_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,6 +252,57 @@ class CandidateWorkflowConversionResponse:
     implementation_approval_request_id: str | None
     conversion_status: CandidatePlanningSessionStatus
     core_revalidation_status: CoreCandidatePlanningIntakeStatus | None
+    reason_codes: tuple[str, ...] = ()
+    failure: CandidatePlanningFailure | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateImplementationTranslationRequest:
+    """Request to translate a candidate workflow shell into exact implementation approval."""
+
+    expected_candidate_fingerprint: str | None = None
+    expected_plan_fingerprint: str | None = None
+    expected_repository_head: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateImplementationRequest:
+    """Immutable exact candidate-derived implementation request awaiting approval."""
+
+    identifier: str
+    workflow_session_id: str
+    candidate_planning_session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    candidate_plan_id: str
+    candidate_plan_fingerprint: str
+    execution_intent: str
+    repository_root: Path
+    repository_branch: str | None
+    repository_head: str
+    argv: tuple[str, ...]
+    working_directory: Path
+    affected_files: tuple[Path, ...]
+    evidence_ids: tuple[str, ...]
+    compatibility_assessment_id: str | None
+    compatibility_status: str | None
+    translator_version: str
+    generated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateImplementationTranslationResponse:
+    """Response for candidate implementation translation."""
+
+    candidate_planning_session_id: str
+    workflow_session_id: str | None
+    translation_status: CandidatePlanningSessionStatus
+    implementation_request_id: str | None
+    exact_approval_request_id: str | None
+    candidate_fingerprint: str | None
+    plan_fingerprint: str | None
+    repository_head: str | None
+    translator_version: str | None
     reason_codes: tuple[str, ...] = ()
     failure: CandidatePlanningFailure | None = None
 

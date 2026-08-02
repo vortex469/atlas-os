@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.candidate_planning.models import (
+    CandidateImplementationTranslationResponse,
     CandidatePlan,
     CandidatePlanningFailureCode,
     CandidatePlanningSession,
@@ -29,6 +30,7 @@ class FakeCandidatePlanningService:
         self.session = None
         self.plan = None
         self.workflow_response = None
+        self.implementation_response = None
 
     async def create_planning_session(self, request):
         self.requests.append(request)
@@ -53,6 +55,12 @@ class FakeCandidatePlanningService:
         if self.error is not None:
             raise self.error
         return self.workflow_response
+
+    async def translate_workflow_shell_to_implementation(self, session_id: str, request):
+        self.requests.append((session_id, request))
+        if self.error is not None:
+            raise self.error
+        return self.implementation_response
 
 
 def make_client(monkeypatch, tmp_path: Path, service: FakeCandidatePlanningService) -> TestClient:
@@ -132,6 +140,21 @@ def workflow_response(tmp_path: Path) -> CandidateWorkflowConversionResponse:
         implementation_approval_request_id="approval-candidate-workflow-1",
         conversion_status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
         core_revalidation_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+        reason_codes=(),
+    )
+
+
+def implementation_response() -> CandidateImplementationTranslationResponse:
+    return CandidateImplementationTranslationResponse(
+        candidate_planning_session_id="candidate-plan-1",
+        workflow_session_id="candidate-workflow-1",
+        translation_status=CandidatePlanningSessionStatus.IMPLEMENTATION_READY,
+        implementation_request_id="candidate-implementation-v1-abc",
+        exact_approval_request_id="approval-candidate-workflow-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        plan_fingerprint="candidate-plan-fingerprint-v1:abc",
+        repository_head="abc123",
+        translator_version="candidate-update-compose-stack-v1",
         reason_codes=(),
     )
 
@@ -233,6 +256,7 @@ def test_openapi_exposes_planning_only_endpoint(monkeypatch, tmp_path: Path) -> 
     assert set(schema["paths"]["/candidate-planning/{session_id}"]) == {"get"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/plan"]) == {"get", "post"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/workflow"]) == {"post"}
+    assert set(schema["paths"]["/candidate-planning/{session_id}/implementation"]) == {"post"}
     route_schema = schema["paths"]["/candidate-planning"]["post"]
     assert "workflow" not in route_schema["operationId"].lower()
 
@@ -293,6 +317,41 @@ def test_workflow_conversion_route_rejects_caller_commands(monkeypatch, tmp_path
     response = client.post(
         "/candidate-planning/candidate-plan-1/workflow",
         json={"execution_argv": ["docker", "compose", "up"]},
+    )
+
+    assert response.status_code == 422
+
+
+def test_implementation_route_accepts_only_expected_fingerprints(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.implementation_response = implementation_response()
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post(
+        "/candidate-planning/candidate-plan-1/implementation",
+        json={
+            "expected_candidate_fingerprint": "candidate-fingerprint-v1:aaa",
+            "expected_plan_fingerprint": "candidate-plan-fingerprint-v1:abc",
+            "expected_repository_head": "abc123",
+        },
+    )
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["translation_status"] == "implementation_ready"
+    assert payload["implementation_request_id"] == "candidate-implementation-v1-abc"
+    assert service.requests[0][0] == "candidate-plan-1"
+    assert service.requests[0][1].expected_repository_head == "abc123"
+
+
+def test_implementation_route_rejects_caller_commands_and_paths(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.implementation_response = implementation_response()
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post(
+        "/candidate-planning/candidate-plan-1/implementation",
+        json={"argv": ["codex", "implement"], "repository_root": "/opt/atlas"},
     )
 
     assert response.status_code == 422

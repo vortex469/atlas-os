@@ -7,13 +7,25 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.approval.models import ApprovalPurpose, ApprovalRequest
+from app.approval.models import (
+    ApprovalDecision,
+    ApprovalPurpose,
+    ApprovalRequest,
+    ApprovalResult,
+    ApprovalStatus,
+)
 from app.candidate_planning.conversion import (
     build_candidate_workflow_id,
     candidate_plan_fingerprint,
     validate_candidate_plan_safe,
 )
+from app.candidate_planning.implementation import (
+    TRANSLATOR_VERSION,
+    CandidateImplementationTranslator,
+)
 from app.candidate_planning.models import (
+    CandidateImplementationTranslationRequest,
+    CandidateImplementationTranslationResponse,
     CandidatePlanningContext,
     CandidatePlanningFailureCode,
     CandidatePlanningSession,
@@ -259,6 +271,54 @@ def _conversion_code_for_intake(
     return mapping.get(status, CandidatePlanningFailureCode.WORKFLOW_TRANSLATION_UNSUPPORTED)
 
 
+def _implementation_failure(
+    *,
+    session_id: str,
+    status: CandidatePlanningSessionStatus,
+    code: CandidatePlanningFailureCode,
+    message: str,
+    workflow_id: str | None = None,
+    candidate_fingerprint: str | None = None,
+    plan_fingerprint: str | None = None,
+    repository_head: str | None = None,
+) -> CandidateImplementationTranslationResponse:
+    from app.candidate_planning.models import CandidatePlanningFailure
+
+    return CandidateImplementationTranslationResponse(
+        candidate_planning_session_id=session_id,
+        workflow_session_id=workflow_id,
+        translation_status=status,
+        implementation_request_id=None,
+        exact_approval_request_id=None,
+        candidate_fingerprint=candidate_fingerprint,
+        plan_fingerprint=plan_fingerprint,
+        repository_head=repository_head,
+        translator_version=TRANSLATOR_VERSION,
+        reason_codes=(code.value,),
+        failure=CandidatePlanningFailure(code=code, message=message),
+    )
+
+
+def _implementation_response_from_session(
+    session: CandidatePlanningSession,
+    *,
+    repository_head: str | None,
+) -> CandidateImplementationTranslationResponse:
+    return CandidateImplementationTranslationResponse(
+        candidate_planning_session_id=session.identifier,
+        workflow_session_id=session.workflow_session_id,
+        translation_status=session.implementation_translation_status
+        or CandidatePlanningSessionStatus.IMPLEMENTATION_READY,
+        implementation_request_id=session.implementation_request_id,
+        exact_approval_request_id=session.exact_implementation_approval_request_id,
+        candidate_fingerprint=session.candidate_fingerprint,
+        plan_fingerprint=session.candidate_plan_fingerprint,
+        repository_head=repository_head,
+        translator_version=TRANSLATOR_VERSION,
+        reason_codes=(),
+    )
+
+
 class CandidatePlanningService:
     """Create planning-only sessions from authoritative Atlas Core intake."""
 
@@ -271,6 +331,7 @@ class CandidatePlanningService:
         repository_resolver: RepositoryResolver | None = None,
         repository_inspector_factory: Callable[[Path], GitInspector] = GitInspector,
         planner: UpdateComposeStackCandidatePlanner | None = None,
+        implementation_translator: CandidateImplementationTranslator | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._core_client = core_client
@@ -279,6 +340,7 @@ class CandidatePlanningService:
         self._repository_resolver = repository_resolver
         self._repository_inspector_factory = repository_inspector_factory
         self._planner = planner or UpdateComposeStackCandidatePlanner()
+        self._implementation_translator = implementation_translator or CandidateImplementationTranslator()
         self._clock = clock or (lambda: datetime.now(UTC))
 
     async def create_planning_session(
@@ -662,6 +724,309 @@ class CandidatePlanningService:
             status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
             core_status=revalidated.intake_status,
         )
+
+    async def translate_workflow_shell_to_implementation(
+        self,
+        session_id: str,
+        request: CandidateImplementationTranslationRequest,
+    ) -> CandidateImplementationTranslationResponse:
+        """Create or return one exact implementation request and approval."""
+
+        session = self._state_store.get_session(session_id)
+        if session is None:
+            return _implementation_failure(
+                session_id=session_id,
+                status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                code=CandidatePlanningFailureCode.SESSION_NOT_FOUND,
+                message="Candidate planning session was not found.",
+            )
+        if session.implementation_request_id is not None:
+            return _implementation_response_from_session(
+                session,
+                repository_head=session.plan.repository_head if session.plan else None,
+            )
+        if session.workflow_session_id is None:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=None,
+                status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                code=CandidatePlanningFailureCode.WORKFLOW_NOT_FOUND,
+                message="Candidate workflow shell was not found.",
+                candidate_fingerprint=session.candidate_fingerprint,
+            )
+        if session.plan is None or session.planning_status is not CandidatePlanningSessionStatus.PLAN_READY:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                code=CandidatePlanningFailureCode.PLAN_NOT_READY,
+                message="Candidate plan is not ready for implementation translation.",
+                candidate_fingerprint=session.candidate_fingerprint,
+            )
+        plan_fingerprint = candidate_plan_fingerprint(session.plan)
+        if plan_fingerprint != session.candidate_plan_fingerprint:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.PLAN_FINGERPRINT_MISMATCH,
+                message="Candidate plan fingerprint changed before implementation translation.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        if (
+            request.expected_candidate_fingerprint is not None
+            and request.expected_candidate_fingerprint != session.candidate_fingerprint
+        ):
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.CANDIDATE_FINGERPRINT_MISMATCH,
+                message="Candidate fingerprint did not match the persisted session.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        if (
+            request.expected_plan_fingerprint is not None
+            and request.expected_plan_fingerprint != plan_fingerprint
+        ):
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.PLAN_FINGERPRINT_MISMATCH,
+                message="Candidate plan fingerprint did not match the persisted plan.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        try:
+            intake = await self._core_client.validate_candidate_planning_intake(
+                session.candidate_id,
+                expected_candidate_fingerprint=session.candidate_fingerprint,
+            )
+        except AtlasCoreClientError as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.ATLAS_CORE_UNAVAILABLE,
+                "Atlas Core planning intake is unavailable.",
+            ) from error
+        if intake.status != CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING.value:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=_conversion_code_for_intake(CoreCandidatePlanningIntakeStatus(intake.status)),
+                message="Atlas Core did not accept candidate implementation revalidation.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        try:
+            snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
+        except CandidatePlanningServiceError:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                code=CandidatePlanningFailureCode.WORKFLOW_TRANSLATION_UNSUPPORTED,
+                message="Atlas Core returned an invalid planning-intake response.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        if not _matches_workflow_snapshot(session.snapshot, snapshot):
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.CANDIDATE_STALE,
+                message="Candidate changed before implementation translation.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        if snapshot.candidate_fingerprint != session.candidate_fingerprint:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.CANDIDATE_FINGERPRINT_MISMATCH,
+                message="Candidate fingerprint changed before implementation translation.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        resolver = self._repository_resolver
+        repository_root = resolver.resolve(
+            target_id=session.snapshot.target_id,
+            target_type=session.snapshot.target_type,
+        ) if resolver is not None else None
+        if repository_root is None:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.IMPLEMENTATION_NOT_SUPPORTED,
+                code=CandidatePlanningFailureCode.REPOSITORY_MAPPING_UNAVAILABLE,
+                message="Candidate target does not map to a trusted Agent repository.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        try:
+            repository_snapshot = self._repository_inspector_factory(repository_root).inspect()
+        except (OSError, RepositoryInspectionError, ValueError) as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.REPOSITORY_INSPECTION_FAILED,
+                "Trusted repository could not be inspected for implementation translation.",
+            ) from error
+        if request.expected_repository_head is not None and request.expected_repository_head != repository_snapshot.head_commit:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.REPOSITORY_STALE,
+                message="Trusted repository HEAD did not match the expected value.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+                repository_head=repository_snapshot.head_commit,
+            )
+        return self._persist_implementation_translation(
+            session,
+            repository_snapshot=repository_snapshot,
+        )
+
+    def _persist_implementation_translation(
+        self,
+        session: CandidatePlanningSession,
+        *,
+        repository_snapshot,
+    ) -> CandidateImplementationTranslationResponse:
+        if self._state_persistence is None:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Candidate implementation translation requires aggregate persistence.",
+            )
+
+        def mutate(
+            workflow_state: CandidateWorkflowState,
+            approvals: CandidateApprovalRepository,
+            candidate_planning: CandidatePlanningSessionsState,
+        ) -> CandidateImplementationTranslationResponse:
+            current = candidate_planning.get_session(session.identifier)
+            if current is None:
+                return _implementation_failure(
+                    session_id=session.identifier,
+                    status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                    code=CandidatePlanningFailureCode.SESSION_NOT_FOUND,
+                    message="Candidate planning session disappeared during translation.",
+                )
+            workflow_id = current.workflow_session_id
+            if workflow_id is None:
+                return _implementation_failure(
+                    session_id=current.identifier,
+                    status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                    code=CandidatePlanningFailureCode.WORKFLOW_NOT_FOUND,
+                    message="Candidate workflow shell was not found.",
+                    candidate_fingerprint=current.candidate_fingerprint,
+                )
+            workflow = workflow_state.get_session(workflow_id)
+            if workflow is None:
+                return _implementation_failure(
+                    session_id=current.identifier,
+                    workflow_id=workflow_id,
+                    status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                    code=CandidatePlanningFailureCode.WORKFLOW_NOT_FOUND,
+                    message="Candidate workflow shell was not found.",
+                    candidate_fingerprint=current.candidate_fingerprint,
+                )
+            if workflow.source is not WorkflowSource.CANDIDATE:
+                return _implementation_failure(
+                    session_id=current.identifier,
+                    workflow_id=workflow_id,
+                    status=CandidatePlanningSessionStatus.IMPLEMENTATION_NOT_SUPPORTED,
+                    code=CandidatePlanningFailureCode.WORKFLOW_NOT_CANDIDATE,
+                    message="Workflow is not candidate-derived.",
+                    candidate_fingerprint=current.candidate_fingerprint,
+                )
+            if workflow.candidate_implementation_request is not None:
+                return _implementation_response_from_session(
+                    current,
+                    repository_head=workflow.candidate_implementation_request.repository_head,
+                )
+            if workflow.state is not WorkflowSessionState.AWAITING_APPROVAL:
+                return _implementation_failure(
+                    session_id=current.identifier,
+                    workflow_id=workflow_id,
+                    status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                    code=CandidatePlanningFailureCode.WORKFLOW_STATE_INVALID,
+                    message="Candidate workflow is not awaiting implementation translation.",
+                    candidate_fingerprint=current.candidate_fingerprint,
+                )
+            decision = self._implementation_translator.translate(
+                session=current,
+                workflow=workflow,
+                repository=repository_snapshot,
+                generated_at=self._clock(),
+            )
+            if decision.request is None:
+                assert decision.failure is not None
+                return _implementation_failure(
+                    session_id=current.identifier,
+                    workflow_id=workflow_id,
+                    status=CandidatePlanningSessionStatus.IMPLEMENTATION_NOT_SUPPORTED
+                    if decision.failure.code is CandidatePlanningFailureCode.IMPLEMENTATION_NOT_SUPPORTED
+                    else CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                    code=decision.failure.code,
+                    message=decision.failure.message,
+                    candidate_fingerprint=current.candidate_fingerprint,
+                    plan_fingerprint=current.candidate_plan_fingerprint,
+                    repository_head=repository_snapshot.head_commit,
+                )
+            exact_approval = ApprovalRequest(
+                identifier=f"approval-{workflow_id}",
+                workflow_id=workflow_id,
+                checkpoint_id=decision.request.identifier,
+                title="Approve exact candidate implementation request",
+                requested_tool=decision.request.argv[0],
+                requested_command=decision.request.argv,
+                requested_working_directory=decision.request.working_directory,
+                rationale=(
+                    "Approve the exact immutable candidate implementation request. "
+                    f"candidate_fingerprint={decision.request.candidate_fingerprint} "
+                    f"plan_fingerprint={decision.request.candidate_plan_fingerprint} "
+                    f"repository_head={decision.request.repository_head} "
+                    f"translator={decision.request.translator_version}."
+                ),
+                purpose=ApprovalPurpose.IMPLEMENTATION,
+            )
+            approvals.storage[exact_approval.identifier] = ApprovalResult(
+                decision=ApprovalDecision(
+                    request=exact_approval,
+                    status=ApprovalStatus.PENDING,
+                )
+            )
+            updated_workflow = replace(
+                workflow,
+                state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+                candidate_implementation_request=decision.request,
+                candidate_implementation_approval_id=exact_approval.identifier,
+            )
+            workflow_state.sessions[workflow_id] = updated_workflow
+            updated_session = replace(
+                current,
+                implementation_request_id=decision.request.identifier,
+                exact_implementation_approval_request_id=exact_approval.identifier,
+                implementation_translation_status=CandidatePlanningSessionStatus.IMPLEMENTATION_READY,
+                implementation_translation_completed_at=decision.request.generated_at,
+            )
+            candidate_planning.replace_session(updated_session)
+            return _implementation_response_from_session(
+                updated_session,
+                repository_head=decision.request.repository_head,
+            )
+
+        try:
+            return self._state_persistence.mutate_aggregate(mutate)
+        except (OSError, ValueError, StatePersistenceError) as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Candidate implementation translation could not be persisted.",
+            ) from error
 
     def _store_create_or_reuse(
         self,

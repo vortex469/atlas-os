@@ -10,6 +10,7 @@ from pathlib import Path
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.conversion import candidate_plan_fingerprint
 from app.candidate_planning.models import (
+    CandidateImplementationTranslationRequest,
     CandidatePlan,
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
@@ -48,6 +49,8 @@ class FakeCoreClient:
 
 
 class FakeInspector:
+    head_commit = "abc123"
+
     def __init__(self, repository_root: Path) -> None:
         self.repository_root = repository_root
 
@@ -55,7 +58,7 @@ class FakeInspector:
         return RepositorySnapshot(
             root=self.repository_root,
             branch="feature/atlas-agent",
-            head_commit="abc123",
+            head_commit=self.head_commit,
             is_clean=True,
             modified_files=(),
             staged_files=(),
@@ -345,3 +348,103 @@ def test_unsupported_intent_does_not_convert(tmp_path: Path) -> None:
     assert response.reason_codes == ("unsupported_intent",)
     assert workflow_state.export_snapshot()[3] == {}
     assert approvals.export_snapshot() == {}
+
+
+def test_candidate_workflow_shell_translates_to_exact_implementation_approval(tmp_path: Path) -> None:
+    session = plan_ready_session(tmp_path)
+    core = FakeCoreClient([accepted_response(), accepted_response()])
+    service, candidate_state, workflow_state, approvals, _persistence = service_with(
+        tmp_path,
+        core,
+        session=session,
+    )
+    shell = run(service.convert_plan_to_workflow_shell(session.identifier, CandidateWorkflowConversionRequest()))
+
+    response = run(
+        service.translate_workflow_shell_to_implementation(
+            session.identifier,
+            CandidateImplementationTranslationRequest(
+                expected_candidate_fingerprint=session.candidate_fingerprint,
+                expected_plan_fingerprint=shell.candidate_plan_fingerprint,
+                expected_repository_head="abc123",
+            ),
+        )
+    )
+
+    assert response.translation_status is CandidatePlanningSessionStatus.IMPLEMENTATION_READY
+    assert response.implementation_request_id is not None
+    assert response.exact_approval_request_id == shell.implementation_approval_request_id
+    workflow = workflow_state.get_session(shell.workflow_session_id)
+    assert workflow is not None
+    assert workflow.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
+    assert workflow.request is None
+    assert workflow.plan is None
+    assert workflow.execution_result is None
+    assert workflow.verification_report is None
+    assert workflow.review_report is None
+    assert workflow.commit_request is None
+    assert workflow.candidate_implementation_request is not None
+    implementation = workflow.candidate_implementation_request
+    assert implementation.argv[0] == "codex"
+    assert implementation.working_directory == tmp_path / "repo"
+    assert implementation.repository_head == "abc123"
+    approval = approvals.get_request(response.exact_approval_request_id)
+    assert approval is not None
+    assert approval.decision.request.requested_command == implementation.argv
+    assert approval.decision.request.requested_working_directory == implementation.working_directory
+    assert implementation.candidate_fingerprint in approval.decision.request.rationale
+    updated = candidate_state.get_session(session.identifier)
+    assert updated is not None
+    assert updated.implementation_request_id == implementation.identifier
+    assert updated.exact_implementation_approval_request_id == response.exact_approval_request_id
+
+
+def test_repeated_implementation_translation_is_idempotent(tmp_path: Path) -> None:
+    session = plan_ready_session(tmp_path)
+    core = FakeCoreClient([accepted_response(), accepted_response()])
+    service, _candidate_state, _workflow_state, _approvals, _persistence = service_with(
+        tmp_path,
+        core,
+        session=session,
+    )
+    run(service.convert_plan_to_workflow_shell(session.identifier, CandidateWorkflowConversionRequest()))
+
+    first = run(service.translate_workflow_shell_to_implementation(session.identifier, CandidateImplementationTranslationRequest()))
+    second = run(service.translate_workflow_shell_to_implementation(session.identifier, CandidateImplementationTranslationRequest()))
+
+    assert first.implementation_request_id == second.implementation_request_id
+    assert first.exact_approval_request_id == second.exact_approval_request_id
+    assert core.calls == [
+        ("candidate-1", "candidate-fingerprint-v1:aaa"),
+        ("candidate-1", "candidate-fingerprint-v1:aaa"),
+    ]
+
+
+def test_repository_head_drift_blocks_implementation_translation(tmp_path: Path) -> None:
+    session = plan_ready_session(tmp_path)
+    core = FakeCoreClient([accepted_response(), accepted_response()])
+    service, _candidate_state, workflow_state, approvals, _persistence = service_with(
+        tmp_path,
+        core,
+        session=session,
+    )
+    shell = run(service.convert_plan_to_workflow_shell(session.identifier, CandidateWorkflowConversionRequest()))
+    FakeInspector.head_commit = "def456"
+    try:
+        response = run(
+            service.translate_workflow_shell_to_implementation(
+                session.identifier,
+                CandidateImplementationTranslationRequest(expected_repository_head="abc123"),
+            )
+        )
+    finally:
+        FakeInspector.head_commit = "abc123"
+
+    assert response.translation_status is CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION
+    assert response.reason_codes == ("repository_stale",)
+    workflow = workflow_state.get_session(shell.workflow_session_id)
+    assert workflow is not None
+    assert workflow.candidate_implementation_request is None
+    approval = approvals.get_request(shell.implementation_approval_request_id)
+    assert approval is not None
+    assert approval.decision.request.requested_command == ()

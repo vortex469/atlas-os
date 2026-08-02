@@ -8,6 +8,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.candidate_planning.models import (
+    CandidateImplementationTranslationRequest,
+    CandidateImplementationTranslationResponse,
     CandidatePlan,
     CandidatePlanningFailure,
     CandidatePlanRequest,
@@ -68,6 +70,39 @@ class CandidateWorkflowResponse(BaseModel):
     implementation_approval_request_id: str | None
     conversion_status: str
     core_revalidation_status: str | None
+    reason_codes: tuple[str, ...]
+    failure: CandidatePlanningFailureResponse | None = None
+
+
+class CandidateImplementationRequest(BaseModel):
+    """Validated request to translate a candidate workflow shell."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_candidate_fingerprint: str | None = None
+    expected_plan_fingerprint: str | None = None
+    expected_repository_head: str | None = None
+
+    def to_domain(self) -> CandidateImplementationTranslationRequest:
+        return CandidateImplementationTranslationRequest(
+            expected_candidate_fingerprint=self.expected_candidate_fingerprint,
+            expected_plan_fingerprint=self.expected_plan_fingerprint,
+            expected_repository_head=self.expected_repository_head,
+        )
+
+
+class CandidateImplementationResponse(BaseModel):
+    """Serialized candidate implementation translation response."""
+
+    candidate_planning_session_id: str
+    workflow_session_id: str | None
+    translation_status: str
+    implementation_request_id: str | None
+    exact_approval_request_id: str | None
+    candidate_fingerprint: str | None
+    plan_fingerprint: str | None
+    repository_head: str | None
+    translator_version: str | None
     reason_codes: tuple[str, ...]
     failure: CandidatePlanningFailureResponse | None = None
 
@@ -195,6 +230,24 @@ def _workflow_response(
     )
 
 
+def _implementation_response(
+    response: CandidateImplementationTranslationResponse,
+) -> CandidateImplementationResponse:
+    return CandidateImplementationResponse(
+        candidate_planning_session_id=response.candidate_planning_session_id,
+        workflow_session_id=response.workflow_session_id,
+        translation_status=response.translation_status.value,
+        implementation_request_id=response.implementation_request_id,
+        exact_approval_request_id=response.exact_approval_request_id,
+        candidate_fingerprint=response.candidate_fingerprint,
+        plan_fingerprint=response.plan_fingerprint,
+        repository_head=response.repository_head,
+        translator_version=response.translator_version,
+        reason_codes=response.reason_codes,
+        failure=_failure_response(response.failure),
+    )
+
+
 @router.post(
     "",
     response_model=CandidatePlanningResponse,
@@ -308,3 +361,29 @@ async def create_candidate_workflow_shell(
             detail={"code": exc.code.value, "message": exc.message},
         ) from exc
     return _workflow_response(response)
+
+
+@router.post(
+    "/{session_id}/implementation",
+    response_model=CandidateImplementationResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={status.HTTP_503_SERVICE_UNAVAILABLE: {"model": CandidatePlanningErrorResponse}},
+)
+async def translate_candidate_implementation(
+    request: Request,
+    session_id: str,
+    implementation_request: CandidateImplementationRequest | None = None,
+) -> CandidateImplementationResponse:
+    """Create or return one exact candidate implementation request for approval."""
+
+    try:
+        response = await request.app.state.container.candidate_planning_service.translate_workflow_shell_to_implementation(
+            session_id,
+            (implementation_request or CandidateImplementationRequest()).to_domain(),
+        )
+    except CandidatePlanningServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": exc.code.value, "message": exc.message},
+        ) from exc
+    return _implementation_response(response)

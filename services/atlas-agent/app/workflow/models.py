@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from app.approval.models import ApprovalRequest
 from app.context.models import AgentContext
@@ -15,6 +16,9 @@ from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.models import CommitRequest, CommitResult
 from app.review.models import ArchitectureAssessment, ReviewReport, TestEvidence
 from app.verification.models import VerificationCheck, VerificationReport
+
+if TYPE_CHECKING:
+    from app.candidate_planning.models import CandidateImplementationRequest
 
 
 class SprintPhase(StrEnum):
@@ -37,6 +41,7 @@ class WorkflowSessionState(StrEnum):
 
     PLANNED = "planned"
     AWAITING_APPROVAL = "awaiting_approval"
+    AWAITING_IMPLEMENTATION_APPROVAL = "awaiting_implementation_approval"
     EXECUTING = "executing"
     AWAITING_VERIFICATION_APPROVAL = "awaiting_verification_approval"
     VERIFYING = "verifying"
@@ -114,6 +119,8 @@ class WorkflowSession:
     state: WorkflowSessionState
     source: WorkflowSource = WorkflowSource.ROADMAP
     candidate_metadata: CandidateWorkflowMetadata | None = None
+    candidate_implementation_request: CandidateImplementationRequest | None = None
+    candidate_implementation_approval_id: str | None = None
     planning_analysis: ModelResponse | None = None
     review_analysis: ModelResponse | None = None
     context: AgentContext | None = None

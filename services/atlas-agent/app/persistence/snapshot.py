@@ -25,6 +25,7 @@ from app.approval.models import (
 )
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.models import (
+    CandidateImplementationRequest,
     CandidatePlan,
     CandidatePlanningFailure,
     CandidatePlanningFailureCode,
@@ -79,6 +80,7 @@ _INTERRUPTION_REASONS = {
 }
 _WAITING_PURPOSES = {
     WorkflowSessionState.AWAITING_APPROVAL: ApprovalPurpose.IMPLEMENTATION,
+    WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL: ApprovalPurpose.IMPLEMENTATION,
     WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL: ApprovalPurpose.VERIFICATION,
     WorkflowSessionState.AWAITING_COMMIT_APPROVAL: ApprovalPurpose.COMMIT,
 }
@@ -1022,6 +1024,14 @@ def _encode_candidate_planning_session(session: CandidatePlanningSession) -> dic
         "candidate_plan_fingerprint": session.candidate_plan_fingerprint,
         "created_at": _encode_datetime(session.created_at),
         "identifier": session.identifier,
+        "exact_implementation_approval_request_id": session.exact_implementation_approval_request_id,
+        "implementation_request_id": session.implementation_request_id,
+        "implementation_translation_completed_at": _encode_datetime(
+            session.implementation_translation_completed_at
+        ),
+        "implementation_translation_status": session.implementation_translation_status.value
+        if session.implementation_translation_status is not None
+        else None,
         "implementation_approval_request_id": session.implementation_approval_request_id,
         "last_revalidation_fingerprint": session.last_revalidation_fingerprint,
         "last_revalidation_status": session.last_revalidation_status.value
@@ -1083,6 +1093,18 @@ def _decode_candidate_planning_session(payload: Any) -> CandidatePlanningSession
         else None,
         workflow_conversion_completed_at=_decode_optional_datetime(
             payload.get("workflow_conversion_completed_at")
+        ),
+        implementation_request_id=payload.get("implementation_request_id"),
+        exact_implementation_approval_request_id=payload.get(
+            "exact_implementation_approval_request_id"
+        ),
+        implementation_translation_status=CandidatePlanningSessionStatus(
+            payload["implementation_translation_status"]
+        )
+        if payload.get("implementation_translation_status") is not None
+        else None,
+        implementation_translation_completed_at=_decode_optional_datetime(
+            payload.get("implementation_translation_completed_at")
         ),
     )
 
@@ -1340,9 +1362,71 @@ def _decode_candidate_workflow_metadata(
     )
 
 
+def _encode_candidate_implementation_request(
+    request: CandidateImplementationRequest | None,
+) -> dict[str, Any] | None:
+    if request is None:
+        return None
+    return {
+        "affected_files": [_path(path) for path in request.affected_files],
+        "argv": list(request.argv),
+        "candidate_fingerprint": request.candidate_fingerprint,
+        "candidate_id": request.candidate_id,
+        "candidate_plan_fingerprint": request.candidate_plan_fingerprint,
+        "candidate_plan_id": request.candidate_plan_id,
+        "candidate_planning_session_id": request.candidate_planning_session_id,
+        "compatibility_assessment_id": request.compatibility_assessment_id,
+        "compatibility_status": request.compatibility_status,
+        "evidence_ids": list(request.evidence_ids),
+        "execution_intent": request.execution_intent,
+        "generated_at": _encode_datetime(request.generated_at),
+        "identifier": request.identifier,
+        "repository_branch": request.repository_branch,
+        "repository_head": request.repository_head,
+        "repository_root": _path(request.repository_root),
+        "translator_version": request.translator_version,
+        "workflow_session_id": request.workflow_session_id,
+        "working_directory": _path(request.working_directory),
+    }
+
+
+def _decode_candidate_implementation_request(
+    payload: Any,
+) -> CandidateImplementationRequest | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid candidate implementation request")
+    return CandidateImplementationRequest(
+        identifier=_require_str(payload, "identifier"),
+        workflow_session_id=_require_str(payload, "workflow_session_id"),
+        candidate_planning_session_id=_require_str(payload, "candidate_planning_session_id"),
+        candidate_id=_require_str(payload, "candidate_id"),
+        candidate_fingerprint=_require_str(payload, "candidate_fingerprint"),
+        candidate_plan_id=_require_str(payload, "candidate_plan_id"),
+        candidate_plan_fingerprint=_require_str(payload, "candidate_plan_fingerprint"),
+        execution_intent=_require_str(payload, "execution_intent"),
+        repository_root=_decode_path(payload.get("repository_root")),
+        repository_branch=payload.get("repository_branch"),
+        repository_head=_require_str(payload, "repository_head"),
+        argv=_tuple_str(payload.get("argv", [])),
+        working_directory=_decode_path(payload.get("working_directory")),
+        affected_files=_tuple_path(payload.get("affected_files", [])),
+        evidence_ids=_tuple_str(payload.get("evidence_ids", [])),
+        compatibility_assessment_id=payload.get("compatibility_assessment_id"),
+        compatibility_status=payload.get("compatibility_status"),
+        translator_version=_require_str(payload, "translator_version"),
+        generated_at=_decode_datetime(payload.get("generated_at")),
+    )
+
+
 def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
     return {
         "blocked_reason": session.blocked_reason,
+        "candidate_implementation_approval_id": session.candidate_implementation_approval_id,
+        "candidate_implementation_request": _encode_candidate_implementation_request(
+            session.candidate_implementation_request
+        ),
         "candidate_metadata": _encode_candidate_workflow_metadata(session.candidate_metadata),
         "changed_files": [_path(path) for path in session.changed_files],
         "commit_request": _encode_commit_request(session.commit_request),
@@ -1375,6 +1459,12 @@ def _decode_workflow_session(payload: Any) -> WorkflowSession:
         source=WorkflowSource(payload.get("source", WorkflowSource.ROADMAP.value)),
         candidate_metadata=_decode_candidate_workflow_metadata(
             payload.get("candidate_metadata")
+        ),
+        candidate_implementation_request=_decode_candidate_implementation_request(
+            payload.get("candidate_implementation_request")
+        ),
+        candidate_implementation_approval_id=payload.get(
+            "candidate_implementation_approval_id"
         ),
         planning_analysis=_decode_model_response(payload.get("planning_analysis")),
         review_analysis=_decode_model_response(payload.get("review_analysis")),
