@@ -255,3 +255,28 @@ Current behavior still relies on `config/policies.yaml` for several operational 
 GitHub
 
 vortex469/atlas-os
+
+## Atlas v0.6 project status
+
+Atlas v0.6 is a release candidate for the completed Phase 3 candidate workflow. Atlas remains local-first, provider-neutral, and approval-gated.
+
+Current supported capability:
+
+- `update-compose-stack`
+
+Unsupported capabilities:
+
+- `restart-service`
+- `backup`
+- `restore`
+- `install-provider`
+- `update-image`
+- push
+- tag
+- release publication
+- remote deployment
+- rollback automation
+- automatic approval
+- automatic execution
+
+Design principles: Core remains authoritative for candidate source state; Agent executes only exact immutable requests with exact approval; side-effect stages are restart-safe and at-most-once; audit links are machine-readable; Mission Control must not bypass Core or Agent trust boundaries.

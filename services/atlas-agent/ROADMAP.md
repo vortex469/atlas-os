@@ -439,3 +439,21 @@ development-loop hardening, and Docker execution policy work outside the current
 A12 scope. The roadmap does not define a sub-checkpoint ordering between those
 unfinished tracks, so the next implementation checkpoint is pending human
 selection.
+
+## v0.6 completion and future phases
+
+### Completed
+
+- Phase 3 candidate planning and workflow shell creation.
+- Immutable candidate implementation requests.
+- Exact implementation, verification, and commit approvals.
+- Candidate execution, verification evidence, deterministic review, local commit, and completed workflow persistence.
+- P3.14A reliability and security hardening, including end-to-end candidate coverage, audit-chain validation, recovery matrix tests, deterministic concurrency tests, commit-path security, strict route validation, API contract coverage, and roadmap regression tests.
+
+### Planned Phase 4
+
+Add additional execution intents only after separate design, public contracts, immutable requests, exact approvals, recovery behavior, security tests, and end-to-end coverage. Candidate examples include `restart-service`, `backup`, `restore`, `install-provider`, and `update-image`.
+
+### Planned Phase 5
+
+Distributed orchestration, clustering, multi-process locking, and cross-host recovery require a persistence and coordination design beyond the current local single-process Agent state store.

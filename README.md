@@ -1,3 +1,13 @@
+## Atlas v0.6 release candidate
+
+Atlas v0.6 completes the Phase 3 candidate workflow while preserving Atlas's provider-neutral, local-first design. Atlas Core owns Discovery evidence, intelligence recommendations, execution-candidate projection, and planning-intake revalidation. Atlas Agent owns local approval-gated orchestration, restart-safe side effects, audit-chain validation, deterministic review, and local Git commit. Mission Control presents state and does not currently expose Phase 3 execution controls.
+
+Supported execution intent:
+
+- `update-compose-stack`
+
+Atlas does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or automate rollback. See [Architecture](ARCHITECTURE.md) and [Atlas v0.6 Release Checklist](docs/RELEASE_CHECKLIST.md).
+
 <div align="center">
 
 # Atlas OS

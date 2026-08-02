@@ -219,3 +219,13 @@ selection. Based on the existing roadmap, those tracks include broader A8
 knowledge capabilities, A10 production-readiness evidence, A13 model-assisted
 review/model selection, A15 broader development-loop hardening, and Docker policy
 beyond the current A12 scope.
+
+## v0.6 operating rules
+
+Atlas Agent has completed the Phase 3 candidate workflow and P3.14A reliability hardening. The supported execution intent is `update-compose-stack`.
+
+Agent owns local candidate planning, deterministic plans, workflow shells, immutable implementation requests, exact approval checks, execution coordination, verification evidence, deterministic review, local Git commits, local workflow persistence, and audit-chain validation.
+
+Agent does not own Atlas Core state, Mission Control UI decisions, external tools, package management, CI, remote deployment, release publication, push, tag, or rollback automation.
+
+Implementation, verification, and commit stages each require exact approval bound to immutable requests. Completed candidate workflows must restore candidate metadata, implementation request, execution result, verification plan, verification evidence, review result, commit request, commit result, and approval IDs after restart.

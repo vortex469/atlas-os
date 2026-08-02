@@ -50,3 +50,9 @@ npm test
 npm run lint
 npm run build
 ```
+
+## Phase 3 boundary
+
+Mission Control can display Atlas Agent and Discovery state, but it does not currently expose candidate execution controls for the Phase 3 workflow. It must not imply support for push, tag, release publication, remote deployment, rollback automation, automatic approval, or automatic execution.
+
+The supported Phase 3 execution intent is `update-compose-stack`, and execution remains approval-gated inside Atlas Agent.

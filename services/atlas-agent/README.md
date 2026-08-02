@@ -401,3 +401,28 @@ Atlas Agent has a replaceable model-provider interface, an Ollama provider, a
 model service, and optional model-assisted planning analysis. Deterministic
 planning remains the source of the implementation plan. Model-assisted review,
 model selection, and autonomous model-driven execution are not implemented.
+
+## Candidate workflow in v0.6
+
+Atlas Agent now supports the complete Phase 3 candidate workflow:
+
+```text
+Core planning intake
+→ candidate planning session
+→ deterministic candidate plan
+→ workflow shell
+→ immutable implementation request
+→ exact implementation approval
+→ implementation execution
+→ verification plan
+→ exact verification approval
+→ verification evidence
+→ deterministic review
+→ exact commit approval
+→ local Git commit
+→ completed workflow
+```
+
+Only `update-compose-stack` is supported. Atlas Agent does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or roll back changes.
+
+Each side-effect stage has an independent exact approval bound to an immutable request. Workflow, approval, planning, implementation, verification, review, and commit artifacts persist in the local aggregate state store. Approval-wait states restore unchanged; completed and blocked states restore unchanged; interrupted side-effect states recover blocked and do not replay.

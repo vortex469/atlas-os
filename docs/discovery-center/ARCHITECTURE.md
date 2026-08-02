@@ -264,3 +264,9 @@ Expected test categories:
 - API response contracts
 - no side effects from read-only operations
 - security tests proving no execution or secret writes occur
+
+## v0.6 Phase 3 status
+
+Discovery Center now feeds the completed Phase 3 candidate pipeline by providing deterministic catalog and compatibility evidence to Atlas intelligence and execution-candidate projection. Discovery remains provider-neutral and read-only. It does not install, configure, execute, push, tag, release, deploy remotely, approve, or roll back changes.
+
+The only supported downstream execution intent in v0.6 is `update-compose-stack`, and any execution must pass through Atlas Agent planning, immutable requests, exact approvals, verification, deterministic review, and local commit.

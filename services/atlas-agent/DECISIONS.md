@@ -119,3 +119,13 @@ Atlas Agent. Production health checks use `/health`, and the release gate covers
 image build, production and HTTPS Compose validation, health, hardening, mount
 checks, absence of published Atlas Agent host ports, the writable
 `atlas-agent-state` volume, and `/agent-api` HTTP and HTTPS smoke tests.
+
+## v0.6 Phase 3 decisions
+
+- Candidate workflows start from Atlas Core execution candidates and planning-intake revalidation. Agent never reads Core databases directly.
+- The only supported candidate execution intent is `update-compose-stack`.
+- Implementation requests, verification plans, and commit requests are immutable and persisted before approval.
+- Implementation, verification, and commit each require separate exact approval.
+- Workflow resume is state-driven and idempotent. Interrupted side-effect states recover blocked instead of replaying.
+- Candidate audit validation uses machine-readable identifiers and fingerprints and does not parse rationale, titles, descriptions, or recommendation prose.
+- Candidate commit is local only and limited to exact reviewed repository-relative files. Atlas Agent does not push, tag, release, deploy remotely, auto-approve, auto-execute, or roll back changes.

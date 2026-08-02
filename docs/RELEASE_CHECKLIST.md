@@ -59,3 +59,42 @@ Foundry `v1.0.0` was published on 2026-07-25 from commit `b32b21d`.
 Production validation reported no critical issues. The release notes record
 the operator-accepted warning for unavailable or unknown Home Assistant
 entities.
+
+## Atlas v0.6 release gates
+
+### Core
+
+- [ ] `cd services/atlas-core && python -m ruff check app tests`
+- [ ] `cd services/atlas-core && python -m pytest -q`
+- [ ] Execution candidate, planning-intake, and route-contract tests pass.
+- [ ] API/OpenAPI contract regression is current.
+
+### Atlas Agent
+
+- [ ] `cd services/atlas-agent && python -m ruff check app tests`
+- [ ] `cd services/atlas-agent && python -m pytest -q`
+- [ ] End-to-end candidate workflow test passes.
+- [ ] Audit-chain validator tests pass.
+- [ ] Restart-recovery matrix tests pass.
+- [ ] Concurrency and idempotency tests pass.
+- [ ] Commit-path security tests pass.
+- [ ] Roadmap workflow regression tests pass.
+
+### Mission Control
+
+- [ ] `cd services/mission-control && npm run lint`
+- [ ] `cd services/mission-control && npm test -- --run`
+- [ ] `cd services/mission-control && npm run build`
+- [ ] UI does not imply unsupported Phase 3 execution controls.
+
+### Security and release operation
+
+- [ ] Approval-boundary review confirms exact immutable implementation, verification, and commit approvals.
+- [ ] No automatic approval, automatic execution, push, tag, release, remote deploy, or rollback path is enabled.
+- [ ] No secrets, logs, `jcode/`, local state, dependency folders, virtual environments, or generated builds are committed.
+- [ ] State migration and restart-recovery tests pass.
+- [ ] Docker or Compose smoke validation passes when deployment packaging is in scope.
+- [ ] `git diff --check` passes.
+- [ ] `git status --short` is clean except explicitly local-only ignored directories before tagging.
+- [ ] Changelog, version, tag name, upgrade notes, and manual rollback notes are reviewed.
+- [ ] Create `atlas-v0.6` only after all required gates pass.

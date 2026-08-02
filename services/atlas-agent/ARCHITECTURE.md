@@ -223,3 +223,31 @@ Genuinely unfinished capabilities include broader historical knowledge,
 additional bounded Knowledge Engine integration, Docker policy beyond the
 current approval-boundary scope, model-assisted review, model selection, and
 broader development-loop hardening.
+
+## Phase 3 candidate architecture
+
+Candidate workflow artifacts are persisted and linked by machine-readable identifiers:
+
+```text
+CandidatePlanningSession
+→ CandidatePlan
+→ WorkflowSession with CandidateWorkflowMetadata
+→ CandidateImplementationRequest
+→ implementation ApprovalRequest
+→ ExecutionResult
+→ CandidateVerificationPlan
+→ verification ApprovalRequest
+→ CandidateVerificationEvidence
+→ CandidateReviewResult and ReviewReport
+→ CommitRequest
+→ commit ApprovalRequest
+→ CommitResult
+```
+
+The audit-chain validator checks identifiers and fingerprints rather than rationale, titles, descriptions, or recommendation prose.
+
+Exact approval philosophy: implementation, verification, and commit approvals each authorize one immutable request. Later-generated work cannot inherit an earlier broader approval. Rejected, stale, mismatched, pending, or missing approvals block the workflow.
+
+Replay prevention: workflow resume is state-driven and idempotent; compare-and-swap transitions protect side-effect stages; interrupted `executing`, `verifying`, and `committing` states recover blocked instead of replaying.
+
+Trust boundary: callers cannot supply candidate commands, paths, evidence, approval overrides, verification overrides, or commit scope. Candidate commits are local only and limited to exact reviewed repository-relative files.

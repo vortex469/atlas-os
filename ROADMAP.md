@@ -67,3 +67,24 @@ Planned provider-neutral catalog and compatibility subsystem. D0 architecture an
 - Cross-provider reasoning
 - Voice interaction
 - Conversational operations
+
+## Atlas v0.6 roadmap status
+
+### Completed
+
+- Phase 3 functional candidate workflow from Discovery compatibility evidence through execution candidate, planning intake, Agent planning, workflow shell, immutable implementation request, exact approvals, execution, verification evidence, deterministic review, exact commit approval, local commit, and completed workflow.
+- P3.14A hardening: deterministic end-to-end coverage, machine-readable audit-chain validation, restart and recovery matrix coverage, deterministic concurrency coverage, commit-path security hardening, strict caller-controlled request validation, API route-contract regression coverage, and roadmap workflow regression coverage.
+
+### Planned
+
+#### Phase 4: new execution intents
+
+Future execution intents such as `restart-service`, `backup`, `restore`, `install-provider`, and `update-image` require separate architecture, contracts, exact approvals, recovery behavior, security review, and end-to-end tests.
+
+#### Phase 5: distributed orchestration
+
+Distributed orchestration, clustering, cross-host recovery, and advanced provider execution require a persistence and coordination design beyond current local Agent state.
+
+### Future ideas
+
+Dynamic discovery sources, semantic search, Mission Control candidate controls, release workflows, and rollback automation remain future ideas. They are not part of v0.6.

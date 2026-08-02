@@ -50,3 +50,14 @@ release boundaries.
 - `v0.3.0-alpha2` — reusable knowledge-engine assessment rules.
 - `v0.3.0-alpha1` — Atlas Intelligence Engine and summary API.
 - `v0.2.0` — typed ACE policy engine.
+
+### Architecture
+
+- Completed Phase 3 candidate workflow from Discovery compatibility evidence through local Git commit.
+- Added deterministic end-to-end candidate workflow coverage, audit-chain validation, recovery matrix coverage, concurrency hardening, commit-path security hardening, strict request validation, and route-contract regression coverage.
+- Documented v0.6 boundaries: only `update-compose-stack` is supported; Atlas does not push, tag, release, deploy remotely, auto-approve, auto-execute, or roll back changes.
+
+### Security
+
+- Candidate commits are constrained to exact reviewed files and reject unsafe paths such as `.git/`, `jcode/`, `logs/`, absolute paths, parent traversal, duplicates, empty paths, symlink escape, and unrelated changed files.
+- Caller-controlled Phase 3 request bodies use strict validation so input cannot broaden command, path, approval, verification, evidence, or commit scope.
