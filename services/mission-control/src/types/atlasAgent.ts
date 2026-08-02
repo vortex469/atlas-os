@@ -125,6 +125,24 @@ export interface WorkflowImplementationRequestSummary {
     translator_version: string | null;
 }
 
+export interface WorkflowTimelineStage {
+    name: string;
+    status: "completed" | "current" | "waiting" | "blocked" | "failed" | string;
+}
+
+export interface WorkflowExecutionSummary {
+    execution_status: string | null;
+    started_at: string | null;
+    completed_at: string | null;
+    result: string | null;
+    changed_files_count: number;
+    tool: string | null;
+    working_directory: string | null;
+    repository: string | null;
+    changed_files: string[];
+    execution_request_id: string | null;
+}
+
 export interface WorkflowDetailResponse {
     workflow_id: string;
     workflow_source: string;
@@ -139,6 +157,8 @@ export interface WorkflowDetailResponse {
     translator_version: string | null;
     affected_files: string[];
     implementation_request: WorkflowImplementationRequestSummary | null;
+    timeline: WorkflowTimelineStage[];
+    execution: WorkflowExecutionSummary;
 }
 
 export type WorkflowImplementationDecision = "approve" | "reject";

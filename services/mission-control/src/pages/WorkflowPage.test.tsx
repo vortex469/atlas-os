@@ -40,6 +40,29 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
             repository: "/opt/atlas",
             translator_version: "candidate-translator-v1",
         },
+        timeline: [
+            { name: "Execution Candidate", status: "completed" },
+            { name: "Planning Session", status: "completed" },
+            { name: "Candidate Plan", status: "completed" },
+            { name: "Workflow", status: "completed" },
+            { name: "Implementation Approval", status: "current" },
+            { name: "Execution", status: "waiting" },
+            { name: "Verification", status: "waiting" },
+            { name: "Review", status: "waiting" },
+            { name: "Commit", status: "waiting" },
+        ],
+        execution: {
+            execution_status: null,
+            started_at: null,
+            completed_at: null,
+            result: null,
+            changed_files_count: 0,
+            tool: null,
+            working_directory: null,
+            repository: "/opt/atlas",
+            changed_files: [],
+            execution_request_id: null,
+        },
         ...overrides,
     };
 }
@@ -146,7 +169,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByText("Implementation ✔")).toBeInTheDocument();
-        expect(screen.getByText("Execution ○")).toBeInTheDocument();
+        expect(screen.getByText("Execution ✔")).toBeInTheDocument();
         expect(screen.getByText("Verification ○")).toBeInTheDocument();
         expect(screen.getByText("Commit ○")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute/i })).not.toBeInTheDocument();

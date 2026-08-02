@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import {
@@ -6,42 +6,56 @@ import {
     getWorkflowDetail,
     submitWorkflowImplementationApproval,
 } from "../api/atlas-agent";
+import { ExecutionTimeline } from "./ExecutionTimeline";
 import type {
     WorkflowDetailResponse,
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
 } from "../types/atlasAgent";
 
+type LoadMode = "initial" | "refresh";
+
 export function WorkflowPage() {
     const { workflowId = "" } = useParams<{ workflowId: string }>();
     const [workflow, setWorkflow] = useState<WorkflowDetailResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [loadError, setLoadError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [approvalError, setApprovalError] = useState<string | null>(null);
     const [approvalResult, setApprovalResult] = useState<WorkflowImplementationApprovalResponse | null>(null);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        async function loadWorkflow() {
-            setIsLoading(true);
-            setLoadError(null);
-            try {
-                const detail = await getWorkflowDetail(workflowId);
-                if (!cancelled) setWorkflow(detail);
-            } catch (error) {
-                if (!cancelled) setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
-            } finally {
-                if (!cancelled) setIsLoading(false);
-            }
+    const loadWorkflow = useCallback(async (mode: LoadMode = "initial") => {
+        if (mode === "initial") setIsLoading(true);
+        if (mode === "refresh") setIsRefreshing(true);
+        setLoadError(null);
+        try {
+            const detail = await getWorkflowDetail(workflowId);
+            setWorkflow(detail);
+        } catch (error) {
+            setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
+        } finally {
+            if (mode === "initial") setIsLoading(false);
+            if (mode === "refresh") setIsRefreshing(false);
         }
-
-        void loadWorkflow();
-        return () => {
-            cancelled = true;
-        };
     }, [workflowId]);
+
+    useEffect(() => {
+        void Promise.resolve().then(() => loadWorkflow());
+    }, [loadWorkflow]);
+
+    useEffect(() => {
+        if (workflow?.workflow_state !== "executing") return undefined;
+        const interval = window.setInterval(() => {
+            void loadWorkflow("refresh");
+        }, 5_000);
+        return () => window.clearInterval(interval);
+    }, [loadWorkflow, workflow?.workflow_state]);
+
+    function refreshWorkflow() {
+        if (isRefreshing) return;
+        void loadWorkflow("refresh");
+    }
 
     async function submitDecision(decision: WorkflowImplementationDecision) {
         if (!workflow || workflow.workflow_state !== "awaiting_implementation_approval" || isSubmitting) return;
@@ -135,6 +149,8 @@ export function WorkflowPage() {
 
             <ImplementationRequestSection workflow={workflow} />
 
+            <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} onRefresh={refreshWorkflow} />
+
             <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="approval-controls-heading" className="text-lg font-semibold text-white">Implementation approval</h2>
                 <p className="mt-2 text-sm text-slate-400">
@@ -194,18 +210,18 @@ function ImplementationRequestSection({ workflow }: { workflow: WorkflowDetailRe
 
 function WorkflowRail() {
     const steps = ["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow", "Implementation", "Execution", "Verification", "Review", "Commit"];
-    const complete = new Set(["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow", "Implementation"]);
+    const complete = new Set(["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow", "Implementation", "Execution"]);
 
     return (
         <section aria-label="Read-only workflow rail" className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
             <ol className="grid gap-2 text-sm md:grid-cols-3 xl:grid-cols-9">
                 {steps.map((step) => {
-                    const isImplementation = step === "Implementation";
+                    const isExecution = step === "Execution";
                     const isComplete = complete.has(step);
                     return (
                         <li key={step} className={[
                             "rounded-lg border px-3 py-2",
-                            isImplementation ? "border-blue-400 bg-blue-500/10 text-blue-200" : isComplete ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950/50 text-slate-500",
+                            isExecution ? "border-blue-400 bg-blue-500/10 text-blue-200" : isComplete ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950/50 text-slate-500",
                         ].join(" ")}
                         >
                             <span className="block font-medium">{step}{isComplete ? " ✔" : " ○"}</span>

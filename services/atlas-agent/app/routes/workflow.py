@@ -181,6 +181,24 @@ class WorkflowImplementationRequestSummary(BaseModel):
     translator_version: str | None
 
 
+class WorkflowTimelineStageResponse(BaseModel):
+    name: str
+    status: str
+
+
+class WorkflowExecutionSummaryResponse(BaseModel):
+    execution_status: str | None
+    started_at: str | None
+    completed_at: str | None
+    result: str | None
+    changed_files_count: int
+    tool: str | None
+    working_directory: str | None
+    repository: str | None
+    changed_files: list[str]
+    execution_request_id: str | None
+
+
 class WorkflowDetailResponse(BaseModel):
     """Read-only workflow implementation approval detail."""
 
@@ -197,6 +215,8 @@ class WorkflowDetailResponse(BaseModel):
     translator_version: str | None
     affected_files: list[str]
     implementation_request: WorkflowImplementationRequestSummary | None
+    timeline: list[WorkflowTimelineStageResponse]
+    execution: WorkflowExecutionSummaryResponse
 
 
 class WorkflowImplementationApprovalRequest(BaseModel):
@@ -315,6 +335,75 @@ def _approval_status(request: Request, approval_id: str | None) -> str:
     return result.decision.status.value
 
 
+def _workflow_execution_summary(workflow) -> WorkflowExecutionSummaryResponse:
+    execution = workflow.execution_result
+    implementation = workflow.candidate_implementation_request
+    changed_files = [str(path) for path in workflow.changed_files]
+    return WorkflowExecutionSummaryResponse(
+        execution_status=execution.status.value if execution else None,
+        started_at=None,
+        completed_at=None,
+        result=execution.status.value if execution else None,
+        changed_files_count=len(changed_files),
+        tool=execution.argv[0] if execution and execution.argv else None,
+        working_directory=str(execution.working_directory) if execution else None,
+        repository=str(implementation.repository_root) if implementation else None,
+        changed_files=changed_files,
+        execution_request_id=execution.request_id if execution else None,
+    )
+
+
+def _stage_status(workflow, stage: str, approval_status: str) -> str:
+    state = workflow.state.value
+    execution = workflow.execution_result
+    if stage in {"Execution Candidate", "Planning Session", "Candidate Plan", "Workflow"}:
+        return "completed"
+    if stage == "Implementation Approval":
+        if approval_status == "approved":
+            return "completed"
+        if approval_status == "rejected":
+            return "blocked"
+        return "current" if state == "awaiting_implementation_approval" else "waiting"
+    if stage == "Execution":
+        if state == "executing":
+            return "current"
+        if execution is None:
+            return "waiting" if approval_status == "approved" else "waiting"
+        return "completed" if execution.status.value == "succeeded" else "failed"
+    if stage == "Verification":
+        if state in {"awaiting_verification_approval", "verifying"}:
+            return "current"
+        if workflow.verification_report is not None or workflow.candidate_verification_evidence is not None:
+            return "completed"
+        return "waiting"
+    if stage == "Review":
+        if workflow.review_report is not None or workflow.candidate_review_result is not None:
+            return "completed"
+        return "waiting"
+    if stage == "Commit":
+        if state in {"awaiting_commit_approval", "committing"}:
+            return "current"
+        if workflow.commit_result is not None:
+            return "completed"
+        return "waiting"
+    return "waiting"
+
+
+def _workflow_timeline(workflow, approval_status: str) -> list[WorkflowTimelineStageResponse]:
+    stages = [
+        "Execution Candidate",
+        "Planning Session",
+        "Candidate Plan",
+        "Workflow",
+        "Implementation Approval",
+        "Execution",
+        "Verification",
+        "Review",
+        "Commit",
+    ]
+    return [WorkflowTimelineStageResponse(name=stage, status=_stage_status(workflow, stage, approval_status)) for stage in stages]
+
+
 def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailResponse:
     workflow = request.app.state.container.workflow_state.get_session(workflow_id)
     if workflow is None:
@@ -336,6 +425,7 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
             translator_version=implementation.translator_version,
         )
 
+    approval_status = _approval_status(request, workflow.candidate_implementation_approval_id)
     return WorkflowDetailResponse(
         workflow_id=workflow.identifier,
         workflow_source=workflow.source.value,
@@ -344,12 +434,14 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         candidate_id=metadata.candidate_id if metadata else None,
         candidate_fingerprint=metadata.candidate_fingerprint if metadata else None,
         plan_fingerprint=metadata.candidate_plan_fingerprint if metadata else None,
-        implementation_approval_status=_approval_status(request, workflow.candidate_implementation_approval_id),
+        implementation_approval_status=approval_status,
         repository=str(implementation.repository_root) if implementation else None,
         working_directory=str(implementation.working_directory) if implementation else None,
         translator_version=implementation.translator_version if implementation else None,
         affected_files=[str(path) for path in implementation.affected_files] if implementation else [],
         implementation_request=summary,
+        timeline=_workflow_timeline(workflow, approval_status),
+        execution=_workflow_execution_summary(workflow),
     )
 
 

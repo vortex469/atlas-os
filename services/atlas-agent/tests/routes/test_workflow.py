@@ -21,6 +21,7 @@ from app.candidate_planning.models import CandidateImplementationRequest
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
 from app.candidate_planning.verification import CandidateVerificationFailureCode
+from app.execution.models import ExecutionResult, ExecutionStatus
 from app.config.settings import Settings
 from app.main import create_app
 from app.model_providers.models import ModelResponse
@@ -638,6 +639,20 @@ def test_candidate_workflow_implementation_request_is_read_only(tmp_path: Path, 
         "repository": str(tmp_path),
         "translator_version": "candidate-translator-v1",
     }
+    assert body["timeline"][0] == {"name": "Execution Candidate", "status": "completed"}
+    assert {stage["name"]: stage["status"] for stage in body["timeline"]}["Execution"] == "waiting"
+    assert body["execution"] == {
+        "execution_status": None,
+        "started_at": None,
+        "completed_at": None,
+        "result": None,
+        "changed_files_count": 0,
+        "tool": None,
+        "working_directory": None,
+        "repository": str(tmp_path),
+        "changed_files": [],
+        "execution_request_id": None,
+    }
     assert "argv" not in body
     assert "requested_command" not in body
 
@@ -699,3 +714,48 @@ def test_candidate_workflow_implementation_approval_conflict_after_decision(tmp_
 
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "approval_already_decided"
+
+
+def test_candidate_workflow_implementation_request_includes_execution_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        execution_result=ExecutionResult(
+            request_id="exec-123",
+            checkpoint_id="impl-request-123",
+            argv=("docker-compose", "up", "-d"),
+            working_directory=tmp_path / "services/demo",
+            status=ExecutionStatus.SUCCEEDED,
+            return_code=0,
+            stdout="ok",
+            stderr="",
+            duration_seconds=1.2,
+        ),
+        changed_files=(Path("compose.yaml"), Path("services/demo/Dockerfile")),
+    )
+    save_candidate_workflow(container, workflow)
+    stored = container.approval_repository.get_request("approval-workflow-123")
+    container.approval_repository.update_decision(
+        "approval-workflow-123",
+        ApprovalDecision(request=stored.decision.request, status=ApprovalStatus.APPROVED),
+    )
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/implementation-request")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert {stage["name"]: stage["status"] for stage in body["timeline"]}["Execution"] == "completed"
+    assert body["execution"] == {
+        "execution_status": "succeeded",
+        "started_at": None,
+        "completed_at": None,
+        "result": "succeeded",
+        "changed_files_count": 2,
+        "tool": "docker-compose",
+        "working_directory": str(tmp_path / "services/demo"),
+        "repository": str(tmp_path),
+        "changed_files": ["compose.yaml", "services/demo/Dockerfile"],
+        "execution_request_id": "exec-123",
+    }
+    assert "argv" not in body["execution"]
