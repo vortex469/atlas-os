@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime
+from pathlib import Path
 
 from app.candidate_planning.models import (
+    CandidatePlanningContext,
     CandidatePlanningFailureCode,
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
@@ -16,6 +19,11 @@ from app.candidate_planning.models import (
     build_candidate_planning_session_id,
     is_supported_execution_intent,
 )
+from app.candidate_planning.planner import (
+    RepositoryResolver,
+    UpdateComposeStackCandidatePlanner,
+    unsupported_decision,
+)
 from app.candidate_planning.state import CandidatePlanningStateStore
 from app.core_client.client import AtlasCoreClient
 from app.core_client.exceptions import AtlasCoreClientError
@@ -25,6 +33,9 @@ from app.persistence.snapshot import (
     CandidatePlanningSessionsState,
     StatePersistenceError,
 )
+from app.planning.exceptions import PlanningValidationError
+from app.repository.exceptions import RepositoryInspectionError
+from app.repository.inspector import GitInspector
 
 
 class CandidatePlanningServiceError(RuntimeError):
@@ -85,12 +96,14 @@ def _response_from_session(session: CandidatePlanningSession) -> CandidatePlanRe
     return CandidatePlanResponse(
         session_id=session.identifier,
         candidate_id=session.candidate_id,
-        status=session.status,
+        status=session.planning_status,
         planning_allowed=session.status is CandidatePlanningSessionStatus.READY_FOR_PLANNING,
         intake_status=session.snapshot.intake_status,
         intake_reason_codes=session.snapshot.intake_reason_codes,
         candidate_fingerprint=session.candidate_fingerprint,
         unsupported_reason=session.unsupported_reason,
+        plan=session.plan,
+        planning_failure=session.planning_failure,
     )
 
 
@@ -151,11 +164,17 @@ class CandidatePlanningService:
         core_client: AtlasCoreClient,
         state_store: CandidatePlanningStateStore,
         state_persistence: AgentStatePersistenceCoordinator | None = None,
+        repository_resolver: RepositoryResolver | None = None,
+        repository_inspector_factory: Callable[[Path], GitInspector] = GitInspector,
+        planner: UpdateComposeStackCandidatePlanner | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._core_client = core_client
         self._state_store = state_store
         self._state_persistence = state_persistence
+        self._repository_resolver = repository_resolver
+        self._repository_inspector_factory = repository_inspector_factory
+        self._planner = planner or UpdateComposeStackCandidatePlanner()
         self._clock = clock or (lambda: datetime.now(UTC))
 
     async def create_planning_session(
@@ -218,6 +237,75 @@ class CandidatePlanningService:
             ) from error
         return _response_from_session(stored_session)
 
+    def get_session(self, session_id: str) -> CandidatePlanningSession | None:
+        """Return the current candidate-planning session, if present."""
+
+        return self._state_store.get_session(session_id)
+
+    def get_plan(self, session_id: str):
+        """Return the current candidate plan, if present."""
+
+        session = self.get_session(session_id)
+        return None if session is None else session.plan
+
+    async def generate_plan(self, session_id: str) -> CandidatePlanResponse:
+        """Generate or reuse one read-only plan for a candidate-planning session."""
+
+        session = self._state_store.get_session(session_id)
+        if session is None:
+            return CandidatePlanResponse(
+                session_id=None,
+                candidate_id=session_id,
+                status=CandidatePlanningSessionStatus.PLANNING_FAILED,
+                planning_allowed=False,
+                intake_status=CoreCandidatePlanningIntakeStatus.NOT_FOUND,
+                intake_reason_codes=(CandidatePlanningFailureCode.SESSION_NOT_FOUND.value,),
+            )
+        if session.planning_status is CandidatePlanningSessionStatus.PLAN_READY:
+            return _response_from_session(session)
+        if session.planning_status is CandidatePlanningSessionStatus.STALE_BEFORE_PLANNING:
+            return _response_from_session(session)
+        if session.status is not CandidatePlanningSessionStatus.READY_FOR_PLANNING:
+            updated = self._with_failure(
+                session,
+                CandidatePlanningSessionStatus.PLANNING_FAILED,
+                CandidatePlanningFailureCode.INVALID_SESSION_STATUS,
+                "Candidate planning session is not ready for planning.",
+            )
+            return _response_from_session(self._persist_session_update(updated))
+        if not is_supported_execution_intent(session.snapshot.execution_intent):
+            updated = self._with_failure(
+                session,
+                CandidatePlanningSessionStatus.PLANNING_NOT_SUPPORTED,
+                CandidatePlanningFailureCode.UNSUPPORTED_INTENT,
+                "Atlas Agent cannot plan this execution intent yet.",
+            )
+            return _response_from_session(self._persist_session_update(updated))
+
+        started = self._persist_session_update(
+            replace(
+                session,
+                planning_status=CandidatePlanningSessionStatus.PLANNING,
+                planning_started_at=self._clock(),
+                planning_failure=None,
+            )
+        )
+        decision = await self._plan_started_session(started)
+        completed = replace(
+            started,
+            planning_status=decision.status,
+            plan=decision.plan,
+            planning_failure=decision.failure,
+            planning_completed_at=self._clock(),
+            last_revalidation_fingerprint=(
+                decision.plan.revalidated_candidate_fingerprint if decision.plan else None
+            ),
+            last_revalidation_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING
+            if decision.plan
+            else started.last_revalidation_status,
+        )
+        return _response_from_session(self._persist_session_update(completed))
+
     def _store_create_or_reuse(
         self,
         session: CandidatePlanningSession,
@@ -230,3 +318,164 @@ class CandidatePlanningService:
             raise _ConflictingActiveSessionError
         self._state_store.create_session(session)
         return session
+
+    async def _plan_started_session(self, session: CandidatePlanningSession):
+        try:
+            intake = await self._core_client.validate_candidate_planning_intake(
+                session.candidate_id,
+                expected_candidate_fingerprint=session.candidate_fingerprint,
+            )
+        except AtlasCoreClientError:
+            return unsupported_decision(
+                CandidatePlanningFailureCode.ATLAS_CORE_UNAVAILABLE,
+                "Atlas Core planning intake is unavailable.",
+            )
+        if intake.status != CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING.value:
+            return self._decision_for_rejected_intake(intake)
+        try:
+            snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
+        except CandidatePlanningServiceError:
+            return unsupported_decision(
+                CandidatePlanningFailureCode.PLANNING_VALIDATION_FAILED,
+                "Atlas Core returned an invalid planning-intake response.",
+            )
+        if not _matches_session_snapshot(session.snapshot, snapshot):
+            return unsupported_decision(
+                CandidatePlanningFailureCode.CANDIDATE_STALE,
+                "Candidate changed before planning.",
+            )
+        if snapshot.candidate_fingerprint != session.candidate_fingerprint:
+            return unsupported_decision(
+                CandidatePlanningFailureCode.CANDIDATE_STALE,
+                "Candidate fingerprint changed before planning.",
+            )
+        resolver = self._repository_resolver
+        if resolver is None:
+            return unsupported_decision(
+                CandidatePlanningFailureCode.REPOSITORY_MAPPING_UNAVAILABLE,
+                "No trusted repository resolver is configured for candidate planning.",
+            )
+        repository_root = resolver.resolve(
+            target_id=session.snapshot.target_id,
+            target_type=session.snapshot.target_type,
+        )
+        if repository_root is None:
+            return unsupported_decision(
+                CandidatePlanningFailureCode.REPOSITORY_MAPPING_UNAVAILABLE,
+                "Candidate target does not map to a trusted Agent repository.",
+            )
+        try:
+            repository_snapshot = self._repository_inspector_factory(repository_root).inspect()
+        except (OSError, RepositoryInspectionError, ValueError):
+            return unsupported_decision(
+                CandidatePlanningFailureCode.REPOSITORY_INSPECTION_FAILED,
+                "Trusted repository could not be inspected for candidate planning.",
+            )
+        try:
+            plan = self._planner.create_plan(
+                context=CandidatePlanningContext(
+                    session_id=session.identifier,
+                    candidate_id=session.candidate_id,
+                    candidate_fingerprint=session.candidate_fingerprint,
+                    source_recommendation_id=session.snapshot.source_recommendation_id,
+                    source_subsystem=session.snapshot.source_subsystem,
+                    recommendation_class=session.snapshot.recommendation_class,
+                    catalog_item_id=session.snapshot.catalog_item_id,
+                    target_id=session.snapshot.target_id,
+                    target_type=session.snapshot.target_type,
+                    execution_category=session.snapshot.execution_category,
+                    execution_intent=session.snapshot.execution_intent,
+                    rationale=session.snapshot.rationale,
+                    constraints=session.snapshot.constraints,
+                    evidence_ids=session.snapshot.evidence_ids,
+                    compatibility_assessment_id=session.snapshot.compatibility_assessment_id,
+                    compatibility_status=session.snapshot.compatibility_status,
+                    relationship_ids=session.snapshot.relationship_ids,
+                    repository_root=repository_snapshot.root,
+                    repository_branch=repository_snapshot.branch,
+                    repository_head=repository_snapshot.head_commit,
+                    planning_timestamp=self._clock(),
+                    revalidated_candidate_fingerprint=snapshot.candidate_fingerprint,
+                ),
+                snapshot=repository_snapshot,
+            )
+        except ValueError:
+            return unsupported_decision(
+                CandidatePlanningFailureCode.UNSAFE_PLAN_CONTENT,
+                "Candidate plan contained unsafe content.",
+            )
+        except PlanningValidationError:
+            return unsupported_decision(
+                CandidatePlanningFailureCode.PLANNING_VALIDATION_FAILED,
+                "Candidate plan could not be generated.",
+            )
+        from app.candidate_planning.planner import planning_decision_for_plan
+
+        return planning_decision_for_plan(plan)
+
+    def _decision_for_rejected_intake(self, intake: CoreCandidatePlanningIntakeResponse):
+        status = CoreCandidatePlanningIntakeStatus(intake.status)
+        mapping = {
+            CoreCandidatePlanningIntakeStatus.STALE: CandidatePlanningFailureCode.CANDIDATE_STALE,
+            CoreCandidatePlanningIntakeStatus.EXPIRED: CandidatePlanningFailureCode.CANDIDATE_EXPIRED,
+            CoreCandidatePlanningIntakeStatus.NOT_ELIGIBLE: CandidatePlanningFailureCode.CANDIDATE_NOT_ELIGIBLE,
+            CoreCandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE: CandidatePlanningFailureCode.EVIDENCE_UNAVAILABLE,
+            CoreCandidatePlanningIntakeStatus.NOT_FOUND: CandidatePlanningFailureCode.SESSION_NOT_FOUND,
+        }
+        return unsupported_decision(
+            mapping.get(status, CandidatePlanningFailureCode.PLANNING_VALIDATION_FAILED),
+            "Atlas Core did not accept candidate planning revalidation.",
+        )
+
+    def _with_failure(
+        self,
+        session: CandidatePlanningSession,
+        status: CandidatePlanningSessionStatus,
+        code: CandidatePlanningFailureCode,
+        message: str,
+    ) -> CandidatePlanningSession:
+        from app.candidate_planning.models import CandidatePlanningFailure
+
+        return replace(
+            session,
+            planning_status=status,
+            planning_failure=CandidatePlanningFailure(code=code, message=message),
+            planning_completed_at=self._clock(),
+        )
+
+    def _persist_session_update(
+        self,
+        session: CandidatePlanningSession,
+    ) -> CandidatePlanningSession:
+        try:
+            if self._state_persistence is not None:
+                return self._state_persistence.mutate_candidate_planning(
+                    lambda state: _replace_session(state, session)
+                )
+            self._state_store.replace_session(session)
+            return session
+        except (OSError, ValueError, StatePersistenceError) as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Candidate planning session could not be persisted.",
+            ) from error
+
+
+def _replace_session(
+    state: CandidatePlanningSessionsState,
+    session: CandidatePlanningSession,
+) -> CandidatePlanningSession:
+    state.replace_session(session)
+    return session
+
+
+def _matches_session_snapshot(
+    expected: CandidateSnapshot,
+    actual: CandidateSnapshot,
+) -> bool:
+    return (
+        expected.candidate_id == actual.candidate_id
+        and expected.target_id == actual.target_id
+        and expected.target_type == actual.target_type
+        and expected.execution_intent == actual.execution_intent
+    )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +13,7 @@ from app.candidate_planning.models import (
     CandidatePlanningSessionStatus,
     CandidatePlanRequest,
 )
+from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.service import (
     CandidatePlanningService,
     CandidatePlanningServiceError,
@@ -23,6 +25,7 @@ from app.core_client.models import (
     CoreExecutionCandidateSnapshot,
 )
 from app.persistence.snapshot import StatePersistenceError
+from app.repository.models import RepositorySnapshot
 
 NOW = datetime(2026, 8, 1, 23, 45, tzinfo=UTC)
 
@@ -48,6 +51,22 @@ class FakeCoreClient:
 class FailingPersistence:
     def mutate_candidate_planning(self, mutation):
         raise StatePersistenceError("boom")
+
+
+class FakeInspector:
+    def __init__(self, repository_root: Path) -> None:
+        self.repository_root = repository_root
+
+    def inspect(self) -> RepositorySnapshot:
+        return RepositorySnapshot(
+            root=self.repository_root,
+            branch="feature/atlas-agent",
+            head_commit="abc123",
+            is_clean=True,
+            modified_files=(),
+            staged_files=(),
+            untracked_files=(),
+        )
 
 
 def candidate_snapshot(*, intent: str = "update-compose-stack") -> CoreExecutionCandidateSnapshot:
@@ -109,11 +128,16 @@ def service_with(
     *,
     store: CandidatePlanningStateStore | None = None,
     persistence=None,
+    repository_root: Path | None = None,
 ) -> CandidatePlanningService:
     return CandidatePlanningService(
         core_client=core,  # type: ignore[arg-type]
         state_store=store or CandidatePlanningStateStore(),
         state_persistence=persistence,
+        repository_resolver=RepositoryResolver(repository_root=repository_root)
+        if repository_root is not None
+        else None,
+        repository_inspector_factory=FakeInspector,
         clock=lambda: NOW,
     )
 
@@ -266,3 +290,87 @@ def test_concurrent_duplicate_requests_create_one_session() -> None:
     assert {status for _session_id, status in results} == {
         CandidatePlanningSessionStatus.READY_FOR_PLANNING
     }
+
+
+def test_generate_plan_revalidates_and_persists_plan(tmp_path: Path) -> None:
+    store = CandidatePlanningStateStore()
+    core = FakeCoreClient([accepted_response(), accepted_response()])
+    service = service_with(core, store=store, repository_root=tmp_path)
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+
+    response = run(service.generate_plan(intake.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.PLAN_READY
+    assert response.plan is not None
+    assert response.plan.candidate_id == "candidate-1"
+    assert response.plan.repository_root == tmp_path
+    assert core.calls == [("candidate-1", None), ("candidate-1", "candidate-fingerprint-v1:aaa")]
+    stored = store.get_session(intake.session_id)
+    assert stored is not None
+    assert stored.plan == response.plan
+    assert stored.planning_status is CandidatePlanningSessionStatus.PLAN_READY
+
+
+def test_generate_plan_is_idempotent_after_plan_ready(tmp_path: Path) -> None:
+    core = FakeCoreClient([accepted_response(), accepted_response()])
+    service = service_with(core, repository_root=tmp_path)
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+
+    first = run(service.generate_plan(intake.session_id))
+    second = run(service.generate_plan(intake.session_id))
+
+    assert first.plan == second.plan
+    assert core.calls == [("candidate-1", None), ("candidate-1", "candidate-fingerprint-v1:aaa")]
+
+
+def test_generate_plan_blocks_stale_core_revalidation(tmp_path: Path) -> None:
+    core = FakeCoreClient([accepted_response(), rejected_response("stale")])
+    service = service_with(core, repository_root=tmp_path)
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+
+    response = run(service.generate_plan(intake.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.STALE_BEFORE_PLANNING
+    assert response.plan is None
+    assert response.planning_failure is not None
+    assert response.planning_failure.code is CandidatePlanningFailureCode.CANDIDATE_STALE
+
+
+def test_generate_plan_requires_trusted_repository_mapping() -> None:
+    core = FakeCoreClient([accepted_response(), accepted_response()])
+    service = service_with(core)
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+
+    response = run(service.generate_plan(intake.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.PLANNING_NOT_SUPPORTED
+    assert response.plan is None
+    assert response.planning_failure is not None
+    assert response.planning_failure.code is CandidatePlanningFailureCode.REPOSITORY_MAPPING_UNAVAILABLE
+
+
+def test_generate_plan_rejects_evidence_unavailable(tmp_path: Path) -> None:
+    core = FakeCoreClient([accepted_response(), rejected_response("evidence_unavailable")])
+    service = service_with(core, repository_root=tmp_path)
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+
+    response = run(service.generate_plan(intake.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.STALE_BEFORE_PLANNING
+    assert response.planning_failure is not None
+    assert response.planning_failure.code is CandidatePlanningFailureCode.EVIDENCE_UNAVAILABLE
+
+
+def test_generate_plan_does_not_create_workflow_or_approval(tmp_path: Path) -> None:
+    store = CandidatePlanningStateStore()
+    service = service_with(
+        FakeCoreClient([accepted_response(), accepted_response()]),
+        store=store,
+        repository_root=tmp_path,
+    )
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+
+    response = run(service.generate_plan(intake.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.PLAN_READY
+    assert len(store.export_snapshot()) == 1

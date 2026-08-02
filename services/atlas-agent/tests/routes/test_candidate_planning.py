@@ -1,14 +1,18 @@
 """Tests for candidate-planning HTTP route."""
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from app.candidate_planning.models import (
+    CandidatePlan,
     CandidatePlanningFailureCode,
+    CandidatePlanningSession,
     CandidatePlanningSessionStatus,
     CandidatePlanResponse,
+    CandidateSnapshot,
     CoreCandidatePlanningIntakeStatus,
 )
 from app.candidate_planning.service import CandidatePlanningServiceError
@@ -21,9 +25,23 @@ class FakeCandidatePlanningService:
         self.response = response
         self.error: CandidatePlanningServiceError | None = None
         self.requests = []
+        self.session = None
+        self.plan = None
 
     async def create_planning_session(self, request):
         self.requests.append(request)
+        if self.error is not None:
+            raise self.error
+        return self.response
+
+    def get_session(self, session_id: str):
+        return self.session if self.session and self.session.identifier == session_id else None
+
+    def get_plan(self, session_id: str):
+        return self.plan if self.session and self.session.identifier == session_id else None
+
+    async def generate_plan(self, session_id: str):
+        self.requests.append(session_id)
         if self.error is not None:
             raise self.error
         return self.response
@@ -54,6 +72,77 @@ def ready_response() -> CandidatePlanResponse:
         intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
         intake_reason_codes=(),
         candidate_fingerprint="candidate-fingerprint-v1:aaa",
+    )
+
+
+def planned_response(tmp_path: Path) -> CandidatePlanResponse:
+    plan = CandidatePlan(
+        identifier="candidate-plan-output-candidate-plan-1",
+        session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        title="Prepare compose stack update proposal",
+        objective="Create a minimal repository change proposal.",
+        assumptions=("Planning is read-only.",),
+        constraints=("requires-current-evidence",),
+        proposed_steps=("Inspect trusted compose definitions.",),
+        likely_affected_components=("atlas-compose",),
+        likely_affected_files=(Path("compose.production.yaml"),),
+        verification_strategy=("Validate later after workflow conversion.",),
+        rollback_considerations=("Use version control rollback.",),
+        unresolved_questions=(),
+        evidence_ids=("evidence-1",),
+        created_at=datetime(2026, 8, 2, tzinfo=UTC),
+        repository_root=tmp_path,
+        repository_branch="feature/atlas-agent",
+        repository_head="abc123",
+        revalidated_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+    )
+    return CandidatePlanResponse(
+        session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        status=CandidatePlanningSessionStatus.PLAN_READY,
+        planning_allowed=False,
+        intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+        intake_reason_codes=(),
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        plan=plan,
+    )
+
+
+def session_with_plan(tmp_path: Path) -> CandidatePlanningSession:
+    timestamp = datetime(2026, 8, 2, tzinfo=UTC)
+    return CandidatePlanningSession(
+        identifier="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        status=CandidatePlanningSessionStatus.READY_FOR_PLANNING,
+        snapshot=CandidateSnapshot(
+            candidate_id="candidate-1",
+            candidate_fingerprint="candidate-fingerprint-v1:aaa",
+            source_recommendation_id="finding-1",
+            source_subsystem="orion",
+            recommendation_class="update_compose_stack",
+            catalog_item_id="frigate",
+            target_id="atlas-compose",
+            target_type="repository",
+            execution_category="update",
+            execution_intent="update-compose-stack",
+            required_approval_level="standard",
+            rationale="Update compose stack.",
+            constraints=("requires-current-evidence",),
+            evidence_ids=("evidence-1",),
+            compatibility_assessment_id="assessment-1",
+            compatibility_status="compatible",
+            relationship_ids=(),
+            expires_at=None,
+            intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+            intake_reason_codes=(),
+            intake_timestamp=timestamp,
+        ),
+        created_at=timestamp,
+        planning_status=CandidatePlanningSessionStatus.PLAN_READY,
+        plan=planned_response(tmp_path).plan,
     )
 
 
@@ -115,5 +204,33 @@ def test_openapi_exposes_planning_only_endpoint(monkeypatch, tmp_path: Path) -> 
     schema = client.get("/openapi.json").json()
 
     assert set(schema["paths"]["/candidate-planning"]) == {"post"}
+    assert set(schema["paths"]["/candidate-planning/{session_id}"]) == {"get"}
+    assert set(schema["paths"]["/candidate-planning/{session_id}/plan"]) == {"get", "post"}
     route_schema = schema["paths"]["/candidate-planning"]["post"]
     assert "workflow" not in route_schema["operationId"].lower()
+
+
+def test_generate_plan_route_accepts_empty_body_only(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService(planned_response(tmp_path))
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post("/candidate-planning/candidate-plan-1/plan")
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["status"] == "plan_ready"
+    assert payload["plan"]["likely_affected_files"] == ["compose.production.yaml"]
+    assert service.requests == ["candidate-plan-1"]
+
+
+def test_get_plan_route_returns_existing_plan_without_generation(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService(planned_response(tmp_path))
+    service.session = session_with_plan(tmp_path)
+    service.plan = service.session.plan
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.get("/candidate-planning/candidate-plan-1/plan")
+
+    assert response.status_code == 200
+    assert response.json()["identifier"] == "candidate-plan-output-candidate-plan-1"
+    assert service.requests == []

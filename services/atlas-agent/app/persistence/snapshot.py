@@ -25,6 +25,9 @@ from app.approval.models import (
 )
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.models import (
+    CandidatePlan,
+    CandidatePlanningFailure,
+    CandidatePlanningFailureCode,
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
     CandidateSnapshot,
@@ -184,6 +187,16 @@ class CandidatePlanningSessionsState:
 
     def get_session(self, identifier: str) -> CandidatePlanningSession | None:
         return self.sessions.get(identifier)
+
+    def replace_session(self, session: CandidatePlanningSession) -> None:
+        if not session.identifier.strip():
+            raise ValueError("Candidate planning session identifier must not be blank")
+        if session.identifier not in self.sessions:
+            raise ValueError(
+                "Candidate planning session identifier does not exist: "
+                f"{session.identifier}"
+            )
+        self.sessions[session.identifier] = session
 
     def snapshot(self) -> CandidatePlanningStateSnapshot:
         return dict(self.sessions)
@@ -898,12 +911,103 @@ def _decode_candidate_snapshot(payload: dict[str, Any]) -> CandidateSnapshot:
     )
 
 
+def _encode_candidate_planning_failure(
+    failure: CandidatePlanningFailure | None,
+) -> dict[str, Any] | None:
+    if failure is None:
+        return None
+    return {"code": failure.code.value, "message": failure.message}
+
+
+def _decode_candidate_planning_failure(
+    payload: Any,
+) -> CandidatePlanningFailure | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid candidate planning failure")
+    return CandidatePlanningFailure(
+        code=CandidatePlanningFailureCode(_require_str(payload, "code")),
+        message=_require_str(payload, "message"),
+    )
+
+
+def _encode_candidate_plan(plan: CandidatePlan | None) -> dict[str, Any] | None:
+    if plan is None:
+        return None
+    return {
+        "assumptions": list(plan.assumptions),
+        "candidate_fingerprint": plan.candidate_fingerprint,
+        "candidate_id": plan.candidate_id,
+        "constraints": list(plan.constraints),
+        "created_at": _encode_datetime(plan.created_at),
+        "evidence_ids": list(plan.evidence_ids),
+        "identifier": plan.identifier,
+        "likely_affected_components": list(plan.likely_affected_components),
+        "likely_affected_files": [_path(path) for path in plan.likely_affected_files],
+        "objective": plan.objective,
+        "proposed_steps": list(plan.proposed_steps),
+        "repository_branch": plan.repository_branch,
+        "repository_head": plan.repository_head,
+        "repository_root": _path(plan.repository_root),
+        "revalidated_candidate_fingerprint": plan.revalidated_candidate_fingerprint,
+        "rollback_considerations": list(plan.rollback_considerations),
+        "session_id": plan.session_id,
+        "title": plan.title,
+        "unresolved_questions": list(plan.unresolved_questions),
+        "verification_strategy": list(plan.verification_strategy),
+    }
+
+
+def _decode_candidate_plan(payload: Any) -> CandidatePlan | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid candidate plan")
+    return CandidatePlan(
+        identifier=_require_str(payload, "identifier"),
+        session_id=_require_str(payload, "session_id"),
+        candidate_id=_require_str(payload, "candidate_id"),
+        candidate_fingerprint=_require_str(payload, "candidate_fingerprint"),
+        title=_require_str(payload, "title"),
+        objective=_require_str(payload, "objective"),
+        assumptions=_tuple_str(payload.get("assumptions", [])),
+        constraints=_tuple_str(payload.get("constraints", [])),
+        proposed_steps=_tuple_str(payload.get("proposed_steps", [])),
+        likely_affected_components=_tuple_str(
+            payload.get("likely_affected_components", [])
+        ),
+        likely_affected_files=_tuple_path(payload.get("likely_affected_files", [])),
+        verification_strategy=_tuple_str(payload.get("verification_strategy", [])),
+        rollback_considerations=_tuple_str(payload.get("rollback_considerations", [])),
+        unresolved_questions=_tuple_str(payload.get("unresolved_questions", [])),
+        evidence_ids=_tuple_str(payload.get("evidence_ids", [])),
+        created_at=_decode_datetime(payload.get("created_at")),
+        repository_root=_decode_path(payload.get("repository_root")),
+        repository_branch=payload.get("repository_branch"),
+        repository_head=payload.get("repository_head"),
+        revalidated_candidate_fingerprint=_require_str(
+            payload,
+            "revalidated_candidate_fingerprint",
+        ),
+    )
+
+
 def _encode_candidate_planning_session(session: CandidatePlanningSession) -> dict[str, Any]:
     return {
         "candidate_fingerprint": session.candidate_fingerprint,
         "candidate_id": session.candidate_id,
         "created_at": _encode_datetime(session.created_at),
         "identifier": session.identifier,
+        "last_revalidation_fingerprint": session.last_revalidation_fingerprint,
+        "last_revalidation_status": session.last_revalidation_status.value
+        if session.last_revalidation_status is not None
+        else None,
+        "plan": _encode_candidate_plan(session.plan),
+        "planning_completed_at": _encode_datetime(session.planning_completed_at),
+        "planning_failure": _encode_candidate_planning_failure(session.planning_failure),
+        "planning_started_at": _encode_datetime(session.planning_started_at),
+        "planning_status": session.planning_status.value,
         "snapshot": _encode_candidate_snapshot(session.snapshot),
         "status": session.status.value,
         "unsupported_reason": session.unsupported_reason,
@@ -921,6 +1025,23 @@ def _decode_candidate_planning_session(payload: Any) -> CandidatePlanningSession
         snapshot=_decode_candidate_snapshot(_require_dict(payload, "snapshot")),
         created_at=_decode_datetime(payload.get("created_at")),
         unsupported_reason=payload.get("unsupported_reason"),
+        planning_status=CandidatePlanningSessionStatus(
+            payload.get("planning_status", CandidatePlanningSessionStatus.READY_FOR_PLANNING.value)
+        ),
+        plan=_decode_candidate_plan(payload.get("plan")),
+        planning_failure=_decode_candidate_planning_failure(
+            payload.get("planning_failure")
+        ),
+        planning_started_at=_decode_optional_datetime(payload.get("planning_started_at")),
+        planning_completed_at=_decode_optional_datetime(
+            payload.get("planning_completed_at")
+        ),
+        last_revalidation_fingerprint=payload.get("last_revalidation_fingerprint"),
+        last_revalidation_status=CoreCandidatePlanningIntakeStatus(
+            payload["last_revalidation_status"]
+        )
+        if payload.get("last_revalidation_status") is not None
+        else None,
     )
 
 

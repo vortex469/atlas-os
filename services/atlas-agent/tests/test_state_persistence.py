@@ -19,6 +19,7 @@ from app.approval.models import (
 )
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.models import (
+    CandidatePlan,
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
     CandidateSnapshot,
@@ -198,6 +199,32 @@ def candidate_planning_session() -> CandidatePlanningSession:
     )
 
 
+def candidate_plan(root: Path) -> CandidatePlan:
+    timestamp = datetime(2026, 8, 1, 23, 46, tzinfo=timezone.utc)
+    return CandidatePlan(
+        identifier="candidate-plan-output-candidate-plan-1",
+        session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        title="Prepare compose stack update proposal",
+        objective="Create a minimal repository change proposal.",
+        assumptions=("Planning is read-only.",),
+        constraints=("requires-current-evidence",),
+        proposed_steps=("Inspect trusted compose definitions.",),
+        likely_affected_components=("atlas-compose",),
+        likely_affected_files=(Path("compose.production.yaml"),),
+        verification_strategy=("Validate later after workflow conversion.",),
+        rollback_considerations=("Use version control rollback.",),
+        unresolved_questions=(),
+        evidence_ids=("evidence-1",),
+        created_at=timestamp,
+        repository_root=root,
+        repository_branch="feature/atlas-agent",
+        repository_head="abc123",
+        revalidated_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+    )
+
+
 def test_missing_snapshot_starts_empty(tmp_path: Path) -> None:
     workflow_state = WorkflowStateStore()
     approvals = ApprovalRepository()
@@ -245,6 +272,44 @@ def test_candidate_planning_session_round_trips_without_workflow_side_effects(
     assert recovered_candidate_state.get_session(stored_session.identifier) == stored_session
     assert recovered_workflow_state.export_snapshot()[3] == {}
     assert recovered_approvals.get_pending_requests() == []
+
+
+def test_candidate_plan_round_trips_after_restart(tmp_path: Path) -> None:
+    candidate_state = CandidatePlanningStateStore()
+    persistence = coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        candidate_state,
+    )
+    persistence.initialize()
+    stored_session = replace(
+        candidate_planning_session(),
+        planning_status=CandidatePlanningSessionStatus.PLAN_READY,
+        plan=candidate_plan(tmp_path),
+        planning_completed_at=datetime(2026, 8, 1, 23, 47, tzinfo=timezone.utc),
+        last_revalidation_fingerprint="candidate-fingerprint-v1:aaa",
+        last_revalidation_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+    )
+
+    persistence.mutate_candidate_planning(
+        lambda state: state.create_session(stored_session)
+    )
+
+    recovered_candidate_state = CandidatePlanningStateStore()
+    recovered = coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        recovered_candidate_state,
+    )
+    recovered.initialize()
+
+    recovered_session = recovered_candidate_state.get_session(stored_session.identifier)
+    assert recovered_session == stored_session
+    assert recovered_session is not None
+    assert recovered_session.plan == stored_session.plan
+    assert recovered_session.planning_status is CandidatePlanningSessionStatus.PLAN_READY
 
 
 def test_full_workflow_and_approval_round_trip_redacts_env(tmp_path: Path) -> None:

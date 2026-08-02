@@ -6,6 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from pathlib import Path
 
 SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})
 
@@ -16,6 +17,11 @@ class CandidatePlanningSessionStatus(StrEnum):
     INTAKE_REJECTED = "intake_rejected"
     UNSUPPORTED_INTENT = "unsupported_intent"
     READY_FOR_PLANNING = "ready_for_planning"
+    PLANNING = "planning"
+    PLAN_READY = "plan_ready"
+    PLANNING_FAILED = "planning_failed"
+    PLANNING_NOT_SUPPORTED = "planning_not_supported"
+    STALE_BEFORE_PLANNING = "stale_before_planning"
 
 
 class CoreCandidatePlanningIntakeStatus(StrEnum):
@@ -42,6 +48,16 @@ class CandidatePlanningFailureCode(StrEnum):
     UNSUPPORTED_INTENT = "unsupported_intent"
     CONFLICTING_ACTIVE_SESSION = "conflicting_active_session"
     PERSISTENCE_FAILED = "persistence_failed"
+    SESSION_NOT_FOUND = "session_not_found"
+    INVALID_SESSION_STATUS = "invalid_session_status"
+    CANDIDATE_STALE = "candidate_stale"
+    CANDIDATE_EXPIRED = "candidate_expired"
+    CANDIDATE_NOT_ELIGIBLE = "candidate_not_eligible"
+    EVIDENCE_UNAVAILABLE = "evidence_unavailable"
+    REPOSITORY_MAPPING_UNAVAILABLE = "repository_mapping_unavailable"
+    REPOSITORY_INSPECTION_FAILED = "repository_inspection_failed"
+    PLANNING_VALIDATION_FAILED = "planning_validation_failed"
+    UNSAFE_PLAN_CONTENT = "unsafe_plan_content"
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +96,77 @@ class CandidateSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class CandidatePlanningFailure:
+    """Sanitized planning failure attached to a candidate-planning session."""
+
+    code: CandidatePlanningFailureCode
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class CandidatePlanningContext:
+    """Trusted input for read-only candidate-aware plan generation."""
+
+    session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    source_recommendation_id: str
+    source_subsystem: str
+    recommendation_class: str
+    catalog_item_id: str | None
+    target_id: str
+    target_type: str
+    execution_category: str
+    execution_intent: str
+    rationale: str
+    constraints: tuple[str, ...]
+    evidence_ids: tuple[str, ...]
+    compatibility_assessment_id: str | None
+    compatibility_status: str | None
+    relationship_ids: tuple[str, ...]
+    repository_root: Path
+    repository_branch: str | None
+    repository_head: str | None
+    planning_timestamp: datetime
+    revalidated_candidate_fingerprint: str
+
+
+@dataclass(frozen=True, slots=True)
+class CandidatePlan:
+    """Read-only descriptive plan for a candidate-planning session."""
+
+    identifier: str
+    session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    title: str
+    objective: str
+    assumptions: tuple[str, ...]
+    constraints: tuple[str, ...]
+    proposed_steps: tuple[str, ...]
+    likely_affected_components: tuple[str, ...]
+    likely_affected_files: tuple[Path, ...]
+    verification_strategy: tuple[str, ...]
+    rollback_considerations: tuple[str, ...]
+    unresolved_questions: tuple[str, ...]
+    evidence_ids: tuple[str, ...]
+    created_at: datetime
+    repository_root: Path
+    repository_branch: str | None
+    repository_head: str | None
+    revalidated_candidate_fingerprint: str
+
+
+@dataclass(frozen=True, slots=True)
+class PlanningDecision:
+    """Result of attempting read-only candidate-aware plan generation."""
+
+    status: CandidatePlanningSessionStatus
+    plan: CandidatePlan | None = None
+    failure: CandidatePlanningFailure | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class CandidatePlanningSession:
     """Immutable planning-only session for one accepted current candidate."""
 
@@ -90,6 +177,13 @@ class CandidatePlanningSession:
     snapshot: CandidateSnapshot
     created_at: datetime
     unsupported_reason: str | None = None
+    planning_status: CandidatePlanningSessionStatus = CandidatePlanningSessionStatus.READY_FOR_PLANNING
+    plan: CandidatePlan | None = None
+    planning_failure: CandidatePlanningFailure | None = None
+    planning_started_at: datetime | None = None
+    planning_completed_at: datetime | None = None
+    last_revalidation_fingerprint: str | None = None
+    last_revalidation_status: CoreCandidatePlanningIntakeStatus | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +198,8 @@ class CandidatePlanResponse:
     intake_reason_codes: tuple[str, ...]
     candidate_fingerprint: str | None = None
     unsupported_reason: str | None = None
+    plan: CandidatePlan | None = None
+    planning_failure: CandidatePlanningFailure | None = None
 
 
 def build_candidate_planning_session_id(

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.approval.engine import ApprovalEngine
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.service import CandidatePlanningService
 from app.candidate_planning.state import CandidatePlanningStateStore
 from app.config.settings import Settings, load_settings
@@ -113,6 +114,9 @@ def create_app() -> FastAPI:
         core_client=core_client,
         state_store=candidate_planning_state,
         state_persistence=state_persistence,
+        repository_resolver=RepositoryResolver(
+            repository_root=settings.repository_root,
+        ),
     )
     runner = SubprocessRunner()
     context_engine = ContextEngine(core_client)

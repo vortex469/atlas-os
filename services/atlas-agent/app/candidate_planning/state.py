@@ -39,6 +39,17 @@ class CandidatePlanningStateStore:
         with self._lock:
             return self._sessions.get(identifier)
 
+    def replace_session(self, session: CandidatePlanningSession) -> None:
+        if not session.identifier.strip():
+            raise ValueError("Candidate planning session identifier must not be blank")
+        with self._lock:
+            if session.identifier not in self._sessions:
+                raise ValueError(
+                    "Candidate planning session identifier does not exist: "
+                    f"{session.identifier}"
+                )
+            self._sessions[session.identifier] = session
+
     def find_active_for_candidate(
         self,
         candidate_id: str,
