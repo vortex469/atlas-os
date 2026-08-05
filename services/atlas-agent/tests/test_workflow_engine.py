@@ -7,7 +7,6 @@ from threading import Event
 from unittest.mock import Mock, call
 
 import pytest
-
 from app.approval.engine import ApprovalEngine
 from app.approval.models import (
     ApprovalDecision,

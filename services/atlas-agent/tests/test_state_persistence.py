@@ -9,7 +9,6 @@ from hashlib import sha256
 from pathlib import Path
 
 import pytest
-
 from app.approval.models import (
     ApprovalDecision,
     ApprovalPurpose,
