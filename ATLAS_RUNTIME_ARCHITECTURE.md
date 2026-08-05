@@ -2,7 +2,7 @@
 
 Atlas Runtime Foundation defines the boundary between immutable shipped defaults and mutable user-owned runtime state. It is the storage and configuration foundation for the Provider Management Framework and future Mission Control features.
 
-This document describes the intended architecture. Some current Foundry behavior still reads operational policy from `config/policies.yaml`; runtime policy implementation will follow this architecture in a later change.
+This document describes the intended architecture. Current Foundry behavior now reads operational policy from runtime state in `data/config/policies.yaml`, with `config/policies.yaml` used only as the immutable bootstrap template.
 
 ## 1. Immutable defaults
 

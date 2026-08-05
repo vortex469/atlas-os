@@ -10,13 +10,13 @@ Atlas does not push, tag, publish releases, deploy remotely, auto-approve, or au
 
 ### Atlas Core
 
-Atlas Core owns the authoritative system view and public platform API. It collects provider state, exposes Discovery Center catalog and compatibility evidence, lets Orion-owned intelligence produce recommendations, projects execution candidates, and performs planning-intake revalidation.
+Atlas Core owns the authoritative system view and public platform API. It collects provider state, exposes Discovery Center catalog and compatibility evidence, prepares explainable intelligence findings for recommendations, projects execution candidates, and performs planning-intake revalidation.
 
 Atlas Core does not execute candidate work. It does not grant approval for Agent side effects.
 
 ### Discovery Center
 
-Discovery Center owns provider-neutral catalog facts and deterministic compatibility evidence. It is read-only and curated-catalog-first. Dynamic discovery, semantic search, and execution are future work.
+Discovery Center owns implemented provider-neutral catalog facts and deterministic compatibility evidence as a runtime, read-only, curated-catalog-first subsystem. Future roadmap work remains for dynamic catalog sources, semantic discovery, and broader execution handoff affordances.
 
 ### Intelligence and execution candidates
 
