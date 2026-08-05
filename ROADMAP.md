@@ -45,13 +45,19 @@ Runtime Foundation subsystem.
 
 ## Discovery Center
 
-Planned provider-neutral catalog and compatibility subsystem. D0 architecture and planning docs live in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md).
+Provider-neutral catalog and compatibility subsystem. D0 architecture and planning docs live in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md).
 
 - Define structured local catalog knowledge for applications, services, container images, AI models, integrations, hardware devices, and deployment methods
 - Keep curated YAML as the initial authoritative source
 - Evaluate compatibility through deterministic, evidence-based checks before semantic or AI-based behavior
-- Preserve Orion as the owner of recommendations and Atlas Agent as the future execution boundary
+- Preserve the recommendation interface ownership boundary and keep execution control in Atlas Agent pathways
 - Keep Discovery Center read-only by default
+
+### Current implementation status
+
+- ✅ Implemented: curated catalog models, loader, repository/search, read-only API, compatibility engine, and Orion-consumed compatibility findings in intelligence pipeline.
+- ✅ Implemented: Mission Control discovery API client, typed contracts, and read-only Discovery Center UI pages for browsing catalog items and viewing item details with relationships, provenance, and compatibility evidence.
+- 📌 Planned / Future: dynamic catalog sources, semantic discovery, Atlas Agent handoff protocol, community/private catalogs, and broader execution candidate affordances.
 
 ## Deployment Platform
 
@@ -62,7 +68,7 @@ Planned provider-neutral catalog and compatibility subsystem. D0 architecture an
 
 ## Conversational Infrastructure
 
-- Orion Assistant
+- Orion Assistant *(Planned)*
 - Guided troubleshooting
 - Cross-provider reasoning
 - Voice interaction

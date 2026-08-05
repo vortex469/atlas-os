@@ -1,6 +1,26 @@
 # Atlas Discovery Center Roadmap
 
-Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. This roadmap describes direction, not a release promise. D0 is documentation only and does not claim runtime functionality exists.
+Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. This roadmap describes direction and progress.
+
+## Current implementation status (as of RC1)
+
+Implemented:
+
+- D1 — Domain Models
+- D2 — YAML Catalog Loader
+- D3 — Repository and Deterministic Search
+- D4 — Read-Only API
+- D5 — Initial Curated Catalog
+- D6 — Mission Control Integration (Discovery API client, typed contracts, browse page, item detail page, relationships, provenance display, and compatibility evidence display)
+- D7 — Compatibility Engine
+- D8 — Orion Integration through deterministic intelligence findings consumed by the recommendation pipeline
+
+Future:
+
+- D9 — Atlas Agent Handoff
+- D10 — Dynamic Source Adapters
+- D11 — Semantic Discovery
+- D12 — Community and Private Catalogs
 
 ## D0 — Documentation
 
