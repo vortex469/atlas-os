@@ -758,10 +758,19 @@ def _encode_env(variable: EnvironmentVariable) -> dict[str, Any]:
 
 
 def _decode_env(payload: dict[str, Any]) -> EnvironmentVariable:
-    if payload.get("redacted") is not True:
-        raise StatePersistenceError("Persisted environment value must be redacted")
-    digest = _require_str(payload, "value_sha256")
-    _validate_digest(digest)
+    if payload.get("redacted") is True:
+        digest = _require_str(payload, "value_sha256")
+        _validate_digest(digest)
+    else:
+        # Backwards compatibility: older snapshots may still persist raw environment
+        # values for verification checks. Reconstruct their digest and treat them as
+        # redacted in memory so subsequent runs continue to require the same secret
+        # at execution time.
+        raw_value = payload.get("value")
+        if not isinstance(raw_value, str):
+            raise StatePersistenceError("Persisted environment value must be redacted")
+        digest = sha256(raw_value.encode("utf-8")).hexdigest()
+
     return EnvironmentVariable(
         name=_require_str(payload, "name"),
         value="",

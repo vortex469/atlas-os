@@ -509,6 +509,36 @@ def test_full_workflow_and_approval_round_trip_redacts_env(tmp_path: Path) -> No
     assert recovered_approvals.get_request(approval.identifier) is not None
 
 
+def test_legacy_verification_env_payload_recovers_on_restart(tmp_path: Path) -> None:
+    workflow_state = WorkflowStateStore()
+    persistence = coordinator(tmp_path, workflow_state, ApprovalRepository())
+    persistence.initialize()
+    stored_session = session(tmp_path, WorkflowSessionState.COMPLETED)
+
+    persistence.mutate_workflow(lambda workflow: workflow.create_session(stored_session))
+
+    payload = json.loads(persistence.snapshot_path.read_text(encoding="utf-8"))
+    checks = payload["workflow_state"]["sessions"][stored_session.identifier]["request"][
+        "verification_checks"
+    ]
+    checks[0]["environment"] = [
+        {
+            "name": "ATLAS_TEST_SECRET",
+            "value": "secret-token",
+        }
+    ]
+    persistence.snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    recovered_workflow = WorkflowStateStore()
+    coordinator(tmp_path, recovered_workflow, ApprovalRepository()).initialize()
+    recovered_session = recovered_workflow.get_session(stored_session.identifier)
+    assert recovered_session is not None
+    recovery = recovered_session.request.verification_checks[0].environment[0]
+    assert recovery.redacted is True
+    assert recovery.value == ""
+    assert recovery.value_digest == sha256(b"secret-token").hexdigest()
+
+
 def test_action_history_context_round_trips_in_workflow_snapshot(
     tmp_path: Path,
 ) -> None:
