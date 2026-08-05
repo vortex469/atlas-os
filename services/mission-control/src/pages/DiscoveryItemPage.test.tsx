@@ -2,9 +2,14 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getDiscoveryItem, getDiscoveryRelationships } from "../api/discovery";
+import {
+    getDiscoveryCompatibility,
+    getDiscoveryItem,
+    getDiscoveryRelationships,
+} from "../api/discovery";
 import type {
     DiscoveryCatalogEntry,
+    DiscoveryCompatibilityAssessment,
     DiscoveryRelationshipCollection,
 } from "../types/discovery";
 import { DiscoveryItemPage } from "./DiscoveryItemPage";
@@ -17,10 +22,48 @@ vi.mock("../api/atlas", () => ({
 vi.mock("../api/discovery", () => ({
     getDiscoveryItem: vi.fn(),
     getDiscoveryRelationships: vi.fn(),
+    getDiscoveryCompatibility: vi.fn(),
 }));
 
 const mockedGetDiscoveryItem = vi.mocked(getDiscoveryItem);
 const mockedGetDiscoveryRelationships = vi.mocked(getDiscoveryRelationships);
+const mockedGetDiscoveryCompatibility = vi.mocked(getDiscoveryCompatibility);
+
+const compatibilityAssessment = (
+    overrides: Partial<DiscoveryCompatibilityAssessment> = {},
+): DiscoveryCompatibilityAssessment => ({
+    item_id: "frigate",
+    target_id: "atlas",
+    target_type: "atlas_environment",
+    status: "compatible",
+    checked_at: "2026-08-05T18:00:00.000Z",
+    findings: [
+        {
+            id: "f0001",
+            check_type: "catalog",
+            severity: "info",
+            status: "compatible",
+            subject: "item.status",
+            message: "Catalog item status is active.",
+            evidence_ids: ["e0001"],
+        },
+    ],
+    evidence: [
+        {
+            id: "e0001",
+            check_type: "catalog",
+            subject: "item.status",
+            status: "compatible",
+            message: "Catalog item status is active.",
+            source: "catalog",
+            requirement: "active",
+            observed: "active",
+            observed_fact_id: null,
+        },
+    ],
+    unknown_facts: [],
+    ...overrides,
+});
 
 function entry(overrides: Partial<DiscoveryCatalogEntry> = {}): DiscoveryCatalogEntry {
     return {
@@ -146,9 +189,10 @@ describe("DiscoveryItemPage", () => {
         vi.resetAllMocks();
         mockedGetDiscoveryItem.mockResolvedValue(entry());
         mockedGetDiscoveryRelationships.mockResolvedValue(relationships());
+        mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment());
     });
 
-    it("renders item details, requirements, provenance, and approved metadata", async () => {
+    it("renders item details, requirements, provenance, approved metadata, and compatibility", async () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
@@ -163,6 +207,133 @@ describe("DiscoveryItemPage", () => {
         expect(screen.getByText("Hardware acceleration is optional.")).toBeInTheDocument();
         expect(screen.queryByText("Ignored item metadata note.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
+
+        expect(screen.getByRole("heading", { name: "Compatibility status" })).toBeInTheDocument();
+        expect(screen.getByText("Compatible")).toBeInTheDocument();
+        expect(screen.getByText("Catalog item status is active.")).toBeInTheDocument();
+        expect(screen.getByText("Code: f0001")).toBeInTheDocument();
+        expect(screen.getByText("Evidence e0001")).toBeInTheDocument();
+        expect(mockedGetDiscoveryCompatibility).toHaveBeenCalledWith("frigate");
+    });
+
+    it.each([
+        { status: "compatible", expected: "Compatible" },
+        { status: "compatible_with_warnings", expected: "Compatible With Warnings" },
+        { status: "insufficient_information", expected: "Insufficient Information" },
+        { status: "incompatible", expected: "Incompatible" },
+    ])("shows status presentation for %s", async ({ status, expected }) => {
+        mockedGetDiscoveryCompatibility.mockResolvedValue(
+            compatibilityAssessment({ status: status as DiscoveryCompatibilityAssessment["status"] }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Compatibility status" })).toBeInTheDocument();
+        expect(await screen.findByText(expected)).toBeInTheDocument();
+    });
+
+    it("shows findings grouped by backend severity and unknown facts", async () => {
+        mockedGetDiscoveryCompatibility.mockResolvedValue(
+            compatibilityAssessment({
+                findings: [
+                    {
+                        id: "f0001",
+                        check_type: "resource",
+                        severity: "warning",
+                        status: "compatible_with_warnings",
+                        subject: "requirements.resources.memory_mb_min",
+                        message: "Memory is borderline.",
+                        evidence_ids: ["e0001", "e0002"],
+                    },
+                    {
+                        id: "f0002",
+                        check_type: "network",
+                        severity: "blocker",
+                        status: "incompatible",
+                        subject: "requirements.network.ports.tcp.443.inbound",
+                        message: "Required port is missing.",
+                        evidence_ids: ["e0002"],
+                    },
+                ],
+                evidence: [
+                    {
+                        id: "e0001",
+                        check_type: "resource",
+                        subject: "requirements.resources.memory_mb_min",
+                        status: "compatible_with_warnings",
+                        message: "Memory check.",
+                        source: "compatibility_context",
+                    },
+                    {
+                        id: "e0002",
+                        check_type: "network",
+                        subject: "requirements.network.ports.tcp.443.inbound",
+                        status: "incompatible",
+                        message: "Port check.",
+                        source: "compatibility_context",
+                    },
+                ],
+                unknown_facts: ["open_ports", "installed_services"],
+            }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText("Findings Warning")).toBeInTheDocument();
+        expect(await screen.findByText("Findings Blocker")).toBeInTheDocument();
+        expect(screen.getByText("Memory is borderline.")).toBeInTheDocument();
+        expect(screen.getByText("Required port is missing.")).toBeInTheDocument();
+        expect(screen.getAllByText("Evidence e0002")).toHaveLength(2);
+        expect(screen.getAllByText((content) => content.includes("Port check"))).toHaveLength(2);
+        expect(screen.getByText("open_ports")).toBeInTheDocument();
+        expect(screen.getByText("installed_services")).toBeInTheDocument();
+    });
+
+    it("renders compatibility loading state independently", async () => {
+        let compatibilityPromise: Promise<DiscoveryCompatibilityAssessment> | undefined;
+        let resolveCompatibility: ((value: DiscoveryCompatibilityAssessment) => void) | undefined;
+        mockedGetDiscoveryCompatibility.mockImplementation(
+            () =>
+                (compatibilityPromise = new Promise<DiscoveryCompatibilityAssessment>((resolve) => {
+                    resolveCompatibility = resolve;
+                })),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText("Loading compatibility assessment…")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Compatibility assessment" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+
+        expect(compatibilityPromise).toBeDefined();
+        expect(resolveCompatibility).toBeDefined();
+        resolveCompatibility!(compatibilityAssessment());
+        expect(await screen.findByText("Compatible")).toBeInTheDocument();
+    });
+
+    it("shows compatibility failure without replacing the full item page", async () => {
+        mockedGetDiscoveryCompatibility.mockRejectedValue(
+            new Error("Temporary compatibility backend failure"),
+        );
+
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(await screen.findByText("Compatibility unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Retry compatibility check")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("renders empty compatibility findings, evidence, and unknown facts", async () => {
+        mockedGetDiscoveryCompatibility.mockResolvedValue(
+            compatibilityAssessment({ findings: [], evidence: [], unknown_facts: [] }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText("No findings were reported.")).toBeInTheDocument();
+        expect(screen.getByText("Target ID")).toBeInTheDocument();
+        expect(screen.getByText("atlas_environment")).toBeInTheDocument();
     });
 
     it("renders incoming and outgoing relationships separately with links and labels", async () => {

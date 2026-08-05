@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getAtlasErrorMessage } from "../api/atlas";
-import { getDiscoveryItem, getDiscoveryRelationships } from "../api/discovery";
+import {
+    getDiscoveryCompatibility,
+    getDiscoveryItem,
+    getDiscoveryRelationships,
+} from "../api/discovery";
 import type {
     DiscoveryCatalogEntry,
+    DiscoveryCompatibilityAssessment,
     DiscoveryRelationshipReference,
     DiscoveryRequirements,
 } from "../types/discovery";
@@ -22,17 +27,54 @@ export function DiscoveryItemPage() {
         incoming: [],
         outgoing: [],
     });
+    const [compatibility, setCompatibility] =
+        useState<DiscoveryCompatibilityAssessment | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [compatibilityLoading, setCompatibilityLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
+    const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
+    const compatibilityRequestId = useRef(0);
+    const compatibilityLoadHandle = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+
+    const loadCompatibility = useCallback(() => {
+        const requestId = ++compatibilityRequestId.current;
+
+        setCompatibility(null);
+        setCompatibilityLoading(true);
+        setCompatibilityError(null);
+
+        getDiscoveryCompatibility(itemId)
+            .then((nextCompatibility) => {
+                if (requestId !== compatibilityRequestId.current) {
+                    return;
+                }
+                setCompatibility(nextCompatibility);
+            })
+            .catch((requestError: unknown) => {
+                if (requestId !== compatibilityRequestId.current) {
+                    return;
+                }
+                console.error(`Unable to load Discovery compatibility for ${itemId}:`, requestError);
+                setCompatibilityError(
+                    getAtlasErrorMessage(
+                        requestError,
+                        "Mission Control could not load compatibility for this item.",
+                    ),
+                );
+            })
+        .finally(() => {
+                if (requestId !== compatibilityRequestId.current) {
+                    return;
+                }
+                setCompatibilityLoading(false);
+            });
+    }, [itemId]);
 
     useEffect(() => {
         let cancelled = false;
 
-        Promise.all([
-            getDiscoveryItem(itemId),
-            getDiscoveryRelationships(itemId),
-        ])
+        Promise.all([getDiscoveryItem(itemId), getDiscoveryRelationships(itemId)])
             .then(([entry, relationships]) => {
                 if (cancelled) {
                     return;
@@ -67,6 +109,21 @@ export function DiscoveryItemPage() {
             cancelled = true;
         };
     }, [itemId]);
+
+    useEffect(() => {
+        const handle = window.setTimeout(() => {
+            loadCompatibility();
+        }, 0);
+        compatibilityLoadHandle.current = handle;
+
+        return () => {
+            compatibilityRequestId.current += 1;
+            if (compatibilityLoadHandle.current !== null) {
+                window.clearTimeout(compatibilityLoadHandle.current);
+                compatibilityLoadHandle.current = null;
+            }
+        };
+    }, [itemId, loadCompatibility]);
 
     if (isLoading) {
         return (
@@ -177,6 +234,14 @@ export function DiscoveryItemPage() {
                 </InfoPanel>
             </section>
 
+            <CompatibilityPanel
+                compatibility={compatibility}
+                compatibilityLoading={compatibilityLoading}
+                compatibilityError={compatibilityError}
+                targetItemId={itemId}
+                onRetry={loadCompatibility}
+            />
+
             <RequirementsPanel requirements={item.requirements} />
 
             <section className="grid gap-4 lg:grid-cols-2">
@@ -197,6 +262,167 @@ export function DiscoveryItemPage() {
                 <ApprovedMetadataPanel entry={entry} />
             </section>
         </main>
+    );
+}
+
+function CompatibilityPanel({
+    compatibility,
+    compatibilityLoading,
+    compatibilityError,
+    targetItemId,
+    onRetry,
+}: {
+    compatibility: DiscoveryCompatibilityAssessment | null;
+    compatibilityLoading: boolean;
+    compatibilityError: string | null;
+    targetItemId: string;
+    onRetry: () => void;
+}) {
+    const findingsBySeverity = compatibility
+        ? compatibility.findings.reduce(
+              (groups, finding) => {
+                  const key = finding.severity;
+                  const existing = groups[key] ?? [];
+                  groups[key] = [...existing, finding];
+                  return groups;
+              },
+              {} as Record<string, typeof compatibility.findings>,
+          )
+        : {};
+
+    const evidenceById = new Map(
+        compatibility?.evidence.map((evidence) => [evidence.id, evidence]) ?? [],
+    );
+
+    if (compatibilityLoading) {
+        return (
+            <InfoPanel title="Compatibility assessment">
+                <p className="text-sm text-slate-400">Loading compatibility assessment…</p>
+            </InfoPanel>
+        );
+    }
+
+    if (compatibilityError) {
+        return (
+            <InfoPanel title="Compatibility assessment">
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+                    <p className="font-semibold">Compatibility unavailable</p>
+                    <p className="mt-1 text-sm text-amber-200/90">{compatibilityError}</p>
+                    <button
+                        type="button"
+                        className="mt-3 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:border-amber-300 hover:text-amber-100"
+                        onClick={onRetry}
+                    >
+                        Retry compatibility check
+                    </button>
+                </div>
+            </InfoPanel>
+        );
+    }
+
+    if (!compatibility) {
+        return (
+            <InfoPanel title="Compatibility assessment">
+                <p className="text-sm text-slate-400">Compatibility assessment not available.</p>
+            </InfoPanel>
+        );
+    }
+
+    return (
+        <section className="grid gap-4 lg:grid-cols-2">
+            <InfoPanel title="Compatibility status">
+                <dl className="grid gap-2 text-sm">
+                    <KeyValue label="Item" value={compatibility.item_id} />
+                    <KeyValue label="Target" value={compatibility.target_type} />
+                    <KeyValue label="Target ID" value={compatibility.target_id} />
+                    <KeyValue label="Status" value={formatCompatibilityStatus(compatibility.status)} />
+                    <KeyValue label="Checked at" value={compatibility.checked_at} />
+                    <KeyValue label="Findings" value={String(compatibility.findings.length)} />
+                    <KeyValue label="Evidence" value={String(compatibility.evidence.length)} />
+                    <KeyValue
+                        label="Unknown facts"
+                        value={compatibility.unknown_facts.length === 0 ? "None" : `${compatibility.unknown_facts.length}`}
+                    />
+                </dl>
+            </InfoPanel>
+
+            <InfoPanel title="Compatibility details">
+                <div className="space-y-4">
+                    {compatibility.findings.length === 0 ? (
+                        <p className="text-sm text-slate-500">No findings were reported.</p>
+                    ) : (
+                        Object.entries(findingsBySeverity).map(([severity, findings]) => (
+                            <div key={`${targetItemId}-${severity}`}>
+                                <p className="text-xs uppercase tracking-wider text-slate-500">
+                                    {formatLabel(`findings_${severity}`)}
+                                </p>
+                                <div className="mt-2 space-y-3">
+                                    {findings.map((finding) => (
+                                        <article
+                                            key={finding.id}
+                                            className="rounded-lg border border-slate-800 bg-slate-950 p-3"
+                                        >
+                                            <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wide text-slate-400">
+                                                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
+                                                    {finding.severity}
+                                                </span>
+                                                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
+                                                    {formatLabel(finding.check_type)}
+                                                </span>
+                                                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
+                                                    {finding.status}
+                                                </span>
+                                            </div>
+                                            <p className="mt-2 text-sm text-slate-300">{finding.message}</p>
+                                            <p className="mt-1 text-xs text-slate-500">Code: {finding.id}</p>
+                                            <p className="mt-1 text-xs text-slate-500">Subject: {finding.subject}</p>
+                                            {finding.evidence_ids.length > 0 ? (
+                                                <ul className="mt-3 space-y-2 text-xs text-slate-400">
+                                                    {finding.evidence_ids.map((evidenceId) => {
+                                                        const evidence = evidenceById.get(evidenceId);
+                                                        return (
+                                                            <li
+                                                                key={`${finding.id}-${evidenceId}`}
+                                                                className="rounded-md border border-slate-800 bg-slate-900 p-2"
+                                                            >
+                                                                {evidence ? (
+                                                                    <div>
+                                                                        <p>Evidence {evidence.id}</p>
+                                                                        <p>Source: {evidence.source}</p>
+                                                                        <p>Message: {evidence.message}</p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <p>Evidence {evidenceId}</p>
+                                                                )}
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            ) : (
+                                                <p className="mt-2 text-xs text-slate-500">
+                                                    No evidence IDs were attached.
+                                                </p>
+                                            )}
+                                        </article>
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )}
+
+                    {compatibility.unknown_facts.length > 0 && (
+                        <div>
+                            <p className="text-xs uppercase tracking-wider text-slate-500">Unknown facts</p>
+                            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-400">
+                                {compatibility.unknown_facts.map((item) => (
+                                    <li key={item}>{item}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            </InfoPanel>
+        </section>
     );
 }
 
@@ -419,4 +645,8 @@ function formatLabel(value: string): string {
         .split("_")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
+}
+
+function formatCompatibilityStatus(status: string): string {
+    return formatLabel(status);
 }
