@@ -970,7 +970,7 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         planning=WorkflowAuditPlanningResponse(
             status=_section_status(_AUDIT_STAGE_RANK["planning"], current_rank, planning_session is not None),
             planning_session_id=planning_session.identifier if planning_session is not None else None,
-            planning_state=planning_session.state.value if planning_session is not None else None,
+            planning_state=planning_session.status.value if planning_session is not None else None,
             planning_status=planning_session.planning_status.value if planning_session is not None else None,
             created_at=_iso_ts(planning_session.created_at) if planning_session is not None else None,
             planning_completed_at=_iso_ts(planning_session.planning_completed_at) if planning_session is not None else None,

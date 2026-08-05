@@ -18,7 +18,13 @@ from app.approval.models import (
 )
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
-from app.candidate_planning.models import CandidateImplementationRequest
+from app.candidate_planning.models import (
+    CandidateImplementationRequest,
+    CandidatePlanningSession,
+    CandidatePlanningSessionStatus,
+    CandidateSnapshot,
+    CoreCandidatePlanningIntakeStatus,
+)
 from app.candidate_planning.verification import CandidateVerificationFailureCode
 from app.config.settings import Settings
 from app.execution.models import ExecutionResult, ExecutionStatus
@@ -593,6 +599,43 @@ def candidate_workflow_session(repository: Path) -> WorkflowSession:
     )
 
 
+def candidate_planning_session_for_workflow(_repository: Path) -> CandidatePlanningSession:
+    timestamp = datetime(2026, 8, 2, tzinfo=UTC)
+    snapshot = CandidateSnapshot(
+        candidate_id="candidate-123",
+        candidate_fingerprint="candidate-fingerprint-123",
+        source_recommendation_id="recommendation-123",
+        source_subsystem="discovery",
+        recommendation_class="update-compose-stack",
+        catalog_item_id="catalog-1",
+        target_id="compose-stack-1",
+        target_type="compose_stack",
+        execution_category="maintenance",
+        execution_intent="update-compose-stack",
+        required_approval_level="standard",
+        rationale="Update compose stack",
+        constraints=("compose",),
+        evidence_ids=("evidence-1",),
+        compatibility_assessment_id="compat-1",
+        compatibility_status="compatible",
+        relationship_ids=("rel-1",),
+        expires_at=None,
+        intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+        intake_reason_codes=(),
+        intake_timestamp=timestamp,
+    )
+    return CandidatePlanningSession(
+        identifier="candidate-plan-123",
+        candidate_id="candidate-123",
+        candidate_fingerprint="candidate-fingerprint-123",
+        status=CandidatePlanningSessionStatus.PLAN_READY,
+        snapshot=snapshot,
+        created_at=timestamp,
+        candidate_plan_fingerprint="plan-fingerprint-123",
+        planning_status=CandidatePlanningSessionStatus.PLAN_READY,
+    )
+
+
 def save_candidate_workflow(container, workflow: WorkflowSession) -> None:
     approval = ApprovalRequest(
         identifier="approval-workflow-123",
@@ -660,6 +703,9 @@ def test_candidate_workflow_implementation_request_is_read_only(tmp_path: Path, 
 def test_candidate_workflow_audit_endpoint_returns_machine_readable_chain(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     workflow = candidate_workflow_session(tmp_path)
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
     save_candidate_workflow(container, workflow)
 
     response = client.get("/api/v1/agent/workflows/workflow-123/audit")
@@ -685,6 +731,8 @@ def test_candidate_workflow_audit_endpoint_returns_machine_readable_chain(tmp_pa
     assert body["approvals"]["implementation"]["approval_id"] == "approval-workflow-123"
     assert body["implementation"]["repository_root"] == str(tmp_path)
     assert body["implementation"]["tool"] == "docker-compose"
+    assert body["planning"]["planning_state"] == "plan_ready"
+    assert body["planning"]["planning_status"] == "plan_ready"
 
 
 def test_list_workflows_returns_read_only_summaries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
