@@ -103,6 +103,65 @@ describe("AtlasAgentPanel", () => {
         ).toHaveLength(3);
     });
 
+    it("shows pending decision cards from pending approvals", () => {
+        mockedUseAtlasAgent.mockReturnValue({
+            repository: {
+                root: "/opt/atlas",
+                branch: "feature/atlas-agent",
+                head_commit: "7661770",
+                is_clean: true,
+                modified_files: [],
+                staged_files: [],
+                untracked_files: [],
+            },
+            sprint: {
+                checkpoint_id: "A7B",
+                title: "Mission Control integration",
+                goal: "Display Atlas Agent status.",
+                phase: "implementation",
+            },
+            verification: {
+                repository_root: "/opt/atlas",
+                status: "passed",
+                duration_seconds: 1.5,
+                results: [],
+            },
+            review: {
+                request_id: "review-1",
+                checkpoint_id: "A7B",
+                status: "approved",
+                findings: [],
+                recommendations: [],
+            },
+            approvals: [
+                {
+                    identifier: "approval-1",
+                    checkpoint_id: "A15",
+                    request: {
+                        checkpoint_id: "A15",
+                        title: "Approve candidate workflow",
+                        requested_tool: "git",
+                        requested_command: ["status"],
+                        rationale: "Need review before proceeding",
+                    },
+                    status: "pending",
+                },
+            ],
+            isLoading: false,
+            error: null,
+        });
+
+        render(<AtlasAgentPanel />);
+
+        expect(screen.getByRole("heading", { name: "Pending Decisions" })).toBeInTheDocument();
+        expect(
+            screen.getByText("Approve candidate workflow"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Need review before proceeding")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /approve/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /reject/i })).toBeInTheDocument();
+    });
+
     it("shows only the panel unavailable state after a request failure", () => {
         mockedUseAtlasAgent.mockReturnValue({
             repository: null,

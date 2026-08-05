@@ -1,4 +1,5 @@
 import { useAtlasAgent } from "../hooks/useAtlasAgent";
+import { ApprovalCard } from "./ApprovalCard";
 
 interface StatusCardProps {
     title: string;
@@ -30,9 +31,14 @@ export function AtlasAgentPanel() {
         sprint,
         verification,
         review,
+        approvals,
         isLoading,
         error,
     } = useAtlasAgent();
+
+    const pendingApprovals = approvals.filter(
+        (approval) => approval.status === "pending",
+    );
 
     return (
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
@@ -158,6 +164,21 @@ export function AtlasAgentPanel() {
                             <UnpublishedStatus />
                         )}
                     </StatusCard>
+
+                    {pendingApprovals.length > 0 && (
+                        <div className="md:col-span-2 xl:col-span-4">
+                            <StatusCard title="Pending Decisions">
+                                <div className="space-y-4">
+                                    {pendingApprovals.map((approval) => (
+                                        <ApprovalCard
+                                            key={approval.identifier}
+                                            approval={approval}
+                                        />
+                                    ))}
+                                </div>
+                            </StatusCard>
+                        </div>
+                    )}
                 </div>
             )}
         </section>
