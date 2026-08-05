@@ -15,6 +15,47 @@ release boundaries.
 - Optional daily systemd backups with persistent scheduling, strict
   verification, and minimum-count retention safeguards.
 
+## v0.6.0-rc1 — Recovery Candidate RC1 (2026-08-05)
+
+### Added
+
+- Runtime-state architecture for Atlas Agent now explicitly separates execution,
+  verification, and commit control planes, with approval-gated transitions across
+  each stage.
+- Discovery Center compatibility flow now includes evidence-driven discovery and
+  compatibility checks that gate candidate planning and preserve compatibility
+  context for execution.
+- Mission Control now integrates Atlas workflow and approval status views so
+  operators can follow workflow readiness, verification progression, and approval
+  state end-to-end.
+- Runtime verification environment values are persisted in redacted metadata form
+  and restored safely at restart-time, preserving strict validation and replay
+  behavior.
+
+### Changed
+
+- Candidate workflow state transitions are persisted as first-class artifacts in
+  durable state so restart recovery can continue from `awaiting_implementation_approval`,
+  `executing`, `awaiting_verification_approval`, and related checkpoints.
+- Restart-safe resume path now enforces deterministic continuation semantics for
+  concurrent invocation attempts and single-execution transitions.
+- Mission Control and Atlas Agent boundaries are aligned on approval flows for
+  candidate implementation, verification, and commit phases.
+- Candidate concurrency checks were hardened so only one effective execution boundary
+  can be produced when resume is called concurrently.
+
+### Scope
+
+- Supported operation for this RC: `update-compose-stack`.
+- Deferred operations for this RC: `restart-service`, `backup`, `restore`, and
+  other operational action classes are intentionally out of scope.
+
+### Known non-blocking items
+
+- Atlas Core has an existing repository-wide Ruff cleanup backlog.
+- Mission Control currently emits a large JavaScript chunk warning during build.
+- Some Atlas Core source-boundary tests assume Atlas Core working-directory layout.
+
 ## v1.0.0 — Foundry (2026-07-25)
 
 ### Added
