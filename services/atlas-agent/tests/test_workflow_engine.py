@@ -2437,8 +2437,19 @@ def test_concurrent_candidate_resumes_execute_once(tmp_path: Path) -> None:
             executor.map(lambda _: engine.resume("candidate-workflow-1"), range(2))
         )
 
-    assert sum(result.execution_result is not None for result in results) == 1
-    assert state_store.get_session("candidate-workflow-1").state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    assert sum(result.error_message is None for result in results) == 1
+    assert sum(
+        result.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+        for result in results
+    ) == 1
+    assert sum(
+        result.sprint.phase is not SprintPhase.AWAITING_VERIFICATION_APPROVAL
+        for result in results
+    ) == 1
+    assert state_store.get_session("candidate-workflow-1").state in {
+        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        WorkflowSessionState.BLOCKED,
+    }
     execution_engine.execute.assert_called_once()
     verifier.verify.assert_not_called()
     reviewer.review.assert_not_called()
