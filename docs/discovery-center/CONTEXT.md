@@ -1,8 +1,8 @@
 # Atlas Discovery Center Context
 
-Discovery Center is the planned provider-neutral catalog and compatibility subsystem for Atlas. It exists so Atlas can reason from structured local knowledge before offering recommendations or approved execution paths.
+Discovery Center is the implemented provider-neutral catalog and compatibility subsystem for Atlas. It provides structured local knowledge so Atlas can reason about catalog facts, relationships, and compatibility before recommendations or approved execution paths.
 
-D0 is documentation only. It records the intended product and architecture context without claiming runtime Discovery Center functionality exists.
+D0 is documentation only. It records the intended product and architecture context; runtime Discovery Center functionality has since been implemented in later phases.
 
 ## Why Discovery Center exists
 
@@ -15,7 +15,7 @@ Discovery Center gives Atlas a broader structured catalog for answering:
 - What requirements and relationships do they have?
 - Are they compatible with the current Atlas environment?
 
-This enables Mission Control, Orion, and Atlas Agent to share a common factual base while preserving clear ownership boundaries.
+This enables Mission Control and Atlas Agent to share a common factual base while preserving clear ownership boundaries. Orion provides recommendation ownership.
 
 ## Current Atlas sources of truth
 
@@ -30,7 +30,7 @@ Current relevant sources include:
 - Atlas Runtime Foundation for mutable runtime state under `data/`.
 - Provider connection and policy stores for user-owned runtime configuration.
 
-Discovery Center should reuse these concepts where appropriate instead of duplicating them.
+Discovery Center reuses these concepts where appropriate instead of duplicating them.
 
 ## Knowledge Engine relationship
 
@@ -42,9 +42,9 @@ D0 keeps the relationship neutral. D1-D3 should evaluate individual Knowledge En
 
 Discovery Center answers what exists, what it provides, what it requires, and whether it appears compatible.
 
-Orion owns recommendations. Orion decides whether the user should install, change, investigate, or defer something, and explains why it matters.
+Orion owns recommendation generation. Discovery Center does not generate recommendations directly; it supplies deterministic facts and evidence for recommendation pathways.
 
-Atlas Agent owns execution. Future executable work must be handed to Atlas Agent and pass through approval-controlled planning, execution, verification, review, and commit workflow.
+Atlas Agent owns execution handoff. Future executable work must still flow through Atlas Agent planning, execution, verification, review, and commit controls.
 
 Mission Control owns the UI. It should present Discovery Center facts, compatibility evidence, and provenance without bypassing approval boundaries.
 
@@ -90,8 +90,8 @@ Initial lifecycle:
 4. A read-only API projects catalog entries and compatibility evidence.
 5. Mission Control displays catalog facts and relationships.
 6. Compatibility checks compare catalog requirements with observed Atlas environment data.
-7. Orion consumes Discovery Center evidence when forming recommendations.
-8. Future execution requests are handed to Atlas Agent only after user approval.
+7. Atlas intelligence consumes Discovery Center evidence when forming deterministic findings and recommendation context.
+8. Execution requests are handed to Atlas Agent only after user approval.
 
 ## Offline-first assumptions
 
@@ -122,7 +122,7 @@ Initial user-facing workflows should be read-only:
 - Check compatibility against the current Atlas environment.
 - See evidence and provenance for every result.
 
-Future workflows may include Orion recommendations and Atlas Agent handoff, but Discovery Center itself remains non-executing.
+Future workflows may expand Orion recommendation and execution handoff integration, but Discovery Center itself remains non-executing.
 
 ## Glossary
 

@@ -48,7 +48,7 @@ Implemented
 
 # Configuration
 
-Current behavior still reads shipped configuration and policies from tracked files. The planned Atlas Runtime Foundation boundary is:
+Current behavior reads operational policy from runtime state in `data/config/policies.yaml` when available. Tracked `config/` files are treated as immutable bootstrap templates. The Atlas Runtime Foundation boundary is:
 
 Immutable defaults
 
@@ -241,12 +241,12 @@ Active major milestone
 - Define immutable defaults in `config/` and runtime state in `data/`
 - Make runtime policy storage explicit with `ATLAS_POLICY_FILE`
 - Preserve Provider Management Framework as the subsystem for provider resources and user intent
-- Plan Discovery Center as the provider-neutral catalog and compatibility subsystem; D0 docs are in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md)
+- Implement Discovery Center as the provider-neutral catalog and compatibility subsystem; design foundations remain in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md)
 - Mission Control policy management for provider resources must write runtime state, not repository files
 - Needs Review workflows for newly discovered resources remain derived, not persisted
 - AI suggests intent changes; users decide and approve policy updates
 
-Current behavior still relies on `config/policies.yaml` for several operational expectations. The planned architecture is to initialize `/opt/atlas/data/config/policies.yaml` from the tracked template, then make runtime state authoritative so Mission Control changes must not dirty the Git checkout.
+Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the tracked template and then treats runtime state as authoritative. Mission Control changes must not dirty the Git checkout.
 
 ---
 

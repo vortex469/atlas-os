@@ -2,7 +2,7 @@
 
 Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. It owns structured knowledge about applications, services, container images, AI models, integrations, hardware devices, deployment methods, capabilities, requirements, and relationships.
 
-D0 is documentation only. It defines the intended architecture and boundaries. It does not introduce runtime Discovery Center functionality.
+D0 is documentation only. It defines the intended architecture and boundaries, while runtime Discovery Center functionality has since been implemented in later phases (D1–D8).
 
 ## Purpose and scope
 
@@ -34,7 +34,7 @@ All future executable work must be handed to Atlas Agent and pass through approv
 
 ### Discovery Center
 
-Discovery Center owns catalog knowledge and compatibility facts. It returns explainable, evidence-based answers about items, capabilities, requirements, relationships, and compatibility.
+Discovery Center owns catalog knowledge and compatibility facts in runtime. It returns explainable, evidence-based answers about items, capabilities, requirements, relationships, and compatibility.
 
 Discovery Center may say:
 
@@ -45,13 +45,13 @@ Discovery Center may say:
 
 ### Orion
 
-Orion owns recommendations.
+Orion is the recommendation interface. Discovery Center exposes evidence and facts; recommendations are generated through the Atlas intelligence pipeline and recommendation rendering layer.
 
 Discovery Center may identify compatibility status and supporting evidence. Orion decides whether the user should install, change, investigate, defer, or ignore something, why it matters, and how urgent it is.
 
 ### Atlas Agent
 
-Atlas Agent owns future execution handoff.
+Atlas Agent owns execution handoff.
 
 Discovery Center may provide structured context for a future change, but it must not execute that change. Any future executable work must cross the Atlas Agent approval boundary and use its planning, execution, verification, review, and commit workflow.
 

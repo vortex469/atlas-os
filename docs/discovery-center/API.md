@@ -2,7 +2,7 @@
 
 Discovery Center exposes a read-only, provider-neutral catalog and compatibility API under `/api/v1/discovery`.
 
-This document describes the implemented D7.5 contract. It does not describe future Orion recommendations, Atlas Agent execution, catalog editing, semantic search, dynamic ingestion, or install workflows.
+This document describes the implemented discovery center contract (post-D7 era). It does not describe future Orion recommendations, Atlas Agent execution, catalog editing, semantic search, dynamic ingestion, or install workflows.
 
 ## Guarantees
 
