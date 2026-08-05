@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -106,6 +107,7 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
 ) -> None:
     repository = tmp_path / "repository"
     head = initialize_candidate_repository(repository)
+    mock_now = datetime(2026, 8, 2, 0, 0, tzinfo=UTC)
     core = FakeCoreClient(core_response(fingerprint="a" * 64))
     candidate_state = CandidatePlanningStateStore()
     workflow_state = WorkflowStateStore()
@@ -123,6 +125,7 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         state_store=candidate_state,
         state_persistence=persistence,
         repository_resolver=resolver,
+        clock=lambda: mock_now,
     )
     implementation_runner = FakeImplementationRunner()
     verification_runner = FakeVerificationRunner()
@@ -142,17 +145,20 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
             core_client=core,
             candidate_state=candidate_state,
             repository_resolver=resolver,
+            clock=lambda: mock_now,
         ),
         candidate_verification_validator=CandidateVerificationValidator(
             core_client=core,
             candidate_state=candidate_state,
             repository_resolver=resolver,
+            clock=lambda: mock_now,
         ),
         candidate_review_adapter=CandidateReviewAdapter(review_engine=review_engine),
         candidate_commit_validator=CandidateCommitValidator(
             core_client=core,
             candidate_state=candidate_state,
             repository_resolver=resolver,
+            clock=lambda: mock_now,
         ),
     )
 

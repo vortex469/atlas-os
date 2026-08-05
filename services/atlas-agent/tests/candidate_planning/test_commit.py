@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -257,6 +258,7 @@ def _approval(session: WorkflowSession, *, status: ApprovalStatus = ApprovalStat
 
 
 def _validator(root: Path) -> CandidateCommitValidator:
+    mock_now = datetime(2026, 8, 2, 0, 0, tzinfo=UTC)
     state = CandidatePlanningStateStore()
     state.create_session(planning_session(root))
     FakeInspector.snapshot = RepositorySnapshot(
@@ -273,6 +275,7 @@ def _validator(root: Path) -> CandidateCommitValidator:
         candidate_state=state,
         repository_resolver=RepositoryResolver(repository_root=root),
         repository_inspector_factory=FakeInspector,
+        clock=lambda: mock_now,
     )
 
 
