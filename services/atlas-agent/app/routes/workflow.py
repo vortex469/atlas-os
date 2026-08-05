@@ -38,7 +38,6 @@ from app.workflow.models import (
 )
 from app.workflow.orchestrator import WorkflowOrchestrator
 
-
 _AUDIT_STAGE_ORDER = [
     "candidate",
     "planning",
@@ -984,7 +983,7 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
             candidate_plan_fingerprint=(
                 metadata.candidate_plan_fingerprint if metadata is not None else None
             ),
-            likely_affected_files=[str(path) for path in (plan.affected_files if plan is not None else tuple())],
+            likely_affected_files=[str(path) for path in (plan.affected_files if plan is not None else ())],
         ),
         workflow=WorkflowAuditWorkflowResponse(
             status=_section_status(_AUDIT_STAGE_RANK["workflow"], current_rank, True),
@@ -1001,7 +1000,7 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
             repository_head=implementation.repository_head if implementation is not None else None,
             repository_branch=implementation.repository_branch if implementation is not None else None,
             working_directory=str(implementation.working_directory) if implementation is not None else None,
-            affected_files=[str(path) for path in (implementation.affected_files if implementation is not None else tuple())],
+            affected_files=[str(path) for path in (implementation.affected_files if implementation is not None else ())],
             translator_version=implementation.translator_version if implementation is not None else None,
         ),
         approvals=WorkflowAuditApprovalsResponse(
@@ -1060,13 +1059,13 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         commit=WorkflowAuditCommitResponse(
             status=_section_status(_AUDIT_STAGE_RANK["commit"], current_rank, has_commit),
             commit_request_id=commit_request.identifier if commit_request is not None else None,
-            reviewed_files=[str(path) for path in (commit_request.paths if commit_request is not None else tuple())],
+            reviewed_files=[str(path) for path in (commit_request.paths if commit_request is not None else ())],
             reviewed_content_fingerprint=_reviewed_content_fingerprint(audit_approvals.commit),
             expected_branch=commit_request.expected_branch if commit_request is not None else None,
             expected_head=commit_request.expected_head if commit_request is not None else None,
             commit_message=commit_request.message if commit_request is not None else None,
             commit_sha=commit_result.commit_sha if commit_result is not None else None,
-            committed_files=[str(path) for path in (commit_result.committed_files if commit_result is not None else tuple())],
+            committed_files=[str(path) for path in (commit_result.committed_files if commit_result is not None else ())],
         ),
     )
 
