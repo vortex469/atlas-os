@@ -9,15 +9,19 @@ from pydantic import Field
 from pydantic import ValidationError as PydanticValidationError
 
 from app.execution_candidates.classification import (
+    ADVISORY_RECOMMENDATION_CLASSES,
     RecommendationClass,
     classify_recommendation_class,
     parse_recommendation_class,
 )
 from app.execution_candidates.eligibility import validate_candidate_for_planning
 from app.execution_candidates.models import (
+    ApprovalLevel,
     ExecutionCandidate,
     ExecutionCandidateModel,
     ExecutionCandidateStatus,
+    ExecutionCategory,
+    ExecutionIntent,
     build_execution_candidate_id,
     contains_unsafe_payload,
 )
@@ -110,15 +114,6 @@ def execution_candidate_from_finding(
             message="Finding declares an unsupported recommendation class.",
         )
 
-    classification = classify_recommendation_class(recommendation_class)
-    if classification is None:
-        return _result(
-            ProjectionStatus.NOT_EXECUTABLE,
-            source_finding_id=source_finding_id,
-            reason_code=ProjectionReasonCode.ADVISORY_RECOMMENDATION_CLASS,
-            message="Finding recommendation class is advisory and not executable.",
-        )
-
     target_id = _string_detail(details, "target_id")
     target_type = _string_detail(details, "target_type")
     if not target_id or not target_type:
@@ -133,6 +128,33 @@ def execution_candidate_from_finding(
         details,
         "compatibility_evidence_ids",
     )
+
+    classification = classify_recommendation_class(recommendation_class)
+    if recommendation_class in ADVISORY_RECOMMENDATION_CLASSES:
+        return _result(
+            ProjectionStatus.NOT_EXECUTABLE,
+            source_finding_id=source_finding_id,
+            reason_code=ProjectionReasonCode.ADVISORY_RECOMMENDATION_CLASS,
+            message="Finding recommendation class is advisory and not executable.",
+            candidate=_unsupported_candidate(
+                finding=finding,
+                source_finding_id=source_finding_id,
+                source_subsystem=source_subsystem,
+                recommendation_class=recommendation_class,
+                target_id=target_id,
+                target_type=target_type,
+                evidence_ids=evidence_ids,
+                now=now,
+            ),
+        )
+
+    if classification is None:
+        return _result(
+            ProjectionStatus.NOT_EXECUTABLE,
+            source_finding_id=source_finding_id,
+            reason_code=ProjectionReasonCode.ADVISORY_RECOMMENDATION_CLASS,
+            message="Finding recommendation class is advisory and not executable.",
+        )
     if not evidence_ids:
         return _not_eligible_candidate_result(
             finding,
@@ -308,6 +330,50 @@ def _not_eligible_candidate_result(
         reason_code=reason_code,
         message=message,
         candidate=result.candidate,
+    )
+
+
+def _unsupported_candidate(
+    *,
+    finding: Finding,
+    source_finding_id: str,
+    source_subsystem: str,
+    recommendation_class: RecommendationClass,
+    target_id: str,
+    target_type: str,
+    evidence_ids: tuple[str, ...],
+    now: datetime,
+) -> ExecutionCandidate:
+    details = finding.details
+    raw_target_type = target_type.replace("_", "-")
+    normalized_recommendation_class = recommendation_class.value.replace("_", "-")
+    return ExecutionCandidate(
+        id=build_execution_candidate_id(
+            source_subsystem=source_subsystem,
+            source_recommendation_id=source_finding_id,
+            catalog_item_id=_string_detail(details, "catalog_item_id"),
+            target_id=target_id,
+            execution_category=ExecutionCategory.UNSUPPORTED,
+            execution_intent=ExecutionIntent.UNSUPPORTED_RECOMMENDATION,
+        ),
+        source_recommendation_id=source_finding_id,
+        source_subsystem=source_subsystem,
+        recommendation_class=normalized_recommendation_class,
+        catalog_item_id=_string_detail(details, "catalog_item_id"),
+        target_id=target_id,
+        target_type=raw_target_type,
+        execution_category=ExecutionCategory.UNSUPPORTED,
+        execution_intent=ExecutionIntent.UNSUPPORTED_RECOMMENDATION,
+        status=ExecutionCandidateStatus.NOT_ELIGIBLE,
+        required_approval_level=ApprovalLevel.STANDARD,
+        rationale=finding.message,
+        constraints=(),
+        evidence_ids=evidence_ids,
+        compatibility_assessment_id=_string_detail(details, "compatibility_assessment_id"),
+        compatibility_status=_string_detail(details, "compatibility_status"),
+        relationship_ids=_tuple_detail(details, "relationship_ids")
+        or _tuple_detail(details, "compatibility_finding_ids"),
+        created_at=now,
     )
 
 
