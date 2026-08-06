@@ -65,7 +65,10 @@ def test_advisory_discovery_finding_returns_not_executable() -> None:
 
     assert result.status == ProjectionStatus.NOT_EXECUTABLE
     assert result.reason_code == ProjectionReasonCode.ADVISORY_RECOMMENDATION_CLASS
-    assert result.candidate is None
+    assert result.candidate is not None
+    assert result.candidate.status == ExecutionCandidateStatus.NOT_ELIGIBLE
+    assert result.candidate.execution_category == ExecutionCategory.UNSUPPORTED
+    assert result.candidate.execution_intent.value == "unsupported-recommendation"
 
 
 def test_executable_class_maps_to_expected_category_and_intent() -> None:

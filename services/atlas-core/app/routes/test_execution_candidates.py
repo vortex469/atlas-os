@@ -94,7 +94,7 @@ def restore_route_dependencies(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.anyio
-async def test_advisory_only_findings_produce_empty_candidate_collection() -> None:
+async def test_advisory_only_findings_produce_not_eligible_candidate_collection() -> None:
     candidates = await service.collect_current_execution_candidates(
         finding_collector=lambda: (
             finding(recommendation_class="investigate_compatibility", source_subsystem="discovery"),
@@ -102,7 +102,10 @@ async def test_advisory_only_findings_produce_empty_candidate_collection() -> No
         now=NOW,
     )
 
-    assert candidates == ()
+    assert len(candidates) == 1
+    assert candidates[0].execution_category == ExecutionCategory.UNSUPPORTED
+    assert candidates[0].execution_intent == ExecutionIntent.UNSUPPORTED_RECOMMENDATION
+    assert candidates[0].status == ExecutionCandidateStatus.NOT_ELIGIBLE
 
 
 @pytest.mark.anyio

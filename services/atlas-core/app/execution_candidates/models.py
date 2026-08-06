@@ -54,6 +54,7 @@ class ExecutionCategory(StrEnum):
     BACKUP = "backup"
     RESTORE = "restore"
     REMOVE = "remove"
+    UNSUPPORTED = "unsupported"
 
 
 class ExecutionIntent(StrEnum):
@@ -73,6 +74,7 @@ class ExecutionIntent(StrEnum):
     RESTORE_BACKUP = "restore-backup"
     REMOVE_RESOURCE = "remove-resource"
     REMOVE_INTEGRATION = "remove-integration"
+    UNSUPPORTED_RECOMMENDATION = "unsupported-recommendation"
 
 
 class ApprovalLevel(StrEnum):
@@ -112,6 +114,7 @@ INTENT_CATEGORY_MAP: dict[ExecutionIntent, ExecutionCategory] = {
     ExecutionIntent.RESTORE_BACKUP: ExecutionCategory.RESTORE,
     ExecutionIntent.REMOVE_RESOURCE: ExecutionCategory.REMOVE,
     ExecutionIntent.REMOVE_INTEGRATION: ExecutionCategory.REMOVE,
+    ExecutionIntent.UNSUPPORTED_RECOMMENDATION: ExecutionCategory.UNSUPPORTED,
 }
 
 DESTRUCTIVE_INTENTS = frozenset(
