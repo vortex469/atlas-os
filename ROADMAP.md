@@ -83,6 +83,14 @@ Provider-neutral catalog and compatibility subsystem. D0 architecture and planni
 
 ### Planned
 
+- v0.7+ carries the v0.6 deferrals for execution and release operations:
+  - `restart-service`
+  - `backup`
+  - `restore`
+  - `install-provider`
+  - `update-image`
+  - automated rollback, tag/release automation, and remote deploy automation.
+
 #### Phase 4: new execution intents
 
 Future execution intents such as `restart-service`, `backup`, `restore`, `install-provider`, and `update-image` require separate architecture, contracts, exact approvals, recovery behavior, security review, and end-to-end tests.

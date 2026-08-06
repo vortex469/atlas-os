@@ -124,6 +124,8 @@ Future migrations must be:
 
 Atlas must not silently discard unsupported user configuration. If a runtime file contains fields a new version does not understand, Atlas should preserve them when possible or stop with clear diagnostics before data loss.
 
+Rollback in v0.6 is operator-driven by selecting a prior release tag/image and, when needed, using documented restore procedures to rehydrate runtime state from a validated backup.
+
 ## 7. Backup and restore
 
 Runtime configuration must be backed up with Atlas data.

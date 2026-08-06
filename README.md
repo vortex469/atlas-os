@@ -6,7 +6,12 @@ Supported execution intent:
 
 - `update-compose-stack`
 
-Atlas does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or automate rollback. See [Architecture](ARCHITECTURE.md) and [Atlas v0.6 Release Checklist](docs/RELEASE_CHECKLIST.md).
+Atlas does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or automate rollback. See:
+
+- [Changelog](CHANGELOG.md)
+- [Atlas v0.6 upgrade procedure](docs/DEPLOYMENT.md#atlas-v06-rc-upgrade-and-manual-rollback)
+- [Atlas v0.6 rollback procedure](docs/DEPLOYMENT.md#atlas-v06-rc-upgrade-and-manual-rollback)
+- [Atlas v0.6 release checklist](docs/RELEASE_CHECKLIST.md)
 
 <div align="center">
 

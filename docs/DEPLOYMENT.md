@@ -238,6 +238,94 @@ connection overrides, and provider connection secrets. The tracked
 `config/policies.yaml`, `config/atlas.yaml`, and `inventory/services.yaml`
 files remain immutable defaults or legacy fallback sources.
 
+## Atlas v0.6 RC upgrade and manual rollback
+
+Atlas v0.6 operations are upgraded and rolled back manually. V0.6 does not
+implement automatic rollback.
+
+### Upgrade sequence
+
+1. Before upgrading, create an online backup:
+
+```bash
+./scripts/atlas-data-backup
+```
+
+2. Stop the existing compose services:
+
+```bash
+docker compose -f compose.production.yaml down
+```
+
+Include `-f compose.https.yaml` when stopping an HTTPS deployment.
+
+3. Check out the target Atlas tag/commit for the upgrade and ensure deployment
+artifacts are current.
+
+4. Update and start services with the supported deploy commands:
+
+```bash
+docker compose -f compose.production.yaml pull
+ATLAS_REPOSITORY_HOST_PATH="$PWD" DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)" docker compose -f compose.production.yaml up --build -d
+```
+
+For HTTPS, include `-f compose.https.yaml` and set certificate variables as
+described above.
+
+### Post-upgrade verification
+
+After upgrade and before routing traffic:
+
+```bash
+docker compose -f compose.production.yaml ps
+docker compose -f compose.production.yaml logs -f
+./scripts/container-release-gate
+```
+
+Confirm `atlas-data` remains preserved and runtime config paths remain under
+`/opt/atlas/data` (including policy and provider-connection files).
+
+### Manual rollback triggers
+
+Rollback manually when any of these occur after upgrade:
+
+- `./scripts/container-release-gate` fails.
+- service health or startup regresses after upgrade.
+- backup restore checks fail or manifest verification cannot be confirmed.
+- runtime migration or startup behavior is not safe for operation.
+
+### Rollback to prior known tag or image
+
+Rollback by stopping current services and checking out the prior known tag/image:
+
+```bash
+docker compose -f compose.production.yaml down
+git checkout <prior_atlas_tag_or_commit>
+ATLAS_REPOSITORY_HOST_PATH="$PWD" DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)" docker compose -f compose.production.yaml up --build -d
+```
+
+### Atlas data rollback restore sequence
+
+If upgrade impacted durable state or runtime configuration, restore from backup:
+
+```bash
+docker compose -f compose.production.yaml down
+./scripts/atlas-data-restore /path/to/backups/atlas-data-YYYYMMDDTHHMMSSZ --confirm
+ATLAS_REPOSITORY_HOST_PATH="$PWD" DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)" docker compose -f compose.production.yaml up --build -d
+```
+
+Use existing backup directories from `./scripts/atlas-data-backup`.
+
+### Post-rollback smoke checks
+
+After rollback and restart, run:
+
+```bash
+docker compose -f compose.production.yaml ps
+docker compose -f compose.production.yaml logs -f
+./scripts/container-release-gate
+```
+
 ## Back up and restore data
 
 Create a consistent online backup while Atlas remains available:

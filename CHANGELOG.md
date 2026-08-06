@@ -15,44 +15,45 @@ release boundaries.
 - Optional daily systemd backups with persistent scheduling, strict
   verification, and minimum-count retention safeguards.
 
-## v0.6.0-rc1 — Recovery Candidate RC1 (2026-08-05)
+## atlas-v0.6-rc1 — Recovery Candidate RC1 (2026-08-05)
 
-### Added
+### Implemented in RC1
 
-- Runtime-state architecture for Atlas Agent now explicitly separates execution,
-  verification, and commit control planes, with approval-gated transitions across
-  each stage.
-- Discovery Center compatibility flow now includes evidence-driven discovery and
-  compatibility checks that gate candidate planning and preserve compatibility
-  context for execution.
-- Mission Control now integrates Atlas workflow and approval status views so
-  operators can follow workflow readiness, verification progression, and approval
-  state end-to-end.
-- Runtime verification environment values are persisted in redacted metadata form
-  and restored safely at restart-time, preserving strict validation and replay
-  behavior.
+- Discovery Center compatibility engine, evidence flow, and catalog integration now
+  drive execution-candidate projection with compatibility context available to
+  planning and runtime decisions.
+- Mission Control Discovery views and execution workflow shell now include
+  discovery compatibility details and candidate workflow status across planning,
+  implementation, verification, review, and commit checkpoints.
+- Provider resources and connection management are now persisted in runtime state,
+  including runtime policy and provider-connection stores plus connection secrets.
+- Approval-gated execution is implemented across implementation, verification,
+  review, and commit stages with immutable approval records.
+- Candidate workflow planning and execution state is durable and restart-safe, with
+  persisted transition artifacts and deterministic recovery behavior.
+- Concurrent resume and workflow state transitions are hardened to prevent
+  duplicated effective execution boundaries.
+- Runtime verification context is preserved in redacted metadata for restart-safe
+  continuation and strict validation.
+- Deterministic and hardening coverage added for timing-sensitive candidate paths,
+  restart/recovery matrix behaviors, audit-chain validation, concurrency, and
+  contract regression.
+- Validation coverage required for this RC includes ruff, test, lint, build, and
+  container-release-gate verification.
+- Core operational scope remains explicit to `update-compose-stack`.
 
-### Changed
+### Deferred to v0.7+
 
-- Candidate workflow state transitions are persisted as first-class artifacts in
-  durable state so restart recovery can continue from `awaiting_implementation_approval`,
-  `executing`, `awaiting_verification_approval`, and related checkpoints.
-- Restart-safe resume path now enforces deterministic continuation semantics for
-  concurrent invocation attempts and single-execution transitions.
-- Mission Control and Atlas Agent boundaries are aligned on approval flows for
-  candidate implementation, verification, and commit phases.
-- Candidate concurrency checks were hardened so only one effective execution boundary
-  can be produced when resume is called concurrently.
+- `restart-service` execution intent.
+- `backup` and `restore` execution intents.
+- `install-provider` and `update-image` execution intents.
+- Push, tag, release publication, remote deployment, and rollback automation.
+- Candidate UI execution affordances in Mission Control beyond current shell,
+  audit, and status workflows.
 
-### Scope
+### Inherited technical debt
 
-- Supported operation for this RC: `update-compose-stack`.
-- Deferred operations for this RC: `restart-service`, `backup`, `restore`, and
-  other operational action classes are intentionally out of scope.
-
-### Known non-blocking items
-
-- Atlas Core has an existing repository-wide Ruff cleanup backlog.
+- Atlas Core has an existing repository-wide backlog of 90 Ruff violations.
 - Mission Control currently emits a large JavaScript chunk warning during build.
 - Some Atlas Core source-boundary tests assume Atlas Core working-directory layout.
 

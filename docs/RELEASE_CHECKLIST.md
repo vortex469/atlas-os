@@ -62,6 +62,35 @@ entities.
 
 ## Atlas v0.6 release gates
 
+### RC1 verification artifacts
+
+- [ ] Record the exact commit checked for atlas-v0.6-rc1 packaging.
+- [ ] Record commands used and pass/fail status for:
+  - `cd services/atlas-core && python -m ruff check app tests`
+  - `cd services/atlas-core && python -m pytest -q`
+  - `cd services/atlas-agent && python -m ruff check app tests`
+  - `cd services/atlas-agent && python -m pytest -q`
+  - `cd services/mission-control && npm run lint`
+  - `cd services/mission-control && npm test -- --run`
+  - `cd services/mission-control && npm run build`
+  - `./scripts/container-release-gate`
+
+### Manual release sign-off
+
+- [ ] Release lead confirms changelog entry names the intended tag and scope.
+- [ ] Rollback path and restore procedures are reviewed and approved for this RC.
+- [ ] Operator confirms upgrade and post-upgrade smoke verification were performed.
+- [ ] Release blocker list is empty for the following:
+  - no auto-approve, no auto-execute,
+  - no push, tag, release publication, remote deploy, and no rollback automation.
+- [ ] Operator sign-off and date are recorded in release notes or issue tracker:
+  - Sign-off name:
+  - Sign-off date:
+
+- [ ] Changelog, version, tag name, upgrade notes, and manual rollback notes are
+  reviewed.
+- [ ] Use an immutable RC tag that does not overwrite existing release tags.
+
 ### Core
 
 - [ ] `cd services/atlas-core && python -m ruff check app tests`
@@ -96,5 +125,4 @@ entities.
 - [ ] Docker or Compose smoke validation passes when deployment packaging is in scope.
 - [ ] `git diff --check` passes.
 - [ ] `git status --short` is clean except explicitly local-only ignored directories before tagging.
-- [ ] Changelog, version, tag name, upgrade notes, and manual rollback notes are reviewed.
-- [ ] Create `atlas-v0.6` only after all required gates pass.
+- [ ] Review docs for RC tag/sequence selection before creating the next release tag.
