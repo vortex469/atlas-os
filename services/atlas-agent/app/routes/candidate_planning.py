@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -12,14 +13,118 @@ from app.candidate_planning.models import (
     CandidateImplementationTranslationResponse,
     CandidatePlan,
     CandidatePlanningFailure,
+    CandidatePlanningFailureCode,
+    CandidatePlanningSessionStatus,
     CandidatePlanRequest,
     CandidatePlanResponse,
     CandidateWorkflowConversionRequest,
     CandidateWorkflowConversionResponse,
+    CoreCandidatePlanningIntakeStatus,
 )
 from app.candidate_planning.service import CandidatePlanningServiceError
+from app.workflow.models import WorkflowSession
+from app.workflow.state import WorkflowStateStore
 
 router = APIRouter(prefix="/candidate-planning", tags=["candidate-planning"])
+logger = logging.getLogger(__name__)
+
+
+def _candidate_workflows_for_session(
+    workflow_state: WorkflowStateStore,
+    session_id: str,
+) -> tuple[WorkflowSession, ...]:
+    """Find candidate workflows linked to a planning-session identifier."""
+
+    _, _, _, sessions = workflow_state.export_snapshot()
+    matches = tuple(
+        session
+        for session in sessions.values()
+        if session.candidate_metadata is not None
+        and session.candidate_metadata.candidate_planning_session_id == session_id
+    )
+    return tuple(sorted(matches, key=lambda session: session.identifier))
+
+
+def _candidate_planning_lookup_conflict_error(
+    session_id: str,
+    workflows: tuple[WorkflowSession, ...],
+) -> HTTPException:
+    workflow_ids = tuple(sorted(workflow.identifier for workflow in workflows))
+    logger.warning(
+        "Duplicate candidate workflow linkage detected for planning session %s: %s",
+        session_id,
+        ", ".join(workflow_ids),
+    )
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "candidate_planning_session_conflict",
+            "message": "Multiple workflows reference planning session {}: {}".format(
+                session_id,
+                ", ".join(workflow_ids),
+            ),
+        },
+    )
+
+
+def _candidate_planning_session_from_workflow(
+    workflow_session: WorkflowSession,
+) -> CandidatePlanResponse:
+    metadata = workflow_session.candidate_metadata
+    assert metadata is not None
+    try:
+        intake_status = CoreCandidatePlanningIntakeStatus(metadata.core_revalidation_status)
+    except ValueError:
+        logger.warning(
+            "Unknown core_revalidation_status %s in metadata for planning session %s",
+            metadata.core_revalidation_status,
+            metadata.candidate_planning_session_id,
+        )
+        intake_status = CoreCandidatePlanningIntakeStatus.NOT_FOUND
+    return CandidatePlanResponse(
+        session_id=metadata.candidate_planning_session_id,
+        candidate_id=metadata.candidate_id,
+        status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+        planning_allowed=False,
+        intake_status=intake_status,
+        intake_reason_codes=(),
+        candidate_fingerprint=metadata.candidate_fingerprint,
+        unsupported_reason=None,
+        plan=None,
+        planning_failure=None,
+    )
+
+
+def _candidate_workflow_response_from_workflow(
+    planning_session_id: str,
+    workflow_session: WorkflowSession,
+) -> CandidateWorkflowConversionResponse:
+    metadata = workflow_session.candidate_metadata
+    assert metadata is not None
+    try:
+        core_status = CoreCandidatePlanningIntakeStatus(metadata.core_revalidation_status)
+    except ValueError:
+        logger.warning(
+            "Unknown core_revalidation_status %s in metadata for planning session %s",
+            metadata.core_revalidation_status,
+            planning_session_id,
+        )
+        core_status = None
+
+    return CandidateWorkflowConversionResponse(
+        candidate_planning_session_id=metadata.candidate_planning_session_id,
+        candidate_id=metadata.candidate_id,
+        candidate_fingerprint=metadata.candidate_fingerprint,
+        candidate_plan_id=metadata.candidate_plan_id,
+        candidate_plan_fingerprint=metadata.candidate_plan_fingerprint,
+        workflow_session_id=workflow_session.identifier,
+        workflow_status=workflow_session.state.value,
+        implementation_approval_request_id=workflow_session.candidate_implementation_approval_id,
+        conversion_status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+        core_revalidation_status=core_status,
+        reason_codes=(),
+        failure=None,
+    )
 
 
 class CandidatePlanningRequest(BaseModel):
@@ -281,7 +386,22 @@ async def get_candidate_planning_session(
 
     session = request.app.state.container.candidate_planning_service.get_session(session_id)
     if session is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        workflows = _candidate_workflows_for_session(
+            request.app.state.container.workflow_state,
+            session_id,
+        )
+        if len(workflows) == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        if len(workflows) > 1:
+            raise _candidate_planning_lookup_conflict_error(session_id, workflows)
+
+        workflow_session = workflows[0]
+        logger.warning(
+            "Recovered orphaned planning session %s from candidate workflow %s",
+            session_id,
+            workflow_session.identifier,
+        )
+        return _to_response(_candidate_planning_session_from_workflow(workflow_session))
     return _to_response(
         CandidatePlanResponse(
             session_id=session.identifier,
@@ -341,7 +461,11 @@ async def get_candidate_plan(
     "/{session_id}/workflow",
     response_model=CandidateWorkflowResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    responses={status.HTTP_503_SERVICE_UNAVAILABLE: {"model": CandidatePlanningErrorResponse}},
+    responses={
+        status.HTTP_404_NOT_FOUND: {"model": CandidatePlanningErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": CandidatePlanningErrorResponse},
+        status.HTTP_503_SERVICE_UNAVAILABLE: {"model": CandidatePlanningErrorResponse},
+    },
 )
 async def create_candidate_workflow_shell(
     request: Request,
@@ -360,6 +484,32 @@ async def create_candidate_workflow_shell(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"code": exc.code.value, "message": exc.message},
         ) from exc
+
+    if (
+        response.failure is not None
+        and response.failure.code == CandidatePlanningFailureCode.SESSION_NOT_FOUND
+        and response.conversion_status
+        is CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED
+    ):
+        workflows = _candidate_workflows_for_session(
+            request.app.state.container.workflow_state,
+            session_id,
+        )
+        if len(workflows) == 0:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        if len(workflows) > 1:
+            raise _candidate_planning_lookup_conflict_error(session_id, workflows)
+
+        workflow_session = workflows[0]
+        logger.warning(
+            "Recovered orphaned planning session %s from candidate workflow %s",
+            session_id,
+            workflow_session.identifier,
+        )
+        return _workflow_response(
+            _candidate_workflow_response_from_workflow(session_id, workflow_session),
+        )
+
     return _workflow_response(response)
 
 

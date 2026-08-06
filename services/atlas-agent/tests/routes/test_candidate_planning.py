@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.candidate_planning.models import (
     CandidateImplementationTranslationResponse,
     CandidatePlan,
+    CandidatePlanningFailure,
     CandidatePlanningFailureCode,
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
@@ -20,6 +21,12 @@ from app.candidate_planning.models import (
 from app.candidate_planning.service import CandidatePlanningServiceError
 from app.config.settings import Settings
 from app.main import create_app
+from app.workflow.models import (
+    CandidateWorkflowMetadata,
+    WorkflowSession,
+    WorkflowSessionState,
+    WorkflowSource,
+)
 
 
 class FakeCandidatePlanningService:
@@ -144,6 +151,26 @@ def workflow_response(tmp_path: Path) -> CandidateWorkflowConversionResponse:
     )
 
 
+def session_not_found_workflow_response(session_id: str) -> CandidateWorkflowConversionResponse:
+    return CandidateWorkflowConversionResponse(
+        candidate_planning_session_id=session_id,
+        candidate_id=session_id,
+        candidate_fingerprint=None,
+        candidate_plan_id=None,
+        candidate_plan_fingerprint=None,
+        workflow_session_id=None,
+        workflow_status=None,
+        implementation_approval_request_id=None,
+        conversion_status=CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+        core_revalidation_status=None,
+        reason_codes=(CandidatePlanningFailureCode.SESSION_NOT_FOUND.value,),
+        failure=CandidatePlanningFailure(
+            code=CandidatePlanningFailureCode.SESSION_NOT_FOUND,
+            message="Candidate planning session was not found.",
+        ),
+    )
+
+
 def implementation_response() -> CandidateImplementationTranslationResponse:
     return CandidateImplementationTranslationResponse(
         candidate_planning_session_id="candidate-plan-1",
@@ -192,6 +219,43 @@ def session_with_plan(tmp_path: Path) -> CandidatePlanningSession:
         created_at=timestamp,
         planning_status=CandidatePlanningSessionStatus.PLAN_READY,
         plan=planned_response(tmp_path).plan,
+    )
+
+
+def linked_candidate_workflow(
+    *,
+    workflow_id: str = "candidate-workflow-1",
+    planning_session_id: str = "candidate-plan-1",
+    workflow_state: WorkflowSessionState = WorkflowSessionState.AWAITING_APPROVAL,
+) -> WorkflowSession:
+    return WorkflowSession(
+        identifier=workflow_id,
+        request=None,
+        plan=None,
+        state=workflow_state,
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=CandidateWorkflowMetadata(
+            candidate_planning_session_id=planning_session_id,
+            candidate_id="candidate-1",
+            candidate_fingerprint="candidate-fingerprint-v1:aaa",
+            candidate_plan_id="candidate-plan-output-candidate-plan-1",
+            candidate_plan_fingerprint="candidate-plan-fingerprint-v1:abc",
+            source_recommendation_id="finding-1",
+            source_subsystem="orion",
+            catalog_item_id="frigate",
+            target_id="atlas-compose",
+            target_type="repository",
+            execution_category="update",
+            execution_intent="update-compose-stack",
+            evidence_ids=("evidence-1",),
+            compatibility_assessment_id="assessment-1",
+            compatibility_status="compatible",
+            relationship_ids=("relationship-1",),
+            conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
+            core_revalidation_status="accepted_for_planning",
+            core_revalidation_fingerprint="candidate-fingerprint-v1:aaa",
+        ),
+        candidate_implementation_approval_id="approval-candidate-workflow-1",
     )
 
 
@@ -289,6 +353,7 @@ def test_get_plan_route_returns_existing_plan_without_generation(monkeypatch, tm
 
 def test_workflow_conversion_route_accepts_only_expected_fingerprints(monkeypatch, tmp_path: Path) -> None:
     service = FakeCandidatePlanningService()
+    service.session = session_with_plan(tmp_path)
     service.workflow_response = workflow_response(tmp_path)
     client = make_client(monkeypatch, tmp_path, service)
 
@@ -311,6 +376,7 @@ def test_workflow_conversion_route_accepts_only_expected_fingerprints(monkeypatc
 
 def test_workflow_conversion_route_rejects_caller_commands(monkeypatch, tmp_path: Path) -> None:
     service = FakeCandidatePlanningService()
+    service.session = session_with_plan(tmp_path)
     service.workflow_response = workflow_response(tmp_path)
     client = make_client(monkeypatch, tmp_path, service)
 
@@ -320,6 +386,61 @@ def test_workflow_conversion_route_rejects_caller_commands(monkeypatch, tmp_path
     )
 
     assert response.status_code == 422
+
+
+def test_workflow_conversion_route_recover_orphan_when_session_missing(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.workflow_response = session_not_found_workflow_response("candidate-plan-1")
+    client = make_client(monkeypatch, tmp_path, service)
+    client.app.state.container.workflow_state.create_session(linked_candidate_workflow())
+
+    response = client.post("/candidate-planning/candidate-plan-1/workflow")
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["conversion_status"] == "workflow_created"
+    assert payload["workflow_session_id"] == "candidate-workflow-1"
+    assert payload["workflow_status"] == "awaiting_approval"
+    assert len(service.requests) == 1
+
+
+def test_workflow_conversion_route_returns_404_when_no_orphaned_workflow_found(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.workflow_response = session_not_found_workflow_response("candidate-plan-1")
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post("/candidate-planning/candidate-plan-1/workflow")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Session not found"
+
+
+def test_workflow_conversion_route_returns_409_when_multiple_orphaned_workflows(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.workflow_response = session_not_found_workflow_response("candidate-plan-1")
+    client = make_client(monkeypatch, tmp_path, service)
+    workflow_state = client.app.state.container.workflow_state
+    workflow_state.create_session(linked_candidate_workflow(workflow_id="candidate-workflow-1"))
+    workflow_state.create_session(linked_candidate_workflow(workflow_id="candidate-workflow-2"))
+
+    response = client.post("/candidate-planning/candidate-plan-1/workflow")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "candidate_planning_session_conflict"
+
+
+def test_get_candidate_planning_session_recovers_orphan_workflow(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    client = make_client(monkeypatch, tmp_path, service)
+    client.app.state.container.workflow_state.create_session(linked_candidate_workflow())
+
+    response = client.get("/candidate-planning/candidate-plan-1")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "workflow_created"
+    assert payload["session_id"] == "candidate-plan-1"
+    assert payload["plan"] is None
 
 
 def test_implementation_route_accepts_only_expected_fingerprints(monkeypatch, tmp_path: Path) -> None:
