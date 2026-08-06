@@ -3,20 +3,29 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createCandidateImplementationRequest } from "../api/atlas-agent";
+import {
+    createCandidateImplementationRequest,
+    createCandidateWorkflowShell,
+    getCandidatePlanningSession,
+} from "../api/atlas-agent";
 import type {
     CandidateImplementationTranslationResponse,
+    CandidatePlanningResponse,
     CandidateWorkflowResponse,
 } from "../types/atlasAgent";
 import { WorkflowShellPage } from "./WorkflowShellPage";
 
 vi.mock("../api/atlas-agent", () => ({
     createCandidateImplementationRequest: vi.fn(),
+    createCandidateWorkflowShell: vi.fn(),
+    getCandidatePlanningSession: vi.fn(),
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) =>
         error instanceof Error ? error.message : fallback,
 }));
 
 const mockedCreateCandidateImplementationRequest = vi.mocked(createCandidateImplementationRequest);
+const mockedCreateCandidateWorkflowShell = vi.mocked(createCandidateWorkflowShell);
+const mockedGetCandidatePlanningSession = vi.mocked(getCandidatePlanningSession);
 
 function workflow(overrides: Partial<CandidateWorkflowResponse> = {}): CandidateWorkflowResponse {
     return {
@@ -55,6 +64,22 @@ function implementationTranslationResponse(
     };
 }
 
+function planningSession(overrides: Partial<CandidatePlanningResponse> = {}): CandidatePlanningResponse {
+    return {
+        session_id: "candidate-plan-1",
+        candidate_id: "candidate-1",
+        status: "plan_ready",
+        planning_allowed: true,
+        intake_status: "accepted_for_planning",
+        intake_reason_codes: [],
+        candidate_fingerprint: "fingerprint-1",
+        unsupported_reason: null,
+        plan: null,
+        planning_failure: null,
+        ...overrides,
+    };
+}
+
 function renderPage(state?: { workflow: CandidateWorkflowResponse }) {
     return render(
         <MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state }]}>
@@ -72,6 +97,8 @@ describe("WorkflowShellPage", () => {
         mockedCreateCandidateImplementationRequest.mockResolvedValue(
             implementationTranslationResponse(),
         );
+        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow());
+        mockedGetCandidatePlanningSession.mockResolvedValue(planningSession());
     });
 
     it("renders a read-only workflow summary from route state", () => {
@@ -95,6 +122,30 @@ describe("WorkflowShellPage", () => {
         expect(screen.getByText("Commit ○")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|verify|review|commit/i })).not.toBeInTheDocument();
         expect(screen.queryByText(/argv|commands|execution metadata/i)).not.toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+        expect(mockedGetCandidatePlanningSession).not.toHaveBeenCalled();
+    });
+
+    it("loads the workflow shell when opened directly from planning session URL", async () => {
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: /Workflow workflow-1/i })).toBeInTheDocument();
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1");
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
+            expected_candidate_fingerprint: "fingerprint-1",
+        });
+    });
+
+    it("shows loading state while resolving workflow shell summary", async () => {
+        let resolveSession!: (value: CandidatePlanningResponse) => void;
+        mockedGetCandidatePlanningSession.mockImplementation(() => new Promise((resolve) => {
+            resolveSession = resolve;
+        }));
+
+        renderPage();
+
+        expect(await screen.findByText(/Loading workflow shell/i)).toBeInTheDocument();
+        resolveSession(planningSession());
     });
 
     it("renders a create implementation request button for awaiting_approval shells", async () => {
@@ -161,10 +212,13 @@ describe("WorkflowShellPage", () => {
         expect(await screen.findByRole("alert")).toHaveTextContent("Implementation unavailable");
     });
 
-    it("renders an unavailable state when opened without creation response", () => {
+    it("shows an error when no workflow shell can be loaded from the planning session ID", async () => {
+        mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Workflow unavailable"));
+
         renderPage();
 
-        expect(screen.getByRole("alert")).toHaveTextContent("Workflow summary unavailable");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Workflow summary unavailable");
+        expect(screen.getByText("Workflow unavailable")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Back to planning session" })).toHaveAttribute(
             "href",
             "/candidate-planning/candidate-plan-1",

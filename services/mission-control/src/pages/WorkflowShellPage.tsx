@@ -1,9 +1,11 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
+    createCandidateWorkflowShell,
     createCandidateImplementationRequest,
     getAtlasAgentErrorMessage,
+    getCandidatePlanningSession,
 } from "../api/atlas-agent";
 import type {
     CandidateImplementationTranslationResponse,
@@ -18,10 +20,66 @@ export function WorkflowShellPage() {
     const { sessionId = "" } = useParams<{ sessionId: string }>();
     const location = useLocation();
     const navigate = useNavigate();
-    const workflow = (location.state as WorkflowLocationState | null)?.workflow ?? null;
+    const workflowFromLocation = (location.state as WorkflowLocationState | null)?.workflow ?? null;
+    const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(workflowFromLocation);
     const [isCreatingImplementation, setIsCreatingImplementation] = useState(false);
+    const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(workflowFromLocation === null);
+    const [workflowLoadError, setWorkflowLoadError] = useState<string | null>(null);
     const [implementationError, setImplementationError] = useState<string | null>(null);
     const [implementationResult, setImplementationResult] = useState<CandidateImplementationTranslationResponse | null>(null);
+
+    useEffect(() => {
+        if (workflowFromLocation !== null) {
+            setIsLoadingWorkflow(false);
+            setWorkflowLoadError(null);
+            return;
+        }
+
+        let cancelled = false;
+        setIsLoadingWorkflow(true);
+        setWorkflowLoadError(null);
+
+        getCandidatePlanningSession(sessionId)
+            .then((planningSession) => {
+                if (cancelled) {
+                    return;
+                }
+
+                if (planningSession === null) {
+                    throw new Error("Planning session was not found.");
+                }
+
+                return createCandidateWorkflowShell(sessionId, {
+                    expected_candidate_fingerprint: planningSession.candidate_fingerprint,
+                });
+            })
+            .then((response) => {
+                if (!cancelled && response) {
+                    setWorkflow(response);
+                }
+            })
+            .catch((error: unknown) => {
+                if (cancelled) {
+                    return;
+                }
+
+                setWorkflowLoadError(
+                    getAtlasAgentErrorMessage(
+                        error,
+                        "Mission Control could not load this workflow shell summary.",
+                    ),
+                );
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setIsLoadingWorkflow(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [sessionId, workflowFromLocation]);
     const canCreateImplementation =
         workflow !== null
         && workflow.workflow_status === "awaiting_approval"
@@ -59,6 +117,16 @@ export function WorkflowShellPage() {
         }
     }
 
+    if (isLoadingWorkflow) {
+        return (
+            <main className="mx-auto max-w-6xl p-8">
+                <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
+                    Loading workflow shell…
+                </p>
+            </main>
+        );
+    }
+
     if (!workflow) {
         return (
             <main className="mx-auto max-w-6xl space-y-6 p-8">
@@ -66,7 +134,8 @@ export function WorkflowShellPage() {
                 <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <p className="font-semibold text-amber-200">Workflow summary unavailable</p>
                     <p className="mt-1 text-sm text-slate-300">
-                        Mission Control can display the workflow shell summary returned by Create Workflow. Return to the planning session and create or reopen the workflow from that response.
+                        {workflowLoadError
+                            ?? "Mission Control can display the workflow shell summary returned by Create Workflow. Return to the planning session and create or reopen the workflow from that response."}
                     </p>
                     <Link to={`/candidate-planning/${encodeURIComponent(sessionId)}`} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Back to planning session
