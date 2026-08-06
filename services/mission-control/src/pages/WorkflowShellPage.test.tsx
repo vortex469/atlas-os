@@ -1,9 +1,22 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { CandidateWorkflowResponse } from "../types/atlasAgent";
+import { createCandidateImplementationRequest } from "../api/atlas-agent";
+import type {
+    CandidateImplementationTranslationResponse,
+    CandidateWorkflowResponse,
+} from "../types/atlasAgent";
 import { WorkflowShellPage } from "./WorkflowShellPage";
+
+vi.mock("../api/atlas-agent", () => ({
+    createCandidateImplementationRequest: vi.fn(),
+    getAtlasAgentErrorMessage: (error: unknown, fallback: string) =>
+        error instanceof Error ? error.message : fallback,
+}));
+
+const mockedCreateCandidateImplementationRequest = vi.mocked(createCandidateImplementationRequest);
 
 function workflow(overrides: Partial<CandidateWorkflowResponse> = {}): CandidateWorkflowResponse {
     return {
@@ -23,17 +36,44 @@ function workflow(overrides: Partial<CandidateWorkflowResponse> = {}): Candidate
     };
 }
 
+function implementationTranslationResponse(
+    overrides: Partial<CandidateImplementationTranslationResponse> = {},
+): CandidateImplementationTranslationResponse {
+    return {
+        candidate_planning_session_id: "candidate-plan-1",
+        workflow_session_id: "workflow-1",
+        translation_status: "implementation_ready",
+        implementation_request_id: "implementation-1",
+        exact_approval_request_id: "approval-1",
+        candidate_fingerprint: "fingerprint-1",
+        plan_fingerprint: "plan-fingerprint-1",
+        repository_head: "head-1",
+        translator_version: "candidate-update-compose-stack-v1",
+        reason_codes: [],
+        failure: null,
+        ...overrides,
+    };
+}
+
 function renderPage(state?: { workflow: CandidateWorkflowResponse }) {
     return render(
         <MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state }]}>
             <Routes>
                 <Route path="/candidate-planning/:sessionId/workflow" element={<WorkflowShellPage />} />
+                <Route path="/workflows/:workflowId" element={<div>Workflow detail</div>} />
             </Routes>
         </MemoryRouter>,
     );
 }
 
 describe("WorkflowShellPage", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        mockedCreateCandidateImplementationRequest.mockResolvedValue(
+            implementationTranslationResponse(),
+        );
+    });
+
     it("renders a read-only workflow summary from route state", () => {
         renderPage({ workflow: workflow() });
 
@@ -55,6 +95,70 @@ describe("WorkflowShellPage", () => {
         expect(screen.getByText("Commit ○")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|verify|review|commit/i })).not.toBeInTheDocument();
         expect(screen.queryByText(/argv|commands|execution metadata/i)).not.toBeInTheDocument();
+    });
+
+    it("renders a create implementation request button for awaiting_approval shells", async () => {
+        const user = userEvent.setup();
+        const currentWorkflow = workflow({
+            workflow_status: "awaiting_approval",
+            conversion_status: "workflow_created",
+            implementation_approval_request_id: "approval-shell",
+        });
+        renderPage({ workflow: currentWorkflow });
+
+        expect(screen.getByText("Create implementation request")).toBeInTheDocument();
+        const button = screen.getByRole("button", { name: /create implementation request/i });
+
+        await user.click(button);
+
+        expect(mockedCreateCandidateImplementationRequest).toHaveBeenCalledWith(
+            "candidate-plan-1",
+            {
+                expected_candidate_fingerprint: currentWorkflow.candidate_fingerprint,
+                expected_plan_fingerprint: currentWorkflow.candidate_plan_fingerprint,
+            },
+        );
+        expect(await screen.findByText("Workflow detail")).toBeInTheDocument();
+    });
+
+    it("blocks duplicate implementation request submissions", async () => {
+        const user = userEvent.setup();
+        let resolveRequest!: (value: CandidateImplementationTranslationResponse) => void;
+        mockedCreateCandidateImplementationRequest.mockReturnValue(
+            new Promise((resolve) => {
+                resolveRequest = resolve;
+            }),
+        );
+
+        renderPage({
+            workflow: workflow({
+                workflow_status: "awaiting_approval",
+                implementation_approval_request_id: "approval-shell",
+            }),
+        });
+
+        const button = screen.getByRole("button", { name: /create implementation request/i });
+        await user.dblClick(button);
+
+        expect(mockedCreateCandidateImplementationRequest).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole("button", { name: /creating implementation request/i })).toBeDisabled();
+        resolveRequest(implementationTranslationResponse());
+    });
+
+    it("shows an error when creating the implementation request fails", async () => {
+        const user = userEvent.setup();
+        mockedCreateCandidateImplementationRequest.mockRejectedValueOnce(new Error("Implementation unavailable"));
+
+        renderPage({
+            workflow: workflow({
+                workflow_status: "awaiting_approval",
+                implementation_approval_request_id: "approval-shell",
+            }),
+        });
+
+        await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Implementation unavailable");
     });
 
     it("renders an unavailable state when opened without creation response", () => {

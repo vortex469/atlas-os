@@ -4,6 +4,8 @@ import type {
     CandidatePlanApiResponse,
     CandidatePlanningRequest,
     CandidatePlanningResponse,
+    CandidateImplementationTranslationRequest,
+    CandidateImplementationTranslationResponse,
     CandidateWorkflowRequest,
     CandidateWorkflowResponse,
     WorkflowAuditResponse,
@@ -250,6 +252,18 @@ export async function createCandidateWorkflowShell(
 ): Promise<CandidateWorkflowResponse> {
     const response = await atlasAgent.post<CandidateWorkflowResponse>(
         `/candidate-planning/${encodeURIComponent(sessionId)}/workflow`,
+        request,
+    );
+
+    return response.data;
+}
+
+export async function createCandidateImplementationRequest(
+    sessionId: string,
+    request?: CandidateImplementationTranslationRequest,
+): Promise<CandidateImplementationTranslationResponse> {
+    const response = await atlasAgent.post<CandidateImplementationTranslationResponse>(
+        `/candidate-planning/${encodeURIComponent(sessionId)}/implementation`,
         request,
     );
 

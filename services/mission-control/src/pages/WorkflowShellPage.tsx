@@ -1,6 +1,14 @@
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useState } from "react";
 
-import type { CandidateWorkflowResponse } from "../types/atlasAgent";
+import {
+    createCandidateImplementationRequest,
+    getAtlasAgentErrorMessage,
+} from "../api/atlas-agent";
+import type {
+    CandidateImplementationTranslationResponse,
+    CandidateWorkflowResponse,
+} from "../types/atlasAgent";
 
 type WorkflowLocationState = {
     workflow?: CandidateWorkflowResponse;
@@ -9,7 +17,47 @@ type WorkflowLocationState = {
 export function WorkflowShellPage() {
     const { sessionId = "" } = useParams<{ sessionId: string }>();
     const location = useLocation();
+    const navigate = useNavigate();
     const workflow = (location.state as WorkflowLocationState | null)?.workflow ?? null;
+    const [isCreatingImplementation, setIsCreatingImplementation] = useState(false);
+    const [implementationError, setImplementationError] = useState<string | null>(null);
+    const [implementationResult, setImplementationResult] = useState<CandidateImplementationTranslationResponse | null>(null);
+    const canCreateImplementation =
+        workflow !== null
+        && workflow.workflow_status === "awaiting_approval"
+        && workflow.workflow_session_id !== null
+        && workflow.failure === null;
+
+    async function createImplementation() {
+        if (!workflow || !canCreateImplementation || isCreatingImplementation) {
+            return;
+        }
+
+        setIsCreatingImplementation(true);
+        setImplementationError(null);
+        setImplementationResult(null);
+        try {
+            const response = await createCandidateImplementationRequest(
+                sessionId,
+                {
+                    expected_candidate_fingerprint: workflow.candidate_fingerprint ?? undefined,
+                    expected_plan_fingerprint: workflow.candidate_plan_fingerprint ?? undefined,
+                },
+            );
+            setImplementationResult(response);
+            if (response.workflow_session_id) {
+                navigate(`/workflows/${encodeURIComponent(response.workflow_session_id)}`);
+            } else {
+                setImplementationError("Implementation request was translated but workflow session id was not returned.");
+            }
+        } catch (error) {
+            setImplementationError(
+                getAtlasAgentErrorMessage(error, "Candidate implementation request could not be created."),
+            );
+        } finally {
+            setIsCreatingImplementation(false);
+        }
+    }
 
     if (!workflow) {
         return (
@@ -37,7 +85,7 @@ export function WorkflowShellPage() {
                         Workflow {workflow.workflow_session_id ?? "not created"}
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Read-only workflow shell summary from Atlas Agent. Mission Control does not create implementation requests, approve changes, execute changes, verify changes, review changes, or commit code from this page.
+                        Read-only workflow shell summary from Atlas Agent. Mission Control does not execute changes, verify changes, review changes, or commit code from this page.
                     </p>
                 </div>
                 <WorkflowRail />
@@ -64,6 +112,38 @@ export function WorkflowShellPage() {
                     <Detail label="Planning Session ID" value={workflow.candidate_planning_session_id} />
                     <Detail label="Creation time" value="Not exposed by Atlas Agent API" />
                 </dl>
+                {canCreateImplementation && (
+                    <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+                        <h2 className="text-base font-semibold text-emerald-200">Create implementation request</h2>
+                        <p className="mt-2 text-sm text-slate-300">
+                            Translate the approval-gated shell into the immutable implementation request required for execution approval.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                onClick={() => void createImplementation()}
+                                disabled={isCreatingImplementation}
+                                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {isCreatingImplementation ? "Creating implementation request..." : "Create Implementation Request"}
+                            </button>
+                            {isCreatingImplementation && <p className="text-sm text-slate-200">Creating implementation request...</p>}
+                        </div>
+                    </div>
+                )}
+                {workflow.workflow_status === "awaiting_implementation_approval" && (
+                    <p className="mt-4 text-sm text-slate-300">Implementation request has already been created.</p>
+                )}
+                {implementationResult && implementationResult.workflow_session_id && (
+                    <p className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                        Implementation request is ready. Redirecting to execution workflow.
+                    </p>
+                )}
+                {implementationError && (
+                    <p role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+                        {implementationError}
+                    </p>
+                )}
                 {workflow.reason_codes.length > 0 && <p className="mt-4 text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
                 {workflow.failure && <p className="mt-4 text-sm text-slate-400">Failure: {workflow.failure.code} - {workflow.failure.message}</p>}
                 {workflow.workflow_session_id && (

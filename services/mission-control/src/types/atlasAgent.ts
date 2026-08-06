@@ -116,6 +116,26 @@ export interface CandidateWorkflowResponse {
     failure: CandidatePlanningFailure | null;
 }
 
+export interface CandidateImplementationTranslationRequest {
+    expected_candidate_fingerprint?: string | null;
+    expected_plan_fingerprint?: string | null;
+    expected_repository_head?: string | null;
+}
+
+export interface CandidateImplementationTranslationResponse {
+    candidate_planning_session_id: string;
+    workflow_session_id: string | null;
+    translation_status: string;
+    implementation_request_id: string | null;
+    exact_approval_request_id: string | null;
+    candidate_fingerprint: string | null;
+    plan_fingerprint: string | null;
+    repository_head: string | null;
+    translator_version: string | null;
+    reason_codes: string[];
+    failure: CandidatePlanningFailure | null;
+}
+
 export interface WorkflowImplementationRequestSummary {
     immutable_request_id: string;
     tool: string;
