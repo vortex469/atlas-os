@@ -983,7 +983,10 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
             candidate_plan_fingerprint=(
                 metadata.candidate_plan_fingerprint if metadata is not None else None
             ),
-            likely_affected_files=[str(path) for path in (plan.affected_files if plan is not None else ())],
+            likely_affected_files=[
+                str(path)
+                for path in (plan.likely_affected_files if plan is not None else ())
+            ],
         ),
         workflow=WorkflowAuditWorkflowResponse(
             status=_section_status(_AUDIT_STAGE_RANK["workflow"], current_rank, True),

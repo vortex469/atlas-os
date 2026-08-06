@@ -20,6 +20,7 @@ from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
 from app.candidate_planning.models import (
     CandidateImplementationRequest,
+    CandidatePlan,
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
     CandidateSnapshot,
@@ -631,6 +632,28 @@ def candidate_planning_session_for_workflow(_repository: Path) -> CandidatePlann
         status=CandidatePlanningSessionStatus.PLAN_READY,
         snapshot=snapshot,
         created_at=timestamp,
+        plan=CandidatePlan(
+            identifier="plan-123",
+            session_id="candidate-plan-123",
+            candidate_id="candidate-123",
+            candidate_fingerprint="candidate-fingerprint-123",
+            title="Prepare compose stack update proposal",
+            objective="Create a minimal repository change proposal.",
+            assumptions=("Read-only planning only.",),
+            constraints=("requires-current-evidence",),
+            proposed_steps=("Inspect compose definitions.",),
+            likely_affected_components=("atlas-compose",),
+            likely_affected_files=(Path("compose.production.yaml"),),
+            verification_strategy=("Validate with runtime checks.",),
+            rollback_considerations=("Revert commit if needed.",),
+            unresolved_questions=(),
+            evidence_ids=("evidence-1",),
+            created_at=timestamp,
+            repository_root=_repository,
+            repository_branch="feature/atlas-agent",
+            repository_head="abc123",
+            revalidated_candidate_fingerprint="candidate-fingerprint-123",
+        ),
         candidate_plan_fingerprint="plan-fingerprint-123",
         planning_status=CandidatePlanningSessionStatus.PLAN_READY,
     )
@@ -733,6 +756,73 @@ def test_candidate_workflow_audit_endpoint_returns_machine_readable_chain(tmp_pa
     assert body["implementation"]["tool"] == "docker-compose"
     assert body["planning"]["planning_state"] == "plan_ready"
     assert body["planning"]["planning_status"] == "plan_ready"
+
+
+def test_candidate_workflow_audit_after_shell_creation_shows_planning_without_implementation_details(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+
+    workflow = WorkflowSession(
+        identifier="workflow-456",
+        request=None,
+        plan=None,
+        state=WorkflowSessionState.AWAITING_APPROVAL,
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=CandidateWorkflowMetadata(
+            candidate_planning_session_id="candidate-plan-123",
+            candidate_id="candidate-123",
+            candidate_fingerprint="candidate-fingerprint-123",
+            candidate_plan_id="plan-123",
+            candidate_plan_fingerprint="plan-fingerprint-123",
+            source_recommendation_id="recommendation-123",
+            source_subsystem="discovery",
+            catalog_item_id="catalog-1",
+            target_id="compose-stack-1",
+            target_type="compose_stack",
+            execution_category="maintenance",
+            execution_intent="update-compose-stack",
+            evidence_ids=("evidence-1",),
+            compatibility_assessment_id="compat-1",
+            compatibility_status="compatible",
+            relationship_ids=("rel-1",),
+            conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
+            core_revalidation_status="accepted_for_planning",
+            core_revalidation_fingerprint="candidate-fingerprint-123",
+        ),
+        candidate_implementation_request=None,
+        candidate_implementation_approval_id="approval-workflow-456",
+    )
+    workflow_placeholder_approval = ApprovalRequest(
+        identifier="approval-workflow-456",
+        workflow_id="workflow-456",
+        checkpoint_id="plan-123",
+        title="Approve candidate workflow shell for compose stack update",
+        requested_tool="atlas-agent",
+        requested_command=(),
+        requested_working_directory=tmp_path,
+        rationale="Approve candidate workflow shell.",
+        purpose=ApprovalPurpose.IMPLEMENTATION,
+    )
+    planning_session = candidate_planning_session_for_workflow(tmp_path)
+    container.candidate_planning_state.create_session(planning_session)
+    container.workflow_state.create_session(workflow)
+    container.approval_repository.save_request(
+        workflow_placeholder_approval
+    )
+
+    response = client.get("/api/v1/agent/workflows/workflow-456/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_id"] == "workflow-456"
+    assert body["workflow_state"] == "awaiting_approval"
+    assert body["plan"]["plan_id"] == "plan-123"
+    assert body["plan"]["likely_affected_files"] == ["compose.production.yaml"]
+    assert body["implementation"]["implementation_request_id"] is None
+    assert body["implementation"]["tool"] is None
+    assert body["implementation"]["affected_files"] == []
+    assert body["approvals"]["implementation"]["approval_id"] == "approval-workflow-456"
 
 
 def test_list_workflows_returns_read_only_summaries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
