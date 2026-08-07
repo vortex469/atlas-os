@@ -160,9 +160,15 @@ export function WorkflowPage() {
         );
     }
 
-    const canDecide = workflow.workflow_state === "awaiting_implementation_approval";
-    const canDecideVerification = workflow.workflow_state === "awaiting_verification_approval";
-    const canDecideCommit = workflow.workflow_state === "awaiting_commit_approval";
+    const canDecide =
+        workflow.workflow_state === "awaiting_implementation_approval"
+        && workflow.implementation_approval_status === "pending";
+    const canDecideVerification =
+        workflow.workflow_state === "awaiting_verification_approval"
+        && workflow.verification_approval_status === "pending";
+    const canDecideCommit =
+        workflow.workflow_state === "awaiting_commit_approval"
+        && workflow.commit_approval_status === "pending";
 
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">

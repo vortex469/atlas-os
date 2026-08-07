@@ -245,6 +245,22 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
     });
 
+    it("hides implementation approval controls after an approve response without state transition", async () => {
+        mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
+            workflow_id: "workflow-123",
+            workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "approved",
+            message: null,
+        });
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
+
+        await screen.findByText("Implementation approved. Execution is now available.");
+        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+    });
+
     it("renders workflow rail and no execution, verification, or commit controls", async () => {
         renderPage();
 
@@ -302,6 +318,23 @@ describe("WorkflowPage", () => {
         expect(JSON.stringify(mockedSubmitWorkflowVerificationApproval.mock.calls[0])).not.toMatch(/command|check|evidence|changed|review|commit/);
     });
 
+    it("hides verification controls after a verification approve response without state transition", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_verification_approval" }));
+        mockedSubmitWorkflowVerificationApproval.mockResolvedValue({
+            workflow_id: "workflow-123",
+            workflow_state: "awaiting_verification_approval",
+            verification_approval_status: "approved",
+            message: null,
+        });
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Approve Verification" }));
+
+        await screen.findByText("Verification approved. Verification is now available.");
+        expect(screen.queryByRole("button", { name: "Approve Verification" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject Verification" })).not.toBeInTheDocument();
+    });
+
     it("submits verification rejection and blocks duplicate clicks", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_verification_approval" }));
         let resolveApproval: (value: Awaited<ReturnType<typeof submitWorkflowVerificationApproval>>) => void = () => undefined;
@@ -357,6 +390,23 @@ describe("WorkflowPage", () => {
         expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledWith("workflow-123", "approve");
         expect(JSON.stringify(mockedSubmitWorkflowCommitApproval.mock.calls[0])).not.toMatch(/message|path|sha|fingerprint|evidence|repository|push|tag/);
+    });
+
+    it("hides commit controls after a commit approve response without state transition", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        mockedSubmitWorkflowCommitApproval.mockResolvedValue({
+            workflow_id: "workflow-123",
+            workflow_state: "awaiting_commit_approval",
+            commit_approval_status: "approved",
+            message: null,
+        });
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Approve Commit" }));
+
+        await screen.findByText("Commit approved. Workflow may now complete through the existing backend resume path.");
+        expect(screen.queryByRole("button", { name: "Approve Commit" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject Commit" })).not.toBeInTheDocument();
     });
 
     it("submits commit rejection and blocks duplicate clicks", async () => {
