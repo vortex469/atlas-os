@@ -1,9 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     getWorkflowDetail,
+    resumeWorkflow,
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
     submitWorkflowVerificationApproval,
@@ -14,12 +15,14 @@ import type { WorkflowDetailResponse } from "../types/atlasAgent";
 vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowDetail: vi.fn(),
+    resumeWorkflow: vi.fn(),
     submitWorkflowCommitApproval: vi.fn(),
     submitWorkflowImplementationApproval: vi.fn(),
     submitWorkflowVerificationApproval: vi.fn(),
 }));
 
 const mockedGetWorkflowDetail = vi.mocked(getWorkflowDetail);
+const mockedResumeWorkflow = vi.mocked(resumeWorkflow);
 const mockedSubmitWorkflowCommitApproval = vi.mocked(submitWorkflowCommitApproval);
 const mockedSubmitWorkflowImplementationApproval = vi.mocked(submitWorkflowImplementationApproval);
 const mockedSubmitWorkflowVerificationApproval = vi.mocked(submitWorkflowVerificationApproval);
@@ -138,6 +141,14 @@ function workflowAwaitingCommit(overrides: Partial<WorkflowDetailResponse> = {})
     });
 }
 
+function workflowAwaitingVerification(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDetailResponse {
+    return workflow({
+        workflow_state: "awaiting_verification_approval",
+        verification_approval_status: "approved",
+        ...overrides,
+    });
+}
+
 function renderPage(path = "/workflows/workflow-123") {
     return render(
         <MemoryRouter initialEntries={[path]}>
@@ -152,6 +163,170 @@ describe("WorkflowPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetWorkflowDetail.mockResolvedValue(workflow());
+        mockedResumeWorkflow.mockResolvedValue(undefined);
+    });
+
+    it("shows Resume Approved Implementation only when implementation is approved", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "approved",
+        }));
+        renderPage();
+
+        expect(await screen.findByRole("button", { name: "Resume Approved Implementation" })).toBeInTheDocument();
+    });
+
+    it("does not show resume action when implementation is pending", async () => {
+        renderPage();
+
+        expect(await screen.findByText(/Implementation approval status: Pending/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+    });
+
+    it("does not show resume action when implementation is rejected", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "rejected",
+        }));
+        renderPage();
+
+        expect(await screen.findByText("Implementation approval status: Rejected")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+    });
+
+    it("does not call resume automatically after approving implementation", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            workflow_state: "awaiting_implementation_approval",
+        }));
+        mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
+            workflow_id: "workflow-123",
+            workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "approved",
+            message: null,
+        });
+
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
+        await screen.findByText("Implementation approved. Execution is now available.");
+
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("calls resume exactly once and blocks duplicate resume clicks while in flight", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "approved",
+        }));
+        let resolveResume: () => void = () => undefined;
+        mockedResumeWorkflow.mockReturnValue(new Promise((resolve) => {
+            resolveResume = resolve as () => void;
+        }));
+
+        renderPage();
+
+        const resume = await screen.findByRole("button", { name: "Resume Approved Implementation" });
+        fireEvent.click(resume);
+        fireEvent.click(resume);
+
+        await waitFor(() => expect(mockedResumeWorkflow).toHaveBeenCalledTimes(1));
+        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+
+        resolveResume();
+        await screen.findByText("Implementation");
+    });
+
+    it("reloads workflow detail on resume success and uses server-authoritative state", async () => {
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(
+                workflow({
+                    workflow_state: "awaiting_implementation_approval",
+                    implementation_approval_status: "approved",
+                }),
+            )
+            .mockResolvedValueOnce(
+                workflow({
+                    workflow_state: "awaiting_verification_approval",
+                    verification_approval_status: "pending",
+                }),
+            );
+
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Resume Approved Implementation" }));
+
+        expect(await screen.findByText("Awaiting Verification Approval")).toBeInTheDocument();
+        expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+    });
+
+    it("shows error and stays on page when resume fails, then refetches authoritative state", async () => {
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(
+                workflow({
+                    workflow_state: "awaiting_verification_approval",
+                    verification_approval_status: "approved",
+                }),
+            )
+            .mockResolvedValueOnce(
+                workflow({
+                    workflow_state: "awaiting_verification_approval",
+                    verification_approval_status: "approved",
+                }),
+            );
+        mockedResumeWorkflow.mockRejectedValue(new Error("Workflow blocked"));
+
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Resume Approved Verification" }));
+
+        await screen.findByRole("alert");
+        expect(screen.getByRole("alert")).toHaveTextContent("Workflow blocked");
+        expect(screen.getByRole("button", { name: "Resume Approved Verification" })).toBeInTheDocument();
+        expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+    });
+
+    it("shows Resume Approved Verification for approved verification state", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingVerification({
+            verification_approval_status: "approved",
+        }));
+        renderPage();
+
+        expect(await screen.findByRole("button", { name: "Resume Approved Verification" })).toBeInTheDocument();
+    });
+
+    it("shows Resume Approved Commit for approved commit state", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(
+            workflowAwaitingCommit({
+                workflow_state: "awaiting_commit_approval",
+                commit_approval_status: "approved",
+            }),
+        );
+        renderPage();
+
+        expect(await screen.findByRole("button", { name: "Resume Approved Commit" })).toBeInTheDocument();
+    });
+
+    it("never shows resume action for blocked workflow", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(
+            workflow({
+                workflow_state: "blocked",
+            }),
+        );
+        renderPage();
+
+        expect(screen.queryByRole("button", { name: /Resume Approved/i })).not.toBeInTheDocument();
+    });
+
+    it("never shows resume action for completed workflow", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(
+            workflow({
+                workflow_state: "completed",
+            }),
+        );
+        renderPage();
+
+        expect(await screen.findByText("Implementation approval status: Pending")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /Resume Approved/i })).not.toBeInTheDocument();
     });
 
     it("renders workflow and immutable implementation request details", async () => {

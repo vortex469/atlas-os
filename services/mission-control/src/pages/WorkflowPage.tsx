@@ -7,6 +7,7 @@ import {
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
     submitWorkflowVerificationApproval,
+    resumeWorkflow,
 } from "../api/atlas-agent";
 import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
 import { ExecutionTimeline } from "./ExecutionTimeline";
@@ -36,6 +37,8 @@ export function WorkflowPage() {
     const [isSubmittingCommit, setIsSubmittingCommit] = useState(false);
     const [commitApprovalError, setCommitApprovalError] = useState<string | null>(null);
     const [commitApprovalResult, setCommitApprovalResult] = useState<WorkflowCommitApprovalResponse | null>(null);
+    const [isResuming, setIsResuming] = useState(false);
+    const [resumeError, setResumeError] = useState<string | null>(null);
 
     const loadWorkflow = useCallback(async (mode: LoadMode = "initial") => {
         if (mode === "initial") setIsLoading(true);
@@ -170,6 +173,46 @@ export function WorkflowPage() {
         workflow.workflow_state === "awaiting_commit_approval"
         && workflow.commit_approval_status === "pending";
 
+    const canResumeImplementation =
+        workflow.workflow_state === "awaiting_implementation_approval"
+        && workflow.implementation_approval_status === "approved";
+    const canResumeVerification =
+        workflow.workflow_state === "awaiting_verification_approval"
+        && workflow.verification_approval_status === "approved";
+    const canResumeCommit =
+        workflow.workflow_state === "awaiting_commit_approval"
+        && workflow.commit_approval_status === "approved";
+    const canResume =
+        !isResuming
+        && (canResumeImplementation || canResumeVerification || canResumeCommit);
+
+    const resumeButtonLabel = canResumeImplementation
+        ? "Resume Approved Implementation"
+        : canResumeVerification
+            ? "Resume Approved Verification"
+            : canResumeCommit
+                ? "Resume Approved Commit"
+                : "Resume";
+
+    async function resumeWorkflowTransition() {
+        if (!workflow || !canResume) {
+            return;
+        }
+
+        setIsResuming(true);
+        setResumeError(null);
+
+        try {
+            await resumeWorkflow(workflow.workflow_id);
+            await loadWorkflow("refresh");
+        } catch (error) {
+            setResumeError(getAtlasAgentErrorMessage(error, "Workflow resume failed."));
+            await loadWorkflow("refresh");
+        } finally {
+            setIsResuming(false);
+        }
+    }
+
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
@@ -255,6 +298,25 @@ export function WorkflowPage() {
                 )}
                 {approvalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(approvalError)}</p>}
             </section>
+
+            {canResume && (
+                <section aria-labelledby="resume-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">Resume approved stage</h2>
+                    <p className="mt-2 text-sm text-slate-400">Use this to advance execution after an approval decision.</p>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            onClick={() => void resumeWorkflowTransition()}
+                            disabled={isResuming}
+                            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-blue-950 transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isResuming ? "Resuming..." : resumeButtonLabel}
+                        </button>
+                    </div>
+                    {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">Resuming workflow...</p>}
+                    {resumeError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(resumeError)}</p>}
+                </section>
+            )}
 
             <Link to="/execution-candidates" className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                 Back to execution candidates

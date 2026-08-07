@@ -369,6 +369,12 @@ export async function submitWorkflowCommitApproval(
     return response.data;
 }
 
+export async function resumeWorkflow(workflowId: string): Promise<void> {
+    await atlasAgent.post<void>(
+        `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/resume`,
+    );
+}
+
 export function getAtlasAgentErrorMessage(
     error: unknown,
     fallback: string,
