@@ -167,15 +167,28 @@ export function PlanningSessionPage() {
             <section aria-labelledby="session-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <h2 id="session-summary-heading" className="text-lg font-semibold text-white">
-                            Planning session
-                        </h2>
-                        <p className="mt-1 text-sm text-slate-400">{sessionState}</p>
+                    <h2 id="session-summary-heading" className="text-lg font-semibold text-white">
+                        Planning session
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-400">{sessionState}</p>
                     </div>
                     <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">
                         {formatLabel(session.status)}
                     </span>
                 </div>
+                {session.predecessor_session_id && (
+                    <p className="mt-3 text-sm text-slate-300">
+                        Successor of <span className="font-mono">{session.predecessor_session_id}</span>
+                    </p>
+                )}
+                {session.successor_session_id && (
+                    <p className="mt-2 text-sm text-slate-300">
+                        <span>Successor planning session: </span>
+                        <Link to={`/candidate-planning/${encodeURIComponent(session.successor_session_id)}`} className="font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            {session.successor_session_id}
+                        </Link>
+                    </p>
+                )}
                 <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Planning Session ID" value={session.session_id ?? sessionId} />
                     <Detail label="Candidate ID" value={session.candidate_id} />

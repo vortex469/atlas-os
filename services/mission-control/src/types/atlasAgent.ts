@@ -94,6 +94,12 @@ export interface CandidatePlanningResponse {
     unsupported_reason: string | null;
     plan: CandidatePlanApiResponse | null;
     planning_failure: CandidatePlanningFailure | null;
+    predecessor_session_id?: string | null;
+    successor_session_id?: string | null;
+}
+
+export interface CandidatePlanningSuccessorRequest {
+    expected_candidate_fingerprint?: string | null;
 }
 
 export interface CandidateWorkflowRequest {

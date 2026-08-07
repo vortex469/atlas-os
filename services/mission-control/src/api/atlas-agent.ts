@@ -3,6 +3,7 @@ import axios, { isAxiosError } from "axios";
 import type {
     CandidatePlanApiResponse,
     CandidatePlanningRequest,
+    CandidatePlanningSuccessorRequest,
     CandidatePlanningResponse,
     CandidateImplementationTranslationRequest,
     CandidateImplementationTranslationResponse,
@@ -244,6 +245,18 @@ export async function getCandidatePlan(
 
         throw error;
     }
+}
+
+export async function createSuccessorCandidatePlanningSession(
+    sessionId: string,
+    request?: CandidatePlanningSuccessorRequest,
+): Promise<CandidatePlanningResponse> {
+    const response = await atlasAgent.post<CandidatePlanningResponse>(
+        `/candidate-planning/${encodeURIComponent(sessionId)}/successor`,
+        request,
+    );
+
+    return response.data;
 }
 
 export async function createCandidateWorkflowShell(

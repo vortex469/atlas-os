@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     createCandidateImplementationRequest,
     createCandidateWorkflowShell,
+    createSuccessorCandidatePlanningSession,
     getCandidatePlanningSession,
 } from "../api/atlas-agent";
 import type {
@@ -18,6 +19,7 @@ import { WorkflowShellPage } from "./WorkflowShellPage";
 vi.mock("../api/atlas-agent", () => ({
     createCandidateImplementationRequest: vi.fn(),
     createCandidateWorkflowShell: vi.fn(),
+    createSuccessorCandidatePlanningSession: vi.fn(),
     getCandidatePlanningSession: vi.fn(),
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) =>
         error instanceof Error ? error.message : fallback,
@@ -25,6 +27,7 @@ vi.mock("../api/atlas-agent", () => ({
 
 const mockedCreateCandidateImplementationRequest = vi.mocked(createCandidateImplementationRequest);
 const mockedCreateCandidateWorkflowShell = vi.mocked(createCandidateWorkflowShell);
+const mockedCreateSuccessorCandidatePlanningSession = vi.mocked(createSuccessorCandidatePlanningSession);
 const mockedGetCandidatePlanningSession = vi.mocked(getCandidatePlanningSession);
 
 function workflow(overrides: Partial<CandidateWorkflowResponse> = {}): CandidateWorkflowResponse {
@@ -82,10 +85,11 @@ function planningSession(overrides: Partial<CandidatePlanningResponse> = {}): Ca
 
 function renderPage(state?: { workflow: CandidateWorkflowResponse }) {
     return render(
-        <MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state }]}>
+        <MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state }]}> 
             <Routes>
                 <Route path="/candidate-planning/:sessionId/workflow" element={<WorkflowShellPage />} />
                 <Route path="/workflows/:workflowId" element={<div>Workflow detail</div>} />
+                <Route path="/candidate-planning/:sessionId" element={<div>Candidate planning session</div>} />
             </Routes>
         </MemoryRouter>,
     );
@@ -98,6 +102,12 @@ describe("WorkflowShellPage", () => {
             implementationTranslationResponse(),
         );
         mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow());
+        mockedCreateSuccessorCandidatePlanningSession.mockResolvedValue(
+            planningSession({
+                session_id: "candidate-plan-2",
+                status: "ready_for_planning",
+            }),
+        );
         mockedGetCandidatePlanningSession.mockResolvedValue(planningSession());
     });
 
@@ -172,7 +182,7 @@ describe("WorkflowShellPage", () => {
 		expect(await screen.findByText("Workflow detail")).toBeInTheDocument();
 	});
 
-	it("does not navigate on repository_stale translation failure and renders structured failure details", async () => {
+		it("does not navigate on repository_stale translation failure and renders structured failure details", async () => {
 		const user = userEvent.setup();
 		mockedCreateCandidateImplementationRequest.mockResolvedValue(
 			implementationTranslationResponse({
@@ -200,8 +210,151 @@ describe("WorkflowShellPage", () => {
 		expect(screen.getByText("Reason codes: repository_stale")).toBeInTheDocument();
 		expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /create implementation request/i })).toBeInTheDocument();
-	});
+			expect(screen.getByRole("button", { name: /create implementation request/i })).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
+		});
+
+		it("only shows a stale-recovery action for repository_stale failures", async () => {
+			const user = userEvent.setup();
+			mockedCreateCandidateImplementationRequest.mockResolvedValue(
+				implementationTranslationResponse({
+					translation_status: "implementation_translation_failed",
+					implementation_request_id: null,
+					exact_approval_request_id: null,
+					failure: { code: "plan_fingerprint_mismatch", message: "Fingerprint mismatch." },
+				}),
+			);
+
+			renderPage({
+				workflow: workflow({
+					workflow_status: "awaiting_approval",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			});
+
+			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+
+			expect(await screen.findByText("Failure code: plan_fingerprint_mismatch")).toBeInTheDocument();
+			expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
+		});
+
+		it("re-plans from stale failure and navigates to successor planning session", async () => {
+			const user = userEvent.setup();
+			mockedCreateCandidateImplementationRequest.mockResolvedValue(
+				implementationTranslationResponse({
+					translation_status: "implementation_translation_failed",
+					implementation_request_id: null,
+					exact_approval_request_id: null,
+					failure: { code: "repository_stale", message: "Trusted repository HEAD differs from the reviewed candidate plan." },
+				}),
+			);
+			renderPage({
+				workflow: workflow({
+					workflow_status: "awaiting_approval",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			});
+
+			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
+
+			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
+
+			expect(mockedCreateSuccessorCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1", {
+				expected_candidate_fingerprint: "fingerprint-1",
+			});
+			expect(await screen.findByText("Candidate planning session")).toBeInTheDocument();
+		});
+
+		it("does not navigate when successor is missing a session id and shows error", async () => {
+			const user = userEvent.setup();
+			mockedCreateCandidateImplementationRequest.mockResolvedValue(
+				implementationTranslationResponse({
+					translation_status: "implementation_translation_failed",
+					implementation_request_id: null,
+					exact_approval_request_id: null,
+					failure: { code: "repository_stale", message: "Trusted repository HEAD differs from the reviewed candidate plan." },
+				}),
+			);
+			renderPage({
+				workflow: workflow({
+					workflow_status: "awaiting_approval",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			});
+
+			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
+
+			mockedCreateSuccessorCandidatePlanningSession.mockResolvedValue(
+				planningSession({
+					session_id: null,
+					planning_failure: { code: "conflicting_active_session", message: "No successor." },
+				}),
+			);
+
+			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
+
+			expect((await screen.findAllByRole("alert")).some((alert) => alert.textContent?.includes("Unable to create successor planning session: conflicting_active_session: No successor."))).toBe(true);
+			expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+		});
+
+		it("does not navigate when successor call errors", async () => {
+			const user = userEvent.setup();
+			mockedCreateCandidateImplementationRequest.mockResolvedValue(
+				implementationTranslationResponse({
+					translation_status: "implementation_translation_failed",
+					implementation_request_id: null,
+					exact_approval_request_id: null,
+					failure: { code: "repository_stale", message: "Trusted repository HEAD differs from the reviewed candidate plan." },
+				}),
+			);
+			mockedCreateSuccessorCandidatePlanningSession.mockRejectedValueOnce(new Error("Successor failed"));
+			renderPage({
+				workflow: workflow({
+					workflow_status: "awaiting_approval",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			});
+
+			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
+
+			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
+
+			expect((await screen.findAllByRole("alert")).some((alert) => alert.textContent === "Successor failed")).toBe(true);
+			expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+		});
+
+		it("blocks duplicate successor creation submissions", async () => {
+			const user = userEvent.setup();
+			mockedCreateCandidateImplementationRequest.mockResolvedValue(
+				implementationTranslationResponse({
+					translation_status: "implementation_translation_failed",
+					implementation_request_id: null,
+					exact_approval_request_id: null,
+					failure: { code: "repository_stale", message: "Trusted repository HEAD differs from the reviewed candidate plan." },
+				}),
+			);
+			let resolveRequest!: (value: CandidatePlanningResponse) => void;
+			mockedCreateSuccessorCandidatePlanningSession.mockReturnValue(new Promise((resolve) => {
+				resolveRequest = resolve;
+			}));
+			renderPage({
+				workflow: workflow({
+					workflow_status: "awaiting_approval",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			});
+
+			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
+			await user.dblClick(screen.getByRole("button", { name: /re-plan against current repository/i }));
+
+			expect(mockedCreateSuccessorCandidatePlanningSession).toHaveBeenCalledTimes(1);
+			expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
+			resolveRequest(planningSession({ session_id: "candidate-plan-2", status: "ready_for_planning" }));
+		});
 
 	it("retries remain available after a structured failure response", async () => {
 		const user = userEvent.setup();

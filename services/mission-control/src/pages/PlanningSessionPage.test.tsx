@@ -124,6 +124,22 @@ describe("PlanningSessionPage", () => {
         expect(screen.queryByRole("button", { name: /execute|approve|create workflow|implementation|commit/i })).not.toBeInTheDocument();
     });
 
+    it("renders lineage links for successor sessions and predecessor metadata", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(
+            session({
+                session_id: "candidate-plan-2",
+                predecessor_session_id: "candidate-plan-1",
+                successor_session_id: "candidate-plan-3",
+            }),
+        );
+        renderPage();
+
+        expect(await screen.findByText("Successor of")).toBeInTheDocument();
+        expect(screen.getByText("candidate-plan-1")).toBeInTheDocument();
+        const link = screen.getByRole("link", { name: "candidate-plan-3" });
+        expect(link).toHaveAttribute("href", "/candidate-planning/candidate-plan-3");
+    });
+
     it("generates a plan and renders the read-only plan viewer", async () => {
         const user = userEvent.setup();
         renderPage();

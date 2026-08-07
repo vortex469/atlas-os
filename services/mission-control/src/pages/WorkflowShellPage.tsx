@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
     createCandidateWorkflowShell,
     createCandidateImplementationRequest,
+    createSuccessorCandidatePlanningSession,
     getAtlasAgentErrorMessage,
     getCandidatePlanningSession,
 } from "../api/atlas-agent";
@@ -23,9 +24,11 @@ export function WorkflowShellPage() {
     const workflowFromLocation = (location.state as WorkflowLocationState | null)?.workflow ?? null;
     const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(workflowFromLocation);
     const [isCreatingImplementation, setIsCreatingImplementation] = useState(false);
+    const [isCreatingSuccessor, setIsCreatingSuccessor] = useState(false);
     const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(workflowFromLocation === null);
     const [workflowLoadError, setWorkflowLoadError] = useState<string | null>(null);
     const [implementationError, setImplementationError] = useState<string | null>(null);
+    const [successorError, setSuccessorError] = useState<string | null>(null);
     const [implementationResult, setImplementationResult] = useState<CandidateImplementationTranslationResponse | null>(null);
 
     useEffect(() => {
@@ -85,6 +88,14 @@ export function WorkflowShellPage() {
         && workflow.workflow_session_id !== null
         && workflow.failure === null;
 
+    const canCreateSuccessor =
+        workflow !== null
+        && workflow.workflow_session_id !== null
+        && implementationResult?.failure?.code === "repository_stale"
+        && workflow.candidate_planning_session_id !== null
+        && workflow.candidate_fingerprint !== null
+        && !isCreatingSuccessor;
+
     function isSuccessfulImplementationResponse(
         response: CandidateImplementationTranslationResponse,
     ): response is CandidateImplementationTranslationResponse & {
@@ -137,6 +148,43 @@ export function WorkflowShellPage() {
             );
         } finally {
             setIsCreatingImplementation(false);
+        }
+    }
+
+    async function createSuccessorPlanningSession() {
+        if (!workflow || !canCreateSuccessor) {
+            return;
+        }
+
+        setIsCreatingSuccessor(true);
+        setSuccessorError(null);
+        try {
+            const response = await createSuccessorCandidatePlanningSession(
+                workflow.candidate_planning_session_id,
+                {
+                    expected_candidate_fingerprint: workflow.candidate_fingerprint,
+                },
+            );
+
+            if (response.session_id === null) {
+                setSuccessorError(
+                    response.planning_failure
+                        ? `Unable to create successor planning session: ${response.planning_failure.code}: ${response.planning_failure.message}`
+                        : "Unable to create successor planning session. No session ID was returned.",
+                );
+                return;
+            }
+
+            navigate(`/candidate-planning/${encodeURIComponent(response.session_id)}`);
+        } catch (error) {
+            setSuccessorError(
+                getAtlasAgentErrorMessage(
+                    error,
+                    "Could not create a successor planning session for repository_stale recovery.",
+                ),
+            );
+        } finally {
+            setIsCreatingSuccessor(false);
         }
     }
 
@@ -223,6 +271,25 @@ export function WorkflowShellPage() {
                         </div>
                     </div>
                 )}
+                {canCreateSuccessor && (
+                    <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                        <h2 className="text-base font-semibold text-amber-100">Recovery: stale repository for approved plan</h2>
+                        <p className="mt-2 text-sm text-slate-200">
+                            The trusted repository state changed after plan review. This workflow and reviewed plan are historical. Re-planning here creates a successor planning session against the current trusted repository state.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                onClick={() => void createSuccessorPlanningSession()}
+                                disabled={isCreatingSuccessor}
+                                className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {isCreatingSuccessor ? "Opening successor planning session..." : "Re-plan against current repository"}
+                            </button>
+                            {isCreatingSuccessor && <p className="text-sm text-slate-200">Creating successor planning session...</p>}
+                        </div>
+                    </div>
+                )}
                 {workflow.workflow_status === "awaiting_implementation_approval" && (
                     <p className="mt-4 text-sm text-slate-300">Implementation request has already been created.</p>
                 )}
@@ -247,7 +314,12 @@ export function WorkflowShellPage() {
                 )}
                 {implementationResult && implementationResult.failure?.code === "repository_stale" && (
                     <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                        Trusted repository state changed after plan review. Retry after the trusted repository HEAD aligns with the reviewed plan.
+                        Trusted repository state changed after plan review. Use the recovery action to open a successor planning session.
+                    </p>
+                )}
+                {successorError && (
+                    <p role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+                        {successorError}
                     </p>
                 )}
                 {implementationError && (
