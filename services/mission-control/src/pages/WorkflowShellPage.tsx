@@ -86,6 +86,16 @@ export function WorkflowShellPage() {
         && workflow.workflow_session_id !== null
         && workflow.failure === null;
 
+    function isSuccessfulImplementationResponse(response: CandidateImplementationTranslationResponse): boolean {
+        return (
+            response.failure === null
+            && response.translation_status === "implementation_ready"
+            && response.workflow_session_id !== null
+            && response.implementation_request_id !== null
+            && response.exact_approval_request_id !== null
+        );
+    }
+
     async function createImplementation() {
         if (!workflow || !canCreateImplementation || isCreatingImplementation) {
             return;
@@ -103,10 +113,18 @@ export function WorkflowShellPage() {
                 },
             );
             setImplementationResult(response);
-            if (response.workflow_session_id) {
+            const isSuccessfulTranslation = isSuccessfulImplementationResponse(response);
+
+            if (isSuccessfulTranslation) {
                 navigate(`/workflows/${encodeURIComponent(response.workflow_session_id)}`);
+            } else if (response.failure) {
+                setImplementationError(
+                    `Implementation request failed with ${response.failure.code}: ${response.failure.message}`,
+                );
             } else {
-                setImplementationError("Implementation request was translated but workflow session id was not returned.");
+                setImplementationError(
+                    "Implementation request did not include a complete translation contract. Please retry after refreshing the workflow shell.",
+                );
             }
         } catch (error) {
             setImplementationError(
@@ -203,9 +221,28 @@ export function WorkflowShellPage() {
                 {workflow.workflow_status === "awaiting_implementation_approval" && (
                     <p className="mt-4 text-sm text-slate-300">Implementation request has already been created.</p>
                 )}
-                {implementationResult && implementationResult.workflow_session_id && (
+                {implementationResult && isSuccessfulImplementationResponse(implementationResult) && (
                     <p className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
                         Implementation request is ready. Redirecting to execution workflow.
+                    </p>
+                )}
+                {implementationResult && (
+                    <div role="status" className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+                        <p>Translation status: {implementationResult.translation_status}</p>
+                        {implementationResult.failure ? (
+                            <>
+                                <p>Failure code: {implementationResult.failure.code}</p>
+                                <p>Failure message: {implementationResult.failure.message}</p>
+                            </>
+                        ) : null}
+                        {implementationResult.reason_codes.length > 0 && (
+                            <p>Reason codes: {implementationResult.reason_codes.join(", ")}</p>
+                        )}
+                    </div>
+                )}
+                {implementationResult && implementationResult.failure?.code === "repository_stale" && (
+                    <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                        Trusted repository state changed after plan review. Retry after the trusted repository HEAD aligns with the reviewed plan.
                     </p>
                 )}
                 {implementationError && (

@@ -148,8 +148,8 @@ describe("WorkflowShellPage", () => {
         resolveSession(planningSession());
     });
 
-    it("renders a create implementation request button for awaiting_approval shells", async () => {
-        const user = userEvent.setup();
+	it("renders a create implementation request button for awaiting_approval shells", async () => {
+		const user = userEvent.setup();
         const currentWorkflow = workflow({
             workflow_status: "awaiting_approval",
             conversion_status: "workflow_created",
@@ -169,11 +169,112 @@ describe("WorkflowShellPage", () => {
                 expected_plan_fingerprint: currentWorkflow.candidate_plan_fingerprint,
             },
         );
-        expect(await screen.findByText("Workflow detail")).toBeInTheDocument();
-    });
+		expect(await screen.findByText("Workflow detail")).toBeInTheDocument();
+	});
 
-    it("blocks duplicate implementation request submissions", async () => {
-        const user = userEvent.setup();
+	it("does not navigate on repository_stale translation failure and renders structured failure details", async () => {
+		const user = userEvent.setup();
+		mockedCreateCandidateImplementationRequest.mockResolvedValue(
+			implementationTranslationResponse({
+				translation_status: "implementation_translation_failed",
+				implementation_request_id: null,
+				exact_approval_request_id: null,
+				repository_head: "55f1cb905856153d669fa838596a169cd0f18353",
+				reason_codes: ["repository_stale"],
+				failure: { code: "repository_stale", message: "Trusted repository HEAD differs from the reviewed candidate plan." },
+			}),
+		);
+
+		renderPage({
+			workflow: workflow({
+				workflow_status: "awaiting_approval",
+				implementation_approval_request_id: "approval-shell",
+			}),
+		});
+
+		await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+
+		expect(await screen.findByText("Translation status: implementation_translation_failed")).toBeInTheDocument();
+		expect(screen.getByText("Failure code: repository_stale")).toBeInTheDocument();
+		expect(screen.getByText("Failure message: Trusted repository HEAD differs from the reviewed candidate plan.")).toBeInTheDocument();
+		expect(screen.getByText("Reason codes: repository_stale")).toBeInTheDocument();
+		expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /create implementation request/i })).toBeInTheDocument();
+	});
+
+	it("retries remain available after a structured failure response", async () => {
+		const user = userEvent.setup();
+		mockedCreateCandidateImplementationRequest.mockResolvedValue(
+			implementationTranslationResponse({
+				translation_status: "implementation_translation_failed",
+				implementation_request_id: null,
+				exact_approval_request_id: null,
+				reason_codes: ["repository_stale"],
+				failure: { code: "repository_stale", message: "Trusted repository HEAD differs from the reviewed candidate plan." },
+			}),
+		);
+
+		renderPage({
+			workflow: workflow({
+				workflow_status: "awaiting_approval",
+				implementation_approval_request_id: "approval-shell",
+			}),
+		});
+
+		const button = screen.getByRole("button", { name: /create implementation request/i });
+		await user.click(button);
+
+		expect(await screen.findByText("Implementation request failed with repository_stale: Trusted repository HEAD differs from the reviewed candidate plan."))
+			.toBeInTheDocument();
+		expect(button).not.toBeDisabled();
+		expect(screen.getByText(/Trusted repository state changed after plan review/)).toBeInTheDocument();
+	});
+
+	it("does not navigate when implementation_request_id is missing", async () => {
+		const user = userEvent.setup();
+		mockedCreateCandidateImplementationRequest.mockResolvedValue(
+			implementationTranslationResponse({
+				implementation_request_id: null,
+			}),
+		);
+
+		renderPage({
+			workflow: workflow({
+				workflow_status: "awaiting_approval",
+				implementation_approval_request_id: "approval-shell",
+			}),
+		});
+
+		await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+
+		expect(await screen.findByText("Implementation request did not include a complete translation contract. Please retry after refreshing the workflow shell.")).toBeInTheDocument();
+		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
+	});
+
+	it("does not navigate when exact_approval_request_id is missing", async () => {
+		const user = userEvent.setup();
+		mockedCreateCandidateImplementationRequest.mockResolvedValue(
+			implementationTranslationResponse({
+				exact_approval_request_id: null,
+			}),
+		);
+
+		renderPage({
+			workflow: workflow({
+				workflow_status: "awaiting_approval",
+				implementation_approval_request_id: "approval-shell",
+			}),
+		});
+
+		await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+
+		expect(await screen.findByText("Implementation request did not include a complete translation contract. Please retry after refreshing the workflow shell.")).toBeInTheDocument();
+		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
+	});
+
+	it("blocks duplicate implementation request submissions", async () => {
+		const user = userEvent.setup();
         let resolveRequest!: (value: CandidateImplementationTranslationResponse) => void;
         mockedCreateCandidateImplementationRequest.mockReturnValue(
             new Promise((resolve) => {
