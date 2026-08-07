@@ -8,13 +8,18 @@ from pathlib import Path
 
 import pytest
 
+from app.approval.repository import ApprovalRepository
 from app.candidate_planning.models import (
+    CandidatePlan,
     CandidatePlanningFailureCode,
     CandidatePlanningSessionStatus,
     CandidatePlanRequest,
+    CandidateSnapshot,
+    CoreCandidatePlanningIntakeStatus,
 )
 from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.service import (
+    CandidatePlanningPredecessorNotFoundError,
     CandidatePlanningService,
     CandidatePlanningServiceError,
 )
@@ -24,8 +29,12 @@ from app.core_client.models import (
     CoreCandidatePlanningIntakeResponse,
     CoreExecutionCandidateSnapshot,
 )
-from app.persistence.snapshot import StatePersistenceError
+from app.persistence.snapshot import (
+    AgentStatePersistenceCoordinator,
+    StatePersistenceError,
+)
 from app.repository.models import RepositorySnapshot
+from app.workflow.state import WorkflowStateStore
 
 NOW = datetime(2026, 8, 1, 23, 45, tzinfo=UTC)
 
@@ -54,19 +63,80 @@ class FailingPersistence:
 
 
 class FakeInspector:
-    def __init__(self, repository_root: Path) -> None:
+    def __init__(
+        self,
+        repository_root: Path,
+        *,
+        heads: list[str] | tuple[str, ...] | None = None,
+        head: str = "abc123",
+    ) -> None:
         self.repository_root = repository_root
+        self._heads = tuple(heads) if heads is not None else (head,)
+        self._index = 0
 
     def inspect(self) -> RepositorySnapshot:
+        head = self._heads[min(self._index, len(self._heads) - 1)]
+        self._index += 1
         return RepositorySnapshot(
             root=self.repository_root,
             branch="feature/atlas-agent",
-            head_commit="abc123",
+            head_commit=head,
             is_clean=True,
             modified_files=(),
             staged_files=(),
             untracked_files=(),
         )
+
+
+def _candidate_plan(root: Path) -> CandidatePlan:
+    return CandidatePlan(
+        identifier="candidate-plan-output-candidate-plan-1",
+        session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        title="Prepare compose stack update proposal",
+        objective="Create a minimal repository change proposal.",
+        assumptions=("Planning is read-only.",),
+        constraints=("requires-current-evidence",),
+        proposed_steps=("Inspect trusted compose definitions.",),
+        likely_affected_components=("atlas-compose",),
+        likely_affected_files=(Path("compose.production.yaml"),),
+        verification_strategy=("Validate later after workflow conversion.",),
+        rollback_considerations=("Use version control rollback.",),
+        unresolved_questions=(),
+        evidence_ids=("evidence-1",),
+        created_at=NOW,
+        repository_root=root,
+        repository_branch="feature/atlas-agent",
+        repository_head="abc123",
+        revalidated_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+    )
+
+
+def _candidate_snapshot() -> CandidateSnapshot:
+    return CandidateSnapshot(
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        source_recommendation_id="finding-1",
+        source_subsystem="orion",
+        recommendation_class="update_compose_stack",
+        catalog_item_id="frigate",
+        target_id="atlas-compose",
+        target_type="repository",
+        execution_category="update",
+        execution_intent="update-compose-stack",
+        required_approval_level="standard",
+        rationale="Update compose stack.",
+        constraints=("requires-current-evidence",),
+        evidence_ids=("evidence-1",),
+        compatibility_assessment_id="assessment-1",
+        compatibility_status="compatible",
+        relationship_ids=("relationship-1",),
+        expires_at=None,
+        intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+        intake_reason_codes=(),
+        intake_timestamp=NOW,
+    )
 
 
 def candidate_snapshot(*, intent: str = "update-compose-stack") -> CoreExecutionCandidateSnapshot:
@@ -129,6 +199,7 @@ def service_with(
     store: CandidatePlanningStateStore | None = None,
     persistence=None,
     repository_root: Path | None = None,
+    repository_inspector_factory=FakeInspector,
 ) -> CandidatePlanningService:
     return CandidatePlanningService(
         core_client=core,  # type: ignore[arg-type]
@@ -137,7 +208,7 @@ def service_with(
         repository_resolver=RepositoryResolver(repository_root=repository_root)
         if repository_root is not None
         else None,
-        repository_inspector_factory=FakeInspector,
+        repository_inspector_factory=repository_inspector_factory,
         clock=lambda: NOW,
     )
 
@@ -251,6 +322,220 @@ def test_same_candidate_changed_fingerprint_is_rejected_while_active() -> None:
     assert second.intake_reason_codes == (
         CandidatePlanningFailureCode.CONFLICTING_ACTIVE_SESSION.value,
     )
+
+
+def test_successor_session_links_to_predecessor() -> None:
+    core = FakeCoreClient([accepted_response(), accepted_response(fingerprint="candidate-fingerprint-v1:b")])
+    service = service_with(core)
+
+    parent = run(
+        service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1"))
+    )
+    child = run(
+        service.create_successor_planning_session(
+            parent.session_id or "",
+            CandidatePlanRequest(candidate_id="candidate-1"),
+        )
+    )
+
+    assert child.session_id is not None
+    assert parent.session_id is not None
+    assert child.predecessor_session_id == parent.session_id
+
+    successor = service.get_session(child.session_id)
+    parent_session = service.get_session(parent.session_id)
+    assert successor is not None
+    assert parent_session is not None
+    assert parent_session.successor_session_id == child.session_id
+
+
+def test_successor_session_reuses_existing_child() -> None:
+    core = FakeCoreClient(
+        [
+            accepted_response(),
+            accepted_response(),
+            accepted_response(),
+        ]
+    )
+    service = service_with(core)
+
+    parent = run(
+        service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1"))
+    )
+    first = run(
+        service.create_successor_planning_session(
+            parent.session_id or "",
+            CandidatePlanRequest(candidate_id="candidate-1"),
+        )
+    )
+    second = run(
+        service.create_successor_planning_session(
+            parent.session_id or "",
+            CandidatePlanRequest(candidate_id="candidate-1"),
+        )
+    )
+
+    assert first.session_id == second.session_id
+
+
+def test_successor_session_requires_predecessor() -> None:
+    service = service_with(FakeCoreClient([accepted_response()]))
+
+    with pytest.raises(CandidatePlanningPredecessorNotFoundError):
+        run(
+            service.create_successor_planning_session(
+                "candidate-plan-1",
+                CandidatePlanRequest(candidate_id="candidate-1"),
+            )
+        )
+
+
+def test_successor_session_is_distinct_from_parent_and_preserves_parent_plan(tmp_path: Path) -> None:
+    store = CandidatePlanningStateStore()
+    parent_service = service_with(
+        FakeCoreClient([accepted_response(), accepted_response(), accepted_response()]),
+        store=store,
+        persistence=AgentStatePersistenceCoordinator(
+            state_dir=tmp_path,
+            workflow_state=WorkflowStateStore(),
+            approval_repository=ApprovalRepository(),
+            candidate_planning_state=store,
+        ),
+        repository_root=tmp_path,
+        repository_inspector_factory=lambda _: FakeInspector(
+            tmp_path,
+            heads=("abc123", "def456"),
+        ),
+    )
+
+    parent_response = run(
+        parent_service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1"))
+    )
+    run(parent_service.generate_plan(parent_response.session_id))
+
+    successor_response = run(
+        parent_service.create_successor_planning_session(
+            parent_response.session_id or "",
+            CandidatePlanRequest(candidate_id="candidate-1", expected_candidate_fingerprint="candidate-fingerprint-v1:aaa"),
+        )
+    )
+
+    assert successor_response.session_id is not None
+    assert successor_response.session_id != parent_response.session_id
+    assert successor_response.status is CandidatePlanningSessionStatus.READY_FOR_PLANNING
+    assert successor_response.plan is None
+
+    parent_after = parent_service.get_session(parent_response.session_id or "")
+    child_after = parent_service.get_session(successor_response.session_id)
+    assert parent_after is not None
+    assert child_after is not None
+    assert parent_after.plan is not None
+    assert parent_after.plan.identifier == f"candidate-plan-output-{parent_response.session_id}"
+    assert parent_after.workflow_session_id is None
+    assert child_after.plan is None
+    assert child_after.workflow_session_id is None
+    assert parent_after.successor_session_id == child_after.identifier
+    assert child_after.predecessor_session_id == parent_after.identifier
+
+
+def test_successor_lineage_concurrency_with_persistence_uses_single_successor(tmp_path: Path) -> None:
+    store = CandidatePlanningStateStore()
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = AgentStatePersistenceCoordinator(
+        state_dir=tmp_path,
+        workflow_state=workflow_state,
+        approval_repository=approvals,
+        candidate_planning_state=store,
+    )
+    persistence.initialize()
+    service = service_with(
+        FakeCoreClient(
+            [
+                accepted_response(),
+                accepted_response(),
+                accepted_response(),
+            ]
+        ),
+        store=store,
+        persistence=persistence,
+        repository_root=tmp_path,
+        repository_inspector_factory=lambda _: FakeInspector(tmp_path, head="def456"),
+    )
+
+    parent = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+
+    async def invoke() -> tuple[str | None, CandidatePlanningSessionStatus]:
+        response = await service.create_successor_planning_session(
+            parent.session_id or "",
+            CandidatePlanRequest(candidate_id="candidate-1"),
+        )
+        return response.session_id, response.status
+
+    async def run_both() -> tuple[tuple[str | None, CandidatePlanningSessionStatus], ...]:
+        return tuple(await asyncio.gather(invoke(), invoke()))
+
+    results = asyncio.run(run_both())
+
+    assert {session_id for session_id, _status in results} == {results[0][0]}
+    assert {status for _session_id, status in results} == {
+        CandidatePlanningSessionStatus.READY_FOR_PLANNING
+    }
+
+
+def test_successor_lineage_survives_restart_and_reuses_id(tmp_path: Path) -> None:
+    store = CandidatePlanningStateStore()
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = AgentStatePersistenceCoordinator(
+        state_dir=tmp_path,
+        workflow_state=workflow_state,
+        approval_repository=approvals,
+        candidate_planning_state=store,
+    )
+    persistence.initialize()
+    service = service_with(
+        FakeCoreClient([accepted_response(), accepted_response()]),
+        store=store,
+        persistence=persistence,
+        repository_root=tmp_path,
+        repository_inspector_factory=lambda _: FakeInspector(tmp_path, head="ghi789"),
+    )
+
+    parent = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+    first = run(
+        service.create_successor_planning_session(
+            parent.session_id or "",
+            CandidatePlanRequest(candidate_id="candidate-1", expected_candidate_fingerprint="candidate-fingerprint-v1:aaa"),
+        )
+    )
+
+    restarted_store = CandidatePlanningStateStore()
+    restarted_persistence = AgentStatePersistenceCoordinator(
+        state_dir=tmp_path,
+        workflow_state=WorkflowStateStore(),
+        approval_repository=ApprovalRepository(),
+        candidate_planning_state=restarted_store,
+    )
+    restarted_persistence.initialize()
+    restarted_service = service_with(
+        FakeCoreClient([accepted_response()]),
+        store=restarted_store,
+        persistence=restarted_persistence,
+        repository_root=tmp_path,
+        repository_inspector_factory=lambda _: FakeInspector(tmp_path, head="ghi789"),
+    )
+
+    second = run(
+        restarted_service.create_successor_planning_session(
+            parent.session_id or "",
+            CandidatePlanRequest(candidate_id="candidate-1", expected_candidate_fingerprint="candidate-fingerprint-v1:aaa"),
+        )
+    )
+
+    assert second.session_id == first.session_id
+    assert second.session_id is not None
+    assert len(restarted_store.export_snapshot()) == 2
 
 
 def test_persistence_failure_leaves_no_partial_session() -> None:

@@ -321,6 +321,39 @@ def test_candidate_plan_round_trips_after_restart(tmp_path: Path) -> None:
     assert recovered_session.planning_status is CandidatePlanningSessionStatus.PLAN_READY
 
 
+def test_candidate_planning_lineage_fields_round_trip(tmp_path: Path) -> None:
+    candidate_state = CandidatePlanningStateStore()
+    persistence = coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        candidate_state,
+    )
+    persistence.initialize()
+    stored_session = replace(
+        candidate_planning_session(),
+        predecessor_session_id="candidate-plan-0",
+        successor_session_id="candidate-plan-2",
+    )
+
+    persistence.mutate_candidate_planning(
+        lambda state: state.create_session(stored_session)
+    )
+
+    recovered_candidate_state = CandidatePlanningStateStore()
+    coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        recovered_candidate_state,
+    ).initialize()
+
+    recovered = recovered_candidate_state.get_session(stored_session.identifier)
+    assert recovered is not None
+    assert recovered.predecessor_session_id == "candidate-plan-0"
+    assert recovered.successor_session_id == "candidate-plan-2"
+
+
 @pytest.mark.parametrize("status", tuple(CandidatePlanningSessionStatus))
 def test_candidate_planning_status_matrix_round_trips(
     tmp_path: Path,

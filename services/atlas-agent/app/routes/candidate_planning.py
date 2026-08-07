@@ -21,7 +21,10 @@ from app.candidate_planning.models import (
     CandidateWorkflowConversionResponse,
     CoreCandidatePlanningIntakeStatus,
 )
-from app.candidate_planning.service import CandidatePlanningServiceError
+from app.candidate_planning.service import (
+    CandidatePlanningPredecessorNotFoundError,
+    CandidatePlanningServiceError,
+)
 from app.workflow.models import WorkflowSession
 from app.workflow.state import WorkflowStateStore
 
@@ -142,6 +145,20 @@ class CandidatePlanningRequest(BaseModel):
         )
 
 
+class CandidatePlanningSuccessorRequest(BaseModel):
+    """Validated request for planning a lineage successor session."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_candidate_fingerprint: str | None = None
+
+    def to_domain(self) -> CandidatePlanRequest:
+        return CandidatePlanRequest(
+            candidate_id="",
+            expected_candidate_fingerprint=self.expected_candidate_fingerprint,
+        )
+
+
 class CandidatePlanningFailureResponse(BaseModel):
     code: str
     message: str
@@ -247,6 +264,8 @@ class CandidatePlanningResponse(BaseModel):
     unsupported_reason: str | None = None
     plan: CandidatePlanApiResponse | None = None
     planning_failure: CandidatePlanningFailureResponse | None = None
+    predecessor_session_id: str | None = None
+    successor_session_id: str | None = None
 
 
 class CandidatePlanningErrorDetail(BaseModel):
@@ -311,6 +330,8 @@ def _to_response(response: CandidatePlanResponse) -> CandidatePlanningResponse:
         unsupported_reason=response.unsupported_reason,
         plan=_plan_response(response.plan),
         planning_failure=_failure_response(response.planning_failure),
+        predecessor_session_id=response.predecessor_session_id,
+        successor_session_id=response.successor_session_id,
     )
 
 
@@ -537,3 +558,37 @@ async def translate_candidate_implementation(
             detail={"code": exc.code.value, "message": exc.message},
         ) from exc
     return _implementation_response(response)
+
+
+@router.post(
+    "/{session_id}/successor",
+    response_model=CandidatePlanningResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"model": CandidatePlanningErrorResponse},
+        status.HTTP_503_SERVICE_UNAVAILABLE: {"model": CandidatePlanningErrorResponse},
+    },
+)
+async def create_planning_successor(
+    request: Request,
+    session_id: str,
+    successor_request: CandidatePlanningSuccessorRequest | None = None,
+) -> CandidatePlanningResponse:
+    """Create a direct successor planning session for an existing session lineage."""
+
+    try:
+        response = await request.app.state.container.candidate_planning_service.create_successor_planning_session(
+            session_id,
+            (successor_request or CandidatePlanningSuccessorRequest()).to_domain(),
+        )
+    except CandidatePlanningPredecessorNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "session_not_found", "message": "Predecessor session not found."},
+        ) from error
+    except CandidatePlanningServiceError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": error.code.value, "message": error.message},
+        ) from error
+    return _to_response(response)

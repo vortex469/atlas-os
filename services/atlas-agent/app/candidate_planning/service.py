@@ -37,6 +37,7 @@ from app.candidate_planning.models import (
     CandidateWorkflowConversionResponse,
     CoreCandidatePlanningIntakeStatus,
     build_candidate_planning_session_id,
+    build_candidate_successor_planning_session_id,
     is_supported_execution_intent,
 )
 from app.candidate_planning.planner import (
@@ -77,6 +78,10 @@ class CandidatePlanningServiceError(RuntimeError):
 
 class _ConflictingActiveSessionError(RuntimeError):
     """Raised when an active planning session exists for a different fingerprint."""
+
+
+class CandidatePlanningPredecessorNotFoundError(RuntimeError):
+    """Raised when a requested predecessor planning session does not exist."""
 
 
 def _snapshot_from_intake(
@@ -132,6 +137,8 @@ def _response_from_session(session: CandidatePlanningSession) -> CandidatePlanRe
         unsupported_reason=session.unsupported_reason,
         plan=session.plan,
         planning_failure=session.planning_failure,
+        predecessor_session_id=session.predecessor_session_id,
+        successor_session_id=session.successor_session_id,
     )
 
 
@@ -165,6 +172,39 @@ def _create_or_reuse_session(
         raise _ConflictingActiveSessionError
     state.create_session(session)
     return session
+
+
+def _create_or_reuse_successor_session(
+    state: CandidatePlanningSessionsState,
+    *,
+    predecessor_session: CandidatePlanningSession,
+    session: CandidatePlanningSession,
+) -> CandidatePlanningSession:
+    if predecessor_session.candidate_id != session.candidate_id:
+        raise _ConflictingActiveSessionError
+
+    if predecessor_session.successor_session_id is not None:
+        existing_successor = state.get_session(predecessor_session.successor_session_id)
+        if existing_successor is not None:
+            if (
+                existing_successor.predecessor_session_id == predecessor_session.identifier
+                and existing_successor.identifier == session.identifier
+            ):
+                return existing_successor
+            raise _ConflictingActiveSessionError
+
+    existing_session = state.get_session(session.identifier)
+    if existing_session is not None:
+        if existing_session.predecessor_session_id == predecessor_session.identifier:
+            return existing_session
+        raise _ConflictingActiveSessionError
+
+    if predecessor_session.successor_session_id is None:
+        state.replace_session(
+            replace(predecessor_session, successor_session_id=session.identifier)
+        )
+    state.create_session(replace(session, predecessor_session_id=predecessor_session.identifier))
+    return replace(session, predecessor_session_id=predecessor_session.identifier)
 
 
 def _rejection_response(
@@ -402,6 +442,111 @@ class CandidatePlanningService:
                 "Candidate planning session could not be persisted.",
             ) from error
         return _response_from_session(stored_session)
+
+    async def create_successor_planning_session(
+        self,
+        predecessor_session_id: str,
+        request: CandidatePlanRequest,
+    ) -> CandidatePlanResponse:
+        """Create a successor planning session for a candidate lineage."""
+
+        predecessor = self._state_store.get_session(predecessor_session_id)
+        if predecessor is None:
+            raise CandidatePlanningPredecessorNotFoundError(predecessor_session_id)
+
+        request = replace(request, candidate_id=predecessor.candidate_id)
+
+        try:
+            intake = await self._core_client.validate_candidate_planning_intake(
+                predecessor.candidate_id,
+                expected_candidate_fingerprint=request.expected_candidate_fingerprint,
+            )
+        except AtlasCoreClientError as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.ATLAS_CORE_UNAVAILABLE,
+                "Atlas Core planning intake is unavailable.",
+            ) from error
+
+        if intake.status != CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING.value:
+            return _rejection_response(request=request, intake=intake)
+
+        snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
+        if not is_supported_execution_intent(snapshot.execution_intent):
+            return CandidatePlanResponse(
+                session_id=None,
+                candidate_id=request.candidate_id,
+                status=CandidatePlanningSessionStatus.UNSUPPORTED_INTENT,
+                planning_allowed=False,
+                intake_status=snapshot.intake_status,
+                intake_reason_codes=snapshot.intake_reason_codes,
+                candidate_fingerprint=snapshot.candidate_fingerprint,
+                unsupported_reason="Atlas Agent cannot plan this execution intent yet.",
+            )
+
+        successor_repository_head = self._resolve_repository_head(snapshot)
+
+        session = CandidatePlanningSession(
+            identifier=build_candidate_planning_session_id(
+                candidate_id=snapshot.candidate_id,
+                candidate_fingerprint=snapshot.candidate_fingerprint,
+            ),
+            candidate_id=snapshot.candidate_id,
+            candidate_fingerprint=snapshot.candidate_fingerprint,
+            status=CandidatePlanningSessionStatus.READY_FOR_PLANNING,
+            snapshot=snapshot,
+            created_at=snapshot.intake_timestamp,
+            predecessor_session_id=predecessor_session_id,
+        )
+        if successor_repository_head is not None:
+            session = CandidatePlanningSession(
+                identifier=build_candidate_successor_planning_session_id(
+                    candidate_id=snapshot.candidate_id,
+                    candidate_fingerprint=snapshot.candidate_fingerprint,
+                    predecessor_session_id=predecessor.identifier,
+                    repository_head=successor_repository_head,
+                ),
+                candidate_id=snapshot.candidate_id,
+                candidate_fingerprint=snapshot.candidate_fingerprint,
+                status=CandidatePlanningSessionStatus.READY_FOR_PLANNING,
+                snapshot=snapshot,
+                created_at=snapshot.intake_timestamp,
+                predecessor_session_id=predecessor.identifier,
+            )
+        try:
+            if self._state_persistence is not None:
+                stored_session = self._state_persistence.mutate_candidate_planning(
+                    lambda state: _create_or_reuse_successor_session(
+                        state,
+                        predecessor_session=predecessor,
+                        session=session,
+                    )
+                )
+            else:
+                stored_session = self._store_create_or_reuse_successor(predecessor, session)
+        except _ConflictingActiveSessionError:
+            return _conflict_response(snapshot=snapshot)
+        except (OSError, ValueError, StatePersistenceError) as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Candidate planning session could not be persisted.",
+            ) from error
+        return _response_from_session(stored_session)
+
+    def _resolve_repository_head(self, snapshot: CandidateSnapshot) -> str | None:
+        if self._repository_resolver is None:
+            return None
+
+        repository_root = self._repository_resolver.resolve(
+            target_id=snapshot.target_id,
+            target_type=snapshot.target_type,
+        )
+        if repository_root is None:
+            return None
+
+        try:
+            return self._repository_inspector_factory(repository_root).inspect().head_commit
+        except (OSError, RepositoryInspectionError, ValueError):
+            return None
 
     def get_session(self, session_id: str) -> CandidatePlanningSession | None:
         """Return the current candidate-planning session, if present."""
@@ -1040,6 +1185,20 @@ class CandidatePlanningService:
             raise _ConflictingActiveSessionError
         self._state_store.create_session(session)
         return session
+
+    def _store_create_or_reuse_successor(
+        self,
+        predecessor_session: CandidatePlanningSession,
+        session: CandidatePlanningSession,
+    ) -> CandidatePlanningSession:
+        state = CandidatePlanningSessionsState(self._state_store.export_snapshot())
+        updated = _create_or_reuse_successor_session(
+            state,
+            predecessor_session=predecessor_session,
+            session=session,
+        )
+        self._state_store.replace_snapshot(state.snapshot())
+        return updated
 
     async def _plan_started_session(self, session: CandidatePlanningSession):
         try:

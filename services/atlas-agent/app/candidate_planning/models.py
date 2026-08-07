@@ -212,6 +212,8 @@ class CandidatePlanningSession:
     exact_implementation_approval_request_id: str | None = None
     implementation_translation_status: CandidatePlanningSessionStatus | None = None
     implementation_translation_completed_at: datetime | None = None
+    predecessor_session_id: str | None = None
+    successor_session_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,6 +230,8 @@ class CandidatePlanResponse:
     unsupported_reason: str | None = None
     plan: CandidatePlan | None = None
     planning_failure: CandidatePlanningFailure | None = None
+    predecessor_session_id: str | None = None
+    successor_session_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,6 +319,21 @@ def build_candidate_planning_session_id(
     """Build a deterministic collision-safe session ID from full fingerprint input."""
 
     digest = hashlib.sha256(f"{candidate_id}\0{candidate_fingerprint}".encode()).hexdigest()
+    return f"candidate-plan-{digest}"
+
+
+def build_candidate_successor_planning_session_id(
+    *,
+    candidate_id: str,
+    candidate_fingerprint: str,
+    predecessor_session_id: str,
+    repository_head: str | None,
+) -> str:
+    """Build a deterministic successor session ID for a planning lineage node."""
+
+    digest = hashlib.sha256(
+        f"{candidate_id}\0{candidate_fingerprint}\0{predecessor_session_id}\0{repository_head or ''}".encode()
+    ).hexdigest()
     return f"candidate-plan-{digest}"
 
 

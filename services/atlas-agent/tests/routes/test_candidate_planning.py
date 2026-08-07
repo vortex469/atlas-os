@@ -18,7 +18,10 @@ from app.candidate_planning.models import (
     CandidateWorkflowConversionResponse,
     CoreCandidatePlanningIntakeStatus,
 )
-from app.candidate_planning.service import CandidatePlanningServiceError
+from app.candidate_planning.service import (
+    CandidatePlanningPredecessorNotFoundError,
+    CandidatePlanningServiceError,
+)
 from app.config.settings import Settings
 from app.main import create_app
 from app.workflow.models import (
@@ -38,6 +41,7 @@ class FakeCandidatePlanningService:
         self.plan = None
         self.workflow_response = None
         self.implementation_response = None
+        self.successor_response = None
 
     async def create_planning_session(self, request):
         self.requests.append(request)
@@ -68,6 +72,12 @@ class FakeCandidatePlanningService:
         if self.error is not None:
             raise self.error
         return self.implementation_response
+
+    async def create_successor_planning_session(self, session_id: str, request):
+        self.requests.append((session_id, request))
+        if self.error is not None:
+            raise self.error
+        return self.successor_response
 
 
 def make_client(monkeypatch, tmp_path: Path, service: FakeCandidatePlanningService) -> TestClient:
@@ -320,6 +330,7 @@ def test_openapi_exposes_planning_only_endpoint(monkeypatch, tmp_path: Path) -> 
     assert set(schema["paths"]["/candidate-planning/{session_id}"]) == {"get"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/plan"]) == {"get", "post"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/workflow"]) == {"post"}
+    assert set(schema["paths"]["/candidate-planning/{session_id}/successor"]) == {"post"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/implementation"]) == {"post"}
     route_schema = schema["paths"]["/candidate-planning"]["post"]
     assert "workflow" not in route_schema["operationId"].lower()
@@ -476,3 +487,41 @@ def test_implementation_route_rejects_caller_commands_and_paths(monkeypatch, tmp
     )
 
     assert response.status_code == 422
+
+
+def test_successor_route_creates_successor_session(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.successor_response = replace(
+        ready_response(),
+        session_id="candidate-plan-2",
+        predecessor_session_id="candidate-plan-1",
+        successor_session_id=None,
+    )
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post(
+        "/candidate-planning/candidate-plan-1/successor",
+        json={"expected_candidate_fingerprint": "candidate-fingerprint-v1:bbb"},
+    )
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["session_id"] == "candidate-plan-2"
+    assert payload["predecessor_session_id"] == "candidate-plan-1"
+    assert payload["successor_session_id"] is None
+    assert service.requests == [("candidate-plan-1", service.requests[0][1])]
+    assert service.requests[0][0] == "candidate-plan-1"
+    assert service.requests[0][1].expected_candidate_fingerprint == "candidate-fingerprint-v1:bbb"
+
+
+def test_successor_route_returns_404_when_predecessor_missing(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.error = CandidatePlanningPredecessorNotFoundError("candidate-plan-1")
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post(
+        "/candidate-planning/candidate-plan-1/successor",
+        json={"expected_candidate_fingerprint": "candidate-fingerprint-v1:bbb"},
+    )
+
+    assert response.status_code == 404

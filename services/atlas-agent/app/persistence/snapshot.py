@@ -1078,6 +1078,8 @@ def _encode_candidate_planning_session(session: CandidatePlanningSession) -> dic
         "planning_failure": _encode_candidate_planning_failure(session.planning_failure),
         "planning_started_at": _encode_datetime(session.planning_started_at),
         "planning_status": session.planning_status.value,
+        "predecessor_session_id": session.predecessor_session_id,
+        "successor_session_id": session.successor_session_id,
         "snapshot": _encode_candidate_snapshot(session.snapshot),
         "status": session.status.value,
         "unsupported_reason": session.unsupported_reason,
@@ -1142,6 +1144,8 @@ def _decode_candidate_planning_session(payload: Any) -> CandidatePlanningSession
         implementation_translation_completed_at=_decode_optional_datetime(
             payload.get("implementation_translation_completed_at")
         ),
+        predecessor_session_id=payload.get("predecessor_session_id"),
+        successor_session_id=payload.get("successor_session_id"),
     )
 
 
