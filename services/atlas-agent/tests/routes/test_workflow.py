@@ -16,6 +16,7 @@ from app.approval.models import (
     CommitApprovalMetadata,
     VerificationApprovalCheck,
 )
+from app.candidate_planning.audit import CandidateAuditFailureCode, CandidateAuditValidationResult
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
 from app.candidate_planning.models import (
@@ -774,6 +775,110 @@ def test_candidate_workflow_audit_includes_blocked_reason(tmp_path: Path, monkey
     assert response.status_code == 200
     body = response.json()
     assert body["blocked_reason"] == "Blocked: safety policy failed"
+
+
+def test_candidate_audit_workflow_state_is_authoritative_in_response(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        workflow_routes.CandidateAuditChainValidator,
+        "validate",
+        lambda self, planning_session, workflow, approvals=None, require_complete=None: CandidateAuditValidationResult(valid=True),
+    )
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        state=WorkflowSessionState.BLOCKED,
+        blocked_reason="approval_evidence_mismatch",
+    )
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
+    save_candidate_workflow(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_state"] == "blocked"
+    assert body["validation"]["valid"] is True
+    assert body["validation"]["failure_code"] is None
+
+
+def test_candidate_audit_keeps_completed_state_when_validation_is_valid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        workflow_routes.CandidateAuditChainValidator,
+        "validate",
+        lambda self, planning_session, workflow, approvals=None, require_complete=None: CandidateAuditValidationResult(valid=True),
+    )
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        state=WorkflowSessionState.COMPLETED,
+    )
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
+    save_candidate_workflow(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_state"] == "completed"
+    assert body["validation"]["valid"] is True
+
+
+def test_candidate_audit_nonterminal_waiting_state_stays_not_completed_when_validation_valid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        workflow_routes.CandidateAuditChainValidator,
+        "validate",
+        lambda self, planning_session, workflow, approvals=None, require_complete=None: CandidateAuditValidationResult(valid=True),
+    )
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+    )
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
+    save_candidate_workflow(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_state"] == "awaiting_verification_approval"
+    assert body["validation"]["valid"] is True
+    assert body["workflow_state"] != "completed"
+
+
+def test_candidate_audit_invalid_validation_does_not_override_workflow_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        workflow_routes.CandidateAuditChainValidator,
+        "validate",
+        lambda self, planning_session, workflow, approvals=None, require_complete=None: CandidateAuditValidationResult(
+            valid=False,
+            failure_code=CandidateAuditFailureCode.MISSING_IMPLEMENTATION_REQUEST,
+        ),
+    )
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        state=WorkflowSessionState.BLOCKED,
+        blocked_reason="approval_evidence_mismatch",
+    )
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
+    save_candidate_workflow(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_state"] == "blocked"
+    assert body["validation"]["valid"] is False
 
 
 def test_candidate_workflow_audit_after_shell_creation_shows_planning_without_implementation_details(

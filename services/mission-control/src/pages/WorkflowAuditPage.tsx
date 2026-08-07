@@ -221,7 +221,7 @@ export function WorkflowAuditPage() {
     }
 
     const timeline = audit.timeline;
-    const overallStatusLabel = formatStatusLabel(audit.validation.valid ? "completed" : "invalid");
+    const overallLifecycleLabel = formatStatusLabel(audit.workflow_state);
 
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
@@ -241,7 +241,7 @@ export function WorkflowAuditPage() {
                     <Detail label="Workflow State" value={formatStatusLabel(audit.workflow_state)} />
                     <Detail label="Workflow Source" value={audit.workflow_source} />
                     {audit.blocked_reason ? <Detail label="Blocked reason" value={audit.blocked_reason} /> : null}
-                    <Detail label="Overall audit status" value={overallStatusLabel} />
+                    <Detail label="Overall audit status" value={overallLifecycleLabel} />
                     <Detail label="Audit validation" value={audit.validation.valid ? "Valid" : "Invalid"} />
                     <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
                 </dl>
@@ -290,8 +290,8 @@ export function WorkflowAuditPage() {
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 className="text-lg font-semibold text-white">Audit trust boundary</h2>
                 <p className="mt-2 text-sm text-slate-300">Stage statuses are derived from the server-provided audit timeline and validation result. Read-only fields below are not reconstructed.</p>
-                <p className={`mt-4 rounded-lg p-3 text-sm ${overallStatusLabel === "Completed" ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border border-amber-500/30 bg-amber-500/10 text-amber-100"}`}>
-                    Overall chain state: {overallStatusLabel}
+                <p className={`mt-4 rounded-lg p-3 text-sm ${overallLifecycleLabel === "Completed" ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border border-amber-500/30 bg-amber-500/10 text-amber-100"}`}>
+                    Overall chain state: {overallLifecycleLabel}
                 </p>
                 <p className="mt-3 text-xs uppercase tracking-[0.3em] text-slate-500">No mutation controls are available in this explorer.</p>
             </section>

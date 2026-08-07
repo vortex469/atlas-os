@@ -159,7 +159,11 @@ describe("WorkflowAuditPage", () => {
         expect(screen.getByText("candidate-123")).toBeInTheDocument();
         expect(screen.getByText("def456")).toBeInTheDocument();
         expect(screen.getByText("Commit SHA")).toBeInTheDocument();
+        expect(screen.getAllByText("Workflow State").length).toBe(1);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
+        expect(screen.getByText("Overall audit status")).toBeInTheDocument();
+        expect(screen.getAllByText("Audit validation").length).toBe(1);
+        expect(screen.getAllByText("Valid").length).toBeGreaterThan(0);
     });
 
     it("shows in-progress stages as Not reached", async () => {
@@ -213,12 +217,50 @@ describe("WorkflowAuditPage", () => {
         mockedGetWorkflowAudit.mockResolvedValue(
             audit({
                 blocked_reason: "Blocked: safety gate open failed due to policy",
+                workflow_state: "blocked",
             }),
         );
         renderAuditPage();
 
         expect(await screen.findByText("Blocked reason")).toBeInTheDocument();
         expect(screen.getByText("Blocked: safety gate open failed due to policy")).toBeInTheDocument();
+    });
+
+    it("renders overall audit status and chain state from workflow_state", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(
+            audit({
+                workflow_state: "awaiting_verification_approval",
+                validation: {
+                    valid: true,
+                    failure_code: null,
+                    failure_stage: null,
+                },
+            }),
+        );
+        renderAuditPage();
+
+        expect(await screen.findByText(/Overall audit status/i)).toBeInTheDocument();
+        expect(screen.getAllByText("Awaiting Verification Approval").length).toBeGreaterThan(0);
+        expect(screen.getByText("Valid")).toBeInTheDocument();
+    });
+
+    it("keeps audit validation separate from chain status when validation is invalid", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(
+            audit({
+                workflow_state: "blocked",
+                validation: {
+                    valid: false,
+                    failure_code: "candidate_plan_mismatch",
+                    failure_stage: "candidate",
+                },
+            }),
+        );
+        renderAuditPage();
+
+        expect((await screen.findAllByText("Blocked")).length).toBe(2);
+        expect(screen.getByText("Overall audit status")).toBeInTheDocument();
+        expect(screen.getByText("Invalid")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Inconsistent audit:");
     });
 
     it("shows inconsistent alert for failed validation", async () => {
