@@ -30,17 +30,18 @@ export function WorkflowShellPage() {
 
     useEffect(() => {
         if (workflowFromLocation !== null) {
-            setIsLoadingWorkflow(false);
-            setWorkflowLoadError(null);
             return;
         }
 
         let cancelled = false;
-        setIsLoadingWorkflow(true);
-        setWorkflowLoadError(null);
 
-        getCandidatePlanningSession(sessionId)
-            .then((planningSession) => {
+        void (async () => {
+            setIsLoadingWorkflow(true);
+            setWorkflowLoadError(null);
+
+            try {
+                const planningSession = await getCandidatePlanningSession(sessionId);
+
                 if (cancelled) {
                     return;
                 }
@@ -49,16 +50,14 @@ export function WorkflowShellPage() {
                     throw new Error("Planning session was not found.");
                 }
 
-                return createCandidateWorkflowShell(sessionId, {
+                const response = await createCandidateWorkflowShell(sessionId, {
                     expected_candidate_fingerprint: planningSession.candidate_fingerprint,
                 });
-            })
-            .then((response) => {
+
                 if (!cancelled && response) {
                     setWorkflow(response);
                 }
-            })
-            .catch((error: unknown) => {
+            } catch (error: unknown) {
                 if (cancelled) {
                     return;
                 }
@@ -69,12 +68,12 @@ export function WorkflowShellPage() {
                         "Mission Control could not load this workflow shell summary.",
                     ),
                 );
-            })
-            .finally(() => {
+            } finally {
                 if (!cancelled) {
                     setIsLoadingWorkflow(false);
                 }
-            });
+            }
+        })();
 
         return () => {
             cancelled = true;
@@ -86,7 +85,13 @@ export function WorkflowShellPage() {
         && workflow.workflow_session_id !== null
         && workflow.failure === null;
 
-    function isSuccessfulImplementationResponse(response: CandidateImplementationTranslationResponse): boolean {
+    function isSuccessfulImplementationResponse(
+        response: CandidateImplementationTranslationResponse,
+    ): response is CandidateImplementationTranslationResponse & {
+        workflow_session_id: string;
+        implementation_request_id: string;
+        exact_approval_request_id: string;
+    } {
         return (
             response.failure === null
             && response.translation_status === "implementation_ready"
