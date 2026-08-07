@@ -85,7 +85,7 @@ function planningSession(overrides: Partial<CandidatePlanningResponse> = {}): Ca
 
 function renderPage(state?: { workflow: CandidateWorkflowResponse }) {
     return render(
-        <MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state }]}> 
+        <MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state }]}>
             <Routes>
                 <Route path="/candidate-planning/:sessionId/workflow" element={<WorkflowShellPage />} />
                 <Route path="/workflows/:workflowId" element={<div>Workflow detail</div>} />
