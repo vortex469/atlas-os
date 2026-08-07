@@ -209,6 +209,18 @@ describe("WorkflowAuditPage", () => {
         expect(await screen.findByText("Required artifact is missing.")).toBeInTheDocument();
     });
 
+    it("shows blocked reason in overview when workflow is blocked", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(
+            audit({
+                blocked_reason: "Blocked: safety gate open failed due to policy",
+            }),
+        );
+        renderAuditPage();
+
+        expect(await screen.findByText("Blocked reason")).toBeInTheDocument();
+        expect(screen.getByText("Blocked: safety gate open failed due to policy")).toBeInTheDocument();
+    });
+
     it("shows inconsistent alert for failed validation", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(audit({
             validation: {

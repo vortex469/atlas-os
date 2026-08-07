@@ -758,6 +758,24 @@ def test_candidate_workflow_audit_endpoint_returns_machine_readable_chain(tmp_pa
     assert body["planning"]["planning_status"] == "plan_ready"
 
 
+def test_candidate_workflow_audit_includes_blocked_reason(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        blocked_reason="Blocked: safety policy failed",
+    )
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
+    save_candidate_workflow(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["blocked_reason"] == "Blocked: safety policy failed"
+
+
 def test_candidate_workflow_audit_after_shell_creation_shows_planning_without_implementation_details(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -388,6 +388,7 @@ class WorkflowAuditResponse(BaseModel):
     workflow_id: str
     workflow_state: str
     workflow_source: str
+    blocked_reason: str | None = None
     validation: WorkflowAuditFailureResponse
     timeline: list[WorkflowAuditSection]
     candidate: WorkflowAuditCandidateResponse
@@ -759,7 +760,14 @@ def _audit_approval_status(request: Request, approval_id: str | None) -> str:
     return result.decision.status.value
 
 
-def _audit_stage_rank_for_state(state: WorkflowSessionState, workflow) -> int:
+def _audit_stage_rank_for_state(
+    state: WorkflowSessionState,
+    workflow,
+    *,
+    implementation_approved: bool,
+    verification_approved: bool,
+    commit_approved: bool,
+) -> int:
     if state in {
         WorkflowSessionState.COMPLETED,
         WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
@@ -780,12 +788,18 @@ def _audit_stage_rank_for_state(state: WorkflowSessionState, workflow) -> int:
     if state is WorkflowSessionState.BLOCKED:
         if workflow.commit_result is not None:
             return _AUDIT_STAGE_RANK["commit"]
-        if workflow.review_report is not None or workflow.candidate_review_result is not None:
+        if workflow.candidate_review_result is not None or workflow.review_report is not None:
             return _AUDIT_STAGE_RANK["review"]
-        if workflow.candidate_verification_evidence is not None or workflow.candidate_verification_plan is not None:
+        if workflow.candidate_verification_evidence is not None:
             return _AUDIT_STAGE_RANK["verification"]
+        if workflow.candidate_verification_plan is not None and verification_approved:
+            return _AUDIT_STAGE_RANK["verification"]
+        if workflow.commit_request is not None and commit_approved:
+            return _AUDIT_STAGE_RANK["approvals"]
         if workflow.execution_result is not None:
             return _AUDIT_STAGE_RANK["execution"]
+        if workflow.candidate_implementation_request is not None and implementation_approved:
+            return _AUDIT_STAGE_RANK["approvals"]
         if workflow.candidate_implementation_request is not None:
             return _AUDIT_STAGE_RANK["implementation"]
         return _AUDIT_STAGE_RANK["workflow"]
@@ -896,9 +910,6 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         workflow=workflow,
         approvals=audit_approvals,
     )
-    current_rank = _audit_stage_rank_for_state(workflow.state, workflow)
-    failed_stage = _failure_stage(validation.failure_code)
-
     plan = planning_session.plan if planning_session is not None else None
     implementation = workflow.candidate_implementation_request
     execution = workflow.execution_result
@@ -921,6 +932,15 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         request,
         f"approval-commit-{workflow.identifier}",
     )
+
+    current_rank = _audit_stage_rank_for_state(
+        workflow.state,
+        workflow,
+        implementation_approved=implementation_approval_status == "approved",
+        verification_approved=verification_approval_status == "approved",
+        commit_approved=commit_approval_status == "approved",
+    )
+    failed_stage = _failure_stage(validation.failure_code)
 
     has_approvals = implementation_approval_status == "approved"
     if current_rank >= _AUDIT_STAGE_RANK["verification"]:
@@ -953,6 +973,7 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         workflow_id=workflow.identifier,
         workflow_state=workflow.state.value,
         workflow_source=workflow.source.value,
+        blocked_reason=workflow.blocked_reason,
         validation=WorkflowAuditFailureResponse(
             valid=validation.valid,
             failure_code=validation.failure_code.value if validation.failure_code else None,

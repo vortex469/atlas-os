@@ -240,6 +240,7 @@ export function WorkflowAuditPage() {
                     <Detail label="Workflow ID" value={audit.workflow_id} />
                     <Detail label="Workflow State" value={formatStatusLabel(audit.workflow_state)} />
                     <Detail label="Workflow Source" value={audit.workflow_source} />
+                    {audit.blocked_reason ? <Detail label="Blocked reason" value={audit.blocked_reason} /> : null}
                     <Detail label="Overall audit status" value={overallStatusLabel} />
                     <Detail label="Audit validation" value={audit.validation.valid ? "Valid" : "Invalid"} />
                     <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />

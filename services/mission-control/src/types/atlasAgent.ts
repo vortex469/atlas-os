@@ -293,6 +293,7 @@ export interface WorkflowAuditResponse {
     workflow_id: string;
     workflow_state: string;
     workflow_source: string;
+    blocked_reason?: string | null;
     validation: WorkflowAuditFailure;
     timeline: WorkflowAuditSection[];
     candidate: WorkflowAuditCandidate;
