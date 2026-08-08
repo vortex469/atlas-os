@@ -2372,6 +2372,64 @@ def test_candidate_approved_request_executes_and_stops_at_verification_approval(
     assert validator.calls == 1
 
 
+def test_candidate_exact_match_resume_advances_to_verification_approval(tmp_path: Path) -> None:
+    engine, state_store, approvals, execution_engine, verifier, reviewer, validator = (
+        make_candidate_engine(tmp_path)
+    )
+
+    workflow = state_store.get_session("candidate-workflow-1")
+    assert workflow is not None
+    assert workflow.candidate_implementation_request is not None
+    candidate_metadata = workflow.candidate_metadata
+    assert candidate_metadata is not None
+
+    implementation_request = workflow.candidate_implementation_request
+    assert candidate_metadata.candidate_id == implementation_request.candidate_id
+    assert candidate_metadata.candidate_plan_id == implementation_request.candidate_plan_id
+    assert candidate_metadata.candidate_fingerprint == implementation_request.candidate_fingerprint
+    assert candidate_metadata.candidate_plan_fingerprint == implementation_request.candidate_plan_fingerprint
+    assert candidate_metadata.execution_intent == implementation_request.execution_intent
+    execution_approval = approvals.get_request(workflow.candidate_implementation_approval_id)
+    assert execution_approval is not None
+    assert execution_approval.decision.request.identifier == workflow.candidate_implementation_approval_id
+    assert execution_approval.decision.request.checkpoint_id == implementation_request.identifier
+    assert execution_approval.decision.request.requested_tool == implementation_request.argv[0]
+    assert execution_approval.decision.request.requested_command == implementation_request.argv
+    assert (
+        execution_approval.decision.request.requested_working_directory
+        == implementation_request.working_directory
+    )
+
+    result = engine.resume("candidate-workflow-1")
+
+    assert result.error_message != "approval_evidence_mismatch"
+    assert result.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    session = state_store.get_session("candidate-workflow-1")
+    assert session is not None
+    assert session.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    assert session.state is not WorkflowSessionState.BLOCKED
+    execution_engine.execute.assert_called_once()
+    assert session.execution_result is result.execution_result
+    verifier.verify.assert_not_called()
+    reviewer.review.assert_not_called()
+    assert validator.calls == 1
+    assert implementation_request.translator_version == TRANSLATOR_VERSION
+
+    approval_request = result.approval_request
+    assert approval_request is not None
+    assert approval_request.identifier == "approval-verification-candidate-workflow-1"
+    assert approval_request.purpose is ApprovalPurpose.VERIFICATION
+    assert approval_request.requested_tool == "verification"
+    assert approval_request.requested_command == ("verification-suite",)
+    assert session.plan is not None
+    assert session.execution_result is not None
+    assert session.changed_files == (Path("compose.production.yaml"),)
+    stored_verification_approval = approvals.get_request(
+        approval_request.identifier
+    )
+    assert stored_verification_approval is not None
+
+
 def test_candidate_pending_validation_does_not_claim_or_execute(tmp_path: Path) -> None:
     validation = CandidateExecutionValidationResult(
         approved=False,
