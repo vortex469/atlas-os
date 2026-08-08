@@ -1,11 +1,14 @@
 """Tests for candidate-planning HTTP route."""
 
+import json
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from app.approval.models import ApprovalPurpose, ApprovalRequest
+from app.approval.repository import ApprovalRepository
 from app.candidate_planning.models import (
     CandidateImplementationTranslationResponse,
     CandidatePlan,
@@ -22,14 +25,17 @@ from app.candidate_planning.service import (
     CandidatePlanningPredecessorNotFoundError,
     CandidatePlanningServiceError,
 )
+from app.candidate_planning.state import CandidatePlanningStateStore
 from app.config.settings import Settings
 from app.main import create_app
+from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.workflow.models import (
     CandidateWorkflowMetadata,
     WorkflowSession,
     WorkflowSessionState,
     WorkflowSource,
 )
+from app.workflow.state import WorkflowStateStore
 
 
 class FakeCandidatePlanningService:
@@ -452,6 +458,57 @@ def test_get_candidate_planning_session_recovers_orphan_workflow(monkeypatch, tm
     assert payload["status"] == "workflow_created"
     assert payload["session_id"] == "candidate-plan-1"
     assert payload["plan"] is None
+
+
+def test_get_candidate_planning_session_recovers_orphan_after_restart(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    state_dir = tmp_path / "state"
+    workflow_state = WorkflowStateStore()
+    candidate_state = CandidatePlanningStateStore()
+    persistence = AgentStatePersistenceCoordinator(
+        state_dir=state_dir,
+        workflow_state=workflow_state,
+        approval_repository=ApprovalRepository(),
+        candidate_planning_state=candidate_state,
+    )
+    persistence.initialize()
+    workflow = linked_candidate_workflow()
+    persistence.mutate_aggregate(
+        lambda workflow_tx, approvals_tx, _candidate_tx: (
+            workflow_tx.create_session(workflow),
+            approvals_tx.save_request(
+                ApprovalRequest(
+                    identifier="approval-candidate-workflow-1",
+                    workflow_id=workflow.identifier,
+                    checkpoint_id="candidate-plan-output-candidate-plan-1",
+                    title="Approve candidate workflow shell",
+                    requested_tool="atlas-agent",
+                    requested_command=(),
+                    requested_working_directory=tmp_path,
+                    rationale="No executable command is approved by this request.",
+                    purpose=ApprovalPurpose.IMPLEMENTATION,
+                )
+            ),
+        )
+    )
+
+    snapshot = json.loads(persistence.snapshot_path.read_text())
+    del snapshot["candidate_planning"]
+    persistence.snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+
+    service = FakeCandidatePlanningService()
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.get("/candidate-planning/candidate-plan-1")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["session_id"] == workflow.candidate_metadata.candidate_planning_session_id
+    assert payload["status"] == "workflow_created"
+    assert payload["plan"] is None
+    assert client.app.state.container.candidate_planning_state.export_snapshot() == {}
 
 
 def test_implementation_route_accepts_only_expected_fingerprints(monkeypatch, tmp_path: Path) -> None:

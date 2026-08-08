@@ -725,6 +725,77 @@ def test_old_snapshot_without_candidate_planning_loads_empty_candidate_state(
     assert recovered_candidate_state.export_snapshot() == {}
 
 
+def test_old_snapshot_without_candidate_planning_still_recovers_orphaned_workflow_metadata(
+    tmp_path: Path,
+) -> None:
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = coordinator(tmp_path, workflow_state, approvals)
+    persistence.initialize()
+
+    workflow = WorkflowSession(
+        identifier="candidate-workflow-1",
+        request=None,
+        plan=None,
+        state=WorkflowSessionState.AWAITING_APPROVAL,
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=CandidateWorkflowMetadata(
+            candidate_planning_session_id="candidate-plan-1",
+            candidate_id="candidate-1",
+            candidate_fingerprint="candidate-fingerprint-v1:aaa",
+            candidate_plan_id="candidate-plan-output-candidate-plan-1",
+            candidate_plan_fingerprint="candidate-plan-fingerprint-v1:abc",
+            source_recommendation_id="finding-1",
+            source_subsystem="orion",
+            catalog_item_id="frigate",
+            target_id="atlas-compose",
+            target_type="repository",
+            execution_category="update",
+            execution_intent="update-compose-stack",
+            evidence_ids=("evidence-1",),
+            compatibility_assessment_id="assessment-1",
+            compatibility_status="compatible",
+            relationship_ids=("relationship-1",),
+            conversion_timestamp=datetime(2026, 8, 2, tzinfo=timezone.utc),
+            core_revalidation_status="accepted_for_planning",
+            core_revalidation_fingerprint="candidate-fingerprint-v1:aaa",
+        ),
+    )
+    persistence.mutate_aggregate(
+        lambda workflow_tx, approvals_tx, _candidate_tx: (
+            workflow_tx.create_session(workflow),
+            approvals_tx.save_request(
+                approval_request(
+                    workflow.identifier,
+                    ApprovalPurpose.IMPLEMENTATION,
+                    root=tmp_path,
+                )
+            ),
+        )
+    )
+
+    payload = json.loads(persistence.snapshot_path.read_text())
+    del payload["candidate_planning"]
+    persistence.snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    recovered_candidate = CandidatePlanningStateStore()
+    recovered_workflow = WorkflowStateStore()
+    coordinator(
+        tmp_path,
+        recovered_workflow,
+        ApprovalRepository(),
+        recovered_candidate,
+    ).initialize()
+
+    assert recovered_candidate.export_snapshot() == {}
+
+    recovered = recovered_workflow.get_session("candidate-workflow-1")
+    assert recovered is not None
+    assert recovered.candidate_metadata is not None
+    assert recovered.candidate_metadata.candidate_planning_session_id == "candidate-plan-1"
+    assert recovered.source is WorkflowSource.CANDIDATE
+
+
 def test_completed_candidate_workflow_artifacts_recover_after_restart(
     tmp_path: Path,
 ) -> None:
