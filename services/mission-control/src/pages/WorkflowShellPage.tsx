@@ -25,17 +25,14 @@ export function WorkflowShellPage() {
     const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(workflowFromLocation);
     const [isCreatingImplementation, setIsCreatingImplementation] = useState(false);
     const [isCreatingSuccessor, setIsCreatingSuccessor] = useState(false);
-    const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(workflowFromLocation === null);
+    const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(true);
     const [workflowLoadError, setWorkflowLoadError] = useState<string | null>(null);
     const [implementationError, setImplementationError] = useState<string | null>(null);
     const [successorError, setSuccessorError] = useState<string | null>(null);
     const [implementationResult, setImplementationResult] = useState<CandidateImplementationTranslationResponse | null>(null);
+    const candidateFingerprintFromLocation = workflowFromLocation?.candidate_fingerprint;
 
     useEffect(() => {
-        if (workflowFromLocation !== null) {
-            return;
-        }
-
         let cancelled = false;
 
         void (async () => {
@@ -43,21 +40,27 @@ export function WorkflowShellPage() {
             setWorkflowLoadError(null);
 
             try {
-                const planningSession = await getCandidatePlanningSession(sessionId);
+                const planningSession = workflowFromLocation === null
+                    ? await getCandidatePlanningSession(sessionId)
+                    : null;
+
+                if (planningSession === null && workflowFromLocation === null) {
+                    throw new Error("Planning session was not found.");
+                }
 
                 if (cancelled) {
                     return;
                 }
 
-                if (planningSession === null) {
-                    throw new Error("Planning session was not found.");
-                }
-
                 const response = await createCandidateWorkflowShell(sessionId, {
-                    expected_candidate_fingerprint: planningSession.candidate_fingerprint,
+                    expected_candidate_fingerprint: planningSession?.candidate_fingerprint ?? candidateFingerprintFromLocation,
                 });
 
-                if (!cancelled && response) {
+                if (cancelled) {
+                    return;
+                }
+
+                if (response) {
                     setWorkflow(response);
                 }
             } catch (error: unknown) {
@@ -81,20 +84,38 @@ export function WorkflowShellPage() {
         return () => {
             cancelled = true;
         };
-    }, [sessionId, workflowFromLocation]);
+    }, [
+        sessionId,
+        candidateFingerprintFromLocation,
+        workflowFromLocation?.candidate_planning_session_id,
+        workflowFromLocation?.workflow_session_id,
+        workflowFromLocation?.candidate_plan_fingerprint,
+    ]);
     const canCreateImplementation =
         workflow !== null
         && workflow.workflow_status === "awaiting_approval"
         && workflow.workflow_session_id !== null
-        && workflow.failure === null;
+        && workflow.failure === null
+        && !isLoadingWorkflow;
 
-    const canCreateSuccessor =
+    const canCreateStaleRecovery =
         workflow !== null
         && workflow.workflow_session_id !== null
         && implementationResult?.failure?.code === "repository_stale"
         && workflow.candidate_planning_session_id !== null
-        && workflow.candidate_fingerprint !== null
-        && !isCreatingSuccessor;
+        && workflow.candidate_fingerprint !== null;
+
+    const canCreateBlockedRecovery =
+        workflow !== null
+        && workflow.workflow_status === "blocked"
+        && workflow.workflow_session_id !== null
+        && workflow.candidate_planning_session_id !== null
+        && workflow.candidate_fingerprint !== null;
+
+    const canCreateSuccessor =
+        (canCreateStaleRecovery || canCreateBlockedRecovery)
+        && !isCreatingSuccessor
+        && !isLoadingWorkflow;
 
     function isSuccessfulImplementationResponse(
         response: CandidateImplementationTranslationResponse,
@@ -113,7 +134,7 @@ export function WorkflowShellPage() {
     }
 
     async function createImplementation() {
-        if (!workflow || !canCreateImplementation || isCreatingImplementation) {
+        if (!workflow || !canCreateImplementation || isCreatingImplementation || isLoadingWorkflow) {
             return;
         }
 
@@ -152,7 +173,7 @@ export function WorkflowShellPage() {
     }
 
     async function createSuccessorPlanningSession() {
-        if (!workflow || !canCreateSuccessor) {
+        if (!workflow || !canCreateSuccessor || isLoadingWorkflow) {
             return;
         }
 
@@ -188,7 +209,7 @@ export function WorkflowShellPage() {
         }
     }
 
-    if (isLoadingWorkflow) {
+    if (isLoadingWorkflow && workflow === null) {
         return (
             <main className="mx-auto max-w-6xl p-8">
                 <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
@@ -258,24 +279,30 @@ export function WorkflowShellPage() {
                         <p className="mt-2 text-sm text-slate-300">
                             Translate the approval-gated shell into the immutable implementation request required for execution approval.
                         </p>
-                        <div className="mt-4 flex flex-wrap gap-3">
-                            <button
-                                type="button"
-                                onClick={() => void createImplementation()}
-                                disabled={isCreatingImplementation}
-                                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                                {isCreatingImplementation ? "Creating implementation request..." : "Create Implementation Request"}
-                            </button>
+                <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                        type="button"
+                        onClick={() => void createImplementation()}
+                        disabled={isCreatingImplementation || isLoadingWorkflow}
+                        className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {isCreatingImplementation ? "Creating implementation request..." : "Create Implementation Request"}
+                    </button>
                             {isCreatingImplementation && <p className="text-sm text-slate-200">Creating implementation request...</p>}
                         </div>
                     </div>
                 )}
                 {canCreateSuccessor && (
                     <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-                        <h2 className="text-base font-semibold text-amber-100">Recovery: stale repository for approved plan</h2>
+                        <h2 className="text-base font-semibold text-amber-100">
+                            {canCreateBlockedRecovery
+                                ? "Recovery: blocked workflow"
+                                : "Recovery: stale repository for approved plan"}
+                        </h2>
                         <p className="mt-2 text-sm text-slate-200">
-                            The trusted repository state changed after plan review. This workflow and reviewed plan are historical. Re-planning here creates a successor planning session against the current trusted repository state.
+                            {canCreateBlockedRecovery
+                                ? "This workflow is preserved as historical state. Create a successor planning session against the current trusted candidate and repository state before attempting another implementation."
+                                : "The trusted repository state changed after plan review. This workflow and reviewed plan are historical. Re-planning here creates a successor planning session against the current trusted repository state."}
                         </p>
                         <div className="mt-4 flex flex-wrap gap-3">
                             <button

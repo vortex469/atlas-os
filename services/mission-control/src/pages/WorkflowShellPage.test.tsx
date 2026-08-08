@@ -38,7 +38,7 @@ function workflow(overrides: Partial<CandidateWorkflowResponse> = {}): Candidate
         candidate_plan_id: "plan-1",
         candidate_plan_fingerprint: "plan-fingerprint-1",
         workflow_session_id: "workflow-1",
-        workflow_status: "approval_pending",
+        workflow_status: "awaiting_approval",
         implementation_approval_request_id: "approval-1",
         conversion_status: "workflow_created",
         core_revalidation_status: "accepted_for_planning",
@@ -111,14 +111,14 @@ describe("WorkflowShellPage", () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(planningSession());
     });
 
-    it("renders a read-only workflow summary from route state", () => {
+    it("renders from route state while still reconciling against server state", async () => {
         renderPage({ workflow: workflow() });
 
         expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
         expect(screen.getAllByText("Workflow created.").length).toBeGreaterThan(0);
         expect(screen.getByText("workflow-1")).toBeInTheDocument();
         expect(screen.getByText("Atlas Agent candidate planning")).toBeInTheDocument();
-        expect(screen.getAllByText("Approval Pending").length).toBeGreaterThan(0);
+        expect((await screen.findAllByText(/Awaiting Approval|Approval Pending/)).length).toBeGreaterThan(0);
         expect(screen.getByText("candidate-1")).toBeInTheDocument();
         expect(screen.getByText("fingerprint-1")).toBeInTheDocument();
         expect(screen.getByText("plan-fingerprint-1")).toBeInTheDocument();
@@ -130,10 +130,61 @@ describe("WorkflowShellPage", () => {
         expect(screen.getByText("Verification ○")).toBeInTheDocument();
         expect(screen.getByText("Review ○")).toBeInTheDocument();
         expect(screen.getByText("Commit ○")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /approve|execute|implementation|verify|review|commit/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /approve|execute|verify|review|commit/i })).not.toBeInTheDocument();
         expect(screen.queryByText(/argv|commands|execution metadata/i)).not.toBeInTheDocument();
-        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+        expect(await screen.findByRole("button", { name: /create implementation request/i })).toBeInTheDocument();
         expect(mockedGetCandidatePlanningSession).not.toHaveBeenCalled();
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
+            expected_candidate_fingerprint: "fingerprint-1",
+        });
+    });
+
+    it("reconciles stale location state against a blocked authoritative server response", async () => {
+        mockedCreateCandidateWorkflowShell.mockResolvedValue(
+            workflow({
+                workflow_status: "blocked",
+                implementation_approval_request_id: "approval-shell",
+                reason_codes: ["approval_evidence_mismatch"],
+            }),
+        );
+
+        renderPage({
+            workflow: workflow({
+                workflow_status: "awaiting_approval",
+                implementation_approval_request_id: "approval-shell",
+            }),
+        });
+
+        expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+        expect((await screen.findAllByText("Blocked")).length).toBeGreaterThan(0);
+        expect(screen.queryByRole("button", { name: /create implementation request/i })).not.toBeInTheDocument();
+        expect(screen.getByText("Recovery: blocked workflow")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
+            expected_candidate_fingerprint: "fingerprint-1",
+        });
+    });
+
+    it("does not render mutation actions before authoritative state reconciliation", async () => {
+        let resolveShell!: (value: CandidateWorkflowResponse) => void;
+        mockedCreateCandidateWorkflowShell.mockReturnValue(new Promise((resolve) => {
+            resolveShell = resolve;
+        }));
+
+        renderPage({
+            workflow: workflow({
+                workflow_status: "awaiting_approval",
+                implementation_approval_request_id: "approval-shell",
+            }),
+        });
+
+        expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /create implementation request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
+
+        resolveShell(workflow({ workflow_status: "awaiting_approval", implementation_approval_request_id: "approval-shell" }));
+        expect(await screen.findByRole("button", { name: /create implementation request/i })).toBeInTheDocument();
+        expect(mockedCreateCandidateImplementationRequest).not.toHaveBeenCalled();
     });
 
     it("loads the workflow shell when opened directly from planning session URL", async () => {
@@ -167,8 +218,7 @@ describe("WorkflowShellPage", () => {
         });
         renderPage({ workflow: currentWorkflow });
 
-        expect(screen.getByText("Create implementation request")).toBeInTheDocument();
-        const button = screen.getByRole("button", { name: /create implementation request/i });
+        const button = await screen.findByRole("button", { name: /create implementation request/i });
 
         await user.click(button);
 
@@ -202,7 +252,7 @@ describe("WorkflowShellPage", () => {
 			}),
 		});
 
-		await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+		await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 
 		expect(await screen.findByText("Translation status: implementation_translation_failed")).toBeInTheDocument();
 		expect(screen.getByText("Failure code: repository_stale")).toBeInTheDocument();
@@ -232,7 +282,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 
 			expect(await screen.findByText("Failure code: plan_fingerprint_mismatch")).toBeInTheDocument();
 			expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
@@ -255,7 +305,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
@@ -283,7 +333,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 
 			mockedCreateSuccessorCandidatePlanningSession.mockResolvedValue(
@@ -317,7 +367,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
@@ -347,13 +397,64 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+			await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 			await user.dblClick(screen.getByRole("button", { name: /re-plan against current repository/i }));
 
 			expect(mockedCreateSuccessorCandidatePlanningSession).toHaveBeenCalledTimes(1);
 			expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
 			resolveRequest(planningSession({ session_id: "candidate-plan-2", status: "ready_for_planning" }));
+		});
+
+		it("shows blocked recovery and preserves shared successor behavior", async () => {
+			const user = userEvent.setup();
+			mockedCreateCandidateWorkflowShell.mockResolvedValue(
+				workflow({
+					workflow_status: "blocked",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			);
+
+			renderPage({
+				workflow: workflow({
+					workflow_status: "awaiting_approval",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			});
+
+			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
+			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
+
+			expect(mockedCreateSuccessorCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1", {
+				expected_candidate_fingerprint: "fingerprint-1",
+			});
+			expect(await screen.findByText("Candidate planning session")).toBeInTheDocument();
+		});
+
+		it("blocks duplicate blocked-workflow successor submissions", async () => {
+			const user = userEvent.setup();
+			mockedCreateCandidateWorkflowShell.mockResolvedValue(
+				workflow({
+					workflow_status: "blocked",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			);
+			mockedCreateSuccessorCandidatePlanningSession.mockReturnValue(new Promise((resolve) => {
+				setTimeout(() => {
+					resolve(planningSession({ session_id: "candidate-plan-2", status: "ready_for_planning" }));
+				}, 10);
+			}));
+
+			renderPage({
+				workflow: workflow({
+					workflow_status: "awaiting_approval",
+					implementation_approval_request_id: "approval-shell",
+				}),
+			});
+
+			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
+			await user.dblClick(screen.getByRole("button", { name: /re-plan against current repository/i }));
+			expect(mockedCreateSuccessorCandidatePlanningSession).toHaveBeenCalledTimes(1);
 		});
 
 	it("retries remain available after a structured failure response", async () => {
@@ -375,7 +476,7 @@ describe("WorkflowShellPage", () => {
 			}),
 		});
 
-		const button = screen.getByRole("button", { name: /create implementation request/i });
+		const button = await screen.findByRole("button", { name: /create implementation request/i });
 		await user.click(button);
 
 		expect(await screen.findByText("Implementation request failed with repository_stale: Trusted repository HEAD differs from the reviewed candidate plan."))
@@ -399,7 +500,7 @@ describe("WorkflowShellPage", () => {
 			}),
 		});
 
-		await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+		await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 
 		expect(await screen.findByText("Implementation request did not include a complete translation contract. Please retry after refreshing the workflow shell.")).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
@@ -420,7 +521,7 @@ describe("WorkflowShellPage", () => {
 			}),
 		});
 
-		await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+		await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 
 		expect(await screen.findByText("Implementation request did not include a complete translation contract. Please retry after refreshing the workflow shell.")).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
@@ -442,7 +543,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        const button = screen.getByRole("button", { name: /create implementation request/i });
+        const button = await screen.findByRole("button", { name: /create implementation request/i });
         await user.dblClick(button);
 
         expect(mockedCreateCandidateImplementationRequest).toHaveBeenCalledTimes(1);
@@ -461,7 +562,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        await user.click(screen.getByRole("button", { name: /create implementation request/i }));
+        await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Implementation unavailable");
     });
