@@ -16,7 +16,10 @@ from app.approval.models import (
     CommitApprovalMetadata,
     VerificationApprovalCheck,
 )
-from app.candidate_planning.audit import CandidateAuditFailureCode, CandidateAuditValidationResult
+from app.candidate_planning.audit import (
+    CandidateAuditFailureCode,
+    CandidateAuditValidationResult,
+)
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
 from app.candidate_planning.models import (
