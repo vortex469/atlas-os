@@ -1902,10 +1902,16 @@ class WorkflowEngine:
         validation: CandidateExecutionValidationResult,
     ) -> WorkflowResult:
         code = validation.failure_code or CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH
+        reason = (
+            code.value
+            if validation.message is None
+            else f"{code.value}: {validation.message}"
+        )
         if validation.should_block:
             return self._block_candidate_session(
                 session=session,
                 error_message=code.value,
+                blocked_reason=reason,
             )
         return self._candidate_session_result(
             session=session,
@@ -1918,12 +1924,13 @@ class WorkflowEngine:
         *,
         session: WorkflowSession,
         error_message: str,
+        blocked_reason: str | None = None,
     ) -> WorkflowResult:
         self._transition_session(
             session.identifier,
             session.state,
             WorkflowSessionState.BLOCKED,
-            blocked_reason=error_message,
+            blocked_reason=blocked_reason or error_message,
         )
         return self._candidate_session_result(
             session=session,

@@ -158,9 +158,13 @@ class CandidateExecutionValidator:
         approval_result: ApprovalResult | None,
     ) -> CandidateExecutionValidationResult:
         if workflow.source is not WorkflowSource.CANDIDATE:
-            return _evidence_mismatch()
+            return _evidence_mismatch(
+                "Workflow source is not candidate-based implementation workflow."
+            )
         if workflow.state is not WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL:
-            return _evidence_mismatch()
+            return _evidence_mismatch(
+                "Workflow is not in awaiting implementation approval state."
+            )
         metadata = workflow.candidate_metadata
         implementation_request = workflow.candidate_implementation_request
         approval_id = workflow.candidate_implementation_approval_id
@@ -171,9 +175,12 @@ class CandidateExecutionValidator:
                 should_block=True,
             )
         if not implementation_request.argv:
-            return _evidence_mismatch()
+            return _evidence_mismatch("Implementation request has no command arguments.")
         if implementation_request.translator_version != TRANSLATOR_VERSION:
-            return _evidence_mismatch()
+            return _evidence_mismatch(
+                f"Implementation request uses unsupported translator version:"
+                f" {implementation_request.translator_version}."
+            )
         if approval_result is None:
             return _failure(
                 CandidateExecutionFailureCode.APPROVAL_MISSING,
@@ -195,35 +202,54 @@ class CandidateExecutionValidator:
                 should_block=True,
             )
         if not approval.requested_command:
-            return _evidence_mismatch()
-        if not (
-            approval.identifier == approval_id
-            and approval.purpose is ApprovalPurpose.IMPLEMENTATION
-            and approval.workflow_id == workflow.identifier
-            and approval.checkpoint_id == implementation_request.identifier
-            and approval.requested_tool == implementation_request.argv[0]
-            and approval.requested_command == implementation_request.argv
-            and approval.requested_working_directory
-            == implementation_request.working_directory
-        ):
-            return _evidence_mismatch()
-        if not (
-            metadata.candidate_planning_session_id
-            == implementation_request.candidate_planning_session_id
-            and metadata.candidate_id == implementation_request.candidate_id
-            and metadata.candidate_fingerprint
-            == implementation_request.candidate_fingerprint
-            and metadata.candidate_plan_id == implementation_request.candidate_plan_id
-            and metadata.candidate_plan_fingerprint
-            == implementation_request.candidate_plan_fingerprint
-            and metadata.execution_intent == implementation_request.execution_intent
-            and metadata.evidence_ids == implementation_request.evidence_ids
-            and metadata.compatibility_assessment_id
-            == implementation_request.compatibility_assessment_id
-            and metadata.compatibility_status
-            == implementation_request.compatibility_status
-        ):
-            return _evidence_mismatch()
+            return _evidence_mismatch("Approval request is missing requested command.")
+
+        mismatch_reasons: list[str] = []
+        if approval.identifier != approval_id:
+            mismatch_reasons.append("approval identifier")
+        if approval.purpose is not ApprovalPurpose.IMPLEMENTATION:
+            mismatch_reasons.append("approval purpose")
+        if approval.workflow_id != workflow.identifier:
+            mismatch_reasons.append("approval workflow id")
+        if approval.checkpoint_id != implementation_request.identifier:
+            mismatch_reasons.append("approval checkpoint id")
+        if approval.requested_tool != implementation_request.argv[0]:
+            mismatch_reasons.append("approval requested tool")
+        if approval.requested_command != implementation_request.argv:
+            mismatch_reasons.append("approval requested command")
+        if approval.requested_working_directory != implementation_request.working_directory:
+            mismatch_reasons.append("approval requested working directory")
+        if mismatch_reasons:
+            return _evidence_mismatch(
+                "Approval request does not match implementation request: "
+                + ", ".join(mismatch_reasons)
+            )
+
+        mismatch_reasons = []
+        if metadata.candidate_planning_session_id != implementation_request.candidate_planning_session_id:
+            mismatch_reasons.append("candidate planning session id")
+        if metadata.candidate_id != implementation_request.candidate_id:
+            mismatch_reasons.append("candidate id")
+        if metadata.candidate_fingerprint != implementation_request.candidate_fingerprint:
+            mismatch_reasons.append("candidate fingerprint")
+        if metadata.candidate_plan_id != implementation_request.candidate_plan_id:
+            mismatch_reasons.append("candidate plan id")
+        if metadata.candidate_plan_fingerprint != implementation_request.candidate_plan_fingerprint:
+            mismatch_reasons.append("candidate plan fingerprint")
+        if metadata.execution_intent != implementation_request.execution_intent:
+            mismatch_reasons.append("execution intent")
+        if metadata.evidence_ids != implementation_request.evidence_ids:
+            mismatch_reasons.append("evidence ids")
+        if metadata.compatibility_assessment_id != implementation_request.compatibility_assessment_id:
+            mismatch_reasons.append("compatibility assessment id")
+        if metadata.compatibility_status != implementation_request.compatibility_status:
+            mismatch_reasons.append("compatibility status")
+        if mismatch_reasons:
+            return _evidence_mismatch(
+                "Candidate metadata does not match implementation request: "
+                + ", ".join(mismatch_reasons)
+            )
+
         return CandidateExecutionValidationResult(
             approved=True,
             implementation_request=implementation_request,
@@ -432,10 +458,12 @@ def _failure(
     )
 
 
-def _evidence_mismatch() -> CandidateExecutionValidationResult:
+def _evidence_mismatch(
+    detail: str,
+) -> CandidateExecutionValidationResult:
     return _failure(
         CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH,
-        "Candidate implementation approval does not match persisted workflow evidence.",
+        f"Candidate implementation approval does not match persisted workflow evidence: {detail}",
         should_block=True,
     )
 

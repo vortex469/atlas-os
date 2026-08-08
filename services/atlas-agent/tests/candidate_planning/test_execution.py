@@ -323,6 +323,8 @@ def test_exact_approval_mismatch_blocks(tmp_path: Path) -> None:
 
     assert result.approved is False
     assert result.failure_code is CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH
+    assert result.message is not None
+    assert "approval requested command" in result.message
     assert result.should_block is True
 
 
@@ -342,6 +344,27 @@ def test_translator_version_mismatch_blocks(tmp_path: Path) -> None:
     )
 
     assert result.failure_code is CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH
+
+
+def test_metadata_mismatch_blocks_with_field_detail(tmp_path: Path) -> None:
+    state = state_with_session(tmp_path)
+    candidate_workflow = replace(
+        workflow(tmp_path),
+        candidate_metadata=replace(
+            workflow(tmp_path).candidate_metadata,
+            candidate_fingerprint="different",
+        ),
+    )
+
+    result = validator(tmp_path, state, FakeCoreClient(core_response())).validate(
+        workflow=candidate_workflow,
+        approval_result=approval(candidate_workflow.candidate_implementation_request),
+    )
+
+    assert result.approved is False
+    assert result.failure_code is CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH
+    assert result.message is not None
+    assert "candidate fingerprint" in result.message
 
 
 def test_core_unavailable_is_retryable(tmp_path: Path) -> None:

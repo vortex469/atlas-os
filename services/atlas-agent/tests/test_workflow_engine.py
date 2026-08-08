@@ -2396,6 +2396,7 @@ def test_candidate_validation_block_prevents_execution(tmp_path: Path) -> None:
     validation = CandidateExecutionValidationResult(
         approved=False,
         failure_code=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH,
+        message="Candidate implementation approval does not match persisted workflow evidence: Approval request does not match implementation request: approval requested command",
         should_block=True,
     )
     engine, state_store, _, execution_engine, _, _, _ = make_candidate_engine(
@@ -2406,6 +2407,10 @@ def test_candidate_validation_block_prevents_execution(tmp_path: Path) -> None:
     result = engine.resume("candidate-workflow-1")
 
     assert result.error_message == "approval_evidence_mismatch"
+    assert (
+        state_store.get_session("candidate-workflow-1").blocked_reason
+        == "approval_evidence_mismatch: Candidate implementation approval does not match persisted workflow evidence: Approval request does not match implementation request: approval requested command"
+    )
     assert state_store.get_session("candidate-workflow-1").state is WorkflowSessionState.BLOCKED
     execution_engine.execute.assert_not_called()
 
