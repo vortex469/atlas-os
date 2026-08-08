@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.approval.repository import ApprovalRepository
+from app.approval.models import ApprovalDecision, ApprovalStatus
 from app.candidate_planning.conversion import candidate_plan_fingerprint
 from app.candidate_planning.models import (
     CandidateImplementationTranslationRequest,
@@ -397,6 +398,52 @@ def test_candidate_workflow_shell_translates_to_exact_implementation_approval(tm
     assert updated is not None
     assert updated.implementation_request_id == implementation.identifier
     assert updated.exact_implementation_approval_request_id == response.exact_approval_request_id
+
+
+def test_candidate_workflow_translation_blocks_when_existing_approved_implementation_request_differs(tmp_path: Path) -> None:
+    session = plan_ready_session(tmp_path)
+    core = FakeCoreClient([accepted_response(), accepted_response()])
+    service, candidate_state, workflow_state, approvals, _persistence = service_with(
+        tmp_path,
+        core,
+        session=session,
+    )
+    shell = run(service.convert_plan_to_workflow_shell(session.identifier, CandidateWorkflowConversionRequest()))
+    assert shell.implementation_approval_request_id is not None
+
+    stale_approval = approvals.get_request(shell.implementation_approval_request_id)
+    assert stale_approval is not None
+    assert approvals.update_decision(
+        shell.implementation_approval_request_id,
+        ApprovalDecision(
+            request=stale_approval.decision.request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="legacy-reviewer",
+        ),
+    )
+
+    response = run(
+        service.translate_workflow_shell_to_implementation(
+            session.identifier,
+            CandidateImplementationTranslationRequest(
+                expected_candidate_fingerprint=session.candidate_fingerprint,
+                expected_plan_fingerprint=shell.candidate_plan_fingerprint,
+                expected_repository_head=session.plan.repository_head,
+            ),
+        )
+    )
+
+    assert response.translation_status is CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED
+    assert response.reason_codes == (
+        "approval_creation_failed",
+    )
+    workflow = workflow_state.get_session(shell.workflow_session_id)
+    assert workflow is not None
+    assert workflow.candidate_implementation_request is None
+    updated = candidate_state.get_session(session.identifier)
+    assert updated is not None
+    assert updated.implementation_request_id is None
+    assert updated.exact_implementation_approval_request_id is None
 
 
 def test_repeated_implementation_translation_is_idempotent(tmp_path: Path) -> None:

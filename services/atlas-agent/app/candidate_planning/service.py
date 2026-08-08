@@ -8,10 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.approval.models import (
-    ApprovalDecision,
     ApprovalPurpose,
     ApprovalRequest,
-    ApprovalResult,
     ApprovalStatus,
 )
 from app.candidate_planning.conversion import (
@@ -1139,12 +1137,40 @@ class CandidatePlanningService:
                 ),
                 purpose=ApprovalPurpose.IMPLEMENTATION,
             )
-            approvals.storage[exact_approval.identifier] = ApprovalResult(
-                decision=ApprovalDecision(
-                    request=exact_approval,
-                    status=ApprovalStatus.PENDING,
+            existing_approval = approvals.get_request(exact_approval.identifier)
+            if existing_approval is None:
+                approvals.save_request(exact_approval)
+            elif existing_approval.decision.request == exact_approval:
+                # Idempotent: do not mutate if the request already exists and is
+                # the same exact approval request.
+                pass
+            elif existing_approval.decision.status is ApprovalStatus.PENDING:
+                if not approvals.supersede_pending_request(
+                    identifier=exact_approval.identifier,
+                    expected_request=existing_approval.decision.request,
+                    replacement_request=exact_approval,
+                ):
+                    return _implementation_failure(
+                        session_id=current.identifier,
+                        workflow_id=workflow_id,
+                        status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                        code=CandidatePlanningFailureCode.APPROVAL_CREATION_FAILED,
+                        message="Exact implementation approval could not replace an existing pending approval request.",
+                        candidate_fingerprint=current.candidate_fingerprint,
+                        plan_fingerprint=current.candidate_plan_fingerprint,
+                        repository_head=repository_snapshot.head_commit,
+                    )
+            else:
+                return _implementation_failure(
+                    session_id=current.identifier,
+                    workflow_id=workflow_id,
+                    status=CandidatePlanningSessionStatus.IMPLEMENTATION_TRANSLATION_FAILED,
+                    code=CandidatePlanningFailureCode.APPROVAL_CREATION_FAILED,
+                    message="Implementation approval request id is already in use.",
+                    candidate_fingerprint=current.candidate_fingerprint,
+                    plan_fingerprint=current.candidate_plan_fingerprint,
+                    repository_head=repository_snapshot.head_commit,
                 )
-            )
             updated_workflow = replace(
                 workflow,
                 state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
