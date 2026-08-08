@@ -282,6 +282,39 @@ docker compose -f compose.production.yaml logs -f
 ./scripts/container-release-gate
 ```
 
+Validate one end-to-end planning intake path for update-compose-stack candidates:
+
+```bash
+CORE_URL="${CORE_URL:-http://localhost/api/v1}"
+AGENT_URL="${AGENT_URL:-http://localhost/agent-api}"
+
+candidate_id=$(curl -sfS "$CORE_URL/execution-candidates?status=eligible&intent=update-compose-stack&limit=1" \
+  | jq -r '.candidates[0].id // empty')
+
+if [ -z "$candidate_id" ] || [ "$candidate_id" = "null" ]; then
+  echo "No eligible update-compose-stack execution candidates found"
+  exit 0
+fi
+
+intake=$(curl -sfS -X POST "$CORE_URL/execution-candidates/$candidate_id/planning-intake" \
+  -H 'Content-Type: application/json' \
+  -d '{}')
+
+fingerprint=$(echo "$intake" | jq -r '.current_candidate_fingerprint // empty')
+status=$(echo "$intake" | jq -r '.status')
+
+if [ "$status" != "accepted_for_planning" ]; then
+  echo "Planning intake rejected: $intake"
+  exit 1
+fi
+
+session=$(curl -sfS -X POST "$AGENT_URL/candidate-planning" \
+  -H 'Content-Type: application/json' \
+  -d '{"candidate_id":"'"$candidate_id"'","expected_candidate_fingerprint":"'"$fingerprint"'"}')
+
+echo "$session" | jq '.session_id, .status, .planning_allowed'
+```
+
 Confirm `atlas-data` remains preserved and runtime config paths remain under
 `/opt/atlas/data` (including policy and provider-connection files).
 
