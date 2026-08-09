@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ATLAS_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+COMPOSE_FILE="$ATLAS_ROOT/compose.production.yaml"
+
+cd "$ATLAS_ROOT"
+command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is required" >&2; exit 1; }
+command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required" >&2; exit 1; }
+
+compose_json=$(docker compose -f "$COMPOSE_FILE" config --format json)
+worker_json=$(printf '%s' "$compose_json" | jq '.services["atlas-execution-worker"]')
+agent_json=$(printf '%s' "$compose_json" | jq '.services["atlas-agent"]')
+
+[[ "$(printf '%s' "$worker_json" | jq -r '.user')" == "10001:10001" ]] || { echo "ERROR: worker user is not 10001:10001"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.read_only')" == "true" ]] || { echo "ERROR: worker read_only is not true"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.ports // [] | length')" == "0" ]] || { echo "ERROR: worker publishes TCP ports"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.cap_drop[]' | grep -Fx ALL)" == "ALL" ]] || { echo "ERROR: worker cap_drop ALL missing"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.security_opt[]' | grep -Fx 'no-new-privileges:true')" == "no-new-privileges:true" ]] || { echo "ERROR: worker no-new-privileges missing"; exit 1; }
+worker_mounts=$(printf '%s' "$worker_json" | jq -r '.volumes[]?.target')
+[[ "$(printf '%s\n' "$worker_mounts" | grep -Fx /run/atlas-execution-worker)" == "/run/atlas-execution-worker" ]] || { echo "ERROR: worker socket mount missing"; exit 1; }
+[[ -z "$(printf '%s\n' "$worker_mounts" | grep -E '/workspace/repository|/opt/atlas/agent-state|docker.sock' || true)" ]] || { echo "ERROR: worker has forbidden mount"; exit 1; }
+[[ "$(printf '%s' "$agent_json" | jq -r '.environment.ATLAS_EXECUTION_BACKEND')" == "local" ]] || { echo "ERROR: Agent worker backend is not local by default"; exit 1; }
+
+worker_container=$(docker compose -f "$COMPOSE_FILE" ps -q atlas-execution-worker)
+agent_container=$(docker compose -f "$COMPOSE_FILE" ps -q atlas-agent)
+[[ -n "$worker_container" && -n "$agent_container" ]] || { echo "ERROR: worker and Agent containers must be running"; exit 1; }
+[[ "$(docker inspect "$worker_container" --format '{{.State.Health.Status}}')" == "healthy" ]] || { echo "ERROR: worker is not healthy"; exit 1; }
+[[ "$(docker inspect "$worker_container" --format '{{.HostConfig.ReadonlyRootfs}}')" == "true" ]] || { echo "ERROR: worker rootfs is not read-only"; exit 1; }
+[[ "$(docker exec "$worker_container" sh -c 'id -u')" == "10001" ]] || { echo "ERROR: worker uid is not 10001"; exit 1; }
+[[ "$(docker exec "$worker_container" sh -c 'id -g')" == "10001" ]] || { echo "ERROR: worker gid is not 10001"; exit 1; }
+[[ "$(docker exec "$worker_container" sh -c "awk '/^CapEff:/{print \$2}' /proc/1/status")" == "0000000000000000" ]] || { echo "ERROR: worker capabilities are not empty"; exit 1; }
+[[ "$(docker exec "$worker_container" sh -c "awk '/^NoNewPrivs:/{print \$2}' /proc/1/status")" == "1" ]] || { echo "ERROR: worker NoNewPrivs is not enabled"; exit 1; }
+docker exec "$worker_container" test -S /run/atlas-execution-worker/worker.sock
+docker exec "$worker_container" python /opt/atlas/services/atlas-execution-worker/healthcheck.py
+
+docker exec "$agent_container" python - <<'PY'
+import json
+import socket
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.settimeout(3)
+s.connect('/run/atlas-execution-worker/worker.sock')
+s.sendall(b'GET /health HTTP/1.1\r\nHost: worker\r\nConnection: close\r\n\r\n')
+data = b''
+while chunk := s.recv(4096):
+    data += chunk
+body = data.split(b'\r\n\r\n', 1)[1]
+health = json.loads(body)
+assert health['status'] == 'healthy'
+assert health['execution_enabled'] is False
+PY
+
+echo "atlas-execution-worker runtime gate passed"

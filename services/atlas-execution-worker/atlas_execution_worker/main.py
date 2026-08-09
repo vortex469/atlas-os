@@ -8,15 +8,16 @@ from pathlib import Path
 import uvicorn
 
 from .api import app
-from .server import DEFAULT_SOCKET_PATH, cleanup_socket, prepare_socket_path
+from .server import DEFAULT_SOCKET_PATH, bind_socket, cleanup_socket
 
 
 def main() -> None:
     socket_path = Path(os.environ.get("ATLAS_EXECUTION_WORKER_SOCKET", DEFAULT_SOCKET_PATH))
-    prepare_socket_path(socket_path)
+    server_socket = bind_socket(socket_path)
     try:
-        uvicorn.run(app, uds=str(socket_path), log_level="info")
+        uvicorn.run(app, fd=server_socket.fileno(), log_level="info")
     finally:
+        server_socket.close()
         cleanup_socket(socket_path)
 
 
