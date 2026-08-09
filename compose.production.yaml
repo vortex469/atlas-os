@@ -51,6 +51,7 @@ services:
       ATLAS_AGENT_REPOSITORY_ROOT: /workspace/repository
       ATLAS_AGENT_STATE_DIR: /opt/atlas/agent-state
       CODEX_HOME: /opt/atlas/.codex
+      CODEX_AUTH_SOURCE: /run/secrets/codex-auth.json
       XDG_CONFIG_HOME: /opt/atlas/.codex/config
       XDG_CACHE_HOME: /opt/atlas/.codex/cache
       ATLAS_CORE_HOST: atlas-core
@@ -62,6 +63,9 @@ services:
     volumes:
       - ${ATLAS_REPOSITORY_HOST_PATH:?set ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository
       - atlas-agent-state:/opt/atlas/agent-state
+    secrets:
+      - source: codex-auth
+        target: codex-auth.json
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
@@ -102,3 +106,7 @@ services:
 volumes:
   atlas-agent-state:
   atlas-data:
+
+secrets:
+  codex-auth:
+    file: ${ATLAS_CODEX_AUTH_HOST_PATH:?set ATLAS_CODEX_AUTH_HOST_PATH}

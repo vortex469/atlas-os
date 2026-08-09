@@ -25,6 +25,8 @@ RUN npm install --global --omit=dev @openai/codex@${CODEX_CLI_VERSION} \
     && codex --version
 
 COPY services/atlas-agent/app ./app
+COPY deploy/docker/atlas-agent-entrypoint.sh /usr/local/bin/atlas-agent-entrypoint
+RUN chmod 0755 /usr/local/bin/atlas-agent-entrypoint
 
 RUN groupadd --gid 10001 atlas \
     && useradd \
@@ -42,6 +44,8 @@ RUN groupadd --gid 10001 atlas \
         /workspace
 
 USER atlas
+
+ENTRYPOINT ["/usr/local/bin/atlas-agent-entrypoint"]
 
 EXPOSE 8090
 
