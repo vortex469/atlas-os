@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -380,6 +381,7 @@ class CandidatePlanningService:
         self._planner = planner or UpdateComposeStackCandidatePlanner()
         self._implementation_translator = implementation_translator or CandidateImplementationTranslator()
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._successor_lock = asyncio.Lock()
 
     async def create_planning_session(
         self,
@@ -442,6 +444,19 @@ class CandidatePlanningService:
         return _response_from_session(stored_session)
 
     async def create_successor_planning_session(
+        self,
+        predecessor_session_id: str,
+        request: CandidatePlanRequest,
+    ) -> CandidatePlanResponse:
+        """Create or reuse one successor while serializing lineage creation."""
+
+        async with self._successor_lock:
+            return await self._create_successor_planning_session(
+                predecessor_session_id,
+                request,
+            )
+
+    async def _create_successor_planning_session(
         self,
         predecessor_session_id: str,
         request: CandidatePlanRequest,

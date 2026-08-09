@@ -40,10 +40,18 @@ NOW = datetime(2026, 8, 1, 23, 45, tzinfo=UTC)
 
 
 class FakeCoreClient:
-    def __init__(self, responses: list[CoreCandidatePlanningIntakeResponse] | None = None) -> None:
+    def __init__(
+        self,
+        responses: list[CoreCandidatePlanningIntakeResponse] | None = None,
+        *,
+        delay_seconds: float = 0.0,
+    ) -> None:
         self.responses = responses or []
         self.calls: list[tuple[str, str | None]] = []
         self.error: Exception | None = None
+        self.delay_seconds = delay_seconds
+        self._active_calls = 0
+        self.max_active_calls = 0
 
     async def validate_candidate_planning_intake(
         self,
@@ -51,10 +59,17 @@ class FakeCoreClient:
         *,
         expected_candidate_fingerprint: str | None = None,
     ) -> CoreCandidatePlanningIntakeResponse:
+        self._active_calls += 1
+        self.max_active_calls = max(self.max_active_calls, self._active_calls)
         self.calls.append((candidate_id, expected_candidate_fingerprint))
-        if self.error is not None:
-            raise self.error
-        return self.responses.pop(0)
+        try:
+            if self.delay_seconds:
+                await asyncio.sleep(self.delay_seconds)
+            if self.error is not None:
+                raise self.error
+            return self.responses.pop(0)
+        finally:
+            self._active_calls -= 1
 
 
 class FailingPersistence:
@@ -449,14 +464,16 @@ def test_successor_lineage_concurrency_with_persistence_uses_single_successor(tm
         candidate_planning_state=store,
     )
     persistence.initialize()
+    core = FakeCoreClient(
+        [
+            accepted_response(),
+            accepted_response(),
+            accepted_response(),
+        ],
+        delay_seconds=0.001,
+    )
     service = service_with(
-        FakeCoreClient(
-            [
-                accepted_response(),
-                accepted_response(),
-                accepted_response(),
-            ]
-        ),
+        core,
         store=store,
         persistence=persistence,
         repository_root=tmp_path,
@@ -481,6 +498,14 @@ def test_successor_lineage_concurrency_with_persistence_uses_single_successor(tm
     assert {status for _session_id, status in results} == {
         CandidatePlanningSessionStatus.READY_FOR_PLANNING
     }
+    assert core.max_active_calls == 1
+    assert len(store.export_snapshot()) == 2
+    parent_session = store.get_session(parent.session_id or "")
+    successor_session = store.get_session(results[0][0] or "")
+    assert parent_session is not None
+    assert successor_session is not None
+    assert parent_session.successor_session_id == successor_session.identifier
+    assert successor_session.predecessor_session_id == parent_session.identifier
 
 
 def test_successor_lineage_survives_restart_and_reuses_id(tmp_path: Path) -> None:
