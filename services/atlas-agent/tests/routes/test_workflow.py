@@ -1043,6 +1043,8 @@ def test_candidate_workflow_implementation_approval_accepts_only_decision(tmp_pa
     }
     result = container.approval_repository.get_request("approval-workflow-123")
     assert result.decision.status is ApprovalStatus.APPROVED
+    assert result.decision.reviewer == "workflow-service"
+    assert result.decision.reason is None
 
 
 def test_candidate_workflow_implementation_approval_rejects_extra_payload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1164,6 +1166,8 @@ def test_candidate_workflow_verification_approval_accepts_only_decision(tmp_path
     }
     result = container.approval_repository.get_request("approval-verification-workflow-123")
     assert result.decision.status is ApprovalStatus.APPROVED
+    assert result.decision.reviewer == "workflow-service"
+    assert result.decision.reason is None
 
 
 def test_candidate_workflow_verification_approval_rejects_extra_payload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1233,6 +1237,48 @@ def test_candidate_workflow_commit_approval_accepts_only_decision(tmp_path: Path
     }
     result = container.approval_repository.get_request("approval-commit-workflow-123")
     assert result.decision.status is ApprovalStatus.APPROVED
+    assert result.decision.reviewer == "workflow-service"
+    assert result.decision.reason is None
+
+
+@pytest.mark.parametrize(
+    "path, approval_id",
+    (
+        ("/api/v1/agent/workflows/workflow-123/implementation-approval", "approval-workflow-123"),
+        ("/api/v1/agent/workflows/workflow-123/verification-approval", "approval-verification-workflow-123"),
+        ("/api/v1/agent/workflows/workflow-123/commit-approval", "approval-commit-workflow-123"),
+    ),
+)
+def test_workflow_approval_rejection_records_reviewer_and_reason(
+    path: str,
+    approval_id: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = candidate_workflow_session(tmp_path)
+
+    if "verification" in path:
+        workflow = replace(workflow, state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL)
+    elif "commit" in path:
+        workflow = commit_ready_workflow(workflow)
+
+    save_candidate_workflow(container, workflow)
+    if "verification" in path:
+        save_verification_approval(container, workflow)
+    elif "commit" in path:
+        save_commit_approval(container, workflow)
+
+    response = client.post(
+        path,
+        json={"workflow_id": "workflow-123", "decision": "reject"},
+    )
+
+    assert response.status_code == 200
+    result = container.approval_repository.get_request(approval_id)
+    assert result.decision.status is ApprovalStatus.REJECTED
+    assert result.decision.reviewer == "workflow-service"
+    assert result.decision.reason == "Rejected via workflow route."
 
 
 def test_candidate_workflow_commit_approval_rejects_extra_payload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

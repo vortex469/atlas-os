@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
+from app.approval.exceptions import ApprovalValidationError
 from app.approval.models import ApprovalDecision, ApprovalRequest, ApprovalStatus
 from app.candidate_planning.audit import (
     CandidateAuditApprovals,
@@ -521,6 +522,36 @@ _ERROR_RESPONSES = {
     status.HTTP_424_FAILED_DEPENDENCY: {"model": WorkflowErrorResponse},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": WorkflowErrorResponse},
 }
+
+
+def _approval_decision_from_route_input(
+    approval_request: ApprovalRequest,
+    *,
+    decision: str,
+) -> ApprovalDecision:
+    """Build a normalized workflow-level approval decision with stable metadata."""
+
+    route_decision = ApprovalStatus.APPROVED if decision == "approve" else ApprovalStatus.REJECTED
+    route_reviewer = "workflow-service"
+    route_reason = None if route_decision is ApprovalStatus.APPROVED else "Rejected via workflow route."
+
+    # Keep approval route behavior permissive for existing persisted approval requests,
+    # while ensuring terminal decision metadata is valid.
+    if route_decision in (ApprovalStatus.APPROVED, ApprovalStatus.REJECTED) and (
+        route_reviewer is None or not route_reviewer.strip()
+    ):
+        raise ApprovalValidationError("Workflow decision reviewer must be nonblank")
+    if route_decision is ApprovalStatus.APPROVED and route_reason:
+        route_reason = None
+    if route_decision is ApprovalStatus.REJECTED and (route_reason is None or not route_reason.strip()):
+        raise ApprovalValidationError("Workflow rejection requires a nonblank reason")
+
+    return ApprovalDecision(
+        request=approval_request,
+        status=route_decision,
+        reviewer=route_reviewer,
+        reason=route_reason,
+    )
 _INVALID_STATE_ERRORS = {
     "Workflow already in progress",
     "Workflow already completed",
@@ -1380,16 +1411,21 @@ async def submit_workflow_implementation_approval(
             detail={"code": "approval_already_decided", "message": "Approval already decided"},
         )
 
-    decision = ApprovalDecision(
-        request=stored.decision.request,
-        status=ApprovalStatus.APPROVED if approval_request.decision == "approve" else ApprovalStatus.REJECTED,
-    )
     persistence = getattr(request.app.state.container, "state_persistence", None)
     try:
+        decision = _approval_decision_from_route_input(
+            stored.decision.request,
+            decision=approval_request.decision,
+        )
         if persistence is None:
             success = request.app.state.container.approval_repository.update_decision(approval_id, decision)
         else:
             success = persistence.mutate_approval(lambda approvals: approvals.update_decision(approval_id, decision))
+    except ApprovalValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_decision", "message": str(exc)},
+        ) from exc
     except OSError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1449,16 +1485,21 @@ async def submit_workflow_verification_approval(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "approval_already_decided", "message": "Approval already decided"},
         )
-    decision = ApprovalDecision(
-        request=stored.decision.request,
-        status=ApprovalStatus.APPROVED if approval_request.decision == "approve" else ApprovalStatus.REJECTED,
-    )
     persistence = getattr(request.app.state.container, "state_persistence", None)
     try:
+        decision = _approval_decision_from_route_input(
+            stored.decision.request,
+            decision=approval_request.decision,
+        )
         if persistence is None:
             success = request.app.state.container.approval_repository.update_decision(approval_id, decision)
         else:
             success = persistence.mutate_approval(lambda approvals: approvals.update_decision(approval_id, decision))
+    except ApprovalValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_decision", "message": str(exc)},
+        ) from exc
     except OSError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1527,16 +1568,21 @@ async def submit_workflow_commit_approval(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "approval_already_decided", "message": "Commit approval already decided"},
         )
-    decision = ApprovalDecision(
-        request=stored.decision.request,
-        status=ApprovalStatus.APPROVED if approval_request.decision == "approve" else ApprovalStatus.REJECTED,
-    )
     persistence = getattr(request.app.state.container, "state_persistence", None)
     try:
+        decision = _approval_decision_from_route_input(
+            stored.decision.request,
+            decision=approval_request.decision,
+        )
         if persistence is None:
             success = request.app.state.container.approval_repository.update_decision(approval_id, decision)
         else:
             success = persistence.mutate_approval(lambda approvals: approvals.update_decision(approval_id, decision))
+    except ApprovalValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_decision", "message": str(exc)},
+        ) from exc
     except OSError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
