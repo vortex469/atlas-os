@@ -2384,6 +2384,7 @@ def test_candidate_exact_match_resume_advances_to_verification_approval(tmp_path
     assert candidate_metadata is not None
 
     implementation_request = workflow.candidate_implementation_request
+    assert workflow.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
     assert candidate_metadata.candidate_id == implementation_request.candidate_id
     assert candidate_metadata.candidate_plan_id == implementation_request.candidate_plan_id
     assert candidate_metadata.candidate_fingerprint == implementation_request.candidate_fingerprint
@@ -2428,6 +2429,10 @@ def test_candidate_exact_match_resume_advances_to_verification_approval(tmp_path
         approval_request.identifier
     )
     assert stored_verification_approval is not None
+
+    second_result = engine.resume("candidate-workflow-1")
+    assert second_result.error_message == "verification_evidence_mismatch"
+    execution_engine.execute.assert_called_once()
 
 
 def test_candidate_pending_validation_does_not_claim_or_execute(tmp_path: Path) -> None:
