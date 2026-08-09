@@ -21,8 +21,10 @@ from app.config.settings import Settings, load_settings
 from app.container.application import ApplicationContainer
 from app.context.engine import ContextEngine
 from app.core_client.client import AtlasCoreClient
+from app.execution.backends import WorkerExecutionBackend
 from app.execution.engine import ExecutionEngine
 from app.execution.runner import SubprocessRunner
+from app.execution.worker_client import UnixSocketWorkerClient
 from app.model_providers.ollama import OllamaProvider
 from app.model_service.service import ModelService
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
@@ -143,6 +145,11 @@ def create_app() -> FastAPI:
         repository_resolver=repository_resolver,
     )
     runner = SubprocessRunner()
+    execution_backend = None
+    if settings.execution_backend == "worker":
+        execution_backend = WorkerExecutionBackend(
+            UnixSocketWorkerClient(settings.execution_worker_socket)
+        )
     review_engine = ReviewEngine()
     candidate_review_adapter = CandidateReviewAdapter(
         review_engine=review_engine,
@@ -151,7 +158,11 @@ def create_app() -> FastAPI:
     workflow_engine = WorkflowEngine(
         repository_inspector_factory=GitInspector,
         planning_engine=PlanningEngine(),
-        execution_engine=ExecutionEngine(runner),
+        execution_engine=(
+            ExecutionEngine(backend=execution_backend)
+            if execution_backend is not None
+            else ExecutionEngine(runner)
+        ),
         verification_engine=VerificationEngine(runner),
         review_engine=review_engine,
         approval_engine=ApprovalEngine(),

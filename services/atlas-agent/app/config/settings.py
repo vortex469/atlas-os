@@ -24,6 +24,7 @@ _ALLOWED_LOG_LEVELS = frozenset(
         "CRITICAL",
     }
 )
+_ALLOWED_EXECUTION_BACKENDS = frozenset({"local", "worker"})
 
 
 def _load_port() -> int:
@@ -117,6 +118,16 @@ def _load_review_mode() -> str:
     return review_mode
 
 
+def _load_execution_backend() -> str:
+    """Load the explicitly selected execution backend."""
+
+    backend = os.getenv("ATLAS_EXECUTION_BACKEND", "local").strip().lower()
+    if backend not in _ALLOWED_EXECUTION_BACKENDS:
+        supported = ", ".join(sorted(_ALLOWED_EXECUTION_BACKENDS))
+        raise ValueError(f"ATLAS_EXECUTION_BACKEND must be one of: {supported}")
+    return backend
+
+
 def _load_atlas_core_required() -> bool:
     """Load whether workflows require Atlas Core context."""
 
@@ -192,6 +203,8 @@ class Settings:
     ollama_default_model: str = "qwen3-coder-atlas:latest"
     planning_mode: str = "deterministic"
     review_mode: str = "deterministic"
+    execution_backend: str = "local"
+    execution_worker_socket: Path = Path("/run/atlas-execution-worker/worker.sock")
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -217,6 +230,13 @@ class Settings:
             log_level=_load_log_level(),
             planning_mode=_load_planning_mode(),
             review_mode=_load_review_mode(),
+            execution_backend=_load_execution_backend(),
+            execution_worker_socket=Path(
+                os.getenv(
+                    "ATLAS_EXECUTION_WORKER_SOCKET",
+                    "/run/atlas-execution-worker/worker.sock",
+                )
+            ),
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),
             port=_load_port(),
             repository_root=repository_root,
