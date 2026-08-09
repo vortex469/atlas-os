@@ -547,6 +547,11 @@ class WorkflowEngine:
         """Execute one approved immutable candidate implementation request."""
 
         if self._candidate_execution_validator is None:
+            self._log_candidate_pre_execution_failure(
+                session=session,
+                approval_result=None,
+                validation_failure_code=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
+            )
             return self._block_candidate_session(
                 session=session,
                 error_message=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
@@ -562,6 +567,11 @@ class WorkflowEngine:
                     )
                 except Exception:
                     logger.exception("Candidate approval validation failed")
+                    self._log_candidate_pre_execution_failure(
+                        session=session,
+                        approval_result=approval_result,
+                        validation_failure_code=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
+                    )
                     return self._block_candidate_session(
                         session=session,
                         error_message=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
@@ -572,11 +582,25 @@ class WorkflowEngine:
             approval_result=approval_result,
         )
         if not validation.approved:
+            self._log_candidate_pre_execution_failure(
+                session=session,
+                approval_result=approval_result,
+                validation_failure_code=(
+                    validation.failure_code.value
+                    if validation.failure_code is not None
+                    else "unknown"
+                ),
+            )
             return self._candidate_validation_failure_result(session, validation)
 
         execution_request = validation.execution_request
         implementation_plan = validation.implementation_plan
         if execution_request is None or implementation_plan is None:
+            self._log_candidate_pre_execution_failure(
+                session=session,
+                approval_result=approval_result,
+                validation_failure_code=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
+            )
             return self._block_candidate_session(
                 session=session,
                 error_message=CandidateExecutionFailureCode.APPROVAL_EVIDENCE_MISMATCH.value,
@@ -592,6 +616,17 @@ class WorkflowEngine:
             request=workflow_request,
             plan=implementation_plan,
         ):
+            current_session = self._state_store.get_session(session.identifier)
+            self._log_candidate_pre_execution_failure(
+                session=session,
+                approval_result=approval_result,
+                validation_failure_code="invalid_workflow_state",
+                cas_current_state=(
+                    current_session.state.value
+                    if current_session is not None
+                    else None
+                ),
+            )
             return self._session_error_result(
                 session=session,
                 error_message="Workflow already resumed",
@@ -709,6 +744,41 @@ class WorkflowEngine:
             planning_analysis=claimed_session.planning_analysis,
             approval_request=verification_approval,
             execution_result=execution_result,
+        )
+
+    def _log_candidate_pre_execution_failure(
+        self,
+        *,
+        session: WorkflowSession,
+        approval_result,
+        validation_failure_code: str,
+        cas_current_state: str | None = None,
+    ) -> None:
+        """Emit safe, structured diagnostics before candidate execution is claimed."""
+
+        implementation_request = session.candidate_implementation_request
+        approval_status = (
+            approval_result.decision.status.value
+            if approval_result is not None
+            else None
+        )
+        logger.warning(
+            "candidate_pre_execution_failure",
+            extra={
+                "workflow_id": session.identifier,
+                "workflow_state": session.state.value,
+                "candidate_implementation_request_id": (
+                    implementation_request.identifier
+                    if implementation_request is not None
+                    else None
+                ),
+                "approval_request_id": session.candidate_implementation_approval_id,
+                "approval_decision_status": approval_status,
+                "validation_failure_code": validation_failure_code,
+                "cas_expected_state": WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL.value,
+                "cas_current_state": cas_current_state or session.state.value,
+                "execution_claimed": False,
+            },
         )
 
     def _resume_candidate_verification(

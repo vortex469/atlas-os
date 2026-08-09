@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
+
+from fastapi.testclient import TestClient
 
 from app.approval.engine import ApprovalEngine
 from app.approval.models import ApprovalDecision, ApprovalStatus
@@ -29,8 +32,10 @@ from app.candidate_planning.verification import (
     CandidateReviewAdapter,
     CandidateVerificationValidator,
 )
+from app.config.settings import Settings
 from app.execution.engine import ExecutionEngine
 from app.execution.models import RunnerOutcome
+from app.main import create_app
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.engine import PlanningEngine
 from app.repository.committer import GitCommitter
@@ -279,3 +284,129 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     assert recovered.commit_result == final_workflow.commit_result
     assert recovered.candidate_verification_evidence == final_workflow.candidate_verification_evidence
     assert recovered_candidates.get_session(intake.session_id) == planning_session
+
+
+def test_candidate_implementation_route_sequence_claims_once_and_pauses_for_verification(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repository"
+    head = initialize_candidate_repository(repository)
+    mock_now = datetime(2026, 8, 2, 0, 0, tzinfo=UTC)
+    core = FakeCoreClient(core_response(fingerprint="a" * 64))
+    candidate_state = CandidatePlanningStateStore()
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = AgentStatePersistenceCoordinator(
+        state_dir=tmp_path / "state",
+        workflow_state=workflow_state,
+        approval_repository=approvals,
+        candidate_planning_state=candidate_state,
+    )
+    persistence.initialize()
+    resolver = RepositoryResolver(repository_root=repository)
+    service = CandidatePlanningService(
+        core_client=core,
+        state_store=candidate_state,
+        state_persistence=persistence,
+        repository_resolver=resolver,
+        clock=lambda: mock_now,
+    )
+    implementation_runner = FakeImplementationRunner()
+    engine = WorkflowEngine(
+        repository_inspector_factory=GitInspector,
+        planning_engine=Mock(spec=PlanningEngine),
+        execution_engine=ExecutionEngine(implementation_runner),
+        verification_engine=VerificationEngine(FakeVerificationRunner()),
+        review_engine=ReviewEngine(),
+        approval_engine=ApprovalEngine(),
+        approval_repository=approvals,
+        state_store=workflow_state,
+        state_persistence=persistence,
+        candidate_execution_validator=CandidateExecutionValidator(
+            core_client=core,
+            candidate_state=candidate_state,
+            repository_resolver=resolver,
+            clock=lambda: mock_now,
+        ),
+        candidate_verification_validator=CandidateVerificationValidator(
+            core_client=core,
+            candidate_state=candidate_state,
+            repository_resolver=resolver,
+            clock=lambda: mock_now,
+        ),
+        candidate_review_adapter=CandidateReviewAdapter(review_engine=ReviewEngine()),
+        candidate_commit_validator=CandidateCommitValidator(
+            core_client=core,
+            candidate_state=candidate_state,
+            repository_resolver=resolver,
+            clock=lambda: mock_now,
+        ),
+    )
+
+    intake = asyncio.run(
+        service.create_planning_session(
+            CandidatePlanRequest(
+                candidate_id="candidate-route",
+                expected_candidate_fingerprint="a" * 64,
+            )
+        )
+    )
+    asyncio.run(service.generate_plan(intake.session_id))
+    converted = asyncio.run(
+        service.convert_plan_to_workflow_shell(
+            intake.session_id,
+            CandidateWorkflowConversionRequest(
+                expected_candidate_fingerprint="a" * 64,
+            ),
+        )
+    )
+    translated = asyncio.run(
+        service.translate_workflow_shell_to_implementation(
+            intake.session_id,
+            CandidateImplementationTranslationRequest(
+                expected_candidate_fingerprint="a" * 64,
+                expected_repository_head=head,
+            ),
+        )
+    )
+    workflow_id = converted.workflow_session_id
+    assert workflow_id is not None
+    assert translated.implementation_request_id is not None
+    workflow = workflow_state.get_session(workflow_id)
+    assert workflow is not None
+    assert workflow.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
+
+    application = create_app()
+    application.state.container = replace(
+        application.state.container,
+        settings=Settings(repository_root=repository),
+        workflow_state=workflow_state,
+        candidate_planning_state=candidate_state,
+        approval_repository=approvals,
+        workflow_engine=engine,
+        state_persistence=persistence,
+    )
+    with TestClient(application) as client:
+        approval_response = client.post(
+            f"/api/v1/agent/workflows/{workflow_id}/implementation-approval",
+            json={"workflow_id": workflow_id, "decision": "approve"},
+        )
+        assert approval_response.status_code == 200
+        stored = approvals.get_request(f"approval-{workflow_id}")
+        assert stored is not None
+        assert stored.decision.status is ApprovalStatus.APPROVED
+        assert stored.decision.reviewer == "workflow-service"
+
+        first_resume = client.post(f"/api/v1/agent/workflows/{workflow_id}/resume")
+        assert first_resume.status_code == 200
+        assert first_resume.json()["sprint"]["phase"] == "awaiting_verification_approval"
+        assert implementation_runner.calls == 1
+
+        second_resume = client.post(f"/api/v1/agent/workflows/{workflow_id}/resume")
+        assert second_resume.status_code == 200
+        assert second_resume.json()["sprint"]["phase"] == "awaiting_verification_approval"
+        assert implementation_runner.calls == 1
+
+    workflow = workflow_state.get_session(workflow_id)
+    assert workflow is not None
+    assert workflow.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL

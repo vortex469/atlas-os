@@ -262,6 +262,35 @@ def test_start_offloads_domain_conversion_and_pauses_for_approval(
     workflow_engine.resume.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ("error_message", "expected_code"),
+    [
+        ("approval_not_granted", "approval_not_granted"),
+        ("core_unavailable", "core_unavailable"),
+        ("Workflow already resumed", "invalid_workflow_state"),
+    ],
+)
+def test_resume_candidate_pre_execution_conflicts_preserve_diagnostic_codes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    error_message: str,
+    expected_code: str,
+) -> None:
+    client, _, workflow_engine, _ = make_client(tmp_path, monkeypatch)
+    workflow_engine.resume.return_value = workflow_result(
+        tmp_path,
+        phase=SprintPhase.AWAITING_APPROVAL,
+        error_message=error_message,
+    )
+
+    response = client.post("/api/v1/agent/workflows/workflow-a16/resume")
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": {"code": expected_code, "message": error_message}
+    }
+
+
 def test_start_accepts_exact_configured_repository_path(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
