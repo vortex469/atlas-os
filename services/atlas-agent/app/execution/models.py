@@ -82,3 +82,4 @@ class ExecutionResult:
     stderr: str
     duration_seconds: float
     error: str | None = None
+    worker_result: object | None = None

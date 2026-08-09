@@ -462,6 +462,7 @@ class WorkflowEngine:
                 workflow_id,
                 WorkflowSessionState.EXECUTING,
             )
+
             return self._blocked_session_result(
                 session=session,
                 execution_result=execution_result,

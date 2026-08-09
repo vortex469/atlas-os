@@ -210,6 +210,7 @@ class WorkerExecutionBackend:
             stderr=result.stderr.text,
             duration_seconds=result.duration_seconds,
             error=error,
+            worker_result=result,
         )
 
     @staticmethod
