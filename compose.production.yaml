@@ -105,8 +105,10 @@ services:
       HTTP_PROXY: http://172.31.0.2:3128
       ALL_PROXY: http://172.31.0.2:3128
       NO_PROXY: ""
+      ATLAS_EXECUTION_WORKER_STATE_DIR: /opt/atlas/execution-worker-state
     volumes:
       - atlas-execution-worker-socket:/run/atlas-execution-worker
+      - atlas-execution-worker-state:/opt/atlas/execution-worker-state
     read_only: true
     user: "10001:10001"
     tmpfs:
@@ -173,6 +175,7 @@ volumes:
   atlas-agent-state:
   atlas-data:
   atlas-execution-worker-socket:
+  atlas-execution-worker-state:
 
 networks:
   atlas-execution-worker-net:

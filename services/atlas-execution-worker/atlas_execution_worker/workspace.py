@@ -73,6 +73,23 @@ class WorkerWorkspaceManager:
         if path.exists():
             shutil.rmtree(path)
 
+    def quarantine(self, request_id: str) -> Path | None:
+        """Move an unknown-outcome workspace aside without reusing or deleting it."""
+
+        path = self._workspace_root / request_id
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise WorkspaceError("refusing to quarantine non-directory workspace")
+        if not path.exists():
+            return None
+        quarantine_root = self._workspace_root / "quarantine"
+        quarantine_root.mkdir(mode=0o700, exist_ok=True)
+        destination = quarantine_root / f"{request_id}.unknown"
+        if destination.exists() or destination.is_symlink():
+            raise WorkspaceError("unknown-outcome workspace already quarantined")
+        shutil.move(str(path), str(destination))
+        self._active.pop(request_id, None)
+        return destination
+
     @staticmethod
     def _git(path: Path, *args: str) -> str:
         result = subprocess.run(
