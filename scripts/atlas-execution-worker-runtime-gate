@@ -11,13 +11,20 @@ command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required" >&2; exit 1; }
 
 compose_json=$(docker compose -f "$COMPOSE_FILE" config --format json)
 worker_json=$(printf '%s' "$compose_json" | jq '.services["atlas-execution-worker"]')
+proxy_json=$(printf '%s' "$compose_json" | jq '.services["atlas-egress-proxy"]')
 agent_json=$(printf '%s' "$compose_json" | jq '.services["atlas-agent"]')
 
 [[ "$(printf '%s' "$worker_json" | jq -r '.user')" == "10001:10001" ]] || { echo "ERROR: worker user is not 10001:10001"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.runtime')" == "runsc" ]] || { echo "ERROR: worker runtime is not runsc"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.read_only')" == "true" ]] || { echo "ERROR: worker read_only is not true"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.ports // [] | length')" == "0" ]] || { echo "ERROR: worker publishes TCP ports"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.cap_drop[]' | grep -Fx ALL)" == "ALL" ]] || { echo "ERROR: worker cap_drop ALL missing"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.security_opt[]' | grep -Fx 'no-new-privileges:true')" == "no-new-privileges:true" ]] || { echo "ERROR: worker no-new-privileges missing"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.environment.HTTPS_PROXY')" == "http://172.31.0.2:3128" ]] || { echo "ERROR: worker HTTPS proxy is not the dedicated proxy"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.networks | keys | join(",")')" == "atlas-execution-worker-net" ]] || { echo "ERROR: worker has a non-private network attachment"; exit 1; }
+[[ "$(printf '%s' "$proxy_json" | jq -r '.image')" == ubuntu/squid@sha256:* ]] || { echo "ERROR: egress proxy image is not pinned"; exit 1; }
+[[ "$(printf '%s' "$proxy_json" | jq -r '.ports // [] | length')" == "0" ]] || { echo "ERROR: egress proxy publishes TCP ports"; exit 1; }
+[[ "$(printf '%s' "$proxy_json" | jq -r '.networks | keys | join(",")')" == "atlas-execution-worker-net,default" ]] || { echo "ERROR: egress proxy network topology is unexpected"; exit 1; }
 worker_mounts=$(printf '%s' "$worker_json" | jq -r '.volumes[]?.target')
 [[ "$(printf '%s\n' "$worker_mounts" | grep -Fx /run/atlas-execution-worker)" == "/run/atlas-execution-worker" ]] || { echo "ERROR: worker socket mount missing"; exit 1; }
 [[ -z "$(printf '%s\n' "$worker_mounts" | grep -E '/workspace/repository|/opt/atlas/agent-state|docker.sock' || true)" ]] || { echo "ERROR: worker has forbidden mount"; exit 1; }

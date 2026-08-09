@@ -93,6 +93,18 @@ services:
       context: .
       dockerfile: deploy/docker/atlas-execution-worker.Dockerfile
     restart: unless-stopped
+    depends_on:
+      atlas-egress-proxy:
+        condition: service_healthy
+    runtime: runsc
+    networks:
+      atlas-execution-worker-net:
+        ipv4_address: 172.31.0.10
+    environment:
+      HTTPS_PROXY: http://172.31.0.2:3128
+      HTTP_PROXY: http://172.31.0.2:3128
+      ALL_PROXY: http://172.31.0.2:3128
+      NO_PROXY: ""
     volumes:
       - atlas-execution-worker-socket:/run/atlas-execution-worker
     read_only: true
@@ -106,6 +118,32 @@ services:
       - no-new-privileges:true
     healthcheck:
       test: ["CMD", "python", "/opt/atlas/services/atlas-execution-worker/healthcheck.py"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  atlas-egress-proxy:
+    image: ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
+    restart: unless-stopped
+    command: ["squid", "-N", "-f", "/etc/squid/squid.conf"]
+    networks:
+      default: {}
+      atlas-execution-worker-net:
+        ipv4_address: 172.31.0.2
+    volumes:
+      - ./deploy/proxy/atlas-execution-worker-squid.conf:/etc/squid/squid.conf:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /var/log/squid:size=16m,mode=0750
+      - /var/spool/squid:size=32m,mode=0750
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "squid", "-k", "parse", "-f", "/etc/squid/squid.conf"]
       interval: 30s
       timeout: 5s
       start_period: 10s
@@ -135,6 +173,13 @@ volumes:
   atlas-agent-state:
   atlas-data:
   atlas-execution-worker-socket:
+
+networks:
+  atlas-execution-worker-net:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
 
 secrets:
   codex-auth:
