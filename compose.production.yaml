@@ -50,6 +50,9 @@ services:
       ATLAS_AGENT_PORT: "8090"
       ATLAS_AGENT_REPOSITORY_ROOT: /workspace/repository
       ATLAS_AGENT_STATE_DIR: /opt/atlas/agent-state
+      CODEX_HOME: /opt/atlas/.codex
+      XDG_CONFIG_HOME: /opt/atlas/.codex/config
+      XDG_CACHE_HOME: /opt/atlas/.codex/cache
       ATLAS_CORE_HOST: atlas-core
       ATLAS_CORE_PORT: "8643"
       ATLAS_CORE_REQUIRED: "false"
@@ -62,6 +65,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
+      - /opt/atlas/.codex:size=256m,uid=10001,gid=10001,mode=0700
     cap_drop:
       - ALL
     security_opt:
