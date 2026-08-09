@@ -48,6 +48,17 @@ def candidate_plan_fingerprint(plan: CandidatePlan) -> str:
             _normalize_text(item) for item in plan.verification_strategy
         ),
         "version": PLAN_FINGERPRINT_VERSION,
+        "mutation": None
+        if plan.mutation is None
+        else {
+            "file": _path(plan.mutation.file),
+            "service": plan.mutation.service,
+            "property": plan.mutation.property,
+            "operation": plan.mutation.operation,
+            "expected_value": plan.mutation.expected_value,
+            "desired_value": plan.mutation.desired_value,
+            "preservation_constraints": sorted(plan.mutation.preservation_constraints),
+        },
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return f"{PLAN_FINGERPRINT_VERSION}:{hashlib.sha256(encoded.encode()).hexdigest()}"
@@ -82,6 +93,20 @@ def validate_candidate_plan_safe(plan: CandidatePlan) -> None:
         *plan.unresolved_questions,
     ]
     values.extend(_path(path) for path in plan.likely_affected_files)
+    if plan.mutation is not None:
+        values.extend(
+            value
+            for value in (
+                _path(plan.mutation.file),
+                plan.mutation.service,
+                plan.mutation.property,
+                plan.mutation.operation,
+                plan.mutation.expected_value or "",
+                plan.mutation.desired_value,
+                *plan.mutation.preservation_constraints,
+            )
+            if value
+        )
     for value in values:
         normalized = _normalize_text(value).lower()
         for pattern in _UNSAFE_PLAN_PATTERNS:

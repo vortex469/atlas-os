@@ -16,6 +16,7 @@ from app.candidate_planning.models import (
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
     CandidateSnapshot,
+    ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
 )
 from app.execution.policy import ToolPolicy
@@ -52,6 +53,7 @@ def plan(root: Path, *, affected_files: tuple[Path, ...] = (Path("compose.produc
         repository_branch="feature/atlas-agent",
         repository_head="abc123",
         revalidated_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        mutation=ComposeMutationSpecification(file=Path("compose.production.yaml"), service="atlas-agent", property="image", operation="update", expected_value="atlas-agent:old", desired_value="atlas-agent:new", preservation_constraints=("preserve-unrelated-services",)),
     )
 
 
@@ -84,6 +86,7 @@ def session(root: Path, *, intent: str = "update-compose-stack") -> CandidatePla
             intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
             intake_reason_codes=(),
             intake_timestamp=NOW,
+            mutation=ComposeMutationSpecification(file=Path("compose.production.yaml"), service="atlas-agent", property="image", operation="update", expected_value="atlas-agent:old", desired_value="atlas-agent:new", preservation_constraints=("preserve-unrelated-services",)),
         ),
         created_at=NOW,
         planning_status=CandidatePlanningSessionStatus.PLAN_READY,
@@ -163,6 +166,11 @@ def test_translator_generates_deterministic_tool_policy_validated_request(tmp_pa
     assert first.request.translator_version == TRANSLATOR_VERSION
     assert first.request.identifier.startswith("candidate-implementation-v1-")
     assert "candidate-fingerprint-v1:aaa" in first.request.argv[-1]
+    assert "File: compose.production.yaml" in first.request.argv[-1]
+    assert "Service: atlas-agent" in first.request.argv[-1]
+    assert "Property: image" in first.request.argv[-1]
+    assert "Expected value: atlas-agent:old" in first.request.argv[-1]
+    assert "Desired value: atlas-agent:new" in first.request.argv[-1]
 
 
 def test_translator_returns_not_supported_for_other_intents(tmp_path: Path) -> None:
@@ -211,3 +219,20 @@ def test_translator_rejects_repository_head_drift(tmp_path: Path) -> None:
     assert decision.request is None
     assert decision.failure is not None
     assert decision.failure.code.value == "repository_stale"
+
+
+def test_translator_rejects_missing_mutation_before_approval(tmp_path: Path) -> None:
+    candidate_session = session(tmp_path)
+    candidate_session = replace(
+        candidate_session,
+        plan=replace(candidate_session.plan, mutation=None),
+    )
+    decision = CandidateImplementationTranslator().translate(
+        session=candidate_session,
+        workflow=workflow(candidate_session),
+        repository=repository(tmp_path),
+        generated_at=NOW,
+    )
+    assert decision.request is None
+    assert decision.failure is not None
+    assert decision.failure.code.value == "missing_mutation_specification"

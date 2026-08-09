@@ -37,6 +37,18 @@ class ExecutionCandidateModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
+class ComposeMutationSpecification(ExecutionCandidateModel):
+    """Immutable actionable mutation evidence for compose-stack updates."""
+
+    file: str = Field(min_length=1)
+    service: str = Field(min_length=1)
+    property: str = Field(min_length=1)
+    operation: str = Field(min_length=1)
+    desired_value: str = Field(min_length=1)
+    expected_value: str | None = None
+    preservation_constraints: tuple[str, ...] = ()
+
+
 class ExecutionCandidateStatus(StrEnum):
     """Planning eligibility state for an execution candidate."""
 
@@ -235,6 +247,7 @@ class ExecutionCandidate(ExecutionCandidateModel):
     relationship_ids: tuple[str, ...] = ()
     created_at: datetime
     expires_at: datetime | None = None
+    mutation: ComposeMutationSpecification | None = None
 
     @field_validator("constraints", mode="before")
     @classmethod

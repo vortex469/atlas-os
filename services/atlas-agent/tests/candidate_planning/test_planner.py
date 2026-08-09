@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.candidate_planning.models import CandidatePlanningContext
+from app.candidate_planning.models import CandidatePlanningContext, ComposeMutationSpecification
 from app.candidate_planning.planner import (
     RepositoryResolver,
     UpdateComposeStackCandidatePlanner,
@@ -40,6 +40,15 @@ def context(repository: Path) -> CandidatePlanningContext:
         repository_head="abc123",
         planning_timestamp=NOW,
         revalidated_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        mutation=ComposeMutationSpecification(
+            file=Path("compose.production.yaml"),
+            service="atlas-agent",
+            property="image",
+            operation="update",
+            expected_value="atlas-agent:old",
+            desired_value="atlas-agent:new",
+            preservation_constraints=("preserve-unrelated-services",),
+        ),
     )
 
 

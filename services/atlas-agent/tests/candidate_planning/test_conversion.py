@@ -17,6 +17,7 @@ from app.candidate_planning.models import (
     CandidatePlanningSessionStatus,
     CandidateSnapshot,
     CandidateWorkflowConversionRequest,
+    ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
 )
 from app.candidate_planning.planner import RepositoryResolver
@@ -92,6 +93,7 @@ def candidate_snapshot(*, intent: str = "update-compose-stack") -> CoreExecution
         relationship_ids=("relationship-1",),
         created_at=NOW,
         expires_at=None,
+        mutation={"file":"compose.production.yaml","service":"atlas-agent","property":"image","operation":"update","expected_value":"atlas-agent:old","desired_value":"atlas-agent:new","preservation_constraints":("preserve-unrelated-services",)},
     )
 
 
@@ -143,6 +145,7 @@ def persisted_plan(root: Path) -> CandidatePlan:
         repository_branch="feature/atlas-agent",
         repository_head="abc123",
         revalidated_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        mutation=ComposeMutationSpecification(file=Path("compose.production.yaml"), service="atlas-agent", property="image", operation="update", expected_value="atlas-agent:old", desired_value="atlas-agent:new", preservation_constraints=("preserve-unrelated-services",)),
     )
 
 
@@ -169,6 +172,7 @@ def plan_ready_session(root: Path, *, intent: str = "update-compose-stack") -> C
         intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
         intake_reason_codes=(),
         intake_timestamp=NOW,
+        mutation=ComposeMutationSpecification(file=Path("compose.production.yaml"), service="atlas-agent", property="image", operation="update", expected_value="atlas-agent:old", desired_value="atlas-agent:new", preservation_constraints=("preserve-unrelated-services",)),
     )
     return CandidatePlanningSession(
         identifier="candidate-plan-1",
@@ -476,6 +480,15 @@ def test_repeated_implementation_translation_is_idempotent(tmp_path: Path) -> No
         ("candidate-1", "candidate-fingerprint-v1:aaa"),
         ("candidate-1", "candidate-fingerprint-v1:aaa"),
     ]
+
+
+def test_plan_fingerprint_changes_when_desired_mutation_changes(tmp_path: Path) -> None:
+    first = persisted_plan(tmp_path)
+    second = replace(
+        first,
+        mutation=replace(first.mutation, desired_value="atlas-agent:next"),
+    )
+    assert candidate_plan_fingerprint(first) != candidate_plan_fingerprint(second)
 
 
 def test_repository_head_drift_blocks_implementation_translation(tmp_path: Path) -> None:

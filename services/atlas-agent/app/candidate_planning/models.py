@@ -77,6 +77,20 @@ class CandidatePlanningFailureCode(StrEnum):
     WORKFLOW_NOT_FOUND = "workflow_not_found"
     WORKFLOW_NOT_CANDIDATE = "workflow_not_candidate"
     WORKFLOW_STATE_INVALID = "workflow_state_invalid"
+    MISSING_MUTATION_SPECIFICATION = "missing_mutation_specification"
+
+
+@dataclass(frozen=True, slots=True)
+class ComposeMutationSpecification:
+    """Immutable, actionable compose mutation evidence."""
+
+    file: Path
+    service: str
+    property: str
+    operation: str
+    desired_value: str
+    expected_value: str | None = None
+    preservation_constraints: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +126,7 @@ class CandidateSnapshot:
     intake_status: CoreCandidatePlanningIntakeStatus
     intake_reason_codes: tuple[str, ...]
     intake_timestamp: datetime
+    mutation: ComposeMutationSpecification | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +163,7 @@ class CandidatePlanningContext:
     repository_head: str | None
     planning_timestamp: datetime
     revalidated_candidate_fingerprint: str
+    mutation: ComposeMutationSpecification | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,6 +190,7 @@ class CandidatePlan:
     repository_branch: str | None
     repository_head: str | None
     revalidated_candidate_fingerprint: str
+    mutation: ComposeMutationSpecification | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -17,6 +17,7 @@ from app.execution_candidates.classification import (
 from app.execution_candidates.eligibility import validate_candidate_for_planning
 from app.execution_candidates.models import (
     ApprovalLevel,
+    ComposeMutationSpecification,
     ExecutionCandidate,
     ExecutionCandidateModel,
     ExecutionCandidateStatus,
@@ -265,6 +266,7 @@ def _build_candidate_result(
             relationship_ids=_tuple_detail(details, "relationship_ids")
             or _tuple_detail(details, "compatibility_finding_ids"),
             created_at=now,
+            mutation=_compose_mutation(details),
         )
     except (PydanticValidationError, ValueError):
         return _result(
@@ -400,6 +402,32 @@ def _string_detail(details: Mapping[str, Any], key: str) -> str | None:
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def _compose_mutation(details: Mapping[str, Any]) -> ComposeMutationSpecification | None:
+    values = {
+        key: _string_detail(details, key)
+        for key in (
+            "compose_file",
+            "compose_service",
+            "compose_property",
+            "compose_operation",
+            "compose_expected_value",
+            "compose_desired_value",
+        )
+    }
+    required = ("compose_file", "compose_service", "compose_property", "compose_operation", "compose_desired_value")
+    if any(values[key] is None for key in required):
+        return None
+    return ComposeMutationSpecification(
+        file=values["compose_file"],
+        service=values["compose_service"],
+        property=values["compose_property"],
+        operation=values["compose_operation"],
+        expected_value=values["compose_expected_value"],
+        desired_value=values["compose_desired_value"],
+        preservation_constraints=_tuple_detail(details, "compose_preservation_constraints"),
+    )
 
 
 def _tuple_detail(details: Mapping[str, Any], key: str) -> tuple[str, ...]:

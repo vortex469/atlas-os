@@ -32,6 +32,7 @@ from app.candidate_planning.models import (
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
     CandidateSnapshot,
+    ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
 )
 from app.candidate_planning.state import (
@@ -942,6 +943,7 @@ def _encode_candidate_snapshot(snapshot: CandidateSnapshot) -> dict[str, Any]:
         "source_subsystem": snapshot.source_subsystem,
         "target_id": snapshot.target_id,
         "target_type": snapshot.target_type,
+        "mutation": _encode_compose_mutation(snapshot.mutation),
     }
 
 
@@ -968,6 +970,37 @@ def _decode_candidate_snapshot(payload: dict[str, Any]) -> CandidateSnapshot:
         intake_status=CoreCandidatePlanningIntakeStatus(_require_str(payload, "intake_status")),
         intake_reason_codes=_tuple_str(payload.get("intake_reason_codes", [])),
         intake_timestamp=_decode_datetime(payload.get("intake_timestamp")),
+        mutation=_decode_compose_mutation(payload.get("mutation")),
+    )
+
+
+def _encode_compose_mutation(mutation: ComposeMutationSpecification | None) -> dict[str, Any] | None:
+    if mutation is None:
+        return None
+    return {
+        "file": _path(mutation.file),
+        "service": mutation.service,
+        "property": mutation.property,
+        "operation": mutation.operation,
+        "expected_value": mutation.expected_value,
+        "desired_value": mutation.desired_value,
+        "preservation_constraints": list(mutation.preservation_constraints),
+    }
+
+
+def _decode_compose_mutation(payload: Any) -> ComposeMutationSpecification | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid compose mutation specification")
+    return ComposeMutationSpecification(
+        file=_decode_path(payload.get("file")),
+        service=_require_str(payload, "service"),
+        property=_require_str(payload, "property"),
+        operation=_require_str(payload, "operation"),
+        expected_value=payload.get("expected_value"),
+        desired_value=_require_str(payload, "desired_value"),
+        preservation_constraints=_tuple_str(payload.get("preservation_constraints", [])),
     )
 
 
@@ -1016,6 +1049,7 @@ def _encode_candidate_plan(plan: CandidatePlan | None) -> dict[str, Any] | None:
         "title": plan.title,
         "unresolved_questions": list(plan.unresolved_questions),
         "verification_strategy": list(plan.verification_strategy),
+        "mutation": _encode_compose_mutation(plan.mutation),
     }
 
 
@@ -1050,6 +1084,7 @@ def _decode_candidate_plan(payload: Any) -> CandidatePlan | None:
             payload,
             "revalidated_candidate_fingerprint",
         ),
+        mutation=_decode_compose_mutation(payload.get("mutation")),
     )
 
 

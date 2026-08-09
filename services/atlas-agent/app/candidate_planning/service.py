@@ -34,6 +34,7 @@ from app.candidate_planning.models import (
     CandidateSnapshot,
     CandidateWorkflowConversionRequest,
     CandidateWorkflowConversionResponse,
+    ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
     build_candidate_planning_session_id,
     build_candidate_successor_planning_session_id,
@@ -99,6 +100,7 @@ def _snapshot_from_intake(
             "Atlas Core accepted planning intake without a candidate fingerprint.",
         )
     candidate = intake.current_candidate
+    mutation = candidate.mutation
     return CandidateSnapshot(
         candidate_id=candidate.id,
         candidate_fingerprint=intake.current_candidate_fingerprint,
@@ -121,6 +123,19 @@ def _snapshot_from_intake(
         intake_status=CoreCandidatePlanningIntakeStatus(intake.status),
         intake_reason_codes=tuple(sorted(intake.reason_codes)),
         intake_timestamp=intake_timestamp,
+        mutation=(
+            ComposeMutationSpecification(
+                file=Path(mutation.file),
+                service=mutation.service,
+                property=mutation.property,
+                operation=mutation.operation,
+                expected_value=mutation.expected_value,
+                desired_value=mutation.desired_value,
+                preservation_constraints=tuple(sorted(mutation.preservation_constraints)),
+            )
+            if mutation is not None
+            else None
+        ),
     )
 
 
@@ -1318,6 +1333,7 @@ class CandidatePlanningService:
                     repository_head=repository_snapshot.head_commit,
                     planning_timestamp=self._clock(),
                     revalidated_candidate_fingerprint=snapshot.candidate_fingerprint,
+                    mutation=snapshot.mutation,
                 ),
                 snapshot=repository_snapshot,
             )

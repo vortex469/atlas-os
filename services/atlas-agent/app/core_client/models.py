@@ -61,6 +61,16 @@ class AtlasCoreIntelligenceSummary(BaseModel):
 
 
 
+class CoreComposeMutationSpecification(BaseModel):
+    file: str
+    service: str
+    property: str
+    operation: str
+    desired_value: str
+    expected_value: str | None = None
+    preservation_constraints: tuple[str, ...] = ()
+
+
 class CoreExecutionCandidateSnapshot(BaseModel):
     id: str
     source_recommendation_id: str
@@ -81,6 +91,7 @@ class CoreExecutionCandidateSnapshot(BaseModel):
     relationship_ids: tuple[str, ...] = ()
     created_at: datetime
     expires_at: datetime | None = None
+    mutation: CoreComposeMutationSpecification | None = None
 
 
 class CoreCandidatePlanningIntakeRequest(BaseModel):

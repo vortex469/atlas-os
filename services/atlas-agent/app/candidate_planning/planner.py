@@ -55,6 +55,8 @@ class UpdateComposeStackCandidatePlanner:
     ) -> CandidatePlan:
         """Create one read-only descriptive candidate plan."""
 
+        if context.mutation is None:
+            raise ValueError("update-compose-stack candidate lacks a mutation specification")
         plan = CandidatePlan(
             identifier=f"candidate-plan-output-{context.session_id}",
             session_id=context.session_id,
@@ -98,6 +100,7 @@ class UpdateComposeStackCandidatePlanner:
             repository_branch=snapshot.branch,
             repository_head=snapshot.head_commit,
             revalidated_candidate_fingerprint=context.revalidated_candidate_fingerprint,
+            mutation=context.mutation,
         )
         _validate_safe_plan(plan)
         return plan

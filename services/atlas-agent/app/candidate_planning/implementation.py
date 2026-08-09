@@ -58,6 +58,11 @@ class CandidateImplementationTranslator:
                 CandidatePlanningFailureCode.PLAN_NOT_READY,
                 "Candidate plan is not available for implementation translation.",
             )
+        if session.plan.mutation is None:
+            return _failure(
+                CandidatePlanningFailureCode.MISSING_MUTATION_SPECIFICATION,
+                "Candidate plan lacks an actionable compose mutation specification.",
+            )
         if workflow.candidate_metadata is None:
             return _failure(
                 CandidatePlanningFailureCode.WORKFLOW_NOT_CANDIDATE,
@@ -185,6 +190,14 @@ def _argv_for_candidate(
             f"Target: {session.snapshot.target_type}:{session.snapshot.target_id}",
             "Affected repository files: "
             + ", ".join(path.as_posix() for path in affected_files),
+            f"File: {session.plan.mutation.file.as_posix()}",
+            f"Service: {session.plan.mutation.service}",
+            f"Operation: {session.plan.mutation.operation}",
+            f"Property: {session.plan.mutation.property}",
+            f"Expected value: {session.plan.mutation.expected_value or '<unspecified>'}",
+            f"Desired value: {session.plan.mutation.desired_value}",
+            "Preservation constraints: "
+            + ", ".join(session.plan.mutation.preservation_constraints),
             "Preserve unrelated services and configuration.",
             "Do not modify runtime data, secrets, logs, or jcode directories.",
             "Stop after preparing the repository change for later verification and review.",

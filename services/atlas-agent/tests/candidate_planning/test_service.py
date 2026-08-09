@@ -15,6 +15,7 @@ from app.candidate_planning.models import (
     CandidatePlanningSessionStatus,
     CandidatePlanRequest,
     CandidateSnapshot,
+    ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
 )
 from app.candidate_planning.planner import RepositoryResolver
@@ -125,6 +126,7 @@ def _candidate_plan(root: Path) -> CandidatePlan:
         repository_branch="feature/atlas-agent",
         repository_head="abc123",
         revalidated_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        mutation=ComposeMutationSpecification(file=Path("compose.production.yaml"), service="atlas-agent", property="image", operation="update", expected_value="atlas-agent:old", desired_value="atlas-agent:new", preservation_constraints=("preserve-unrelated-services",)),
     )
 
 
@@ -151,6 +153,7 @@ def _candidate_snapshot() -> CandidateSnapshot:
         intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
         intake_reason_codes=(),
         intake_timestamp=NOW,
+        mutation=ComposeMutationSpecification(file=Path("compose.production.yaml"), service="atlas-agent", property="image", operation="update", expected_value="atlas-agent:old", desired_value="atlas-agent:new", preservation_constraints=("preserve-unrelated-services",)),
     )
 
 
@@ -175,6 +178,7 @@ def candidate_snapshot(*, intent: str = "update-compose-stack") -> CoreExecution
         relationship_ids=("relationship-1",),
         created_at=NOW,
         expires_at=None,
+        mutation={"file":"compose.production.yaml","service":"atlas-agent","property":"image","operation":"update","expected_value":"atlas-agent:old","desired_value":"atlas-agent:new","preservation_constraints":("preserve-unrelated-services",)},
     )
 
 
