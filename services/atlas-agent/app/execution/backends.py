@@ -121,8 +121,20 @@ class LocalExecutionBackend:
 class WorkerExecutionBackend:
     """Submit approved requests to the isolated worker without fallback."""
 
-    def __init__(self, client: UnixSocketWorkerClient) -> None:
+    def __init__(
+        self,
+        client: UnixSocketWorkerClient,
+        *,
+        repository_token: str = "atlas-repository",
+    ) -> None:
         self._client = client
+        if not repository_token or "/" in repository_token or "\\" in repository_token:
+            raise ValueError("repository token must be an opaque configured value")
+        self.repository_token = repository_token
+
+    @property
+    def uses_worker(self) -> bool:
+        return True
 
     def execute(
         self,
@@ -152,12 +164,20 @@ class WorkerExecutionBackend:
             response = self._client.submit(worker_request)
         except WorkerTransportError as exc:
             return self._failure(request, ExecutionStatus.LAUNCH_FAILED, "worker_unavailable", str(exc))
+        if response.get("state") == "unknown_outcome":
+            return self._failure(request, ExecutionStatus.LAUNCH_FAILED, "worker_crash", "worker result is unknown")
         raw_result = response.get("result")
         if not isinstance(raw_result, dict):
             return self._failure(request, ExecutionStatus.LAUNCH_FAILED, "invalid_result", "Worker result missing")
         try:
             result = WorkerExecutionResult.from_dict(raw_result)
             result.validate(worker_request)
+            if result.base_repository_head not in (None, context.expected_repository_head):
+                raise ValueError("worker result base repository head mismatch")
+            if result.changed_files and not set(result.changed_files).issubset(
+                set(context.allowed_affected_files)
+            ) and result.failure_code is None:
+                raise ValueError("worker result changed files exceed approved scope")
         except (TypeError, ValueError, KeyError) as exc:
             return self._failure(request, ExecutionStatus.LAUNCH_FAILED, "invalid_result", str(exc))
         return self._map_result(request, result)

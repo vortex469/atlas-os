@@ -148,7 +148,8 @@ def create_app() -> FastAPI:
     execution_backend = None
     if settings.execution_backend == "worker":
         execution_backend = WorkerExecutionBackend(
-            UnixSocketWorkerClient(settings.execution_worker_socket)
+            UnixSocketWorkerClient(settings.execution_worker_socket),
+            repository_token=settings.execution_worker_repository_token,
         )
     review_engine = ReviewEngine()
     candidate_review_adapter = CandidateReviewAdapter(

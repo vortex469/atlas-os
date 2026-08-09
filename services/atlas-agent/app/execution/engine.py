@@ -42,3 +42,11 @@ class ExecutionEngine:
         """Execute through the selected backend without changing request semantics."""
 
         return self._backend.execute(request, context=context)
+
+    @property
+    def uses_worker(self) -> bool:
+        return bool(getattr(self._backend, "uses_worker", False))
+
+    @property
+    def repository_token(self) -> str:
+        return str(getattr(self._backend, "repository_token", ""))

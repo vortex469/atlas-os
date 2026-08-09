@@ -60,6 +60,7 @@ services:
       ATLAS_CORE_PORT: "8643"
       ATLAS_CORE_REQUIRED: "false"
       ATLAS_EXECUTION_BACKEND: ${ATLAS_EXECUTION_BACKEND:-local}
+      ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN: ${ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN:-atlas-repository}
       ATLAS_EXECUTION_WORKER_SOCKET: /run/atlas-execution-worker/worker.sock
       GIT_CONFIG_COUNT: "1"
       GIT_CONFIG_KEY_0: safe.directory

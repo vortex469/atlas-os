@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 from app.execution.backends import (
     LocalExecutionBackend,
     WorkerExecutionBackend,
@@ -186,3 +185,45 @@ def test_worker_transport_failure_has_no_local_fallback() -> None:
 def test_worker_requires_explicit_context() -> None:
     with pytest.raises(ExecutionValidationError):
         WorkerExecutionBackend(FakeWorkerClient()).execute(make_request())
+
+
+def test_worker_backend_rejects_result_with_stale_base_head() -> None:
+    request = make_request()
+    context = make_context()
+    client = FakeWorkerClient()
+    backend = WorkerExecutionBackend(client, repository_token="opaque-token")
+    worker_request = worker_request_for(request, context)
+    result = WorkerExecutionResult(
+        schema_version=1,
+        execution_request_id=worker_request.execution_request_id,
+        status=WorkerExecutionStatus.SUCCEEDED,
+        return_code=0,
+        stdout=BoundedOutput(""),
+        stderr=BoundedOutput(""),
+        changed_files=(),
+        patch_digest=None,
+        patch_size_bytes=None,
+        patch_truncated=False,
+        duration_seconds=0,
+        failure_code=None,
+        workspace_head="b" * 40,
+        base_repository_head="b" * 40,
+        worker_attestation=WorkerAttestation(
+            runtime_uid=10001,
+            readonly_rootfs=True,
+            no_new_privileges=True,
+            effective_capabilities="0000000000000000",
+            sandbox_profile="worker",
+        ),
+    )
+    client.response = {"state": "completed", "result": result.to_dict()}
+    mapped = backend.execute(request, context=context)
+    assert mapped.status is ExecutionStatus.LAUNCH_FAILED
+    assert mapped.error.startswith("invalid_result:")
+
+
+def test_worker_backend_uses_opaque_configured_repository_token() -> None:
+    backend = WorkerExecutionBackend(FakeWorkerClient(), repository_token="opaque-token")
+    assert backend.repository_token == "opaque-token"
+    with pytest.raises(ValueError):
+        WorkerExecutionBackend(FakeWorkerClient(), repository_token="/workspace/repository")

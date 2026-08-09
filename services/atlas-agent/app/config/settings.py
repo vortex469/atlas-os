@@ -204,6 +204,7 @@ class Settings:
     planning_mode: str = "deterministic"
     review_mode: str = "deterministic"
     execution_backend: str = "local"
+    execution_worker_repository_token: str = "atlas-repository"
     execution_worker_socket: Path = Path("/run/atlas-execution-worker/worker.sock")
 
     @classmethod
@@ -231,6 +232,10 @@ class Settings:
             planning_mode=_load_planning_mode(),
             review_mode=_load_review_mode(),
             execution_backend=_load_execution_backend(),
+            execution_worker_repository_token=os.getenv(
+                "ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN",
+                "atlas-repository",
+            ),
             execution_worker_socket=Path(
                 os.getenv(
                     "ATLAS_EXECUTION_WORKER_SOCKET",

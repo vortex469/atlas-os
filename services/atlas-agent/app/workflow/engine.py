@@ -37,6 +37,7 @@ from app.candidate_planning.verification import (
     build_verification_evidence,
 )
 from app.context.models import AgentContext
+from app.execution.backends import WorkerExecutionContext
 from app.execution.engine import ExecutionEngine
 from app.execution.exceptions import ExecutionValidationError
 from app.execution.models import EnvironmentVariable, ExecutionRequest, ExecutionStatus
@@ -642,7 +643,36 @@ class WorkflowEngine:
         self._publish_sprint(in_progress_status)
 
         try:
-            execution_result = self._execution_engine.execute(execution_request)
+            execution_context = None
+            if self._execution_engine.uses_worker:
+                metadata = claimed_session.candidate_metadata
+                if metadata is None or implementation_plan.head_commit is None:
+                    self._block_claimed_session(
+                        session.identifier,
+                        WorkflowSessionState.EXECUTING,
+                    )
+                    return self._blocked_session_result(
+                        session=claimed_session,
+                        error_message=CandidateExecutionFailureCode.EXECUTION_FAILED.value,
+                    )
+                execution_context = WorkerExecutionContext(
+                    workflow_id=claimed_session.identifier,
+                    candidate_id=metadata.candidate_id,
+                    candidate_fingerprint=metadata.candidate_fingerprint,
+                    plan_id=metadata.candidate_plan_id,
+                    plan_fingerprint=metadata.candidate_plan_fingerprint,
+                    execution_intent=metadata.execution_intent,
+                    repository_token=self._execution_engine.repository_token,
+                    expected_repository_head=implementation_plan.head_commit,
+                    repository_branch=implementation_plan.branch,
+                    allowed_affected_files=tuple(
+                        str(path) for path in implementation_plan.affected_files
+                    ),
+                )
+            execution_result = self._execution_engine.execute(
+                execution_request,
+                context=execution_context,
+            )
         except ExecutionValidationError:
             logger.exception("Candidate execution denied by tool policy")
             self._block_claimed_session(
