@@ -4,18 +4,25 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+ARG CODEX_CLI_VERSION=0.147.0
+
 WORKDIR /opt/atlas/services/atlas-agent
 
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes \
         ca-certificates \
         git \
+        npm \
     && rm -rf /var/lib/apt/lists/*
 
 COPY services/atlas-agent/requirements.txt ./requirements.txt
 RUN python -m pip install \
     --no-cache-dir \
     --requirement requirements.txt
+
+RUN npm install --global --omit=dev @openai/codex@${CODEX_CLI_VERSION} \
+    && command -v codex \
+    && codex --version
 
 COPY services/atlas-agent/app ./app
 
