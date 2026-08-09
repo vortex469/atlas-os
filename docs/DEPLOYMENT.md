@@ -19,6 +19,39 @@ choices:
 - A local `.env` containing the required base credentials and any
   credentials used by enabled providers
 
+### Atlas Agent RC1 deployment boundary
+
+The RC1 candidate workflow supports only `update-compose-stack`. Candidate
+planning must include structured Compose mutation evidence before an
+implementation approval is created. Legacy planning sessions without that
+evidence are safely non-actionable and require successor planning or
+replanning.
+
+The production Agent deployment requires:
+
+- `ATLAS_REPOSITORY_HOST_PATH` set to the repository bind source;
+- that repository source writable by runtime uid/gid `10001:10001`;
+- `ATLAS_CODEX_AUTH_HOST_PATH` set to an external Codex auth file;
+- the mounted auth secret readable by uid `10001` and never committed or
+  printed;
+- the runtime gate `./scripts/atlas-agent-codex-runtime-gate` run after
+  deployment;
+- a container rebuild after Atlas Agent source or image changes. Recreating
+  an old container without rebuilding does not deploy new Agent code.
+
+Codex CLI installation, authentication provisioning, and ephemeral `CODEX_HOME`
+runtime state are validated. Codex-backed repository mutation remains deferred
+to **Codex Execution Sandbox Hardening**. The current hardened Docker
+seccomp/AppArmor policy prevents bubblewrap/Codex `workspace-write` sandbox
+initialization. Do not replace this boundary with unconfined seccomp/AppArmor,
+`CAP_SYS_ADMIN`, root execution, or Codex `danger-full-access`.
+
+RC1 smoke-test evidence includes correct stale/fingerprint and repository
+freshness rejection, immutable blocked workflows, restart/container-recreation
+persistence, deterministic successor lineage reuse, and validated Codex
+authentication/runtime provisioning. It does not claim successful
+Codex-backed repository mutation.
+
 Copy and edit the example configuration before starting:
 
 ```bash

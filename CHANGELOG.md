@@ -41,6 +41,18 @@ release boundaries.
 - Validation coverage required for this RC includes ruff, test, lint, build, and
   container-release-gate verification.
 - Core operational scope remains explicit to `update-compose-stack`.
+- Structured Compose mutation evidence is required before implementation
+  approval. It is carried through planning, workflow metadata, immutable
+  implementation requests, and deterministic plan fingerprints.
+- Planning, exact approval binding, persistence/recovery, stale evidence
+  rejection, and successor concurrency/idempotent reuse were validated in the
+  RC1 production smoke-test boundary.
+- Codex authentication, CLI installation, and ephemeral runtime provisioning
+  are production-ready. Actual Codex-backed repository mutation is deferred to
+  **Codex Execution Sandbox Hardening** because the hardened Docker
+  seccomp/AppArmor policy prevents bubblewrap `workspace-write` initialization.
+  Broad unconfined profiles, `CAP_SYS_ADMIN`, root execution, and
+  `danger-full-access` are explicitly rejected.
 
 ### Deferred to v0.7+
 
@@ -50,6 +62,15 @@ release boundaries.
 - Push, tag, release publication, remote deployment, and rollback automation.
 - Candidate UI execution affordances in Mission Control beyond current shell,
   audit, and status workflows.
+
+### Deferred RC1 milestone
+
+**Codex Execution Sandbox Hardening** must provide a reviewed narrow
+seccomp/AppArmor policy or isolated execution runtime, disposable
+`workspace-write` and outside-workspace denial proofs, preserved non-root,
+`CapDrop=ALL` where applicable, `no-new-privileges`, and read-only rootfs
+hardening, followed by authenticated end-to-end execution through verification,
+review, and commit approval boundaries.
 
 ### Inherited technical debt
 

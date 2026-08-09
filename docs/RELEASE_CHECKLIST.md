@@ -75,6 +75,24 @@ entities.
   - `cd services/mission-control && npm run build`
   - `./scripts/container-release-gate`
 
+### RC1 candidate execution boundary
+
+- [x] Supported execution intent is limited to `update-compose-stack`.
+- [x] Structured Compose mutation evidence is required before implementation
+  approval.
+- [x] Legacy planning sessions without mutation evidence are non-actionable
+  and require successor planning or replanning.
+- [x] Approval binding, persistence/recovery, stale/fingerprint rejection, and
+  successor concurrency/idempotent reuse are validated.
+- [x] Codex authentication and runtime provisioning are validated.
+- [ ] Codex-backed repository mutation is production-ready. This remains
+  deferred to **Codex Execution Sandbox Hardening**.
+- [ ] A reviewed narrow seccomp/AppArmor policy or isolated execution runtime
+  passes disposable workspace-write, outside-workspace denial, authenticated
+  end-to-end execution, verification, review, and commit-boundary tests while
+  preserving uid `10001`, `CapDrop=ALL` where applicable,
+  `no-new-privileges`, and read-only rootfs.
+
 ### Manual release sign-off
 
 - [ ] Release lead confirms changelog entry names the intended tag and scope.

@@ -78,11 +78,12 @@ Provider-neutral catalog and compatibility subsystem. D0 architecture and planni
 
 ### Completed
 
-- Phase 3 functional candidate workflow from Discovery compatibility evidence through execution candidate, planning intake, Agent planning, workflow shell, immutable implementation request, exact approvals, execution, verification evidence, deterministic review, exact commit approval, local commit, and completed workflow.
+- Phase 3 `update-compose-stack` candidate workflow through structured planning intake, deterministic Compose mutation evidence, workflow shell, immutable implementation request, exact approvals, persistence/recovery, concurrency protection, verification evidence, deterministic review, and commit-boundary validation. Codex-backed repository mutation remains gated on the deferred sandbox milestone below.
 - P3.14A hardening: deterministic end-to-end coverage, machine-readable audit-chain validation, restart and recovery matrix coverage, deterministic concurrency coverage, commit-path security hardening, strict caller-controlled request validation, API route-contract regression coverage, and roadmap workflow regression coverage.
 
 ### Planned
 
+- **Codex Execution Sandbox Hardening:** provide a reviewed narrow seccomp/AppArmor policy or isolated execution runtime for Codex `workspace-write`. Exit criteria are a disposable workspace-write proof, outside-workspace denial, preserved uid `10001`, `CapDrop=ALL` where applicable, `no-new-privileges`, read-only rootfs, authenticated end-to-end candidate execution, verification approval, review, and commit approval/final commit boundaries.
 - v0.7+ carries the v0.6 deferrals for execution and release operations:
   - `restart-service`
   - `backup`

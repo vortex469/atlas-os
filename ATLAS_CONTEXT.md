@@ -264,6 +264,22 @@ Current supported capability:
 
 - `update-compose-stack`
 
+RC1 release boundary: candidate planning requires structured Compose mutation
+evidence identifying the file, service, property, expected value where
+available, desired value, operation, and preservation constraints before
+approval. Legacy planning sessions without mutation evidence are safely
+non-actionable and require successor planning or replanning. Exact approval
+binding, durable persistence and recovery, stale/fingerprint rejection, and
+successor idempotency/concurrency protections are validated.
+
+Codex CLI installation, authentication provisioning, and ephemeral runtime
+state are production-ready. Actual Codex-backed repository mutation is not
+production-ready: the hardened Docker seccomp/AppArmor policy prevents
+bubblewrap/Codex `workspace-write` sandbox initialization. Unconfined
+profiles, `CAP_SYS_ADMIN`, root execution, and `danger-full-access` were
+deliberately rejected. This work is deferred to **Codex Execution Sandbox
+Hardening**.
+
 Unsupported capabilities:
 
 - `restart-service`
