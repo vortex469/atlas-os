@@ -190,7 +190,7 @@ def _argv_for_candidate(
             "Stop after preparing the repository change for later verification and review.",
         )
     )
-    return ("codex", "implement", prompt)
+    return ("codex", "exec", prompt)
 
 
 def _execution_request_for_validation(

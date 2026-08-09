@@ -386,7 +386,7 @@ def test_candidate_workflow_shell_translates_to_exact_implementation_approval(tm
     assert workflow.commit_request is None
     assert workflow.candidate_implementation_request is not None
     implementation = workflow.candidate_implementation_request
-    assert implementation.argv[0] == "codex"
+    assert implementation.argv[0:2] == ("codex", "exec")
     assert implementation.working_directory == tmp_path / "repo"
     assert implementation.repository_head == "abc123"
     approval = approvals.get_request(response.exact_approval_request_id)
@@ -394,6 +394,17 @@ def test_candidate_workflow_shell_translates_to_exact_implementation_approval(tm
     assert approval.decision.request.requested_command == implementation.argv
     assert approval.decision.request.requested_working_directory == implementation.working_directory
     assert implementation.candidate_fingerprint in approval.decision.request.rationale
+    prompt = implementation.argv[-1]
+    assert prompt.startswith("Atlas Agent candidate implementation request.")
+    assert prompt.strip() != ""
+    assert f"Candidate ID: {session.candidate_id}" in prompt
+    assert f"Candidate fingerprint: {session.candidate_fingerprint}" in prompt
+    assert f"Candidate plan ID: {implementation.candidate_plan_id}" in prompt
+    assert f"Candidate plan fingerprint: {implementation.candidate_plan_fingerprint}" in prompt
+    assert "Target: repository:atlas-compose" in prompt
+    assert "Affected repository files: compose.production.yaml" in prompt
+    assert "Stop after preparing the repository change for later verification and review." in prompt
+    assert prompt == prompt.strip()
     updated = candidate_state.get_session(session.identifier)
     assert updated is not None
     assert updated.implementation_request_id == implementation.identifier

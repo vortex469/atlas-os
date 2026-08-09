@@ -2195,7 +2195,7 @@ def make_candidate_request(root: Path) -> CandidateImplementationRequest:
         repository_root=root,
         repository_branch="feature/atlas-agent",
         repository_head="abc123",
-        argv=("codex", "implement", "approved prompt"),
+        argv=("codex", "exec", "approved prompt"),
         working_directory=root,
         affected_files=(Path("compose.production.yaml"),),
         evidence_ids=("evidence-1",),
@@ -2365,7 +2365,7 @@ def test_candidate_approved_request_executes_and_stops_at_verification_approval(
     assert approvals.get_request("approval-verification-candidate-workflow-1") is not None
     execution_engine.execute.assert_called_once()
     executed_request = execution_engine.execute.call_args.args[0]
-    assert executed_request.argv == ("codex", "implement", "approved prompt")
+    assert executed_request.argv == ("codex", "exec", "approved prompt")
     assert executed_request.working_directory == tmp_path
     verifier.verify.assert_not_called()
     reviewer.review.assert_not_called()
