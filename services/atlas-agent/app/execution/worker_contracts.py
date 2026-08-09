@@ -333,6 +333,8 @@ class WorkerExecutionResult:
     failure_code: WorkerFailureCode | None
     workspace_head: str | None
     worker_attestation: WorkerAttestation
+    base_repository_head: str | None = None
+    patch: BoundedOutput | None = None
 
     def validate(self, request: WorkerExecutionRequest | None = None) -> None:
         if self.schema_version != SCHEMA_VERSION:
@@ -345,7 +347,11 @@ class WorkerExecutionResult:
         files = _canonical_files(self.changed_files)
         if files != self.changed_files:
             raise ValueError("changed files must be canonicalized")
-        if request is not None and not set(files).issubset(request.allowed_affected_files):
+        if (
+            request is not None
+            and self.failure_code is not WorkerFailureCode.OUT_OF_SCOPE_CHANGES
+            and not set(files).issubset(request.allowed_affected_files)
+        ):
             raise ValueError("changed file is outside approved scope")
         if self.patch_digest is not None and not re.fullmatch(r"sha256:[0-9a-f]{64}", self.patch_digest):
             raise ValueError("malformed patch digest")
@@ -357,6 +363,12 @@ class WorkerExecutionResult:
             raise ValueError("invalid duration")
         if self.workspace_head is not None and not _HEAD_RE.fullmatch(self.workspace_head):
             raise ValueError("invalid workspace head")
+        if self.base_repository_head is not None and not _HEAD_RE.fullmatch(self.base_repository_head):
+            raise ValueError("invalid base repository head")
+        if self.patch is not None:
+            self.patch.validate()
+            if self.patch.original_bytes is not None and self.patch.original_bytes > _MAX_PATCH_BYTES:
+                raise ValueError("patch exceeds the contract bound")
         self.worker_attestation.validate()
         if self.status is WorkerExecutionStatus.SUCCEEDED:
             if self.failure_code is not None or self.return_code != 0:
@@ -385,6 +397,8 @@ class WorkerExecutionResult:
             "failure_code": self.failure_code,
             "workspace_head": self.workspace_head,
             "worker_attestation": self.worker_attestation.to_dict(),
+            "base_repository_head": self.base_repository_head,
+            "patch": self.patch.to_dict() if self.patch else None,
         }
 
     def to_json(self) -> str:
@@ -393,7 +407,22 @@ class WorkerExecutionResult:
     @classmethod
     def from_dict(cls, value: Any) -> WorkerExecutionResult:
         fields = set(cls.__dataclass_fields__)
-        if not isinstance(value, dict) or set(value) != fields:
+        if not isinstance(value, dict) or not set(value).issubset(fields) or not {
+            "schema_version",
+            "execution_request_id",
+            "status",
+            "return_code",
+            "stdout",
+            "stderr",
+            "changed_files",
+            "patch_digest",
+            "patch_size_bytes",
+            "patch_truncated",
+            "duration_seconds",
+            "failure_code",
+            "workspace_head",
+            "worker_attestation",
+        }.issubset(value):
             raise ValueError("unknown or missing worker result fields")
         result = cls(
             **{
@@ -404,6 +433,8 @@ class WorkerExecutionResult:
                 "stderr": BoundedOutput.from_dict(value["stderr"]),
                 "changed_files": tuple(value["changed_files"]),
                 "worker_attestation": WorkerAttestation.from_dict(value["worker_attestation"]),
+                "base_repository_head": value.get("base_repository_head"),
+                "patch": BoundedOutput.from_dict(value["patch"]) if value.get("patch") else None,
             }
         )
         result.validate()
