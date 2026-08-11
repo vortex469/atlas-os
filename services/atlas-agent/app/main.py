@@ -24,7 +24,7 @@ from app.core_client.client import AtlasCoreClient
 from app.execution.backends import WorkerExecutionBackend
 from app.execution.engine import ExecutionEngine
 from app.execution.runner import SubprocessRunner
-from app.execution.worker_client import UnixSocketWorkerClient
+from app.execution.worker_client import TcpWorkerClient
 from app.model_providers.ollama import OllamaProvider
 from app.model_service.service import ModelService
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
@@ -148,7 +148,7 @@ def create_app() -> FastAPI:
     execution_backend = None
     if settings.execution_backend == "worker":
         execution_backend = WorkerExecutionBackend(
-            UnixSocketWorkerClient(settings.execution_worker_socket),
+            TcpWorkerClient(settings.execution_worker_host, settings.execution_worker_port),
             repository_token=settings.execution_worker_repository_token,
         )
     review_engine = ReviewEngine()

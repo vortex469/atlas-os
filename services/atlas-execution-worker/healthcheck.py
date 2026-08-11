@@ -1,18 +1,16 @@
-"""Socket-only health check for the execution worker container."""
+"""TCP health check for the execution worker container."""
 
 from __future__ import annotations
 
 import json
 import socket
-from pathlib import Path
 
-SOCKET_PATH = Path("/run/atlas-execution-worker/worker.sock")
+HOST = "127.0.0.1"
+PORT = 8081
 
 
 def main() -> None:
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-        connection.settimeout(3)
-        connection.connect(str(SOCKET_PATH))
+    with socket.create_connection((HOST, PORT), timeout=3) as connection:
         connection.sendall(
             b"GET /health HTTP/1.1\r\nHost: worker\r\nConnection: close\r\n\r\n"
         )

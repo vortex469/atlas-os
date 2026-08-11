@@ -47,6 +47,13 @@ class WorkerPatchApplier:
             raise PatchApplicationError("patch_invalid")
         approved = set(request.allowed_affected_files)
         self._validate_paths(result.changed_files, approved)
+        if self._run_git(
+            repository_root,
+            ("apply", "--reverse", "--check", "--whitespace=error", "-"),
+            patch,
+            check=False,
+        ):
+            return PatchApplicationOutcome(tuple(sorted(result.changed_files)), digest)
         self._run_git(repository_root, ("apply", "--check", "--whitespace=error", "-"), patch)
         self._run_git(repository_root, ("apply", "--whitespace=error", "-"), patch)
         after = self._status(repository_root)
@@ -103,7 +110,7 @@ class WorkerPatchApplier:
         patch: str,
         *,
         check: bool = True,
-    ) -> None:
+    ) -> bool:
         result = subprocess.run(
             ["git", *arguments],
             cwd=repository_root,
@@ -114,3 +121,4 @@ class WorkerPatchApplier:
         )
         if check and result.returncode != 0:
             raise PatchApplicationError("patch_invalid")
+        return result.returncode == 0

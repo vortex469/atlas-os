@@ -130,6 +130,7 @@ class WorkflowSession:
     review_analysis: ModelResponse | None = None
     context: AgentContext | None = None
     execution_result: ExecutionResult | None = None
+    worker_patch_applied: bool = False
     changed_files: tuple[Path, ...] = ()
     verification_report: VerificationReport | None = None
     candidate_verification_plan: CandidateVerificationPlan | None = None

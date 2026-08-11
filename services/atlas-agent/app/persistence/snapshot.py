@@ -48,6 +48,7 @@ from app.candidate_planning.verification import (
 )
 from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
+from app.execution.worker_contracts import WorkerExecutionResult
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, PlanRisk, RoadmapCheckpoint
 from app.repository.models import CommitRequest, CommitResult
@@ -1220,6 +1221,11 @@ def _encode_execution_result(result: ExecutionResult | None) -> dict[str, Any] |
         "stderr": result.stderr,
         "stdout": result.stdout,
         "working_directory": _path(result.working_directory),
+        "worker_result": (
+            result.worker_result.to_dict()
+            if isinstance(result.worker_result, WorkerExecutionResult)
+            else None
+        ),
     }
 
 
@@ -1239,6 +1245,11 @@ def _decode_execution_result(payload: Any) -> ExecutionResult | None:
         stderr=_require_str(payload, "stderr"),
         duration_seconds=float(payload.get("duration_seconds")),
         error=payload.get("error"),
+        worker_result=(
+            WorkerExecutionResult.from_dict(payload["worker_result"])
+            if payload.get("worker_result") is not None
+            else None
+        ),
     )
 
 
@@ -1702,6 +1713,7 @@ def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
         "commit_result": _encode_commit_result(session.commit_result),
         "context": _encode_context(session.context),
         "execution_result": _encode_execution_result(session.execution_result),
+        "worker_patch_applied": session.worker_patch_applied,
         "expected_branch": session.expected_branch,
         "expected_head": session.expected_head,
         "identifier": session.identifier,
@@ -1740,6 +1752,7 @@ def _decode_workflow_session(payload: Any) -> WorkflowSession:
         review_analysis=_decode_model_response(payload.get("review_analysis")),
         context=_decode_context(payload.get("context")),
         execution_result=_decode_execution_result(payload.get("execution_result")),
+        worker_patch_applied=bool(payload.get("worker_patch_applied", False)),
         changed_files=_tuple_path(payload.get("changed_files", [])),
         verification_report=_decode_verification_report(payload.get("verification_report")),
         candidate_verification_plan=_decode_candidate_verification_plan(

@@ -1,7 +1,7 @@
 # Production Deployment
 
-Atlas ships a two-service Docker Compose deployment with two ingress
-choices:
+Atlas ships a hardened Docker Compose deployment with private internal service
+networks and two ingress choices:
 
 - Atlas Core runs as a non-root Python process.
 - Mission Control is built once and served by unprivileged Nginx, which
@@ -32,15 +32,19 @@ The production Agent deployment requires:
 - `ATLAS_REPOSITORY_HOST_PATH` set to the repository bind source;
 - that repository source writable by runtime uid/gid `10001:10001`;
 - `ATLAS_CODEX_AUTH_HOST_PATH` set to an external Codex auth file;
-- the mounted auth secret readable by uid `10001` and never committed or
-  printed;
+- the host auth file kept root-owned and mode `0600`; the one-shot
+  `atlas-agent-auth-stager` service copies it into the dedicated staging
+  volume with ownership `10001:10001` and mode `0600` before Agent startup;
 - the runtime gate `./scripts/atlas-agent-codex-runtime-gate` run after
   deployment;
 - a container rebuild after Atlas Agent source or image changes. Recreating
   an old container without rebuilding does not deploy new Agent code.
 
 Codex CLI installation, authentication provisioning, and ephemeral `CODEX_HOME`
-runtime state are validated. Codex-backed repository mutation remains deferred
+runtime state are validated. The Agent reaches the execution worker over
+private TCP on `atlas-execution-worker-net`; port `8081` is not host-published.
+The worker repository source is mounted read-only and execution occurs in a
+disposable workspace. Codex-backed repository mutation remains deferred
 to **Codex Execution Sandbox Hardening**. The current hardened Docker
 seccomp/AppArmor policy prevents bubblewrap/Codex `workspace-write` sandbox
 initialization. Do not replace this boundary with unconfined seccomp/AppArmor,

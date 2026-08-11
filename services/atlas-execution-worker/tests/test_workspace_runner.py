@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from app.execution.worker_contracts import WorkerExecutionRequest, WorkerFailureCode
@@ -61,6 +62,24 @@ def _fake_codex(tmp_path: Path, *, touch_forbidden: bool = False) -> Path:
     )
     script.chmod(0o755)
     return bindir
+
+
+def test_workspace_git_uses_exact_scoped_safe_directory(tmp_path: Path) -> None:
+    path = tmp_path / "workspace"
+    path.mkdir()
+    with patch("atlas_execution_worker.workspace.subprocess.run") as run:
+        run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="head\n", stderr=""
+        )
+        assert WorkerWorkspaceManager._git(path, "rev-parse", "HEAD") == "head"
+    command = run.call_args.args[0]
+    assert command[:4] == [
+        "git",
+        "-c",
+        f"safe.directory={path.resolve()}",
+        "-C",
+    ]
+    assert "safe.directory=*" not in command
 
 
 def test_enabled_runner_returns_bounded_patch_and_cleans_workspace(repository: tuple[Path, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

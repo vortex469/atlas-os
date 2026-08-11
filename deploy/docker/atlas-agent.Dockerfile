@@ -26,7 +26,9 @@ RUN npm install --global --omit=dev @openai/codex@${CODEX_CLI_VERSION} \
 
 COPY services/atlas-agent/app ./app
 COPY deploy/docker/atlas-agent-entrypoint.sh /usr/local/bin/atlas-agent-entrypoint
+COPY deploy/docker/atlas-agent-auth-stager.sh /usr/local/bin/atlas-agent-auth-stager
 RUN chmod 0755 /usr/local/bin/atlas-agent-entrypoint
+RUN chmod 0755 /usr/local/bin/atlas-agent-auth-stager
 
 RUN groupadd --gid 10001 atlas \
     && useradd \

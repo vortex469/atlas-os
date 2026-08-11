@@ -93,7 +93,7 @@ class WorkerWorkspaceManager:
     @staticmethod
     def _git(path: Path, *args: str) -> str:
         result = subprocess.run(
-            ["git", "-C", str(path), *args],
+            ["git", "-c", f"safe.directory={path.resolve()}", "-C", str(path), *args],
             check=True,
             capture_output=True,
             text=True,

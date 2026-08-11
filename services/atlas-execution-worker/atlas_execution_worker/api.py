@@ -22,6 +22,7 @@ from .durable_ledger import (
     DurableRequestLedger,
 )
 from .ledger import RequestConflictError, RequestLedger
+from .runner import WorkspaceExecutionRunner
 
 LOGGER = logging.getLogger("atlas_execution_worker")
 SERVICE_NAME = "atlas-execution-worker"
@@ -62,11 +63,17 @@ def _error(status_code: int, code: str, message: str) -> JSONResponse:
 def create_app(
     ledger: RequestLedger | None = None,
     durable_ledger: DurableRequestLedger | None = None,
+    *,
+    execution_enabled: bool = False,
+    runners: dict[str, WorkspaceExecutionRunner] | None = None,
 ) -> FastAPI:
     """Create the execution-disabled app with an injectable ledger."""
 
     app = FastAPI(title=SERVICE_NAME, docs_url=None, redoc_url=None)
-    request_ledger = ledger or durable_ledger or RequestLedger()
+    request_ledger = (
+        ledger if ledger is not None else durable_ledger if durable_ledger is not None else RequestLedger()
+    )
+    configured_runners = runners or {}
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
@@ -75,7 +82,7 @@ def create_app(
             "service": SERVICE_NAME,
             "status": "healthy",
             "contract_schema_version": 1,
-            "execution_enabled": False,
+            "execution_enabled": execution_enabled,
             **(
                 {
                     "ledger_counts": {
@@ -114,7 +121,29 @@ def create_app(
             )
             return _error(409, "request_id_conflict", "execution request ID has a different digest")
 
-        if entry.result is None and entry.state == "claimed":
+        if execution_enabled and entry.result is None and entry.state == "claimed":
+            runner = configured_runners.get(worker_request.repository_token)
+            if runner is None:
+                return _error(400, "unknown_repository_token", "repository token is not configured")
+            if not isinstance(request_ledger, DurableRequestLedger):
+                return _error(503, "ledger_unavailable", "enabled execution requires durable ledger")
+            try:
+                request_ledger.mark_executing(worker_request)
+                result = runner.execute(worker_request)
+                entry = request_ledger.persist_result(worker_request, result)
+            except ValueError:
+                LOGGER.exception(
+                    "worker result rejected execution_request_id=%s result_code=invalid_result",
+                    worker_request.execution_request_id,
+                )
+                return _error(424, "invalid_result", "worker returned an invalid result")
+            except Exception:
+                LOGGER.exception(
+                    "worker execution failed execution_request_id=%s result_code=worker_execution_failed",
+                    worker_request.execution_request_id,
+                )
+                return _error(424, "worker_execution_failed", "worker execution failed")
+        elif entry.result is None and entry.state == "claimed":
             result = _disabled_result(worker_request)
             if isinstance(request_ledger, DurableRequestLedger):
                 entry = request_ledger.persist_result(worker_request, result)

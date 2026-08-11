@@ -19,7 +19,7 @@ from app.execution.models import (
 )
 from app.execution.policy import ToolPolicy
 from app.execution.runner import CommandRunner
-from app.execution.worker_client import UnixSocketWorkerClient, WorkerTransportError
+from app.execution.worker_client import TcpWorkerClient, WorkerTransportError
 from app.execution.worker_contracts import (
     WorkerExecutionRequest,
     WorkerExecutionResult,
@@ -123,7 +123,7 @@ class WorkerExecutionBackend:
 
     def __init__(
         self,
-        client: UnixSocketWorkerClient,
+        client: TcpWorkerClient,
         *,
         repository_token: str = "atlas-repository",
     ) -> None:

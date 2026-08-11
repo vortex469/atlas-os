@@ -26,7 +26,7 @@ agent_json=$(printf '%s' "$compose_json" | jq '.services["atlas-agent"]')
 [[ "$(printf '%s' "$proxy_json" | jq -r '.ports // [] | length')" == "0" ]] || { echo "ERROR: egress proxy publishes TCP ports"; exit 1; }
 [[ "$(printf '%s' "$proxy_json" | jq -r '.networks | keys | join(",")')" == "atlas-execution-worker-net,default" ]] || { echo "ERROR: egress proxy network topology is unexpected"; exit 1; }
 worker_mounts=$(printf '%s' "$worker_json" | jq -r '.volumes[]?.target')
-[[ "$(printf '%s\n' "$worker_mounts" | grep -Fx /run/atlas-execution-worker)" == "/run/atlas-execution-worker" ]] || { echo "ERROR: worker socket mount missing"; exit 1; }
+[[ -z "$(printf '%s\n' "$worker_mounts" | grep -Fx /run/atlas-execution-worker || true)" ]] || { echo "ERROR: obsolete worker socket mount present"; exit 1; }
 [[ -z "$(printf '%s\n' "$worker_mounts" | grep -E '/workspace/repository|/opt/atlas/agent-state|docker.sock' || true)" ]] || { echo "ERROR: worker has forbidden mount"; exit 1; }
 [[ "$(printf '%s' "$agent_json" | jq -r '.environment.ATLAS_EXECUTION_BACKEND')" == "local" ]] || { echo "ERROR: Agent worker backend is not local by default"; exit 1; }
 
@@ -39,15 +39,13 @@ agent_container=$(docker compose -f "$COMPOSE_FILE" ps -q atlas-agent)
 [[ "$(docker exec "$worker_container" sh -c 'id -g')" == "10001" ]] || { echo "ERROR: worker gid is not 10001"; exit 1; }
 [[ "$(docker exec "$worker_container" sh -c "awk '/^CapEff:/{print \$2}' /proc/1/status")" == "0000000000000000" ]] || { echo "ERROR: worker capabilities are not empty"; exit 1; }
 [[ "$(docker exec "$worker_container" sh -c "awk '/^NoNewPrivs:/{print \$2}' /proc/1/status")" == "1" ]] || { echo "ERROR: worker NoNewPrivs is not enabled"; exit 1; }
-docker exec "$worker_container" test -S /run/atlas-execution-worker/worker.sock
 docker exec "$worker_container" python /opt/atlas/services/atlas-execution-worker/healthcheck.py
 
 docker exec "$agent_container" python - <<'PY'
 import json
 import socket
-s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s = socket.create_connection(('atlas-execution-worker', 8081), timeout=3)
 s.settimeout(3)
-s.connect('/run/atlas-execution-worker/worker.sock')
 s.sendall(b'GET /health HTTP/1.1\r\nHost: worker\r\nConnection: close\r\n\r\n')
 data = b''
 while chunk := s.recv(4096):

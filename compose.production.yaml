@@ -46,6 +46,11 @@ services:
         condition: service_healthy
       atlas-execution-worker:
         condition: service_healthy
+      atlas-agent-auth-stager:
+        condition: service_completed_successfully
+    networks:
+      default: {}
+      atlas-execution-worker-net: {}
     environment:
       ATLAS_AGENT_ENVIRONMENT: production
       ATLAS_AGENT_HOST: 0.0.0.0
@@ -61,17 +66,15 @@ services:
       ATLAS_CORE_REQUIRED: "false"
       ATLAS_EXECUTION_BACKEND: ${ATLAS_EXECUTION_BACKEND:-local}
       ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN: ${ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN:-atlas-repository}
-      ATLAS_EXECUTION_WORKER_SOCKET: /run/atlas-execution-worker/worker.sock
+      ATLAS_EXECUTION_WORKER_HOST: atlas-execution-worker
+      ATLAS_EXECUTION_WORKER_PORT: "8081"
       GIT_CONFIG_COUNT: "1"
       GIT_CONFIG_KEY_0: safe.directory
       GIT_CONFIG_VALUE_0: /workspace/repository
     volumes:
       - ${ATLAS_REPOSITORY_HOST_PATH:?set ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository
       - atlas-agent-state:/opt/atlas/agent-state
-      - atlas-execution-worker-socket:/run/atlas-execution-worker:ro
-    secrets:
-      - source: codex-auth
-        target: codex-auth.json
+      - atlas-agent-auth-staging:/run/secrets:ro
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
@@ -88,6 +91,25 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+
+  atlas-agent-auth-stager:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-agent.Dockerfile
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["/usr/local/bin/atlas-agent-auth-stager"]
+    command: ["/source/auth.json", "/staging/codex-auth.json"]
+    volumes:
+      - ${ATLAS_CODEX_AUTH_HOST_PATH:?set ATLAS_CODEX_AUTH_HOST_PATH}:/source/auth.json:ro
+      - atlas-agent-auth-staging:/staging
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
 
   atlas-execution-worker:
     build:
@@ -107,8 +129,12 @@ services:
       ALL_PROXY: http://172.31.0.2:3128
       NO_PROXY: ""
       ATLAS_EXECUTION_WORKER_STATE_DIR: /opt/atlas/execution-worker-state
+      ATLAS_EXECUTION_WORKER_EXECUTION_ENABLED: "false"
+      ATLAS_EXECUTION_WORKER_REPOSITORY_MAP: "atlas-repository=/workspace/repository"
+      ATLAS_EXECUTION_WORKER_HOST: 0.0.0.0
+      ATLAS_EXECUTION_WORKER_PORT: "8081"
     volumes:
-      - atlas-execution-worker-socket:/run/atlas-execution-worker
+      - ${ATLAS_REPOSITORY_HOST_PATH:?set ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository:ro
       - atlas-execution-worker-state:/opt/atlas/execution-worker-state
     read_only: true
     user: "10001:10001"
@@ -125,6 +151,8 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+    expose:
+      - "8081"
 
   atlas-egress-proxy:
     image: ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
@@ -139,10 +167,14 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=32m,mode=1777
-      - /var/log/squid:size=16m,mode=0750
-      - /var/spool/squid:size=32m,mode=0750
+      - /run:size=1m,mode=0755
+      - /var/log/squid:size=16m,uid=13,gid=13,mode=0750
+      - /var/spool/squid:size=32m,uid=13,gid=13,mode=0750
     cap_drop:
       - ALL
+    cap_add:
+      - SETUID
+      - SETGID
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -175,8 +207,8 @@ services:
 volumes:
   atlas-agent-state:
   atlas-data:
-  atlas-execution-worker-socket:
   atlas-execution-worker-state:
+  atlas-agent-auth-staging:
 
 networks:
   atlas-execution-worker-net:
@@ -184,7 +216,3 @@ networks:
     ipam:
       config:
         - subnet: 172.31.0.0/24
-
-secrets:
-  codex-auth:
-    file: ${ATLAS_CODEX_AUTH_HOST_PATH:?set ATLAS_CODEX_AUTH_HOST_PATH}

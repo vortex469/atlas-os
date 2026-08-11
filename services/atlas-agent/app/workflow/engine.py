@@ -41,6 +41,8 @@ from app.execution.backends import WorkerExecutionContext
 from app.execution.engine import ExecutionEngine
 from app.execution.exceptions import ExecutionValidationError
 from app.execution.models import EnvironmentVariable, ExecutionRequest, ExecutionStatus
+from app.execution.patches import PatchApplicationError, WorkerPatchApplier
+from app.execution.worker_contracts import WorkerExecutionRequest, WorkerExecutionResult
 from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
@@ -712,6 +714,40 @@ class WorkflowEngine:
             inspector = self._repository_inspector_factory(
                 execution_request.plan.repository_root
             )
+            worker_patch_applied = claimed_session.worker_patch_applied
+            if self._execution_engine.uses_worker is True and not worker_patch_applied:
+                worker_result = execution_result.worker_result
+                if not isinstance(worker_result, WorkerExecutionResult):
+                    raise PatchApplicationError("worker_result_missing")
+                if execution_context is None:
+                    raise PatchApplicationError("worker_request_context_missing")
+                if (
+                    execution_context.repository_token
+                    != self._execution_engine.repository_token
+                ):
+                    raise PatchApplicationError("worker_repository_token_mismatch")
+                worker_request = WorkerExecutionRequest.build(
+                    execution_request_id=execution_request.identifier,
+                    workflow_id=execution_context.workflow_id,
+                    candidate_id=execution_context.candidate_id,
+                    candidate_fingerprint=execution_context.candidate_fingerprint,
+                    plan_id=execution_context.plan_id,
+                    plan_fingerprint=execution_context.plan_fingerprint,
+                    execution_intent=execution_context.execution_intent,
+                    repository_token=execution_context.repository_token,
+                    expected_repository_head=execution_context.expected_repository_head,
+                    repository_branch=execution_context.repository_branch,
+                    argv=execution_request.argv,
+                    working_directory=execution_context.working_directory,
+                    allowed_affected_files=execution_context.allowed_affected_files,
+                    timeout_seconds=execution_context.timeout_seconds,
+                )
+                WorkerPatchApplier().apply(
+                    execution_request.plan.repository_root,
+                    worker_request,
+                    worker_result,
+                )
+                worker_patch_applied = True
             after_execution = inspector.inspect()
             changed_files = self._workflow_changed_files(
                 after_execution,
@@ -727,6 +763,7 @@ class WorkflowEngine:
                     WorkflowSessionState.EXECUTING,
                     WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
                     execution_result=execution_result,
+                    worker_patch_applied=worker_patch_applied,
                     changed_files=changed_files,
                 )
             else:
@@ -738,6 +775,7 @@ class WorkflowEngine:
                         WorkflowSessionState.EXECUTING,
                         WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
                         execution_result=execution_result,
+                        worker_patch_applied=worker_patch_applied,
                         changed_files=changed_files,
                     )
 

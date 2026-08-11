@@ -38,7 +38,7 @@ RUN groupadd --gid 10001 atlas \
         --no-create-home \
         --shell /usr/sbin/nologin \
         atlas \
-    && mkdir -p /run/atlas-execution-worker /run/secrets /opt/atlas/.codex \
+    && mkdir -p /run/atlas-execution-worker /run/secrets /opt/atlas/.codex /opt/atlas/execution-worker-state \
     && touch /run/secrets/codex-auth.json \
     && chmod 0444 /run/secrets/codex-auth.json \
     && chown -R atlas:atlas /run/atlas-execution-worker /opt/atlas

@@ -12,12 +12,8 @@ import pytest
 import uvicorn
 from app.execution.worker_contracts import WorkerExecutionRequest
 from atlas_execution_worker.api import _disabled_result, create_app
+from atlas_execution_worker.durable_ledger import DurableRequestLedger
 from atlas_execution_worker.ledger import RequestConflictError, RequestLedger
-from atlas_execution_worker.server import (
-    bind_socket,
-    cleanup_socket,
-    prepare_socket_path,
-)
 from fastapi.testclient import TestClient
 
 HEAD = "a" * 40
@@ -141,38 +137,24 @@ def test_concurrent_identical_claims_have_one_entry() -> None:
     assert {entry.request_digest for entry in entries} == {request.request_digest}
 
 
-def test_socket_lifecycle_is_private_and_cleans_stale_socket(tmp_path: Path) -> None:
-    socket_path = tmp_path / "worker.sock"
-    stale = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    stale.bind(str(socket_path))
-    stale.close()
-
-    prepare_socket_path(socket_path)
-    server = bind_socket(socket_path)
-    try:
-        assert socket_path.exists()
-        assert socket_path.stat().st_mode & 0o777 == 0o660
-        assert server.family == socket.AF_UNIX
-    finally:
-        server.close()
-        cleanup_socket(socket_path)
-    assert not socket_path.exists()
-
-
-def test_socket_health_and_submit_through_unix_socket(tmp_path: Path) -> None:
-    socket_path = tmp_path / "worker.sock"
+def test_tcp_health_and_submit_through_private_tcp(tmp_path: Path) -> None:
+    del tmp_path
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
     app = create_app()
-    config = uvicorn.Config(app, uds=str(socket_path), log_level="critical")
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="critical")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     deadline = time.monotonic() + 5
-    while not socket_path.exists() and time.monotonic() < deadline:
+    while not server.started and time.monotonic() < deadline:
         time.sleep(0.01)
     try:
-        from app.execution.worker_client import UnixSocketWorkerClient
+        from app.execution.worker_client import TcpWorkerClient
 
-        client = UnixSocketWorkerClient(socket_path)
+        client = TcpWorkerClient("127.0.0.1", port)
         assert client.health()["execution_enabled"] is False
         result = client.submit(make_request())
         assert result["result"]["failure_code"] == "worker_unavailable"
@@ -180,7 +162,6 @@ def test_socket_health_and_submit_through_unix_socket(tmp_path: Path) -> None:
     finally:
         server.should_exit = True
         thread.join(timeout=5)
-        cleanup_socket(socket_path)
     assert not thread.is_alive()
 
 
@@ -195,3 +176,72 @@ def test_prompt_and_auth_like_values_are_not_logged(caplog: pytest.LogCaptureFix
     rendered = "\n".join(record.getMessage() for record in caplog.records)
     assert prompt not in rendered
     assert auth_like not in rendered
+
+
+class FakeRunner:
+    def __init__(self, *, raises: Exception | None = None) -> None:
+        self.calls = 0
+        self.raises = raises
+
+    def execute(self, request: WorkerExecutionRequest):
+        self.calls += 1
+        if self.raises is not None:
+            raise self.raises
+        return _disabled_result(request)
+
+
+def test_enabled_execution_claims_runs_once_and_reuses_durable_result(tmp_path: Path) -> None:
+    request = make_request()
+    runner = FakeRunner()
+    ledger = DurableRequestLedger(tmp_path / "ledger.sqlite3")
+    client = TestClient(
+        create_app(
+            durable_ledger=ledger,
+            execution_enabled=True,
+            runners={request.repository_token: runner},
+        )
+    )
+
+    assert client.get("/health").json()["execution_enabled"] is True
+    first = client.post("/v1/executions", json=request.to_dict())
+    second = client.post("/v1/executions", json=request.to_dict())
+    assert first.status_code == second.status_code == 200
+    assert first.json() == second.json()
+    assert runner.calls == 1
+
+    conflicting = make_request(argv=("codex", "exec", "different prompt"))
+    response = client.post("/v1/executions", json=conflicting.to_dict())
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "request_id_conflict"
+
+
+def test_enabled_execution_rejects_unknown_repository_token(tmp_path: Path) -> None:
+    ledger = DurableRequestLedger(tmp_path / "ledger.sqlite3")
+    client = TestClient(create_app(durable_ledger=ledger, execution_enabled=True, runners={}))
+
+    response = client.post("/v1/executions", json=make_request().to_dict())
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "unknown_repository_token"
+
+
+def test_enabled_runner_failure_is_deterministic_and_not_retried(tmp_path: Path) -> None:
+    request = make_request()
+    runner = FakeRunner(raises=RuntimeError("sandbox unavailable"))
+    ledger = DurableRequestLedger(tmp_path / "ledger.sqlite3")
+    client = TestClient(
+        create_app(
+            durable_ledger=ledger,
+            execution_enabled=True,
+            runners={request.repository_token: runner},
+        )
+    )
+
+    response = client.post("/v1/executions", json=request.to_dict())
+    assert response.status_code == 424
+    assert response.json()["error"]["code"] == "worker_execution_failed"
+    assert ledger.get(request.execution_request_id).state == "executing"
+
+    duplicate = client.post("/v1/executions", json=request.to_dict())
+    assert duplicate.status_code == 200
+    assert duplicate.json()["state"] == "executing"
+    assert runner.calls == 1

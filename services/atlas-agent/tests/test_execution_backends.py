@@ -10,7 +10,7 @@ from app.execution.backends import (
 )
 from app.execution.exceptions import ExecutionValidationError
 from app.execution.models import ExecutionRequest, ExecutionStatus, RunnerOutcome
-from app.execution.worker_client import WorkerTransportError
+from app.execution.worker_client import TcpWorkerClient, WorkerTransportError
 from app.execution.worker_contracts import (
     BoundedOutput,
     WorkerAttestation,
@@ -30,6 +30,11 @@ class FakeRunner:
     def run(self, **kwargs: object) -> RunnerOutcome:
         self.calls += 1
         return self.outcome
+
+
+def test_tcp_worker_client_fails_closed_when_worker_is_unreachable() -> None:
+    with pytest.raises(WorkerTransportError, match="worker socket unavailable"):
+        TcpWorkerClient("127.0.0.1", 1, timeout_seconds=0.1).health()
 
 
 class FakeWorkerClient:

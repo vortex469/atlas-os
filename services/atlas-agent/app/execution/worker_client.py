@@ -1,10 +1,9 @@
-"""Minimal non-integrated Unix-socket client for S2 contract testing."""
+"""Minimal non-integrated TCP client for the private execution worker."""
 
 from __future__ import annotations
 
 import json
 import socket
-from pathlib import Path
 from typing import Any
 
 from app.execution.worker_contracts import WorkerExecutionRequest
@@ -14,11 +13,12 @@ class WorkerTransportError(RuntimeError):
     """The worker could not be reached or returned malformed HTTP."""
 
 
-class UnixSocketWorkerClient:
-    """One-shot HTTP-over-Unix-socket client with no automatic retries."""
+class TcpWorkerClient:
+    """One-shot HTTP-over-TCP client with no automatic retries."""
 
-    def __init__(self, socket_path: Path, timeout_seconds: float = 2.0) -> None:
-        self._socket_path = socket_path
+    def __init__(self, host: str, port: int, timeout_seconds: float = 2.0) -> None:
+        self._host = host
+        self._port = port
         self._timeout_seconds = timeout_seconds
 
     def health(self) -> dict[str, Any]:
@@ -40,9 +40,10 @@ class UnixSocketWorkerClient:
             "Content-Type: application/json\r\n\r\n"
         ).encode()
         try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            with socket.create_connection(
+                (self._host, self._port), timeout=self._timeout_seconds
+            ) as connection:
                 connection.settimeout(self._timeout_seconds)
-                connection.connect(str(self._socket_path))
                 connection.sendall(headers + body)
                 response = b""
                 while True:

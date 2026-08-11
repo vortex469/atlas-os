@@ -93,6 +93,32 @@ index 42c1c24..3e6c3af 100644
     assert git(root, "status", "--porcelain") == "M compose.production.yaml"
 
 
+def test_same_patch_is_idempotent_after_first_application(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    patch = """diff --git a/compose.production.yaml b/compose.production.yaml
+--- a/compose.production.yaml
++++ b/compose.production.yaml
+@@ -1 +1 @@
+-image: example/app:1.0
++image: example/app:1.1
+"""
+    req = request(root, head)
+    result = result_for(req, patch, head)
+    first = WorkerPatchApplier().apply(root, req, result)
+    second = WorkerPatchApplier().apply(root, req, result)
+    assert first == second
+    assert git(root, "status", "--porcelain") == "M compose.production.yaml"
+
+
+def test_malformed_patch_is_rejected_without_mutation(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    patch = "not a unified diff"
+    req = request(root, head)
+    with pytest.raises(PatchApplicationError, match="patch_invalid"):
+        WorkerPatchApplier().apply(root, req, result_for(req, patch, head))
+    assert git(root, "status", "--porcelain") == ""
+
+
 def test_stale_patch_is_rejected_without_mutation(tmp_path: Path) -> None:
     root, head = make_repo(tmp_path)
     patch = """diff --git a/compose.production.yaml b/compose.production.yaml
