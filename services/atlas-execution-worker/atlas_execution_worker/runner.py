@@ -8,8 +8,11 @@ import time
 from pathlib import Path
 
 from app.execution.worker_contracts import (
+    RC1_SMOKE_MARKER,
+    RC1_SMOKE_TARGET,
     BoundedOutput,
     WorkerAttestation,
+    WorkerExecutionIntent,
     WorkerExecutionRequest,
     WorkerExecutionResult,
     WorkerExecutionStatus,
@@ -48,6 +51,21 @@ class WorkspaceExecutionRunner:
             cwd = workspace.path / request.working_directory
             if not cwd.resolve().is_relative_to(workspace.path.resolve()):
                 return self._result(request, WorkerFailureCode.INVALID_REQUEST, started, base=workspace.base_head)
+            if request.execution_intent == WorkerExecutionIntent.RC1_VALIDATION_SMOKE:
+                try:
+                    self._run_rc1_smoke(workspace.path)
+                except WorkspaceError:
+                    return self._result(
+                        request,
+                        WorkerFailureCode.INVALID_REQUEST,
+                        started,
+                        base=workspace.base_head,
+                        workspace_head=self._git(workspace.path, "rev-parse", "HEAD"),
+                    )
+                result = self._collect_direct_change(
+                    request, workspace.path, workspace.base_head, started
+                )
+                return result
             process = subprocess.run(
                 list(request.argv),
                 cwd=cwd,
@@ -71,6 +89,54 @@ class WorkspaceExecutionRunner:
             )
         finally:
             self._manager.cleanup(request.execution_request_id)
+
+    @staticmethod
+    def _run_rc1_smoke(root: Path) -> None:
+        target = root / RC1_SMOKE_TARGET
+        if not target.is_file() or target.is_symlink():
+            raise WorkspaceError("RC1 validation smoke target is missing")
+        if not target.resolve().is_relative_to(root.resolve()):
+            raise WorkspaceError("RC1 validation smoke target escapes workspace")
+        content = target.read_text(encoding="utf-8")
+        if RC1_SMOKE_MARKER in content:
+            raise WorkspaceError("RC1 validation smoke marker already exists")
+        suffix = "" if content.endswith("\n") else "\n"
+        target.write_text(
+            f"{content}{suffix}{RC1_SMOKE_MARKER}\n",
+            encoding="utf-8",
+        )
+
+    def _collect_direct_change(
+        self,
+        request: WorkerExecutionRequest,
+        root: Path,
+        base_head: str,
+        started: float,
+    ) -> WorkerExecutionResult:
+        changed = self._changed_files(root)
+        if changed != (RC1_SMOKE_TARGET,):
+            return self._result(
+                request,
+                WorkerFailureCode.OUT_OF_SCOPE_CHANGES,
+                started,
+                base=base_head,
+                workspace_head=self._git(root, "rev-parse", "HEAD"),
+            )
+        patch_text = self._patch(root)
+        patch = self._bounded(patch_text)
+        return self._result(
+            request,
+            None,
+            started,
+            status=WorkerExecutionStatus.SUCCEEDED,
+            return_code=0,
+            base=base_head,
+            workspace_head=self._git(root, "rev-parse", "HEAD"),
+            changed_files=changed,
+            patch=patch,
+            patch_digest="sha256:" + hashlib.sha256(patch_text.encode()).hexdigest(),
+            patch_size=len(patch_text.encode()),
+        )
 
     def _collect(self, request: WorkerExecutionRequest, root: Path, base_head: str, process: subprocess.CompletedProcess[str], started: float) -> WorkerExecutionResult:
         subprocess.run(["git", "-C", str(root), "add", "--all", "--"], check=True, capture_output=True, text=True, shell=False)
@@ -136,7 +202,7 @@ class WorkspaceExecutionRunner:
         return BoundedOutput(raw[:MAX_CAPTURE_BYTES].decode(errors="ignore"), True, len(raw))
 
     @staticmethod
-    def _result(request: WorkerExecutionRequest, failure: WorkerFailureCode, started: float, *, status: WorkerExecutionStatus = WorkerExecutionStatus.BLOCKED, return_code: int | None = None, stdout: BoundedOutput | None = None, stderr: BoundedOutput | None = None, changed_files: tuple[str, ...] = (), patch: BoundedOutput | None = None, patch_digest: str | None = None, patch_size: int | None = None, base: str | None = None, workspace_head: str | None = None) -> WorkerExecutionResult:
+    def _result(request: WorkerExecutionRequest, failure: WorkerFailureCode | None, started: float, *, status: WorkerExecutionStatus = WorkerExecutionStatus.BLOCKED, return_code: int | None = None, stdout: BoundedOutput | None = None, stderr: BoundedOutput | None = None, changed_files: tuple[str, ...] = (), patch: BoundedOutput | None = None, patch_digest: str | None = None, patch_size: int | None = None, base: str | None = None, workspace_head: str | None = None) -> WorkerExecutionResult:
         return WorkerExecutionResult(
             schema_version=1,
             execution_request_id=request.execution_request_id,

@@ -19,14 +19,23 @@ semantics from local subprocess execution.
 
 ## S1 request
 
-`WorkerExecutionRequest` is schema version 1 and supports only
-`update-compose-stack`. It contains workflow, candidate, plan, repository token
-and expected HEAD, immutable `codex exec` argv, isolated relative working
-directory, canonical affected files, timeout, and a digest. The digest uses
+`WorkerExecutionRequest` is schema version 1 and supports `update-compose-stack`
+plus the validation-only `rc1-validation-smoke` operation. It contains workflow,
+candidate, plan, repository token and expected HEAD, immutable operation argv,
+isolated relative working directory, canonical affected files, timeout, and a
+digest. The digest uses
 canonical sorted-key JSON and SHA-256 with the prefix
 `execution-request-digest-v1:`. Argument order is significant. Affected files
 are normalized, sorted, and duplicate-free. Absolute paths and traversal are
 rejected.
+
+The `rc1-validation-smoke` operation is fixed to one argv token, repository
+root working directory, one target file
+`services/atlas-agent/tests/test_execution_engine.py`, and one marker string.
+The worker performs that append directly in the disposable workspace. It does
+not invoke a shell or interpreter and accepts no arbitrary command, path,
+content, or additional affected file. Existing `codex exec` validation remains
+unchanged.
 
 ## S1 result
 

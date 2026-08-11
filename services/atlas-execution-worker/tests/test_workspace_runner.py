@@ -6,7 +6,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from app.execution.worker_contracts import WorkerExecutionRequest, WorkerFailureCode
+from app.execution.worker_contracts import (
+    RC1_SMOKE_MARKER,
+    RC1_SMOKE_TARGET,
+    WorkerExecutionIntent,
+    WorkerExecutionRequest,
+    WorkerFailureCode,
+)
 from atlas_execution_worker.runner import WorkspaceExecutionRunner
 from atlas_execution_worker.workspace import WorkerWorkspaceManager
 
@@ -120,6 +126,64 @@ def test_disabled_runner_never_launches_argv(repository: tuple[Path, str], tmp_p
     assert result.failure_code is WorkerFailureCode.WORKER_UNAVAILABLE
     assert result.return_code is None
     assert _git(source, "diff") == ""
+
+
+def test_rc1_smoke_directly_mutates_only_fixed_target(repository: tuple[Path, str], tmp_path: Path) -> None:
+    source, head = repository
+    target = source / RC1_SMOKE_TARGET
+    target.parent.mkdir(parents=True)
+    target.write_text("def test_placeholder():\n    pass\n")
+    _git(source, "add", RC1_SMOKE_TARGET)
+    _git(source, "commit", "-qm", "add smoke target")
+    head = _git(source, "rev-parse", "HEAD")
+    request = WorkerExecutionRequest.build(
+        execution_request_id="smoke-1",
+        workflow_id="workflow-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fp-1",
+        plan_id="plan-1",
+        plan_fingerprint="plan-fp-1",
+        execution_intent=WorkerExecutionIntent.RC1_VALIDATION_SMOKE,
+        repository_token="trusted-repository",
+        expected_repository_head=head,
+        repository_branch=None,
+        argv=("atlas-rc1-validation-smoke",),
+        working_directory=".",
+        allowed_affected_files=(RC1_SMOKE_TARGET,),
+        timeout_seconds=10,
+    )
+    with patch("atlas_execution_worker.runner.subprocess.run", wraps=subprocess.run) as run:
+        result = WorkspaceExecutionRunner(
+            WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository"),
+            enabled=True,
+        ).execute(request)
+    assert result.failure_code is None
+    assert result.changed_files == (RC1_SMOKE_TARGET,)
+    assert result.patch is not None
+    assert RC1_SMOKE_MARKER in result.patch.text
+    assert "atlas-rc1-validation-smoke" not in [str(call) for call in run.call_args_list]
+    assert _git(source, "diff") == ""
+
+
+def test_rc1_smoke_rejects_arbitrary_command_and_scope(repository: tuple[Path, str]) -> None:
+    _, head = repository
+    with pytest.raises(ValueError, match="RC1 validation smoke"):
+        WorkerExecutionRequest.build(
+            execution_request_id="smoke-2",
+            workflow_id="workflow-1",
+            candidate_id="candidate-1",
+            candidate_fingerprint="candidate-fp-1",
+            plan_id="plan-1",
+            plan_fingerprint="plan-fp-1",
+            execution_intent=WorkerExecutionIntent.RC1_VALIDATION_SMOKE,
+            repository_token="trusted-repository",
+            expected_repository_head=head,
+            repository_branch=None,
+            argv=("python3", "-c", "pass"),
+            working_directory=".",
+            allowed_affected_files=(RC1_SMOKE_TARGET, "other.txt"),
+            timeout_seconds=10,
+        )
 
 
 def test_manager_reuses_one_request_workspace(repository: tuple[Path, str], tmp_path: Path) -> None:

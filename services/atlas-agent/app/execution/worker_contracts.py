@@ -34,6 +34,12 @@ class WorkerExecutionIntent(StrEnum):
     """Execution intents supported by the RC1 worker contract."""
 
     UPDATE_COMPOSE_STACK = "update-compose-stack"
+    RC1_VALIDATION_SMOKE = "rc1-validation-smoke"
+
+
+RC1_SMOKE_TARGET = "services/atlas-agent/tests/test_execution_engine.py"
+RC1_SMOKE_MARKER = "# Atlas RC1 execution smoke marker"
+RC1_SMOKE_ARGV = ("atlas-rc1-validation-smoke",)
 
 
 class WorkerExecutionStatus(StrEnum):
@@ -263,7 +269,10 @@ class WorkerExecutionRequest:
             (self.plan_fingerprint, "plan fingerprint"),
         ):
             _validate_id(value, name)
-        if self.execution_intent != WorkerExecutionIntent.UPDATE_COMPOSE_STACK:
+        if self.execution_intent not in (
+            WorkerExecutionIntent.UPDATE_COMPOSE_STACK,
+            WorkerExecutionIntent.RC1_VALIDATION_SMOKE,
+        ):
             raise ValueError("unsupported execution intent")
         if not isinstance(self.repository_token, str) or not _TOKEN_RE.fullmatch(self.repository_token):
             raise ValueError("invalid repository token")
@@ -278,7 +287,14 @@ class WorkerExecutionRequest:
             raise ValueError("invalid repository branch")
         if not self.argv or any(not isinstance(item, str) or not item or "\x00" in item for item in self.argv):
             raise ValueError("invalid argv")
-        if self.argv[0] != "codex" or len(self.argv) < 3 or self.argv[1] != "exec":
+        if self.execution_intent == WorkerExecutionIntent.RC1_VALIDATION_SMOKE:
+            if self.argv != RC1_SMOKE_ARGV:
+                raise ValueError("invalid RC1 validation smoke operation")
+            if self.working_directory != ".":
+                raise ValueError("RC1 validation smoke must run at repository root")
+            if self.allowed_affected_files != (RC1_SMOKE_TARGET,):
+                raise ValueError("RC1 validation smoke target is fixed")
+        elif self.argv[0] != "codex" or len(self.argv) < 3 or self.argv[1] != "exec":
             raise ValueError("unsupported Codex argv")
         _validate_path(self.working_directory, "working directory", allow_dot=True)
         _canonical_files(self.allowed_affected_files)

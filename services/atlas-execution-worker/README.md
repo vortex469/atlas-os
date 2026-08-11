@@ -18,3 +18,11 @@ authority. Worker execution is controlled by
 `false`. The ledger stores request identity fields and bounded validated
 results, not secrets, environment dumps, or raw prompts. Interrupted execution
 is reconciled as `unknown_outcome` and is never relaunched automatically.
+
+The contract also defines `rc1-validation-smoke` for one explicit RC1 test
+only. It directly appends the fixed marker `# Atlas RC1 execution smoke
+marker` to `services/atlas-agent/tests/test_execution_engine.py` inside the
+disposable clone. Its argv, working directory, target file, and content are
+all fixed by the contract. It is not a general command-execution interface,
+does not invoke a shell or subprocess, and is not enabled by production
+Compose.
