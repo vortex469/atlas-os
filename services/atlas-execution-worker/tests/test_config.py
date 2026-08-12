@@ -52,21 +52,24 @@ def test_repository_mapping_trusts_multiple_sources_individually(tmp_path: Path)
 
 def test_repository_mapping_uses_exact_scoped_safe_directory(tmp_path: Path) -> None:
     source = git_repository(tmp_path / "source")
+    config_path = tmp_path / "state" / "gitconfig"
     with patch("atlas_execution_worker.config.subprocess.run") as run:
         run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="true\n", stderr=""
         )
-        assert load_repository_mapping(f"atlas-repository={source}") == {
+        assert load_repository_mapping(f"atlas-repository={source}", git_config_path=config_path) == {
             "atlas-repository": source.resolve()
         }
     command = run.call_args.args[0]
-    assert command[:4] == [
-        "git",
-        "-c",
-        f"safe.directory={source.resolve()}",
-        "-C",
-    ]
-    assert "safe.directory=*" not in command
+    assert command[:3] == ["git", "-C", str(source.resolve())]
+    assert run.call_args.kwargs["env"]["GIT_CONFIG_GLOBAL"] == str(config_path)
+    assert config_path.read_text() == (
+        "[safe]\n"
+        f"\tdirectory = {source.resolve()}\n"
+        f"\tdirectory = {source.resolve() / '.git'}\n"
+    )
+    assert config_path.stat().st_mode & 0o777 == 0o600
+    assert "safe.directory=*" not in config_path.read_text()
 
 
 def test_repository_mapping_rejects_duplicates_and_symlinks(tmp_path: Path) -> None:

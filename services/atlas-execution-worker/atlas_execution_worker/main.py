@@ -23,7 +23,8 @@ def main() -> None:
         )
     )
     ledger = DurableRequestLedger(state_dir / "ledger.sqlite3")
-    worker_settings = WorkerSettings.from_environment()
+    git_config_path = state_dir / "gitconfig"
+    worker_settings = WorkerSettings.from_environment(git_config_path=git_config_path)
     runners = {
         token: WorkspaceExecutionRunner(
             WorkerWorkspaceManager(
@@ -31,6 +32,7 @@ def main() -> None:
                 workspace_root=Path("/tmp/atlas-worker-workspaces") / token,
                 repository_token=token,
                 trusted_repository_paths=worker_settings.repository_mapping.values(),
+                git_config_path=git_config_path,
             ),
             enabled=worker_settings.execution_enabled,
         )

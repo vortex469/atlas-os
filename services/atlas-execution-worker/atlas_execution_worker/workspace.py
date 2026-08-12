@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from collections.abc import Iterable
@@ -32,6 +33,7 @@ class WorkerWorkspaceManager:
         repository_token: str,
         *,
         trusted_repository_paths: Iterable[Path],
+        git_config_path: Path,
     ) -> None:
         self._source_root_input = source_root
         self._source_root = source_root.resolve()
@@ -40,6 +42,7 @@ class WorkerWorkspaceManager:
         self._trusted_repository_paths = {
             path.resolve() for path in trusted_repository_paths
         }
+        self._git_config_path = git_config_path.resolve()
         self._active: dict[str, WorkerWorkspace] = {}
         self._workspace_root.mkdir(parents=True, exist_ok=True)
 
@@ -66,8 +69,6 @@ class WorkerWorkspaceManager:
         subprocess.run(
             [
                 "git",
-                "-c",
-                f"safe.directory={source}",
                 "clone",
                 "--no-local",
                 "--no-hardlinks",
@@ -78,6 +79,7 @@ class WorkerWorkspaceManager:
             capture_output=True,
             text=True,
             shell=False,
+            env={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
         )
         cloned_head = self._git(path, "rev-parse", "HEAD")
         if cloned_head != request.expected_repository_head:
@@ -112,13 +114,13 @@ class WorkerWorkspaceManager:
         self._active.pop(request_id, None)
         return destination
 
-    @staticmethod
-    def _git(path: Path, *args: str) -> str:
+    def _git(self, path: Path, *args: str) -> str:
         result = subprocess.run(
-            ["git", "-c", f"safe.directory={path.resolve()}", "-C", str(path), *args],
+            ["git", "-C", str(path), *args],
             check=True,
             capture_output=True,
             text=True,
             shell=False,
+            env={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
         )
         return result.stdout.strip()
