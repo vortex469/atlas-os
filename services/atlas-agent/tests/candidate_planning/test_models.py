@@ -4,7 +4,6 @@ from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime
 
 import pytest
-
 from app.candidate_planning.models import (
     CandidatePlanningSessionStatus,
     CandidatePlanRequest,
@@ -26,6 +25,13 @@ def test_candidate_request_is_immutable() -> None:
 def test_supported_intent_policy_is_narrow() -> None:
     assert is_supported_execution_intent("update-compose-stack") is True
     assert is_supported_execution_intent("restart-service") is False
+
+
+def test_rc1_smoke_intent_requires_explicit_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", raising=False)
+    assert is_supported_execution_intent("rc1-validation-smoke") is False
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    assert is_supported_execution_intent("rc1-validation-smoke") is True
 
 
 def test_session_id_is_stable_and_uses_full_fingerprint() -> None:

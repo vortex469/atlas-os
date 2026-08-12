@@ -12,6 +12,7 @@ from app.candidate_planning.conversion import (
     validate_candidate_plan_safe,
 )
 from app.candidate_planning.models import (
+    RC1_VALIDATION_SMOKE_INTENT,
     CandidateImplementationRequest,
     CandidatePlanningFailure,
     CandidatePlanningFailureCode,
@@ -68,7 +69,7 @@ class CandidateImplementationTranslator:
                 CandidatePlanningFailureCode.WORKFLOW_NOT_CANDIDATE,
                 "Workflow is missing candidate audit metadata.",
             )
-        if session.snapshot.execution_intent != _SUPPORTED_INTENT:
+        if session.snapshot.execution_intent not in (_SUPPORTED_INTENT, RC1_VALIDATION_SMOKE_INTENT):
             return _failure(
                 CandidatePlanningFailureCode.IMPLEMENTATION_NOT_SUPPORTED,
                 "Atlas Agent cannot translate this candidate intent yet.",
@@ -95,7 +96,10 @@ class CandidateImplementationTranslator:
             )
         try:
             validate_candidate_plan_safe(session.plan)
-            affected_files = _validate_affected_files(session.plan.likely_affected_files)
+            affected_files = _validate_affected_files(
+                session.plan.likely_affected_files,
+                smoke=session.snapshot.execution_intent == RC1_VALIDATION_SMOKE_INTENT,
+            )
         except ValueError:
             return _failure(
                 CandidatePlanningFailureCode.UNSAFE_TRANSLATION,
@@ -132,12 +136,13 @@ class CandidateImplementationTranslator:
             translator_version=TRANSLATOR_VERSION,
             generated_at=generated_at,
         )
-        policy_result = self._tool_policy.validate(_execution_request_for_validation(request))
-        if not hasattr(policy_result, "argv"):
-            return _failure(
-                CandidatePlanningFailureCode.UNSAFE_TRANSLATION,
-                "Translated implementation request was rejected by execution policy.",
-            )
+        if session.snapshot.execution_intent != RC1_VALIDATION_SMOKE_INTENT:
+            policy_result = self._tool_policy.validate(_execution_request_for_validation(request))
+            if not hasattr(policy_result, "argv"):
+                return _failure(
+                    CandidatePlanningFailureCode.UNSAFE_TRANSLATION,
+                    "Translated implementation request was rejected by execution policy.",
+                )
         return CandidateImplementationDecision(request=request)
 
 
@@ -159,7 +164,11 @@ def implementation_request_id(
     return f"candidate-implementation-v1-{digest}"
 
 
-def _validate_affected_files(paths: tuple[Path, ...]) -> tuple[Path, ...]:
+def _validate_affected_files(
+    paths: tuple[Path, ...],
+    *,
+    smoke: bool = False,
+) -> tuple[Path, ...]:
     if not paths:
         raise ValueError("Candidate implementation requires affected files.")
     normalized: list[Path] = []
@@ -168,7 +177,12 @@ def _validate_affected_files(paths: tuple[Path, ...]) -> tuple[Path, ...]:
             raise ValueError("Candidate affected files must be repository-relative.")
         normalized.append(path)
     result = tuple(sorted(set(normalized), key=lambda item: item.as_posix()))
-    if set(result) != _ALLOWED_AFFECTED_FILES:
+    allowed = (
+        {Path("services/atlas-agent/tests/test_execution_engine.py")}
+        if smoke
+        else _ALLOWED_AFFECTED_FILES
+    )
+    if set(result) != allowed:
         raise ValueError("Candidate affected files are not allowlisted.")
     return result
 
@@ -179,6 +193,8 @@ def _argv_for_candidate(
     affected_files: tuple[Path, ...],
 ) -> tuple[str, ...]:
     assert session.plan is not None
+    if session.snapshot.execution_intent == RC1_VALIDATION_SMOKE_INTENT:
+        return ("atlas-rc1-validation-smoke",)
     prompt = "\n".join(
         (
             "Atlas Agent candidate implementation request.",

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
 SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})
+RC1_VALIDATION_SMOKE_INTENT = "rc1-validation-smoke"
 
 
 class CandidatePlanningSessionStatus(StrEnum):
@@ -357,4 +359,9 @@ def build_candidate_successor_planning_session_id(
 def is_supported_execution_intent(execution_intent: str) -> bool:
     """Return whether Atlas Agent can create a planning session for an intent."""
 
-    return execution_intent in SUPPORTED_EXECUTION_INTENTS
+    if execution_intent in SUPPORTED_EXECUTION_INTENTS:
+        return True
+    return (
+        execution_intent == RC1_VALIDATION_SMOKE_INTENT
+        and os.getenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "false").lower() == "true"
+    )

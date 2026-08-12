@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from app.candidate_planning.conversion import candidate_plan_fingerprint
 from app.candidate_planning.implementation import (
     TRANSLATOR_VERSION,
@@ -186,6 +187,29 @@ def test_translator_returns_not_supported_for_other_intents(tmp_path: Path) -> N
     assert decision.request is None
     assert decision.failure is not None
     assert decision.failure.code.value == "implementation_not_supported"
+
+
+def test_gated_rc1_smoke_translates_to_exact_fixed_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    candidate_session = replace(
+        session(tmp_path, intent="rc1-validation-smoke"),
+        plan=plan(tmp_path, affected_files=(Path("services/atlas-agent/tests/test_execution_engine.py"),)),
+    )
+    decision = CandidateImplementationTranslator().translate(
+        session=candidate_session,
+        workflow=workflow(candidate_session),
+        repository=repository(tmp_path),
+        generated_at=NOW,
+    )
+    assert decision.request is not None
+    assert decision.request.execution_intent == "rc1-validation-smoke"
+    assert decision.request.argv == ("atlas-rc1-validation-smoke",)
+    assert decision.request.working_directory == tmp_path
+    assert decision.request.affected_files == (
+        Path("services/atlas-agent/tests/test_execution_engine.py"),
+    )
 
 
 def test_translator_rejects_unallowlisted_affected_files(tmp_path: Path) -> None:

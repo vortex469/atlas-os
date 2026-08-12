@@ -671,6 +671,11 @@ class WorkflowEngine:
                     allowed_affected_files=tuple(
                         str(path) for path in implementation_plan.affected_files
                     ),
+                    timeout_seconds=(
+                        30.0
+                        if metadata.execution_intent == "rc1-validation-smoke"
+                        else 120.0
+                    ),
                 )
             execution_result = self._execution_engine.execute(
                 execution_request,
