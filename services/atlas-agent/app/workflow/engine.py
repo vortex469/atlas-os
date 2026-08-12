@@ -340,6 +340,8 @@ class WorkflowEngine:
             is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
         ):
             return self._resume_candidate_implementation(session)
+        if session.state is WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION:
+            return self._resume_patch_applied_candidate(session)
         if (
             session.state
             is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
@@ -773,6 +775,32 @@ class WorkflowEngine:
                     after_execution,
                     implementation_plan,
                 )
+            checkpoint_state = WorkflowSessionState.EXECUTING
+            if self._execution_engine.uses_worker is True and not claimed_session.worker_patch_applied:
+                if self._state_persistence is None:
+                    if not self._state_store.transition_session(
+                        session.identifier,
+                        WorkflowSessionState.EXECUTING,
+                        WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
+                        execution_result=execution_result,
+                        worker_patch_applied=True,
+                        changed_files=changed_files,
+                    ):
+                        raise RuntimeError("patch_checkpoint_persistence_failed")
+                else:
+                    def checkpoint(workflows, _approvals):
+                        return workflows.transition_session(
+                            session.identifier,
+                            WorkflowSessionState.EXECUTING,
+                            WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
+                            execution_result=execution_result,
+                            worker_patch_applied=True,
+                            changed_files=changed_files,
+                        )
+
+                    if not self._state_persistence.mutate_aggregate(checkpoint):
+                        raise RuntimeError("patch_checkpoint_persistence_failed")
+                checkpoint_state = WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION
             verification_approval = self._candidate_verification_approval_request(
                 claimed_session
             )
@@ -780,7 +808,7 @@ class WorkflowEngine:
                 self._approval_repository.save_request(verification_approval)
                 transition_ok = self._state_store.transition_session(
                     session.identifier,
-                    WorkflowSessionState.EXECUTING,
+                    checkpoint_state,
                     WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
                     execution_result=execution_result,
                     worker_patch_applied=worker_patch_applied,
@@ -792,7 +820,7 @@ class WorkflowEngine:
                     approvals.save_request(verification_approval)
                     return workflow.transition_session(
                         session.identifier,
-                        WorkflowSessionState.EXECUTING,
+                        checkpoint_state,
                         WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
                         execution_result=execution_result,
                         worker_patch_applied=worker_patch_applied,
@@ -844,6 +872,60 @@ class WorkflowEngine:
             planning_analysis=claimed_session.planning_analysis,
             approval_request=verification_approval,
             execution_result=execution_result,
+        )
+
+    def _resume_patch_applied_candidate(self, session: WorkflowSession) -> WorkflowResult:
+        """Reconcile a durably applied worker patch without re-executing it."""
+
+        if not session.worker_patch_applied or not session.execution_result or not session.changed_files:
+            return self._blocked_session_result(
+                session=session,
+                error_message="patch_applied_checkpoint_invalid",
+            )
+        approval = self._candidate_verification_approval_request(session)
+        try:
+            if self._state_persistence is None:
+                existing = self._approval_repository.get_request(approval.identifier)
+                if existing is None:
+                    self._approval_repository.save_request(approval)
+                transition_ok = self._state_store.transition_session(
+                    session.identifier,
+                    WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
+                    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                )
+            else:
+                def reconcile(workflows, approvals):
+                    if approvals.get_request(approval.identifier) is None:
+                        approvals.save_request(approval)
+                    return workflows.transition_session(
+                        session.identifier,
+                        WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
+                        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                    )
+
+                transition_ok = self._state_persistence.mutate_aggregate(reconcile)
+        except Exception:
+            logger.exception("Applied worker patch recovery failed")
+            self._block_claimed_session(
+                session.identifier,
+                WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
+            )
+            return self._blocked_session_result(
+                session=session,
+                error_message=CandidateExecutionFailureCode.PERSISTENCE_FAILED.value,
+            )
+        if not transition_ok:
+            return self._blocked_session_result(
+                session=session,
+                error_message="patch_applied_checkpoint_transition_failed",
+            )
+        return self._candidate_session_result(
+            session=replace(
+                session,
+                state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            ),
+            phase=SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+            approval_request=approval,
         )
 
     def _log_candidate_pre_execution_failure(

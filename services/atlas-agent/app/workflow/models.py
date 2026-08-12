@@ -48,6 +48,7 @@ class WorkflowSessionState(StrEnum):
     AWAITING_APPROVAL = "awaiting_approval"
     AWAITING_IMPLEMENTATION_APPROVAL = "awaiting_implementation_approval"
     EXECUTING = "executing"
+    PATCH_APPLIED_PENDING_VERIFICATION = "patch_applied_pending_verification"
     AWAITING_VERIFICATION_APPROVAL = "awaiting_verification_approval"
     VERIFYING = "verifying"
     AWAITING_COMMIT_APPROVAL = "awaiting_commit_approval"
