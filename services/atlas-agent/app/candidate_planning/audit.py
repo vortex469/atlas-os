@@ -272,6 +272,11 @@ def _validate_approval(
         return CandidateAuditFailureCode.APPROVAL_MISMATCH
     if request.workflow_id != workflow_id or request.purpose is not purpose:
         return CandidateAuditFailureCode.APPROVAL_MISMATCH
+    if (
+        result.decision.status is ApprovalStatus.PENDING
+        and purpose is ApprovalPurpose.IMPLEMENTATION
+    ):
+        return None
     if result.decision.status is not ApprovalStatus.APPROVED:
         return CandidateAuditFailureCode.APPROVAL_MISMATCH
     return None

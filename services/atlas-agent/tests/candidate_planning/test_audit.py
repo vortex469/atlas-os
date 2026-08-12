@@ -88,8 +88,6 @@ def _planning_session_with_plan(root: Path, workflow):
 def _approvals(workflow):
     implementation_request = workflow.candidate_implementation_request
     assert implementation_request is not None
-    verification_plan = workflow.candidate_verification_plan
-    assert verification_plan is not None
     implementation = _approved_result(
         workflow.candidate_implementation_approval_id
         and replace(
@@ -156,6 +154,153 @@ def test_in_progress_candidate_audit_chain_can_validate_partial_chain(tmp_path: 
     assert result.chain is not None
     assert result.chain.implementation_request_id == workflow.candidate_implementation_request.identifier
     assert result.chain.execution_result_id is None
+
+
+def test_pending_implementation_approval_is_a_valid_incomplete_chain(tmp_path: Path) -> None:
+    workflow = _commit_ready_workflow(tmp_path)
+    workflow = replace(
+        workflow,
+        state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        execution_result=None,
+        candidate_verification_plan=None,
+    )
+    session = _planning_session_with_plan(tmp_path, workflow)
+    implementation = _approvals(workflow).implementation
+    assert implementation is not None
+    pending = ApprovalResult(
+        decision=ApprovalDecision(
+            request=implementation.decision.request,
+            status=ApprovalStatus.PENDING,
+            reviewer=None,
+        )
+    )
+
+    result = CandidateAuditChainValidator().validate(
+        planning_session=session,
+        workflow=workflow,
+        approvals=CandidateAuditApprovals(implementation=pending),
+    )
+
+    assert result.valid is True
+    assert result.failure_code is None
+    assert result.chain is not None
+    assert result.chain.implementation_approval_id == workflow.candidate_implementation_approval_id
+    assert result.chain.execution_result_id is None
+
+
+def test_rejected_implementation_approval_remains_invalid(tmp_path: Path) -> None:
+    workflow = replace(
+        _commit_ready_workflow(tmp_path),
+        state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        execution_result=None,
+        candidate_verification_plan=None,
+    )
+    session = _planning_session_with_plan(tmp_path, workflow)
+    implementation = _approvals(workflow).implementation
+    assert implementation is not None
+    rejected = ApprovalResult(
+        decision=ApprovalDecision(
+            request=implementation.decision.request,
+            status=ApprovalStatus.REJECTED,
+            reviewer="tester",
+        )
+    )
+
+    result = CandidateAuditChainValidator().validate(
+        planning_session=session,
+        workflow=workflow,
+        approvals=CandidateAuditApprovals(implementation=rejected),
+    )
+
+    assert result.valid is False
+    assert result.failure_code is CandidateAuditFailureCode.APPROVAL_MISMATCH
+
+
+def test_wrong_implementation_approval_id_remains_invalid(tmp_path: Path) -> None:
+    workflow = replace(
+        _commit_ready_workflow(tmp_path),
+        state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        execution_result=None,
+        candidate_verification_plan=None,
+    )
+    session = _planning_session_with_plan(tmp_path, workflow)
+    approval = _approvals(workflow).implementation
+    assert approval is not None
+    wrong_id = ApprovalResult(
+        decision=ApprovalDecision(
+            request=replace(approval.decision.request, identifier="approval-wrong"),
+            status=ApprovalStatus.PENDING,
+            reviewer=None,
+        )
+    )
+
+    result = CandidateAuditChainValidator().validate(
+        planning_session=session,
+        workflow=workflow,
+        approvals=CandidateAuditApprovals(implementation=wrong_id),
+    )
+
+    assert result.valid is False
+    assert result.failure_code is CandidateAuditFailureCode.APPROVAL_MISMATCH
+
+
+def test_wrong_implementation_approval_purpose_remains_invalid(tmp_path: Path) -> None:
+    workflow = replace(
+        _commit_ready_workflow(tmp_path),
+        state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        execution_result=None,
+        candidate_verification_plan=None,
+    )
+    session = _planning_session_with_plan(tmp_path, workflow)
+    approval = _approvals(workflow).implementation
+    assert approval is not None
+    wrong_purpose = ApprovalResult(
+        decision=ApprovalDecision(
+            request=replace(
+                approval.decision.request,
+                purpose=ApprovalPurpose.VERIFICATION,
+            ),
+            status=ApprovalStatus.PENDING,
+            reviewer=None,
+        )
+    )
+
+    result = CandidateAuditChainValidator().validate(
+        planning_session=session,
+        workflow=workflow,
+        approvals=CandidateAuditApprovals(implementation=wrong_purpose),
+    )
+
+    assert result.valid is False
+    assert result.failure_code is CandidateAuditFailureCode.APPROVAL_MISMATCH
+
+
+def test_wrong_implementation_approval_workflow_remains_invalid(tmp_path: Path) -> None:
+    workflow = replace(
+        _commit_ready_workflow(tmp_path),
+        state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        execution_result=None,
+        candidate_verification_plan=None,
+    )
+    session = _planning_session_with_plan(tmp_path, workflow)
+    approval = _approvals(workflow).implementation
+    assert approval is not None
+    wrong_workflow = ApprovalResult(
+        decision=ApprovalDecision(
+            request=replace(approval.decision.request, workflow_id="workflow-wrong"),
+            status=ApprovalStatus.PENDING,
+            reviewer=None,
+        )
+    )
+
+    result = CandidateAuditChainValidator().validate(
+        planning_session=session,
+        workflow=workflow,
+        approvals=CandidateAuditApprovals(implementation=wrong_workflow),
+    )
+
+    assert result.valid is False
+    assert result.failure_code is CandidateAuditFailureCode.APPROVAL_MISMATCH
 
 
 def test_complete_candidate_audit_chain_requires_commit_result(tmp_path: Path) -> None:
