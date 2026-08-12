@@ -33,3 +33,10 @@ def test_patch_journal_rejects_corrupt_payload(tmp_path: Path) -> None:
     journal.path.write_text("[]", encoding="utf-8")
     with pytest.raises(PatchJournalError, match="invalid"):
         journal.read()
+
+
+def test_patch_journal_rejects_invalid_digest(tmp_path: Path) -> None:
+    journal = PatchJournal(tmp_path / "state")
+    journal.write({"patch_digest": "not-a-digest"})
+    with pytest.raises(PatchJournalError, match="digest"):
+        journal.read()

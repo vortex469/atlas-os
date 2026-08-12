@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +46,14 @@ class PatchJournal:
             raise PatchJournalError("worker patch journal cannot be read") from exc
         if not isinstance(payload, dict):
             raise PatchJournalError("worker patch journal is invalid")
+        digest = payload.get("patch_digest")
+        if digest is not None and (
+            not isinstance(digest, str)
+            or re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None
+        ):
+            raise PatchJournalError("worker patch journal digest is invalid")
+        if payload.get("patch") is not None and not isinstance(payload["patch"], str):
+            raise PatchJournalError("worker patch journal patch is invalid")
         return payload
 
     def clear(self) -> None:
