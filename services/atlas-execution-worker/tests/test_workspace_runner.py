@@ -133,6 +133,7 @@ def test_real_clone_succeeds_for_differently_owned_configured_source(
     repository: tuple[Path, str], tmp_path: Path
 ) -> None:
     source, head = repository
+    source_status_before = _git(source, "status", "--porcelain")
     os.chown(source, 65534, 65534)
     for path in source.rglob("*"):
         os.chown(path, 65534, 65534)
@@ -150,6 +151,14 @@ def test_real_clone_succeeds_for_differently_owned_configured_source(
 
     assert _git(workspace.path, "rev-parse", "HEAD") == head
     assert (source / "compose.production.yaml").read_text() == "image: example/app:1.0\n"
+    source_status_after = subprocess.run(
+        ["git", "-C", str(source), "status", "--porcelain"],
+        check=True,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "GIT_CONFIG_GLOBAL": str(config_path)},
+    ).stdout.strip()
+    assert source_status_after == source_status_before
     manager.cleanup("execution-1")
 
 

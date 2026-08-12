@@ -87,8 +87,6 @@ def load_repository_mapping(
         )
         if result.returncode != 0 or result.stdout.strip() != "true":
             raise WorkerConfigurationError("repository map source must be a git worktree")
-        if result.returncode != 0 or result.stdout.strip() != "true":
-            raise WorkerConfigurationError("repository map source must be a git worktree")
     return mapping
 
 
