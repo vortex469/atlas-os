@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.models import (
     CandidatePlan,
@@ -102,6 +101,11 @@ class FakeInspector:
             staged_files=(),
             untracked_files=(),
         )
+
+
+class RaisingPlanner:
+    def create_plan(self, *, context, snapshot):
+        raise ValueError("synthetic planner rejection")
 
 
 def _candidate_plan(root: Path) -> CandidatePlan:
@@ -219,6 +223,7 @@ def service_with(
     persistence=None,
     repository_root: Path | None = None,
     repository_inspector_factory=FakeInspector,
+    planner=None,
 ) -> CandidatePlanningService:
     return CandidatePlanningService(
         core_client=core,  # type: ignore[arg-type]
@@ -228,8 +233,31 @@ def service_with(
         if repository_root is not None
         else None,
         repository_inspector_factory=repository_inspector_factory,
+        planner=planner,
         clock=lambda: NOW,
     )
+
+
+def test_planner_value_error_is_sanitized_and_logged(caplog, tmp_path: Path) -> None:
+    service = service_with(
+        FakeCoreClient([accepted_response(), accepted_response()]),
+        repository_root=tmp_path,
+        planner=RaisingPlanner(),
+    )
+    session = run(
+        service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1"))
+    )
+
+    with caplog.at_level("WARNING", logger="app.candidate_planning.service"):
+        response = run(service.generate_plan(session.session_id))
+
+    assert response.planning_failure is not None
+    assert response.planning_failure.code is CandidatePlanningFailureCode.UNSAFE_PLAN_CONTENT
+    assert response.planning_failure.message == "Candidate plan contained unsafe content."
+    record = next(record for record in caplog.records if record.message == "Candidate planner rejected a plan")
+    assert record.exception_type == "ValueError"
+    assert record.exception_message == "synthetic planner rejection"
+    assert not hasattr(record, "mutation_desired_value")
 
 
 def test_agent_sends_only_candidate_id_and_fingerprint_to_core() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -65,6 +66,8 @@ from app.workflow.models import (
     WorkflowSessionState,
     WorkflowSource,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CandidatePlanningServiceError(RuntimeError):
@@ -1337,7 +1340,24 @@ class CandidatePlanningService:
                 ),
                 snapshot=repository_snapshot,
             )
-        except ValueError:
+        except ValueError as error:
+            mutation = session.snapshot.mutation
+            logger.warning(
+                "Candidate planner rejected a plan",
+                extra={
+                    "session_id": session.identifier,
+                    "candidate_id": session.candidate_id,
+                    "execution_intent": session.snapshot.execution_intent,
+                    "recommendation_class": session.snapshot.recommendation_class,
+                    "target_id": session.snapshot.target_id,
+                    "target_type": session.snapshot.target_type,
+                    "mutation_file": str(mutation.file) if mutation is not None else None,
+                    "mutation_operation": mutation.operation if mutation is not None else None,
+                    "exception_type": type(error).__name__,
+                    "exception_message": str(error),
+                },
+                exc_info=True,
+            )
             return unsupported_decision(
                 CandidatePlanningFailureCode.UNSAFE_PLAN_CONTENT,
                 "Candidate plan contained unsafe content.",
