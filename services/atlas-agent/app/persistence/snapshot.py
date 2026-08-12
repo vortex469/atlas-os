@@ -549,7 +549,13 @@ class AgentStatePersistenceCoordinator:
                 session.state is WorkflowSessionState.AWAITING_APPROVAL
                 and session.source == WorkflowSource.CANDIDATE
             ):
-                purpose = ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
+                shell_result = approvals.storage.get(f"approval-{session.identifier}")
+                if (
+                    shell_result is not None
+                    and shell_result.decision.request.purpose
+                    is ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
+                ):
+                    purpose = ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
             if purpose is None:
                 continue
             approval_id = (
@@ -560,6 +566,16 @@ class AgentStatePersistenceCoordinator:
                 else _approval_id_for(session.identifier, purpose)
             )
             result = approvals.storage.get(approval_id)
+            # Older candidate workflows persisted the executable approval under
+            # the shell identifier before the shell boundary was introduced.
+            # Keep those snapshots readable, but never use the legacy ID for
+            # newly translated candidate implementations.
+            if (
+                result is None
+                and purpose is ApprovalPurpose.IMPLEMENTATION
+                and session.source is WorkflowSource.CANDIDATE
+            ):
+                result = approvals.storage.get(f"approval-{session.identifier}")
             if result is None:
                 raise StatePersistenceError("Waiting workflow is missing approval request")
             request = result.decision.request
@@ -586,6 +602,9 @@ def _approval_id_for(workflow_id: str, purpose: ApprovalPurpose) -> str:
     if purpose is ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL:
         return f"approval-{workflow_id}"
     if purpose is ApprovalPurpose.IMPLEMENTATION:
+        # Non-candidate workflows retain the original implementation ID. New
+        # candidate translations store their explicit implementation ID on the
+        # workflow session and therefore do not use this fallback.
         return f"approval-{workflow_id}"
     if purpose is ApprovalPurpose.VERIFICATION:
         return f"approval-verification-{workflow_id}"

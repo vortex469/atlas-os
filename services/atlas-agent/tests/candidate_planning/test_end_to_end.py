@@ -9,8 +9,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
-from fastapi.testclient import TestClient
-
 from app.approval.engine import ApprovalEngine
 from app.approval.models import ApprovalDecision, ApprovalStatus
 from app.approval.repository import ApprovalRepository
@@ -45,6 +43,7 @@ from app.verification.engine import VerificationEngine
 from app.workflow.engine import WorkflowEngine
 from app.workflow.models import SprintPhase, WorkflowSessionState
 from app.workflow.state import WorkflowStateStore
+from fastapi.testclient import TestClient
 from tests.candidate_planning.test_execution import FakeCoreClient, core_response
 
 
@@ -199,7 +198,7 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     assert translated.implementation_request_id is not None
     workflow_id = converted.workflow_session_id
 
-    implementation_approval = approvals.get_request(f"approval-{workflow_id}")
+    implementation_approval = approvals.get_request(f"approval-implementation-{workflow_id}")
     assert implementation_approval is not None
     assert approvals.update_decision(
         implementation_approval.decision.request.identifier,
@@ -259,7 +258,7 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         planning_session=planning_session,
         workflow=final_workflow,
         approvals=CandidateAuditApprovals(
-            implementation=approvals.get_request(f"approval-{workflow_id}"),
+            implementation=approvals.get_request(f"approval-implementation-{workflow_id}"),
             verification=approvals.get_request(f"approval-verification-{workflow_id}"),
             commit=approvals.get_request(f"approval-commit-{workflow_id}"),
         ),
@@ -392,7 +391,7 @@ def test_candidate_implementation_route_sequence_claims_once_and_pauses_for_veri
             json={"workflow_id": workflow_id, "decision": "approve"},
         )
         assert approval_response.status_code == 200
-        stored = approvals.get_request(f"approval-{workflow_id}")
+        stored = approvals.get_request(f"approval-implementation-{workflow_id}")
         assert stored is not None
         assert stored.decision.status is ApprovalStatus.APPROVED
         assert stored.decision.reviewer == "workflow-service"

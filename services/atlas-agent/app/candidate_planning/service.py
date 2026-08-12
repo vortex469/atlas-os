@@ -1154,7 +1154,7 @@ class CandidatePlanningService:
                     repository_head=repository_snapshot.head_commit,
                 )
             exact_approval = ApprovalRequest(
-                identifier=f"approval-{workflow_id}",
+                identifier=f"approval-implementation-{workflow_id}",
                 workflow_id=workflow_id,
                 checkpoint_id=decision.request.identifier,
                 title="Approve exact candidate implementation request",

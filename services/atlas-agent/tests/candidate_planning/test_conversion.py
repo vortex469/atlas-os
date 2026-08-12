@@ -7,8 +7,13 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.approval.models import (
+    ApprovalDecision,
+    ApprovalPurpose,
+    ApprovalRequest,
+    ApprovalStatus,
+)
 from app.approval.repository import ApprovalRepository
-from app.approval.models import ApprovalDecision, ApprovalStatus
 from app.candidate_planning.conversion import candidate_plan_fingerprint
 from app.candidate_planning.models import (
     CandidateImplementationTranslationRequest,
@@ -364,6 +369,20 @@ def test_candidate_workflow_shell_translates_to_exact_implementation_approval(tm
         session=session,
     )
     shell = run(service.convert_plan_to_workflow_shell(session.identifier, CandidateWorkflowConversionRequest()))
+    assert shell.workflow_session_id is not None
+    assert shell.implementation_approval_request_id == f"approval-{shell.workflow_session_id}"
+    shell_approval = approvals.get_request(shell.implementation_approval_request_id)
+    assert shell_approval is not None
+    assert shell_approval.decision.request.purpose is ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
+    assert shell_approval.decision.request.requested_command == ()
+    assert approvals.update_decision(
+        shell_approval.decision.request.identifier,
+        ApprovalDecision(
+            request=shell_approval.decision.request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="shell-reviewer",
+        ),
+    )
 
     response = run(
         service.translate_workflow_shell_to_implementation(
@@ -378,7 +397,7 @@ def test_candidate_workflow_shell_translates_to_exact_implementation_approval(tm
 
     assert response.translation_status is CandidatePlanningSessionStatus.IMPLEMENTATION_READY
     assert response.implementation_request_id is not None
-    assert response.exact_approval_request_id == shell.implementation_approval_request_id
+    assert response.exact_approval_request_id == f"approval-implementation-{shell.workflow_session_id}"
     workflow = workflow_state.get_session(shell.workflow_session_id)
     assert workflow is not None
     assert workflow.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
@@ -395,6 +414,10 @@ def test_candidate_workflow_shell_translates_to_exact_implementation_approval(tm
     assert implementation.repository_head == "abc123"
     approval = approvals.get_request(response.exact_approval_request_id)
     assert approval is not None
+    assert approval.decision.request.identifier == f"approval-implementation-{shell.workflow_session_id}"
+    assert approval.decision.request.identifier != shell_approval.decision.request.identifier
+    assert approval.decision.status is ApprovalStatus.PENDING
+    assert approvals.get_request(shell_approval.decision.request.identifier).decision.status is ApprovalStatus.APPROVED
     assert approval.decision.request.requested_command == implementation.argv
     assert approval.decision.request.requested_working_directory == implementation.working_directory
     assert implementation.candidate_fingerprint in approval.decision.request.rationale
@@ -426,12 +449,22 @@ def test_candidate_workflow_translation_blocks_when_existing_approved_implementa
     shell = run(service.convert_plan_to_workflow_shell(session.identifier, CandidateWorkflowConversionRequest()))
     assert shell.implementation_approval_request_id is not None
 
-    stale_approval = approvals.get_request(shell.implementation_approval_request_id)
-    assert stale_approval is not None
+    implementation_approval_id = f"approval-implementation-{shell.workflow_session_id}"
+    stale_approval = ApprovalRequest(
+        identifier=implementation_approval_id,
+        workflow_id=shell.workflow_session_id,
+        checkpoint_id="stale-implementation",
+        title="Stale implementation approval",
+        requested_tool="codex",
+        requested_command=("codex", "exec", "stale"),
+        requested_working_directory=session.plan.repository_root,
+        rationale="Stale exact implementation request.",
+    )
+    approvals.save_request(stale_approval)
     assert approvals.update_decision(
-        shell.implementation_approval_request_id,
+        implementation_approval_id,
         ApprovalDecision(
-            request=stale_approval.decision.request,
+            request=stale_approval,
             status=ApprovalStatus.APPROVED,
             reviewer="legacy-reviewer",
         ),
