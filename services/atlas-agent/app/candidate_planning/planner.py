@@ -224,7 +224,7 @@ def _rc1_smoke_context_is_exact(context: CandidatePlanningContext) -> bool:
         context.execution_intent == _RC1_SMOKE_INTENT
         and context.target_id == "atlas-repository"
         and context.target_type == "repository"
-        and context.recommendation_class == "rc1_validation_smoke"
+        and context.recommendation_class == "rc1-validation-smoke"
         and context.mutation is not None
         and context.mutation.file == _RC1_SMOKE_TARGET
         and context.mutation.service == "atlas-agent"

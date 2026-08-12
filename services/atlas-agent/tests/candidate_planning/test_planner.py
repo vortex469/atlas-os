@@ -122,7 +122,7 @@ def test_plan_model_is_immutable(tmp_path: Path) -> None:
 def test_rc1_smoke_plan_is_fixed_and_one_file(tmp_path: Path) -> None:
     smoke_context = replace(
         context(tmp_path),
-        recommendation_class="rc1_validation_smoke",
+        recommendation_class="rc1-validation-smoke",
         target_id="atlas-repository",
         execution_intent="rc1-validation-smoke",
         mutation=ComposeMutationSpecification(
@@ -173,7 +173,7 @@ def test_rc1_smoke_plan_rejects_arbitrary_mutation(
 ) -> None:
     smoke_context = replace(
         context(tmp_path),
-        recommendation_class="rc1_validation_smoke",
+        recommendation_class="rc1-validation-smoke",
         target_id="atlas-repository",
         execution_intent="rc1-validation-smoke",
         mutation=mutation,
