@@ -27,6 +27,7 @@ from app.candidate_planning.state import CandidatePlanningStateStore
 from app.core_client.exceptions import AtlasCoreTimeoutError
 from app.core_client.models import (
     CoreCandidatePlanningIntakeResponse,
+    CoreComposeMutationSpecification,
     CoreExecutionCandidateSnapshot,
 )
 from app.persistence.snapshot import (
@@ -201,6 +202,36 @@ def accepted_response(
     )
 
 
+def rc1_accepted_response() -> CoreCandidatePlanningIntakeResponse:
+    candidate = candidate_snapshot(intent="rc1-validation-smoke").model_copy(
+        update={
+            "recommendation_class": "rc1-validation-smoke",
+            "target_id": "atlas-repository",
+            "mutation": CoreComposeMutationSpecification(
+                file="services/atlas-agent/tests/test_execution_engine.py",
+                service="atlas-agent",
+                property="rc1-validation-marker",
+                operation="append-fixed-marker",
+                expected_value=None,
+                desired_value="# Atlas RC1 execution smoke marker",
+                preservation_constraints=(
+                    "no-deployment-files",
+                    "no-commit",
+                    "rc1-validation-only",
+                ),
+            ),
+        }
+    )
+    return CoreCandidatePlanningIntakeResponse(
+        status="accepted_for_planning",
+        candidate_id="candidate-1",
+        planning_allowed=True,
+        reason_codes=(),
+        current_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        current_candidate=candidate,
+    )
+
+
 def rejected_response(status: str = "stale") -> CoreCandidatePlanningIntakeResponse:
     return CoreCandidatePlanningIntakeResponse(
         status=status,
@@ -296,6 +327,27 @@ def test_accepted_supported_candidate_creates_ready_session() -> None:
     snapshot = sessions[response.session_id].snapshot
     assert snapshot.execution_intent == "update-compose-stack"
     assert snapshot.evidence_ids == ("evidence-1",)
+
+
+def test_rc1_mutation_survives_core_intake_to_planner(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    service = service_with(
+        FakeCoreClient([rc1_accepted_response(), rc1_accepted_response()]),
+        repository_root=tmp_path,
+    )
+
+    session = run(
+        service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1"))
+    )
+    response = run(service.generate_plan(session.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.PLAN_READY
+    assert response.planning_failure is None
+    plan = response.plan
+    assert plan is not None
+    assert plan.mutation is not None
+    assert plan.mutation.file == Path("services/atlas-agent/tests/test_execution_engine.py")
+    assert plan.mutation.operation == "append-fixed-marker"
 
 
 def test_accepted_unsupported_intent_returns_unsupported_without_session() -> None:

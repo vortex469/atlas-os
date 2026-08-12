@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.execution_candidates.models import (
     ApprovalLevel,
+    ComposeMutationSpecification,
     ExecutionCandidate,
     ExecutionCandidateStatus,
     ExecutionCategory,
@@ -36,6 +37,7 @@ class ExecutionCandidateResponse(BaseModel):
     relationship_ids: tuple[str, ...] = ()
     created_at: datetime
     expires_at: datetime | None = None
+    mutation: ComposeMutationSpecification | None = None
 
 
 class ExecutionCandidatePageResponse(BaseModel):
@@ -71,4 +73,5 @@ def candidate_to_response(candidate: ExecutionCandidate) -> ExecutionCandidateRe
         relationship_ids=candidate.relationship_ids,
         created_at=candidate.created_at,
         expires_at=candidate.expires_at,
+        mutation=candidate.mutation,
     )
