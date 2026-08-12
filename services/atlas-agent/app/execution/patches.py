@@ -47,6 +47,7 @@ class WorkerPatchApplier:
             raise PatchApplicationError("patch_invalid")
         approved = set(request.allowed_affected_files)
         self._validate_paths(result.changed_files, approved)
+        baseline = self._status(repository_root)
         if self._run_git(
             repository_root,
             ("apply", "--reverse", "--check", "--whitespace=error", "-"),
@@ -57,8 +58,18 @@ class WorkerPatchApplier:
         self._run_git(repository_root, ("apply", "--check", "--whitespace=error", "-"), patch)
         self._run_git(repository_root, ("apply", "--whitespace=error", "-"), patch)
         after = self._status(repository_root)
-        actual = tuple(sorted(after))
-        if set(actual) != set(result.changed_files) or not set(actual).issubset(approved):
+        delta = {
+            path
+            for path in set(baseline) | set(after)
+            if baseline.get(path) != after.get(path)
+        }
+        actual = tuple(sorted(delta))
+        baseline_preserved = all(after.get(path) == status for path, status in baseline.items())
+        if (
+            not baseline_preserved
+            or set(actual) != set(result.changed_files)
+            or not delta.issubset(approved)
+        ):
             self._run_git(repository_root, ("apply", "-R", "-"), patch, check=False)
             raise PatchApplicationError("post_apply_scope_mismatch")
         check = subprocess.run(
@@ -81,7 +92,7 @@ class WorkerPatchApplier:
                 raise PatchApplicationError("patch_out_of_scope")
 
     @staticmethod
-    def _status(repository_root: Path) -> set[str]:
+    def _status(repository_root: Path) -> dict[str, str]:
         result = subprocess.run(
             ["git", "status", "--porcelain=v1", "-z"],
             cwd=repository_root,
@@ -90,7 +101,26 @@ class WorkerPatchApplier:
             check=True,
         )
         records = result.stdout.decode("utf-8").split("\0")
-        return {record[3:] for record in records if record}
+        status: dict[str, str] = {}
+        for record in records:
+            if not record:
+                continue
+            path = record[3:]
+            file_digest = "missing"
+            candidate = repository_root / path
+            if candidate.is_file():
+                file_digest = hashlib.sha256(candidate.read_bytes()).hexdigest()
+            staged = subprocess.run(
+                ["git", "diff", "--cached", "--binary", "--", path],
+                cwd=repository_root,
+                capture_output=True,
+                text=False,
+                check=True,
+            ).stdout
+            status[path] = record[:3] + ":" + hashlib.sha256(
+                file_digest.encode() + staged
+            ).hexdigest()
+        return status
 
     @staticmethod
     def _git(repository_root: Path, *arguments: str) -> str:

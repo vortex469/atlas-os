@@ -787,6 +787,17 @@ class WorkflowEngine:
                 transition_ok = self._state_persistence.mutate_aggregate(
                     pause_for_verification
                 )
+        except PatchApplicationError:
+            logger.exception("Candidate execution patch application failed")
+            self._block_claimed_session(
+                session.identifier,
+                WorkflowSessionState.EXECUTING,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=execution_result,
+                error_message=CandidateExecutionFailureCode.PATCH_APPLICATION_FAILED.value,
+            )
         except Exception:
             logger.exception("Candidate verification approval storage failed")
             self._block_claimed_session(

@@ -75,16 +75,19 @@ def result_for(req: WorkerExecutionRequest, patch: str, head: str, files: tuple[
     )
 
 
-def test_patch_applies_only_after_validation(tmp_path: Path) -> None:
-    root, head = make_repo(tmp_path)
-    patch = """diff --git a/compose.production.yaml b/compose.production.yaml
-index 42c1c24..3e6c3af 100644
+def compose_patch() -> str:
+    return """diff --git a/compose.production.yaml b/compose.production.yaml
 --- a/compose.production.yaml
 +++ b/compose.production.yaml
 @@ -1 +1 @@
 -image: example/app:1.0
 +image: example/app:1.1
 """
+
+
+def test_patch_applies_only_after_validation(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    patch = compose_patch()
     req = request(root, head)
     outcome = WorkerPatchApplier().apply(root, req, result_for(req, patch, head))
     assert outcome.changed_files == ("compose.production.yaml",)
@@ -95,13 +98,7 @@ index 42c1c24..3e6c3af 100644
 
 def test_same_patch_is_idempotent_after_first_application(tmp_path: Path) -> None:
     root, head = make_repo(tmp_path)
-    patch = """diff --git a/compose.production.yaml b/compose.production.yaml
---- a/compose.production.yaml
-+++ b/compose.production.yaml
-@@ -1 +1 @@
--image: example/app:1.0
-+image: example/app:1.1
-"""
+    patch = compose_patch()
     req = request(root, head)
     result = result_for(req, patch, head)
     first = WorkerPatchApplier().apply(root, req, result)
@@ -152,3 +149,96 @@ def test_out_of_scope_patch_is_rejected(tmp_path: Path) -> None:
     with pytest.raises((PatchApplicationError, ValueError), match="(patch_out_of_scope|changed file is outside approved scope)"):
         WorkerPatchApplier().apply(root, req, out)
     assert (root / "forbidden.txt").read_text(encoding="utf-8") == "unchanged\n"
+
+
+def test_preexisting_untracked_file_is_preserved(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    (root / "compose.execution-smoke.override.yaml").write_text("local\n")
+    req = request(root, head)
+    outcome = WorkerPatchApplier().apply(root, req, result_for(req, compose_patch(), head))
+    assert outcome.changed_files == ("compose.production.yaml",)
+    assert (root / "compose.execution-smoke.override.yaml").read_text() == "local\n"
+
+
+def test_preexisting_modified_file_is_preserved(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    (root / "forbidden.txt").write_text("local\n")
+    req = request(root, head)
+    WorkerPatchApplier().apply(root, req, result_for(req, compose_patch(), head))
+    assert (root / "forbidden.txt").read_text() == "local\n"
+
+
+def test_patch_touching_baseline_dirty_file_is_rolled_back(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    (root / "forbidden.txt").write_text("local\n")
+    patch = compose_patch() + """diff --git a/forbidden.txt b/forbidden.txt
+--- a/forbidden.txt
++++ b/forbidden.txt
+@@ -1 +1 @@
+-local
++tampered
+"""
+    req = request(root, head)
+    with pytest.raises(PatchApplicationError, match="post_apply_scope_mismatch"):
+        WorkerPatchApplier().apply(root, req, result_for(req, patch, head))
+    assert (root / "compose.production.yaml").read_text() == "image: example/app:1.0\n"
+    assert (root / "forbidden.txt").read_text() == "local\n"
+
+
+def test_patch_introducing_unapproved_file_is_rolled_back(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    patch = compose_patch() + """diff --git a/unapproved.txt b/unapproved.txt
+new file mode 100644
+--- /dev/null
++++ b/unapproved.txt
+@@ -0,0 +1 @@
++secret
+"""
+    req = request(root, head)
+    with pytest.raises(PatchApplicationError, match="post_apply_scope_mismatch"):
+        WorkerPatchApplier().apply(root, req, result_for(req, patch, head))
+    assert not (root / "unapproved.txt").exists()
+    assert (root / "compose.production.yaml").read_text() == "image: example/app:1.0\n"
+
+
+def test_changed_files_must_match_actual_patch_delta(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    req = request(root, head)
+    with pytest.raises(PatchApplicationError, match="post_apply_scope_mismatch"):
+        WorkerPatchApplier().apply(root, req, result_for(req, compose_patch(), head, ()))
+    assert git(root, "status", "--porcelain") == ""
+
+
+def test_changed_files_cannot_claim_unchanged_approved_file(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    req = request(root, head, ("compose.production.yaml", "forbidden.txt"))
+    with pytest.raises(PatchApplicationError, match="post_apply_scope_mismatch"):
+        WorkerPatchApplier().apply(
+            root,
+            req,
+            result_for(req, compose_patch(), head, ("compose.production.yaml", "forbidden.txt")),
+        )
+    assert git(root, "status", "--porcelain") == ""
+
+
+def test_rc1_baseline_shape_succeeds_without_filename_special_case(tmp_path: Path) -> None:
+    root, head = make_repo(tmp_path)
+    target = root / "services/atlas-agent/tests/test_execution_engine.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("old\n")
+    git(root, "add", str(target.relative_to(root)))
+    git(root, "commit", "-qm", "target")
+    head = git(root, "rev-parse", "HEAD")
+    (root / "compose.execution-smoke.override.yaml").write_text("local\n")
+    patch = """diff --git a/services/atlas-agent/tests/test_execution_engine.py b/services/atlas-agent/tests/test_execution_engine.py
+--- a/services/atlas-agent/tests/test_execution_engine.py
++++ b/services/atlas-agent/tests/test_execution_engine.py
+@@ -1 +1 @@
+-old
++new
+"""
+    req = request(root, head, ("services/atlas-agent/tests/test_execution_engine.py",))
+    result = result_for(req, patch, head, ("services/atlas-agent/tests/test_execution_engine.py",))
+    outcome = WorkerPatchApplier().apply(root, req, result)
+    assert outcome.changed_files == ("services/atlas-agent/tests/test_execution_engine.py",)
+    assert (root / "compose.execution-smoke.override.yaml").read_text() == "local\n"

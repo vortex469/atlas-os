@@ -44,6 +44,7 @@ class CandidateExecutionFailureCode(StrEnum):
     CORE_UNAVAILABLE = "core_unavailable"
     TOOL_POLICY_DENIED = "tool_policy_denied"
     EXECUTION_FAILED = "execution_failed"
+    PATCH_APPLICATION_FAILED = "patch_application_failed"
     PERSISTENCE_FAILED = "persistence_failed"
 
 
