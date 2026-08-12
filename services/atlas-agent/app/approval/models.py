@@ -17,6 +17,7 @@ class ApprovalPurpose(StrEnum):
     """Purpose of one human approval boundary."""
 
     IMPLEMENTATION = "implementation"
+    CANDIDATE_WORKFLOW_SHELL = "candidate_workflow_shell"
     VERIFICATION = "verification"
     COMMIT = "commit"
 

@@ -288,7 +288,7 @@ def test_planner_value_error_is_sanitized_and_logged(caplog, tmp_path: Path) -> 
     record = next(
         record
         for record in caplog.records
-        if record.message.startswith("Candidate planner rejected a plan:")
+        if record.message == "Candidate planner rejected a plan"
     )
     assert record.exception_type == "ValueError"
     assert record.exception_message == "synthetic planner rejection"

@@ -9,7 +9,6 @@ from hashlib import sha256
 from pathlib import Path
 
 import pytest
-
 from app.approval.models import (
     ApprovalDecision,
     ApprovalPurpose,
@@ -53,6 +52,10 @@ from app.workflow.state import WorkflowStateStore
 from tests.candidate_planning.test_audit import (
     _complete_workflow,
     _planning_session_with_plan,
+)
+from tests.routes.test_workflow import (
+    candidate_planning_session_for_workflow,
+    candidate_workflow_session,
 )
 
 
@@ -123,6 +126,18 @@ def approval_request(
     root: Path,
     fingerprint: str = "a" * 64,
 ) -> ApprovalRequest:
+    if purpose is ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL:
+        return ApprovalRequest(
+            identifier=f"approval-{workflow_id}",
+            workflow_id=workflow_id,
+            checkpoint_id="candidate-plan-output-candidate-plan-1",
+            title="Approve candidate workflow shell",
+            requested_tool="atlas-agent",
+            requested_command=(),
+            requested_working_directory=root,
+            rationale="No executable command is approved by this request.",
+            purpose=ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL,
+        )
     if purpose is ApprovalPurpose.IMPLEMENTATION:
         return ApprovalRequest(
             identifier=f"approval-{workflow_id}",
@@ -457,6 +472,7 @@ def test_candidate_workflow_shell_linkage_round_trips_after_restart(tmp_path: Pa
         requested_command=(),
         requested_working_directory=tmp_path,
         rationale="No executable command is approved by this request.",
+        purpose=ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL,
     )
 
     persistence.mutate_aggregate(
@@ -488,6 +504,117 @@ def test_candidate_workflow_shell_linkage_round_trips_after_restart(tmp_path: Pa
     recovered_approval = recovered_approvals.get_request(approval_id)
     assert recovered_approval is not None
     assert recovered_approval.decision.request.requested_command == ()
+
+
+def test_successful_candidate_shell_translation_round_trips_without_retranslation(
+    tmp_path: Path,
+) -> None:
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        candidate_implementation_approval_id="approval-implementation-workflow-123",
+    )
+    shell = ApprovalRequest(
+        identifier="approval-workflow-123",
+        workflow_id=workflow.identifier,
+        checkpoint_id="plan-123",
+        title="Approve candidate workflow shell",
+        requested_tool="atlas-agent",
+        requested_command=(),
+        requested_working_directory=tmp_path,
+        rationale="No executable command is approved by this request.",
+        purpose=ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL,
+    )
+    implementation = ApprovalRequest(
+        identifier="approval-implementation-workflow-123",
+        workflow_id=workflow.identifier,
+        checkpoint_id="impl-request-123",
+        title="Approve exact candidate implementation",
+        requested_tool="docker-compose",
+        requested_command=("docker-compose", "up", "-d"),
+        requested_working_directory=tmp_path,
+        rationale="Approve the translated request.",
+    )
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    candidate_state = CandidatePlanningStateStore()
+    persistence = coordinator(tmp_path, workflow_state, approvals, candidate_state)
+    persistence.initialize()
+    persistence.mutate_aggregate(
+        lambda workflows, approval_repo, candidates: (
+            workflows.create_session(workflow),
+            approval_repo.save_request(shell),
+            approval_repo.save_request(implementation),
+            candidates.create_session(candidate_planning_session_for_workflow(tmp_path)),
+        )
+    )
+    persistence.mutate_aggregate(
+        lambda _workflows, approval_repo, _candidates: approval_repo.update_decision(
+            shell.identifier,
+            ApprovalDecision(request=shell, status=ApprovalStatus.APPROVED, reviewer="test"),
+        )
+    )
+    recovered_workflow = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    recovered_candidates = CandidatePlanningStateStore()
+    coordinator(tmp_path, recovered_workflow, recovered_approvals, recovered_candidates).initialize()
+    restored = recovered_workflow.get_session(workflow.identifier)
+    assert restored is not None
+    assert restored.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
+    assert restored.candidate_implementation_request is not None
+    assert recovered_approvals.get_request(shell.identifier).decision.status is ApprovalStatus.APPROVED
+    assert recovered_approvals.get_request(implementation.identifier) is not None
+    assert len(recovered_approvals.export_snapshot()) == 2
+
+
+def test_failed_candidate_shell_translation_round_trips_without_artifacts(
+    tmp_path: Path,
+) -> None:
+    base = candidate_workflow_session(tmp_path)
+    workflow = replace(
+        base,
+        state=WorkflowSessionState.BLOCKED,
+        candidate_implementation_request=None,
+        candidate_implementation_approval_id=None,
+        blocked_reason="candidate_shell_translation_failed",
+    )
+    shell = ApprovalRequest(
+        identifier="approval-workflow-123",
+        workflow_id=workflow.identifier,
+        checkpoint_id="plan-123",
+        title="Approve candidate workflow shell",
+        requested_tool="atlas-agent",
+        requested_command=(),
+        requested_working_directory=tmp_path,
+        rationale="No executable command is approved by this request.",
+        purpose=ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL,
+    )
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = coordinator(tmp_path, workflow_state, approvals)
+    persistence.initialize()
+    persistence.mutate_aggregate(
+        lambda workflows, approval_repo: (
+            workflows.create_session(workflow),
+            approval_repo.save_request(shell),
+        )
+    )
+    persistence.mutate_aggregate(
+        lambda _workflows, approval_repo: approval_repo.update_decision(
+            shell.identifier,
+            ApprovalDecision(request=shell, status=ApprovalStatus.APPROVED, reviewer="test"),
+        )
+    )
+    recovered_workflow = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    coordinator(tmp_path, recovered_workflow, recovered_approvals).initialize()
+    restored = recovered_workflow.get_session(workflow.identifier)
+    assert restored is not None
+    assert restored.state is WorkflowSessionState.BLOCKED
+    assert restored.blocked_reason == "candidate_shell_translation_failed"
+    assert restored.candidate_implementation_request is None
+    assert restored.candidate_implementation_approval_id is None
+    assert recovered_approvals.get_request(shell.identifier).decision.status is ApprovalStatus.APPROVED
+    assert len(recovered_approvals.export_snapshot()) == 1
 
 
 def test_full_workflow_and_approval_round_trip_redacts_env(tmp_path: Path) -> None:
@@ -764,13 +891,13 @@ def test_old_snapshot_without_candidate_planning_still_recovers_orphaned_workflo
     persistence.mutate_aggregate(
         lambda workflow_tx, approvals_tx, _candidate_tx: (
             workflow_tx.create_session(workflow),
-            approvals_tx.save_request(
-                approval_request(
-                    workflow.identifier,
-                    ApprovalPurpose.IMPLEMENTATION,
-                    root=tmp_path,
-                )
-            ),
+                approvals_tx.save_request(
+                    approval_request(
+                        workflow.identifier,
+                        ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL,
+                        root=tmp_path,
+                    )
+                ),
         )
     )
 

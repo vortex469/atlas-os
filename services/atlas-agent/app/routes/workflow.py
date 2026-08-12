@@ -1,6 +1,7 @@
 """Workflow execution routes for Atlas Agent."""
 
 import asyncio
+from dataclasses import replace
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
@@ -8,7 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.approval.exceptions import ApprovalValidationError
-from app.approval.models import ApprovalDecision, ApprovalRequest, ApprovalStatus
+from app.approval.models import (
+    ApprovalDecision,
+    ApprovalPurpose,
+    ApprovalRequest,
+    ApprovalStatus,
+)
 from app.candidate_planning.audit import (
     CandidateAuditApprovals,
     CandidateAuditChainValidator,
@@ -16,10 +22,12 @@ from app.candidate_planning.audit import (
 )
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
+from app.candidate_planning.models import CandidateImplementationTranslationRequest
 from app.candidate_planning.verification import CandidateVerificationFailureCode
 from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, ExecutionResult
 from app.model_providers.models import ModelResponse
+from app.persistence.snapshot import StatePersistenceError
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.models import CommitResult
 from app.review.models import (
@@ -337,6 +345,7 @@ class WorkflowAuditApprovalResponse(BaseModel):
 
 class WorkflowAuditApprovalsResponse(BaseModel):
     status: str
+    shell: WorkflowAuditApprovalResponse
     implementation: WorkflowAuditApprovalResponse
     verification: WorkflowAuditApprovalResponse
     commit: WorkflowAuditApprovalResponse
@@ -461,6 +470,23 @@ class WorkflowImplementationApprovalRequest(BaseModel):
 
     workflow_id: str = Field(min_length=1)
     decision: str = Field(pattern="^(approve|reject)$")
+
+
+class WorkflowShellApprovalRequest(BaseModel):
+    """Decision for the non-executable candidate workflow shell boundary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    workflow_id: str = Field(min_length=1)
+    decision: str = Field(pattern="^(approve|reject)$")
+
+
+class WorkflowShellApprovalResponse(BaseModel):
+    workflow_id: str
+    workflow_state: str
+    shell_approval_status: str
+    implementation_approval_request_id: str | None = None
+    message: str
 
 
 class WorkflowImplementationApprovalResponse(BaseModel):
@@ -935,6 +961,8 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
             f"approval-commit-{workflow.identifier}"
         ),
     )
+    shell_approval_id = f"approval-{workflow.identifier}"
+    shell_approval_status = _audit_approval_status(request, shell_approval_id)
 
     validation = CandidateAuditChainValidator().validate(
         planning_session=planning_session,
@@ -1060,6 +1088,10 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         ),
         approvals=WorkflowAuditApprovalsResponse(
             status=_section_status(_AUDIT_STAGE_RANK["approvals"], current_rank, has_approvals),
+            shell=WorkflowAuditApprovalResponse(
+                status=shell_approval_status,
+                approval_id=shell_approval_id,
+            ),
             implementation=WorkflowAuditApprovalResponse(
                 status=implementation_approval_status,
                 approval_id=workflow.candidate_implementation_approval_id,
@@ -1362,6 +1394,113 @@ async def get_workflow_implementation_request(
     """Return a safe, read-only candidate workflow implementation approval view."""
 
     return _workflow_detail(request, workflow_id)
+
+
+@router.post(
+    "/{workflow_id}/shell-approval",
+    response_model=WorkflowShellApprovalResponse,
+    responses=_ERROR_RESPONSES,
+)
+async def submit_workflow_shell_approval(
+    workflow_id: str,
+    approval_request: WorkflowShellApprovalRequest,
+    request: Request,
+) -> WorkflowShellApprovalResponse:
+    """Approve the non-executable candidate workflow shell before translation."""
+
+    if approval_request.workflow_id != workflow_id:
+        raise HTTPException(status_code=400, detail={"code": "workflow_id_mismatch", "message": "Workflow ID must match the route"})
+    workflow = request.app.state.container.workflow_state.get_session(workflow_id)
+    if workflow is None or workflow.source.value != "candidate":
+        raise HTTPException(status_code=404, detail={"code": "workflow_not_found", "message": "Candidate workflow not found"})
+    approval_id = f"approval-{workflow_id}"
+    stored = request.app.state.container.approval_repository.get_request(approval_id)
+    if stored is None or stored.decision.request.workflow_id != workflow_id:
+        raise HTTPException(status_code=404, detail={"code": "approval_not_found", "message": "Shell approval request not found"})
+    shell = stored.decision.request
+    if shell.purpose is not ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL or shell.requested_command:
+        raise HTTPException(status_code=409, detail={"code": "invalid_shell_approval", "message": "Stored approval is not a candidate workflow shell approval"})
+    if workflow.candidate_metadata is None or shell.checkpoint_id != workflow.candidate_metadata.candidate_plan_id:
+        raise HTTPException(status_code=409, detail={"code": "checkpoint_mismatch", "message": "Shell approval checkpoint does not match the candidate plan"})
+    if stored.decision.status is not ApprovalStatus.PENDING:
+        if workflow.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL and approval_request.decision == "approve" and stored.decision.status is ApprovalStatus.APPROVED:
+            return WorkflowShellApprovalResponse(
+                workflow_id=workflow_id,
+                workflow_state=workflow.state.value,
+                shell_approval_status=stored.decision.status.value,
+                message="Shell approval was already decided.",
+            )
+        if workflow.state is not WorkflowSessionState.AWAITING_APPROVAL or (
+            approval_request.decision == "approve" and stored.decision.status is not ApprovalStatus.APPROVED
+        ):
+            raise HTTPException(status_code=409, detail={"code": "approval_already_decided", "message": "Shell approval was already decided"})
+        return WorkflowShellApprovalResponse(
+            workflow_id=workflow_id,
+            workflow_state=workflow.state.value,
+            shell_approval_status=stored.decision.status.value,
+            message="Shell approval was already decided.",
+        )
+    if workflow.state is not WorkflowSessionState.AWAITING_APPROVAL:
+        raise HTTPException(status_code=409, detail={"code": "stale_workflow", "message": "Workflow is not awaiting shell approval"})
+    decision = ApprovalDecision(
+        request=shell,
+        status=ApprovalStatus.APPROVED if approval_request.decision == "approve" else ApprovalStatus.REJECTED,
+        reviewer="workflow-shell",
+        reason=None,
+    )
+    persistence = getattr(request.app.state.container, "state_persistence", None)
+    try:
+        if persistence is None:
+            success = request.app.state.container.approval_repository.update_decision(approval_id, decision)
+        else:
+            success = persistence.mutate_approval(lambda approvals: approvals.update_decision(approval_id, decision))
+    except StatePersistenceError as error:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "approval_already_decided", "message": "Shell approval was concurrently decided"},
+        ) from error
+    if not success:
+        raise HTTPException(status_code=409, detail={"code": "approval_already_decided", "message": "Shell approval was concurrently decided"})
+    if decision.status is ApprovalStatus.REJECTED:
+        return WorkflowShellApprovalResponse(
+            workflow_id=workflow_id,
+            workflow_state=workflow.state.value,
+            shell_approval_status=decision.status.value,
+            message="Shell approval rejected.",
+        )
+    metadata = workflow.candidate_metadata
+    try:
+        translation = await request.app.state.container.candidate_planning_service.translate_workflow_shell_to_implementation(
+            metadata.candidate_planning_session_id,
+            CandidateImplementationTranslationRequest(
+                expected_candidate_fingerprint=metadata.candidate_fingerprint,
+                expected_plan_fingerprint=metadata.candidate_plan_fingerprint,
+            ),
+        )
+    except Exception:  # noqa: BLE001
+        translation = None
+    if translation is None or translation.exact_approval_request_id is None:
+        persistence = getattr(request.app.state.container, "state_persistence", None)
+        if persistence is not None:
+            def block(workflow_state, approvals, candidate_planning):
+                current = workflow_state.get_session(workflow_id)
+                if current is not None and current.state is WorkflowSessionState.AWAITING_APPROVAL:
+                    workflow_state.sessions[workflow_id] = replace(
+                        current,
+                        state=WorkflowSessionState.BLOCKED,
+                        blocked_reason="candidate_shell_translation_failed",
+                    )
+            persistence.mutate_aggregate(block)
+        raise HTTPException(status_code=409, detail={"code": "translation_failed", "message": "Candidate workflow shell translation failed"})
+    updated = request.app.state.container.workflow_state.get_session(workflow_id)
+    assert updated is not None
+    return WorkflowShellApprovalResponse(
+        workflow_id=workflow_id,
+        workflow_state=updated.state.value,
+        shell_approval_status=decision.status.value,
+        implementation_approval_request_id=translation.exact_approval_request_id,
+        message="Shell approved. Exact implementation approval is now required.",
+    )
 
 
 @router.post(

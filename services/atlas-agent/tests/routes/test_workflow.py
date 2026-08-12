@@ -3,11 +3,10 @@
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Barrier, Thread
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.approval.models import (
     ApprovalDecision,
     ApprovalPurpose,
@@ -24,6 +23,7 @@ from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
 from app.candidate_planning.models import (
     CandidateImplementationRequest,
+    CandidateImplementationTranslationResponse,
     CandidatePlan,
     CandidatePlanningSession,
     CandidatePlanningSessionStatus,
@@ -50,6 +50,7 @@ from app.workflow.models import (
     WorkflowSource,
 )
 from app.workflow.orchestrator import WorkflowOrchestrator
+from fastapi.testclient import TestClient
 
 
 def request_body(repository: Path) -> dict:
@@ -711,6 +712,227 @@ def save_candidate_workflow(container, workflow: WorkflowSession) -> None:
     container.approval_repository.save_request(approval)
 
 
+def shell_workflow_session(repository: Path, *, state=WorkflowSessionState.AWAITING_APPROVAL) -> WorkflowSession:
+    base = candidate_workflow_session(repository)
+    return replace(
+        base,
+        state=state,
+        candidate_implementation_request=None,
+        candidate_implementation_approval_id="approval-workflow-123",
+    )
+
+
+def save_shell_workflow(container, workflow: WorkflowSession, *, command=(), purpose=ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL, checkpoint_id="plan-123") -> None:
+    container.workflow_state.delete_session(workflow.identifier)
+    approvals = container.approval_repository.export_snapshot()
+    approvals.pop("approval-workflow-123", None)
+    container.approval_repository.replace_snapshot(approvals)
+    container.workflow_state.create_session(workflow)
+    container.approval_repository.save_request(
+        ApprovalRequest(
+            identifier="approval-workflow-123",
+            workflow_id=workflow.identifier,
+            checkpoint_id=checkpoint_id,
+            title="Approve candidate workflow shell",
+            requested_tool="atlas-agent",
+            requested_command=command,
+            requested_working_directory=workflow.candidate_metadata and Path("."),
+            rationale="Approve candidate workflow shell.",
+            purpose=purpose,
+        )
+    )
+
+
+def configure_shell_translation(container, workflow: WorkflowSession, *, result=None) -> AsyncMock:
+    translated = result or CandidateImplementationTranslationResponse(
+        candidate_planning_session_id="candidate-plan-123",
+        workflow_session_id=workflow.identifier,
+        translation_status=CandidatePlanningSessionStatus.IMPLEMENTATION_READY,
+        implementation_request_id="impl-request-123",
+        exact_approval_request_id="approval-implementation-workflow-123",
+        candidate_fingerprint="candidate-fingerprint-123",
+        plan_fingerprint="plan-fingerprint-123",
+        repository_head="abc123",
+        translator_version="candidate-translator-v1",
+    )
+    async def translate(*_args, **_kwargs):
+        if translated.exact_approval_request_id:
+            implementation = candidate_workflow_session(workflow.candidate_metadata and Path("."))
+            implementation = replace(implementation, identifier=workflow.identifier)
+            current = container.workflow_state.get_session(workflow.identifier)
+            container.workflow_state.delete_session(workflow.identifier)
+            container.workflow_state.create_session(replace(current, state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL, candidate_implementation_request=implementation.candidate_implementation_request))
+            container.approval_repository.save_request(
+                ApprovalRequest(
+                    identifier=translated.exact_approval_request_id,
+                    workflow_id=workflow.identifier,
+                    checkpoint_id="impl-request-123",
+                    title="Approve exact candidate implementation",
+                    requested_tool="docker-compose",
+                    requested_command=("docker-compose", "up", "-d"),
+                    requested_working_directory=Path("."),
+                    rationale="Approve exact implementation request.",
+                )
+            )
+        return translated
+    mock = AsyncMock(side_effect=translate)
+    container.candidate_planning_service.translate_workflow_shell_to_implementation = mock
+    return mock
+
+
+def test_candidate_workflow_shell_approval_approve_translates_to_implementation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = shell_workflow_session(tmp_path)
+    save_shell_workflow(container, workflow)
+    translator = configure_shell_translation(container, workflow)
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/shell-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["workflow_state"] == "awaiting_implementation_approval"
+    assert response.json()["implementation_approval_request_id"] == "approval-implementation-workflow-123"
+    assert translator.await_count == 1
+    updated = container.workflow_state.get_session("workflow-123")
+    assert updated.candidate_implementation_request is not None
+    shell = container.approval_repository.get_request("approval-workflow-123")
+    implementation = container.approval_repository.get_request("approval-implementation-workflow-123")
+    assert shell.decision.request.purpose is ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
+    assert implementation is not None
+    assert shell.decision.request.identifier != implementation.decision.request.identifier
+    assert sum(
+        container.approval_repository.get_request(identifier) is not None
+        for identifier in ("approval-implementation-workflow-123",)
+    ) == 1
+
+
+def test_candidate_workflow_shell_translation_failure_blocks_and_suppresses_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = shell_workflow_session(tmp_path)
+    save_shell_workflow(container, workflow)
+    translator = AsyncMock(side_effect=RuntimeError("synthetic translation failure"))
+    container.candidate_planning_service.translate_workflow_shell_to_implementation = translator
+
+    first = client.post(
+        "/api/v1/agent/workflows/workflow-123/shell-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+    second = client.post(
+        "/api/v1/agent/workflows/workflow-123/shell-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+
+    assert first.status_code == 409
+    assert first.json()["detail"]["code"] == "translation_failed"
+    assert second.status_code == 409
+    assert second.json()["detail"]["code"] in {"approval_already_decided", "stale_workflow"}
+    assert translator.await_count == 1
+    blocked = container.workflow_state.get_session("workflow-123")
+    assert blocked.state is WorkflowSessionState.BLOCKED
+    assert blocked.blocked_reason == "candidate_shell_translation_failed"
+    assert blocked.candidate_implementation_request is None
+    assert container.approval_repository.get_request("approval-implementation-workflow-123") is None
+    assert blocked.execution_result is None
+
+
+def test_candidate_workflow_shell_approval_concurrent_requests_reconcile_without_duplicates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = shell_workflow_session(tmp_path)
+    save_shell_workflow(container, workflow)
+    translator = configure_shell_translation(container, workflow)
+    start = Barrier(2)
+    responses = []
+
+    def submit() -> None:
+        start.wait()
+        responses.append(
+            client.post(
+                "/api/v1/agent/workflows/workflow-123/shell-approval",
+                json={"workflow_id": "workflow-123", "decision": "approve"},
+            )
+        )
+
+    threads = [Thread(target=submit), Thread(target=submit)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert translator.await_count == 1
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    updated = container.workflow_state.get_session("workflow-123")
+    assert updated.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
+    assert updated.candidate_implementation_request is not None
+    approvals = container.approval_repository.export_snapshot()
+    implementation_approvals = [
+        result
+        for identifier, result in approvals.items()
+        if identifier == "approval-implementation-workflow-123"
+    ]
+    assert len(implementation_approvals) == 1
+
+
+def test_candidate_workflow_shell_approval_reject_does_not_translate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = shell_workflow_session(tmp_path)
+    save_shell_workflow(container, workflow)
+    translator = configure_shell_translation(container, workflow)
+
+    response = client.post("/api/v1/agent/workflows/workflow-123/shell-approval", json={"workflow_id": "workflow-123", "decision": "reject"})
+
+    assert response.status_code == 200
+    assert response.json()["shell_approval_status"] == "rejected"
+    assert translator.await_count == 0
+    assert container.workflow_state.get_session("workflow-123").state is WorkflowSessionState.AWAITING_APPROVAL
+    assert container.approval_repository.get_request("approval-implementation-workflow-123") is None
+
+
+@pytest.mark.parametrize(
+    ("name", "workflow_id", "body_id", "state", "source", "purpose", "command", "checkpoint", "code"),
+    [
+        ("unknown", "missing", "missing", WorkflowSessionState.AWAITING_APPROVAL, WorkflowSource.CANDIDATE, ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL, (), "plan-123", "workflow_not_found"),
+        ("mismatch", "workflow-123", "other", WorkflowSessionState.AWAITING_APPROVAL, WorkflowSource.CANDIDATE, ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL, (), "plan-123", "workflow_id_mismatch"),
+        ("non_candidate", "workflow-123", "workflow-123", WorkflowSessionState.AWAITING_APPROVAL, WorkflowSource.MANUAL, ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL, (), "plan-123", "workflow_not_found"),
+        ("wrong_state", "workflow-123", "workflow-123", WorkflowSessionState.EXECUTING, WorkflowSource.CANDIDATE, ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL, (), "plan-123", "stale_workflow"),
+        ("wrong_purpose", "workflow-123", "workflow-123", WorkflowSessionState.AWAITING_APPROVAL, WorkflowSource.CANDIDATE, ApprovalPurpose.IMPLEMENTATION, (), "plan-123", "invalid_shell_approval"),
+        ("non_empty", "workflow-123", "workflow-123", WorkflowSessionState.AWAITING_APPROVAL, WorkflowSource.CANDIDATE, ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL, ("unsafe",), "plan-123", "invalid_shell_approval"),
+        ("checkpoint", "workflow-123", "workflow-123", WorkflowSessionState.AWAITING_APPROVAL, WorkflowSource.CANDIDATE, ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL, (), "wrong-plan", "checkpoint_mismatch"),
+    ],
+)
+def test_candidate_workflow_shell_approval_rejects_invalid_requests(tmp_path, monkeypatch, name, workflow_id, body_id, state, source, purpose, command, checkpoint, code):
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(shell_workflow_session(tmp_path, state=state), source=source)
+    save_shell_workflow(container, workflow, command=command, purpose=purpose, checkpoint_id=checkpoint)
+    translator = configure_shell_translation(container, workflow)
+    response = client.post(f"/api/v1/agent/workflows/{workflow_id}/shell-approval", json={"workflow_id": body_id, "decision": "approve"})
+    assert response.status_code in (400, 404, 409)
+    assert response.json()["detail"]["code"] == code
+    assert translator.await_count == 0
+
+
+def test_candidate_workflow_shell_approval_duplicate_is_idempotent_and_conflict_is_reconciled(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = shell_workflow_session(tmp_path)
+    save_shell_workflow(container, workflow)
+    translator = configure_shell_translation(container, workflow)
+    first = client.post("/api/v1/agent/workflows/workflow-123/shell-approval", json={"workflow_id": "workflow-123", "decision": "approve"})
+    second = client.post("/api/v1/agent/workflows/workflow-123/shell-approval", json={"workflow_id": "workflow-123", "decision": "approve"})
+    conflict = client.post("/api/v1/agent/workflows/workflow-123/shell-approval", json={"workflow_id": "workflow-123", "decision": "reject"})
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["shell_approval_status"] == "approved"
+    assert conflict.status_code == 409
+    assert translator.await_count == 1
+
+
 def test_candidate_workflow_implementation_request_is_read_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     save_candidate_workflow(container, candidate_workflow_session(tmp_path))
@@ -978,6 +1200,86 @@ def test_candidate_workflow_audit_after_shell_creation_shows_planning_without_im
     assert body["implementation"]["tool"] is None
     assert body["implementation"]["affected_files"] == []
     assert body["approvals"]["implementation"]["approval_id"] == "approval-workflow-456"
+
+
+def test_candidate_workflow_audit_distinguishes_shell_from_pending_implementation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = shell_workflow_session(tmp_path)
+    container.candidate_planning_state.replace_snapshot({})
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
+    save_shell_workflow(container, workflow)
+    translator = configure_shell_translation(container, workflow)
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/shell-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+    assert response.status_code == 200
+    assert translator.await_count == 1
+    updated = container.workflow_state.get_session("workflow-123")
+    container.workflow_state.delete_session("workflow-123")
+    container.workflow_state.create_session(
+        replace(
+            updated,
+            candidate_implementation_approval_id="approval-implementation-workflow-123",
+        )
+    )
+
+    audit = client.get("/api/v1/agent/workflows/workflow-123/audit")
+    assert audit.status_code == 200
+    body = audit.json()
+    assert body["approvals"]["shell"] == {
+        "status": "approved",
+        "approval_id": "approval-workflow-123",
+    }
+    assert body["approvals"]["implementation"] == {
+        "status": "pending",
+        "approval_id": "approval-implementation-workflow-123",
+    }
+    assert body["workflow_state"] == "awaiting_implementation_approval"
+    assert body["execution"]["execution_request_id"] is None
+    assert body["execution"]["changed_files"] == []
+
+
+def test_candidate_workflow_audit_translation_failure_has_no_execution_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = shell_workflow_session(tmp_path)
+    container.candidate_planning_state.replace_snapshot({})
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
+    save_shell_workflow(container, workflow)
+    translator = AsyncMock(side_effect=RuntimeError("synthetic translation failure"))
+    container.candidate_planning_service.translate_workflow_shell_to_implementation = translator
+
+    response = client.post(
+        "/api/v1/agent/workflows/workflow-123/shell-approval",
+        json={"workflow_id": "workflow-123", "decision": "approve"},
+    )
+    assert response.status_code == 409
+    assert translator.await_count == 1
+    blocked = container.workflow_state.get_session("workflow-123")
+    container.workflow_state.delete_session("workflow-123")
+    container.workflow_state.create_session(
+        replace(blocked, candidate_implementation_approval_id=None)
+    )
+
+    audit = client.get("/api/v1/agent/workflows/workflow-123/audit")
+    assert audit.status_code == 200
+    body = audit.json()
+    assert body["workflow_state"] == "blocked"
+    assert body["blocked_reason"] == "candidate_shell_translation_failed"
+    assert body["approvals"]["shell"]["status"] == "approved"
+    assert body["approvals"]["implementation"]["approval_id"] is None
+    assert body["implementation"]["implementation_request_id"] is None
+    assert body["execution"]["execution_request_id"] is None
+    assert body["execution"]["changed_files"] == []
 
 
 def test_list_workflows_returns_read_only_summaries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

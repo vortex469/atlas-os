@@ -486,8 +486,17 @@ class AgentStatePersistenceCoordinator:
             identifier: _decode_workflow_session(session_payload)
             for identifier, session_payload in sessions_payload.items()
         }
+        legacy_shell_workflow_ids = {
+            identifier
+            for identifier, session in sessions.items()
+            if session.source is WorkflowSource.CANDIDATE
+            and session.state is WorkflowSessionState.AWAITING_APPROVAL
+        }
         approvals = {
-            identifier: _decode_approval_result(result_payload)
+            identifier: _decode_approval_result(
+                result_payload,
+                legacy_shell_workflow_ids=legacy_shell_workflow_ids,
+            )
             for identifier, result_payload in approvals_payload.items()
         }
         candidate_planning_payload = payload.get("candidate_planning", {})
@@ -536,9 +545,20 @@ class AgentStatePersistenceCoordinator:
             if identifier != session.identifier:
                 raise StatePersistenceError("Workflow session key does not match identifier")
             purpose = _WAITING_PURPOSES.get(session.state)
+            if (
+                session.state is WorkflowSessionState.AWAITING_APPROVAL
+                and session.source == WorkflowSource.CANDIDATE
+            ):
+                purpose = ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
             if purpose is None:
                 continue
-            approval_id = _approval_id_for(session.identifier, purpose)
+            approval_id = (
+                session.candidate_implementation_approval_id
+                if purpose is ApprovalPurpose.IMPLEMENTATION
+                and session.source is WorkflowSource.CANDIDATE
+                and session.candidate_implementation_approval_id is not None
+                else _approval_id_for(session.identifier, purpose)
+            )
             result = approvals.storage.get(approval_id)
             if result is None:
                 raise StatePersistenceError("Waiting workflow is missing approval request")
@@ -563,6 +583,8 @@ class AgentStatePersistenceCoordinator:
 
 
 def _approval_id_for(workflow_id: str, purpose: ApprovalPurpose) -> str:
+    if purpose is ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL:
+        return f"approval-{workflow_id}"
     if purpose is ApprovalPurpose.IMPLEMENTATION:
         return f"approval-{workflow_id}"
     if purpose is ApprovalPurpose.VERIFICATION:
@@ -1867,19 +1889,37 @@ def _encode_approval_request(request: ApprovalRequest) -> dict[str, Any]:
     }
 
 
-def _decode_approval_request(payload: dict[str, Any]) -> ApprovalRequest:
+def _decode_approval_request(
+    payload: dict[str, Any], *, legacy_shell_workflow_ids: set[str] | None = None
+) -> ApprovalRequest:
+    purpose = ApprovalPurpose(_require_str(payload, "purpose"))
+    requested_command = _tuple_str(payload.get("requested_command", []))
+    workflow_id = payload.get("workflow_id")
+    if (
+        purpose is ApprovalPurpose.IMPLEMENTATION
+        and not requested_command
+        and isinstance(workflow_id, str)
+        and (
+            workflow_id.startswith("candidate-workflow-")
+            and payload.get("workflow_state", "awaiting_approval")
+            == WorkflowSessionState.AWAITING_APPROVAL.value
+            if legacy_shell_workflow_ids is None
+            else workflow_id in legacy_shell_workflow_ids
+        )
+    ):
+        purpose = ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
     return ApprovalRequest(
         identifier=_require_str(payload, "identifier"),
         checkpoint_id=_require_str(payload, "checkpoint_id"),
         title=_require_str(payload, "title"),
         requested_tool=_require_str(payload, "requested_tool"),
-        requested_command=_tuple_str(payload.get("requested_command", [])),
+        requested_command=requested_command,
         rationale=_require_str(payload, "rationale"),
-        workflow_id=payload.get("workflow_id"),
+        workflow_id=workflow_id,
         requested_working_directory=_decode_optional_path(
             payload.get("requested_working_directory")
         ),
-        purpose=ApprovalPurpose(_require_str(payload, "purpose")),
+        purpose=purpose,
         verification_checks=tuple(
             _decode_verification_approval_check(item)
             for item in payload.get("verification_checks", [])
@@ -1897,9 +1937,14 @@ def _encode_approval_decision(decision: ApprovalDecision) -> dict[str, Any]:
     }
 
 
-def _decode_approval_decision(payload: dict[str, Any]) -> ApprovalDecision:
+def _decode_approval_decision(
+    payload: dict[str, Any], *, legacy_shell_workflow_ids: set[str] | None = None
+) -> ApprovalDecision:
     return ApprovalDecision(
-        request=_decode_approval_request(_require_dict(payload, "request")),
+        request=_decode_approval_request(
+            _require_dict(payload, "request"),
+            legacy_shell_workflow_ids=legacy_shell_workflow_ids,
+        ),
         status=ApprovalStatus(_require_str(payload, "status")),
         reviewer=payload.get("reviewer"),
         reason=payload.get("reason"),
@@ -1910,9 +1955,14 @@ def _encode_approval_result(result: ApprovalResult) -> dict[str, Any]:
     return {"decision": _encode_approval_decision(result.decision)}
 
 
-def _decode_approval_result(payload: Any) -> ApprovalResult:
+def _decode_approval_result(
+    payload: Any, *, legacy_shell_workflow_ids: set[str] | None = None
+) -> ApprovalResult:
     if not isinstance(payload, dict):
         raise StatePersistenceError("Invalid approval result")
     return ApprovalResult(
-        decision=_decode_approval_decision(_require_dict(payload, "decision"))
+        decision=_decode_approval_decision(
+            _require_dict(payload, "decision"),
+            legacy_shell_workflow_ids=legacy_shell_workflow_ids,
+        )
     )
