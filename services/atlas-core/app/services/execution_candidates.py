@@ -20,6 +20,7 @@ from app.intelligence.coordinator import (
 from app.intelligence.development_fixture import (
     collect_development_candidate_findings,
     fixture_evidence_ids,
+    is_rc1_validation_smoke_enabled,
 )
 from app.intelligence.findings import Finding
 
@@ -93,6 +94,8 @@ def paginate_candidates(
 async def collect_current_findings() -> tuple[Finding, ...]:
     """Collect current findings without mutating ACE reports or telemetry history."""
 
+    if is_rc1_validation_smoke_enabled():
+        return collect_development_candidate_findings()
     try:
         findings = list(collect_findings())
         provider_findings, telemetry = await collect_provider_findings_with_telemetry()

@@ -168,3 +168,17 @@ async def test_rc1_smoke_candidate_requires_gate_and_is_deterministic(
     assert smoke[0].target_id == "atlas-repository"
     assert smoke[0].evidence_ids == ("orion-rc1-validation-smoke-evidence-0001",)
     assert [candidate.id for candidate in first] == [candidate.id for candidate in second]
+
+
+@pytest.mark.anyio
+async def test_rc1_smoke_fixture_skips_external_finding_collectors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE", "true")
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    monkeypatch.setattr(service, "collect_findings", lambda: (_ for _ in ()).throw(AssertionError()))
+    findings = await service.collect_current_findings()
+    assert {finding.id for finding in findings} == {
+        DEVELOPMENT_FIXTURE_ID,
+        "orion-dev-rc1-validation-smoke",
+    }
