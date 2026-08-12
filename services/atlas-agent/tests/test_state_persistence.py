@@ -26,7 +26,7 @@ from app.candidate_planning.models import (
 )
 from app.candidate_planning.state import CandidatePlanningStateStore
 from app.context.models import ActionHistoryContext, ActionHistoryEntry, AgentContext
-from app.execution.models import EnvironmentVariable
+from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
 from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import (
     AgentStatePersistenceCoordinator,
@@ -564,6 +564,53 @@ def test_successful_candidate_shell_translation_round_trips_without_retranslatio
     assert recovered_approvals.get_request(shell.identifier).decision.status is ApprovalStatus.APPROVED
     assert recovered_approvals.get_request(implementation.identifier) is not None
     assert len(recovered_approvals.export_snapshot()) == 2
+
+
+def test_worker_execution_fields_round_trip_through_real_snapshot_reload(tmp_path: Path) -> None:
+    target = Path("services/atlas-agent/tests/test_execution_engine.py")
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        execution_result=ExecutionResult(
+            request_id="execution-worker",
+            checkpoint_id="candidate-plan-123",
+            argv=("codex", "exec"),
+            working_directory=tmp_path,
+            status=ExecutionStatus.SUCCEEDED,
+            return_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=1.0,
+        ),
+        worker_patch_applied=True,
+        changed_files=(target,),
+    )
+    verification = approval_request(
+        workflow.identifier,
+        ApprovalPurpose.VERIFICATION,
+        root=tmp_path,
+    )
+    workflow_state = WorkflowStateStore()
+    approvals = ApprovalRepository()
+    persistence = coordinator(tmp_path, workflow_state, approvals)
+    persistence.initialize()
+    persistence.mutate_aggregate(
+        lambda workflows, approval_repo, _candidates: (
+            workflows.create_session(workflow),
+            approval_repo.save_request(verification),
+        )
+    )
+
+    recovered_workflows = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    coordinator(tmp_path, recovered_workflows, recovered_approvals).initialize()
+    restored = recovered_workflows.get_session(workflow.identifier)
+    assert restored == workflow
+    assert restored is not None
+    assert restored.changed_files == (target,)
+    assert restored.worker_patch_applied is True
+    assert restored.execution_result == workflow.execution_result
+    assert recovered_approvals.get_request(verification.identifier).decision.status is ApprovalStatus.PENDING
 
 
 def test_failed_candidate_shell_translation_round_trips_without_artifacts(
