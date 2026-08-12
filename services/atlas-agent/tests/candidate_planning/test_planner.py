@@ -1,12 +1,14 @@
 """Tests for deterministic candidate-aware planners."""
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-
-from app.candidate_planning.models import CandidatePlanningContext, ComposeMutationSpecification
+from app.candidate_planning.models import (
+    CandidatePlanningContext,
+    ComposeMutationSpecification,
+)
 from app.candidate_planning.planner import (
     RepositoryResolver,
     UpdateComposeStackCandidatePlanner,
@@ -115,3 +117,70 @@ def test_plan_model_is_immutable(tmp_path: Path) -> None:
 
     with pytest.raises(FrozenInstanceError):
         plan.title = "changed"  # type: ignore[misc]
+
+
+def test_rc1_smoke_plan_is_fixed_and_one_file(tmp_path: Path) -> None:
+    smoke_context = replace(
+        context(tmp_path),
+        recommendation_class="rc1_validation_smoke",
+        target_id="atlas-repository",
+        execution_intent="rc1-validation-smoke",
+        mutation=ComposeMutationSpecification(
+            file=Path("services/atlas-agent/tests/test_execution_engine.py"),
+            service="atlas-agent",
+            property="rc1-validation-marker",
+            operation="append-fixed-marker",
+            desired_value="# Atlas RC1 execution smoke marker",
+            preservation_constraints=("no-deployment-files", "no-commit", "rc1-validation-only"),
+        ),
+    )
+
+    plan = UpdateComposeStackCandidatePlanner().create_plan(
+        context=smoke_context,
+        snapshot=snapshot(tmp_path),
+    )
+
+    assert plan.likely_affected_components == ("atlas-repository",)
+    assert plan.likely_affected_files == (
+        Path("services/atlas-agent/tests/test_execution_engine.py"),
+    )
+    assert plan.mutation is not None
+    assert plan.mutation.desired_value == "# Atlas RC1 execution smoke marker"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        ComposeMutationSpecification(
+            file=Path("compose.production.yaml"),
+            service="atlas-agent",
+            property="image",
+            operation="update",
+            desired_value="unsafe",
+        ),
+        ComposeMutationSpecification(
+            file=Path("services/atlas-agent/tests/other.py"),
+            service="atlas-agent",
+            property="rc1-validation-marker",
+            operation="append-fixed-marker",
+            desired_value="# Atlas RC1 execution smoke marker",
+        ),
+    ],
+)
+def test_rc1_smoke_plan_rejects_arbitrary_mutation(
+    tmp_path: Path,
+    mutation: ComposeMutationSpecification,
+) -> None:
+    smoke_context = replace(
+        context(tmp_path),
+        recommendation_class="rc1_validation_smoke",
+        target_id="atlas-repository",
+        execution_intent="rc1-validation-smoke",
+        mutation=mutation,
+    )
+
+    with pytest.raises(ValueError, match="fixed validation"):
+        UpdateComposeStackCandidatePlanner().create_plan(
+            context=smoke_context,
+            snapshot=snapshot(tmp_path),
+        )

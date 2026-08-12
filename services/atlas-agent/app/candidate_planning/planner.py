@@ -15,6 +15,9 @@ from app.candidate_planning.models import (
 from app.repository.models import RepositorySnapshot
 
 _COMPOSE_TARGETS = frozenset({"atlas-compose", "atlas-repository"})
+_RC1_SMOKE_INTENT = "rc1-validation-smoke"
+_RC1_SMOKE_TARGET = Path("services/atlas-agent/tests/test_execution_engine.py")
+_RC1_SMOKE_MARKER = "# Atlas RC1 execution smoke marker"
 _UNSAFE_PLAN_TOKENS = (
     "$",
     "&&",
@@ -55,6 +58,8 @@ class UpdateComposeStackCandidatePlanner:
     ) -> CandidatePlan:
         """Create one read-only descriptive candidate plan."""
 
+        if context.execution_intent == _RC1_SMOKE_INTENT:
+            return self._create_rc1_smoke_plan(context=context, snapshot=snapshot)
         if context.mutation is None:
             raise ValueError("update-compose-stack candidate lacks a mutation specification")
         plan = CandidatePlan(
@@ -105,6 +110,65 @@ class UpdateComposeStackCandidatePlanner:
         _validate_safe_plan(plan)
         return plan
 
+    def _create_rc1_smoke_plan(
+        self,
+        *,
+        context: CandidatePlanningContext,
+        snapshot: RepositorySnapshot,
+    ) -> CandidatePlan:
+        """Create the fixed, validation-only RC1 smoke plan."""
+
+        if not _rc1_smoke_context_is_exact(context):
+            raise ValueError("RC1 smoke context is not the fixed validation request")
+        if context.mutation is None or (
+            context.mutation.file != _RC1_SMOKE_TARGET
+            or context.mutation.operation != "append-fixed-marker"
+            or context.mutation.desired_value != _RC1_SMOKE_MARKER
+        ):
+            raise ValueError("RC1 smoke mutation is not the fixed validation mutation")
+        plan = CandidatePlan(
+            identifier=f"candidate-plan-output-{context.session_id}",
+            session_id=context.session_id,
+            candidate_id=context.candidate_id,
+            candidate_fingerprint=context.candidate_fingerprint,
+            title="Prepare the RC1 validation marker change",
+            objective="Apply one fixed validation marker to the trusted Atlas test file.",
+            assumptions=(
+                "This is an RC1 validation-only operation.",
+                "The trusted Agent repository is the only repository context.",
+                "Implementation approval and later verification approval are required.",
+            ),
+            constraints=(
+                "no-deployment-files",
+                "no-commit",
+                "rc1-validation-only",
+            ),
+            proposed_steps=(
+                "Inspect the trusted Atlas test file.",
+                "Append the fixed RC1 validation marker once.",
+                "Return the bounded one-file change for Agent review.",
+            ),
+            likely_affected_components=("atlas-repository",),
+            likely_affected_files=(_RC1_SMOKE_TARGET,),
+            verification_strategy=(
+                "Confirm only the fixed Atlas test file changed.",
+                "Require verification approval before any later review or commit.",
+            ),
+            rollback_considerations=(
+                "Restore the fixed test file without changing deployment files.",
+            ),
+            unresolved_questions=(),
+            evidence_ids=tuple(sorted(context.evidence_ids)),
+            created_at=context.planning_timestamp,
+            repository_root=snapshot.root,
+            repository_branch=snapshot.branch,
+            repository_head=snapshot.head_commit,
+            revalidated_candidate_fingerprint=context.revalidated_candidate_fingerprint,
+            mutation=context.mutation,
+        )
+        _validate_rc1_smoke_plan(plan)
+        return plan
+
 
 def planning_decision_for_plan(plan: CandidatePlan) -> PlanningDecision:
     """Wrap a successful plan in a deterministic planning decision."""
@@ -153,3 +217,34 @@ def _validate_safe_plan(plan: CandidatePlan) -> None:
         lowered = value.lower()
         if any(token in lowered for token in _UNSAFE_PLAN_TOKENS):
             raise ValueError("Candidate plan contains executable-looking content")
+
+
+def _rc1_smoke_context_is_exact(context: CandidatePlanningContext) -> bool:
+    return (
+        context.execution_intent == _RC1_SMOKE_INTENT
+        and context.target_id == "atlas-repository"
+        and context.target_type == "repository"
+        and context.recommendation_class == "rc1_validation_smoke"
+        and context.mutation is not None
+        and context.mutation.file == _RC1_SMOKE_TARGET
+        and context.mutation.service == "atlas-agent"
+        and context.mutation.property == "rc1-validation-marker"
+        and context.mutation.operation == "append-fixed-marker"
+        and context.mutation.desired_value == _RC1_SMOKE_MARKER
+        and context.mutation.expected_value is None
+        and set(context.mutation.preservation_constraints)
+        == {"no-deployment-files", "no-commit", "rc1-validation-only"}
+    )
+
+
+def _validate_rc1_smoke_plan(plan: CandidatePlan) -> None:
+    if (
+        plan.likely_affected_components != ("atlas-repository",)
+        or plan.likely_affected_files != (_RC1_SMOKE_TARGET,)
+        or plan.mutation is None
+        or plan.mutation.file != _RC1_SMOKE_TARGET
+        or plan.mutation.desired_value != _RC1_SMOKE_MARKER
+        or plan.mutation.operation != "append-fixed-marker"
+    ):
+        raise ValueError("RC1 smoke plan is outside the fixed validation scope")
+    _validate_safe_plan(plan)
