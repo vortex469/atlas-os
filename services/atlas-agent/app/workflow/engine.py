@@ -720,6 +720,7 @@ class WorkflowEngine:
                 execution_request.plan.repository_root
             )
             worker_patch_applied = claimed_session.worker_patch_applied
+            worker_changed_files: tuple[Path, ...] | None = None
             if self._execution_engine.uses_worker is True and not worker_patch_applied:
                 worker_result = execution_result.worker_result
                 if not isinstance(worker_result, WorkerExecutionResult):
@@ -747,17 +748,31 @@ class WorkflowEngine:
                     allowed_affected_files=execution_context.allowed_affected_files,
                     timeout_seconds=execution_context.timeout_seconds,
                 )
-                WorkerPatchApplier().apply(
+                patch_outcome = WorkerPatchApplier().apply(
                     execution_request.plan.repository_root,
                     worker_request,
                     worker_result,
                 )
+                worker_changed_files = self._validate_worker_changed_files(
+                    patch_outcome.changed_files,
+                    implementation_plan,
+                )
                 worker_patch_applied = True
             after_execution = inspector.inspect()
-            changed_files = self._workflow_changed_files(
-                after_execution,
-                implementation_plan,
-            )
+            if self._execution_engine.uses_worker is True:
+                if after_execution.root != implementation_plan.repository_root.resolve(
+                    strict=False
+                ) or after_execution.branch != implementation_plan.branch:
+                    raise PatchApplicationError("worker_post_apply_repository_mismatch")
+                changed_files = worker_changed_files or tuple(
+                    Path(path) for path in claimed_session.changed_files
+                )
+                self._validate_worker_changed_files(changed_files, implementation_plan)
+            else:
+                changed_files = self._workflow_changed_files(
+                    after_execution,
+                    implementation_plan,
+                )
             verification_approval = self._candidate_verification_approval_request(
                 claimed_session
             )
@@ -2172,6 +2187,18 @@ class WorkflowEngine:
         if not actual.issubset(allowed):
             raise ValueError("Workflow changed files outside the approved plan")
         return tuple(sorted(actual))
+
+    @staticmethod
+    def _validate_worker_changed_files(
+        changed_files: tuple[str | Path, ...],
+        plan: ImplementationPlan,
+    ) -> tuple[Path, ...]:
+        normalized = tuple(sorted({Path(path) for path in changed_files}))
+        if not normalized:
+            raise PatchApplicationError("worker_changed_files_empty")
+        if not set(normalized).issubset(set(plan.affected_files)):
+            raise PatchApplicationError("worker_changed_files_out_of_scope")
+        return normalized
 
     @staticmethod
     def _is_log_path(path: str | Path) -> bool:
