@@ -75,7 +75,7 @@ class FakeInspector:
         return self.snapshot
 
 
-def core_response(*, fingerprint: str = "candidate-fingerprint-v1:aaa", target_id: str = "atlas-compose") -> CoreCandidatePlanningIntakeResponse:
+def core_response(*, fingerprint: str = "candidate-fingerprint-v1:aaa", target_id: str = "atlas-compose", execution_intent: str = "update-compose-stack") -> CoreCandidatePlanningIntakeResponse:
     return CoreCandidatePlanningIntakeResponse(
         status="accepted_for_planning",
         candidate_id="candidate-1",
@@ -90,7 +90,7 @@ def core_response(*, fingerprint: str = "candidate-fingerprint-v1:aaa", target_i
             target_id=target_id,
             target_type="repository",
             execution_category="update",
-            execution_intent="update-compose-stack",
+            execution_intent=execution_intent,
             status="proposed",
             required_approval_level="standard",
             rationale="Update compose stack.",
@@ -235,6 +235,26 @@ def workflow(root: Path) -> WorkflowSession:
     )
 
 
+def rc1_workflow(root: Path, *, argv: tuple[str, ...] = ("atlas-rc1-validation-smoke",)) -> WorkflowSession:
+    base = workflow(root)
+    request = base.candidate_implementation_request
+    metadata = base.candidate_metadata
+    assert request is not None
+    assert metadata is not None
+    return replace(
+        base,
+        candidate_implementation_request=replace(
+            request,
+            execution_intent=RC1_VALIDATION_SMOKE_INTENT,
+            argv=argv,
+        ),
+        candidate_metadata=replace(
+            metadata,
+            execution_intent=RC1_VALIDATION_SMOKE_INTENT,
+        ),
+    )
+
+
 def approval(request: CandidateImplementationRequest, *, status: ApprovalStatus = ApprovalStatus.APPROVED) -> ApprovalResult:
     return ApprovalResult(
         decision=ApprovalDecision(
@@ -296,6 +316,80 @@ def test_approved_candidate_request_validates_to_exact_execution_request(tmp_pat
     assert result.execution_request.argv == ("codex", "exec", "approved prompt")
     assert result.execution_request.working_directory == tmp_path
     assert core.calls == [("candidate-1", "candidate-fingerprint-v1:aaa")]
+
+
+def test_gated_rc1_smoke_passes_candidate_policy_validation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    state = state_with_session(tmp_path)
+    candidate_workflow = rc1_workflow(tmp_path)
+
+    result = validator(tmp_path, state, FakeCoreClient(core_response(execution_intent=RC1_VALIDATION_SMOKE_INTENT))).validate(
+        workflow=candidate_workflow,
+        approval_result=approval(candidate_workflow.candidate_implementation_request),
+    )
+
+    assert result.approved is True
+    assert result.execution_request is not None
+    assert result.execution_request.argv == ("atlas-rc1-validation-smoke",)
+
+
+def test_rc1_smoke_policy_denies_when_gate_is_disabled(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", raising=False)
+    state = state_with_session(tmp_path)
+    candidate_workflow = rc1_workflow(tmp_path)
+
+    result = validator(tmp_path, state, FakeCoreClient(core_response(execution_intent=RC1_VALIDATION_SMOKE_INTENT))).validate(
+        workflow=candidate_workflow,
+        approval_result=approval(candidate_workflow.candidate_implementation_request),
+    )
+
+    assert result.failure_code is CandidateExecutionFailureCode.TOOL_POLICY_DENIED
+
+
+def test_rc1_smoke_policy_denies_non_exact_argv(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    state = state_with_session(tmp_path)
+    candidate_workflow = rc1_workflow(tmp_path, argv=("atlas-rc1-validation-smoke", "extra"))
+
+    result = validator(tmp_path, state, FakeCoreClient(core_response(execution_intent=RC1_VALIDATION_SMOKE_INTENT))).validate(
+        workflow=candidate_workflow,
+        approval_result=approval(candidate_workflow.candidate_implementation_request),
+    )
+
+    assert result.failure_code is CandidateExecutionFailureCode.TOOL_POLICY_DENIED
+
+
+def test_rc1_smoke_policy_denies_alternate_executable(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    state = state_with_session(tmp_path)
+    candidate_workflow = rc1_workflow(tmp_path, argv=("other-smoke",))
+
+    result = validator(tmp_path, state, FakeCoreClient(core_response(execution_intent=RC1_VALIDATION_SMOKE_INTENT))).validate(
+        workflow=candidate_workflow,
+        approval_result=approval(candidate_workflow.candidate_implementation_request),
+    )
+
+    assert result.failure_code is CandidateExecutionFailureCode.TOOL_POLICY_DENIED
+
+
+def test_normal_candidate_policy_denies_rc1_executable(tmp_path: Path) -> None:
+    state = state_with_session(tmp_path)
+    candidate_workflow = replace(
+        workflow(tmp_path),
+        candidate_implementation_request=replace(
+            workflow(tmp_path).candidate_implementation_request,
+            argv=("atlas-rc1-validation-smoke",),
+        ),
+    )
+
+    result = validator(tmp_path, state, FakeCoreClient(core_response())).validate(
+        workflow=candidate_workflow,
+        approval_result=approval(candidate_workflow.candidate_implementation_request),
+    )
+
+    assert result.failure_code is CandidateExecutionFailureCode.TOOL_POLICY_DENIED
 
 
 def test_pending_approval_is_retryable_and_does_not_validate(tmp_path: Path) -> None:

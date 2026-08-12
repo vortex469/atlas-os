@@ -137,7 +137,19 @@ class CandidateExecutionValidator:
             argv=implementation_request.argv,
             working_directory=implementation_request.working_directory,
         )
-        policy_result = self._tool_policy.validate(execution_request)
+        policy = self._tool_policy
+        if implementation_request.execution_intent == RC1_VALIDATION_SMOKE_INTENT:
+            if implementation_request.argv != ("atlas-rc1-validation-smoke",):
+                return _failure(
+                    CandidateExecutionFailureCode.TOOL_POLICY_DENIED,
+                    "RC1 validation smoke request must use the exact smoke command.",
+                    should_block=True,
+                )
+            if is_supported_execution_intent(RC1_VALIDATION_SMOKE_INTENT):
+                policy = ToolPolicy(
+                    frozenset({"codex", "atlas-rc1-validation-smoke"})
+                )
+        policy_result = policy.validate(execution_request)
         if isinstance(policy_result, PolicyViolation):
             return _failure(
                 CandidateExecutionFailureCode.TOOL_POLICY_DENIED,

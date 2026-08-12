@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 from app.execution import (
     AllowedCommand,
     EnvironmentVariable,
@@ -99,6 +98,20 @@ def test_policy_supports_future_executable_configuration(
 
     assert isinstance(decision, AllowedCommand)
     assert decision.argv == ("future-tool", "check")
+
+
+def test_generic_policy_rejects_rc1_smoke_executable(tmp_path: Path) -> None:
+    decision = ToolPolicy().validate(
+        make_request(tmp_path, argv=("atlas-rc1-validation-smoke",))
+    )
+
+    assert isinstance(decision, PolicyViolation)
+
+
+def test_generic_policy_still_allows_codex(tmp_path: Path) -> None:
+    decision = ToolPolicy().validate(make_request(tmp_path, argv=("codex",)))
+
+    assert isinstance(decision, AllowedCommand)
 
 
 def test_invalid_environment_returns_violation(tmp_path: Path) -> None:
