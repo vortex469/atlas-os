@@ -1343,7 +1343,24 @@ class CandidatePlanningService:
         except ValueError as error:
             mutation = session.snapshot.mutation
             logger.warning(
-                "Candidate planner rejected a plan",
+                (
+                    "Candidate planner rejected a plan: execution_intent=%r "
+                    "recommendation_class=%r target_id=%r target_type=%r "
+                    "mutation_file=%r mutation_service=%r mutation_property=%r "
+                    "mutation_operation=%r desired_value_matches=%r "
+                    "expected_value_is_none=%r preservation_constraints=%r"
+                ),
+                session.snapshot.execution_intent,
+                session.snapshot.recommendation_class,
+                session.snapshot.target_id,
+                session.snapshot.target_type,
+                str(mutation.file) if mutation is not None else None,
+                mutation.service if mutation is not None else None,
+                mutation.property if mutation is not None else None,
+                mutation.operation if mutation is not None else None,
+                mutation is not None and mutation.desired_value == "# Atlas RC1 execution smoke marker",
+                mutation is not None and mutation.expected_value is None,
+                tuple(sorted(mutation.preservation_constraints)) if mutation is not None else (),
                 extra={
                     "session_id": session.identifier,
                     "candidate_id": session.candidate_id,
