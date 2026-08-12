@@ -17,9 +17,11 @@ from app.candidate_planning.conversion import candidate_plan_fingerprint
 from app.candidate_planning.execution import (
     CandidateExecutionFailureCode,
     CandidateExecutionValidator,
+    _repository_matches_request,
 )
 from app.candidate_planning.implementation import TRANSLATOR_VERSION
 from app.candidate_planning.models import (
+    RC1_VALIDATION_SMOKE_INTENT,
     CandidateImplementationRequest,
     CandidatePlan,
     CandidatePlanningSession,
@@ -436,6 +438,101 @@ def test_repository_drift_blocks(tmp_path: Path) -> None:
     )
 
     assert result.failure_code is CandidateExecutionFailureCode.REPOSITORY_STALE
+
+
+def test_gated_rc1_smoke_allows_only_execution_override_untracked(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    request = replace(
+        implementation_request(tmp_path, candidate_plan_fingerprint(candidate_plan(tmp_path))),
+        execution_intent=RC1_VALIDATION_SMOKE_INTENT,
+    )
+    snapshot = replace(
+        FakeInspector.snapshot,
+        root=tmp_path.resolve(strict=False),
+        branch="feature/atlas-agent",
+        head_commit="abc123",
+        untracked_files=("compose.execution-smoke.override.yaml",),
+    )
+
+    assert _repository_matches_request(snapshot, request) is True
+
+
+def test_rc1_smoke_override_is_rejected_when_gate_is_disabled(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", raising=False)
+    request = replace(
+        implementation_request(tmp_path, candidate_plan_fingerprint(candidate_plan(tmp_path))),
+        execution_intent=RC1_VALIDATION_SMOKE_INTENT,
+    )
+    snapshot = replace(
+        FakeInspector.snapshot,
+        root=tmp_path.resolve(strict=False),
+        branch="feature/atlas-agent",
+        head_commit="abc123",
+        untracked_files=("compose.execution-smoke.override.yaml",),
+    )
+
+    assert _repository_matches_request(snapshot, request) is False
+
+
+def test_normal_intent_rejects_rc1_smoke_override(tmp_path: Path) -> None:
+    request = implementation_request(tmp_path, candidate_plan_fingerprint(candidate_plan(tmp_path)))
+    snapshot = replace(
+        FakeInspector.snapshot,
+        root=tmp_path.resolve(strict=False),
+        branch="feature/atlas-agent",
+        head_commit="abc123",
+        untracked_files=("compose.execution-smoke.override.yaml",),
+    )
+
+    assert _repository_matches_request(snapshot, request) is False
+
+
+def test_rc1_smoke_rejects_arbitrary_untracked_files(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    request = replace(
+        implementation_request(tmp_path, candidate_plan_fingerprint(candidate_plan(tmp_path))),
+        execution_intent=RC1_VALIDATION_SMOKE_INTENT,
+    )
+    snapshot = replace(
+        FakeInspector.snapshot,
+        root=tmp_path.resolve(strict=False),
+        branch="feature/atlas-agent",
+        head_commit="abc123",
+        untracked_files=("compose.execution-smoke.override.yaml", "unexpected.txt"),
+    )
+
+    assert _repository_matches_request(snapshot, request) is False
+
+
+def test_rc1_smoke_rejects_modified_or_staged_files(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    request = replace(
+        implementation_request(tmp_path, candidate_plan_fingerprint(candidate_plan(tmp_path))),
+        execution_intent=RC1_VALIDATION_SMOKE_INTENT,
+    )
+    override = replace(
+        FakeInspector.snapshot,
+        root=tmp_path.resolve(strict=False),
+        branch="feature/atlas-agent",
+        head_commit="abc123",
+        untracked_files=("compose.execution-smoke.override.yaml",),
+        modified_files=("services/atlas-agent/tests/test_execution_engine.py",),
+    )
+    staged = replace(
+        FakeInspector.snapshot,
+        root=tmp_path.resolve(strict=False),
+        branch="feature/atlas-agent",
+        head_commit="abc123",
+        untracked_files=("compose.execution-smoke.override.yaml",),
+        staged_files=("services/atlas-agent/tests/test_execution_engine.py",),
+    )
+
+    assert _repository_matches_request(override, request) is False
+    assert _repository_matches_request(staged, request) is False
 
 
 def test_tool_policy_denies_invalid_persisted_request(tmp_path: Path) -> None:

@@ -14,8 +14,10 @@ from app.approval.models import ApprovalPurpose, ApprovalResult, ApprovalStatus
 from app.candidate_planning.conversion import candidate_plan_fingerprint
 from app.candidate_planning.implementation import TRANSLATOR_VERSION
 from app.candidate_planning.models import (
+    RC1_VALIDATION_SMOKE_INTENT,
     CandidateImplementationRequest,
     CoreCandidatePlanningIntakeStatus,
+    is_supported_execution_intent,
 )
 from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.state import CandidatePlanningStateStore
@@ -427,13 +429,23 @@ def _repository_matches_request(
     snapshot: RepositorySnapshot,
     request: CandidateImplementationRequest,
 ) -> bool:
+    allowed_untracked = {
+        "compose.execution-smoke.override.yaml",
+    } if (
+        request.execution_intent == RC1_VALIDATION_SMOKE_INTENT
+        and is_supported_execution_intent(request.execution_intent)
+    ) else set()
     return (
         snapshot.root == request.repository_root.resolve(strict=False)
         and snapshot.branch == request.repository_branch
         and snapshot.head_commit == request.repository_head
         and not snapshot.modified_files
         and not snapshot.staged_files
-        and not any(not _is_log_path(path) for path in snapshot.untracked_files)
+        and not any(
+            not _is_log_path(path)
+            and path not in allowed_untracked
+            for path in snapshot.untracked_files
+        )
     )
 
 
