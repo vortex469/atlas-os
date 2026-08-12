@@ -1617,6 +1617,16 @@ def _encode_candidate_verification_plan(plan: CandidateVerificationPlan | None) 
         "repository_branch": plan.repository_branch,
         "base_head": plan.base_head,
         "post_execution_head": plan.post_execution_head,
+        "baseline_status": (
+            [list(item) for item in plan.baseline_status]
+            if plan.baseline_status is not None
+            else None
+        ),
+        "post_execution_status": (
+            [list(item) for item in plan.post_execution_status]
+            if plan.post_execution_status is not None
+            else None
+        ),
         "changed_files": [_path(path) for path in plan.changed_files],
         "changed_files_digest": plan.changed_files_digest,
         "approved_affected_files": [_path(path) for path in plan.approved_affected_files],
@@ -1645,6 +1655,22 @@ def _decode_candidate_verification_plan(payload: Any) -> CandidateVerificationPl
         repository_branch=payload.get("repository_branch"),
         base_head=_require_str(payload, "base_head"),
         post_execution_head=_require_str(payload, "post_execution_head"),
+        baseline_status=(
+            tuple(
+                (str(item[0]), str(item[1]))
+                for item in payload["baseline_status"]
+            )
+            if payload.get("baseline_status") is not None
+            else None
+        ),
+        post_execution_status=(
+            tuple(
+                (str(item[0]), str(item[1]))
+                for item in payload["post_execution_status"]
+            )
+            if payload.get("post_execution_status") is not None
+            else None
+        ),
         changed_files=_tuple_path(payload.get("changed_files", [])),
         changed_files_digest=_require_str(payload, "changed_files_digest"),
         approved_affected_files=_tuple_path(payload.get("approved_affected_files", [])),
@@ -1780,6 +1806,11 @@ def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
         "context": _encode_context(session.context),
         "execution_result": _encode_execution_result(session.execution_result),
         "worker_patch_applied": session.worker_patch_applied,
+        "worker_baseline_status": (
+            [list(item) for item in session.worker_baseline_status]
+            if session.worker_baseline_status is not None
+            else None
+        ),
         "expected_branch": session.expected_branch,
         "expected_head": session.expected_head,
         "identifier": session.identifier,
@@ -1819,6 +1850,14 @@ def _decode_workflow_session(payload: Any) -> WorkflowSession:
         context=_decode_context(payload.get("context")),
         execution_result=_decode_execution_result(payload.get("execution_result")),
         worker_patch_applied=bool(payload.get("worker_patch_applied", False)),
+        worker_baseline_status=(
+            tuple(
+                (str(item[0]), str(item[1]))
+                for item in payload["worker_baseline_status"]
+            )
+            if payload.get("worker_baseline_status") is not None
+            else None
+        ),
         changed_files=_tuple_path(payload.get("changed_files", [])),
         verification_report=_decode_verification_report(payload.get("verification_report")),
         candidate_verification_plan=_decode_candidate_verification_plan(

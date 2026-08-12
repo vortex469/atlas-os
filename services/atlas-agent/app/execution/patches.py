@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import subprocess
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from pathlib import Path
 
 from app.execution.worker_contracts import WorkerExecutionRequest, WorkerExecutionResult
@@ -18,6 +19,7 @@ class PatchApplicationError(ValueError):
 class PatchApplicationOutcome:
     changed_files: tuple[str, ...]
     patch_digest: str
+    baseline_status: tuple[tuple[str, str], ...] = dataclass_field(default=(), compare=False)
 
 
 class WorkerPatchApplier:
@@ -54,7 +56,11 @@ class WorkerPatchApplier:
             patch,
             check=False,
         ):
-            return PatchApplicationOutcome(tuple(sorted(result.changed_files)), digest)
+            return PatchApplicationOutcome(
+                tuple(sorted(result.changed_files)),
+                digest,
+                tuple(sorted(baseline.items())),
+            )
         self._run_git(repository_root, ("apply", "--check", "--whitespace=error", "-"), patch)
         self._run_git(repository_root, ("apply", "--whitespace=error", "-"), patch)
         after = self._status(repository_root)
@@ -82,7 +88,13 @@ class WorkerPatchApplier:
         if check.returncode != 0:
             self._run_git(repository_root, ("apply", "-R", "-"), patch, check=False)
             raise PatchApplicationError("patch_apply_failed")
-        return PatchApplicationOutcome(actual, digest)
+        return PatchApplicationOutcome(actual, digest, tuple(sorted(baseline.items())))
+
+    @classmethod
+    def capture_baseline(cls, repository_root: Path) -> tuple[tuple[str, str], ...]:
+        """Capture canonical dirty-checkout evidence before a worker patch."""
+
+        return tuple(sorted(cls._status(repository_root).items()))
 
     @staticmethod
     def _validate_paths(paths: tuple[str, ...], approved: set[str]) -> None:

@@ -733,6 +733,7 @@ class WorkflowEngine:
                 execution_request.plan.repository_root
             )
             worker_patch_applied = claimed_session.worker_patch_applied
+            worker_baseline_status = claimed_session.worker_baseline_status
             worker_changed_files: tuple[Path, ...] | None = None
             if self._execution_engine.uses_worker is True and not worker_patch_applied:
                 worker_result = execution_result.worker_result
@@ -763,6 +764,9 @@ class WorkflowEngine:
                 )
                 if self._state_persistence is not None:
                     try:
+                        worker_baseline_status = WorkerPatchApplier.capture_baseline(
+                            execution_request.plan.repository_root
+                        )
                         self._state_persistence.write_patch_journal(
                             {
                                 "schema_version": 1,
@@ -774,6 +778,7 @@ class WorkflowEngine:
                                 "repository_branch": implementation_plan.branch,
                                 "base_repository_head": worker_request.expected_repository_head,
                                 "repository_token": worker_request.repository_token,
+                                "baseline_status": [list(item) for item in worker_baseline_status],
                                 "request": worker_request.to_dict(),
                                 "result": worker_result.to_dict(),
                                 "execution_result": {
@@ -801,6 +806,7 @@ class WorkflowEngine:
                     patch_outcome.changed_files,
                     implementation_plan,
                 )
+                worker_baseline_status = patch_outcome.baseline_status
                 worker_patch_applied = True
             after_execution = inspector.inspect()
             if self._execution_engine.uses_worker is True:
@@ -826,6 +832,7 @@ class WorkflowEngine:
                         WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
                         execution_result=execution_result,
                         worker_patch_applied=True,
+                        worker_baseline_status=worker_baseline_status,
                         changed_files=changed_files,
                     ):
                         raise RuntimeError("patch_checkpoint_persistence_failed")
@@ -837,6 +844,7 @@ class WorkflowEngine:
                             WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
                             execution_result=execution_result,
                             worker_patch_applied=True,
+                            worker_baseline_status=worker_baseline_status,
                             changed_files=changed_files,
                         )
 
@@ -867,6 +875,7 @@ class WorkflowEngine:
                         WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
                         execution_result=execution_result,
                         worker_patch_applied=worker_patch_applied,
+                        worker_baseline_status=worker_baseline_status,
                         changed_files=changed_files,
                     )
 
@@ -1038,8 +1047,18 @@ class WorkflowEngine:
             )
             if not applied and current_head != journal["base_repository_head"]:
                 raise PatchApplicationError("patch_journal_repository_drift")
+            raw_baseline_status = journal.get("baseline_status")
+            baseline_status = (
+                tuple(
+                    (str(item[0]), str(item[1]))
+                    for item in raw_baseline_status
+                )
+                if raw_baseline_status is not None
+                else None
+            )
             if not applied:
-                WorkerPatchApplier().apply(root, request, worker_result)
+                outcome = WorkerPatchApplier().apply(root, request, worker_result)
+                baseline_status = outcome.baseline_status
             if session.plan is None:
                 raise PatchApplicationError("patch_journal_plan_missing")
             changed_files = self._validate_worker_changed_files(
@@ -1056,6 +1075,7 @@ class WorkflowEngine:
                     WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
                     execution_result=execution_result,
                     worker_patch_applied=True,
+                    worker_baseline_status=baseline_status,
                     changed_files=changed_files,
                 )
 
@@ -1067,6 +1087,7 @@ class WorkflowEngine:
                 state=WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
                 execution_result=execution_result,
                 worker_patch_applied=True,
+                worker_baseline_status=baseline_status,
                 changed_files=changed_files,
             )
             return self._resume_patch_applied_candidate(recovered)

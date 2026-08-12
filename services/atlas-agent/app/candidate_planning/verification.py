@@ -88,6 +88,8 @@ class CandidateVerificationPlan:
     repository_branch: str | None
     base_head: str
     post_execution_head: str
+    baseline_status: tuple[tuple[str, str], ...] | None
+    post_execution_status: tuple[tuple[str, str], ...] | None
     changed_files: tuple[Path, ...]
     changed_files_digest: str
     approved_affected_files: tuple[Path, ...]
@@ -186,7 +188,18 @@ class CandidateVerificationValidator:
         repository = self._repository_snapshot_for_request(request)
         if repository is None:
             return _failure(CandidateVerificationFailureCode.REPOSITORY_STALE, should_block=True)
-        changed = _normalized_paths(_snapshot_changed_files(repository))
+        baseline = dict(workflow.worker_baseline_status or ())
+        post_execution_status = None
+        if workflow.worker_baseline_status is not None:
+            current_status = _current_status(request.repository_root)
+            if any(current_status.get(path) != status for path, status in baseline.items()):
+                return _failure(CandidateVerificationFailureCode.REPOSITORY_STALE, should_block=True)
+            changed = _normalized_paths(
+                tuple(Path(path) for path in set(current_status) - set(baseline))
+            )
+            post_execution_status = tuple(sorted(current_status.items()))
+        else:
+            changed = _normalized_paths(_snapshot_changed_files(repository))
         expected_changed = _normalized_paths(workflow.changed_files)
         if not changed or changed != expected_changed:
             return _failure(CandidateVerificationFailureCode.REPOSITORY_STALE, should_block=True)
@@ -228,6 +241,8 @@ class CandidateVerificationValidator:
             repository_branch=request.repository_branch,
             base_head=request.repository_head,
             post_execution_head=repository.head_commit or "",
+            baseline_status=workflow.worker_baseline_status,
+            post_execution_status=post_execution_status,
             changed_files=changed,
             changed_files_digest=digest,
             approved_affected_files=approved,
@@ -277,7 +292,19 @@ class CandidateVerificationValidator:
         repository = self._repository_snapshot_for_request(request)
         if repository is None:
             return _failure(CandidateVerificationFailureCode.REPOSITORY_STALE, should_block=True)
-        changed = _normalized_paths(_snapshot_changed_files(repository))
+        baseline = dict(plan.baseline_status or ())
+        if plan.baseline_status is not None:
+            current_status = _current_status(request.repository_root)
+            if any(current_status.get(path) != status for path, status in baseline.items()):
+                return _failure(CandidateVerificationFailureCode.REPOSITORY_STALE, should_block=True)
+            changed = _normalized_paths(
+                tuple(Path(path) for path in set(current_status) - set(baseline))
+            )
+            expected_status = dict(plan.post_execution_status or ())
+            if any(current_status.get(path) != status for path, status in expected_status.items()):
+                return _failure(CandidateVerificationFailureCode.REPOSITORY_STALE, should_block=True)
+        else:
+            changed = _normalized_paths(_snapshot_changed_files(repository))
         if changed != plan.changed_files:
             return _failure(CandidateVerificationFailureCode.REPOSITORY_STALE, should_block=True)
         digest = changed_files_digest(
@@ -631,6 +658,12 @@ def _snapshot_changed_files(snapshot: RepositorySnapshot) -> tuple[Path, ...]:
     paths = [*snapshot.modified_files, *snapshot.staged_files]
     paths.extend(path for path in snapshot.untracked_files if Path(path).parts[:1] != ("logs",))
     return tuple(Path(path) for path in paths)
+
+
+def _current_status(repository_root: Path) -> dict[str, str]:
+    from app.execution.patches import WorkerPatchApplier
+
+    return dict(WorkerPatchApplier.capture_baseline(repository_root))
 
 
 def _normalized_paths(paths: tuple[Path, ...]) -> tuple[Path, ...]:

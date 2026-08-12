@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from app.candidate_planning.verification import (
     changed_files_digest,
 )
 from app.execution.models import ExecutionResult, ExecutionStatus
+from app.execution.patches import WorkerPatchApplier
 from app.repository.models import RepositorySnapshot
 from app.workflow.models import WorkflowSessionState
 from tests.candidate_planning.test_execution import (
@@ -75,6 +77,119 @@ def _validator(root: Path, *, intent: str = "update-compose-stack") -> Candidate
     )
 
 
+def _real_checkout(root: Path, *, baseline: tuple[str, ...] = ()) -> tuple[Path, str]:
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "feature/atlas-agent"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.email", "tests@example.invalid"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.name", "Tests"], cwd=root, check=True)
+    target = root / "compose.production.yaml"
+    target.write_text("old\n", encoding="utf-8")
+    for path in baseline:
+        candidate = root / path
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        candidate.write_text("baseline\n", encoding="utf-8")
+    subprocess.run(["git", "add", "compose.production.yaml"], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True)
+    return root, subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, check=True, text=True, capture_output=True
+    ).stdout.strip()
+
+
+@pytest.mark.parametrize(
+    "baseline",
+    (
+        (),
+        ("compose.execution-smoke.override.yaml",),
+        ("notes.txt", "services/other.txt"),
+    ),
+)
+def test_verification_uses_workflow_delta_and_preserves_dirty_baseline(
+    tmp_path: Path, baseline: tuple[str, ...]
+) -> None:
+    root, _ = _real_checkout(tmp_path / "repo", baseline=baseline)
+    for path in baseline:
+        candidate = root / path
+        if not candidate.exists():
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            candidate.write_text("baseline\n", encoding="utf-8")
+    captured = WorkerPatchApplier.capture_baseline(root)
+    (root / "compose.production.yaml").write_text("new\n", encoding="utf-8")
+    validator = _validator(root)
+    validator._validate_core = lambda workflow: CandidateVerificationValidationResult(approved=True)
+    session = replace(_awaiting_verification_workflow(root), worker_baseline_status=captured)
+
+    result = validator.build_plan(session)
+
+    assert result.approved
+    assert result.plan is not None
+    assert result.plan.changed_files == (Path("compose.production.yaml"),)
+
+
+@pytest.mark.parametrize("mutation", ("modify", "remove"))
+def test_verification_rejects_mutated_or_removed_baseline_path(
+    tmp_path: Path, mutation: str
+) -> None:
+    root, _ = _real_checkout(tmp_path / "repo", baseline=("baseline.txt",))
+    baseline_file = root / "baseline.txt"
+    baseline_file.write_text("baseline\n", encoding="utf-8")
+    captured = WorkerPatchApplier.capture_baseline(root)
+    (root / "compose.production.yaml").write_text("new\n", encoding="utf-8")
+    if mutation == "modify":
+        baseline_file.write_text("changed\n", encoding="utf-8")
+    else:
+        baseline_file.unlink()
+    validator = _validator(root)
+    session = replace(_awaiting_verification_workflow(root), worker_baseline_status=captured)
+
+    result = validator.build_plan(session)
+
+    assert not result.approved
+    assert result.failure_code is CandidateVerificationFailureCode.REPOSITORY_STALE
+
+
+def test_verification_preserves_preexisting_modified_tracked_file(tmp_path: Path) -> None:
+    root, _ = _real_checkout(tmp_path / "repo")
+    baseline_file = root / "baseline.txt"
+    baseline_file.write_text("original\n", encoding="utf-8")
+    subprocess.run(["git", "add", "baseline.txt"], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-qm", "baseline"], cwd=root, check=True)
+    baseline_file.write_text("pre-existing edit\n", encoding="utf-8")
+    captured = WorkerPatchApplier.capture_baseline(root)
+    (root / "compose.production.yaml").write_text("new\n", encoding="utf-8")
+    validator = _validator(root)
+    session = replace(_awaiting_verification_workflow(root), worker_baseline_status=captured)
+
+    result = validator.build_plan(session)
+
+    assert result.approved
+    assert result.plan is not None
+    assert result.plan.changed_files == (Path("compose.production.yaml"),)
+
+
+def test_verification_rejects_new_unrelated_path_and_target_drift(tmp_path: Path) -> None:
+    root, _ = _real_checkout(tmp_path / "repo", baseline=("baseline.txt",))
+    (root / "baseline.txt").write_text("baseline\n", encoding="utf-8")
+    captured = WorkerPatchApplier.capture_baseline(root)
+    (root / "compose.production.yaml").write_text("new\n", encoding="utf-8")
+    validator = _validator(root)
+    validator._validate_core = lambda workflow: CandidateVerificationValidationResult(approved=True)
+    session = replace(_awaiting_verification_workflow(root), worker_baseline_status=captured)
+    (root / "unrelated.txt").write_text("unexpected\n", encoding="utf-8")
+    assert validator.build_plan(session).failure_code is CandidateVerificationFailureCode.REPOSITORY_STALE
+    (root / "unrelated.txt").unlink()
+    built = validator.build_plan(session)
+    assert built.approved and built.plan is not None and built.approval_request is not None
+    (root / "compose.production.yaml").write_text("different\n", encoding="utf-8")
+    result = validator.validate_for_execution(
+        workflow=replace(session, candidate_verification_plan=built.plan),
+        approval_result=ApprovalResult(
+            decision=ApprovalDecision(
+                request=built.approval_request,
+                status=ApprovalStatus.APPROVED,
+            )
+        ),
+    )
+    assert result.failure_code is CandidateVerificationFailureCode.REPOSITORY_STALE
 def test_changed_files_digest_rejects_absolute_parent_and_out_of_scope(tmp_path: Path) -> None:
     kwargs = {
         "workflow_id": "workflow",
@@ -278,8 +393,15 @@ def test_gated_rc1_smoke_workflow_reaches_actual_verification(
     from tests.candidate_planning.test_execution import approval, rc1_workflow
     from tests.test_workflow_engine import make_candidate_engine, make_execution_result
 
-    engine, state_store, approvals, execution_engine, verification_engine, _, _ = make_candidate_engine(tmp_path)
-    workflow = rc1_workflow(tmp_path)
+    root, _ = _real_checkout(
+        tmp_path / "repo",
+        baseline=("compose.execution-smoke.override.yaml",),
+    )
+    engine, state_store, approvals, execution_engine, verification_engine, _, _ = make_candidate_engine(root)
+    workflow = replace(
+        rc1_workflow(root),
+        worker_baseline_status=WorkerPatchApplier.capture_baseline(root),
+    )
     state_store.delete_session(workflow.identifier)
     state_store.create_session(workflow)
     approvals.replace_snapshot({})
@@ -308,10 +430,10 @@ def test_gated_rc1_smoke_workflow_reaches_actual_verification(
                 execution_request=execution_request,
             )
 
-    execution_engine.execute.return_value = make_execution_result(tmp_path)
+    execution_engine.execute.return_value = make_execution_result(root)
     execution_validator = ApprovedExecution()
     engine._candidate_execution_validator = execution_validator
-    verification_validator = _validator(tmp_path, intent="rc1-validation-smoke")
+    verification_validator = _validator(root, intent="rc1-validation-smoke")
     verification_validator._validate_core = lambda workflow: CandidateVerificationValidationResult(approved=True)
     engine._candidate_verification_validator = verification_validator
     engine._candidate_review_adapter = Mock()
@@ -331,6 +453,7 @@ def test_gated_rc1_smoke_workflow_reaches_actual_verification(
 
     boundary = engine.resume(workflow.identifier)
     assert boundary.sprint.phase.value == "awaiting_verification_approval"
+    (root / "compose.production.yaml").write_text("new\n", encoding="utf-8")
     exact_boundary = engine.resume(workflow.identifier)
     assert exact_boundary.sprint.phase.value == "awaiting_verification_approval"
     verification_approval = approvals.get_request(f"approval-verification-{workflow.identifier}")

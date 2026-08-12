@@ -583,6 +583,7 @@ def test_worker_execution_fields_round_trip_through_real_snapshot_reload(tmp_pat
             duration_seconds=1.0,
         ),
         worker_patch_applied=True,
+        worker_baseline_status=(("compose.execution-smoke.override.yaml", "??:baseline"),),
         changed_files=(target,),
     )
     verification = approval_request(
@@ -609,6 +610,7 @@ def test_worker_execution_fields_round_trip_through_real_snapshot_reload(tmp_pat
     assert restored is not None
     assert restored.changed_files == (target,)
     assert restored.worker_patch_applied is True
+    assert restored.worker_baseline_status == workflow.worker_baseline_status
     assert restored.execution_result == workflow.execution_result
     assert recovered_approvals.get_request(verification.identifier).decision.status is ApprovalStatus.PENDING
 

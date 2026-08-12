@@ -137,6 +137,8 @@ def _commit_ready_workflow(root: Path) -> WorkflowSession:
         repository_branch=request.repository_branch,
         base_head=request.repository_head,
         post_execution_head=request.repository_head,
+        baseline_status=None,
+        post_execution_status=None,
         changed_files=changed,
         changed_files_digest=digest,
         approved_affected_files=request.affected_files,
