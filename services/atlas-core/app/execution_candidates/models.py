@@ -78,6 +78,7 @@ class ExecutionIntent(StrEnum):
     ENABLE_INTEGRATION = "enable-integration"
     DISABLE_INTEGRATION = "disable-integration"
     UPDATE_COMPOSE_STACK = "update-compose-stack"
+    RC1_VALIDATION_SMOKE = "rc1-validation-smoke"
     UPDATE_CONTAINER_IMAGE = "update-container-image"
     RESTART_SERVICE = "restart-service"
     RESTART_CONTAINER = "restart-container"
@@ -118,6 +119,7 @@ INTENT_CATEGORY_MAP: dict[ExecutionIntent, ExecutionCategory] = {
     ExecutionIntent.ENABLE_INTEGRATION: ExecutionCategory.CONFIGURE,
     ExecutionIntent.DISABLE_INTEGRATION: ExecutionCategory.CONFIGURE,
     ExecutionIntent.UPDATE_COMPOSE_STACK: ExecutionCategory.UPDATE,
+    ExecutionIntent.RC1_VALIDATION_SMOKE: ExecutionCategory.UPDATE,
     ExecutionIntent.UPDATE_CONTAINER_IMAGE: ExecutionCategory.UPDATE,
     ExecutionIntent.RESTART_SERVICE: ExecutionCategory.RESTART,
     ExecutionIntent.RESTART_CONTAINER: ExecutionCategory.RESTART,

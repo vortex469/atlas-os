@@ -190,6 +190,33 @@ async def test_fixture_evidence_is_resolved_for_planning_intake_when_fixture_is_
 
 
 @pytest.mark.anyio
+async def test_rc1_smoke_candidate_is_accepted_for_planning_intake(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE", "true")
+    monkeypatch.setenv("ATLAS_CORE_ENVIRONMENT", "development")
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    current = candidate(
+        execution_intent=ExecutionIntent.RC1_VALIDATION_SMOKE,
+        recommendation_class="rc1-validation-smoke",
+        execution_category=ExecutionCategory.UPDATE,
+        target_id="atlas-repository",
+        target_type="repository",
+        catalog_item_id="atlas-rc1-validation",
+        constraints=(ExecutionConstraint.REQUIRES_CURRENT_EVIDENCE,),
+        evidence_ids=(fixture.RC1_SMOKE_EVIDENCE_ID,),
+    )
+    result = await validate_candidate_planning_intake(
+        current.id,
+        CandidatePlanningIntakeRequest(),
+        now=NOW,
+        candidate_resolver=resolver(current),
+        evidence_resolver=lambda value: value.evidence_ids,
+    )
+    assert result.status == CandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING
+
+
+@pytest.mark.anyio
 async def test_fixture_candidate_in_production_without_confirmation_is_not_resolved_for_intake(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

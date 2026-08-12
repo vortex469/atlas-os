@@ -140,3 +140,31 @@ async def test_development_fixture_candidate_is_deterministic(monkeypatch: pytes
 
     assert len(first) == len(second) == 1
     assert first[0].id == second[0].id
+
+
+@pytest.mark.anyio
+async def test_rc1_smoke_candidate_requires_gate_and_is_deterministic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE", "true")
+    monkeypatch.setenv("ATLAS_CORE_ENVIRONMENT", "development")
+    monkeypatch.delenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", raising=False)
+    monkeypatch.setattr(service, "collect_findings", lambda: ())
+    monkeypatch.setattr(service, "collect_provider_findings_with_telemetry", _provider_findings_with_telemetry)
+    monkeypatch.setattr(service, "collect_discovery_compatibility_findings", lambda: ())
+    monkeypatch.setattr(service, "_performance_findings", lambda *args, **kwargs: ())
+
+    normal = await service.collect_current_execution_candidates(now=NOW)
+    assert len(normal) == 1
+    assert all(candidate.execution_intent != ExecutionIntent.RC1_VALIDATION_SMOKE for candidate in normal)
+
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    first = await service.collect_current_execution_candidates(now=NOW)
+    second = await service.collect_current_execution_candidates(now=NOW)
+    smoke = [candidate for candidate in first if candidate.execution_intent == ExecutionIntent.RC1_VALIDATION_SMOKE]
+    assert len(smoke) == 1
+    assert smoke[0].id == "candidate-orion-orion-dev-rc1-validation-smoke-atlas-rc1-validation-atlas-repository-update-rc1-validation-smoke"
+    assert smoke[0].recommendation_class == "rc1-validation-smoke"
+    assert smoke[0].target_id == "atlas-repository"
+    assert smoke[0].evidence_ids == ("orion-rc1-validation-smoke-evidence-0001",)
+    assert [candidate.id for candidate in first] == [candidate.id for candidate in second]

@@ -25,6 +25,9 @@ DEVELOPMENT_FIXTURE_RECOMMENDATION_CLASS = "update_compose_stack"
 DEVELOPMENT_FIXTURE_TARGET_ID = "atlas-compose"
 DEVELOPMENT_FIXTURE_TARGET_TYPE = "repository"
 DEVELOPMENT_FIXTURE_RATIONALE = "Validate Atlas Agent compose-stack planning with a deterministic fixture."
+RC1_VALIDATION_SMOKE_ENABLED_ENV = "ATLAS_ENABLE_RC1_VALIDATION_SMOKE"
+RC1_SMOKE_ID = "orion-dev-rc1-validation-smoke"
+RC1_SMOKE_EVIDENCE_ID = "orion-rc1-validation-smoke-evidence-0001"
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -51,12 +54,19 @@ def is_fixture_enabled() -> bool:
     return _env_bool(DEVELOPMENT_FIXTURE_ENABLED_ENV, default=False)
 
 
+def is_rc1_validation_smoke_enabled() -> bool:
+    return is_fixture_enabled() and _env_bool(RC1_VALIDATION_SMOKE_ENABLED_ENV)
+
+
 def fixture_evidence_ids() -> tuple[str, ...]:
     """Return deterministic evidence IDs used by the fixture."""
 
     if not is_fixture_enabled():
         return ()
-    return (DEVELOPMENT_FIXTURE_EVIDENCE_ID,)
+    evidence = [DEVELOPMENT_FIXTURE_EVIDENCE_ID]
+    if is_rc1_validation_smoke_enabled():
+        evidence.append(RC1_SMOKE_EVIDENCE_ID)
+    return tuple(evidence)
 
 
 def development_fixture_enabled_and_validated() -> None:
@@ -91,7 +101,7 @@ def collect_development_candidate_findings() -> tuple[Finding, ...]:
     if not is_fixture_enabled():
         return ()
 
-    return (
+    findings = [
         Finding(
             id=DEVELOPMENT_FIXTURE_ID,
             severity=Severity.INFO,
@@ -110,5 +120,39 @@ def collect_development_candidate_findings() -> tuple[Finding, ...]:
             },
             affects_health=False,
             score_penalty=0,
-        ),
-    )
+        )
+    ]
+    if is_rc1_validation_smoke_enabled():
+        findings.append(
+            Finding(
+                id=RC1_SMOKE_ID,
+                severity=Severity.INFO,
+                category="development",
+                source="orion",
+                title="Run Atlas RC1 validation smoke",
+                message="Run the fixed Atlas RC1 validation-only worker smoke operation.",
+                recommendation="Validate the bounded Agent-to-worker patch path.",
+                component="atlas-agent",
+                details={
+                    "source_subsystem": "orion",
+                    "recommendation_class": "rc1_validation_smoke",
+                    "target_id": "atlas-repository",
+                    "target_type": "repository",
+                    "catalog_item_id": "atlas-rc1-validation",
+                    "evidence_ids": (RC1_SMOKE_EVIDENCE_ID,),
+                    "compose_file": "services/atlas-agent/tests/test_execution_engine.py",
+                    "compose_service": "atlas-agent",
+                    "compose_property": "rc1-validation-marker",
+                    "compose_operation": "append-fixed-marker",
+                    "compose_desired_value": "# Atlas RC1 execution smoke marker",
+                    "compose_preservation_constraints": (
+                        "rc1-validation-only",
+                        "no-deployment-files",
+                        "no-commit",
+                    ),
+                },
+                affects_health=False,
+                score_penalty=0,
+            )
+        )
+    return tuple(findings)

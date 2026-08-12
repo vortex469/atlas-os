@@ -25,6 +25,7 @@ class RecommendationClass(StrEnum):
     INSTALL_CONTAINER = "install_container"
     INSTALL_PROVIDER = "install_provider"
     UPDATE_COMPOSE_STACK = "update_compose_stack"
+    RC1_VALIDATION_SMOKE = "rc1_validation_smoke"
     UPDATE_CONTAINER_IMAGE = "update_container_image"
     CREATE_BACKUP = "create_backup"
     RESTORE_BACKUP = "restore_backup"
@@ -145,6 +146,11 @@ _EXECUTABLE_RECOMMENDATION_CLASSES: Final[
             ExecutionConstraint.REQUIRES_BACKUP,
             ExecutionConstraint.SERVICE_DISRUPTION,
         ),
+    ),
+    RecommendationClass.RC1_VALIDATION_SMOKE: (
+        ExecutionIntent.RC1_VALIDATION_SMOKE,
+        ApprovalLevel.STANDARD,
+        (ExecutionConstraint.REQUIRES_CURRENT_EVIDENCE,),
     ),
     RecommendationClass.UPDATE_CONTAINER_IMAGE: (
         ExecutionIntent.UPDATE_CONTAINER_IMAGE,
