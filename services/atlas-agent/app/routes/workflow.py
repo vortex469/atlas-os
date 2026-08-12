@@ -1002,10 +1002,6 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
     failed_stage = _failure_stage(validation.failure_code)
 
     has_approvals = implementation_approval_status == "approved"
-    if current_rank >= _AUDIT_STAGE_RANK["verification"]:
-        has_approvals = has_approvals and verification_approval_status == "approved"
-    if current_rank >= _AUDIT_STAGE_RANK["commit"]:
-        has_approvals = has_approvals and commit_approval_status == "approved"
 
     has_verification = verification_plan is not None and verification_evidence is not None
     has_review = review_result is not None or review_report is not None

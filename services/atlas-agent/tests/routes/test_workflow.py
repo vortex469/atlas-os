@@ -712,6 +712,136 @@ def save_candidate_workflow(container, workflow: WorkflowSession) -> None:
     container.approval_repository.save_request(approval)
 
 
+def _save_audit_approval(
+    container,
+    *,
+    identifier: str,
+    workflow_id: str,
+    purpose: ApprovalPurpose,
+    status: ApprovalStatus,
+) -> None:
+    request = ApprovalRequest(
+        identifier=identifier,
+        workflow_id=workflow_id,
+        checkpoint_id="impl-request-123",
+        title="Audit approval",
+        requested_tool="atlas-agent",
+        requested_command=(),
+        requested_working_directory=Path("."),
+        rationale="Audit regression.",
+        purpose=purpose,
+    )
+    container.approval_repository.save_request(request)
+    if status is not ApprovalStatus.PENDING:
+        assert container.approval_repository.update_decision(
+            identifier,
+            ApprovalDecision(
+                request=request,
+                status=status,
+                reviewer="tester",
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    ("state", "implementation_status", "verification_status", "expected"),
+    (
+        (
+            WorkflowSessionState.AWAITING_APPROVAL,
+            None,
+            None,
+            "not_reached",
+        ),
+        (
+            WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+            ApprovalStatus.PENDING,
+            None,
+            "current",
+        ),
+        (
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            ApprovalStatus.APPROVED,
+            ApprovalStatus.PENDING,
+            "completed",
+        ),
+        (
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            ApprovalStatus.APPROVED,
+            ApprovalStatus.APPROVED,
+            "completed",
+        ),
+        (
+            WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            None,
+            ApprovalStatus.PENDING,
+            "missing",
+        ),
+    ),
+)
+def test_candidate_audit_aggregate_approval_status_tracks_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    state: WorkflowSessionState,
+    implementation_status: ApprovalStatus | None,
+    verification_status: ApprovalStatus | None,
+    expected: str,
+) -> None:
+    monkeypatch.setattr(
+        workflow_routes.CandidateAuditChainValidator,
+        "validate",
+        lambda self, planning_session, workflow, approvals=None, require_complete=None: CandidateAuditValidationResult(valid=True),
+    )
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    container.candidate_planning_state.replace_snapshot({})
+    workflow = replace(
+        candidate_workflow_session(tmp_path),
+        state=state,
+        candidate_implementation_approval_id="approval-implementation-workflow-123",
+    )
+    container.candidate_planning_state.create_session(
+        candidate_planning_session_for_workflow(tmp_path)
+    )
+    container.approval_repository.replace_snapshot({})
+    save_candidate_workflow(container, workflow)
+    shell = container.approval_repository.get_request("approval-workflow-123")
+    assert shell is not None
+    assert container.approval_repository.update_decision(
+        "approval-workflow-123",
+        ApprovalDecision(
+            request=shell.decision.request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="tester",
+        ),
+    )
+    if implementation_status is not None:
+        _save_audit_approval(
+            container,
+            identifier="approval-implementation-workflow-123",
+            workflow_id=workflow.identifier,
+            purpose=ApprovalPurpose.IMPLEMENTATION,
+            status=implementation_status,
+        )
+    if verification_status is not None:
+        _save_audit_approval(
+            container,
+            identifier="approval-verification-workflow-123",
+            workflow_id=workflow.identifier,
+            purpose=ApprovalPurpose.VERIFICATION,
+            status=verification_status,
+        )
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["approvals"]["status"] == expected
+    assert body["approvals"]["shell"]["status"] == "approved"
+    if implementation_status is not None:
+        assert body["approvals"]["implementation"]["status"] == implementation_status.value
+    if verification_status is not None:
+        assert body["approvals"]["verification"]["status"] == verification_status.value
+
+
 def shell_workflow_session(repository: Path, *, state=WorkflowSessionState.AWAITING_APPROVAL) -> WorkflowSession:
     base = candidate_workflow_session(repository)
     return replace(
