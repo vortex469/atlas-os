@@ -875,6 +875,13 @@ class WorkflowEngine:
                 )
         except PatchApplicationError:
             logger.exception("Candidate execution patch application failed")
+            if self._state_persistence is not None:
+                journal = self._state_persistence.read_patch_journal()
+                if journal is not None and journal.get("workflow_id") == session.identifier:
+                    return self._blocked_session_result(
+                        session=claimed_session,
+                        error_message="patch_recovery_pending",
+                    )
             self._block_claimed_session(
                 session.identifier,
                 WorkflowSessionState.EXECUTING,
@@ -886,6 +893,13 @@ class WorkflowEngine:
             )
         except Exception:
             logger.exception("Candidate verification approval storage failed")
+            if self._state_persistence is not None:
+                journal = self._state_persistence.read_patch_journal()
+                if journal is not None and journal.get("workflow_id") == session.identifier:
+                    return self._blocked_session_result(
+                        session=claimed_session,
+                        error_message="patch_recovery_pending",
+                    )
             self._block_claimed_session(
                 session.identifier,
                 WorkflowSessionState.EXECUTING,
@@ -962,13 +976,20 @@ class WorkflowEngine:
                 session=session,
                 error_message="patch_applied_checkpoint_transition_failed",
             )
-        return self._candidate_session_result(
-            session=replace(
-                session,
-                state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
-            ),
-            phase=SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+        recovered = replace(
+            session,
+            state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        )
+        status = self._status(recovered, SprintPhase.AWAITING_VERIFICATION_APPROVAL)
+        self._publish_sprint(status)
+        return WorkflowResult(
+            sprint=status,
+            plan=recovered.plan,
+            context=recovered.context,
+            planning_analysis=recovered.planning_analysis,
+            review_analysis=recovered.review_analysis,
             approval_request=approval,
+            execution_result=recovered.execution_result,
         )
 
     def _resume_patch_journal(

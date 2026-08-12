@@ -542,9 +542,16 @@ class AgentStatePersistenceCoordinator:
         workflow_candidate: CandidateWorkflowState,
     ) -> bool:
         transformed = False
+        journal = self._patch_journal.read()
         for identifier, session in tuple(workflow_candidate.sessions.items()):
             reason = _INTERRUPTION_REASONS.get(session.state)
             if reason is None:
+                continue
+            if (
+                session.state is WorkflowSessionState.EXECUTING
+                and journal is not None
+                and journal.get("workflow_id") == identifier
+            ):
                 continue
             workflow_candidate.sessions[identifier] = replace(
                 session,
