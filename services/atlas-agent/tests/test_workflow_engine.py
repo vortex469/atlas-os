@@ -7,7 +7,6 @@ from threading import Event
 from unittest.mock import Mock, call
 
 import pytest
-
 from app.approval.engine import ApprovalEngine
 from app.approval.models import (
     ApprovalDecision,
@@ -31,6 +30,7 @@ from app.execution.models import (
     ExecutionResult,
     ExecutionStatus,
 )
+from app.execution.patches import PatchApplicationError
 from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
@@ -2521,3 +2521,30 @@ def test_concurrent_candidate_resumes_execute_once(tmp_path: Path) -> None:
     execution_engine.execute.assert_called_once()
     verifier.verify.assert_not_called()
     reviewer.review.assert_not_called()
+
+
+def test_worker_changed_files_are_normalized_and_baseline_independent(tmp_path: Path) -> None:
+    engine, state_store, _, _, _, _, _ = make_candidate_engine(tmp_path)
+    session = state_store.get_session("candidate-workflow-1")
+    assert session is not None and session.candidate_implementation_request is not None
+    plan = implementation_plan_from_candidate_request(session.candidate_implementation_request)
+    target = Path("compose.production.yaml")
+    assert engine._validate_worker_changed_files((target,), plan) == (target,)
+
+
+def test_worker_empty_changed_files_fail_closed(tmp_path: Path) -> None:
+    engine, state_store, _, _, _, _, _ = make_candidate_engine(tmp_path)
+    session = state_store.get_session("candidate-workflow-1")
+    assert session is not None and session.candidate_implementation_request is not None
+    plan = implementation_plan_from_candidate_request(session.candidate_implementation_request)
+    with pytest.raises(PatchApplicationError, match="worker_changed_files_empty"):
+        engine._validate_worker_changed_files((), plan)
+
+
+def test_worker_out_of_scope_changed_files_fail_closed(tmp_path: Path) -> None:
+    engine, state_store, _, _, _, _, _ = make_candidate_engine(tmp_path)
+    session = state_store.get_session("candidate-workflow-1")
+    assert session is not None and session.candidate_implementation_request is not None
+    plan = implementation_plan_from_candidate_request(session.candidate_implementation_request)
+    with pytest.raises(PatchApplicationError, match="worker_changed_files_out_of_scope"):
+        engine._validate_worker_changed_files((Path("unapproved.txt"),), plan)
