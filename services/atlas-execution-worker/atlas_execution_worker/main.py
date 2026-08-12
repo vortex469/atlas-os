@@ -30,6 +30,7 @@ def main() -> None:
                 source_root=source,
                 workspace_root=Path("/tmp/atlas-worker-workspaces") / token,
                 repository_token=token,
+                trusted_repository_paths=worker_settings.repository_mapping.values(),
             ),
             enabled=worker_settings.execution_enabled,
         )

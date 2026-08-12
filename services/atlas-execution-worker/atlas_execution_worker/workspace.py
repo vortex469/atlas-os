@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,11 +25,21 @@ class WorkerWorkspace:
 class WorkerWorkspaceManager:
     """Clone one trusted repository source into one disposable request directory."""
 
-    def __init__(self, source_root: Path, workspace_root: Path, repository_token: str) -> None:
+    def __init__(
+        self,
+        source_root: Path,
+        workspace_root: Path,
+        repository_token: str,
+        *,
+        trusted_repository_paths: Iterable[Path],
+    ) -> None:
         self._source_root_input = source_root
         self._source_root = source_root.resolve()
         self._workspace_root = workspace_root.resolve()
         self._repository_token = repository_token
+        self._trusted_repository_paths = {
+            path.resolve() for path in trusted_repository_paths
+        }
         self._active: dict[str, WorkerWorkspace] = {}
         self._workspace_root.mkdir(parents=True, exist_ok=True)
 
@@ -44,6 +55,8 @@ class WorkerWorkspaceManager:
         source = self._source_root
         if self._source_root_input.is_symlink() or not source.is_dir():
             raise WorkspaceError("trusted repository source is invalid")
+        if source not in self._trusted_repository_paths:
+            raise WorkspaceError("repository source is not configured")
         source_head = self._git(source, "rev-parse", "HEAD")
         if source_head != request.expected_repository_head:
             raise WorkspaceError("stale repository")
@@ -51,7 +64,16 @@ class WorkerWorkspaceManager:
         if path.exists() or path.is_symlink():
             raise WorkspaceError("request workspace already exists")
         subprocess.run(
-            ["git", "clone", "--no-local", "--no-hardlinks", str(source), str(path)],
+            [
+                "git",
+                "-c",
+                f"safe.directory={source}",
+                "clone",
+                "--no-local",
+                "--no-hardlinks",
+                str(source),
+                str(path),
+            ],
             check=True,
             capture_output=True,
             text=True,

@@ -40,6 +40,16 @@ def test_repository_mapping_requires_opaque_token_and_git_source(tmp_path: Path)
         load_repository_mapping(f"missing={tmp_path / 'missing'}")
 
 
+def test_repository_mapping_trusts_multiple_sources_individually(tmp_path: Path) -> None:
+    first = git_repository(tmp_path / "first")
+    second = git_repository(tmp_path / "second")
+
+    assert load_repository_mapping(f"one={first},two={second}") == {
+        "one": first.resolve(),
+        "two": second.resolve(),
+    }
+
+
 def test_repository_mapping_uses_exact_scoped_safe_directory(tmp_path: Path) -> None:
     source = git_repository(tmp_path / "source")
     with patch("atlas_execution_worker.config.subprocess.run") as run:

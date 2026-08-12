@@ -88,10 +88,50 @@ def test_workspace_git_uses_exact_scoped_safe_directory(tmp_path: Path) -> None:
     assert "safe.directory=*" not in command
 
 
+def test_workspace_clone_uses_exact_source_safe_directory_and_no_local(
+    repository: tuple[Path, str], tmp_path: Path
+) -> None:
+    source, head = repository
+    manager = WorkerWorkspaceManager(
+        source,
+        tmp_path / "workspaces",
+        "trusted-repository",
+        trusted_repository_paths=(source,),
+    )
+    request = _request(head)
+    with patch("atlas_execution_worker.workspace.subprocess.run") as run:
+        run.side_effect = [
+            subprocess.CompletedProcess([], 0, f"{head}\n", ""),
+            subprocess.CompletedProcess([], 0, "", ""),
+            subprocess.CompletedProcess([], 0, f"{head}\n", ""),
+        ]
+        manager.prepare(request)
+    clone = run.call_args_list[1].args[0]
+    assert clone[:4] == ["git", "-c", f"safe.directory={source.resolve()}", "clone"]
+    assert "--no-local" in clone
+    assert "--no-hardlinks" in clone
+    assert "safe.directory=*" not in clone
+
+
+def test_unconfigured_source_is_not_implicitly_trusted(
+    repository: tuple[Path, str], tmp_path: Path
+) -> None:
+    source, head = repository
+    manager = WorkerWorkspaceManager(
+        source,
+        tmp_path / "workspaces",
+        "trusted-repository",
+        trusted_repository_paths=(),
+    )
+
+    with pytest.raises(Exception, match="not configured"):
+        manager.prepare(_request(head))
+
+
 def test_enabled_runner_returns_bounded_patch_and_cleans_workspace(repository: tuple[Path, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source, head = repository
     monkeypatch.setenv("PATH", f"{_fake_codex(tmp_path)}:{os.environ['PATH']}")
-    manager = WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository")
+    manager = WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,))
     result = WorkspaceExecutionRunner(manager, enabled=True).execute(_request(head))
     assert result.failure_code is None
     assert result.changed_files == ("compose.production.yaml",)
@@ -106,7 +146,7 @@ def test_out_of_scope_change_is_blocked(repository: tuple[Path, str], tmp_path: 
     source, head = repository
     monkeypatch.setenv("PATH", f"{_fake_codex(tmp_path, touch_forbidden=True)}:{os.environ['PATH']}")
     request = _request(head, allowed=("compose.production.yaml",))
-    result = WorkspaceExecutionRunner(WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository"), enabled=True).execute(request)
+    result = WorkspaceExecutionRunner(WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,)), enabled=True).execute(request)
     assert result.failure_code is WorkerFailureCode.OUT_OF_SCOPE_CHANGES
     assert result.status.value == "blocked"
     assert _git(source, "diff") == ""
@@ -115,14 +155,14 @@ def test_out_of_scope_change_is_blocked(repository: tuple[Path, str], tmp_path: 
 def test_stale_head_is_rejected_before_runner(repository: tuple[Path, str], tmp_path: Path) -> None:
     source, _ = repository
     request = _request("0" * 40)
-    result = WorkspaceExecutionRunner(WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository"), enabled=True).execute(request)
+    result = WorkspaceExecutionRunner(WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,)), enabled=True).execute(request)
     assert result.failure_code is WorkerFailureCode.STALE_REPOSITORY
     assert not (tmp_path / "workspaces" / request.execution_request_id).exists()
 
 
 def test_disabled_runner_never_launches_argv(repository: tuple[Path, str], tmp_path: Path) -> None:
     source, head = repository
-    result = WorkspaceExecutionRunner(WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository"), enabled=False).execute(_request(head))
+    result = WorkspaceExecutionRunner(WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,)), enabled=False).execute(_request(head))
     assert result.failure_code is WorkerFailureCode.WORKER_UNAVAILABLE
     assert result.return_code is None
     assert _git(source, "diff") == ""
@@ -154,7 +194,7 @@ def test_rc1_smoke_directly_mutates_only_fixed_target(repository: tuple[Path, st
     )
     with patch("atlas_execution_worker.runner.subprocess.run", wraps=subprocess.run) as run:
         result = WorkspaceExecutionRunner(
-            WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository"),
+            WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,)),
             enabled=True,
         ).execute(request)
     assert result.failure_code is None
@@ -188,7 +228,7 @@ def test_rc1_smoke_rejects_arbitrary_command_and_scope(repository: tuple[Path, s
 
 def test_manager_reuses_one_request_workspace(repository: tuple[Path, str], tmp_path: Path) -> None:
     source, head = repository
-    manager = WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository")
+    manager = WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,))
     request = _request(head)
     first = manager.prepare(request)
     second = manager.prepare(request)
@@ -200,6 +240,6 @@ def test_symlinked_source_is_rejected(repository: tuple[Path, str], tmp_path: Pa
     source, _ = repository
     link = tmp_path / "source-link"
     link.symlink_to(source, target_is_directory=True)
-    manager = WorkerWorkspaceManager(link, tmp_path / "workspaces", "trusted-repository")
+    manager = WorkerWorkspaceManager(link, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,))
     with pytest.raises(Exception, match="trusted repository source"):
         manager.prepare(_request(_git(source, "rev-parse", "HEAD")))

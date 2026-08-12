@@ -131,7 +131,7 @@ def test_unknown_workspace_is_quarantined(tmp_path: Path) -> None:
     source = tmp_path / "source"
     source.mkdir()
     workspace_root = tmp_path / "workspaces"
-    manager = WorkerWorkspaceManager(source, workspace_root, "token")
+    manager = WorkerWorkspaceManager(source, workspace_root, "token", trusted_repository_paths=(source,))
     leftover = workspace_root / "execution-1"
     leftover.mkdir(parents=True)
     (leftover / "evidence.txt").write_text("preserve", encoding="utf-8")
