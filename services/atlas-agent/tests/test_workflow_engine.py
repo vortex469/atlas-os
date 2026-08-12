@@ -1,6 +1,7 @@
 """Tests for Atlas Agent workflow orchestration."""
 
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Event
@@ -2548,3 +2549,40 @@ def test_worker_out_of_scope_changed_files_fail_closed(tmp_path: Path) -> None:
     plan = implementation_plan_from_candidate_request(session.candidate_implementation_request)
     with pytest.raises(PatchApplicationError, match="worker_changed_files_out_of_scope"):
         engine._validate_worker_changed_files((Path("unapproved.txt"),), plan)
+
+
+def test_non_worker_changed_files_keep_checkout_scope_behavior(tmp_path: Path) -> None:
+    engine, _, _, _, _, _, _ = make_candidate_engine(tmp_path)
+    plan = replace(make_plan(tmp_path), affected_files=(Path("compose.production.yaml"),))
+    snapshot = make_changed_snapshot(
+        tmp_path,
+        modified_files=("compose.production.yaml",),
+    )
+    assert engine._workflow_changed_files(snapshot, plan) == (Path("compose.production.yaml"),)
+
+
+def test_worker_provenance_excludes_baseline_untracked_and_modified_paths(tmp_path: Path) -> None:
+    engine, _, _, _, _, _, _ = make_candidate_engine(tmp_path)
+    plan = make_plan(tmp_path)
+    target = Path("services/atlas-agent/tests/test_execution_engine.py")
+    plan = replace(plan, affected_files=(target,))
+    assert engine._validate_worker_changed_files((target,), plan) == (target,)
+
+
+def test_worker_success_persistence_shape_is_explicitly_representable(tmp_path: Path) -> None:
+    _, state_store, _, _, _, _, _ = make_candidate_engine(tmp_path)
+    session = state_store.get_session("candidate-workflow-1")
+    assert session is not None
+    target = Path("services/atlas-agent/tests/test_execution_engine.py")
+    updated = replace(
+        session,
+        state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        worker_patch_applied=True,
+        changed_files=(target,),
+    )
+    state_store._sessions[session.identifier] = updated
+    restored = state_store.get_session(session.identifier)
+    assert restored is not None
+    assert restored.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    assert restored.worker_patch_applied is True
+    assert restored.changed_files == (target,)
