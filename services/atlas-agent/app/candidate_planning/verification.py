@@ -22,8 +22,10 @@ from app.approval.models import (
 from app.candidate_planning.conversion import candidate_plan_fingerprint
 from app.candidate_planning.execution import CandidatePlanningIntakeClient
 from app.candidate_planning.models import (
+    RC1_VALIDATION_SMOKE_INTENT,
     CandidateImplementationRequest,
     CoreCandidatePlanningIntakeStatus,
+    is_supported_execution_intent,
 )
 from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.state import CandidatePlanningStateStore
@@ -202,7 +204,7 @@ class CandidateVerificationValidator:
             changed_files=changed,
             approved_affected_files=approved,
         )
-        checks = _verification_checks(request.repository_root)
+        checks = _verification_checks(request)
         plan = CandidateVerificationPlan(
             identifier=candidate_verification_plan_id(
                 workflow_id=workflow.identifier,
@@ -344,7 +346,7 @@ class CandidateVerificationValidator:
             return _failure(CandidateVerificationFailureCode.IMPLEMENTATION_REQUEST_MISMATCH, should_block=True)
         if workflow.execution_result.status.value != "succeeded" or not workflow.changed_files:
             return _failure(CandidateVerificationFailureCode.IMPLEMENTATION_REQUEST_MISMATCH, should_block=True)
-        if request.execution_intent != "update-compose-stack":
+        if not is_supported_execution_intent(request.execution_intent):
             return _failure(CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH, should_block=True)
         if not (
             metadata.candidate_planning_session_id == request.candidate_planning_session_id
@@ -612,12 +614,14 @@ def changed_files_digest(
     return f"changed-files-digest-v1:{digest}"
 
 
-def _verification_checks(repository_root: Path) -> tuple[VerificationCheck, ...]:
+def _verification_checks(request: CandidateImplementationRequest) -> tuple[VerificationCheck, ...]:
+    if request.execution_intent == RC1_VALIDATION_SMOKE_INTENT:
+        return ()
     return (
         VerificationCheck(
             identifier=COMPOSE_CHECK_ID,
             argv=("docker", "compose", "--file", "compose.production.yaml", "config", "--no-env-resolution", "--quiet"),
-            working_directory=repository_root,
+            working_directory=request.repository_root,
             timeout_seconds=60.0,
         ),
     )
