@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import subprocess
 from collections.abc import Callable
 from dataclasses import replace
 from hashlib import sha256
@@ -40,10 +41,16 @@ from app.context.models import AgentContext
 from app.execution.backends import WorkerExecutionContext
 from app.execution.engine import ExecutionEngine
 from app.execution.exceptions import ExecutionValidationError
-from app.execution.models import EnvironmentVariable, ExecutionRequest, ExecutionStatus
+from app.execution.models import (
+    EnvironmentVariable,
+    ExecutionRequest,
+    ExecutionResult,
+    ExecutionStatus,
+)
 from app.execution.patches import PatchApplicationError, WorkerPatchApplier
 from app.execution.worker_contracts import WorkerExecutionRequest, WorkerExecutionResult
 from app.model_providers.models import ModelResponse
+from app.persistence.patch_journal import PatchJournalError
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
@@ -302,6 +309,10 @@ class WorkflowEngine:
             WorkflowSessionState.VERIFYING,
             WorkflowSessionState.COMMITTING,
         }:
+            if session.state is WorkflowSessionState.EXECUTING and self._state_persistence is not None:
+                journal = self._state_persistence.read_patch_journal()
+                if journal is not None and journal.get("workflow_id") == workflow_id:
+                    return self._resume_patch_journal(session, journal)
             return self._session_error_result(
                 session=session,
                 error_message="Workflow already in progress",
@@ -750,6 +761,37 @@ class WorkflowEngine:
                     allowed_affected_files=execution_context.allowed_affected_files,
                     timeout_seconds=execution_context.timeout_seconds,
                 )
+                if self._state_persistence is not None:
+                    try:
+                        self._state_persistence.write_patch_journal(
+                            {
+                                "schema_version": 1,
+                                "state": "intent",
+                                "workflow_id": session.identifier,
+                                "execution_request_id": worker_request.execution_request_id,
+                                "implementation_request_id": execution_request.identifier,
+                                "repository_root": str(execution_request.plan.repository_root.resolve()),
+                                "repository_branch": implementation_plan.branch,
+                                "base_repository_head": worker_request.expected_repository_head,
+                                "repository_token": worker_request.repository_token,
+                                "request": worker_request.to_dict(),
+                                "result": worker_result.to_dict(),
+                                "execution_result": {
+                                    "request_id": execution_result.request_id,
+                                    "checkpoint_id": execution_result.checkpoint_id,
+                                    "argv": list(execution_result.argv),
+                                    "working_directory": str(execution_result.working_directory),
+                                    "status": execution_result.status.value,
+                                    "return_code": execution_result.return_code,
+                                    "stdout": execution_result.stdout,
+                                    "stderr": execution_result.stderr,
+                                    "duration_seconds": execution_result.duration_seconds,
+                                    "error": execution_result.error,
+                                },
+                            }
+                        )
+                    except PatchJournalError as exc:
+                        raise RuntimeError("patch_journal_persistence_failed") from exc
                 patch_outcome = WorkerPatchApplier().apply(
                     execution_request.plan.repository_root,
                     worker_request,
@@ -800,6 +842,7 @@ class WorkflowEngine:
 
                     if not self._state_persistence.mutate_aggregate(checkpoint):
                         raise RuntimeError("patch_checkpoint_persistence_failed")
+                    self._state_persistence.clear_patch_journal()
                 checkpoint_state = WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION
             verification_approval = self._candidate_verification_approval_request(
                 claimed_session
@@ -927,6 +970,99 @@ class WorkflowEngine:
             phase=SprintPhase.AWAITING_VERIFICATION_APPROVAL,
             approval_request=approval,
         )
+
+    def _resume_patch_journal(
+        self,
+        session: WorkflowSession,
+        journal: dict[str, object],
+    ) -> WorkflowResult:
+        """Recover an intent journal, applying its bounded patch at most once."""
+
+        try:
+            request = WorkerExecutionRequest.from_dict(journal["request"])
+            worker_result = WorkerExecutionResult.from_dict(journal["result"])
+            execution_payload = journal["execution_result"]
+            execution_result = ExecutionResult(
+                request_id=execution_payload["request_id"],
+                checkpoint_id=execution_payload["checkpoint_id"],
+                argv=tuple(execution_payload["argv"]),
+                working_directory=Path(execution_payload["working_directory"]),
+                status=ExecutionStatus(execution_payload["status"]),
+                return_code=execution_payload["return_code"],
+                stdout=execution_payload["stdout"],
+                stderr=execution_payload["stderr"],
+                duration_seconds=float(execution_payload["duration_seconds"]),
+                error=execution_payload["error"],
+                worker_result=worker_result,
+            )
+            patch = worker_result.patch.text if worker_result.patch is not None else None
+            if patch is None or worker_result.patch_truncated:
+                raise PatchApplicationError("patch_journal_missing_patch")
+            root = Path(str(journal["repository_root"]))
+            inspector = self._repository_inspector_factory(root)
+            snapshot = inspector.inspect()
+            if snapshot.branch != journal["repository_branch"]:
+                raise PatchApplicationError("patch_journal_branch_drift")
+            current_head = subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            applied = WorkerPatchApplier._run_git(
+                root,
+                ("apply", "--reverse", "--check", "--whitespace=error", "-"),
+                patch,
+                check=False,
+            )
+            if not applied and current_head != journal["base_repository_head"]:
+                raise PatchApplicationError("patch_journal_repository_drift")
+            if not applied:
+                WorkerPatchApplier().apply(root, request, worker_result)
+            if session.plan is None:
+                raise PatchApplicationError("patch_journal_plan_missing")
+            changed_files = self._validate_worker_changed_files(
+                worker_result.changed_files,
+                session.plan,
+            )
+            if self._state_persistence is None:
+                raise RuntimeError("patch_journal_requires_persistence")
+
+            def checkpoint(workflows, _approvals):
+                return workflows.transition_session(
+                    session.identifier,
+                    WorkflowSessionState.EXECUTING,
+                    WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
+                    execution_result=execution_result,
+                    worker_patch_applied=True,
+                    changed_files=changed_files,
+                )
+
+            if not self._state_persistence.mutate_aggregate(checkpoint):
+                raise RuntimeError("patch_checkpoint_persistence_failed")
+            self._state_persistence.clear_patch_journal()
+            recovered = replace(
+                session,
+                state=WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
+                execution_result=execution_result,
+                worker_patch_applied=True,
+                changed_files=changed_files,
+            )
+            return self._resume_patch_applied_candidate(recovered)
+        except PatchApplicationError:
+            logger.exception("Worker patch journal recovery failed")
+            self._block_claimed_session(session.identifier, WorkflowSessionState.EXECUTING)
+            return self._blocked_session_result(
+                session=session,
+                error_message="patch_recovery_failed",
+            )
+        except Exception:
+            logger.exception("Worker patch journal persistence failed")
+            self._block_claimed_session(session.identifier, WorkflowSessionState.EXECUTING)
+            return self._blocked_session_result(
+                session=session,
+                error_message=CandidateExecutionFailureCode.PERSISTENCE_FAILED.value,
+            )
 
     def _log_candidate_pre_execution_failure(
         self,

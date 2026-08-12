@@ -50,6 +50,7 @@ from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
 from app.execution.worker_contracts import WorkerExecutionResult
 from app.model_providers.models import ModelResponse
+from app.persistence.patch_journal import PatchJournal
 from app.planning.models import ImplementationPlan, PlanRisk, RoadmapCheckpoint
 from app.repository.models import CommitRequest, CommitResult
 from app.review.models import (
@@ -252,12 +253,29 @@ class AgentStatePersistenceCoordinator:
         self._approval_repository = approval_repository
         self._candidate_planning_state = candidate_planning_state
         self._lock = RLock()
+        self._patch_journal = PatchJournal(state_dir)
 
     @property
     def snapshot_path(self) -> Path:
         """Return the canonical snapshot path."""
 
         return self._snapshot_path
+
+    @property
+    def patch_journal_path(self) -> Path:
+        return self._patch_journal.path
+
+    def write_patch_journal(self, payload: dict[str, Any]) -> None:
+        with self._lock:
+            self._patch_journal.write(payload)
+
+    def read_patch_journal(self) -> dict[str, Any] | None:
+        with self._lock:
+            return self._patch_journal.read()
+
+    def clear_patch_journal(self) -> None:
+        with self._lock:
+            self._patch_journal.clear()
 
     def initialize(self) -> None:
         """Validate the state directory and load persisted state if present."""
