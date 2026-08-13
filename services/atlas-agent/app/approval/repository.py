@@ -36,7 +36,8 @@ class ApprovalRepository:
         """Replace current approvals with a validated snapshot."""
 
         with self._lock:
-            self._storage = dict(snapshot)
+            self._storage.clear()
+            self._storage.update(snapshot)
 
     def save_request(self, request: ApprovalRequest) -> str:
         """Save a new approval request and return its identifier.

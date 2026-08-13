@@ -399,6 +399,15 @@ def test_candidate_implementation_route_sequence_claims_once_and_pauses_for_veri
         workflow_engine=engine,
         state_persistence=persistence,
     )
+    container = application.state.container
+    assert id(container.approval_repository) == id(
+        container.workflow_engine._approval_repository
+    )
+    approval_storage = container.approval_repository._storage
+    validator = container.workflow_engine._candidate_verification_validator
+    assert validator is not None
+    validate_for_execution = Mock(wraps=validator.validate_for_execution)
+    validator.validate_for_execution = validate_for_execution
     with TestClient(application) as client:
         approval_response = client.post(
             f"/api/v1/agent/workflows/{workflow_id}/implementation-approval",
@@ -425,17 +434,27 @@ def test_candidate_implementation_route_sequence_claims_once_and_pauses_for_veri
         )
         assert verification_request is not None
         assert verification_request.decision.status is ApprovalStatus.PENDING
-        assert approvals.update_decision(
-            verification_request.decision.request.identifier,
-            ApprovalDecision(
-                request=verification_request.decision.request,
-                status=ApprovalStatus.APPROVED,
-                reviewer="workflow-service",
-            ),
+        verification_response = client.post(
+            f"/api/v1/agent/workflows/{workflow_id}/verification-approval",
+            json={"workflow_id": workflow_id, "decision": "approve"},
         )
+        assert verification_response.status_code == 200
+        verification_id = verification_request.decision.request.identifier
+        assert approvals.get_request(verification_id).decision.status is ApprovalStatus.APPROVED
+        assert container.approval_repository.get_request(verification_id).decision.status is ApprovalStatus.APPROVED
+        assert container.workflow_engine._approval_repository.get_request(verification_id).decision.status is ApprovalStatus.APPROVED
+        assert container.approval_repository._storage is approval_storage
         third_resume = client.post(f"/api/v1/agent/workflows/{workflow_id}/resume")
         assert third_resume.status_code == 200
         assert third_resume.json()["sprint"]["phase"] == "awaiting_commit_approval"
+        assert validate_for_execution.call_count == 2
+        first_observation = validate_for_execution.call_args_list[0].kwargs
+        observed_workflow, observed_approval = validate_for_execution.call_args.kwargs.values()
+        assert observed_workflow.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+        assert observed_workflow.candidate_verification_plan is not None
+        assert observed_approval is not None
+        assert observed_approval.decision.status is ApprovalStatus.APPROVED
+        assert first_observation["approval_result"].decision.status is ApprovalStatus.PENDING
 
     workflow = workflow_state.get_session(workflow_id)
     assert workflow is not None
