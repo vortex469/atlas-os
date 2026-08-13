@@ -13,6 +13,7 @@ from app.execution_candidates.intake import (
 )
 from app.execution_candidates.models import (
     ApprovalLevel,
+    ComposeMutationSpecification,
     ExecutionCandidate,
     ExecutionCandidateStatus,
     ExecutionCategory,
@@ -93,6 +94,37 @@ async def test_current_eligible_candidate_is_accepted_for_planning() -> None:
     assert result.reason_codes == (CandidatePlanningIntakeReasonCode.ACCEPTED_FOR_PLANNING,)
     assert result.current_candidate is not None
     assert result.current_candidate.id == current.id
+
+
+@pytest.mark.anyio
+async def test_planning_intake_carries_compose_mutation_evidence() -> None:
+    mutation = ComposeMutationSpecification(
+        file="compose.production.yaml",
+        service="atlas-agent",
+        property="image",
+        operation="update",
+        expected_value="atlas-agent:old",
+        desired_value="atlas-agent:new",
+        preservation_constraints=("preserve-unrelated-services",),
+    )
+    current = candidate(
+        recommendation_class="update-compose-stack",
+        execution_category=ExecutionCategory.UPDATE,
+        execution_intent=ExecutionIntent.UPDATE_COMPOSE_STACK,
+        constraints=(),
+        mutation=mutation,
+    )
+
+    result = await validate_candidate_planning_intake(
+        current.id,
+        CandidatePlanningIntakeRequest(requested_by="operator"),
+        now=NOW,
+        candidate_resolver=resolver(current),
+        evidence_resolver=lambda candidate: candidate.evidence_ids,
+    )
+
+    assert result.current_candidate is not None
+    assert result.current_candidate.mutation == mutation
 
 
 @pytest.mark.anyio

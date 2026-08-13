@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 
 from app.core.logging import get_logger
-from app.execution_candidates.api_models import candidate_to_response
+from app.execution_candidates.api_models import candidate_to_planning_response
 from app.execution_candidates.eligibility import (
     ExecutionEligibilityReason,
     validate_candidate_for_planning,
@@ -60,7 +60,9 @@ def _result(
         planning_allowed=status == CandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
         reason_codes=_sorted_reason_codes(reason_codes),
         current_candidate_fingerprint=fingerprint,
-        current_candidate=candidate_to_response(candidate) if candidate is not None else None,
+        current_candidate=(
+            candidate_to_planning_response(candidate) if candidate is not None else None
+        ),
     )
 
 

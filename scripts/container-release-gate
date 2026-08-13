@@ -11,12 +11,14 @@ GATE_ENV_FILE="$GATE_DIRECTORY/atlas.env"
 GATE_CERT_FILE="$GATE_DIRECTORY/tls.crt"
 GATE_KEY_FILE="$GATE_DIRECTORY/tls.key"
 GATE_HTPASSWD_FILE="$GATE_DIRECTORY/htpasswd"
+GATE_COMPOSE_FILE="$GATE_DIRECTORY/compose.gate.yaml"
+GATE_PROXY_CONFIG_FILE="$GATE_DIRECTORY/atlas-execution-worker-squid.conf"
 GATE_PROJECT="atlas-release-gate-$$"
 POLICY_TEMPLATE_FILE="$ATLAS_ROOT/config/policies.yaml"
 ATLAS_CONFIG_FILE="$ATLAS_ROOT/config/atlas.yaml"
 INVENTORY_FILE="$ATLAS_ROOT/inventory/services.yaml"
 
-for executable in docker curl openssl; do
+for executable in docker curl openssl python3; do
     if ! command -v "$executable" >/dev/null 2>&1; then
         echo "Required executable not found: $executable" >&2
         exit 127
@@ -33,6 +35,7 @@ cleanup() {
         --project-name "$GATE_PROJECT" \
         --file "$COMPOSE_FILE" \
         --file "$HTTPS_COMPOSE_FILE" \
+        --file "$GATE_COMPOSE_FILE" \
         down \
         --volumes \
         --rmi local \
@@ -42,7 +45,9 @@ cleanup() {
         "$GATE_ENV_FILE" \
         "$GATE_CERT_FILE" \
         "$GATE_KEY_FILE" \
-        "$GATE_HTPASSWD_FILE"
+        "$GATE_HTPASSWD_FILE" \
+        "$GATE_COMPOSE_FILE" \
+        "$GATE_PROXY_CONFIG_FILE"
     rmdir "$GATE_DIRECTORY" 2>/dev/null || true
 }
 
@@ -81,6 +86,62 @@ fi
 chmod 600 "$GATE_KEY_FILE" "$GATE_HTPASSWD_FILE"
 chmod 644 "$GATE_CERT_FILE"
 
+network_inventory="$(docker network inspect $(docker network ls --quiet))"
+gate_worker_subnet="$(
+    printf '%s' "$network_inventory" | python3 -c '
+import ipaddress
+import json
+import sys
+
+networks = json.load(sys.stdin)
+used = []
+for network in networks:
+    for config in network.get("IPAM", {}).get("Config") or []:
+        subnet = config.get("Subnet")
+        if subnet:
+            used.append(ipaddress.ip_network(subnet))
+
+for third_octet in range(256):
+    candidate = ipaddress.ip_network(f"10.253.{third_octet}.0/24")
+    if not any(candidate.version == current.version and candidate.overlaps(current) for current in used):
+        print(candidate)
+        break
+else:
+    raise SystemExit("No non-overlapping release-gate worker subnet is available.")
+'
+)"
+gate_worker_prefix="${gate_worker_subnet%0/24}"
+gate_proxy_address="${gate_worker_prefix}2"
+gate_worker_address="${gate_worker_prefix}10"
+
+sed \
+    "s#^acl worker_net src .*#acl worker_net src $gate_worker_subnet#" \
+    "$ATLAS_ROOT/deploy/proxy/atlas-execution-worker-squid.conf" \
+    >"$GATE_PROXY_CONFIG_FILE"
+
+printf '%s\n' \
+    'services:' \
+    '  atlas-execution-worker:' \
+    '    networks:' \
+    '      atlas-execution-worker-net:' \
+    "        ipv4_address: $gate_worker_address" \
+    '    environment:' \
+    "      HTTPS_PROXY: http://$gate_proxy_address:3128" \
+    "      HTTP_PROXY: http://$gate_proxy_address:3128" \
+    "      ALL_PROXY: http://$gate_proxy_address:3128" \
+    '  atlas-egress-proxy:' \
+    '    networks:' \
+    '      atlas-execution-worker-net:' \
+    "        ipv4_address: $gate_proxy_address" \
+    '    volumes:' \
+    "      - $GATE_PROXY_CONFIG_FILE:/etc/squid/squid.conf:ro" \
+    'networks:' \
+    '  atlas-execution-worker-net:' \
+    '    ipam:' \
+    '      config:' \
+    "        - subnet: $gate_worker_subnet" \
+    >"$GATE_COMPOSE_FILE"
+
 export ATLAS_ENV_FILE="$GATE_ENV_FILE"
 export ATLAS_HTTP_BIND=127.0.0.1
 export ATLAS_HTTP_PORT=0
@@ -101,6 +162,7 @@ compose=(
     --project-name "$GATE_PROJECT"
     --file "$COMPOSE_FILE"
     --file "$HTTPS_COMPOSE_FILE"
+    --file "$GATE_COMPOSE_FILE"
 )
 
 echo "Validating HTTP and HTTPS Compose configuration"
@@ -278,9 +340,9 @@ probe.unlink()
 PY
 ! docker exec "$agent_container" test -e /opt/atlas/data/secrets/provider-connections.yaml
 curl --fail --silent --show-error "$base_url/api/v1/providers/proxmox/connection" \
-    | python -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "proxmox"; assert fields["host"]["current_value"]; assert fields["user"]["secret"] is True; assert fields["user"]["current_value"] is None; assert fields["token_value"]["current_value"] is None'
+    | python3 -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "proxmox"; assert fields["host"]["current_value"]; assert fields["user"]["secret"] is True; assert fields["user"]["current_value"] is None; assert fields["token_value"]["current_value"] is None'
 curl --fail --silent --show-error "$base_url/api/v1/providers/docker/connection" \
-    | python -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "docker"; assert data["editable"] is False; assert data["metadata"]["update_supported"] is False; assert data["metadata"]["privileged_local_runtime"] is True; assert fields["path"]["editable"] is False'
+    | python3 -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "docker"; assert data["editable"] is False; assert data["metadata"]["update_supported"] is False; assert data["metadata"]["privileged_local_runtime"] is True; assert fields["path"]["editable"] is False'
 docker exec -i "$core_container" python - <<'PY'
 import asyncio
 

@@ -371,3 +371,4 @@ def test_execution_candidate_openapi_uses_public_dtos_only() -> None:
     assert "ExecutionEligibilityResult" not in schema_names
     assert "ExecutionCandidateResponse" in schema_names
     assert "ExecutionCandidatePageResponse" in schema_names
+    assert "CandidatePlanningExecutionCandidateResponse" in schema_names

@@ -66,10 +66,10 @@ entities.
 
 - [ ] Record the exact commit checked for atlas-v0.6-rc1 packaging.
 - [ ] Record commands used and pass/fail status for:
-  - `cd services/atlas-core && python -m ruff check app tests`
+  - `./scripts/rc1-python-ruff-gate services/atlas-core`
   - `cd services/atlas-core && python -m pytest -q`
-  - `cd services/atlas-agent && python -m ruff check app tests`
-  - `cd services/atlas-agent && python -m pytest -q`
+  - `./scripts/rc1-python-ruff-gate services/atlas-agent`
+  - `PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
   - `cd services/mission-control && npm run lint`
   - `cd services/mission-control && npm test -- --run`
   - `cd services/mission-control && npm run build`
@@ -134,6 +134,15 @@ provenance. Recommendation: retain it as a maintained operator smoke harness
 until the evidence and operator procedure are no longer needed, then remove it
 through a separate reviewed cleanup decision.
 
+### RC1 Python lint baseline
+
+The blocking RC1 Ruff gate checks Python files changed after commit
+`0216b7bfe7f3b160a762269802aa34244ae70a72`, including untracked Python files,
+using the pinned Ruff version in each service's development requirements. This
+keeps new RC1 changes lint-clean without treating unrelated inherited cleanup as
+release scope. Repository-wide scans remain informational: the recorded Core
+backlog is 90 findings, and Agent tests currently have 18 import-order findings.
+
 ### Manual release sign-off
 
 - [ ] Release lead confirms changelog entry names the intended tag and scope.
@@ -152,15 +161,15 @@ through a separate reviewed cleanup decision.
 
 ### Core
 
-- [ ] `cd services/atlas-core && python -m ruff check app tests`
+- [ ] `./scripts/rc1-python-ruff-gate services/atlas-core`
 - [ ] `cd services/atlas-core && python -m pytest -q`
 - [ ] Execution candidate, planning-intake, and route-contract tests pass.
 - [ ] API/OpenAPI contract regression is current.
 
 ### Atlas Agent
 
-- [ ] `cd services/atlas-agent && python -m ruff check app tests`
-- [ ] `cd services/atlas-agent && python -m pytest -q`
+- [ ] `./scripts/rc1-python-ruff-gate services/atlas-agent`
+- [ ] `PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
 - [ ] End-to-end candidate workflow test passes.
 - [ ] Audit-chain validator tests pass.
 - [ ] Restart-recovery matrix tests pass.

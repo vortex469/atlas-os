@@ -89,6 +89,8 @@ def test_planning_intake_endpoint_accepts_current_candidate(monkeypatch: pytest.
     assert body["status"] == "accepted_for_planning"
     assert body["planning_allowed"] is True
     assert body["current_candidate"]["id"] == current.id
+    assert "mutation" in body["current_candidate"]
+    assert body["current_candidate"]["mutation"] is None
     assert body["current_candidate_fingerprint"] == build_candidate_fingerprint(current)
 
 

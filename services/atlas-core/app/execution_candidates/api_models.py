@@ -37,6 +37,11 @@ class ExecutionCandidateResponse(BaseModel):
     relationship_ids: tuple[str, ...] = ()
     created_at: datetime
     expires_at: datetime | None = None
+
+
+class CandidatePlanningExecutionCandidateResponse(ExecutionCandidateResponse):
+    """Planning-intake DTO carrying actionable mutation evidence."""
+
     mutation: ComposeMutationSpecification | None = None
 
 
@@ -73,5 +78,15 @@ def candidate_to_response(candidate: ExecutionCandidate) -> ExecutionCandidateRe
         relationship_ids=candidate.relationship_ids,
         created_at=candidate.created_at,
         expires_at=candidate.expires_at,
+    )
+
+
+def candidate_to_planning_response(
+    candidate: ExecutionCandidate,
+) -> CandidatePlanningExecutionCandidateResponse:
+    """Convert an internal candidate to the planning-intake API DTO."""
+
+    return CandidatePlanningExecutionCandidateResponse(
+        **candidate_to_response(candidate).model_dump(),
         mutation=candidate.mutation,
     )

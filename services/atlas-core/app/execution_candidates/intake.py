@@ -4,7 +4,9 @@ from enum import StrEnum
 
 from pydantic import Field
 
-from app.execution_candidates.api_models import ExecutionCandidateResponse
+from app.execution_candidates.api_models import (
+    CandidatePlanningExecutionCandidateResponse,
+)
 from app.execution_candidates.models import ExecutionCandidateModel
 
 
@@ -62,4 +64,4 @@ class CandidatePlanningIntakeResult(ExecutionCandidateModel):
     planning_allowed: bool
     reason_codes: tuple[CandidatePlanningIntakeReasonCode, ...]
     current_candidate_fingerprint: str | None = None
-    current_candidate: ExecutionCandidateResponse | None = None
+    current_candidate: CandidatePlanningExecutionCandidateResponse | None = None
