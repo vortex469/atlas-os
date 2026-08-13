@@ -225,16 +225,55 @@ commands intentionally use `python` without the local `.venv` path prefix.
 
 Authorized final tag candidate: `atlas-v0.6.0`.
 
-- [ ] Record the exact final integration commit SHA.
-- [ ] Run and record the complete release validation matrix on that exact SHA.
+- [x] Record the exact final integration commit SHA:
+  `d4abb0016f95aab3bee7ef7ce7820fb3fd941388` on `main`.
+- [x] Run and record the complete release validation matrix on that exact SHA.
+
+Validated on 2026-08-13 at
+`d4abb0016f95aab3bee7ef7ce7820fb3fd941388`. Commands ran from `/opt/atlas`
+unless a different working directory is shown:
+
+| Command | Working directory | Exit | Result |
+| --- | --- | ---: | --- |
+| `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-core` | `/opt/atlas` | 0 | Baseline-aware Core Ruff passed. |
+| `PATH=/opt/atlas/.venv/bin:$PATH python -m pytest -q` | `/opt/atlas/services/atlas-core` | 0 | 692 passed; 1 accepted dependency deprecation warning. |
+| `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-agent` | `/opt/atlas` | 0 | Baseline-aware Agent Ruff passed. |
+| `PATH=/opt/atlas/.venv/bin:$PATH PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests` | `/opt/atlas` | 0 | 816 passed; 1 accepted dependency deprecation warning. |
+| `npm ci` | `/opt/atlas/services/mission-control` | 0 | Clean install passed; 284 packages installed. |
+| `npm audit --package-lock-only --audit-level=high` | `/opt/atlas/services/mission-control` | 0 | Zero vulnerabilities. |
+| `npm run lint` | `/opt/atlas/services/mission-control` | 0 | 0 errors; 1 accepted hook warning. |
+| `npm test -- --run` | `/opt/atlas/services/mission-control` | 0 | 28 files and 190 tests passed. |
+| `npm run build` | `/opt/atlas/services/mission-control` | 0 | Production build passed with the accepted 681.92 kB chunk warning. |
+| `/opt/atlas/.venv/bin/python -m pip_audit -r services/atlas-core/requirements.txt` | `/opt/atlas` | 0 | No known vulnerabilities. |
+| `/opt/atlas/.venv/bin/python -m pip_audit -r services/atlas-core/requirements-dev.txt` | `/opt/atlas` | 0 | No known vulnerabilities. |
+| `/opt/atlas/.venv/bin/python -m pip_audit -r services/atlas-agent/requirements.txt` | `/opt/atlas` | 0 | No known vulnerabilities. |
+| `/opt/atlas/.venv/bin/python -m pip_audit -r services/atlas-agent/requirements-dev.txt` | `/opt/atlas` | 0 | No known vulnerabilities. |
+| `docker compose --env-file /dev/null -f compose.production.yaml config --no-interpolate --quiet` | `/opt/atlas` | 0 | Production Compose render passed. |
+| `docker compose --env-file /dev/null -f compose.production.yaml -f compose.https.yaml config --no-interpolate --quiet` | `/opt/atlas` | 0 | Production plus HTTPS Compose render passed. |
+| `./scripts/data-recovery-gate` | `/opt/atlas` | 0 | Tamper rejection, backup, retention, restore, and persistence passed. |
+| `./scripts/container-release-gate` | `/opt/atlas` | 0 | Images, isolated runtime, worker hardening, Codex sandbox, HTTP/HTTPS, recovery, and Rest Server gates passed. |
+| `git grep -nF '# Atlas RC1 validation smoke marker.' -- .` | `/opt/atlas` | 1 | Expected: validation marker absent from tracked files. |
+| `git diff --check` | `/opt/atlas` | 0 | Passed. |
+
+The isolated container gate verified the worker runtime hardening, Codex
+`atlas-workspace` write proof, and outside-workspace mutation denial. The
+published RC baseline remains immutable: `atlas-v0.6-rc1.9` resolves to
+`6d85df5b112b4bde28ec31fc60cce88560c9dbfc`. The local operator harness
+`compose.execution-smoke.override.yaml` remained intentionally untracked and
+outside release provenance.
+
 - [ ] Confirm required CI checks pass on the final integration commit.
-- [ ] Re-review dependency and accepted-advisory status for the final release.
-- [ ] Confirm the final tracked tree contains only intended release files and
+- [x] Re-review dependency and accepted-advisory status for the final release.
+  npm reports zero vulnerabilities, all four Python requirement audits report
+  no known vulnerabilities, and no accepted security advisory remains.
+- [x] Confirm the final tracked tree contains only intended release files and
   that local-only smoke artifacts remain outside release provenance.
-- [ ] Record final operator/release-lead sign-off name and date:
-  - Sign-off name:
-  - Sign-off date:
+- [x] Record final operator/release-lead sign-off name and date:
+  - Sign-off name: Kenny Horner
+  - Sign-off date: 2026-08-13
 - [ ] Confirm `atlas-v0.6.0` remains unused immediately before tagging.
+  It was confirmed unused during final sign-off preparation on 2026-08-13 and
+  must be reconfirmed immediately before tag creation.
 - [ ] Create the immutable annotated `atlas-v0.6.0` tag on the validated final
   integration commit.
 
