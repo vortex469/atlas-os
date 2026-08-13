@@ -226,10 +226,11 @@ commands intentionally use `python` without the local `.venv` path prefix.
 Authorized final tag candidate: `atlas-v0.6.0`.
 
 - [x] Record the exact final integration commit SHA:
-  `d4abb0016f95aab3bee7ef7ce7820fb3fd941388` on `main`.
-- [x] Run and record the complete release validation matrix on that exact SHA.
+  `2d4a1b1929316589cdf6ea96993442b430826f10` on `main`.
+- [x] Run and record the complete final technical validation. The local
+  validation matrix and both required CI workflows are green.
 
-Validated on 2026-08-13 at
+The final local validation matrix was recorded on 2026-08-13 at
 `d4abb0016f95aab3bee7ef7ce7820fb3fd941388`. Commands ran from `/opt/atlas`
 unless a different working directory is shown:
 
@@ -262,7 +263,12 @@ published RC baseline remains immutable: `atlas-v0.6-rc1.9` resolves to
 `compose.execution-smoke.override.yaml` remained intentionally untracked and
 outside release provenance.
 
-- [ ] Confirm required CI checks pass on the final integration commit.
+- [x] Confirm required CI checks passed on exact validated integration commit
+  `2d4a1b1929316589cdf6ea96993442b430826f10`:
+  - Quality gates: SUCCESS, GitHub Actions run `31753221630`.
+  - Container release gate: SUCCESS, GitHub Actions run `31753221621`.
+  - Both required workflows passed on that exact SHA. Together with the local
+    matrix above, the complete final technical validation is green.
 - [x] Re-review dependency and accepted-advisory status for the final release.
   npm reports zero vulnerabilities, all four Python requirement audits report
   no known vulnerabilities, and no accepted security advisory remains.
@@ -271,11 +277,12 @@ outside release provenance.
 - [x] Record final operator/release-lead sign-off name and date:
   - Sign-off name: Kenny Horner
   - Sign-off date: 2026-08-13
-- [ ] Confirm `atlas-v0.6.0` remains unused immediately before tagging.
-  It was confirmed unused during final sign-off preparation on 2026-08-13 and
-  must be reconfirmed immediately before tag creation.
+- [x] Confirm `atlas-v0.6.0` was unused before final tag preparation on
+  2026-08-13. It must still be reconfirmed immediately before tag creation.
 - [ ] Create the immutable annotated `atlas-v0.6.0` tag on the validated final
-  integration commit.
+  commit. This checklist edit creates a new final SHA; the resulting
+  documentation commit must receive passing required CI before it becomes the
+  tag target. The tag has not been created or published.
 
 ### Core
 
