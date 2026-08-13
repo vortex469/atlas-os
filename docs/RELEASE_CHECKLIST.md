@@ -85,9 +85,9 @@ entities.
 - [x] Approval binding, persistence/recovery, stale/fingerprint rejection, and
   successor concurrency/idempotent reuse are validated.
 - [x] Codex authentication and runtime provisioning are validated.
-- [ ] Codex-backed repository mutation is production-ready. This remains
-  deferred to **Codex Execution Sandbox Hardening**.
-- [ ] A reviewed narrow seccomp/AppArmor policy or isolated execution runtime
+- [x] Codex-backed repository mutation is production-ready through the exact
+  approval-gated candidate path.
+- [x] A reviewed narrow seccomp/AppArmor policy or isolated execution runtime
   passes disposable workspace-write, outside-workspace denial, authenticated
   end-to-end execution, verification, review, and commit-boundary tests while
   preserving uid `10001`, `CapDrop=ALL` where applicable,
@@ -133,6 +133,30 @@ The untracked `compose.execution-smoke.override.yaml` remains outside workflow
 provenance. Recommendation: retain it as a maintained operator smoke harness
 until the evidence and operator procedure are no longer needed, then remove it
 through a separate reviewed cleanup decision.
+
+### Post-hardening RC1 execution validation
+
+Validated on commit `0bddaf6ee46fbef94a2a1eb9f20cfcb1db0ca2be` using a fresh
+isolated production-like stack, planning session
+`candidate-plan-fa0a537f0715ad4f607287801dc6345e8b3f87ead146f0abb611a962ba6bd75e`,
+and workflow
+`candidate-workflow-783edad93fa08cf30c039b92fa94db0098b7431e170a37ee57c864adef28417d`.
+
+- [x] Authenticated Agent-to-worker execution traversed the segmented relay.
+- [x] Worker execution succeeded with uid `10001`, read-only rootfs,
+  `no-new-privileges`, zero effective capabilities, and the
+  `runsc-squid+atlas-workspace` sandbox profile.
+- [x] Exactly `services/atlas-agent/tests/test_execution_engine.py` changed,
+  with patch digest
+  `sha256:8a97f55e972fadfe5d2e0a3d49456b38a057be61794da862ee4ad00c36e2455f`.
+- [x] Exact zero-check verification passed, review approved with zero findings,
+  and the machine-readable audit chain validated without a failure code.
+- [x] The workflow stopped at `awaiting_commit_approval`; commit approval
+  `approval-commit-candidate-workflow-783edad93fa08cf30c039b92fa94db0098b7431e170a37ee57c864adef28417d`
+  remains pending and no validation-only commit was created.
+- [x] The validation marker was restored and the isolated stack, volumes, and
+  locally built smoke images were removed. The retained smoke override was not
+  modified.
 
 ### RC1 Python lint baseline
 

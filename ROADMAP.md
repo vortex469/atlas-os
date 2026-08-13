@@ -82,13 +82,12 @@ Provider-neutral catalog and compatibility subsystem. D0 architecture and planni
 - P3.14A hardening: deterministic end-to-end coverage, machine-readable audit-chain validation, restart and recovery matrix coverage, deterministic concurrency coverage, commit-path security hardening, strict caller-controlled request validation, API route-contract regression coverage, and roadmap workflow regression coverage.
 - Codex execution sandbox hardening: named workspace permission profile,
   runsc-isolated worker, authenticated and network-segmented control plane, and
-  disposable workspace/outside-workspace runtime proofs.
+  disposable workspace/outside-workspace runtime proofs, followed by an
+  authenticated end-to-end candidate execution through verification, review,
+  and the pending commit-approval boundary.
 
 ### Planned
 
-- Authenticated end-to-end candidate execution through verification, review,
-  and commit approval/final commit boundaries remains the final validation step
-  for the completed Codex execution sandbox hardening.
 - v0.7+ carries the v0.6 deferrals for execution and release operations:
   - `restart-service`
   - `backup`
