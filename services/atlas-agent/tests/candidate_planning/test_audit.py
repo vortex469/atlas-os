@@ -156,6 +156,31 @@ def test_in_progress_candidate_audit_chain_can_validate_partial_chain(tmp_path: 
     assert result.chain.execution_result_id is None
 
 
+def test_pending_commit_approval_is_valid_at_commit_boundary(tmp_path: Path) -> None:
+    workflow = _commit_ready_workflow(tmp_path)
+    session = _planning_session_with_plan(tmp_path, workflow)
+    approvals = _approvals(workflow)
+    assert approvals.commit is not None
+    pending_commit = replace(
+        approvals.commit,
+        decision=replace(
+            approvals.commit.decision,
+            status=ApprovalStatus.PENDING,
+            reviewer=None,
+        ),
+    )
+
+    result = CandidateAuditChainValidator().validate(
+        planning_session=session,
+        workflow=workflow,
+        approvals=replace(approvals, commit=pending_commit),
+    )
+
+    assert result.valid is True
+    assert result.chain is not None
+    assert result.chain.commit_sha is None
+
+
 def test_pending_implementation_approval_is_a_valid_incomplete_chain(tmp_path: Path) -> None:
     workflow = _commit_ready_workflow(tmp_path)
     workflow = replace(

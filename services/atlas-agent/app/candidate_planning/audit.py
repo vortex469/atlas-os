@@ -214,6 +214,7 @@ class CandidateAuditChainValidator:
             expected_id=f"approval-commit-{workflow.identifier}",
             workflow_id=workflow.identifier,
             purpose=ApprovalPurpose.COMMIT,
+            allow_pending=workflow.state is WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
         )
         if approval_check is not None:
             return _failure(approval_check)
