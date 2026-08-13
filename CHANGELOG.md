@@ -64,12 +64,14 @@ release boundaries.
   binding, candidate resume dispatch, approval-repository storage identity,
   AtlasCoreClient event-loop ownership, deterministic zero-check evidence, and
   baseline-aware commit validation.
-- Codex authentication, CLI installation, and ephemeral runtime provisioning
-  are production-ready. Actual Codex-backed repository mutation is deferred to
-  **Codex Execution Sandbox Hardening** because the hardened Docker
-  seccomp/AppArmor policy prevents bubblewrap `workspace-write` initialization.
-  Broad unconfined profiles, `CAP_SYS_ADMIN`, root execution, and
-  `danger-full-access` are explicitly rejected.
+- Codex authentication, CLI installation, ephemeral runtime provisioning, and
+  repository mutation are production-ready through the exact approval-gated
+  candidate path. A named `workspace-write` permission profile runs inside a
+  runsc-isolated worker with an authenticated, network-segmented control plane.
+  Runtime proofs cover disposable workspace writes, outside-workspace denial,
+  and direct worker-control-plane denial. Broad unconfined profiles,
+  `CAP_SYS_ADMIN`, root execution, and `danger-full-access` remain explicitly
+  rejected.
 
 ### Deferred to v0.7+
 
@@ -80,14 +82,14 @@ release boundaries.
 - Candidate UI execution affordances in Mission Control beyond current shell,
   audit, and status workflows.
 
-### Deferred RC1 milestone
+### Completed RC1 milestone
 
-**Codex Execution Sandbox Hardening** must provide a reviewed narrow
-seccomp/AppArmor policy or isolated execution runtime, disposable
-`workspace-write` and outside-workspace denial proofs, preserved non-root,
-`CapDrop=ALL` where applicable, `no-new-privileges`, and read-only rootfs
-hardening, followed by authenticated end-to-end execution through verification,
-review, and commit approval boundaries.
+**Codex Execution Sandbox Hardening** provides an isolated runsc execution
+runtime, disposable `workspace-write` and outside-workspace denial proofs,
+preserved non-root uid `10001`, zero effective capabilities,
+`no-new-privileges`, and read-only rootfs hardening. Authenticated end-to-end
+execution was validated through verification, review, and the pending commit
+approval boundary without creating the validation-only commit.
 
 ### Inherited technical debt
 

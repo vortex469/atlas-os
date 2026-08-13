@@ -9,11 +9,11 @@ Supported execution intent:
 RC1 requires structured, immutable Compose mutation evidence before an
 implementation approval can be requested. Planning, exact approval binding,
 persistence/recovery, and successor concurrency are production-ready. The
-Codex-backed repository mutation stage remains deferred until the
-**Codex Execution Sandbox Hardening** milestone is complete. The current
-hardened Docker seccomp/AppArmor policy prevents bubblewrap from initializing
-Codex `workspace-write`; RC1 does not use unconfined profiles,
-`CAP_SYS_ADMIN`, root execution, or Codex `danger-full-access` as a workaround.
+Codex-backed repository mutation stage is production-ready through the exact
+approval-gated candidate path. Execution uses a named `workspace-write`
+permission profile in a runsc-isolated worker with an authenticated,
+network-segmented control plane. RC1 does not use unconfined profiles,
+`CAP_SYS_ADMIN`, root execution, or Codex `danger-full-access`.
 
 Atlas does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or automate rollback. See:
 

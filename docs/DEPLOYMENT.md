@@ -44,17 +44,20 @@ Codex CLI installation, authentication provisioning, and ephemeral `CODEX_HOME`
 runtime state are validated. The Agent reaches the execution worker over
 private TCP on `atlas-execution-worker-net`; port `8081` is not host-published.
 The worker repository source is mounted read-only and execution occurs in a
-disposable workspace. Codex-backed repository mutation remains deferred
-to **Codex Execution Sandbox Hardening**. The current hardened Docker
-seccomp/AppArmor policy prevents bubblewrap/Codex `workspace-write` sandbox
-initialization. Do not replace this boundary with unconfined seccomp/AppArmor,
-`CAP_SYS_ADMIN`, root execution, or Codex `danger-full-access`.
+disposable workspace. Codex-backed repository mutation uses the immutable
+`atlas-workspace` permission profile inside a runsc-isolated worker. Agent
+requests traverse an authenticated relay on a segmented transport network;
+the worker control plane rejects direct non-relay peers. Do not replace this
+boundary with unconfined seccomp/AppArmor, `CAP_SYS_ADMIN`, root execution, or
+Codex `danger-full-access`.
 
 RC1 smoke-test evidence includes correct stale/fingerprint and repository
 freshness rejection, immutable blocked workflows, restart/container-recreation
 persistence, deterministic successor lineage reuse, and validated Codex
-authentication/runtime provisioning. It does not claim successful
-Codex-backed repository mutation.
+authentication/runtime provisioning. Post-hardening evidence additionally
+records successful Codex-backed mutation in a disposable workspace,
+outside-workspace denial, exact verification and review, a valid audit chain,
+and a pending commit approval that was intentionally not approved.
 
 Copy and edit the example configuration before starting:
 

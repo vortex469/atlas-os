@@ -78,7 +78,7 @@ Provider-neutral catalog and compatibility subsystem. D0 architecture and planni
 
 ### Completed
 
-- Phase 3 `update-compose-stack` candidate workflow through structured planning intake, deterministic Compose mutation evidence, workflow shell, immutable implementation request, exact approvals, persistence/recovery, concurrency protection, verification evidence, deterministic review, and commit-boundary validation. Codex-backed repository mutation remains gated on the deferred sandbox milestone below.
+- Phase 3 `update-compose-stack` candidate workflow through structured planning intake, deterministic Compose mutation evidence, workflow shell, immutable implementation request, exact approvals, persistence/recovery, concurrency protection, verification evidence, deterministic review, and commit-boundary validation, including Codex-backed repository mutation through the hardened execution sandbox.
 - P3.14A hardening: deterministic end-to-end coverage, machine-readable audit-chain validation, restart and recovery matrix coverage, deterministic concurrency coverage, commit-path security hardening, strict caller-controlled request validation, API route-contract regression coverage, and roadmap workflow regression coverage.
 - Codex execution sandbox hardening: named workspace permission profile,
   runsc-isolated worker, authenticated and network-segmented control plane, and
