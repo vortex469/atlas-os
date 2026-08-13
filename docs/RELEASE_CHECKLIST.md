@@ -35,13 +35,13 @@ Third-party actions are pinned to exact commits.
 - [x] Tracked editor backup files are removed.
 - [x] The public release identifier is consistently `Foundry`.
 
-## Accepted exception
+## Dependency security
 
-`npm audit` currently reports the React Router RSC action CSRF advisory.
-Mission Control is a client-rendered SPA and does not expose the affected
-RSC/server-action path. No stable React Router version avoids both that
-advisory and the older high-severity advisory range. The dated rationale
-and re-audit requirement are recorded in `docs/DEPENDENCY_SECURITY.md`.
+The prior React Router RSC action CSRF exception is resolved by
+`react-router-dom@7.18.2`. The final dependency review reports zero npm
+vulnerabilities and no known vulnerabilities in the Core or Agent Python
+requirements. The dated resolution and transitive remediation record are in
+`docs/DEPENDENCY_SECURITY.md`.
 
 ## Operator approval
 

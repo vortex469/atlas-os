@@ -1,26 +1,30 @@
 # Dependency Security
 
-## Accepted advisories
+## Resolved advisories
 
 ### React Router RSC action CSRF
 
-- Reviewed: 2026-07-25
-- Package: `react-router-dom@7.18.1` (`react-router@7.18.1`)
+- Resolved: 2026-08-13
+- Package: `react-router-dom@7.18.2` (`react-router@7.18.2`)
 - Advisory: `GHSA-qwww-vcr4-c8h2`
 - npm severity: high
-- Status: accepted until an upstream stable fix is available
+- Status: fixed
 
-Mission Control is a client-rendered Vite application. It uses
-`createBrowserRouter` and does not enable React Server Components, framework
-mode, server actions, or React Router action routes. The vulnerable RSC action
-request path is therefore not exposed by the application.
+The prior exception for `react-router-dom@7.18.1` is closed. The stable 7.18.2
+release fixes the affected range without a major-version migration. Mission
+Control remains a client-rendered Vite application and does not expose the RSC
+action path, but the release no longer relies on that non-applicability finding.
 
-The npm-recommended downgrade to 7.11.0 is not suitable: that release is
-covered by a broader set of high-severity React Router advisories, including
-XSS, open redirect, denial-of-service, and server-side deserialization issues.
-The npm registry had no stable release outside both affected ranges when this
-exception was reviewed.
+The same lockfile remediation updates these transitive build/development
+dependencies to fixed compatible releases:
 
-Re-run `npm audit --package-lock-only --audit-level=high` during every
-dependency update and remove this exception as soon as a stable fixed release
-is available.
+- `brace-expansion` 5.0.8 to 5.0.9 for `GHSA-rgw5-rvv9-x895`, through
+  `eslint` and `minimatch`;
+- `nanoid` 3.3.16 to 3.3.18 for `GHSA-2v37-7h3g-55p8`, through `vite` and
+  `postcss`;
+- `postcss` 8.5.20 to 8.5.26 for `GHSA-fxqj-rqcc-2cmp`, through `vite`.
+
+The final dependency review reports zero npm vulnerabilities and no known
+vulnerabilities in the Atlas Core or Atlas Agent runtime and development Python
+requirements. Re-run `npm audit --package-lock-only --audit-level=high` and the
+Python requirement audits during every dependency update.

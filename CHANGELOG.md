@@ -28,6 +28,13 @@ validation record, sign-off, and immutable tag remain pending.
 - Optional daily systemd backups with persistent scheduling, strict
   verification, and minimum-count retention safeguards.
 
+### Security
+
+- Updated React Router to 7.18.2 and refreshed the lockfile's compatible
+  `brace-expansion`, `nanoid`, and `postcss` transitive releases, resolving the
+  final dependency audit findings without a major-version migration or package
+  override.
+
 ### Validated RC baseline
 
 `atlas-v0.6-rc1.9` was published on 2026-08-13 at
