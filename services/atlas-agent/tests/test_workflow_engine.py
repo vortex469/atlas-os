@@ -24,6 +24,10 @@ from app.candidate_planning.execution import (
 )
 from app.candidate_planning.implementation import TRANSLATOR_VERSION
 from app.candidate_planning.models import CandidateImplementationRequest
+from app.candidate_planning.verification import (
+    CandidateVerificationPlan,
+    CandidateVerificationValidationResult,
+)
 from app.context.models import AgentContext, ServiceHealth
 from app.execution.models import (
     EnvironmentVariable,
@@ -2266,6 +2270,70 @@ class FakeCandidateValidator:
         return self.result
 
 
+class FakeCandidateVerificationValidator:
+    @staticmethod
+    def exact_approval_request(plan):
+        return ApprovalRequest(
+            identifier=f"approval-verification-{plan.workflow_session_id}",
+            workflow_id=plan.workflow_session_id,
+            checkpoint_id=plan.identifier,
+            title="Approve exact candidate verification checks",
+            requested_tool="verification",
+            requested_command=("verification-suite",),
+            requested_working_directory=plan.repository_root,
+            rationale="Approve the exact candidate verification plan and changed-file evidence.",
+            purpose=ApprovalPurpose.VERIFICATION,
+        )
+
+    def build_plan(self, workflow):
+        request = workflow.candidate_implementation_request
+        assert request is not None
+        assert workflow.execution_result is not None
+        changed_files = tuple(workflow.changed_files)
+        plan = CandidateVerificationPlan(
+            identifier=f"verification-plan-{workflow.identifier}",
+            workflow_session_id=workflow.identifier,
+            candidate_planning_session_id=request.candidate_planning_session_id,
+            candidate_id=request.candidate_id,
+            candidate_fingerprint=request.candidate_fingerprint,
+            candidate_plan_id=request.candidate_plan_id,
+            candidate_plan_fingerprint=request.candidate_plan_fingerprint,
+            implementation_request_id=request.identifier,
+            execution_result_id=workflow.execution_result.request_id,
+            repository_root=request.repository_root,
+            repository_branch=request.repository_branch,
+            base_head=request.repository_head,
+            post_execution_head=request.repository_head,
+            baseline_status=workflow.worker_baseline_status,
+            post_execution_status=None,
+            changed_files=changed_files,
+            changed_files_digest="test-digest",
+            approved_affected_files=tuple(request.affected_files),
+            verification_checks=(),
+            verifier_version="test-verifier",
+            generated_at=datetime.now(UTC),
+        )
+        approval = self.exact_approval_request(plan)
+        return CandidateVerificationValidationResult(
+            approved=True,
+            plan=plan,
+            approval_request=approval,
+        )
+
+    def placeholder_approval_request(self, workflow):
+        return ApprovalRequest(
+            identifier=f"approval-verification-{workflow.identifier}",
+            workflow_id=workflow.identifier,
+            checkpoint_id=workflow.plan.checkpoint_id,
+            title=f"Approve verification of {workflow.plan.title}",
+            requested_tool="verification",
+            requested_command=("verification-suite",),
+            requested_working_directory=workflow.plan.repository_root,
+            rationale="Approve the future candidate verification phase.",
+            purpose=ApprovalPurpose.VERIFICATION,
+        )
+
+
 def make_candidate_engine(
     root: Path,
     *,
@@ -2334,6 +2402,7 @@ def make_candidate_engine(
         approval_repository=approval_repository,
         state_store=state_store,
         candidate_execution_validator=candidate_validator,
+        candidate_verification_validator=FakeCandidateVerificationValidator(),
     )
     return (
         engine,

@@ -852,36 +852,21 @@ class WorkflowEngine:
                         raise RuntimeError("patch_checkpoint_persistence_failed")
                     self._state_persistence.clear_patch_journal()
                 checkpoint_state = WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION
-            verification_approval = self._candidate_verification_approval_request(
-                claimed_session
-            )
-            if self._state_persistence is None:
-                self._approval_repository.save_request(verification_approval)
-                transition_ok = self._state_store.transition_session(
-                    session.identifier,
-                    checkpoint_state,
-                    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            if self._candidate_verification_validator is None:
+                raise RuntimeError("candidate_verification_validator_missing")
+            prepared = self._prepare_candidate_verification_plan(
+                replace(
+                    claimed_session,
+                    state=checkpoint_state,
                     execution_result=execution_result,
                     worker_patch_applied=worker_patch_applied,
+                    worker_baseline_status=worker_baseline_status,
                     changed_files=changed_files,
                 )
-            else:
-
-                def pause_for_verification(workflow, approvals):
-                    approvals.save_request(verification_approval)
-                    return workflow.transition_session(
-                        session.identifier,
-                        checkpoint_state,
-                        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
-                        execution_result=execution_result,
-                        worker_patch_applied=worker_patch_applied,
-                        worker_baseline_status=worker_baseline_status,
-                        changed_files=changed_files,
-                    )
-
-                transition_ok = self._state_persistence.mutate_aggregate(
-                    pause_for_verification
-                )
+            )
+            if prepared.error_message is not None:
+                return prepared
+            return prepared
         except PatchApplicationError:
             logger.exception("Candidate execution patch application failed")
             if self._state_persistence is not None:
@@ -919,27 +904,6 @@ class WorkflowEngine:
                 error_message=CandidateExecutionFailureCode.PERSISTENCE_FAILED.value,
             )
 
-        if not transition_ok:
-            return self._blocked_session_result(
-                session=claimed_session,
-                execution_result=execution_result,
-                error_message="Workflow state transition failed",
-            )
-
-        awaiting_status = self._status(
-            claimed_session,
-            SprintPhase.AWAITING_VERIFICATION_APPROVAL,
-        )
-        self._publish_sprint(awaiting_status)
-        return WorkflowResult(
-            sprint=awaiting_status,
-            plan=implementation_plan,
-            context=claimed_session.context,
-            planning_analysis=claimed_session.planning_analysis,
-            approval_request=verification_approval,
-            execution_result=execution_result,
-        )
-
     def _resume_patch_applied_candidate(self, session: WorkflowSession) -> WorkflowResult:
         """Reconcile a durably applied worker patch without re-executing it."""
 
@@ -948,58 +912,15 @@ class WorkflowEngine:
                 session=session,
                 error_message="patch_applied_checkpoint_invalid",
             )
-        approval = self._candidate_verification_approval_request(session)
-        try:
-            if self._state_persistence is None:
-                existing = self._approval_repository.get_request(approval.identifier)
-                if existing is None:
-                    self._approval_repository.save_request(approval)
-                transition_ok = self._state_store.transition_session(
-                    session.identifier,
-                    WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
-                    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
-                )
-            else:
-                def reconcile(workflows, approvals):
-                    if approvals.get_request(approval.identifier) is None:
-                        approvals.save_request(approval)
-                    return workflows.transition_session(
-                        session.identifier,
-                        WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
-                        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
-                    )
-
-                transition_ok = self._state_persistence.mutate_aggregate(reconcile)
-        except Exception:
-            logger.exception("Applied worker patch recovery failed")
-            self._block_claimed_session(
-                session.identifier,
-                WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
-            )
+        persisted = self._state_store.get_session(session.identifier)
+        if persisted is not None and persisted.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL:
+            session = persisted
+        if self._candidate_verification_validator is None:
             return self._blocked_session_result(
                 session=session,
-                error_message=CandidateExecutionFailureCode.PERSISTENCE_FAILED.value,
+                error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
             )
-        if not transition_ok:
-            return self._blocked_session_result(
-                session=session,
-                error_message="patch_applied_checkpoint_transition_failed",
-            )
-        recovered = replace(
-            session,
-            state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
-        )
-        status = self._status(recovered, SprintPhase.AWAITING_VERIFICATION_APPROVAL)
-        self._publish_sprint(status)
-        return WorkflowResult(
-            sprint=status,
-            plan=recovered.plan,
-            context=recovered.context,
-            planning_analysis=recovered.planning_analysis,
-            review_analysis=recovered.review_analysis,
-            approval_request=approval,
-            execution_result=recovered.execution_result,
-        )
+        return self._prepare_candidate_verification_plan(session)
 
     def _resume_patch_journal(
         self,
@@ -1176,6 +1097,22 @@ class WorkflowEngine:
             approval_result=approval_result,
         )
         if not validation.approved:
+            if validation.retryable and plan is not None:
+                exact = self._candidate_verification_validator.exact_approval_request(plan)
+                waiting_status = self._status(
+                    session,
+                    SprintPhase.AWAITING_VERIFICATION_APPROVAL,
+                )
+                self._publish_sprint(waiting_status)
+                return WorkflowResult(
+                    sprint=waiting_status,
+                    plan=session.plan,
+                    context=session.context,
+                    planning_analysis=session.planning_analysis,
+                    review_analysis=session.review_analysis,
+                    approval_request=exact,
+                    execution_result=session.execution_result,
+                )
             return self._candidate_verification_failure_result(session, validation)
 
         if not self._transition_session(
@@ -1392,7 +1329,12 @@ class WorkflowEngine:
         session: WorkflowSession,
     ) -> WorkflowResult:
         assert self._candidate_verification_validator is not None
-        built = self._candidate_verification_validator.build_plan(session)
+        source_state = session.state
+        planning_session = replace(
+            session,
+            state=WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        )
+        built = self._candidate_verification_validator.build_plan(planning_session)
         if not built.approved or built.plan is None or built.approval_request is None:
             return self._candidate_verification_failure_result(session, built)
         exact = built.approval_request
@@ -1403,20 +1345,7 @@ class WorkflowEngine:
         try:
             if self._state_persistence is None:
                 current = self._approval_repository.get_request(approval_identifier)
-                if current is None:
-                    self._approval_repository.save_request(exact)
-                elif current.decision.request == placeholder:
-                    ok = self._approval_repository.supersede_pending_request(
-                        identifier=approval_identifier,
-                        expected_request=placeholder,
-                        replacement_request=exact,
-                    )
-                    if not ok:
-                        return self._block_candidate_verification_session(
-                            session=session,
-                            error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
-                        )
-                elif current.decision.request != exact:
+                if current is not None and current.decision.request not in (placeholder, exact):
                     return self._block_candidate_verification_session(
                         session=session,
                         error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
@@ -1424,10 +1353,35 @@ class WorkflowEngine:
                 current_session = self._state_store.get_session(session.identifier)
                 if current_session is None:
                     raise ValueError("Workflow session missing")
+                if not self._state_store.transition_session(
+                    session.identifier,
+                    source_state,
+                    source_state,
+                    candidate_verification_plan=built.plan,
+                ):
+                    return self._block_candidate_verification_session(
+                        session=session,
+                        error_message=CandidateVerificationFailureCode.PERSISTENCE_FAILED.value,
+                    )
+                if current is None:
+                    self._approval_repository.save_request(exact)
+                elif current.decision.request == placeholder and not self._approval_repository.supersede_pending_request(
+                        identifier=approval_identifier,
+                        expected_request=placeholder,
+                        replacement_request=exact,
+                    ):
+                        return self._block_candidate_verification_session(
+                            session=session,
+                            error_message=CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value,
+                        )
                 persisted = self._state_store.transition_session(
                     session.identifier,
+                    source_state,
                     WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
-                    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                    execution_result=session.execution_result,
+                    worker_patch_applied=session.worker_patch_applied,
+                    worker_baseline_status=session.worker_baseline_status,
+                    changed_files=session.changed_files,
                     candidate_verification_plan=built.plan,
                 )
                 if not persisted:
@@ -1441,6 +1395,10 @@ class WorkflowEngine:
                     current_session = workflow.get_session(session.identifier)
                     if current_session is None:
                         raise ValueError("Workflow session missing")
+                    workflow.sessions[session.identifier] = replace(
+                        current_session,
+                        candidate_verification_plan=built.plan,
+                    )
                     current = approvals.get_request(approval_identifier)
                     if current is None:
                         approvals.save_request(exact)
@@ -1454,11 +1412,16 @@ class WorkflowEngine:
                             return False
                     elif current.decision.request != exact:
                         return False
-                    workflow.sessions[session.identifier] = replace(
-                        current_session,
+                    return workflow.transition_session(
+                        session.identifier,
+                        source_state,
+                        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+                        execution_result=session.execution_result,
+                        worker_patch_applied=session.worker_patch_applied,
+                        worker_baseline_status=session.worker_baseline_status,
+                        changed_files=session.changed_files,
                         candidate_verification_plan=built.plan,
                     )
-                    return True
 
                 ok = self._state_persistence.mutate_aggregate(
                     persist_plan_and_approval
@@ -1474,18 +1437,24 @@ class WorkflowEngine:
                 session=session,
                 error_message=CandidateVerificationFailureCode.PERSISTENCE_FAILED.value,
             )
+        persisted_session = self._state_store.get_session(session.identifier)
+        if persisted_session is None:
+            return self._block_candidate_verification_session(
+                session=session,
+                error_message=CandidateVerificationFailureCode.PERSISTENCE_FAILED.value,
+            )
         awaiting_status = self._status(
-            session,
+            persisted_session,
             SprintPhase.AWAITING_VERIFICATION_APPROVAL,
         )
         self._publish_sprint(awaiting_status)
         return WorkflowResult(
             sprint=awaiting_status,
-            plan=session.plan,
-            context=session.context,
-            planning_analysis=session.planning_analysis,
+            plan=persisted_session.plan,
+            context=persisted_session.context,
+            planning_analysis=persisted_session.planning_analysis,
             approval_request=exact,
-            execution_result=session.execution_result,
+            execution_result=persisted_session.execution_result,
         )
 
     def _candidate_verification_failure_result(
@@ -2307,23 +2276,6 @@ class WorkflowEngine:
             execution_workdir=execution_request.working_directory,
             verification_checks=(),
             review_identifier=f"candidate-review-{execution_request.identifier}",
-        )
-
-    @staticmethod
-    def _candidate_verification_approval_request(
-        session: WorkflowSession,
-    ) -> ApprovalRequest:
-        assert session.plan is not None
-        return ApprovalRequest(
-            identifier=f"approval-verification-{session.identifier}",
-            workflow_id=session.identifier,
-            checkpoint_id=session.plan.checkpoint_id,
-            title=f"Approve verification of {session.plan.title}",
-            requested_tool="verification",
-            requested_command=("verification-suite",),
-            requested_working_directory=session.plan.repository_root,
-            rationale="Approve the future candidate verification phase.",
-            purpose=ApprovalPurpose.VERIFICATION,
         )
 
     def _candidate_validation_failure_result(

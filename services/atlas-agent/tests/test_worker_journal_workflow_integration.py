@@ -205,8 +205,8 @@ def test_real_candidate_checkpoint_failure_leaves_recoverable_journal(tmp_path: 
         )
 
     assert recovered.sprint.phase.value == "awaiting_verification_approval"
-    assert duplicate.sprint.phase.value == "blocked"
-    assert duplicate.error_message == "patch_applied_checkpoint_transition_failed"
+    assert duplicate.sprint.phase.value == "awaiting_verification_approval"
+    assert duplicate.error_message is None
     assert patch_calls["attempts"] == 1
     assert patch_calls["successful"] == 1
     assert client.calls + recovered_client.calls == 1

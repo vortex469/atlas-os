@@ -431,6 +431,7 @@ def test_gated_rc1_smoke_workflow_reaches_actual_verification(
             )
 
     execution_engine.execute.return_value = make_execution_result(root)
+    (root / "compose.production.yaml").write_text("new\n", encoding="utf-8")
     execution_validator = ApprovedExecution()
     engine._candidate_execution_validator = execution_validator
     verification_validator = _validator(root, intent="rc1-validation-smoke")
@@ -516,3 +517,29 @@ def test_exact_approval_required_before_candidate_verification(tmp_path: Path) -
     assert not missing.approved
     assert missing.failure_code is CandidateVerificationFailureCode.VERIFICATION_APPROVAL_MISSING
     assert missing.retryable
+
+
+def test_approved_placeholder_cannot_authorize_exact_candidate_verification(
+    tmp_path: Path,
+) -> None:
+    validator = _validator(tmp_path)
+    session = _awaiting_verification_workflow(tmp_path)
+    built = validator.build_plan(session)
+    assert built.plan is not None and built.approval_request is not None
+    placeholder = validator.placeholder_approval_request(session)
+    session = replace(session, candidate_verification_plan=built.plan)
+
+    result = validator.validate_for_execution(
+        workflow=session,
+        approval_result=ApprovalResult(
+            decision=ApprovalDecision(
+                request=placeholder,
+                status=ApprovalStatus.APPROVED,
+                reviewer="tester",
+            )
+        ),
+    )
+
+    assert not result.approved
+    assert result.failure_code is CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH
+    assert result.should_block

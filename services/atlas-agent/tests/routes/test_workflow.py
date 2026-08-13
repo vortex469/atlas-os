@@ -187,7 +187,10 @@ def make_client(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> tuple[TestClient, object, Mock, Mock]:
-    settings = Settings(repository_root=Path.cwd().resolve())
+    settings = Settings(
+        repository_root=Path.cwd().resolve(),
+        state_dir=tmp_path / "state",
+    )
     monkeypatch.setattr("app.main.load_settings", lambda: settings)
     application = create_app()
     workflow_engine = Mock(spec=WorkflowEngine)
@@ -195,7 +198,10 @@ def make_client(
     workflow_orchestrator.run = AsyncMock()
     application.state.container = replace(
         application.state.container,
-        settings=Settings(repository_root=tmp_path.resolve()),
+        settings=Settings(
+            repository_root=tmp_path.resolve(),
+            state_dir=tmp_path / "state",
+        ),
         workflow_engine=workflow_engine,
         workflow_orchestrator=workflow_orchestrator,
     )
@@ -1122,7 +1128,8 @@ def test_candidate_workflow_audit_endpoint_returns_machine_readable_chain(tmp_pa
     body = response.json()
     assert body["workflow_id"] == "workflow-123"
     assert body["workflow_state"] == "awaiting_implementation_approval"
-    assert body["validation"]["valid"] is False
+    # An awaiting implementation approval is a valid partial candidate chain.
+    assert body["validation"]["valid"] is True
     assert body["timeline"][0]["name"] == "candidate"
     assert {section["name"] for section in body["timeline"]} == {
         "candidate",

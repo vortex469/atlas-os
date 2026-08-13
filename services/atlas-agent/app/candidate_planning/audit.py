@@ -169,6 +169,11 @@ class CandidateAuditChainValidator:
             expected_id=f"approval-verification-{workflow.identifier}",
             workflow_id=workflow.identifier,
             purpose=ApprovalPurpose.VERIFICATION,
+            allow_pending=workflow.state
+            in {
+                WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION,
+                WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+            },
         )
         if approval_check is not None:
             return _failure(approval_check)
@@ -266,6 +271,7 @@ def _validate_approval(
     expected_id: str | None,
     workflow_id: str,
     purpose: ApprovalPurpose,
+    allow_pending: bool = False,
 ) -> CandidateAuditFailureCode | None:
     request = result.decision.request
     if expected_id is not None and request.identifier != expected_id:
@@ -274,7 +280,7 @@ def _validate_approval(
         return CandidateAuditFailureCode.APPROVAL_MISMATCH
     if (
         result.decision.status is ApprovalStatus.PENDING
-        and purpose is ApprovalPurpose.IMPLEMENTATION
+        and (purpose is ApprovalPurpose.IMPLEMENTATION or allow_pending)
     ):
         return None
     if result.decision.status is not ApprovalStatus.APPROVED:

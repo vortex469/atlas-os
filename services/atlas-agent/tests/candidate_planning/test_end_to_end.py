@@ -210,6 +210,20 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     )
     verification_boundary = engine.resume(workflow_id)
     assert verification_boundary.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    boundary_workflow = workflow_state.get_session(workflow_id)
+    assert boundary_workflow is not None
+    assert boundary_workflow.candidate_verification_plan is not None
+    assert verification_boundary.approval_request is not None
+    assert verification_boundary.approval_request == CandidateVerificationValidator(
+        core_client=core,
+        candidate_state=candidate_state,
+        repository_resolver=resolver,
+        clock=lambda: mock_now,
+    ).exact_approval_request(boundary_workflow.candidate_verification_plan)
+    assert verification_boundary.approval_request == approvals.get_request(
+        verification_boundary.approval_request.identifier
+    ).decision.request
+    assert approvals.get_request(verification_boundary.approval_request.identifier).decision.status is ApprovalStatus.PENDING
 
     exact_verification_boundary = engine.resume(workflow_id)
     assert exact_verification_boundary.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
