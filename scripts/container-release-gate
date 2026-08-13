@@ -547,5 +547,6 @@ curl \
 
 echo "Container release gate passed"
 
-"$SCRIPT_DIRECTORY/data-recovery-gate"
+ATLAS_CORE_VALIDATION_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$core_container")" \
+    "$SCRIPT_DIRECTORY/data-recovery-gate"
 "$SCRIPT_DIRECTORY/rest-server-gate"

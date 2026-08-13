@@ -314,23 +314,56 @@ docker run \
     --mount "type=bind,src=$GATE_DIRECTORY,dst=/out" \
     "$PYTHON_IMAGE" \
     python -c 'from pathlib import Path; Path("/out/restored-policies.yaml").write_text(Path("/data/config/policies.yaml").read_text(encoding="utf-8"), encoding="utf-8"); Path("/out/restored-provider-connections.yaml").write_text(Path("/data/config/provider-connections.yaml").read_text(encoding="utf-8"), encoding="utf-8"); Path("/out/restored-provider-secrets.yaml").write_text(Path("/data/secrets/provider-connections.yaml").read_text(encoding="utf-8"), encoding="utf-8")'
-atlas_core_python="python3"
-if [[ -x "$SCRIPT_DIRECTORY/../services/atlas-core/.venv/bin/python" ]]; then
-    atlas_core_python="$SCRIPT_DIRECTORY/../services/atlas-core/.venv/bin/python"
-elif [[ -x "$SCRIPT_DIRECTORY/../.venv/bin/python" ]]; then
-    atlas_core_python="$SCRIPT_DIRECTORY/../.venv/bin/python"
+if [[ -n "${ATLAS_CORE_VALIDATION_IMAGE:-}" ]]; then
+    atlas_core_validation=(
+        docker run
+        --rm
+        --network none
+        --read-only
+        --cap-drop ALL
+        --security-opt no-new-privileges:true
+        --user "$(id -u):$(id -g)"
+        --env ATLAS_POLICY_FILE
+        --env ATLAS_POLICY_TEMPLATE_FILE
+        --env ATLAS_PROVIDER_CONNECTION_FILE
+        --env ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE
+        --env ATLAS_PROVIDER_SECRET_FILE
+        --env PROXMOX_TOKEN_VALUE
+        --mount "type=bind,src=$GATE_DIRECTORY,dst=/validation"
+        --mount "type=bind,src=$SCRIPT_DIRECTORY/../config/atlas.yaml,dst=/opt/atlas/config/atlas.yaml,readonly"
+        --mount "type=bind,src=$SCRIPT_DIRECTORY/../inventory/services.yaml,dst=/opt/atlas/inventory/services.yaml,readonly"
+        "$ATLAS_CORE_VALIDATION_IMAGE"
+        python -c
+    )
+    ATLAS_POLICY_FILE=/validation/restored-policies.yaml \
+    ATLAS_POLICY_TEMPLATE_FILE=/validation/missing-template.yaml \
+        "${atlas_core_validation[@]}" \
+        'from app.config.policies import load_policies; assert load_policies().proxmox.guests["109"].expected == "stopped"'
+    ATLAS_PROVIDER_CONNECTION_FILE=/validation/restored-provider-connections.yaml \
+    ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE=/validation/missing-provider-template.yaml \
+    ATLAS_PROVIDER_SECRET_FILE=/validation/restored-provider-secrets.yaml \
+    PROXMOX_TOKEN_VALUE=environment-secret \
+        "${atlas_core_validation[@]}" \
+        'from app.services.atlas_contexts import LegacyAtlasContextResolver; context = LegacyAtlasContextResolver().resolve_context("proxmox"); assert context.connection.host == "restored.example"; assert context.connection.node == "restored-node"; assert context.secrets.get("token_value").reveal() == "restored-secret"'
+else
+    atlas_core_python="python3"
+    if [[ -x "$SCRIPT_DIRECTORY/../services/atlas-core/.venv/bin/python" ]]; then
+        atlas_core_python="$SCRIPT_DIRECTORY/../services/atlas-core/.venv/bin/python"
+    elif [[ -x "$SCRIPT_DIRECTORY/../.venv/bin/python" ]]; then
+        atlas_core_python="$SCRIPT_DIRECTORY/../.venv/bin/python"
+    fi
+    PYTHONPATH="$SCRIPT_DIRECTORY/../services/atlas-core" \
+    ATLAS_POLICY_FILE="$restored_policy_copy" \
+    ATLAS_POLICY_TEMPLATE_FILE="$GATE_DIRECTORY/missing-template.yaml" \
+        "$atlas_core_python" \
+        -c 'from app.config.policies import load_policies; assert load_policies().proxmox.guests["109"].expected == "stopped"'
+    PYTHONPATH="$SCRIPT_DIRECTORY/../services/atlas-core" \
+    ATLAS_PROVIDER_CONNECTION_FILE="$restored_connection_copy" \
+    ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE="$GATE_DIRECTORY/missing-provider-template.yaml" \
+    ATLAS_PROVIDER_SECRET_FILE="$restored_secret_copy" \
+    PROXMOX_TOKEN_VALUE="environment-secret" \
+        "$atlas_core_python" \
+        -c 'from app.services.atlas_contexts import LegacyAtlasContextResolver; context = LegacyAtlasContextResolver().resolve_context("proxmox"); assert context.connection.host == "restored.example"; assert context.connection.node == "restored-node"; assert context.secrets.get("token_value").reveal() == "restored-secret"'
 fi
-PYTHONPATH="$SCRIPT_DIRECTORY/../services/atlas-core" \
-ATLAS_POLICY_FILE="$restored_policy_copy" \
-ATLAS_POLICY_TEMPLATE_FILE="$GATE_DIRECTORY/missing-template.yaml" \
-    "$atlas_core_python" \
-    -c 'from app.config.policies import load_policies; assert load_policies().proxmox.guests["109"].expected == "stopped"'
-PYTHONPATH="$SCRIPT_DIRECTORY/../services/atlas-core" \
-ATLAS_PROVIDER_CONNECTION_FILE="$restored_connection_copy" \
-ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE="$GATE_DIRECTORY/missing-provider-template.yaml" \
-ATLAS_PROVIDER_SECRET_FILE="$restored_secret_copy" \
-PROXMOX_TOKEN_VALUE="environment-secret" \
-    "$atlas_core_python" \
-    -c 'from app.services.atlas_contexts import LegacyAtlasContextResolver; context = LegacyAtlasContextResolver().resolve_context("proxmox"); assert context.connection.host == "restored.example"; assert context.connection.node == "restored-node"; assert context.secrets.get("token_value").reveal() == "restored-secret"'
 
 echo "Atlas data recovery gate passed"
