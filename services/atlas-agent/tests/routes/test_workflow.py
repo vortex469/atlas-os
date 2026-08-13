@@ -1654,6 +1654,23 @@ def test_candidate_workflow_verification_approval_rejects_extra_payload(tmp_path
     assert result.decision.status is ApprovalStatus.PENDING
 
 
+def test_candidate_workflow_audit_serializes_pending_commit_request(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = commit_ready_workflow(candidate_workflow_session(tmp_path))
+    save_candidate_workflow(container, workflow)
+    save_commit_approval(container, workflow)
+
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+
+    assert response.status_code == 200
+    assert response.json()["commit"]["commit_request_id"] == (
+        "approval-commit-workflow-123"
+    )
+
+
 def test_candidate_workflow_commit_request_is_read_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     workflow = commit_ready_workflow(candidate_workflow_session(tmp_path))

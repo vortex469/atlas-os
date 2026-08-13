@@ -1141,7 +1141,11 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         ),
         commit=WorkflowAuditCommitResponse(
             status=_section_status(_AUDIT_STAGE_RANK["commit"], current_rank, has_commit),
-            commit_request_id=commit_request.identifier if commit_request is not None else None,
+            commit_request_id=(
+                f"approval-commit-{workflow.identifier}"
+                if commit_request is not None
+                else None
+            ),
             reviewed_files=[str(path) for path in (commit_request.paths if commit_request is not None else ())],
             reviewed_content_fingerprint=_reviewed_content_fingerprint(audit_approvals.commit),
             expected_branch=commit_request.expected_branch if commit_request is not None else None,
