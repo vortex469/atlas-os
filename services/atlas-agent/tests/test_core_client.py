@@ -2,11 +2,10 @@
 
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import httpx
 import pytest
-
 from app.config.settings import Settings
 from app.core_client.client import AtlasCoreClient
 from app.core_client.exceptions import (
@@ -461,6 +460,86 @@ def test_context_manager_does_not_close_injected_client(atlas_core_client, mock_
 
     # The injected client's aclose method should not have been called
     assert not injected_client.aclose.called
+
+
+def test_owned_client_reuses_connection_pool_on_same_event_loop(monkeypatch):
+    """Owned clients are reused while requests stay on their owner loop."""
+    created_clients = []
+
+    def create_client():
+        client = MagicMock(spec=httpx.AsyncClient)
+        response = MagicMock()
+        response.raise_for_status = Mock()
+        response.json.return_value = create_mock_health_response()
+        client.get = AsyncMock(
+            return_value=response
+        )
+        client.aclose = AsyncMock()
+        client.is_closed = False
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr("app.core_client.client.httpx.AsyncClient", create_client)
+    atlas_client = AtlasCoreClient(settings=create_test_settings())
+
+    async def make_requests() -> None:
+        await atlas_client.get_health()
+        first_client = atlas_client._client
+        await atlas_client.get_health()
+        assert atlas_client._client is first_client
+        assert len(created_clients) == 1
+        await atlas_client.close()
+
+    asyncio.run(make_requests())
+
+
+def test_owned_client_is_not_reused_after_owner_event_loop_closes(monkeypatch):
+    """A new loop gets a new owned pool instead of a stale closed-loop pool."""
+    created_clients = []
+
+    def create_client():
+        client = MagicMock(spec=httpx.AsyncClient)
+        response = MagicMock()
+        response.raise_for_status = Mock()
+        response.json.return_value = create_mock_health_response()
+        client.get = AsyncMock(
+            return_value=response
+        )
+        client.aclose = AsyncMock()
+        client.is_closed = False
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr("app.core_client.client.httpx.AsyncClient", create_client)
+    atlas_client = AtlasCoreClient(settings=create_test_settings())
+
+    asyncio.run(atlas_client.get_health())
+    first_client = atlas_client._client
+    asyncio.run(atlas_client.get_health())
+
+    assert len(created_clients) == 2
+    assert atlas_client._client is not first_client
+    asyncio.run(atlas_client.close())
+
+
+def test_injected_client_rejects_cross_event_loop_use_without_taking_ownership():
+    """Injected clients remain caller-owned and cannot cross their pool's loop."""
+    injected_client = httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=create_mock_health_response())
+        )
+    )
+    atlas_client = AtlasCoreClient(
+        settings=create_test_settings(),
+        client=injected_client,
+    )
+
+    asyncio.run(atlas_client.get_health())
+    with pytest.raises(RuntimeError, match="cannot be used across event loops"):
+        asyncio.run(atlas_client.get_health())
+
+    assert not injected_client.is_closed
+    asyncio.run(injected_client.aclose())
 
 
 def test_connect_error_maps_to_atlas_core_connection_error(atlas_core_client):

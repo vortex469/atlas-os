@@ -1,3 +1,4 @@
+import asyncio
 import json
 from types import TracebackType
 from typing import Self, TypeAlias
@@ -37,6 +38,7 @@ class AtlasCoreClient:
         self.settings = settings
         self._client = client
         self._owns_client = client is None
+        self._client_loop: asyncio.AbstractEventLoop | None = None
         self._base_url = f"http://{settings.atlas_core_host}:{settings.atlas_core_port}"
         self._timeout = httpx.Timeout(settings.atlas_core_timeout_seconds)
 
@@ -196,9 +198,27 @@ class AtlasCoreClient:
         await self.get_health()
 
     async def close(self) -> None:
-        if self._owns_client and self._client is not None:
-            await self._client.aclose()
+        if not self._owns_client or self._client is None:
+            return
+
+        client = self._client
+        owner_loop = self._client_loop
+        current_loop = asyncio.get_running_loop()
+        try:
+            if owner_loop is None or owner_loop is current_loop:
+                await client.aclose()
+            elif owner_loop.is_running() and not owner_loop.is_closed():
+                close_future = asyncio.run_coroutine_threadsafe(
+                    client.aclose(),
+                    owner_loop,
+                )
+                await asyncio.wrap_future(close_future)
+            # A closed or inactive owner loop cannot safely drive the client's
+            # connection pool. Its resources belong to that loop and are
+            # discarded rather than being closed from the wrong loop.
+        finally:
             self._client = None
+            self._client_loop = None
 
     async def __aenter__(self) -> Self:
         return self
@@ -212,6 +232,33 @@ class AtlasCoreClient:
         await self.close()
 
     def _get_client(self) -> httpx.AsyncClient:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
         if self._client is None:
             self._client = httpx.AsyncClient()
+            self._client_loop = current_loop
+        elif self._client_loop is None and current_loop is not None:
+            self._client_loop = current_loop
+        elif (
+            current_loop is not None
+            and self._client_loop is not None
+            and self._client_loop is not current_loop
+        ):
+            if not self._owns_client:
+                raise RuntimeError(
+                    "Injected Atlas Core AsyncClient cannot be used across event loops"
+                )
+
+            previous_client = self._client
+            previous_loop = self._client_loop
+            if previous_loop.is_running() and not previous_loop.is_closed():
+                close_future = asyncio.run_coroutine_threadsafe(
+                    previous_client.aclose(),
+                    previous_loop,
+                )
+                close_future.add_done_callback(lambda future: future.exception())
+            self._client = httpx.AsyncClient()
+            self._client_loop = current_loop
         return self._client

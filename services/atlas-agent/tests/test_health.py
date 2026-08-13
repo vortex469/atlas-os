@@ -5,12 +5,11 @@ import subprocess
 from dataclasses import replace
 from unittest.mock import AsyncMock, Mock
 
-from fastapi.testclient import TestClient
-
 from app.config.settings import Settings
 from app.main import create_app
 from app.repository.exceptions import InvalidRepositoryError, RepositoryInspectionError
 from app.version import AGENT_VERSION
+from fastapi.testclient import TestClient
 
 
 def run_git(repository, *arguments: str) -> None:
@@ -116,6 +115,29 @@ def test_lifespan_shutdown_closes_initialized_core_client(
 
     assert http_client.is_closed
     assert core_client._client is None
+
+
+def test_app_lifecycle_recreation_does_not_reuse_closed_core_pool(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """A recreated application can start after the prior loop has closed."""
+    first_root = tmp_path / "first"
+    first_root.mkdir()
+    first_application = create_test_application(first_root, monkeypatch)
+    first_core_client = first_application.state.container.core_client
+    first_core_client._get_client()
+
+    with TestClient(first_application):
+        pass
+
+    second_root = tmp_path / "second"
+    second_root.mkdir()
+    second_application = create_test_application(second_root, monkeypatch)
+    with TestClient(second_application):
+        pass
+
+    assert first_core_client._client is None
 
 
 def test_diagnostics_reports_runtime_capabilities(
