@@ -410,3 +410,4 @@ def test_subprocess_runner_handles_launch_error(
 
     assert outcome.launch_error == "not found"
     assert outcome.return_code is None
+# Atlas RC1 execution smoke marker

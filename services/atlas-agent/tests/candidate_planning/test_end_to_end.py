@@ -420,6 +420,23 @@ def test_candidate_implementation_route_sequence_claims_once_and_pauses_for_veri
         assert second_resume.json()["sprint"]["phase"] == "awaiting_verification_approval"
         assert implementation_runner.calls == 1
 
+        verification_request = approvals.get_request(
+            f"approval-verification-{workflow_id}"
+        )
+        assert verification_request is not None
+        assert verification_request.decision.status is ApprovalStatus.PENDING
+        assert approvals.update_decision(
+            verification_request.decision.request.identifier,
+            ApprovalDecision(
+                request=verification_request.decision.request,
+                status=ApprovalStatus.APPROVED,
+                reviewer="workflow-service",
+            ),
+        )
+        third_resume = client.post(f"/api/v1/agent/workflows/{workflow_id}/resume")
+        assert third_resume.status_code == 200
+        assert third_resume.json()["sprint"]["phase"] == "awaiting_commit_approval"
+
     workflow = workflow_state.get_session(workflow_id)
     assert workflow is not None
-    assert workflow.state is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
+    assert workflow.state is WorkflowSessionState.AWAITING_COMMIT_APPROVAL

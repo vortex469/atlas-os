@@ -357,6 +357,8 @@ class WorkflowEngine:
             session.state
             is WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL
         ):
+            if session.source is WorkflowSource.CANDIDATE:
+                return self._resume_candidate_verification(session)
             return self._resume_verification(session)
         if session.state is WorkflowSessionState.AWAITING_COMMIT_APPROVAL:
             return self._resume_commit(session)
@@ -1090,6 +1092,7 @@ class WorkflowEngine:
                     error_message=CandidateVerificationFailureCode.PERSISTENCE_FAILED.value,
                 )
             session = refreshed
+            plan = session.candidate_verification_plan
 
         approval_result = self._approval_repository.get_request(approval_identifier)
         validation = self._candidate_verification_validator.validate_for_execution(
