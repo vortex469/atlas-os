@@ -11,6 +11,7 @@ GATE_ENV_FILE="$GATE_DIRECTORY/atlas.env"
 GATE_CERT_FILE="$GATE_DIRECTORY/tls.crt"
 GATE_KEY_FILE="$GATE_DIRECTORY/tls.key"
 GATE_HTPASSWD_FILE="$GATE_DIRECTORY/htpasswd"
+GATE_CODEX_AUTH_FILE="$GATE_DIRECTORY/codex-auth.json"
 GATE_COMPOSE_FILE="$GATE_DIRECTORY/compose.gate.yaml"
 GATE_PROXY_CONFIG_FILE="$GATE_DIRECTORY/atlas-execution-worker-squid.conf"
 GATE_PROJECT="atlas-release-gate-$$"
@@ -55,6 +56,7 @@ cleanup() {
         "$GATE_CERT_FILE" \
         "$GATE_KEY_FILE" \
         "$GATE_HTPASSWD_FILE" \
+        "$GATE_CODEX_AUTH_FILE" \
         "$GATE_COMPOSE_FILE" \
         "$GATE_PROXY_CONFIG_FILE"
     rmdir "$GATE_DIRECTORY" 2>/dev/null || true
@@ -62,6 +64,12 @@ cleanup() {
 }
 
 trap cleanup EXIT
+
+if [[ -z "${ATLAS_CODEX_AUTH_HOST_PATH+x}" ]]; then
+    printf '{}\n' >"$GATE_CODEX_AUTH_FILE"
+    chmod 0400 "$GATE_CODEX_AUTH_FILE"
+    export ATLAS_CODEX_AUTH_HOST_PATH="$GATE_CODEX_AUTH_FILE"
+fi
 
 printf '%s\n' \
     'PROXMOX_USER=release-gate' \
@@ -235,6 +243,9 @@ test "$(docker inspect \
     "$agent_container" \
     | grep -qx '/var/run/docker.sock'
 docker exec "$agent_container" python -c "from pathlib import Path; path = Path('/opt/atlas/agent-state/.release-gate-write-test'); path.write_text('ok'); path.unlink()"
+docker exec "$agent_container" python -c "from pathlib import Path; metadata = Path('/run/secrets/codex-auth.json').stat(); assert metadata.st_uid == 10001; assert metadata.st_gid == 10001; assert metadata.st_mode & 0o777 == 0o600"
+test "$(docker exec "$agent_container" cat /run/secrets/codex-auth.json)" = \
+    "$(cat "$ATLAS_CODEX_AUTH_HOST_PATH")"
 
 echo "Checking Atlas Core Docker socket access and hardening"
 test "$(docker exec "$core_container" id -u)" = "10001"

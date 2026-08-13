@@ -4,10 +4,22 @@ from __future__ import annotations
 
 import os
 import secrets
+from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol
 
 
-def main() -> None:
+class FileMetadata(Protocol):
+    st_uid: int
+    st_gid: int
+    st_mode: int
+
+
+def main(
+    *,
+    chown: Callable[[Path, int, int], None] = os.chown,
+    inspect: Callable[[Path], FileMetadata] = Path.stat,
+) -> None:
     token_path = Path(
         os.environ.get("ATLAS_EXECUTION_AUTH_STAGING_FILE", "/staging/token")
     )
@@ -18,8 +30,8 @@ def main() -> None:
             token_file.write(secrets.token_urlsafe(48))
             token_file.write("\n")
         os.chmod(token_path, 0o400)
-        os.chown(token_path, 10001, 10001)
-    metadata = token_path.stat()
+        chown(token_path, 10001, 10001)
+    metadata = inspect(token_path)
     if (
         metadata.st_uid != 10001
         or metadata.st_gid != 10001
