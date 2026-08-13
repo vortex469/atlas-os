@@ -17,11 +17,13 @@ from app.candidate_planning.verification import (
     CandidateVerificationFailureCode,
     CandidateVerificationValidationResult,
     CandidateVerificationValidator,
+    build_deterministic_verification_report,
     changed_files_digest,
 )
 from app.execution.models import ExecutionResult, ExecutionStatus
 from app.execution.patches import WorkerPatchApplier
 from app.repository.models import RepositorySnapshot
+from app.verification.exceptions import VerificationValidationError
 from app.workflow.models import WorkflowSessionState
 from tests.candidate_planning.test_execution import (
     FakeCoreClient,
@@ -266,6 +268,58 @@ def test_gated_rc1_smoke_builds_verification_plan_without_compose_check(
     assert result.approval_request.requested_command == ("verification-suite",)
 
 
+def test_gated_rc1_zero_check_report_is_passed_without_command_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "true")
+    validator = _validator(tmp_path, intent="rc1-validation-smoke")
+    session = _awaiting_verification_workflow(tmp_path)
+    request = session.candidate_implementation_request
+    metadata = session.candidate_metadata
+    assert request is not None and metadata is not None
+    session = replace(
+        session,
+        candidate_implementation_request=replace(
+            request,
+            execution_intent="rc1-validation-smoke",
+            argv=("atlas-rc1-validation-smoke",),
+        ),
+        candidate_metadata=replace(metadata, execution_intent="rc1-validation-smoke"),
+    )
+    built = validator.build_plan(session)
+    assert built.plan is not None
+
+    report = build_deterministic_verification_report(
+        workflow=session,
+        plan=built.plan,
+        context=None,
+        started_at=validator._clock(),
+        completed_at=validator._clock(),
+    )
+
+    assert report.status.value == "passed"
+    assert report.results == ()
+    assert report.repository_root == tmp_path.resolve(strict=False)
+
+
+def test_deterministic_zero_check_report_rejects_non_rc1_plan(
+    tmp_path: Path,
+) -> None:
+    validator = _validator(tmp_path)
+    session = _awaiting_verification_workflow(tmp_path)
+    built = validator.build_plan(session)
+    assert built.plan is not None
+
+    with pytest.raises(VerificationValidationError, match="gated RC1 zero-check"):
+        build_deterministic_verification_report(
+            workflow=session,
+            plan=built.plan,
+            context=None,
+            started_at=validator._clock(),
+            completed_at=validator._clock(),
+        )
+
+
 def test_gated_rc1_smoke_is_rejected_when_gate_is_disabled(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -438,10 +492,15 @@ def test_gated_rc1_smoke_workflow_reaches_actual_verification(
     verification_validator._validate_core = lambda workflow: CandidateVerificationValidationResult(approved=True)
     engine._candidate_verification_validator = verification_validator
     engine._candidate_review_adapter = Mock()
+    from tests.test_workflow_engine import make_review_report, make_reviewed_evidence
+
+    engine._repository_inspector_factory.return_value.reviewed_change_evidence.return_value = (
+        make_reviewed_evidence(root)
+    )
     engine._candidate_review_adapter.review.return_value = Mock(
-        approved=False,
-        failure_code=CandidateVerificationFailureCode.REVIEW_FAILED,
-        review_report=None,
+        approved=True,
+        failure_code=None,
+        review_report=make_review_report(),
         candidate_review_result=None,
     )
     verification_engine.verify.return_value = VerificationReport(
@@ -471,8 +530,32 @@ def test_gated_rc1_smoke_workflow_reaches_actual_verification(
 
     resumed = engine.resume(workflow.identifier)
 
-    assert verification_engine.verify.called, resumed
+    assert not verification_engine.verify.called
+    assert resumed.sprint.phase.value == "awaiting_commit_approval"
     assert resumed.error_message != CandidateVerificationFailureCode.VERIFICATION_EVIDENCE_MISMATCH.value
+    restored = engine._state_store.get_session(workflow.identifier)
+    assert restored is not None
+    assert restored.verification_report is not None
+    assert restored.verification_report.status.value == "passed"
+    assert restored.verification_report.results == ()
+    assert restored.candidate_verification_evidence is not None
+    assert restored.candidate_verification_evidence.check_results == ()
+    assert restored.candidate_verification_evidence.repository_head == (
+        restored.candidate_verification_plan.post_execution_head
+        if restored.candidate_verification_plan is not None
+        else None
+    )
+    commit_approval = approvals.get_request(
+        f"approval-commit-{workflow.identifier}"
+    )
+    assert commit_approval is not None
+    commit_approval_id = commit_approval.decision.request.identifier
+    duplicate = engine.resume(workflow.identifier)
+    assert duplicate.sprint.phase.value == "blocked"
+    assert approvals.get_request(commit_approval_id) == commit_approval
+    assert engine._state_store.get_session(workflow.identifier).candidate_verification_evidence == (
+        restored.candidate_verification_evidence
+    )
 
 
 def test_pending_placeholder_can_be_superseded_but_approved_placeholder_cannot(tmp_path: Path) -> None:

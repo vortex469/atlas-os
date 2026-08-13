@@ -29,6 +29,7 @@ from app.candidate_planning.models import (
 )
 from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.state import CandidatePlanningStateStore
+from app.context.models import AgentContext
 from app.core_client.exceptions import AtlasCoreClientError
 from app.repository.exceptions import RepositoryInspectionError
 from app.repository.inspector import GitInspector
@@ -36,6 +37,7 @@ from app.repository.models import RepositorySnapshot
 from app.review.engine import ReviewEngine
 from app.review.exceptions import ReviewValidationError
 from app.review.models import ReviewReport, ReviewRequest, ReviewStatus
+from app.verification.exceptions import VerificationValidationError
 from app.verification.models import (
     VerificationCheck,
     VerificationCheckResult,
@@ -580,6 +582,35 @@ def build_verification_evidence(
         started_at=started_at,
         completed_at=completed_at,
         verifier_version=VERIFIER_VERSION,
+    )
+
+
+def build_deterministic_verification_report(
+    *,
+    workflow: WorkflowSession,
+    plan: CandidateVerificationPlan,
+    context: AgentContext | None,
+    started_at: datetime,
+    completed_at: datetime,
+) -> VerificationReport:
+    """Represent successful gated candidate validation without fake commands."""
+    request = workflow.candidate_implementation_request
+    if (
+        request is None
+        or request.execution_intent != RC1_VALIDATION_SMOKE_INTENT
+        or not is_supported_execution_intent(request.execution_intent)
+        or plan.verification_checks
+    ):
+        raise VerificationValidationError(
+            "Deterministic verification is limited to the gated RC1 zero-check plan"
+        )
+
+    return VerificationReport(
+        repository_root=plan.repository_root,
+        results=(),
+        status=VerificationStatus.PASSED,
+        duration_seconds=max(0.0, (completed_at - started_at).total_seconds()),
+        context=context,
     )
 
 

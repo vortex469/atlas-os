@@ -35,6 +35,7 @@ from app.candidate_planning.verification import (
     CandidateReviewAdapter,
     CandidateVerificationFailureCode,
     CandidateVerificationValidator,
+    build_deterministic_verification_report,
     build_verification_evidence,
 )
 from app.context.models import AgentContext
@@ -1142,11 +1143,20 @@ class WorkflowEngine:
 
         started_at = self._candidate_verification_validator._clock()
         try:
-            verification_report = self._verification_engine.verify(
-                repository_root=verification_plan.repository_root,
-                checks=validation.checks,
-                context=session.context,
-            )
+            if validation.checks:
+                verification_report = self._verification_engine.verify(
+                    repository_root=verification_plan.repository_root,
+                    checks=validation.checks,
+                    context=session.context,
+                )
+            else:
+                verification_report = build_deterministic_verification_report(
+                    workflow=session,
+                    plan=verification_plan,
+                    context=session.context,
+                    started_at=started_at,
+                    completed_at=started_at,
+                )
         except Exception:
             logger.exception("Candidate verification failed")
             self._block_claimed_session(session.identifier, WorkflowSessionState.VERIFYING)
