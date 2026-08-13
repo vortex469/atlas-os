@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-import os
 from time import perf_counter
 from typing import Any
 from urllib.parse import urljoin
@@ -10,6 +9,7 @@ import httpx
 
 from app.config.policies import get_opnsense_policy
 from app.config.policy_models import OPNsensePolicy, PolicySeverity
+from app.context import AtlasContext
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -19,6 +19,14 @@ from app.providers import (
     ProviderPriority,
     ProviderWorkspace,
 )
+from app.providers.context_helpers import (
+    base_url_from_context,
+    context_from_legacy_service,
+    metadata_from_context,
+    secret_value,
+    timeout_from_context,
+    tls_verification_from_context,
+)
 
 
 class OPNsenseProvider(Provider):
@@ -26,7 +34,7 @@ class OPNsenseProvider(Provider):
 
     def __init__(
         self,
-        service: dict[str, Any],
+        service: AtlasContext | dict[str, Any],
         *,
         api_key: str | None = None,
         api_secret: str | None = None,
@@ -36,46 +44,34 @@ class OPNsenseProvider(Provider):
             [], OPNsensePolicy
         ] = get_opnsense_policy,
     ) -> None:
-        self._service = service
-        self._api_key = (
-            api_key
-            if api_key is not None
-            else os.getenv("OPNSENSE_API_KEY")
+        # Temporary compatibility seam for direct legacy constructors.
+        self.atlas_context = (
+            service
+            if isinstance(service, AtlasContext)
+            else context_from_legacy_service("opnsense", service)
         )
-        self._api_secret = (
-            api_secret
-            if api_secret is not None
-            else os.getenv("OPNSENSE_API_SECRET")
+        self._api_key = api_key or secret_value(self.atlas_context, "api_key")
+        self._api_secret = api_secret or secret_value(
+            self.atlas_context,
+            "api_secret",
         )
-        self._timeout_seconds = timeout_seconds
+        self._timeout_seconds = timeout_seconds or timeout_from_context(
+            self.atlas_context,
+        )
         self._transport = transport
         self._policy_getter = policy_getter
-
-        protocol = service.get("protocol", "https")
-        host = service["host"]
-        port = service.get("port", 443)
-        self._base_url = f"{protocol}://{host}:{port}/"
-
-        self._metadata = ProviderMetadata(
-            id="opnsense",
-            name=service.get("name", "OPNsense"),
-            version="1.0.0",
-            description=(
-                "Firewall health and firmware status provider."
-            ),
-            workspace=ProviderWorkspace.OPERATIONS,
-            icon="shield",
-            priority=(
-                ProviderPriority.CRITICAL
-                if service.get("critical", True)
-                else ProviderPriority.HIGH
-            ),
-            capabilities=frozenset(
-                {
-                    ProviderCapability.HEALTH,
-                    ProviderCapability.ACTIONS,
-                    ProviderCapability.CONFIGURATION,
-                },
+        self._base_url = base_url_from_context(
+            self.atlas_context,
+            default_port=443,
+        )
+        self._metadata = metadata_from_context(
+            self.atlas_context,
+            default_description="Firewall health and firmware status provider.",
+            default_workspace=ProviderWorkspace.OPERATIONS,
+            default_icon="shield",
+            default_priority=ProviderPriority.CRITICAL,
+            default_capabilities=frozenset(
+                {ProviderCapability.HEALTH, ProviderCapability.ACTIONS, ProviderCapability.CONFIGURATION},
             ),
         )
 
@@ -87,12 +83,7 @@ class OPNsenseProvider(Provider):
         return urljoin(self._base_url, path.lstrip("/"))
 
     def _tls_verification(self) -> bool | str:
-        ca_bundle = self._service.get("ca_bundle")
-
-        if ca_bundle:
-            return str(ca_bundle)
-
-        return bool(self._service.get("verify_tls", True))
+        return tls_verification_from_context(self.atlas_context)
 
     async def get_health(self) -> ProviderHealth:
         if not self._api_key or not self._api_secret:
@@ -117,7 +108,7 @@ class OPNsenseProvider(Provider):
                 transport=self._transport,
                 auth=(self._api_key, self._api_secret),
             ) as client:
-                response = await client.get(
+                response = await client.post(
                     self._url("/api/core/firmware/status"),
                     headers={"Accept": "application/json"},
                 )
@@ -125,7 +116,7 @@ class OPNsenseProvider(Provider):
                 payload = response.json()
 
             if not isinstance(payload, dict):
-                raise ValueError(
+                raise TypeError(
                     "OPNsense returned an invalid status response.",
                 )
 
@@ -151,6 +142,9 @@ class OPNsenseProvider(Provider):
                         "product_version",
                     ),
                     "updates": payload.get("updates"),
+                    "all_packages": payload.get("all_packages"),
+                    "all_sets": payload.get("all_sets"),
+                    "status_reboot": payload.get("status_reboot"),
                     "upgrade_needs_reboot": payload.get(
                         "upgrade_needs_reboot",
                     ),
@@ -177,7 +171,7 @@ class OPNsenseProvider(Provider):
                     "credentials_configured": True,
                 },
             )
-        except (httpx.HTTPError, ValueError) as error:
+        except (httpx.HTTPError, TypeError, ValueError) as error:
             return ProviderHealth(
                 status="offline",
                 latency_ms=round(
@@ -245,12 +239,7 @@ class OPNsenseProvider(Provider):
 
         policy = self._policy_getter()
         findings: list[Finding] = []
-        updates_value = health.details.get("updates")
-
-        try:
-            update_count = int(updates_value or 0)
-        except (TypeError, ValueError):
-            update_count = 0
+        update_count = self._pending_update_count(health.details)
 
         if update_count > 0:
             update_severity: PolicySeverity = "info"
@@ -286,10 +275,7 @@ class OPNsenseProvider(Provider):
                 ),
             )
 
-        reboot_value = str(
-            health.details.get("upgrade_needs_reboot") or "",
-        ).lower()
-        if reboot_value in {"1", "true", "yes"}:
+        if self._reboot_required(health.details):
             severity, affects_health, penalty = (
                 self._finding_settings(
                     policy.reboot_required_severity,
@@ -317,6 +303,59 @@ class OPNsenseProvider(Provider):
             )
 
         return findings
+
+    @classmethod
+    def _pending_update_count(cls, details: dict[str, Any]) -> int:
+        firmware_status = str(details.get("firmware_status") or "").lower()
+        has_authoritative_fields = any(
+            key in details and details[key] is not None
+            for key in ("all_packages", "all_sets", "status_reboot")
+        )
+
+        if firmware_status == "none":
+            return 0
+
+        if has_authoritative_fields:
+            if firmware_status not in {"update", "upgrade"}:
+                return 0
+
+            return cls._collection_count(
+                details.get("all_packages"),
+            ) + cls._collection_count(details.get("all_sets"))
+
+        updates_value = details.get("updates")
+        try:
+            return int(updates_value or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    @classmethod
+    def _reboot_required(cls, details: dict[str, Any]) -> bool:
+        firmware_status = str(details.get("firmware_status") or "").lower()
+        has_authoritative_fields = any(
+            key in details and details[key] is not None
+            for key in ("all_packages", "all_sets", "status_reboot")
+        )
+
+        if firmware_status == "none":
+            return False
+
+        if has_authoritative_fields:
+            if firmware_status not in {"update", "upgrade"}:
+                return False
+            return cls._truthy(details.get("status_reboot"))
+
+        return cls._truthy(details.get("upgrade_needs_reboot"))
+
+    @staticmethod
+    def _collection_count(value: Any) -> int:
+        if isinstance(value, dict | list | tuple | set):
+            return len(value)
+        return 0
+
+    @staticmethod
+    def _truthy(value: Any) -> bool:
+        return str(value or "").lower() in {"1", "true", "yes"}
 
     @staticmethod
     def _finding_settings(

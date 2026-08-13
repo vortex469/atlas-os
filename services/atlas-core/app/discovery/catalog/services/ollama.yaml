@@ -1,0 +1,33 @@
+schema_version: 1
+item:
+  id: ollama
+  type: service
+  status: active
+  name: Ollama
+  description: Ollama is a local model serving service for running and exposing AI model inference on user-controlled infrastructure.
+  tags:
+    - ai
+    - models
+    - inference
+  capabilities:
+    - id: llm-inference
+    - id: local-model-serving
+  requirements:
+    capabilities:
+      - id: container-orchestration
+    network:
+      ports:
+        - port: 11434
+          protocol: tcp
+          direction: inbound
+          required: false
+          description: Common Ollama API port; exposure depends on deployment.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-ollama
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Represents model serving capability, not a specific model recommendation.

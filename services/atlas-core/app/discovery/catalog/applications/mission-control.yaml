@@ -1,0 +1,27 @@
+schema_version: 1
+item:
+  id: mission-control
+  type: application
+  status: active
+  name: Mission Control
+  description: Mission Control is the Atlas user interface for observing and managing provider-neutral infrastructure intent.
+  tags:
+    - atlas
+    - ui
+  capabilities:
+    - id: infrastructure-control-interface
+    - id: provider-management-interface
+  relationships:
+    - type: integrates_with
+      target: atlas-core
+      required: true
+      description: Mission Control interacts with Atlas Core APIs to present Atlas state and user-approved configuration workflows.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-mission-control
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Atlas platform component; cataloging does not imply self-management.

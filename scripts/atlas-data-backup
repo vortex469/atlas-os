@@ -26,6 +26,8 @@ if [[ -e "$INCOMPLETE_DIRECTORY" || -e "$BACKUP_DIRECTORY" ]]; then
     echo "Backup destination already exists: $BACKUP_DIRECTORY" >&2
     exit 1
 fi
+mkdir -- "$INCOMPLETE_DIRECTORY"
+chmod 0777 "$INCOMPLETE_DIRECTORY"
 
 cleanup() {
     if [[ -d "$INCOMPLETE_DIRECTORY" ]]; then
@@ -40,12 +42,28 @@ docker run \
     --read-only \
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
-    --user "$(id -u):$(id -g)" \
+    --user 10001:10001 \
     --mount "type=volume,src=$DATA_VOLUME,dst=/source,readonly" \
-    --mount "type=bind,src=$BACKUP_ROOT,dst=/backups" \
+    --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
     "$PYTHON_IMAGE" \
-    python /tool.py backup /source "/backups/.$BACKUP_NAME.incomplete"
+    python /tool.py backup \
+    /source \
+    /backup
+
+docker run \
+    --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --cap-add CHOWN \
+    --security-opt no-new-privileges:true \
+    --user 0:0 \
+    --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+    "$PYTHON_IMAGE" \
+    python /tool.py chown /backup "$(id -u)" "$(id -g)"
+chmod -R u+rwX,go+rX "$INCOMPLETE_DIRECTORY"
 
 mv -- "$INCOMPLETE_DIRECTORY" "$BACKUP_DIRECTORY"
 trap - EXIT

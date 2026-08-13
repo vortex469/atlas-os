@@ -1,0 +1,289 @@
+"""S2 worker socket, ledger, and execution-disabled API tests."""
+
+from __future__ import annotations
+
+import logging
+import socket
+import threading
+import time
+from pathlib import Path
+
+import pytest
+import uvicorn
+from app.execution.worker_contracts import (
+    CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
+    WorkerExecutionRequest,
+)
+from atlas_execution_worker.api import _disabled_result, create_app
+from atlas_execution_worker.durable_ledger import DurableRequestLedger
+from atlas_execution_worker.ledger import RequestConflictError, RequestLedger
+from fastapi.testclient import TestClient
+
+HEAD = "a" * 40
+
+
+def make_request(**overrides: object) -> WorkerExecutionRequest:
+    values: dict[str, object] = {
+        "execution_request_id": "execution-1",
+        "workflow_id": "workflow-1",
+        "candidate_id": "candidate-1",
+        "candidate_fingerprint": "candidate-fingerprint-1",
+        "plan_id": "plan-1",
+        "plan_fingerprint": "plan-fingerprint-1",
+        "execution_intent": "update-compose-stack",
+        "repository_token": "repository-token-1",
+        "expected_repository_head": HEAD,
+        "repository_branch": "feature/worker",
+        "argv": (*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "do not execute this prompt"),
+        "working_directory": ".",
+        "allowed_affected_files": ("compose.production.yaml",),
+        "timeout_seconds": 120,
+    }
+    values.update(overrides)
+    return WorkerExecutionRequest.build(**values)
+
+
+def test_health_and_disabled_submission_have_bounded_contract() -> None:
+    client = TestClient(create_app())
+
+    health = client.get("/health")
+    assert health.status_code == 200
+    assert health.json() == {
+        "service": "atlas-execution-worker",
+        "status": "healthy",
+        "contract_schema_version": 1,
+        "execution_enabled": False,
+    }
+
+    response = client.post("/v1/executions", json=make_request().to_dict())
+    body = response.json()
+    assert response.status_code == 200
+    assert body["state"] == "completed"
+    assert body["result"]["status"] == "blocked"
+    assert body["result"]["failure_code"] == "worker_unavailable"
+    assert body["result"]["changed_files"] == []
+
+
+def test_validation_conflict_and_lookup_errors_are_deterministic() -> None:
+    client = TestClient(create_app())
+    request = make_request()
+
+    malformed = client.post("/v1/executions", json={"schema_version": 1})
+    assert malformed.status_code == 400
+    assert malformed.json()["error"]["code"] == "invalid_request"
+
+    tampered = request.to_dict()
+    tampered["request_digest"] = "execution-request-digest-v1:" + "0" * 64
+    digest_error = client.post("/v1/executions", json=tampered)
+    assert digest_error.status_code == 400
+    assert digest_error.json()["error"]["code"] == "invalid_request"
+
+    assert client.post("/v1/executions", json=request.to_dict()).status_code == 200
+    conflicting = make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "different prompt"))
+    conflict = client.post("/v1/executions", json=conflicting.to_dict())
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "request_id_conflict"
+
+    unknown = client.get("/v1/executions/unknown-request")
+    assert unknown.status_code == 404
+    assert unknown.json()["error"]["code"] == "execution_not_found"
+
+
+def test_ledger_claims_identical_request_once_and_reuses_completion() -> None:
+    ledger = RequestLedger()
+    request = make_request()
+
+    first = ledger.claim(request)
+    second = ledger.claim(request)
+    assert first == second
+    assert first.state == "claimed"
+    assert len(ledger) == 1
+
+    result = _disabled_result(request)
+    completed = ledger.complete(request, result)
+    assert completed.state == "completed"
+    assert ledger.claim(request) == completed
+
+
+def test_ledger_rejects_same_id_with_different_digest() -> None:
+    ledger = RequestLedger()
+    ledger.claim(make_request())
+    different = make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "different prompt"))
+
+    with pytest.raises(RequestConflictError):
+        ledger.claim(different)
+
+
+def test_concurrent_identical_claims_have_one_entry() -> None:
+    ledger = RequestLedger()
+    request = make_request()
+    barrier = threading.Barrier(8)
+    entries = []
+    errors = []
+
+    def claim() -> None:
+        try:
+            barrier.wait()
+            entries.append(ledger.claim(request))
+        except (RuntimeError, ValueError) as exc:  # pragma: no cover - assertion below reports it.
+            errors.append(exc)
+
+    threads = [threading.Thread(target=claim) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    assert len(entries) == 8
+    assert len(ledger) == 1
+    assert {entry.request_digest for entry in entries} == {request.request_digest}
+
+
+def test_tcp_health_and_submit_through_private_tcp(tmp_path: Path) -> None:
+    del tmp_path
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    app = create_app(authentication_token="test-worker-token")
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="critical")
+    server = uvicorn.Server(config)
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    deadline = time.monotonic() + 5
+    while not server.started and time.monotonic() < deadline:
+        time.sleep(0.01)
+    try:
+        from app.execution.worker_client import TcpWorkerClient
+
+        client = TcpWorkerClient(
+            "127.0.0.1",
+            port,
+            authentication_token="test-worker-token",
+        )
+        assert client.health()["execution_enabled"] is False
+        result = client.submit(make_request())
+        assert result["result"]["failure_code"] == "worker_unavailable"
+        assert client.get_result("execution-1")["state"] == "completed"
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+    assert not thread.is_alive()
+
+
+def test_execution_control_plane_rejects_missing_or_invalid_authentication() -> None:
+    client = TestClient(create_app(authentication_token="test-worker-token"))
+    request = make_request()
+
+    missing = client.post("/v1/executions", json=request.to_dict())
+    invalid = client.post(
+        "/v1/executions",
+        json=request.to_dict(),
+        headers={"Authorization": "Bearer wrong-token"},
+    )
+    lookup = client.get("/v1/executions/execution-1")
+
+    assert missing.status_code == 401
+    assert invalid.status_code == 401
+    assert lookup.status_code == 401
+    assert missing.json()["error"]["code"] == "authentication_required"
+
+
+def test_execution_control_plane_rejects_authenticated_untrusted_peer() -> None:
+    client = TestClient(
+        create_app(
+            authentication_token="test-worker-token",
+            allowed_client_address="relay-only",
+        )
+    )
+
+    response = client.get(
+        "/v1/executions/execution-1",
+        headers={"Authorization": "Bearer test-worker-token"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "untrusted_peer"
+
+
+def test_prompt_and_auth_like_values_are_not_logged(caplog: pytest.LogCaptureFixture) -> None:
+    client = TestClient(create_app())
+    prompt = "SECRET_PROMPT_SHOULD_NOT_BE_LOGGED"
+    auth_like = "sk-secret-value"
+    request = make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, prompt + " " + auth_like))
+
+    with caplog.at_level(logging.INFO):
+        assert client.post("/v1/executions", json=request.to_dict()).status_code == 200
+    rendered = "\n".join(record.getMessage() for record in caplog.records)
+    assert prompt not in rendered
+    assert auth_like not in rendered
+
+
+class FakeRunner:
+    def __init__(self, *, raises: Exception | None = None) -> None:
+        self.calls = 0
+        self.raises = raises
+
+    def execute(self, request: WorkerExecutionRequest):
+        self.calls += 1
+        if self.raises is not None:
+            raise self.raises
+        return _disabled_result(request)
+
+
+def test_enabled_execution_claims_runs_once_and_reuses_durable_result(tmp_path: Path) -> None:
+    request = make_request()
+    runner = FakeRunner()
+    ledger = DurableRequestLedger(tmp_path / "ledger.sqlite3")
+    client = TestClient(
+        create_app(
+            durable_ledger=ledger,
+            execution_enabled=True,
+            runners={request.repository_token: runner},
+        )
+    )
+
+    assert client.get("/health").json()["execution_enabled"] is True
+    first = client.post("/v1/executions", json=request.to_dict())
+    second = client.post("/v1/executions", json=request.to_dict())
+    assert first.status_code == second.status_code == 200
+    assert first.json() == second.json()
+    assert runner.calls == 1
+
+    conflicting = make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "different prompt"))
+    response = client.post("/v1/executions", json=conflicting.to_dict())
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "request_id_conflict"
+
+
+def test_enabled_execution_rejects_unknown_repository_token(tmp_path: Path) -> None:
+    ledger = DurableRequestLedger(tmp_path / "ledger.sqlite3")
+    client = TestClient(create_app(durable_ledger=ledger, execution_enabled=True, runners={}))
+
+    response = client.post("/v1/executions", json=make_request().to_dict())
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "unknown_repository_token"
+
+
+def test_enabled_runner_failure_is_deterministic_and_not_retried(tmp_path: Path) -> None:
+    request = make_request()
+    runner = FakeRunner(raises=RuntimeError("sandbox unavailable"))
+    ledger = DurableRequestLedger(tmp_path / "ledger.sqlite3")
+    client = TestClient(
+        create_app(
+            durable_ledger=ledger,
+            execution_enabled=True,
+            runners={request.repository_token: runner},
+        )
+    )
+
+    response = client.post("/v1/executions", json=request.to_dict())
+    assert response.status_code == 424
+    assert response.json()["error"]["code"] == "worker_execution_failed"
+    assert ledger.get(request.execution_request_id).state == "executing"
+
+    duplicate = client.post("/v1/executions", json=request.to_dict())
+    assert duplicate.status_code == 200
+    assert duplicate.json()["state"] == "executing"
+    assert runner.calls == 1

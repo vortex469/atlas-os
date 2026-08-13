@@ -59,3 +59,217 @@ Foundry `v1.0.0` was published on 2026-07-25 from commit `b32b21d`.
 Production validation reported no critical issues. The release notes record
 the operator-accepted warning for unavailable or unknown Home Assistant
 entities.
+
+## Atlas v0.6 release gates
+
+### RC1 verification artifacts
+
+- [x] Record the exact commit checked for atlas-v0.6-rc1 packaging.
+- [x] Record commands used and pass/fail status for:
+  - `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-core`
+  - `cd services/atlas-core && PATH=/opt/atlas/.venv/bin:$PATH python -m pytest -q`
+  - `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-agent`
+  - `PATH=/opt/atlas/.venv/bin:$PATH PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
+  - `cd services/mission-control && npm run lint`
+  - `cd services/mission-control && npm test -- --run`
+  - `cd services/mission-control && npm run build`
+  - `./scripts/container-release-gate`
+
+Validated on 2026-08-13 at commit
+`70997b398727471d261a297e41831f5901b83a18`. Commands ran from
+`/opt/atlas` unless a different working directory is shown:
+
+| Command | Working directory | Exit | Result |
+| --- | --- | ---: | --- |
+| `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-core` | `/opt/atlas` | 0 | All changed-file checks passed. |
+| `PATH=/opt/atlas/.venv/bin:$PATH python -m pytest -q` | `/opt/atlas/services/atlas-core` | 0 | 692 passed, 1 dependency deprecation warning. |
+| `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-agent` | `/opt/atlas` | 0 | All changed-file checks passed. |
+| `PATH=/opt/atlas/.venv/bin:$PATH PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests` | `/opt/atlas` | 0 | 816 passed, 1 dependency deprecation warning. |
+| `npm run lint` | `/opt/atlas/services/mission-control` | 0 | 0 errors, 1 React hook dependency warning. |
+| `npm test -- --run` | `/opt/atlas/services/mission-control` | 0 | 28 files and 190 tests passed. |
+| `npm run build` | `/opt/atlas/services/mission-control` | 0 | Production build passed with a chunk-size warning. |
+| `./scripts/container-release-gate` | `/opt/atlas` | 0 | Compose rendering, production images, isolated hardened runtime, HTTP/HTTPS, data recovery, and Rest Server recovery passed. |
+
+The literal Python commands were also attempted without the repository virtual
+environment on this validation host. Both exited `127` because the host has no
+global `python` executable. The successful commands above make the required
+repository-local tool context explicit; CI supplies the equivalent Python tool
+context through `actions/setup-python` and dependency installation.
+
+### RC1 candidate execution boundary
+
+- [x] Supported execution intent is limited to `update-compose-stack`.
+- [x] Structured Compose mutation evidence is required before implementation
+  approval.
+- [x] Legacy planning sessions without mutation evidence are non-actionable
+  and require successor planning or replanning.
+- [x] Approval binding, persistence/recovery, stale/fingerprint rejection, and
+  successor concurrency/idempotent reuse are validated.
+- [x] Codex authentication and runtime provisioning are validated.
+- [x] Codex-backed repository mutation is production-ready through the exact
+  approval-gated candidate path.
+- [x] A reviewed narrow seccomp/AppArmor policy or isolated execution runtime
+  passes disposable workspace-write, outside-workspace denial, authenticated
+  end-to-end execution, verification, review, and commit-boundary tests while
+  preserving uid `10001`, `CapDrop=ALL` where applicable,
+  `no-new-privileges`, and read-only rootfs.
+
+### RC1 production execution smoke validation
+
+Validated on commit `c333937e61343aed714a475395b41077bad86e28` using the final
+production-like smoke workflow `candidate-workflow-6da0da7b4da397219e6f507ebd5439959584559529eb02a9598cdbd6a93aa866` and planning session
+`candidate-plan-158f8db4f0c204de90f857ce2911cbf219dd900ae21e2b2f1a16037982baf200`.
+The evidence bundle is retained at `/root/atlas-rc1-smoke-evidence/final-c333937/`.
+
+- [x] Candidate intake, planning, candidate plan, workflow shell, shell
+  approval, exact implementation approval, isolated worker execution, exact
+  verification approval, deterministic RC1 verification, baseline-aware review,
+  and the exact commit approval boundary were traversed successfully.
+- [x] Worker execution succeeded with the worker attestation showing runtime
+  uid `10001`, read-only rootfs, `no-new-privileges`, zero effective
+  capabilities, and `runsc-squid` sandbox profile.
+- [x] Repository HEAD remained frozen at
+  `c333937e61343aed714a475395b41077bad86e28` throughout the successful
+  lineage.
+- [x] Exactly one approved tracked file changed:
+  `services/atlas-agent/tests/test_execution_engine.py`.
+- [x] The exact verification plan was persisted before approval. The gated
+  RC1 zero-command verification passed without a fake or dummy command, and
+  preserved repository HEAD and the validated changed-files digest.
+- [x] Baseline-aware review excluded the pre-existing untracked
+  `compose.execution-smoke.override.yaml`, passed with zero findings, and
+  produced an exact commit approval request for branch `feature/atlas-agent`,
+  the validated HEAD, and the one reviewed file.
+- [x] The validation-only commit was intentionally not approved or performed.
+  The marker was restored afterward and the tracked working tree is clean.
+- [x] The smoke remediation set is covered by regression validation: worker
+  journal exactly-once recovery, candidate audit approval-boundary projection,
+  gated RC1 verification intent, baseline-aware verification, exact
+  verification approval binding, candidate verification resume dispatch,
+  approval-repository storage identity, AtlasCoreClient event-loop ownership,
+  deterministic zero-check verification, and baseline-aware candidate review
+  and commit validation.
+
+The untracked `compose.execution-smoke.override.yaml` remains outside workflow
+provenance. Recommendation: retain it as a maintained operator smoke harness
+until the evidence and operator procedure are no longer needed, then remove it
+through a separate reviewed cleanup decision.
+
+### Post-hardening RC1 execution validation
+
+Validated on commit `0bddaf6ee46fbef94a2a1eb9f20cfcb1db0ca2be` using a fresh
+isolated production-like stack, planning session
+`candidate-plan-fa0a537f0715ad4f607287801dc6345e8b3f87ead146f0abb611a962ba6bd75e`,
+and workflow
+`candidate-workflow-783edad93fa08cf30c039b92fa94db0098b7431e170a37ee57c864adef28417d`.
+
+- [x] Authenticated Agent-to-worker execution traversed the segmented relay.
+- [x] Worker execution succeeded with uid `10001`, read-only rootfs,
+  `no-new-privileges`, zero effective capabilities, and the
+  `runsc-squid+atlas-workspace` sandbox profile.
+- [x] Exactly `services/atlas-agent/tests/test_execution_engine.py` changed,
+  with patch digest
+  `sha256:8a97f55e972fadfe5d2e0a3d49456b38a057be61794da862ee4ad00c36e2455f`.
+- [x] Exact zero-check verification passed, review approved with zero findings,
+  and the machine-readable audit chain validated without a failure code.
+- [x] The workflow stopped at `awaiting_commit_approval`; commit approval
+  `approval-commit-candidate-workflow-783edad93fa08cf30c039b92fa94db0098b7431e170a37ee57c864adef28417d`
+  remains pending and no validation-only commit was created.
+- [x] The validation marker was restored and the isolated stack, volumes, and
+  locally built smoke images were removed. The retained smoke override was not
+  modified.
+
+### RC1 Python lint baseline
+
+The blocking RC1 Ruff gate checks Python files changed after commit
+`0216b7bfe7f3b160a762269802aa34244ae70a72`, including untracked Python files,
+using the pinned Ruff version in each service's development requirements. Core
+checks `services/atlas-core/app`; Core has no separate `tests/` directory. Agent
+checks both `services/atlas-agent/app` and `services/atlas-agent/tests`. Changed
+production and test files must pass: no new Ruff violation may be introduced by
+RC1 changes. Existing documented debt does not block RC1 by itself and remains
+tracked for later cleanup rather than being fixed as release scope.
+
+A fresh repository-wide informational scan with the validated toolchain on
+2026-08-13 reports exactly 90 Core findings and 20 Agent findings. The Agent
+count supersedes the earlier 18-finding observation; do not use the older
+expected count of 22 unless it is independently reproduced.
+
+The commands above show the repository-local virtual environment used for local
+release validation. CI installs the same development requirements into the
+Python environment supplied by `actions/setup-python`, so its equivalent
+commands intentionally use `python` without the local `.venv` path prefix.
+
+### Manual release sign-off
+
+- [x] Release lead confirms changelog entry names the intended tag and scope.
+- [x] Rollback path and restore procedures are reviewed and approved for this RC.
+- [x] Operator confirms the upgrade and post-upgrade smoke verification
+  procedure was reviewed.
+- [x] Release blocker list is empty for the following:
+  - no auto-approve, no auto-execute,
+  - no push, tag, release publication, remote deploy, and no rollback automation.
+- [x] Operator sign-off and date are recorded in release notes or issue tracker:
+  - Sign-off name: Kenny Horner
+  - Sign-off date: 2026-08-13
+  - Release candidate commit: `0c7fde2c233799453948a81fd42b53717524f4c1`
+
+- [x] Changelog, version, tag name, upgrade notes, and manual rollback notes are
+  reviewed.
+- [x] Use an immutable RC tag that does not overwrite existing release tags.
+  `atlas-v0.6-rc1.9` was published at
+  `6d85df5b112b4bde28ec31fc60cce88560c9dbfc` on 2026-08-13 and remains the
+  immutable validated RC baseline.
+
+### Atlas v0.6.0 final release
+
+Authorized final tag candidate: `atlas-v0.6.0`.
+
+- [ ] Record the exact final integration commit SHA.
+- [ ] Run and record the complete release validation matrix on that exact SHA.
+- [ ] Confirm required CI checks pass on the final integration commit.
+- [ ] Re-review dependency and accepted-advisory status for the final release.
+- [ ] Confirm the final tracked tree contains only intended release files and
+  that local-only smoke artifacts remain outside release provenance.
+- [ ] Record final operator/release-lead sign-off name and date:
+  - Sign-off name:
+  - Sign-off date:
+- [ ] Confirm `atlas-v0.6.0` remains unused immediately before tagging.
+- [ ] Create the immutable annotated `atlas-v0.6.0` tag on the validated final
+  integration commit.
+
+### Core
+
+- [x] `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-core`
+- [x] `cd services/atlas-core && PATH=/opt/atlas/.venv/bin:$PATH python -m pytest -q`
+- [x] Execution candidate, planning-intake, and route-contract tests pass.
+- [x] API/OpenAPI contract regression is current.
+
+### Atlas Agent
+
+- [x] `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-agent`
+- [x] `PATH=/opt/atlas/.venv/bin:$PATH PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
+- [x] End-to-end candidate workflow test passes.
+- [x] Audit-chain validator tests pass.
+- [x] Restart-recovery matrix tests pass.
+- [x] Concurrency and idempotency tests pass.
+- [x] Commit-path security tests pass.
+- [x] Roadmap workflow regression tests pass.
+
+### Mission Control
+
+- [x] `cd services/mission-control && npm run lint`
+- [x] `cd services/mission-control && npm test -- --run`
+- [x] `cd services/mission-control && npm run build`
+- [x] UI does not imply unsupported Phase 3 execution controls.
+
+### Security and release operation
+
+- [x] Approval-boundary review confirms exact immutable implementation, verification, and commit approvals.
+- [x] No automatic approval, automatic execution, push, tag, release, remote deploy, or rollback path is enabled.
+- [x] No secrets, logs, `jcode/`, local state, dependency folders, virtual environments, or generated builds are committed.
+- [x] State migration and restart-recovery tests pass.
+- [x] Docker or Compose smoke validation passes when deployment packaging is in scope.
+- [x] `git diff --check` passes.
+- [x] `git status --short` is clean except explicitly local-only ignored directories before tagging.
+- [x] Review docs for RC tag/sequence selection before creating the next release tag.

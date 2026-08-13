@@ -1,7 +1,7 @@
 # Production Deployment
 
-Atlas ships a two-service Docker Compose deployment with two ingress
-choices:
+Atlas ships a hardened Docker Compose deployment with private internal service
+networks and two ingress choices:
 
 - Atlas Core runs as a non-root Python process.
 - Mission Control is built once and served by unprivileged Nginx, which
@@ -19,6 +19,46 @@ choices:
 - A local `.env` containing the required base credentials and any
   credentials used by enabled providers
 
+### Atlas Agent RC1 deployment boundary
+
+The RC1 candidate workflow supports only `update-compose-stack`. Candidate
+planning must include structured Compose mutation evidence before an
+implementation approval is created. Legacy planning sessions without that
+evidence are safely non-actionable and require successor planning or
+replanning.
+
+The production Agent deployment requires:
+
+- `ATLAS_REPOSITORY_HOST_PATH` set to the repository bind source;
+- that repository source writable by runtime uid/gid `10001:10001`;
+- `ATLAS_CODEX_AUTH_HOST_PATH` set to an external Codex auth file;
+- the host auth file kept root-owned and mode `0600`; the one-shot
+  `atlas-agent-auth-stager` service copies it into the dedicated staging
+  volume with ownership `10001:10001` and mode `0600` before Agent startup;
+- the runtime gate `./scripts/atlas-agent-codex-runtime-gate` run after
+  deployment;
+- a container rebuild after Atlas Agent source or image changes. Recreating
+  an old container without rebuilding does not deploy new Agent code.
+
+Codex CLI installation, authentication provisioning, and ephemeral `CODEX_HOME`
+runtime state are validated. The Agent reaches the execution worker over
+private TCP on `atlas-execution-worker-net`; port `8081` is not host-published.
+The worker repository source is mounted read-only and execution occurs in a
+disposable workspace. Codex-backed repository mutation uses the immutable
+`atlas-workspace` permission profile inside a runsc-isolated worker. Agent
+requests traverse an authenticated relay on a segmented transport network;
+the worker control plane rejects direct non-relay peers. Do not replace this
+boundary with unconfined seccomp/AppArmor, `CAP_SYS_ADMIN`, root execution, or
+Codex `danger-full-access`.
+
+RC1 smoke-test evidence includes correct stale/fingerprint and repository
+freshness rejection, immutable blocked workflows, restart/container-recreation
+persistence, deterministic successor lineage reuse, and validated Codex
+authentication/runtime provisioning. Post-hardening evidence additionally
+records successful Codex-backed mutation in a disposable workspace,
+outside-workspace denial, exact verification and review, a valid audit chain,
+and a pending commit approval that was intentionally not approved.
+
 Copy and edit the example configuration before starting:
 
 ```bash
@@ -29,6 +69,50 @@ cp .env.example .env
 Do not commit `.env`. Review `config/policies.yaml` and
 `inventory/services.yaml`; the repository values are examples and may
 contain environment-specific addresses.
+
+Atlas treats files under `config/` as immutable defaults in production.
+`config/policies.yaml` is mounted read-only as the shipped policy
+template. On first use, Atlas validates that template and initializes the
+runtime policy at `/opt/atlas/data/config/policies.yaml` inside the
+`atlas-data` volume. Mission Control and API policy writes update the
+runtime policy only, so normal user changes do not dirty the Git
+checkout. Existing runtime policy files are never overwritten by a new
+template during startup.
+
+The production Compose file sets the runtime policy paths explicitly:
+
+```dotenv
+ATLAS_POLICY_FILE=/opt/atlas/data/config/policies.yaml
+ATLAS_POLICY_TEMPLATE_FILE=/opt/atlas/config/policies.yaml
+```
+
+Operators may override those paths for custom deployments, but the
+runtime path must be writable by the non-root Atlas Core user and the
+template path should remain read-only.
+
+Provider connection settings follow the same runtime-state boundary. The
+tracked `config/atlas.yaml`, `inventory/services.yaml`, and environment
+variables remain legacy fallback sources. Mission Control writes provider
+connection changes to runtime files in the `atlas-data` volume only:
+
+```dotenv
+ATLAS_PROVIDER_CONNECTION_FILE=/opt/atlas/data/config/provider-connections.yaml
+ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE=/opt/atlas/config/provider-connections.yaml
+ATLAS_PROVIDER_SECRET_FILE=/opt/atlas/data/secrets/provider-connections.yaml
+```
+
+The non-secret provider connection store initializes as an empty validated
+version-1 document when no read-only template exists. Atlas never needs a
+writable bind mount for `config/atlas.yaml` or `inventory/services.yaml`.
+Runtime connection values override legacy config field-by-field, so omitted
+runtime values continue to fall back to shipped configuration and inventory.
+Provider secrets are stored separately under
+`/opt/atlas/data/secrets/provider-connections.yaml`, owned by the Atlas Core
+UID/GID `10001:10001` and mode `0600`. Secret values override environment
+secrets individually, are never returned by the API, and are not mounted into
+Atlas Agent. Docker is modeled as a privileged local Unix-socket connection;
+Mission Control may display its socket path and diagnostics, but the socket
+path is not editable in this phase.
 
 ## Choose an ingress mode
 
@@ -131,15 +215,33 @@ docker compose -f compose.production.yaml ps
 docker compose -f compose.production.yaml logs -f
 ```
 
-Validate Compose without rendering secret values:
+Validate Compose without rendering secret values. A clean checkout has no
+`.env`; use the tracked `.env.example` only for Compose render validation:
 
 ```bash
-docker compose -f compose.production.yaml \
-  config --no-env-resolution --quiet
+ATLAS_ENV_FILE=.env.example \
+ATLAS_REPOSITORY_HOST_PATH="$PWD" \
+docker compose -f compose.production.yaml config --quiet
 ```
 
 For HTTPS mode, include `-f compose.https.yaml` and set the three
-required credential-file variables.
+required credential-file variables:
+
+```bash
+ATLAS_ENV_FILE=.env.example \
+ATLAS_REPOSITORY_HOST_PATH="$PWD" \
+ATLAS_TLS_CERT_FILE=/path/to/atlas.crt \
+ATLAS_TLS_KEY_FILE=/path/to/atlas.key \
+ATLAS_HTPASSWD_FILE=/path/to/atlas.htpasswd \
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  config --quiet
+```
+
+`.env.example` contains placeholder values suitable for render validation
+only. Real production deployments still require a real `.env` or an
+operator-selected `ATLAS_ENV_FILE` containing valid credentials.
 
 Run the complete container release gate:
 
@@ -165,9 +267,137 @@ docker compose -f compose.production.yaml down
 
 Include `-f compose.https.yaml` when stopping an HTTPS deployment.
 
-The `atlas-data` named volume contains action history and provider
-intelligence telemetry. Deleting that volume permanently removes both
-databases.
+The `atlas-data` named volume contains action history, provider
+intelligence telemetry, and runtime policy state under
+`/opt/atlas/data/config/policies.yaml`. It also contains provider connection
+runtime state under `/opt/atlas/data/config/provider-connections.yaml` and
+provider connection secrets under
+`/opt/atlas/data/secrets/provider-connections.yaml`. Deleting that volume
+permanently removes databases, user-owned runtime policy changes, provider
+connection overrides, and provider connection secrets. The tracked
+`config/policies.yaml`, `config/atlas.yaml`, and `inventory/services.yaml`
+files remain immutable defaults or legacy fallback sources.
+
+## Atlas v0.6.0 upgrade and manual rollback
+
+Atlas v0.6 operations are upgraded and rolled back manually. V0.6 does not
+implement automatic rollback.
+
+### Upgrade sequence
+
+1. Before upgrading, create an online backup:
+
+```bash
+./scripts/atlas-data-backup
+```
+
+2. Stop the existing compose services:
+
+```bash
+docker compose -f compose.production.yaml down
+```
+
+Include `-f compose.https.yaml` when stopping an HTTPS deployment.
+
+3. Check out the target Atlas tag/commit for the upgrade and ensure deployment
+artifacts are current.
+
+4. Update and start services with the supported deploy commands:
+
+```bash
+docker compose -f compose.production.yaml pull
+ATLAS_REPOSITORY_HOST_PATH="$PWD" DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)" docker compose -f compose.production.yaml up --build -d
+```
+
+For HTTPS, include `-f compose.https.yaml` and set certificate variables as
+described above.
+
+### Post-upgrade verification
+
+After upgrade and before routing traffic:
+
+```bash
+docker compose -f compose.production.yaml ps
+docker compose -f compose.production.yaml logs -f
+./scripts/container-release-gate
+```
+
+Validate one end-to-end planning intake path for update-compose-stack candidates:
+
+```bash
+CORE_URL="${CORE_URL:-http://localhost/api/v1}"
+AGENT_URL="${AGENT_URL:-http://localhost/agent-api}"
+
+candidate_id=$(curl -sfS "$CORE_URL/execution-candidates?status=eligible&intent=update-compose-stack&limit=1" \
+  | jq -r '.candidates[0].id // empty')
+
+if [ -z "$candidate_id" ] || [ "$candidate_id" = "null" ]; then
+  echo "No eligible update-compose-stack execution candidates found"
+  exit 0
+fi
+
+intake=$(curl -sfS -X POST "$CORE_URL/execution-candidates/$candidate_id/planning-intake" \
+  -H 'Content-Type: application/json' \
+  -d '{}')
+
+fingerprint=$(echo "$intake" | jq -r '.current_candidate_fingerprint // empty')
+status=$(echo "$intake" | jq -r '.status')
+
+if [ "$status" != "accepted_for_planning" ]; then
+  echo "Planning intake rejected: $intake"
+  exit 1
+fi
+
+session=$(curl -sfS -X POST "$AGENT_URL/candidate-planning" \
+  -H 'Content-Type: application/json' \
+  -d '{"candidate_id":"'"$candidate_id"'","expected_candidate_fingerprint":"'"$fingerprint"'"}')
+
+echo "$session" | jq '.session_id, .status, .planning_allowed'
+```
+
+Confirm `atlas-data` remains preserved and runtime config paths remain under
+`/opt/atlas/data` (including policy and provider-connection files).
+
+### Manual rollback triggers
+
+Rollback manually when any of these occur after upgrade:
+
+- `./scripts/container-release-gate` fails.
+- service health or startup regresses after upgrade.
+- backup restore checks fail or manifest verification cannot be confirmed.
+- runtime migration or startup behavior is not safe for operation.
+
+### Rollback to prior known tag or image
+
+Rollback by stopping current services and checking out the prior known tag/image:
+
+```bash
+docker compose -f compose.production.yaml down
+git checkout <prior_atlas_tag_or_commit>
+ATLAS_REPOSITORY_HOST_PATH="$PWD" DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)" docker compose -f compose.production.yaml up --build -d
+```
+
+### Atlas data rollback restore sequence
+
+If upgrade impacted durable state or runtime configuration, restore from backup:
+
+```bash
+docker compose -f compose.production.yaml down
+./scripts/atlas-data-restore /path/to/backups/atlas-data-YYYYMMDDTHHMMSSZ --confirm
+ATLAS_REPOSITORY_HOST_PATH="$PWD" DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)" docker compose -f compose.production.yaml up --build -d
+```
+
+Use existing backup directories from `./scripts/atlas-data-backup`.
+
+### Post-rollback smoke checks
+
+After rollback and restart, run:
+
+```bash
+docker compose -f compose.production.yaml ps
+docker compose -f compose.production.yaml logs -f
+./scripts/container-release-gate
+```
 
 ## Back up and restore data
 
@@ -185,12 +415,35 @@ separate media:
 ./scripts/atlas-data-backup /mnt/atlas-backups
 ```
 
-Each backup contains both SQLite databases and a versioned
-`manifest.json` with sizes and SHA-256 checksums. The command uses
-SQLite's online backup API, so WAL-mode writes can continue without
-producing an inconsistent file copy.
+Each backup contains both SQLite databases, runtime policy files such as
+`config/policies.yaml`, provider connection overrides such as
+`config/provider-connections.yaml`, provider connection secrets such as
+`secrets/provider-connections.yaml`, and a versioned `manifest.json` with
+separate database and runtime file entries, sizes, modes, and SHA-256
+checksums. The command uses SQLite's online backup API for databases, so
+WAL-mode writes can continue without producing an inconsistent database
+copy. Runtime file entries are verified by safe relative path, checksum,
+expected file set, and store-specific structure. Existing version-1
+database-only backups, and backups created before provider connection
+stores existed, remain restorable.
 
-Restore replaces both databases and removes their stale WAL and shared
+Runtime policy files are owned by the Atlas container user and may be
+mode `0600`. The backup command therefore reads the Atlas data volume
+from a disposable helper running as the Atlas UID `10001`, with no
+network, a read-only root filesystem, all capabilities dropped,
+`no-new-privileges`, no Docker socket, the Atlas data volume mounted
+read-only, and only the incomplete backup destination mounted writable.
+Before the incomplete backup is renamed into place, a second disposable
+ownership helper mounts only that incomplete backup directory and uses
+only the `CHOWN` capability to set the backup directory and files back to
+the invoking host UID/GID and keeps them readable by the Atlas restore
+UID. Operators can then read, move, and remove the artifacts normally
+without weakening live runtime permissions. Backup directories that
+include `secrets/provider-connections.yaml` contain provider credentials
+and must be protected like any other secret-bearing backup artifact.
+
+Restore replaces both databases, restores included runtime files
+atomically under the Atlas data root, and removes stale WAL and shared
 memory sidecars. Stop every container using the volume first:
 
 ```bash
@@ -204,9 +457,16 @@ docker compose -f compose.production.yaml up -d
 Include `-f compose.https.yaml` in the `down` and `up` commands for an
 HTTPS deployment. The restore command refuses to run while a container
 uses the target volume, validates the manifest, checks every checksum,
-and runs SQLite integrity checks before replacing live database files.
-Set `ATLAS_DATA_VOLUME` only when the Compose project uses a non-default
-volume name.
+rejects unsafe runtime file paths, and runs SQLite integrity checks before
+replacing live database files. Version-1 database-only backups remain
+valid; they simply do not restore runtime policy or provider connection
+files, allowing Atlas to initialize missing runtime policy from the
+read-only template and missing provider connection stores from immutable
+templates or empty validated stores on next startup. Set
+`ATLAS_DATA_VOLUME` only when the Compose project uses a non-default
+volume name. Restore runs as the Atlas data UID, default `10001`, so
+restored runtime files remain Atlas-owned. Runtime policy and provider
+secret files keep mode `0600`.
 
 ### Schedule backups
 

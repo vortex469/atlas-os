@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ATLAS_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+COMPOSE_FILE="$ATLAS_ROOT/compose.production.yaml"
+ATLAS_REPOSITORY_HOST_PATH="${ATLAS_REPOSITORY_HOST_PATH:-/opt/atlas}"
+
+cd "$ATLAS_ROOT"
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "ERROR: docker is required" >&2
+  exit 1
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq is required" >&2
+  exit 1
+fi
+
+compose_json=$(docker compose -f "$COMPOSE_FILE" --env-file /dev/null config --format json)
+
+echo "Validating compose service config"
+config_path=$(printf '%s' "$compose_json" | jq -r '.services["atlas-agent"].environment.CODEX_HOME')
+config_xdg_config=$(printf '%s' "$compose_json" | jq -r '.services["atlas-agent"].environment.XDG_CONFIG_HOME')
+config_xdg_cache=$(printf '%s' "$compose_json" | jq -r '.services["atlas-agent"].environment.XDG_CACHE_HOME')
+config_read_only=$(printf '%s' "$compose_json" | jq -r '.services["atlas-agent"].read_only')
+tmpfs_entries=$(printf '%s' "$compose_json" | jq -r '.services["atlas-agent"].tmpfs[]')
+repo_bind=$(printf '%s' "$compose_json" | jq -r '.services["atlas-agent"].volumes[] | select(type=="object" and .target=="/workspace/repository" and .source=="'"${ATLAS_REPOSITORY_HOST_PATH}"'") | .source')
+state_volume=$(printf '%s' "$compose_json" | jq -r '.services["atlas-agent"].volumes[] | select(type=="object" and .target=="/opt/atlas/agent-state") | .source')
+
+[[ "$config_path" == "/opt/atlas/.codex" ]] || { echo "ERROR: unexpected CODEX_HOME=$config_path"; exit 1; }
+[[ "$config_xdg_config" == "/opt/atlas/.codex/config" ]] || { echo "ERROR: unexpected XDG_CONFIG_HOME=$config_xdg_config"; exit 1; }
+[[ "$config_xdg_cache" == "/opt/atlas/.codex/cache" ]] || { echo "ERROR: unexpected XDG_CACHE_HOME=$config_xdg_cache"; exit 1; }
+[[ "$config_read_only" == "true" ]] || { echo "ERROR: atlas-agent read_only is not true"; exit 1; }
+printf '%s\n' "$tmpfs_entries" | grep -Fxq '/tmp:size=64m,mode=1777' || { echo "ERROR: /tmp tmpfs entry missing"; exit 1; }
+printf '%s\n' "$tmpfs_entries" | grep -Fxq '/opt/atlas/.codex:size=256m,uid=10001,gid=10001,mode=0700' || { echo "ERROR: /opt/atlas/.codex tmpfs entry missing or not size 256m"; exit 1; }
+[[ -n "$repo_bind" ]] || { echo "ERROR: /workspace/repository bind mount to ATLAS_REPOSITORY_HOST_PATH is missing"; exit 1; }
+[[ -n "$state_volume" ]] || { echo "ERROR: /opt/atlas/agent-state persistent volume mount is missing"; exit 1; }
+
+echo "Compose config checks passed"
+
+echo "Validating runtime container state"
+agent_container=$(docker compose -f "$COMPOSE_FILE" ps -q atlas-agent)
+if [[ -z "$agent_container" ]]; then
+  echo "ERROR: atlas-agent container is not running"
+  exit 1
+fi
+
+readonly_rootfs="$(docker inspect "$agent_container" --format '{{.HostConfig.ReadonlyRootfs}}')"
+[[ "$readonly_rootfs" == "true" ]] || { echo "ERROR: atlas-agent ReadonlyRootfs is not true"; exit 1; }
+
+runtime_uid="$(docker exec "$agent_container" sh -c 'id -u')"
+runtime_gid="$(docker exec "$agent_container" sh -c 'id -g')"
+[[ "$runtime_uid" == "10001" ]] || { echo "ERROR: atlas-agent runtime uid is not 10001"; exit 1; }
+[[ "$runtime_gid" == "10001" ]] || { echo "ERROR: atlas-agent runtime gid is not 10001"; exit 1; }
+
+if ! docker exec "$agent_container" test -w /opt/atlas/.codex; then
+  echo "ERROR: /opt/atlas/.codex is not writable by runtime user"
+  exit 1
+fi
+
+repo_mount_rw="$(docker inspect "$agent_container" --format '{{range .Mounts}}{{if eq .Destination "/workspace/repository"}}{{.RW}}{{end}}{{end}}')"
+if [[ "$repo_mount_rw" != "true" ]]; then
+  echo "ERROR: /workspace/repository is not mounted rw in container"
+  exit 1
+fi
+
+if ! docker exec "$agent_container" test -w /workspace/repository; then
+  echo "DEPLOYMENT_PREREQUISITE_FAILURE: /workspace/repository is not writable by runtime user"
+  echo "This must be addressed outside this script (host ownership/ACL/group permissions)."
+  exit 1
+fi
+
+echo "Runtime container checks passed"

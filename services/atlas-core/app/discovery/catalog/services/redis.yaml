@@ -1,0 +1,30 @@
+schema_version: 1
+item:
+  id: redis
+  type: service
+  status: active
+  name: Redis
+  description: Redis is an in-memory data service commonly used for caching, queues, and fast key-value storage.
+  tags:
+    - cache
+    - storage
+  capabilities:
+    - id: cache
+    - id: key-value-store
+  requirements:
+    network:
+      ports:
+        - port: 6379
+          protocol: tcp
+          direction: inbound
+          required: false
+          description: Common Redis service port; exposure depends on deployment.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-redis
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Dependency-capable service that may be referenced by applications requiring cache or key-value storage.

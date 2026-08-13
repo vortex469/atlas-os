@@ -1,3 +1,27 @@
+## Atlas v0.6.0
+
+Atlas v0.6 completes the Phase 3 candidate workflow while preserving Atlas's provider-neutral, local-first design. Atlas Core owns Discovery evidence, intelligence recommendations, execution-candidate projection, and planning-intake revalidation. Atlas Agent owns local approval-gated orchestration, restart-safe side effects, audit-chain validation, deterministic review, and local Git commit. Mission Control presents state and does not currently expose Phase 3 execution controls.
+
+Supported execution intent:
+
+- `update-compose-stack`
+
+Atlas v0.6.0 requires structured, immutable Compose mutation evidence before an
+implementation approval can be requested. Planning, exact approval binding,
+persistence/recovery, and successor concurrency are production-ready. The
+Codex-backed repository mutation stage is production-ready through the exact
+approval-gated candidate path. Execution uses a named `workspace-write`
+permission profile in a runsc-isolated worker with an authenticated,
+network-segmented control plane. Atlas v0.6.0 does not use unconfined profiles,
+`CAP_SYS_ADMIN`, root execution, or Codex `danger-full-access`.
+
+Atlas does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or automate rollback. See:
+
+- [Changelog](CHANGELOG.md)
+- [Atlas v0.6.0 upgrade procedure](docs/DEPLOYMENT.md#atlas-v060-upgrade-and-manual-rollback)
+- [Atlas v0.6.0 rollback procedure](docs/DEPLOYMENT.md#atlas-v060-upgrade-and-manual-rollback)
+- [Atlas v0.6 release checklist](docs/RELEASE_CHECKLIST.md)
+
 <div align="center">
 
 # Atlas OS
@@ -5,6 +29,8 @@
 ### Own Your Infrastructure. Through Conversation.
 
 **A conversational infrastructure platform for understanding, operating, and automating modern infrastructure.**
+
+Atlas is an intent-driven infrastructure operating system. Other tools show what is; Atlas understands what should be. The product principles behind that direction are documented in [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md), and the planned boundary between immutable defaults and runtime state is defined in [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md).
 
 ![Status](https://img.shields.io/badge/status-active%20development-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -89,6 +115,8 @@ Observe
 Automation without understanding creates surprises.
 
 Atlas is designed to eliminate those surprises.
+
+Atlas evaluates infrastructure against user intent, not raw state alone. A stopped resource is not automatically a problem; it becomes a warning when Atlas knows the user expected it to be running. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md) for the planned product model behind Provider Management Framework work, and [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md) for the planned storage boundary that keeps Mission Control writes out of tracked repository configuration.
 
 ---
 
@@ -175,6 +203,19 @@ Current capabilities:
 - Read-only Frigate camera health and version telemetry
 - Aggregated dashboard, health, and AI status
 - Modular architecture
+
+Planned direction:
+
+- Atlas Runtime Foundation as the active major milestone for separating immutable defaults from mutable runtime state
+- Provider Management Framework as a Runtime Foundation subsystem for provider connection, discovery, resources, monitoring, actions, and diagnostics
+- Discovery Center runtime status:
+  - ✅ Implemented: provider-neutral catalog models, YAML loader, deterministic repository/search, read-only API, and compatibility engine.
+  - ✅ Implemented: Mission Control discovery API client and read-only Discovery Center pages for catalog browse, item details, relationships, provenance, and compatibility evidence.
+  - 📌 Future: dynamic catalog sources, semantic discovery, Atlas Agent handoff protocol, community/private catalogs.
+- Mission Control management for provider resources without normal users editing YAML
+- Needs Review workflows for newly discovered resources before Atlas remembers user intent
+- AI suggests policy improvements, while users decide and approve changes
+- Normal Mission Control changes must not dirty the Git checkout
 
 ---
 

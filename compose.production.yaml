@@ -9,6 +9,14 @@ services:
     env_file:
       - path: ${ATLAS_ENV_FILE:-.env}
         required: true
+    environment:
+      ATLAS_POLICY_FILE: /opt/atlas/data/config/policies.yaml
+      ATLAS_POLICY_TEMPLATE_FILE: /opt/atlas/config/policies.yaml
+      ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE: ${ATLAS_ENABLE_DEVELOPMENT_CANDIDATE_FIXTURE:-false}
+      ATLAS_CONFIRM_DEVELOPMENT_CANDIDATE_FIXTURE: ${ATLAS_CONFIRM_DEVELOPMENT_CANDIDATE_FIXTURE:-false}
+      ATLAS_PROVIDER_CONNECTION_FILE: /opt/atlas/data/config/provider-connections.yaml
+      ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE: /opt/atlas/config/provider-connections.yaml
+      ATLAS_PROVIDER_SECRET_FILE: /opt/atlas/data/secrets/provider-connections.yaml
     volumes:
       - ./config/atlas.yaml:/opt/atlas/config/atlas.yaml:ro
       - ./config/policies.yaml:/opt/atlas/config/policies.yaml:ro
@@ -28,6 +36,214 @@ services:
     expose:
       - "8643"
 
+  atlas-agent:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-agent.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      atlas-core:
+        condition: service_healthy
+      atlas-execution-worker-relay:
+        condition: service_healthy
+      atlas-execution-worker:
+        condition: service_healthy
+      atlas-agent-auth-stager:
+        condition: service_completed_successfully
+      atlas-execution-auth-stager:
+        condition: service_completed_successfully
+    networks:
+      default: {}
+      atlas-execution-transport-net: {}
+    environment:
+      ATLAS_AGENT_ENVIRONMENT: production
+      ATLAS_AGENT_HOST: 0.0.0.0
+      ATLAS_AGENT_PORT: "8090"
+      ATLAS_AGENT_REPOSITORY_ROOT: /workspace/repository
+      ATLAS_AGENT_STATE_DIR: /opt/atlas/agent-state
+      CODEX_HOME: /opt/atlas/.codex
+      CODEX_AUTH_SOURCE: /run/secrets/codex-auth.json
+      XDG_CONFIG_HOME: /opt/atlas/.codex/config
+      XDG_CACHE_HOME: /opt/atlas/.codex/cache
+      ATLAS_CORE_HOST: atlas-core
+      ATLAS_CORE_PORT: "8643"
+      ATLAS_CORE_REQUIRED: "false"
+      ATLAS_EXECUTION_BACKEND: ${ATLAS_EXECUTION_BACKEND:-local}
+      ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN: ${ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN:-atlas-repository}
+      ATLAS_EXECUTION_WORKER_HOST: atlas-execution-worker-relay
+      ATLAS_EXECUTION_WORKER_PORT: "8081"
+      ATLAS_EXECUTION_WORKER_AUTH_FILE: /run/atlas-execution-auth/token
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: /workspace/repository
+    volumes:
+      - ${ATLAS_REPOSITORY_HOST_PATH:?set ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository
+      - atlas-agent-state:/opt/atlas/agent-state
+      - atlas-agent-auth-staging:/run/secrets:ro
+      - atlas-execution-auth-staging:/run/atlas-execution-auth:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /opt/atlas/.codex:size=256m,uid=10001,gid=10001,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8090"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  atlas-agent-auth-stager:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-agent.Dockerfile
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["/usr/local/bin/atlas-agent-auth-stager"]
+    command: ["/source/auth.json", "/staging/codex-auth.json"]
+    volumes:
+      - ${ATLAS_CODEX_AUTH_HOST_PATH:?set ATLAS_CODEX_AUTH_HOST_PATH}:/source/auth.json:ro
+      - atlas-agent-auth-staging:/staging
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+
+  atlas-execution-worker:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-execution-worker.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      atlas-egress-proxy:
+        condition: service_healthy
+      atlas-execution-auth-stager:
+        condition: service_completed_successfully
+    runtime: runsc
+    networks:
+      atlas-execution-worker-net:
+        ipv4_address: 172.31.0.10
+    environment:
+      HTTPS_PROXY: http://172.31.0.2:3128
+      HTTP_PROXY: http://172.31.0.2:3128
+      ALL_PROXY: http://172.31.0.2:3128
+      NO_PROXY: ""
+      ATLAS_EXECUTION_WORKER_STATE_DIR: /opt/atlas/execution-worker-state
+      ATLAS_EXECUTION_WORKER_EXECUTION_ENABLED: "false"
+      ATLAS_EXECUTION_WORKER_REPOSITORY_MAP: "atlas-repository=/workspace/repository"
+      ATLAS_EXECUTION_WORKER_HOST: 0.0.0.0
+      ATLAS_EXECUTION_WORKER_PORT: "8081"
+      ATLAS_EXECUTION_WORKER_AUTH_FILE: /run/atlas-execution-auth/token
+      ATLAS_EXECUTION_WORKER_ALLOWED_CLIENT_HOST: 172.31.0.3
+    volumes:
+      - ${ATLAS_REPOSITORY_HOST_PATH:?set ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository:ro
+      - atlas-execution-worker-state:/opt/atlas/execution-worker-state
+      - atlas-execution-auth-staging:/run/atlas-execution-auth:ro
+    read_only: true
+    user: "10001:10001"
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /opt/atlas/.codex:size=256m,uid=10001,gid=10001,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "/opt/atlas/services/atlas-execution-worker/healthcheck.py"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    expose:
+      - "8081"
+
+  atlas-execution-worker-relay:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-execution-worker.Dockerfile
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "atlas_execution_worker.relay"]
+    networks:
+      atlas-execution-transport-net:
+        aliases:
+          - atlas-execution-worker-relay-transport
+      atlas-execution-worker-net:
+        ipv4_address: 172.31.0.3
+    environment:
+      ATLAS_EXECUTION_RELAY_HOST: atlas-execution-worker-relay-transport
+      ATLAS_EXECUTION_RELAY_PORT: "8081"
+      ATLAS_EXECUTION_RELAY_UPSTREAM_HOST: atlas-execution-worker
+      ATLAS_EXECUTION_RELAY_UPSTREAM_PORT: "8081"
+    read_only: true
+    user: "10001:10001"
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, socket; socket.create_connection((os.environ['ATLAS_EXECUTION_RELAY_HOST'], 8081), timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  atlas-execution-auth-stager:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-execution-worker.Dockerfile
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["python", "/usr/local/bin/atlas-execution-auth-stager"]
+    volumes:
+      - atlas-execution-auth-staging:/staging
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+
+  atlas-egress-proxy:
+    image: ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
+    restart: unless-stopped
+    command: ["squid", "-N", "-f", "/etc/squid/squid.conf"]
+    networks:
+      default: {}
+      atlas-execution-worker-net:
+        ipv4_address: 172.31.0.2
+    volumes:
+      - ./deploy/proxy/atlas-execution-worker-squid.conf:/etc/squid/squid.conf:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /run:size=1m,mode=0755
+      - /var/log/squid:size=16m,uid=13,gid=13,mode=0750
+      - /var/spool/squid:size=32m,uid=13,gid=13,mode=0750
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "squid", "-k", "parse", "-f", "/etc/squid/squid.conf"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
   mission-control:
     build:
       context: .
@@ -35,6 +251,8 @@ services:
     restart: unless-stopped
     depends_on:
       atlas-core:
+        condition: service_healthy
+      atlas-agent:
         condition: service_healthy
     ports:
       - "${ATLAS_HTTP_BIND:-127.0.0.1}:${ATLAS_HTTP_PORT:-8080}:8080"
@@ -47,4 +265,17 @@ services:
       - no-new-privileges:true
 
 volumes:
+  atlas-agent-state:
   atlas-data:
+  atlas-execution-worker-state:
+  atlas-execution-auth-staging:
+  atlas-agent-auth-staging:
+
+networks:
+  atlas-execution-transport-net:
+    internal: true
+  atlas-execution-worker-net:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24

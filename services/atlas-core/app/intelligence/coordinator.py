@@ -2,12 +2,14 @@ import asyncio
 from collections.abc import Callable
 from time import perf_counter
 
-from app.config.settings import settings
 from app.config.policies import get_intelligence_policy
 from app.config.policy_models import PolicySeverity
-from app.intelligence.assessment import build_situation_report
-from app.intelligence.findings import Finding, Severity
+from app.config.settings import settings
+from app.core.logging import get_logger
 from app.intelligence import history as history_module
+from app.intelligence.assessment import build_situation_report
+from app.intelligence.discovery import collect_discovery_compatibility_findings
+from app.intelligence.findings import Finding, Severity
 from app.intelligence.providers.docker import collect_docker_findings
 from app.intelligence.providers.homeassistant import (
     collect_homeassistant_findings,
@@ -23,8 +25,6 @@ from app.intelligence.report import (
 from app.providers.base import Provider
 from app.providers.capabilities import ProviderPriority
 from app.providers.registry import ProviderRegistry, provider_registry
-from app.core.logging import get_logger
-
 
 FindingProvider = Callable[[], list[Finding]]
 logger = get_logger("atlas.intelligence.coordinator")
@@ -138,7 +138,7 @@ async def collect_provider_findings_with_telemetry(
                     finding_id_suffix="timed-out",
                 ),
             ]
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001
             status = "failed"
             findings = [
                 failure_finding(
@@ -197,6 +197,10 @@ async def build_report() -> SituationReport:
         await collect_provider_findings_with_telemetry()
     )
     findings.extend(provider_findings)
+    try:
+        findings.extend(collect_discovery_compatibility_findings())
+    except Exception:
+        logger.exception("Unable to collect Discovery compatibility findings")
     findings.extend(_performance_findings(telemetry))
     report = build_situation_report(findings)
     try:

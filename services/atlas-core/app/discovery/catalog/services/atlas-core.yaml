@@ -1,0 +1,23 @@
+schema_version: 1
+item:
+  id: atlas-core
+  type: service
+  status: active
+  name: Atlas Core
+  description: Atlas Core is the Atlas control-plane service for provider orchestration, runtime APIs, and Discovery Center catalog access.
+  tags:
+    - atlas
+    - control-plane
+  capabilities:
+    - id: control-plane-api
+    - id: provider-orchestration
+    - id: discovery-api
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-atlas-core
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Atlas platform component; cataloging does not imply Atlas installs or manages itself.

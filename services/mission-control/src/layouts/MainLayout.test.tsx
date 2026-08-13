@@ -33,5 +33,13 @@ describe("MainLayout", () => {
 
         expect(await screen.findByText("Foundry")).toBeInTheDocument();
         expect(atlas.get).toHaveBeenCalledWith("");
+        expect(screen.getByRole("link", { name: /Execution Candidates/i })).toHaveAttribute(
+            "href",
+            "/execution-candidates",
+        );
+        expect(screen.getByRole("link", { name: /Workflows/i })).toHaveAttribute(
+            "href",
+            "/workflows",
+        );
     });
 });

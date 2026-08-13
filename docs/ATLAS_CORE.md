@@ -16,9 +16,12 @@ python3 -m venv .venv
 Runtime-only environments may install `requirements.txt` instead.
 
 Configuration is loaded from `config/atlas.yaml`,
-`config/policies.yaml`, `inventory/services.yaml`, and optional
-environment credentials. Use `.env.example` as the credential-name
-reference and do not commit secrets.
+`inventory/services.yaml`, and runtime policy in
+`ATLAS_POLICY_FILE` (defaults to `/opt/atlas/data/config/policies.yaml`).
+`config/policies.yaml` remains the immutable bootstrap template used when
+the runtime policy file is missing. Optional environment credentials are also loaded.
+Use `.env.example` as the credential-name reference and do not commit
+secrets.
 
 ## Address
 

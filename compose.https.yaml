@@ -4,6 +4,8 @@ services:
     user: "${ATLAS_EDGE_UID:-101}"
     restart: unless-stopped
     depends_on:
+      atlas-agent:
+        condition: service_healthy
       mission-control:
         condition: service_healthy
     ports:

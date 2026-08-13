@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import os
+from collections.abc import Callable
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urljoin
 
 import httpx
 
 from app.config.policies import get_frigate_policy
 from app.config.policy_models import FrigatePolicy, PolicySeverity
+from app.context import AtlasContext
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -18,6 +19,14 @@ from app.providers import (
     ProviderPriority,
     ProviderWorkspace,
 )
+from app.providers.context_helpers import (
+    base_url_from_context,
+    context_from_legacy_service,
+    metadata_from_context,
+    secret_value,
+    timeout_from_context,
+    tls_verification_from_context,
+)
 
 
 class FrigateProvider(Provider):
@@ -25,45 +34,41 @@ class FrigateProvider(Provider):
 
     def __init__(
         self,
-        service: dict[str, Any],
+        service: AtlasContext | dict[str, Any],
         *,
         api_token: str | None = None,
-        timeout_seconds: float = 10.0,
+        timeout_seconds: float | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         policy_getter: Callable[[], FrigatePolicy] = (
             get_frigate_policy
         ),
     ) -> None:
-        self._service = service
-        self._api_token = (
-            api_token
-            if api_token is not None
-            else os.getenv("FRIGATE_API_TOKEN")
+        # Temporary compatibility seam for direct legacy constructors.
+        self.atlas_context = (
+            service
+            if isinstance(service, AtlasContext)
+            else context_from_legacy_service("frigate", service)
         )
-        self._timeout_seconds = timeout_seconds
+        self._api_token = api_token or secret_value(
+            self.atlas_context,
+            "api_token",
+        )
+        self._timeout_seconds = timeout_seconds or timeout_from_context(
+            self.atlas_context,
+        )
         self._transport = transport
         self._policy_getter = policy_getter
-
-        protocol = service.get("protocol", "https")
-        host = service["host"]
-        port = service.get("port", 8971)
-        self._base_url = f"{protocol}://{host}:{port}/"
-
-        self._metadata = ProviderMetadata(
-            id="frigate",
-            name=service.get("name", "Frigate"),
-            version="1.0.0",
-            description=(
-                "NVR health, camera telemetry, and version provider."
-            ),
-            workspace=ProviderWorkspace.AUTOMATION,
-            icon="video",
-            priority=(
-                ProviderPriority.CRITICAL
-                if service.get("critical", False)
-                else ProviderPriority.HIGH
-            ),
-            capabilities=frozenset(
+        self._base_url = base_url_from_context(
+            self.atlas_context,
+            default_port=8971,
+        )
+        self._metadata = metadata_from_context(
+            self.atlas_context,
+            default_description="NVR health, camera telemetry, and version provider.",
+            default_workspace=ProviderWorkspace.AUTOMATION,
+            default_icon="video",
+            default_priority=ProviderPriority.HIGH,
+            default_capabilities=frozenset(
                 {
                     ProviderCapability.HEALTH,
                     ProviderCapability.FINDINGS,
@@ -82,12 +87,7 @@ class FrigateProvider(Provider):
         return urljoin(self._base_url, path.lstrip("/"))
 
     def _tls_verification(self) -> bool | str:
-        ca_bundle = self._service.get("ca_bundle")
-
-        if ca_bundle:
-            return str(ca_bundle)
-
-        return bool(self._service.get("verify_tls", True))
+        return tls_verification_from_context(self.atlas_context)
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json"}
@@ -116,7 +116,7 @@ class FrigateProvider(Provider):
                 payload = response.json()
 
             if not isinstance(payload, dict):
-                raise ValueError(
+                raise ValueError(  # noqa: TRY004
                     "Frigate returned an invalid stats response.",
                 )
 

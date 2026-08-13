@@ -1,0 +1,126 @@
+"""Disposable, request-scoped repository workspaces."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
+
+from app.execution.worker_contracts import WorkerExecutionRequest
+
+
+class WorkspaceError(RuntimeError):
+    """The trusted source cannot produce a safe request workspace."""
+
+
+@dataclass(frozen=True, slots=True)
+class WorkerWorkspace:
+    request_id: str
+    path: Path
+    base_head: str
+
+
+class WorkerWorkspaceManager:
+    """Clone one trusted repository source into one disposable request directory."""
+
+    def __init__(
+        self,
+        source_root: Path,
+        workspace_root: Path,
+        repository_token: str,
+        *,
+        trusted_repository_paths: Iterable[Path],
+        git_config_path: Path,
+    ) -> None:
+        self._source_root_input = source_root
+        self._source_root = source_root.resolve()
+        self._workspace_root = workspace_root.resolve()
+        self._repository_token = repository_token
+        self._trusted_repository_paths = {
+            path.resolve() for path in trusted_repository_paths
+        }
+        self._git_config_path = git_config_path.resolve()
+        self._active: dict[str, WorkerWorkspace] = {}
+        self._workspace_root.mkdir(parents=True, exist_ok=True)
+
+    def prepare(self, request: WorkerExecutionRequest) -> WorkerWorkspace:
+        request.validate()
+        if request.repository_token != self._repository_token:
+            raise WorkspaceError("repository token is not accepted")
+        existing = self._active.get(request.execution_request_id)
+        if existing is not None:
+            if existing.base_head != request.expected_repository_head:
+                raise WorkspaceError("request workspace has conflicting base head")
+            return existing
+        source = self._source_root
+        if self._source_root_input.is_symlink() or not source.is_dir():
+            raise WorkspaceError("trusted repository source is invalid")
+        if source not in self._trusted_repository_paths:
+            raise WorkspaceError("repository source is not configured")
+        source_head = self._git(source, "rev-parse", "HEAD")
+        if source_head != request.expected_repository_head:
+            raise WorkspaceError("stale repository")
+        path = self._workspace_root / request.execution_request_id
+        if path.exists() or path.is_symlink():
+            raise WorkspaceError("request workspace already exists")
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--no-local",
+                "--no-hardlinks",
+                str(source),
+                str(path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            shell=False,
+            env={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
+        )
+        cloned_head = self._git(path, "rev-parse", "HEAD")
+        if cloned_head != request.expected_repository_head:
+            shutil.rmtree(path, ignore_errors=True)
+            raise WorkspaceError("cloned workspace head does not match expected head")
+        workspace = WorkerWorkspace(request.execution_request_id, path, cloned_head)
+        self._active[request.execution_request_id] = workspace
+        return workspace
+
+    def cleanup(self, request_id: str) -> None:
+        workspace = self._active.pop(request_id, None)
+        path = workspace.path if workspace else self._workspace_root / request_id
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise WorkspaceError("refusing to clean non-directory workspace")
+        if path.exists():
+            shutil.rmtree(path)
+
+    def quarantine(self, request_id: str) -> Path | None:
+        """Move an unknown-outcome workspace aside without reusing or deleting it."""
+
+        path = self._workspace_root / request_id
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise WorkspaceError("refusing to quarantine non-directory workspace")
+        if not path.exists():
+            return None
+        quarantine_root = self._workspace_root / "quarantine"
+        quarantine_root.mkdir(mode=0o700, exist_ok=True)
+        destination = quarantine_root / f"{request_id}.unknown"
+        if destination.exists() or destination.is_symlink():
+            raise WorkspaceError("unknown-outcome workspace already quarantined")
+        shutil.move(str(path), str(destination))
+        self._active.pop(request_id, None)
+        return destination
+
+    def _git(self, path: Path, *args: str) -> str:
+        result = subprocess.run(
+            ["git", "-C", str(path), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+            shell=False,
+            env={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
+        )
+        return result.stdout.strip()

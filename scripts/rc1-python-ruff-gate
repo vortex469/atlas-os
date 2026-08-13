@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
+RC1_BASELINE="${ATLAS_RC1_RUFF_BASELINE:-0216b7bfe7f3b160a762269802aa34244ae70a72}"
+
+if [[ "$#" -ne 1 ]]; then
+    echo "Usage: $0 services/atlas-core|services/atlas-agent" >&2
+    exit 2
+fi
+
+service_path="$1"
+case "$service_path" in
+    services/atlas-core)
+        lint_paths=("$service_path/app")
+        ;;
+    services/atlas-agent)
+        lint_paths=("$service_path/app" "$service_path/tests")
+        ;;
+    *)
+        echo "Unsupported Atlas Python service: $service_path" >&2
+        exit 2
+        ;;
+esac
+
+cd "$ATLAS_ROOT"
+
+if ! git cat-file -e "$RC1_BASELINE^{commit}" 2>/dev/null; then
+    echo "RC1 Ruff baseline commit is unavailable: $RC1_BASELINE" >&2
+    exit 2
+fi
+
+mapfile -d '' changed_files < <(
+    {
+        git diff --name-only --diff-filter=ACMR -z "$RC1_BASELINE" -- \
+            "${lint_paths[@]}"
+        git ls-files --others --exclude-standard -z -- \
+            "${lint_paths[@]}"
+    } | while IFS= read -r -d '' path; do
+        [[ "$path" == *.py ]] && printf '%s\0' "$path"
+    done | sort -zu
+)
+
+if [[ "${#changed_files[@]}" -eq 0 ]]; then
+    echo "No changed Python files for $service_path since $RC1_BASELINE"
+    exit 0
+fi
+
+python -m ruff check "${changed_files[@]}"

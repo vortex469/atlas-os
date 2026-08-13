@@ -6,7 +6,20 @@ release boundaries.
 
 ## Unreleased
 
+No changes recorded after the v0.6.0 release boundary.
+
+## atlas-v0.6.0 — Atlas v0.6.0 (pending)
+
+Atlas v0.6.0 promotes the validated `atlas-v0.6-rc1.9` baseline at
+`6d85df5b112b4bde28ec31fc60cce88560c9dbfc`. The final integration commit,
+validation record, sign-off, and immutable tag remain pending.
+
 ### Added
+
+- Hardened Codex `workspace-write` execution with an immutable named permission
+  profile, runsc isolation, a segmented Agent-to-worker relay, peer-bound bearer
+  authentication, and production-gate proofs for disposable workspace writes,
+  outside-workspace denial, and direct worker-control-plane denial.
 
 - Configurable loopback or LAN HTTP binding and an optional authenticated
   HTTPS ingress overlay.
@@ -14,6 +27,90 @@ release boundaries.
   action history and provider telemetry.
 - Optional daily systemd backups with persistent scheduling, strict
   verification, and minimum-count retention safeguards.
+
+### Validated RC baseline
+
+`atlas-v0.6-rc1.9` was published on 2026-08-13 at
+`6d85df5b112b4bde28ec31fc60cce88560c9dbfc` as the validated release-candidate
+baseline for v0.6.0.
+
+### Implemented in v0.6.0
+
+- Discovery Center compatibility engine, evidence flow, and catalog integration now
+  drive execution-candidate projection with compatibility context available to
+  planning and runtime decisions.
+- Mission Control Discovery views and execution workflow shell now include
+  discovery compatibility details and candidate workflow status across planning,
+  implementation, verification, review, and commit checkpoints.
+- Provider resources and connection management are now persisted in runtime state,
+  including runtime policy and provider-connection stores plus connection secrets.
+- Approval-gated execution is implemented across implementation, verification,
+  review, and commit stages with immutable approval records.
+- Candidate workflow planning and execution state is durable and restart-safe, with
+  persisted transition artifacts and deterministic recovery behavior.
+- Concurrent resume and workflow state transitions are hardened to prevent
+  duplicated effective execution boundaries.
+- Runtime verification context is preserved in redacted metadata for restart-safe
+  continuation and strict validation.
+- Deterministic and hardening coverage added for timing-sensitive candidate paths,
+  restart/recovery matrix behaviors, audit-chain validation, concurrency, and
+  contract regression.
+- Validation coverage required for this RC includes ruff, test, lint, build, and
+  container-release-gate verification.
+- Core operational scope remains explicit to `update-compose-stack`.
+- Structured Compose mutation evidence is required before implementation
+  approval. It is carried through planning, workflow metadata, immutable
+  implementation requests, and deterministic plan fingerprints.
+- Planning, exact approval binding, persistence/recovery, stale evidence
+  rejection, and successor concurrency/idempotent reuse were validated in the
+  RC1 production smoke-test boundary.
+- The final production-like RC1 execution smoke validation passed through the
+  awaiting-commit-approval boundary on commit
+  `c333937e61343aed714a475395b41077bad86e28`. It verified isolated worker
+  execution, exact implementation and verification approvals, deterministic
+  zero-command RC1 verification, baseline-aware review, and an exact commit
+  approval request without performing the validation-only commit.
+- The smoke hardening set now covers worker journal exactly-once recovery,
+  approval-boundary audit projection, gated RC1 intent verification,
+  baseline-aware verification and review, exact verification-plan approval
+  binding, candidate resume dispatch, approval-repository storage identity,
+  AtlasCoreClient event-loop ownership, deterministic zero-check evidence, and
+  baseline-aware commit validation.
+- Codex authentication, CLI installation, ephemeral runtime provisioning, and
+  repository mutation are production-ready through the exact approval-gated
+  candidate path. A named `workspace-write` permission profile runs inside a
+  runsc-isolated worker with an authenticated, network-segmented control plane.
+  Runtime proofs cover disposable workspace writes, outside-workspace denial,
+  and direct worker-control-plane denial. Broad unconfined profiles,
+  `CAP_SYS_ADMIN`, root execution, and `danger-full-access` remain explicitly
+  rejected.
+
+### Deferred to v0.7+
+
+- `restart-service` execution intent.
+- `backup` and `restore` execution intents.
+- `install-provider` and `update-image` execution intents.
+- Push, tag, release publication, remote deployment, and rollback automation.
+- Candidate UI execution affordances in Mission Control beyond current shell,
+  audit, and status workflows.
+
+### Completed v0.6.0 milestone
+
+**Codex Execution Sandbox Hardening** provides an isolated runsc execution
+runtime, disposable `workspace-write` and outside-workspace denial proofs,
+preserved non-root uid `10001`, zero effective capabilities,
+`no-new-privileges`, and read-only rootfs hardening. Authenticated end-to-end
+execution was validated through verification, review, and the pending commit
+approval boundary without creating the validation-only commit.
+
+### Inherited technical debt
+
+- Atlas Core has an existing repository-wide backlog of 90 Ruff violations.
+- Atlas Agent has an existing repository-wide backlog of 20 Ruff violations.
+  v0.6.0 blocks new violations in changed production and test files while leaving
+  both services' inherited cleanup outside release scope.
+- Mission Control currently emits a large JavaScript chunk warning during build.
+- Some Atlas Core source-boundary tests assume Atlas Core working-directory layout.
 
 ## v1.0.0 — Foundry (2026-07-25)
 
@@ -50,3 +147,14 @@ release boundaries.
 - `v0.3.0-alpha2` — reusable knowledge-engine assessment rules.
 - `v0.3.0-alpha1` — Atlas Intelligence Engine and summary API.
 - `v0.2.0` — typed ACE policy engine.
+
+### Architecture
+
+- Completed Phase 3 candidate workflow from Discovery compatibility evidence through local Git commit.
+- Added deterministic end-to-end candidate workflow coverage, audit-chain validation, recovery matrix coverage, concurrency hardening, commit-path security hardening, strict request validation, and route-contract regression coverage.
+- Documented v0.6 boundaries: only `update-compose-stack` is supported; Atlas does not push, tag, release, deploy remotely, auto-approve, auto-execute, or roll back changes.
+
+### Security
+
+- Candidate commits are constrained to exact reviewed files and reject unsafe paths such as `.git/`, `jcode/`, `logs/`, absolute paths, parent traversal, duplicates, empty paths, symlink escape, and unrelated changed files.
+- Caller-controlled Phase 3 request bodies use strict validation so input cannot broaden command, path, approval, verification, evidence, or commit scope.

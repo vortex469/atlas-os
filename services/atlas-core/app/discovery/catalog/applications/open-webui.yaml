@@ -1,0 +1,38 @@
+schema_version: 1
+item:
+  id: open-webui
+  type: application
+  status: active
+  name: Open WebUI
+  description: Open WebUI is a web application for interacting with local or remote AI model serving backends.
+  tags:
+    - ai
+    - ui
+    - models
+  capabilities:
+    - id: ai-chat-interface
+    - id: model-management-interface
+  requirements:
+    capabilities:
+      - id: container-orchestration
+    network:
+      ports:
+        - port: 3000
+          protocol: tcp
+          direction: inbound
+          required: false
+          description: Common Open WebUI application port; exposure depends on deployment.
+  relationships:
+    - type: depends_on
+      target: ollama
+      required: true
+      description: The initial curated Atlas graph models Open WebUI with Ollama as its local model serving backend.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-open-webui
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Dependency is catalog-contextual and does not imply Atlas should install either component.

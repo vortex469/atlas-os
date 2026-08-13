@@ -1,14 +1,14 @@
 import asyncio
 
+from app.config.policy_models import (
+    IntelligencePolicy,
+    ProviderPerformancePolicy,
+)
 from app.intelligence import coordinator
 from app.intelligence.findings import Finding, Severity
 from app.intelligence.report import (
     IntelligenceTelemetry,
     ProviderCollectionTiming,
-)
-from app.config.policy_models import (
-    IntelligencePolicy,
-    ProviderPerformancePolicy,
 )
 from app.providers.opnsense import OPNsenseProvider
 from app.providers.registry import ProviderRegistry
@@ -48,6 +48,11 @@ def test_build_report(monkeypatch, isolated_intelligence_history):
         coordinator,
         "PROVIDERS",
         (lambda: [finding],),
+    )
+    monkeypatch.setattr(
+        coordinator,
+        "collect_discovery_compatibility_findings",
+        list,
     )
 
     report = asyncio.run(coordinator.build_report())
@@ -265,3 +270,91 @@ def test_provider_performance_findings_follow_policy(
         "duration_ms": 150,
         "maximum_duration_ms": 100,
     }
+
+
+def test_build_report_includes_discovery_recommendations(
+    monkeypatch,
+    isolated_intelligence_history,
+) -> None:
+    discovery_finding = Finding(
+        id="discovery-frigate-atlas-investigate-compatibility",
+        severity=Severity.INFO,
+        category="discovery-compatibility",
+        source="discovery",
+        title="Discovery needs compatibility information for Frigate",
+        message="Discovery could not determine compatibility.",
+        recommendation="Review missing Discovery compatibility information for Frigate.",
+        component="Frigate",
+        affects_health=False,
+        score_penalty=0,
+    )
+    telemetry = IntelligenceTelemetry(
+        provider_collection_duration_ms=0,
+        provider_timeout_seconds=10,
+        providers=[],
+    )
+
+    async def no_provider_findings():
+        return [], telemetry
+
+    monkeypatch.setattr(coordinator, "PROVIDERS", ())
+    monkeypatch.setattr(
+        coordinator,
+        "collect_provider_findings_with_telemetry",
+        no_provider_findings,
+    )
+    monkeypatch.setattr(
+        coordinator,
+        "collect_discovery_compatibility_findings",
+        lambda: [discovery_finding, discovery_finding],
+    )
+
+    report = asyncio.run(coordinator.build_report())
+
+    assert report.findings == [discovery_finding, discovery_finding]
+    assert len(report.recommendations) == 1
+    assert report.recommendations[0].title == (
+        "Review missing Discovery compatibility information for Frigate."
+    )
+    assert report.recommendations[0].priority == "low"
+    assert report.recommendations[0].component == "Frigate"
+
+
+def test_discovery_collection_failure_is_log_only_in_report(
+    monkeypatch,
+    isolated_intelligence_history,
+) -> None:
+    legacy_finding = make_test_finding()
+    telemetry = IntelligenceTelemetry(
+        provider_collection_duration_ms=0,
+        provider_timeout_seconds=10,
+        providers=[],
+    )
+
+    async def no_provider_findings():
+        return [], telemetry
+
+    def failing_discovery_collection():
+        raise AssertionError("Discovery collector should isolate its own failures")
+
+    monkeypatch.setattr(coordinator, "PROVIDERS", (lambda: [legacy_finding],))
+    monkeypatch.setattr(
+        coordinator,
+        "collect_provider_findings_with_telemetry",
+        no_provider_findings,
+    )
+    monkeypatch.setattr(
+        coordinator,
+        "collect_discovery_compatibility_findings",
+        failing_discovery_collection,
+    )
+
+    try:
+        report = asyncio.run(coordinator.build_report())
+    except AssertionError as error:  # pragma: no cover - documents expected boundary
+        raise AssertionError(
+            "Discovery failures must be isolated inside the Discovery collector."
+        ) from error
+
+    assert report.findings == [legacy_finding]
+    assert report.recommendations == []

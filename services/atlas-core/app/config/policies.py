@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
@@ -7,8 +10,8 @@ from pydantic import ValidationError
 
 from app.config.policy_models import (
     FrigatePolicy,
-    N8nPolicy,
     IntelligencePolicy,
+    N8nPolicy,
     ObsidianPolicy,
     OPNsensePolicy,
     Policies,
@@ -18,11 +21,39 @@ from app.config.policy_models import (
 )
 
 ATLAS_ROOT = Path("/opt/atlas")
-POLICY_FILE = ATLAS_ROOT / "config" / "policies.yaml"
+DEFAULT_POLICY_FILE = ATLAS_ROOT / "data" / "config" / "policies.yaml"
+DEFAULT_POLICY_TEMPLATE_FILE = ATLAS_ROOT / "config" / "policies.yaml"
+POLICY_FILE = DEFAULT_POLICY_FILE
+POLICY_TEMPLATE_FILE = DEFAULT_POLICY_TEMPLATE_FILE
+POLICY_FILE_ENV = "ATLAS_POLICY_FILE"
+POLICY_TEMPLATE_FILE_ENV = "ATLAS_POLICY_TEMPLATE_FILE"
 
 
 class PolicyLoadError(RuntimeError):
     """Raised when Atlas cannot read or validate its policy file."""
+
+
+def get_policy_file() -> Path:
+    """Return the configured runtime policy file path."""
+
+    if POLICY_FILE != DEFAULT_POLICY_FILE:
+        return POLICY_FILE
+
+    return Path(os.environ.get(POLICY_FILE_ENV, str(POLICY_FILE)))
+
+
+def get_policy_template_file() -> Path:
+    """Return the configured shipped policy template path."""
+
+    if POLICY_TEMPLATE_FILE != DEFAULT_POLICY_TEMPLATE_FILE:
+        return POLICY_TEMPLATE_FILE
+
+    return Path(
+        os.environ.get(
+            POLICY_TEMPLATE_FILE_ENV,
+            str(POLICY_TEMPLATE_FILE),
+        ),
+    )
 
 
 def load_policies(
@@ -30,13 +61,54 @@ def load_policies(
 ) -> Policies:
     """Load and validate Atlas operational policies."""
 
-    resolved_policy_file = policy_file or POLICY_FILE
+    if policy_file is not None:
+        resolved_policy_file = policy_file
+        if not resolved_policy_file.exists():
+            return Policies()
+        return _load_policy_file(resolved_policy_file)
+
+    resolved_policy_file = ensure_runtime_policy_file()
 
     if not resolved_policy_file.exists():
         return Policies()
 
+    return _load_policy_file(resolved_policy_file)
+
+
+def ensure_runtime_policy_file() -> Path:
+    """Initialize the configured runtime policy file from its template."""
+
+    policy_file = get_policy_file()
+    if POLICY_FILE != DEFAULT_POLICY_FILE:
+        return policy_file
+
+    if policy_file.exists():
+        return policy_file
+
+    template_file = get_policy_template_file()
+    if not template_file.exists():
+        return policy_file
+
     try:
-        with resolved_policy_file.open(
+        template_text = template_file.read_text(encoding="utf-8")
+        _validate_policy_text(template_text)
+        policy_file.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_create_policy_file(policy_file, template_text)
+        _load_policy_file(policy_file)
+    except FileExistsError:
+        return policy_file
+    except (OSError, ValidationError, yaml.YAMLError) as error:
+        raise PolicyLoadError(
+            "Atlas policy initialization failed for "
+            f"{policy_file} from template {template_file}: {error}",
+        ) from error
+
+    return policy_file
+
+
+def _load_policy_file(policy_file: Path) -> Policies:
+    try:
+        with policy_file.open(
             "r",
             encoding="utf-8",
         ) as policy_stream:
@@ -46,8 +118,46 @@ def load_policies(
     except (OSError, ValidationError, yaml.YAMLError) as error:
         raise PolicyLoadError(
             f"Atlas policy reload failed for "
-            f"{resolved_policy_file}: {error}"
+            f"{policy_file}: {error}",
         ) from error
+
+
+def _validate_policy_text(policy_text: str) -> Policies:
+    data = yaml.safe_load(policy_text) or {}
+    return Policies.model_validate(data)
+
+
+def _atomic_create_policy_file(
+    policy_file: Path,
+    policy_text: str,
+) -> None:
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    file_descriptor = os.open(policy_file, flags, 0o600)
+    try:
+        with os.fdopen(
+            file_descriptor,
+            "w",
+            encoding="utf-8",
+        ) as policy_stream:
+            policy_stream.write(policy_text)
+            policy_stream.flush()
+            os.fsync(policy_stream.fileno())
+    except Exception:
+        try:
+            policy_file.unlink()
+        except FileNotFoundError:
+            pass
+        raise
+
+    _fsync_directory(policy_file.parent)
+
+
+def _fsync_directory(directory: Path) -> None:
+    directory_fd = os.open(directory, os.O_DIRECTORY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 
 
 def get_expected_guest_state(vmid: int) -> str | None:
@@ -85,6 +195,7 @@ def get_expected_container_state(name: str) -> str | None:
         return None
 
     return container.expected
+
 
 def get_expected_container_states() -> dict[str, str]:
     """Return expected states for all configured Docker containers."""
@@ -126,12 +237,12 @@ def get_policy_reload_health(
 ) -> PolicyReloadHealth:
     """Validate the current policy source and report reload health."""
 
-    resolved_policy_file = policy_file or POLICY_FILE
+    resolved_policy_file = policy_file or get_policy_file()
     checked_at = datetime.now(UTC)
     started_at = perf_counter()
 
     try:
-        load_policies(resolved_policy_file)
+        load_policies(policy_file)
     except PolicyLoadError as error:
         diagnostics = _policy_diagnostics(error)
         return PolicyReloadHealth(

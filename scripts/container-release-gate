@@ -11,9 +11,14 @@ GATE_ENV_FILE="$GATE_DIRECTORY/atlas.env"
 GATE_CERT_FILE="$GATE_DIRECTORY/tls.crt"
 GATE_KEY_FILE="$GATE_DIRECTORY/tls.key"
 GATE_HTPASSWD_FILE="$GATE_DIRECTORY/htpasswd"
+GATE_COMPOSE_FILE="$GATE_DIRECTORY/compose.gate.yaml"
+GATE_PROXY_CONFIG_FILE="$GATE_DIRECTORY/atlas-execution-worker-squid.conf"
 GATE_PROJECT="atlas-release-gate-$$"
+POLICY_TEMPLATE_FILE="$ATLAS_ROOT/config/policies.yaml"
+ATLAS_CONFIG_FILE="$ATLAS_ROOT/config/atlas.yaml"
+INVENTORY_FILE="$ATLAS_ROOT/inventory/services.yaml"
 
-for executable in docker curl openssl; do
+for executable in docker curl openssl python3; do
     if ! command -v "$executable" >/dev/null 2>&1; then
         echo "Required executable not found: $executable" >&2
         exit 127
@@ -26,10 +31,20 @@ if [[ ! -S /var/run/docker.sock ]]; then
 fi
 
 cleanup() {
+    cleanup_status=$?
+    if [[ "$cleanup_status" -ne 0 ]]; then
+        docker compose \
+            --project-name "$GATE_PROJECT" \
+            --file "$COMPOSE_FILE" \
+            --file "$HTTPS_COMPOSE_FILE" \
+            --file "$GATE_COMPOSE_FILE" \
+            logs atlas-execution-worker atlas-execution-worker-relay >&2 || true
+    fi
     docker compose \
         --project-name "$GATE_PROJECT" \
         --file "$COMPOSE_FILE" \
         --file "$HTTPS_COMPOSE_FILE" \
+        --file "$GATE_COMPOSE_FILE" \
         down \
         --volumes \
         --rmi local \
@@ -39,8 +54,11 @@ cleanup() {
         "$GATE_ENV_FILE" \
         "$GATE_CERT_FILE" \
         "$GATE_KEY_FILE" \
-        "$GATE_HTPASSWD_FILE"
+        "$GATE_HTPASSWD_FILE" \
+        "$GATE_COMPOSE_FILE" \
+        "$GATE_PROXY_CONFIG_FILE"
     rmdir "$GATE_DIRECTORY" 2>/dev/null || true
+    return "$cleanup_status"
 }
 
 trap cleanup EXIT
@@ -78,22 +96,89 @@ fi
 chmod 600 "$GATE_KEY_FILE" "$GATE_HTPASSWD_FILE"
 chmod 644 "$GATE_CERT_FILE"
 
+network_inventory="$(docker network inspect $(docker network ls --quiet))"
+gate_worker_subnet="$(
+    printf '%s' "$network_inventory" | python3 -c '
+import ipaddress
+import json
+import sys
+
+networks = json.load(sys.stdin)
+used = []
+for network in networks:
+    for config in network.get("IPAM", {}).get("Config") or []:
+        subnet = config.get("Subnet")
+        if subnet:
+            used.append(ipaddress.ip_network(subnet))
+
+for third_octet in range(256):
+    candidate = ipaddress.ip_network(f"10.253.{third_octet}.0/24")
+    if not any(candidate.version == current.version and candidate.overlaps(current) for current in used):
+        print(candidate)
+        break
+else:
+    raise SystemExit("No non-overlapping release-gate worker subnet is available.")
+'
+)"
+gate_worker_prefix="${gate_worker_subnet%0/24}"
+gate_proxy_address="${gate_worker_prefix}2"
+gate_relay_address="${gate_worker_prefix}3"
+gate_worker_address="${gate_worker_prefix}10"
+
+sed \
+    "s#^acl worker_net src .*#acl worker_net src $gate_worker_subnet#" \
+    "$ATLAS_ROOT/deploy/proxy/atlas-execution-worker-squid.conf" \
+    >"$GATE_PROXY_CONFIG_FILE"
+
+printf '%s\n' \
+    'services:' \
+    '  atlas-execution-worker:' \
+    '    networks:' \
+    '      atlas-execution-worker-net:' \
+    "        ipv4_address: $gate_worker_address" \
+    '    environment:' \
+    "      HTTPS_PROXY: http://$gate_proxy_address:3128" \
+    "      HTTP_PROXY: http://$gate_proxy_address:3128" \
+    "      ALL_PROXY: http://$gate_proxy_address:3128" \
+    "      ATLAS_EXECUTION_WORKER_ALLOWED_CLIENT_HOST: $gate_relay_address" \
+    '  atlas-egress-proxy:' \
+    '    networks:' \
+    '      atlas-execution-worker-net:' \
+    "        ipv4_address: $gate_proxy_address" \
+    '  atlas-execution-worker-relay:' \
+    '    networks:' \
+    '      atlas-execution-worker-net:' \
+    "        ipv4_address: $gate_relay_address" \
+    '    volumes:' \
+    "      - $GATE_PROXY_CONFIG_FILE:/etc/squid/squid.conf:ro" \
+    'networks:' \
+    '  atlas-execution-worker-net:' \
+    '    ipam:' \
+    '      config:' \
+    "        - subnet: $gate_worker_subnet" \
+    >"$GATE_COMPOSE_FILE"
+
 export ATLAS_ENV_FILE="$GATE_ENV_FILE"
 export ATLAS_HTTP_BIND=127.0.0.1
 export ATLAS_HTTP_PORT=0
 export ATLAS_HTTPS_BIND=127.0.0.1
 export ATLAS_HTTPS_PORT=0
+export ATLAS_REPOSITORY_HOST_PATH="${ATLAS_REPOSITORY_HOST_PATH:-$ATLAS_ROOT}"
 export ATLAS_TLS_CERT_FILE="$GATE_CERT_FILE"
 export ATLAS_TLS_KEY_FILE="$GATE_KEY_FILE"
 export ATLAS_HTPASSWD_FILE="$GATE_HTPASSWD_FILE"
 export DOCKER_GID
 DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+policy_template_checksum_before="$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')"
+atlas_config_checksum_before="$(sha256sum "$ATLAS_CONFIG_FILE" | awk '{print $1}')"
+inventory_checksum_before="$(sha256sum "$INVENTORY_FILE" | awk '{print $1}')"
 
 compose=(
     docker compose
     --project-name "$GATE_PROJECT"
     --file "$COMPOSE_FILE"
     --file "$HTTPS_COMPOSE_FILE"
+    --file "$GATE_COMPOSE_FILE"
 )
 
 echo "Validating HTTP and HTTPS Compose configuration"
@@ -111,11 +196,18 @@ echo "Building production images"
 echo "Starting isolated production stack"
 "${compose[@]}" up --detach --wait --wait-timeout 90
 
+echo "Checking execution worker sandbox and transport boundary"
+ATLAS_EXECUTION_GATE_COMPOSE_OVERRIDE="$GATE_COMPOSE_FILE" \
+    ATLAS_EXECUTION_GATE_COMPOSE_SECONDARY="$HTTPS_COMPOSE_FILE" \
+    ATLAS_EXECUTION_GATE_PROJECT="$GATE_PROJECT" \
+    "$ATLAS_ROOT/scripts/atlas-execution-worker-runtime-gate"
+
 core_container="$("${compose[@]}" ps --quiet atlas-core)"
+agent_container="$("${compose[@]}" ps --quiet atlas-agent)"
 mission_container="$("${compose[@]}" ps --quiet mission-control)"
 edge_container="$("${compose[@]}" ps --quiet atlas-edge)"
 
-for container in "$core_container" "$mission_container" "$edge_container"; do
+for container in "$core_container" "$agent_container" "$mission_container" "$edge_container"; do
     test -n "$container"
     test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$container")" = "true"
     test "$(docker inspect --format '{{json .HostConfig.CapDrop}}' "$container")" = '["ALL"]'
@@ -130,6 +222,43 @@ for container in "$core_container" "$mission_container" "$edge_container"; do
     test "$container_user" != "root"
 done
 
+echo "Checking Atlas Agent container hardening and mounts"
+test "$(docker inspect --format '{{json .HostConfig.PortBindings}}' "$agent_container")" = '{}'
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/workspace/repository"}}{{.Type}} {{.Source}}{{end}}{{end}}' \
+    "$agent_container")" = "bind $ATLAS_REPOSITORY_HOST_PATH"
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/opt/atlas/agent-state"}}{{.Type}}{{end}}{{end}}' \
+    "$agent_container")" = "volume"
+! docker inspect \
+    --format '{{range .Mounts}}{{println .Destination}}{{end}}' \
+    "$agent_container" \
+    | grep -qx '/var/run/docker.sock'
+docker exec "$agent_container" python -c "from pathlib import Path; path = Path('/opt/atlas/agent-state/.release-gate-write-test'); path.write_text('ok'); path.unlink()"
+
+echo "Checking Atlas Core Docker socket access and hardening"
+test "$(docker exec "$core_container" id -u)" = "10001"
+docker exec "$core_container" sh -c "id -G | tr ' ' '\n' | grep -qx '$DOCKER_GID'"
+docker exec "$core_container" test -S /var/run/docker.sock
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/var/run/docker.sock"}}{{.RW}}{{end}}{{end}}' \
+    "$core_container")" = "false"
+docker exec "$core_container" python - <<'PY'
+from app.services.atlas_contexts import LegacyAtlasContextResolver
+from app.clients.docker_client import create_docker_client, docker_connection_diagnostics
+
+context = LegacyAtlasContextResolver().resolve_context("docker")
+diagnostics = docker_connection_diagnostics(context)
+assert context.connection is not None
+assert context.connection.mode == "unix"
+assert context.connection.path == "/var/run/docker.sock"
+assert diagnostics["privileged_local_runtime"] is True
+assert diagnostics["editable"] is False
+assert diagnostics["socket_exists"] is True
+client = create_docker_client(context)
+assert client.ping() is True
+PY
+
 published_address="$("${compose[@]}" port mission-control 8080)"
 published_port="${published_address##*:}"
 base_url="http://127.0.0.1:$published_port"
@@ -141,6 +270,155 @@ test "$(docker inspect \
     --format '{{(index .HostConfig.PortBindings "8080/tcp" 0).HostIp}}' \
     "$mission_container")" = "127.0.0.1"
 
+echo "Checking Atlas Core runtime policy storage"
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/opt/atlas/config/policies.yaml"}}{{.RW}}{{end}}{{end}}' \
+    "$core_container")" = "false"
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/opt/atlas/data"}}{{.RW}}{{end}}{{end}}' \
+    "$core_container")" = "true"
+test "$(docker inspect \
+    --format '{{range .Mounts}}{{if eq .Destination "/opt/atlas/data"}}{{.Type}}{{end}}{{end}}' \
+    "$core_container")" = "volume"
+docker exec "$core_container" python -c "import os; assert os.environ['ATLAS_POLICY_FILE'] == '/opt/atlas/data/config/policies.yaml'; assert os.environ['ATLAS_POLICY_TEMPLATE_FILE'] == '/opt/atlas/config/policies.yaml'"
+docker exec "$core_container" python -c "from pathlib import Path; import os; assert not os.access('/opt/atlas/config/policies.yaml', os.W_OK); assert os.access('/opt/atlas/data', os.W_OK); Path('/opt/atlas/data/config').mkdir(parents=True, exist_ok=True); probe = Path('/opt/atlas/data/config/.release-gate-write-test'); probe.write_text('ok'); probe.unlink()"
+curl --fail --silent --show-error "$base_url/api/v1/policies/status" \
+    | grep -q '"status":"healthy"'
+docker exec "$core_container" test -f /opt/atlas/data/config/policies.yaml
+docker exec "$core_container" cmp -s \
+    /opt/atlas/config/policies.yaml \
+    /opt/atlas/data/config/policies.yaml
+curl --fail --silent --show-error \
+    --request PUT \
+    --header 'Content-Type: application/json' \
+    --data '{"expectation":"stopped","confirmed":true}' \
+    "$base_url/api/v1/providers/proxmox/resources/109/expectation" \
+    | grep -q '"resource_id":"109"'
+curl --fail --silent --show-error "$base_url/api/v1/policies" \
+    | grep -q '"109":{"expected":"stopped"}'
+docker exec -i "$core_container" python - <<'PY'
+from app.providers.proxmox import ProxmoxProvider
+import app.providers.proxmox as proxmox_module
+
+def fake_guests():
+    return {
+        "node": "release-gate",
+        "running": 0,
+        "stopped": 1,
+        "guests": [
+            {
+                "vmid": 109,
+                "name": "release-gate-guest",
+                "type": "lxc",
+                "status": "stopped",
+            },
+        ],
+    }
+
+proxmox_module.get_proxmox_guests = fake_guests
+provider = ProxmoxProvider({"name": "Proxmox"})
+resources = __import__("asyncio").run(provider.list_resources()).resources
+resource = next(item for item in resources if item.resource_id == "109")
+assert resource.expectation.value == "stopped"
+assert resource.expectation.label == "Expected Stopped"
+PY
+test "$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')" = \
+    "$policy_template_checksum_before"
+
+echo "Checking Atlas Core provider connection runtime storage"
+docker exec -i "$core_container" python - <<'PY'
+import os
+
+assert os.environ["ATLAS_PROVIDER_CONNECTION_FILE"] == "/opt/atlas/data/config/provider-connections.yaml"
+assert os.environ["ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE"] == "/opt/atlas/config/provider-connections.yaml"
+assert os.environ["ATLAS_PROVIDER_SECRET_FILE"] == "/opt/atlas/data/secrets/provider-connections.yaml"
+PY
+docker exec -i "$core_container" python - <<'PY'
+from pathlib import Path
+
+from app.config.provider_connections import (
+    ensure_provider_connection_file,
+    load_provider_connections,
+)
+from app.config.provider_secrets import ensure_provider_secret_file, load_provider_secrets
+
+connection_file = ensure_provider_connection_file()
+secret_file = ensure_provider_secret_file()
+assert connection_file == Path("/opt/atlas/data/config/provider-connections.yaml")
+assert secret_file == Path("/opt/atlas/data/secrets/provider-connections.yaml")
+assert connection_file.exists()
+assert secret_file.exists()
+assert connection_file.parent.is_dir()
+assert secret_file.parent.is_dir()
+assert load_provider_connections(connection_file).version == 1
+assert load_provider_secrets(secret_file).version == 1
+secret_stat = secret_file.stat()
+assert secret_stat.st_uid == 10001
+assert secret_stat.st_gid == 10001
+assert secret_stat.st_mode & 0o777 == 0o600
+probe = secret_file.parent / ".release-gate-write-test"
+probe.write_text("ok", encoding="utf-8")
+probe.unlink()
+PY
+! docker exec "$agent_container" test -e /opt/atlas/data/secrets/provider-connections.yaml
+curl --fail --silent --show-error "$base_url/api/v1/providers/proxmox/connection" \
+    | python3 -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "proxmox"; assert fields["host"]["current_value"]; assert fields["user"]["secret"] is True; assert fields["user"]["current_value"] is None; assert fields["token_value"]["current_value"] is None'
+curl --fail --silent --show-error "$base_url/api/v1/providers/docker/connection" \
+    | python3 -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "docker"; assert data["editable"] is False; assert data["metadata"]["update_supported"] is False; assert data["metadata"]["privileged_local_runtime"] is True; assert fields["path"]["editable"] is False'
+docker exec -i "$core_container" python - <<'PY'
+import asyncio
+
+from app.models.connections import UpdateProviderConnectionRequest
+from app.providers.loader import load_provider_registry
+from app.services.provider_connections import ProviderConnectionService
+import app.providers.proxmox as proxmox_module
+
+
+def fake_guests():
+    return {
+        "node": "release-gate",
+        "running": 0,
+        "stopped": 1,
+        "guests": [
+            {
+                "vmid": 109,
+                "name": "release-gate-guest",
+                "type": "lxc",
+                "status": "stopped",
+            },
+        ],
+    }
+
+
+load_provider_registry()
+proxmox_module.get_proxmox_guests = fake_guests
+service = ProviderConnectionService()
+schema = service.connection_schema("proxmox")
+host = next(field.current_value for field in schema.fields if field.key == "host")
+assert host
+result = asyncio.run(
+    service.update_connection(
+        "proxmox",
+        UpdateProviderConnectionRequest(confirmed=True, values={"host": host}),
+        require_test=False,
+    )
+)
+fields = {field.key: field for field in result.connection_schema.fields}
+assert fields["host"].current_value == host
+assert fields["host"].source == "runtime"
+schema = service.connection_schema("proxmox")
+fields = {field.key: field for field in schema.fields}
+assert fields["host"].source == "runtime"
+resources = asyncio.run(service._registry.get("proxmox").list_resources()).resources
+assert resources
+PY
+test "$(sha256sum "$ATLAS_CONFIG_FILE" | awk '{print $1}')" = \
+    "$atlas_config_checksum_before"
+test "$(sha256sum "$INVENTORY_FILE" | awk '{print $1}')" = \
+    "$inventory_checksum_before"
+test "$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')" = \
+    "$policy_template_checksum_before"
+
 echo "Checking Mission Control, API proxy, and SPA fallback"
 curl --fail --silent --show-error "$base_url/" \
     | grep -q '<title>mission-control</title>'
@@ -150,6 +428,10 @@ curl --fail --silent --show-error "$base_url/api/v1" \
     | grep -q '"release":"Foundry"'
 curl --fail --silent --show-error --head "$base_url/" \
     | grep -qi '^X-Content-Type-Options: nosniff'
+curl --fail --silent --show-error "$base_url/agent-api/health" \
+    | grep -q '"service":"atlas-agent"'
+curl --fail --silent --show-error "$base_url/agent-api/api/v1/agent/repository" \
+    | grep -q '"root":"/workspace/repository"'
 
 echo "Checking authenticated HTTPS ingress"
 test "$(curl \
@@ -174,6 +456,14 @@ curl \
     --user 'atlas:release-gate' \
     "$https_base_url/api/v1" \
     | grep -q '"release":"Foundry"'
+curl \
+    --cacert "$GATE_CERT_FILE" \
+    --fail \
+    --silent \
+    --show-error \
+    --user 'atlas:release-gate' \
+    "$https_base_url/agent-api/health" \
+    | grep -q '"service":"atlas-agent"'
 curl \
     --cacert "$GATE_CERT_FILE" \
     --fail \

@@ -2,8 +2,8 @@
 
 ## Vision
 
-Atlas OS is a local-first infrastructure operating system designed to monitor,
-reason about, and automate a homelab environment.
+Atlas OS is a local-first, intent-driven infrastructure operating system designed to monitor,
+reason about, and automate a homelab environment. Other tools show what is; Atlas understands what should be. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md) and [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md).
 
 Assistant: Orion
 
@@ -48,11 +48,29 @@ Implemented
 
 # Configuration
 
+Current behavior reads operational policy from runtime state in `data/config/policies.yaml` when available. Tracked `config/` files are treated as immutable bootstrap templates. The Atlas Runtime Foundation boundary is:
+
+Immutable defaults
+
 config/
 
     atlas.yaml
 
     policies.yaml
+
+Mutable runtime state
+
+data/
+
+    config/
+
+    databases/
+
+    history/
+
+    cache/
+
+    knowledge/
 
 inventory/
 
@@ -216,11 +234,19 @@ Current
 
 # Current Sprint
 
-Foundry Release Hardening
+Atlas Runtime Foundation
 
-Next work
+Active major milestone
 
-- Push release candidate and confirm remote CI
+- Define immutable defaults in `config/` and runtime state in `data/`
+- Make runtime policy storage explicit with `ATLAS_POLICY_FILE`
+- Preserve Provider Management Framework as the subsystem for provider resources and user intent
+- Implement Discovery Center as the provider-neutral catalog and compatibility subsystem; design foundations remain in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md)
+- Mission Control policy management for provider resources must write runtime state, not repository files
+- Needs Review workflows for newly discovered resources remain derived, not persisted
+- AI suggests intent changes; users decide and approve policy updates
+
+Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the tracked template and then treats runtime state as authoritative. Mission Control changes must not dirty the Git checkout.
 
 ---
 
@@ -229,3 +255,44 @@ Next work
 GitHub
 
 vortex469/atlas-os
+
+## Atlas v0.6 project status
+
+Atlas v0.6.0 is the final release line for the completed Phase 3 candidate workflow. Atlas remains local-first, provider-neutral, and approval-gated.
+
+Current supported capability:
+
+- `update-compose-stack`
+
+RC1 release boundary: candidate planning requires structured Compose mutation
+evidence identifying the file, service, property, expected value where
+available, desired value, operation, and preservation constraints before
+approval. Legacy planning sessions without mutation evidence are safely
+non-actionable and require successor planning or replanning. Exact approval
+binding, durable persistence and recovery, stale/fingerprint rejection, and
+successor idempotency/concurrency protections are validated.
+
+Codex CLI installation, authentication provisioning, and ephemeral runtime
+state are production-ready. Actual Codex-backed repository mutation is not
+production-ready: the hardened Docker seccomp/AppArmor policy prevents
+bubblewrap/Codex `workspace-write` sandbox initialization. Unconfined
+profiles, `CAP_SYS_ADMIN`, root execution, and `danger-full-access` were
+deliberately rejected. This work is deferred to **Codex Execution Sandbox
+Hardening**.
+
+Unsupported capabilities:
+
+- `restart-service`
+- `backup`
+- `restore`
+- `install-provider`
+- `update-image`
+- push
+- tag
+- release publication
+- remote deployment
+- rollback automation
+- automatic approval
+- automatic execution
+
+Design principles: Core remains authoritative for candidate source state; Agent executes only exact immutable requests with exact approval; side-effect stages are restart-safe and at-most-once; audit links are machine-readable; Mission Control must not bypass Core or Agent trust boundaries.

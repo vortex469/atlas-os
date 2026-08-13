@@ -18,16 +18,54 @@ docker run \
     --rm \
     --mount "type=volume,src=$GATE_VOLUME,dst=/data" \
     "$PYTHON_IMAGE" \
-    python -c '
-import sqlite3
+    python -c 'import sqlite3
+import os
 from pathlib import Path
+
+os.chown("/data", 10001, 10001)
+policy_path = Path("/data/config/policies.yaml")
+policy_path.parent.mkdir(parents=True, exist_ok=True)
+policy_path.write_text("proxmox:\n  guests:\n    \"109\":\n      expected: stopped\n", encoding="utf-8")
+os.chown(policy_path.parent, 10001, 10001)
+os.chown(policy_path, 10001, 10001)
+os.chmod(policy_path, 0o600)
+connection_path = Path("/data/config/provider-connections.yaml")
+connection_path.write_text("version: 1\nproviders:\n  proxmox:\n    connection:\n      host: restored.example\n      port: 8006\n      node: restored-node\n      verify_tls: false\n", encoding="utf-8")
+os.chown(connection_path, 10001, 10001)
+os.chmod(connection_path, 0o600)
+secret_path = Path("/data/secrets/provider-connections.yaml")
+secret_path.parent.mkdir(parents=True, exist_ok=True)
+secret_path.write_text("version: 1\nproviders:\n  proxmox:\n    secrets:\n      token_value: restored-secret\n", encoding="utf-8")
+os.chown(secret_path.parent, 10001, 10001)
+os.chown(secret_path, 10001, 10001)
+os.chmod(secret_path, 0o600)
 for filename in ("action_history.db", "provider_intelligence.db"):
-    connection = sqlite3.connect(Path("/data") / filename)
+    database_path = Path("/data") / filename
+    connection = sqlite3.connect(database_path)
     connection.execute("CREATE TABLE records (value TEXT NOT NULL)")
     connection.execute("INSERT INTO records VALUES (\"before-backup\")")
     connection.commit()
     connection.close()
-'
+    os.chown(database_path, 10001, 10001)'
+docker run \
+    --rm \
+    --mount "type=volume,src=$GATE_VOLUME,dst=/data,readonly" \
+    "$PYTHON_IMAGE" \
+    python -c 'import os
+from pathlib import Path
+
+policy = Path("/data/config/policies.yaml")
+stat = policy.stat()
+assert stat.st_uid == 10001, stat
+assert stat.st_gid == 10001, stat
+assert stat.st_mode & 0o777 == 0o600, oct(stat.st_mode & 0o777)
+connection = Path("/data/config/provider-connections.yaml")
+assert connection.exists()
+secret = Path("/data/secrets/provider-connections.yaml")
+stat = secret.stat()
+assert stat.st_uid == 10001, stat
+assert stat.st_gid == 10001, stat
+assert stat.st_mode & 0o777 == 0o600, oct(stat.st_mode & 0o777)'
 
 ATLAS_DATA_VOLUME="$GATE_VOLUME" \
     "$SCRIPT_DIRECTORY/atlas-data-backup" "$GATE_DIRECTORY"
@@ -41,6 +79,144 @@ backup_directory="$(
         -quit
 )"
 test -n "$backup_directory"
+test -f "$backup_directory/config/policies.yaml"
+test -f "$backup_directory/config/provider-connections.yaml"
+test -f "$backup_directory/secrets/provider-connections.yaml"
+grep -q 'expected: stopped' "$backup_directory/config/policies.yaml"
+grep -q 'host: restored.example' "$backup_directory/config/provider-connections.yaml"
+test "$(stat -c '%u:%g' "$backup_directory")" = "$(id -u):$(id -g)"
+test "$(stat -c '%u:%g' "$backup_directory/config/policies.yaml")" = "$(id -u):$(id -g)"
+test "$(stat -c '%u:%g' "$backup_directory/config/provider-connections.yaml")" = "$(id -u):$(id -g)"
+test "$(stat -c '%u:%g' "$backup_directory/secrets/provider-connections.yaml")" = "$(id -u):$(id -g)"
+test -r "$backup_directory/config/policies.yaml"
+test -r "$backup_directory/secrets/provider-connections.yaml"
+python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$backup_directory" \
+    | grep -q '3 runtime files'
+python3 - "$backup_directory/manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+files = {entry["path"]: entry for entry in manifest["files"]}
+assert set(files) == {
+    "config/policies.yaml",
+    "config/provider-connections.yaml",
+    "secrets/provider-connections.yaml",
+}
+assert files["secrets/provider-connections.yaml"]["mode"] == 0o600
+PY
+
+corrupt_backup="$GATE_DIRECTORY/atlas-data-20000103T000000Z"
+cp -a -- "$backup_directory" "$corrupt_backup"
+printf '%s\n' 'corrupted policy' >"$corrupt_backup/config/policies.yaml"
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$corrupt_backup"; then
+    echo "Corrupt runtime policy backup unexpectedly verified" >&2
+    exit 1
+fi
+rm -rf -- "$corrupt_backup"
+
+unsafe_backup="$GATE_DIRECTORY/atlas-data-20000104T000000Z"
+cp -a -- "$backup_directory" "$unsafe_backup"
+python3 - "$unsafe_backup/manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+manifest["files"][0]["path"] = "../policies.yaml"
+manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+PY
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$unsafe_backup"; then
+    echo "Unsafe runtime policy backup unexpectedly verified" >&2
+    exit 1
+fi
+rm -rf -- "$unsafe_backup"
+
+duplicate_backup="$GATE_DIRECTORY/atlas-data-20000106T000000Z"
+cp -a -- "$backup_directory" "$duplicate_backup"
+python3 - "$duplicate_backup/manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+manifest["files"].append(dict(manifest["files"][0]))
+manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+PY
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$duplicate_backup"; then
+    echo "Duplicate runtime file backup unexpectedly verified" >&2
+    exit 1
+fi
+rm -rf -- "$duplicate_backup"
+
+malformed_connection_backup="$GATE_DIRECTORY/atlas-data-20000107T000000Z"
+cp -a -- "$backup_directory" "$malformed_connection_backup"
+printf '%s\n' 'version: [unterminated' >"$malformed_connection_backup/config/provider-connections.yaml"
+python3 - "$malformed_connection_backup/config/provider-connections.yaml" "$malformed_connection_backup/manifest.json" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+file_path = Path(sys.argv[1])
+manifest_path = Path(sys.argv[2])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+for record in manifest["files"]:
+    if record["path"] == "config/provider-connections.yaml":
+        record["size"] = file_path.stat().st_size
+        record["sha256"] = hashlib.sha256(file_path.read_bytes()).hexdigest()
+manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+PY
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$malformed_connection_backup"; then
+    echo "Malformed provider connection backup unexpectedly verified" >&2
+    exit 1
+fi
+rm -rf -- "$malformed_connection_backup"
+
+malformed_secret_backup="$GATE_DIRECTORY/atlas-data-20000108T000000Z"
+cp -a -- "$backup_directory" "$malformed_secret_backup"
+printf '%s\n' 'version: 1' 'providers: []' >"$malformed_secret_backup/secrets/provider-connections.yaml"
+python3 - "$malformed_secret_backup/secrets/provider-connections.yaml" "$malformed_secret_backup/manifest.json" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+file_path = Path(sys.argv[1])
+manifest_path = Path(sys.argv[2])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+for record in manifest["files"]:
+    if record["path"] == "secrets/provider-connections.yaml":
+        record["size"] = file_path.stat().st_size
+        record["sha256"] = hashlib.sha256(file_path.read_bytes()).hexdigest()
+manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+PY
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$malformed_secret_backup"; then
+    echo "Malformed provider secret backup unexpectedly verified" >&2
+    exit 1
+fi
+rm -rf -- "$malformed_secret_backup"
+
+v1_backup="$GATE_DIRECTORY/atlas-data-20000105T000000Z"
+cp -a -- "$backup_directory" "$v1_backup"
+rm -rf -- "$v1_backup/config"
+rm -rf -- "$v1_backup/secrets"
+python3 - "$v1_backup/manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+manifest["format_version"] = 1
+manifest.pop("files", None)
+manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+PY
+python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$v1_backup" \
+    | grep -q '0 runtime files'
 
 cp -a -- "$backup_directory" "$GATE_DIRECTORY/atlas-data-20000101T000000Z"
 cp -a -- "$backup_directory" "$GATE_DIRECTORY/atlas-data-20000102T000000Z"
@@ -64,20 +240,22 @@ test -d "$backup_directory"
 
 docker run \
     --rm \
+    --user 10001:10001 \
     --mount "type=volume,src=$GATE_VOLUME,dst=/data" \
     "$PYTHON_IMAGE" \
-    python -c '
-import sqlite3
+    python -c 'import sqlite3
 from pathlib import Path
+
 for filename in ("action_history.db", "provider_intelligence.db"):
     connection = sqlite3.connect(Path("/data") / filename)
     connection.execute("UPDATE records SET value = \"after-backup\"")
     connection.commit()
     connection.close()
-'
+Path("/data/config/policies.yaml").write_text("proxmox:\n  guests:\n    \"109\":\n      expected: running\n", encoding="utf-8")
+Path("/data/config/provider-connections.yaml").write_text("version: 1\nproviders:\n  proxmox:\n    connection:\n      host: mutated.example\n", encoding="utf-8")
+Path("/data/secrets/provider-connections.yaml").write_text("version: 1\nproviders:\n  proxmox:\n    secrets:\n      token_value: mutated-secret\n", encoding="utf-8")'
 
 ATLAS_DATA_VOLUME="$GATE_VOLUME" \
-ATLAS_DATA_UID=0 \
     "$SCRIPT_DIRECTORY/atlas-data-restore" \
     "$backup_directory" \
     --confirm
@@ -86,9 +264,9 @@ docker run \
     --rm \
     --mount "type=volume,src=$GATE_VOLUME,dst=/data,readonly" \
     "$PYTHON_IMAGE" \
-    python -c '
-import sqlite3
+    python -c 'import sqlite3
 from pathlib import Path
+
 for filename in ("action_history.db", "provider_intelligence.db"):
     database_path = Path("/data") / filename
     connection = sqlite3.connect(
@@ -98,6 +276,61 @@ for filename in ("action_history.db", "provider_intelligence.db"):
     value = connection.execute("SELECT value FROM records").fetchone()[0]
     connection.close()
     assert value == "before-backup", (filename, value)
-'
+policy = Path("/data/config/policies.yaml").read_text(encoding="utf-8")
+assert "expected: stopped" in policy, policy
+connection = Path("/data/config/provider-connections.yaml").read_text(encoding="utf-8")
+assert "host: restored.example" in connection, connection
+assert "host: mutated.example" not in connection, connection
+secret = Path("/data/secrets/provider-connections.yaml").read_text(encoding="utf-8")
+assert "restored-secret" in secret
+assert "mutated-secret" not in secret'
+docker run \
+    --rm \
+    --mount "type=volume,src=$GATE_VOLUME,dst=/data,readonly" \
+    "$PYTHON_IMAGE" \
+    python -c 'from pathlib import Path
+
+policy = Path("/data/config/policies.yaml")
+stat = policy.stat()
+assert stat.st_uid == 10001, stat
+assert stat.st_gid == 10001, stat
+assert stat.st_mode & 0o777 == 0o600, oct(stat.st_mode & 0o777)
+connection = Path("/data/config/provider-connections.yaml")
+stat = connection.stat()
+assert stat.st_uid == 10001, stat
+assert stat.st_gid == 10001, stat
+secret = Path("/data/secrets/provider-connections.yaml")
+stat = secret.stat()
+assert stat.st_uid == 10001, stat
+assert stat.st_gid == 10001, stat
+assert stat.st_mode & 0o777 == 0o600, oct(stat.st_mode & 0o777)'
+
+restored_policy_copy="$GATE_DIRECTORY/restored-policies.yaml"
+restored_connection_copy="$GATE_DIRECTORY/restored-provider-connections.yaml"
+restored_secret_copy="$GATE_DIRECTORY/restored-provider-secrets.yaml"
+docker run \
+    --rm \
+    --mount "type=volume,src=$GATE_VOLUME,dst=/data,readonly" \
+    --mount "type=bind,src=$GATE_DIRECTORY,dst=/out" \
+    "$PYTHON_IMAGE" \
+    python -c 'from pathlib import Path; Path("/out/restored-policies.yaml").write_text(Path("/data/config/policies.yaml").read_text(encoding="utf-8"), encoding="utf-8"); Path("/out/restored-provider-connections.yaml").write_text(Path("/data/config/provider-connections.yaml").read_text(encoding="utf-8"), encoding="utf-8"); Path("/out/restored-provider-secrets.yaml").write_text(Path("/data/secrets/provider-connections.yaml").read_text(encoding="utf-8"), encoding="utf-8")'
+atlas_core_python="python3"
+if [[ -x "$SCRIPT_DIRECTORY/../services/atlas-core/.venv/bin/python" ]]; then
+    atlas_core_python="$SCRIPT_DIRECTORY/../services/atlas-core/.venv/bin/python"
+elif [[ -x "$SCRIPT_DIRECTORY/../.venv/bin/python" ]]; then
+    atlas_core_python="$SCRIPT_DIRECTORY/../.venv/bin/python"
+fi
+PYTHONPATH="$SCRIPT_DIRECTORY/../services/atlas-core" \
+ATLAS_POLICY_FILE="$restored_policy_copy" \
+ATLAS_POLICY_TEMPLATE_FILE="$GATE_DIRECTORY/missing-template.yaml" \
+    "$atlas_core_python" \
+    -c 'from app.config.policies import load_policies; assert load_policies().proxmox.guests["109"].expected == "stopped"'
+PYTHONPATH="$SCRIPT_DIRECTORY/../services/atlas-core" \
+ATLAS_PROVIDER_CONNECTION_FILE="$restored_connection_copy" \
+ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE="$GATE_DIRECTORY/missing-provider-template.yaml" \
+ATLAS_PROVIDER_SECRET_FILE="$restored_secret_copy" \
+PROXMOX_TOKEN_VALUE="environment-secret" \
+    "$atlas_core_python" \
+    -c 'from app.services.atlas_contexts import LegacyAtlasContextResolver; context = LegacyAtlasContextResolver().resolve_context("proxmox"); assert context.connection.host == "restored.example"; assert context.connection.node == "restored-node"; assert context.secrets.get("token_value").reveal() == "restored-secret"'
 
 echo "Atlas data recovery gate passed"

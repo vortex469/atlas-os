@@ -1,0 +1,32 @@
+schema_version: 1
+item:
+  id: postgresql
+  type: service
+  status: active
+  name: PostgreSQL
+  description: PostgreSQL is an open-source relational database service commonly used by applications for durable structured data.
+  aliases:
+    - postgres
+  tags:
+    - database
+    - storage
+  capabilities:
+    - id: relational-database
+    - id: durable-structured-storage
+  requirements:
+    network:
+      ports:
+        - port: 5432
+          protocol: tcp
+          direction: inbound
+          required: false
+          description: Common PostgreSQL service port; exposure depends on deployment.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-postgresql
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Dependency-capable service that may be referenced by applications requiring relational storage.

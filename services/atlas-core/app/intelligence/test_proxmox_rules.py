@@ -36,6 +36,7 @@ def test_unexpected_stopped_guest() -> None:
             ],
         },
         expected_guest_checker=lambda vmid, state: False,
+        expected_guest_state_getter=lambda vmid: None,
     )
 
     assert len(findings) == 2
@@ -96,6 +97,42 @@ def test_expected_stopped_guest_is_suppressed() -> None:
         expected_guest_checker=lambda vmid, state: (
             vmid == 101 and state == "stopped"
         ),
+        expected_guest_state_getter=lambda vmid: None,
+    )
+
+    assert len(findings) == 1
+    assert findings[0].id == "proxmox-node-status"
+
+
+def test_ignored_guest_is_suppressed() -> None:
+    findings = evaluate_proxmox(
+        status={
+            "status": "online",
+            "node": "vorex469",
+            "cpu_percent": 12.5,
+            "memory": {
+                "used_gib": 14.0,
+                "total_gib": 32.0,
+                "percent": 43.75,
+            },
+        },
+        guests={
+            "node": "vorex469",
+            "running": 1,
+            "stopped": 1,
+            "guests": [
+                {
+                    "vmid": 109,
+                    "name": "kenny",
+                    "type": "lxc",
+                    "status": "stopped",
+                },
+            ],
+        },
+        expected_guest_checker=lambda vmid, state: False,
+        expected_guest_state_getter=lambda vmid: "ignored"
+        if vmid == 109
+        else None,
     )
 
     assert len(findings) == 1
@@ -119,6 +156,7 @@ def test_critical_memory() -> None:
             "guests": [],
         },
         expected_guest_checker=lambda vmid, state: False,
+        expected_guest_state_getter=lambda vmid: None,
     )
 
     critical = next(

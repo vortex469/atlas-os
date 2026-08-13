@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import httpx
 
 from app.actions.models import ProviderActionResult
+from app.context import AtlasContext
 from app.providers import (
     Provider,
     ProviderAction,
@@ -16,6 +17,12 @@ from app.providers import (
     ProviderPriority,
     ProviderWorkspace,
 )
+from app.providers.context_helpers import (
+    base_url_from_context,
+    context_from_legacy_service,
+    metadata_from_context,
+    timeout_from_context,
+)
 
 
 class OllamaProvider(Provider):
@@ -23,37 +30,39 @@ class OllamaProvider(Provider):
 
     def __init__(
         self,
-        service: dict[str, Any],
+        service: AtlasContext | dict[str, Any],
         *,
-        timeout_seconds: float = 10.0,
+        timeout_seconds: float | None = None,
         pull_timeout_seconds: float = 900.0,
     ) -> None:
-        self._service = service
-        self._timeout_seconds = timeout_seconds
+        # Temporary compatibility seam for direct legacy constructors.
+        self.atlas_context = (
+            service
+            if isinstance(service, AtlasContext)
+            else context_from_legacy_service("ollama", service)
+        )
+        self._timeout_seconds = timeout_seconds or timeout_from_context(
+            self.atlas_context,
+        )
         self._pull_timeout_seconds = pull_timeout_seconds
+        self._critical = bool(
+            self.atlas_context.metadata.metadata.get("critical", False),
+        )
 
-        protocol = service.get("protocol", "http")
-        host = service["host"]
-        port = service.get("port", 11434)
+        self._base_url = base_url_from_context(
+            self.atlas_context,
+            default_port=11434,
+        )
 
-        self._base_url = f"{protocol}://{host}:{port}/"
-
-        self._metadata = ProviderMetadata(
-            id="ollama",
-            name=service.get("name", "Ollama"),
-            version="1.0.0",
-            description=(
-                "Local model inference, model inventory, and "
-                "model lifecycle provider."
+        self._metadata = metadata_from_context(
+            self.atlas_context,
+            default_description=(
+                "Local model inference, model inventory, and model lifecycle provider."
             ),
-            workspace=ProviderWorkspace.DEVELOPER,
-            icon="brain",
-            priority=(
-                ProviderPriority.CRITICAL
-                if service.get("critical", False)
-                else ProviderPriority.HIGH
-            ),
-            capabilities=frozenset(
+            default_workspace=ProviderWorkspace.DEVELOPER,
+            default_icon="brain",
+            default_priority=ProviderPriority.HIGH,
+            default_capabilities=frozenset(
                 {
                     ProviderCapability.HEALTH,
                     ProviderCapability.ACTIONS,
@@ -96,10 +105,7 @@ class OllamaProvider(Provider):
                 details={
                     "url": self._base_url.rstrip("/"),
                     "version": payload.get("version"),
-                    "critical": self._service.get(
-                        "critical",
-                        False,
-                    ),
+                    "critical": self._critical,
                 },
             )
         except httpx.HTTPStatusError as error:
@@ -150,7 +156,7 @@ class OllamaProvider(Provider):
         models = payload.get("models", [])
 
         if not isinstance(models, list):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "Ollama returned an invalid models response."
             )
 
@@ -169,7 +175,7 @@ class OllamaProvider(Provider):
         models = payload.get("models", [])
 
         if not isinstance(models, list):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "Ollama returned an invalid running models response."
             )
 
@@ -202,7 +208,7 @@ class OllamaProvider(Provider):
             payload = response.json()
 
         if not isinstance(payload, dict):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "Ollama returned an invalid load response."
             )
 
@@ -235,7 +241,7 @@ class OllamaProvider(Provider):
             payload = response.json()
 
         if not isinstance(payload, dict):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "Ollama returned an invalid unload response."
             )
 
@@ -266,7 +272,7 @@ class OllamaProvider(Provider):
             payload = response.json()
 
         if not isinstance(payload, dict):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "Ollama returned an invalid pull response."
             )
 

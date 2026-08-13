@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 
 from app.config.policies import get_obsidian_policy
 from app.config.policy_models import (
     ObsidianPolicy,
     PolicySeverity,
 )
+from app.context import AtlasContext
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -20,6 +22,11 @@ from app.providers import (
     ProviderPriority,
     ProviderWorkspace,
 )
+from app.providers.context_helpers import (
+    context_from_legacy_service,
+    legacy_service,
+    metadata_from_context,
+)
 
 
 class ObsidianProvider(Provider):
@@ -27,22 +34,32 @@ class ObsidianProvider(Provider):
 
     def __init__(
         self,
-        service: dict[str, Any],
+        service: AtlasContext | dict[str, Any],
         *,
         policy_getter: Callable[[], ObsidianPolicy] = (
             get_obsidian_policy
         ),
     ) -> None:
-        self._service = service
+        # Temporary compatibility seam for direct legacy constructors.
+        self.atlas_context = (
+            service
+            if isinstance(service, AtlasContext)
+            else context_from_legacy_service("obsidian", service)
+        )
+        service_config = legacy_service(self.atlas_context)
+        connection = self.atlas_context.connection
         self._vault_path = Path(
-            str(service.get("vault_path", "")),
+            str(
+                (connection.path if connection is not None else None)
+                or service_config.get("vault_path", ""),
+            ),
         )
         self._max_scan_files = self._positive_int(
-            service.get("max_scan_files", 10_000),
+            service_config.get("max_scan_files", 10_000),
             "max_scan_files",
         )
         self._policy_getter = policy_getter
-        excluded = service.get(
+        excluded = service_config.get(
             "exclude_directories",
             [".obsidian", ".trash"],
         )
@@ -55,22 +72,15 @@ class ObsidianProvider(Provider):
             )
         self._excluded_directories = frozenset(excluded)
 
-        self._metadata = ProviderMetadata(
-            id="obsidian",
-            name=service.get("name", "Obsidian"),
-            version="1.0.0",
-            description=(
-                "Local Obsidian vault availability and metadata "
-                "provider."
+        self._metadata = metadata_from_context(
+            self.atlas_context,
+            default_description=(
+                "Local Obsidian vault availability and metadata provider."
             ),
-            workspace=ProviderWorkspace.KNOWLEDGE,
-            icon="notebook-tabs",
-            priority=(
-                ProviderPriority.CRITICAL
-                if service.get("critical", False)
-                else ProviderPriority.NORMAL
-            ),
-            capabilities=frozenset(
+            default_workspace=ProviderWorkspace.KNOWLEDGE,
+            default_icon="notebook-tabs",
+            default_priority=ProviderPriority.NORMAL,
+            default_capabilities=frozenset(
                 {
                     ProviderCapability.HEALTH,
                     ProviderCapability.FINDINGS,
@@ -334,7 +344,7 @@ class ObsidianProvider(Provider):
     @staticmethod
     def _positive_int(value: object, field: str) -> int:
         if isinstance(value, bool):
-            raise ValueError(f"{field} must be a positive integer.")
+            raise ValueError(f"{field} must be a positive integer.")  # noqa: TRY004
         try:
             parsed = int(value)
         except (TypeError, ValueError) as error:

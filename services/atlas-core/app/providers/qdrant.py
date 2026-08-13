@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import os
+from collections.abc import Callable
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urljoin
 
 import httpx
 
 from app.config.policies import get_qdrant_policy
 from app.config.policy_models import PolicySeverity, QdrantPolicy
+from app.context import AtlasContext
 from app.intelligence.findings import Finding, Severity
 from app.providers import (
     Provider,
@@ -18,6 +19,14 @@ from app.providers import (
     ProviderPriority,
     ProviderWorkspace,
 )
+from app.providers.context_helpers import (
+    base_url_from_context,
+    context_from_legacy_service,
+    metadata_from_context,
+    secret_value,
+    timeout_from_context,
+    tls_verification_from_context,
+)
 
 
 class QdrantProvider(Provider):
@@ -25,46 +34,40 @@ class QdrantProvider(Provider):
 
     def __init__(
         self,
-        service: dict[str, Any],
+        service: AtlasContext | dict[str, Any],
         *,
         api_key: str | None = None,
-        timeout_seconds: float = 10.0,
+        timeout_seconds: float | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         policy_getter: Callable[[], QdrantPolicy] = (
             get_qdrant_policy
         ),
     ) -> None:
-        self._service = service
-        self._api_key = (
-            api_key
-            if api_key is not None
-            else os.getenv("QDRANT_API_KEY")
+        # Temporary compatibility seam for direct legacy constructors.
+        self.atlas_context = (
+            service
+            if isinstance(service, AtlasContext)
+            else context_from_legacy_service("qdrant", service)
         )
-        self._timeout_seconds = timeout_seconds
+        self._api_key = api_key or secret_value(self.atlas_context, "api_key")
+        self._timeout_seconds = timeout_seconds or timeout_from_context(
+            self.atlas_context,
+        )
         self._transport = transport
         self._policy_getter = policy_getter
-
-        protocol = service.get("protocol", "http")
-        host = service["host"]
-        port = service.get("port", 6333)
-        self._base_url = f"{protocol}://{host}:{port}/"
-
-        self._metadata = ProviderMetadata(
-            id="qdrant",
-            name=service.get("name", "Qdrant"),
-            version="1.0.0",
-            description=(
-                "Vector database health and collection inventory "
-                "provider."
+        self._base_url = base_url_from_context(
+            self.atlas_context,
+            default_port=6333,
+        )
+        self._metadata = metadata_from_context(
+            self.atlas_context,
+            default_description=(
+                "Vector database health and collection inventory provider."
             ),
-            workspace=ProviderWorkspace.KNOWLEDGE,
-            icon="database-zap",
-            priority=(
-                ProviderPriority.CRITICAL
-                if service.get("critical", False)
-                else ProviderPriority.HIGH
-            ),
-            capabilities=frozenset(
+            default_workspace=ProviderWorkspace.KNOWLEDGE,
+            default_icon="database-zap",
+            default_priority=ProviderPriority.HIGH,
+            default_capabilities=frozenset(
                 {
                     ProviderCapability.HEALTH,
                     ProviderCapability.FINDINGS,
@@ -83,10 +86,7 @@ class QdrantProvider(Provider):
         return urljoin(self._base_url, path.lstrip("/"))
 
     def _tls_verification(self) -> bool | str:
-        ca_bundle = self._service.get("ca_bundle")
-        if ca_bundle:
-            return str(ca_bundle)
-        return bool(self._service.get("verify_tls", True))
+        return tls_verification_from_context(self.atlas_context)
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json"}
@@ -269,17 +269,17 @@ class QdrantProvider(Provider):
     @staticmethod
     def _collection_names(payload: object) -> list[str]:
         if not isinstance(payload, dict):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "Qdrant returned an invalid collections response."
             )
         result = payload.get("result")
         if not isinstance(result, dict):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "Qdrant returned an invalid collections result."
             )
         collections = result.get("collections")
         if not isinstance(collections, list):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 "Qdrant returned an invalid collections list."
             )
 

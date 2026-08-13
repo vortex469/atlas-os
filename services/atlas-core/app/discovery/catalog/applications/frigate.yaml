@@ -1,0 +1,43 @@
+schema_version: 1
+item:
+  id: frigate
+  type: application
+  status: active
+  name: Frigate
+  description: Frigate is a network video recorder application with local object detection workflows for camera streams.
+  tags:
+    - nvr
+    - video
+    - cameras
+  capabilities:
+    - id: video-ingest
+    - id: object-detection
+    - id: network-video-recorder
+  requirements:
+    capabilities:
+      - id: container-orchestration
+    network:
+      ports:
+        - port: 8971
+          protocol: tcp
+          direction: inbound
+          required: false
+          description: Common Frigate web interface port; exposure depends on deployment.
+  relationships:
+    - type: integrates_with
+      target: mqtt
+      required: false
+      description: Frigate can publish events through an MQTT broker.
+    - type: integrates_with
+      target: coral-usb
+      required: false
+      description: Frigate can use a Coral USB accelerator for supported detection workloads.
+provenance:
+  source_type: curated
+  source: atlas-curated-discovery-catalog
+  entry_id: d5-frigate
+  trust_level: curated
+metadata:
+  reviewed_for_d5: true
+  catalog_notes:
+    - Hardware acceleration is optional and modeled separately from the application.
