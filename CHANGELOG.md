@@ -47,6 +47,18 @@ release boundaries.
 - Planning, exact approval binding, persistence/recovery, stale evidence
   rejection, and successor concurrency/idempotent reuse were validated in the
   RC1 production smoke-test boundary.
+- The final production-like RC1 execution smoke validation passed through the
+  awaiting-commit-approval boundary on commit
+  `c333937e61343aed714a475395b41077bad86e28`. It verified isolated worker
+  execution, exact implementation and verification approvals, deterministic
+  zero-command RC1 verification, baseline-aware review, and an exact commit
+  approval request without performing the validation-only commit.
+- The smoke hardening set now covers worker journal exactly-once recovery,
+  approval-boundary audit projection, gated RC1 intent verification,
+  baseline-aware verification and review, exact verification-plan approval
+  binding, candidate resume dispatch, approval-repository storage identity,
+  AtlasCoreClient event-loop ownership, deterministic zero-check evidence, and
+  baseline-aware commit validation.
 - Codex authentication, CLI installation, and ephemeral runtime provisioning
   are production-ready. Actual Codex-backed repository mutation is deferred to
   **Codex Execution Sandbox Hardening** because the hardened Docker

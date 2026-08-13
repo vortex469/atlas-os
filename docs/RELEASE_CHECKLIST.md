@@ -93,6 +93,47 @@ entities.
   preserving uid `10001`, `CapDrop=ALL` where applicable,
   `no-new-privileges`, and read-only rootfs.
 
+### RC1 production execution smoke validation
+
+Validated on commit `c333937e61343aed714a475395b41077bad86e28` using the final
+production-like smoke workflow `candidate-workflow-6da0da7b4da397219e6f507ebd5439959584559529eb02a9598cdbd6a93aa866` and planning session
+`candidate-plan-158f8db4f0c204de90f857ce2911cbf219dd900ae21e2b2f1a16037982baf200`.
+The evidence bundle is retained at `/root/atlas-rc1-smoke-evidence/final-c333937/`.
+
+- [x] Candidate intake, planning, candidate plan, workflow shell, shell
+  approval, exact implementation approval, isolated worker execution, exact
+  verification approval, deterministic RC1 verification, baseline-aware review,
+  and the exact commit approval boundary were traversed successfully.
+- [x] Worker execution succeeded with the worker attestation showing runtime
+  uid `10001`, read-only rootfs, `no-new-privileges`, zero effective
+  capabilities, and `runsc-squid` sandbox profile.
+- [x] Repository HEAD remained frozen at
+  `c333937e61343aed714a475395b41077bad86e28` throughout the successful
+  lineage.
+- [x] Exactly one approved tracked file changed:
+  `services/atlas-agent/tests/test_execution_engine.py`.
+- [x] The exact verification plan was persisted before approval. The gated
+  RC1 zero-command verification passed without a fake or dummy command, and
+  preserved repository HEAD and the validated changed-files digest.
+- [x] Baseline-aware review excluded the pre-existing untracked
+  `compose.execution-smoke.override.yaml`, passed with zero findings, and
+  produced an exact commit approval request for branch `feature/atlas-agent`,
+  the validated HEAD, and the one reviewed file.
+- [x] The validation-only commit was intentionally not approved or performed.
+  The marker was restored afterward and the tracked working tree is clean.
+- [x] The smoke remediation set is covered by regression validation: worker
+  journal exactly-once recovery, candidate audit approval-boundary projection,
+  gated RC1 verification intent, baseline-aware verification, exact
+  verification approval binding, candidate verification resume dispatch,
+  approval-repository storage identity, AtlasCoreClient event-loop ownership,
+  deterministic zero-check verification, and baseline-aware candidate review
+  and commit validation.
+
+The untracked `compose.execution-smoke.override.yaml` remains outside workflow
+provenance. Recommendation: retain it as a maintained operator smoke harness
+until the evidence and operator procedure are no longer needed, then remove it
+through a separate reviewed cleanup decision.
+
 ### Manual release sign-off
 
 - [ ] Release lead confirms changelog entry names the intended tag and scope.
