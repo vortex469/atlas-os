@@ -313,7 +313,22 @@ docker run \
     --mount "type=volume,src=$GATE_VOLUME,dst=/data,readonly" \
     --mount "type=bind,src=$GATE_DIRECTORY,dst=/out" \
     "$PYTHON_IMAGE" \
-    python -c 'from pathlib import Path; Path("/out/restored-policies.yaml").write_text(Path("/data/config/policies.yaml").read_text(encoding="utf-8"), encoding="utf-8"); Path("/out/restored-provider-connections.yaml").write_text(Path("/data/config/provider-connections.yaml").read_text(encoding="utf-8"), encoding="utf-8"); Path("/out/restored-provider-secrets.yaml").write_text(Path("/data/secrets/provider-connections.yaml").read_text(encoding="utf-8"), encoding="utf-8")'
+    python -c 'import os
+import sys
+from pathlib import Path
+
+os.umask(0o077)
+copies = (
+    ("/data/config/policies.yaml", "/out/restored-policies.yaml"),
+    ("/data/config/provider-connections.yaml", "/out/restored-provider-connections.yaml"),
+    ("/data/secrets/provider-connections.yaml", "/out/restored-provider-secrets.yaml"),
+)
+for source, destination in copies:
+    destination_path = Path(destination)
+    destination_path.write_text(Path(source).read_text(encoding="utf-8"), encoding="utf-8")
+    os.chown(destination_path, int(sys.argv[1]), int(sys.argv[2]))' \
+    "$(id -u)" \
+    "$(id -g)"
 if [[ -n "${ATLAS_CORE_VALIDATION_IMAGE:-}" ]]; then
     atlas_core_validation=(
         docker run
