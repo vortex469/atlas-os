@@ -348,7 +348,19 @@ class CandidateCommitValidator:
             return _failure(CandidateCommitFailureCode.REPOSITORY_STALE, should_block=True)
         try:
             reviewed = _normalized_paths(workflow.reviewed_files)
-            actual = _normalized_paths(_snapshot_changed_files(snapshot))
+            verification_plan = workflow.candidate_verification_plan
+            if (
+                verification_plan is not None
+                and verification_plan.baseline_status is not None
+                and verification_plan.post_execution_status is not None
+            ):
+                baseline = dict(verification_plan.baseline_status)
+                post_execution = dict(verification_plan.post_execution_status)
+                actual = _normalized_paths(
+                    tuple(Path(path) for path in set(post_execution) - set(baseline))
+                )
+            else:
+                actual = _normalized_paths(_snapshot_changed_files(snapshot))
         except ValueError:
             return _failure(CandidateCommitFailureCode.CHANGED_FILES_DRIFT, should_block=True)
         if actual != reviewed:
@@ -357,13 +369,29 @@ class CandidateCommitValidator:
             if path.parts and path.parts[0] in {"jcode", "logs"}:
                 return _failure(CandidateCommitFailureCode.CHANGED_FILES_DRIFT, should_block=True)
         try:
-            evidence = self._repository_inspector_factory(trusted_root).reviewed_change_evidence(
-                reviewed_files=reviewed,
-                expected_branch=workflow.expected_branch,
-                expected_head=workflow.expected_head,
-                commit_message=commit_request.message,
-                excluded_roots=(),
-            )
+            inspector = self._repository_inspector_factory(trusted_root)
+            verification_plan = workflow.candidate_verification_plan
+            if (
+                verification_plan is not None
+                and verification_plan.baseline_status is not None
+                and verification_plan.post_execution_status is not None
+            ):
+                evidence = inspector.reviewed_candidate_change_evidence(
+                    reviewed_files=reviewed,
+                    baseline_status=verification_plan.baseline_status,
+                    post_execution_status=verification_plan.post_execution_status,
+                    expected_branch=workflow.expected_branch,
+                    expected_head=workflow.expected_head,
+                    commit_message=commit_request.message,
+                )
+            else:
+                evidence = inspector.reviewed_change_evidence(
+                    reviewed_files=reviewed,
+                    expected_branch=workflow.expected_branch,
+                    expected_head=workflow.expected_head,
+                    commit_message=commit_request.message,
+                    excluded_roots=(),
+                )
         except (OSError, RepositoryInspectionError, ValueError):
             return _failure(CandidateCommitFailureCode.REVIEWED_EVIDENCE_MISMATCH, should_block=True)
         if evidence.fingerprint != workflow.reviewed_content_fingerprint:

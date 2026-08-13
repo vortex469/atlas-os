@@ -63,6 +63,7 @@ FINGERPRINT = "a" * 64
 
 
 class FakeInspector:
+    candidate_calls = 0
     snapshot = RepositorySnapshot(
         root=Path("/repo"),
         branch="feature/atlas-agent",
@@ -89,6 +90,10 @@ class FakeInspector:
             changes=(ReviewedChange(path=Path("compose.production.yaml"), status="M", content_sha256=FINGERPRINT),),
             fingerprint=FINGERPRINT,
         )
+
+    def reviewed_candidate_change_evidence(self, **kwargs) -> ReviewedChangeEvidence:
+        type(self).candidate_calls += 1
+        return self.reviewed_change_evidence(**kwargs)
 
 
 class FakeCandidateCommitValidator:
@@ -345,6 +350,38 @@ def test_repository_drift_blocks_candidate_commit(tmp_path: Path) -> None:
 
     assert result.failure_code is CandidateCommitFailureCode.CHANGED_FILES_DRIFT
     assert result.should_block
+
+
+def test_candidate_commit_revalidates_reviewed_delta_over_baseline(
+    tmp_path: Path,
+) -> None:
+    session = _commit_ready_workflow(tmp_path)
+    plan = session.candidate_verification_plan
+    assert plan is not None
+    baseline = (("compose.execution-smoke.override.yaml", "baseline"),)
+    post_execution = baseline + (("compose.production.yaml", "candidate"),)
+    session = replace(
+        session,
+        candidate_verification_plan=replace(
+            plan,
+            baseline_status=baseline,
+            post_execution_status=post_execution,
+        ),
+    )
+    validator = _validator(tmp_path)
+    approval = _approval(session)
+    FakeInspector.candidate_calls = 0
+
+    result = validator.validate(
+        workflow=session,
+        approval_result=ApprovalEngine().evaluate(
+            ApprovalDecision(request=approval, status=ApprovalStatus.APPROVED, reviewer="tester")
+        ),
+        expected_approval=approval,
+    )
+
+    assert result.approved
+    assert FakeInspector.candidate_calls == 1
 
 
 def test_exact_candidate_commit_executes_once_and_persists_result(tmp_path: Path) -> None:

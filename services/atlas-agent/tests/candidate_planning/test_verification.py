@@ -497,6 +497,9 @@ def test_gated_rc1_smoke_workflow_reaches_actual_verification(
     engine._repository_inspector_factory.return_value.reviewed_change_evidence.return_value = (
         make_reviewed_evidence(root)
     )
+    engine._repository_inspector_factory.return_value.reviewed_candidate_change_evidence.return_value = (
+        make_reviewed_evidence(root)
+    )
     engine._candidate_review_adapter.review.return_value = Mock(
         approved=True,
         failure_code=None,

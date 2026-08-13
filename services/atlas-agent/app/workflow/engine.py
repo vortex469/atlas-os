@@ -1201,14 +1201,28 @@ class WorkflowEngine:
             message="feat(agent): update compose stack candidate",
         )
         try:
-            evidence = self._repository_inspector_factory(
+            inspector = self._repository_inspector_factory(
                 verification_plan.repository_root
-            ).reviewed_change_evidence(
-                reviewed_files=commit_request.paths,
-                expected_branch=commit_request.expected_branch,
-                expected_head=commit_request.expected_head,
-                commit_message=commit_request.message,
             )
+            if (
+                verification_plan.baseline_status is not None
+                and verification_plan.post_execution_status is not None
+            ):
+                evidence = inspector.reviewed_candidate_change_evidence(
+                    reviewed_files=commit_request.paths,
+                    baseline_status=verification_plan.baseline_status,
+                    post_execution_status=verification_plan.post_execution_status,
+                    expected_branch=commit_request.expected_branch,
+                    expected_head=commit_request.expected_head,
+                    commit_message=commit_request.message,
+                )
+            else:
+                evidence = inspector.reviewed_change_evidence(
+                    reviewed_files=commit_request.paths,
+                    expected_branch=commit_request.expected_branch,
+                    expected_head=commit_request.expected_head,
+                    commit_message=commit_request.message,
+                )
             review_result = self._candidate_review_adapter.review(
                 workflow=session,
                 verification_plan=verification_plan,

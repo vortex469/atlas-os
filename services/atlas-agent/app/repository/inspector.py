@@ -98,21 +98,107 @@ class GitInspector:
                 "Repository HEAD differs from the reviewed commit evidence"
             )
 
-        expected_paths = tuple(sorted(self._normalize_relative_paths(reviewed_files)))
         records = self._status_records()
         non_excluded = {
             record["path"]: record
             for record in records
             if not self._is_excluded(record["path"], excluded_roots)
         }
+        expected_paths = tuple(sorted(self._normalize_relative_paths(reviewed_files)))
         actual_paths = tuple(sorted(non_excluded))
         if actual_paths != expected_paths:
             raise RepositoryInspectionError(
                 "Repository changed paths differ from the reviewed commit evidence"
             )
 
+        return self._build_reviewed_change_evidence(
+            root=root,
+            expected_branch=expected_branch,
+            expected_head=expected_head,
+            commit_message=commit_message,
+            expected_paths=expected_paths,
+            records=non_excluded,
+        )
+
+    def reviewed_candidate_change_evidence(
+        self,
+        *,
+        reviewed_files: tuple[Path, ...],
+        baseline_status: tuple[tuple[str, str], ...],
+        post_execution_status: tuple[tuple[str, str], ...],
+        expected_branch: str | None,
+        expected_head: str | None,
+        commit_message: str,
+    ) -> ReviewedChangeEvidence:
+        """Return evidence for a candidate-owned delta over a dirty baseline."""
+
+        root = Path(
+            self._run_git("rev-parse", "--show-toplevel").stdout.strip()
+        ).resolve()
+        branch = self._get_branch()
+        head = self._get_head_commit()
+        if branch != expected_branch:
+            raise RepositoryInspectionError(
+                "Repository branch differs from the reviewed commit evidence"
+            )
+        if head != expected_head:
+            raise RepositoryInspectionError(
+                "Repository HEAD differs from the reviewed commit evidence"
+            )
+
+        from app.execution.patches import WorkerPatchApplier
+
+        baseline = {Path(path): status for path, status in baseline_status}
+        expected_post = {Path(path): status for path, status in post_execution_status}
+        current = {
+            Path(path): status
+            for path, status in WorkerPatchApplier.capture_baseline(
+                self.repository_root
+            )
+        }
+        if current != expected_post:
+            raise RepositoryInspectionError(
+                "Repository status differs from the validated candidate evidence"
+            )
+        if any(current.get(path) != status for path, status in baseline.items()):
+            raise RepositoryInspectionError(
+                "Candidate baseline paths differ from the validated evidence"
+            )
+
+        expected_paths = tuple(sorted(self._normalize_relative_paths(reviewed_files)))
+        owned_paths = tuple(sorted(set(current) - set(baseline)))
+        if owned_paths != expected_paths:
+            raise RepositoryInspectionError(
+                "Candidate-owned paths differ from the validated review evidence"
+            )
+
+        records = self._status_records()
+        current_records = {
+            record["path"]: record
+            for record in records
+            if record["path"] in set(expected_paths)
+        }
+        return self._build_reviewed_change_evidence(
+            root=root,
+            expected_branch=expected_branch,
+            expected_head=expected_head,
+            commit_message=commit_message,
+            expected_paths=expected_paths,
+            records=current_records,
+        )
+
+    def _build_reviewed_change_evidence(
+        self,
+        *,
+        root: Path,
+        expected_branch: str | None,
+        expected_head: str | None,
+        commit_message: str,
+        expected_paths: tuple[Path, ...],
+        records: dict[Path, dict[str, object]],
+    ) -> ReviewedChangeEvidence:
         changes = tuple(
-            self._reviewed_change(non_excluded[path], root)
+            self._reviewed_change(records[path], root)
             for path in expected_paths
         )
         manifest = {

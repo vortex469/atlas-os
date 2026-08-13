@@ -4,8 +4,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from app.config.settings import Settings
+from app.execution.patches import WorkerPatchApplier
 from app.main import create_app
 from app.repository.exceptions import (
     InvalidRepositoryError,
@@ -402,6 +402,119 @@ def test_reviewed_change_evidence_rejects_unexpected_changed_paths(
             expected_branch="master",
             expected_head=head,
             commit_message="feat(agent): reviewed evidence",
+        )
+
+
+def _candidate_review_state(
+    repository: Path,
+) -> tuple[GitInspector, tuple[tuple[str, str], ...], tuple[tuple[str, str], ...], str]:
+    """Capture a dirty baseline and one candidate-owned tracked change."""
+
+    (repository / "compose.execution-smoke.override.yaml").write_text(
+        "baseline\n",
+        encoding="utf-8",
+    )
+    inspector = GitInspector(repository)
+    baseline = WorkerPatchApplier.capture_baseline(repository)
+    (repository / "tracked.txt").write_text("candidate\n", encoding="utf-8")
+    post_execution = WorkerPatchApplier.capture_baseline(repository)
+    head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    return inspector, baseline, post_execution, head
+
+
+def test_candidate_review_evidence_uses_workflow_delta_over_dirty_baseline(
+    tmp_path: Path,
+) -> None:
+    """Unchanged pre-existing dirt is excluded from candidate review evidence."""
+
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    inspector, baseline, post_execution, head = _candidate_review_state(repository)
+
+    evidence = inspector.reviewed_candidate_change_evidence(
+        reviewed_files=(Path("tracked.txt"),),
+        baseline_status=baseline,
+        post_execution_status=post_execution,
+        expected_branch="master",
+        expected_head=head,
+        commit_message="feat(agent): candidate review",
+    )
+
+    assert evidence.reviewed_files == (Path("tracked.txt"),)
+    assert tuple(change.path for change in evidence.changes) == (Path("tracked.txt"),)
+
+
+@pytest.mark.parametrize("mutation", ("baseline", "new", "target", "staged"))
+def test_candidate_review_evidence_rejects_post_execution_drift(
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    """Candidate review fails closed for baseline, scope, content, or index drift."""
+
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    inspector, baseline, post_execution, head = _candidate_review_state(repository)
+    if mutation == "baseline":
+        (repository / "compose.execution-smoke.override.yaml").write_text(
+            "mutated\n",
+            encoding="utf-8",
+        )
+    elif mutation == "new":
+        (repository / "unexpected.txt").write_text("unexpected\n", encoding="utf-8")
+    elif mutation == "target":
+        (repository / "tracked.txt").write_text("changed again\n", encoding="utf-8")
+    else:
+        run_git(repository, "add", "tracked.txt")
+
+    with pytest.raises(RepositoryInspectionError):
+        inspector.reviewed_candidate_change_evidence(
+            reviewed_files=(Path("tracked.txt"),),
+            baseline_status=baseline,
+            post_execution_status=post_execution,
+            expected_branch="master",
+            expected_head=head,
+            commit_message="feat(agent): candidate review",
+        )
+
+
+def test_candidate_review_evidence_is_deterministic(tmp_path: Path) -> None:
+    """Repeated candidate evidence for unchanged state has one fingerprint."""
+
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    inspector, baseline, post_execution, head = _candidate_review_state(repository)
+    kwargs = {
+        "reviewed_files": (Path("tracked.txt"),),
+        "baseline_status": baseline,
+        "post_execution_status": post_execution,
+        "expected_branch": "master",
+        "expected_head": head,
+        "commit_message": "feat(agent): candidate review",
+    }
+
+    first = inspector.reviewed_candidate_change_evidence(**kwargs)
+    second = inspector.reviewed_candidate_change_evidence(**kwargs)
+
+    assert first == second
+
+
+@pytest.mark.parametrize("drift", ("branch", "head"))
+def test_candidate_review_evidence_rejects_repository_identity_drift(
+    tmp_path: Path,
+    drift: str,
+) -> None:
+    """Candidate review requires the validated branch and HEAD."""
+
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    inspector, baseline, post_execution, head = _candidate_review_state(repository)
+    expected_branch = "other-branch" if drift == "branch" else "master"
+    expected_head = "not-the-head" if drift == "head" else head
+
+    with pytest.raises(RepositoryInspectionError):
+        inspector.reviewed_candidate_change_evidence(
+            reviewed_files=(Path("tracked.txt"),),
+            baseline_status=baseline,
+            post_execution_status=post_execution,
+            expected_branch=expected_branch,
+            expected_head=expected_head,
+            commit_message="feat(agent): candidate review",
         )
 
 
