@@ -14,11 +14,14 @@ case "${ATLAS_CONTAINER_GATE_MODE:-production}" in
     production)
         gate_runtime=runsc
         gate_worker_runtime_yaml=""
+        gate_agent_override_yaml=""
         ;;
     github-integration)
         gate_runtime=runc
         gate_worker_runtime_yaml="    runtime: runc"
+        gate_agent_override_yaml=$'  atlas-agent:\n    entrypoint: []'
         echo "NOTICE: GitHub container integration mode uses runc; gVisor/runsc is not validated by this run."
+        echo "NOTICE: GitHub integration validates Agent auth staging but not authenticated Codex login."
         ;;
     *)
         echo "Unsupported ATLAS_CONTAINER_GATE_MODE: ${ATLAS_CONTAINER_GATE_MODE}" >&2
@@ -35,6 +38,7 @@ GATE_CODEX_AUTH_FILE="$GATE_DIRECTORY/codex-auth.json"
 GATE_COMPOSE_FILE="$GATE_DIRECTORY/compose.gate.yaml"
 GATE_PROXY_CONFIG_FILE="$GATE_DIRECTORY/atlas-execution-worker-squid.conf"
 GATE_PROJECT="atlas-release-gate-$$"
+gate_auth_fixture_requires_sudo_cleanup=false
 
 for executable in docker curl openssl python3; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -67,7 +71,13 @@ cleanup() {
             --file "$COMPOSE_FILE" \
             --file "$HTTPS_COMPOSE_FILE" \
             --file "$GATE_COMPOSE_FILE" \
-            logs atlas-execution-worker atlas-execution-worker-relay >&2 || true
+            logs \
+            atlas-agent-auth-stager \
+            atlas-execution-auth-stager \
+            atlas-agent \
+            atlas-execution-worker \
+            atlas-execution-worker-relay \
+            >&2 || true
     fi
     docker compose \
         --project-name "$GATE_PROJECT" \
@@ -79,6 +89,9 @@ cleanup() {
         --rmi local \
         --remove-orphans \
         >/dev/null 2>&1 || true
+    if [[ "$gate_auth_fixture_requires_sudo_cleanup" = "true" ]]; then
+        sudo rm -f "$GATE_CODEX_AUTH_FILE"
+    fi
     rm -f \
         "$GATE_ENV_FILE" \
         "$GATE_CERT_FILE" \
@@ -96,6 +109,14 @@ trap cleanup EXIT
 if [[ -z "${ATLAS_CODEX_AUTH_HOST_PATH+x}" ]]; then
     printf '{}\n' >"$GATE_CODEX_AUTH_FILE"
     chmod 0400 "$GATE_CODEX_AUTH_FILE"
+    if [[ "${ATLAS_CONTAINER_GATE_MODE:-production}" = "github-integration" && "$(id -u)" != "0" ]]; then
+        command -v sudo >/dev/null 2>&1 || {
+            echo "GitHub integration mode requires sudo to create the root-readable auth fixture" >&2
+            exit 127
+        }
+        sudo chown 0:0 "$GATE_CODEX_AUTH_FILE"
+        gate_auth_fixture_requires_sudo_cleanup=true
+    fi
     export ATLAS_CODEX_AUTH_HOST_PATH="$GATE_CODEX_AUTH_FILE"
 fi
 
@@ -188,6 +209,7 @@ printf '%s\n' \
     "        ipv4_address: $gate_relay_address" \
     '    volumes:' \
     "      - $GATE_PROXY_CONFIG_FILE:/etc/squid/squid.conf:ro" \
+    "$gate_agent_override_yaml" \
     'networks:' \
     '  atlas-execution-worker-net:' \
     '    ipam:' \

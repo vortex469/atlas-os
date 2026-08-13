@@ -9,12 +9,14 @@ ENTRYPOINT = Path("deploy/docker/atlas-agent-entrypoint.sh")
 DOCKERFILE = Path("deploy/docker/atlas-agent.Dockerfile")
 
 
-def run_gate(tmp_path: Path, source: Path) -> subprocess.CompletedProcess[str]:
+def run_gate(
+    tmp_path: Path, source: Path, *, codex_status: int = 0
+) -> subprocess.CompletedProcess[str]:
     home = tmp_path / "codex-home"
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     codex = fake_bin / "codex"
-    codex.write_text("#!/bin/sh\nexit 0\n")
+    codex.write_text(f"#!/bin/sh\nexit {codex_status}\n")
     codex.chmod(0o755)
     return subprocess.run(
         ["sh", str(ENTRYPOINT), "sh", "-c", "test -f \"$CODEX_HOME/auth.json\""],
@@ -57,6 +59,20 @@ def test_valid_auth_is_staged_with_restrictive_mode(tmp_path: Path) -> None:
     assert stat.S_IMODE(staged.stat().st_mode) == 0o600
     assert result.stdout == ""
     assert result.stderr == ""
+
+
+def test_unauthenticated_codex_status_fails_closed(tmp_path: Path) -> None:
+    source = tmp_path / "source-auth.json"
+    source.write_text("{}\n")
+
+    result = run_gate(tmp_path, source, codex_status=1)
+
+    assert result.returncode != 0
+    assert result.stdout == ""
+    assert result.stderr == (
+        "atlas-agent startup gate failed: "
+        "Codex authentication status is not authenticated\n"
+    )
 
 
 def test_agent_image_remains_non_root() -> None:
