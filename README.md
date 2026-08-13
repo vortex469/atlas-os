@@ -1,4 +1,4 @@
-## Atlas v0.6 release candidate
+## Atlas v0.6.0
 
 Atlas v0.6 completes the Phase 3 candidate workflow while preserving Atlas's provider-neutral, local-first design. Atlas Core owns Discovery evidence, intelligence recommendations, execution-candidate projection, and planning-intake revalidation. Atlas Agent owns local approval-gated orchestration, restart-safe side effects, audit-chain validation, deterministic review, and local Git commit. Mission Control presents state and does not currently expose Phase 3 execution controls.
 
@@ -6,20 +6,20 @@ Supported execution intent:
 
 - `update-compose-stack`
 
-RC1 requires structured, immutable Compose mutation evidence before an
+Atlas v0.6.0 requires structured, immutable Compose mutation evidence before an
 implementation approval can be requested. Planning, exact approval binding,
 persistence/recovery, and successor concurrency are production-ready. The
 Codex-backed repository mutation stage is production-ready through the exact
 approval-gated candidate path. Execution uses a named `workspace-write`
 permission profile in a runsc-isolated worker with an authenticated,
-network-segmented control plane. RC1 does not use unconfined profiles,
+network-segmented control plane. Atlas v0.6.0 does not use unconfined profiles,
 `CAP_SYS_ADMIN`, root execution, or Codex `danger-full-access`.
 
 Atlas does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or automate rollback. See:
 
 - [Changelog](CHANGELOG.md)
-- [Atlas v0.6 upgrade procedure](docs/DEPLOYMENT.md#atlas-v06-rc-upgrade-and-manual-rollback)
-- [Atlas v0.6 rollback procedure](docs/DEPLOYMENT.md#atlas-v06-rc-upgrade-and-manual-rollback)
+- [Atlas v0.6.0 upgrade procedure](docs/DEPLOYMENT.md#atlas-v060-upgrade-and-manual-rollback)
+- [Atlas v0.6.0 rollback procedure](docs/DEPLOYMENT.md#atlas-v060-upgrade-and-manual-rollback)
 - [Atlas v0.6 release checklist](docs/RELEASE_CHECKLIST.md)
 
 <div align="center">

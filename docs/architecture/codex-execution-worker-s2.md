@@ -1,5 +1,10 @@
 # S2 Execution Worker Skeleton
 
+> Historical design note: this document records the deliberately disabled S2
+> skeleton milestone. The current production boundary is documented in
+> `codex-execution-sandbox-hardening.md`; the limitations below describe S2
+> history rather than current release status.
+
 S2 adds a standalone `atlas-execution-worker` skeleton with HTTP over a private
 TCP endpoint on the internal `atlas-execution-worker-net` Compose network.
 The worker listens on port 8081 without publishing that port to the host.

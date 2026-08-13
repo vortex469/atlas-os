@@ -216,9 +216,27 @@ commands intentionally use `python` without the local `.venv` path prefix.
 
 - [x] Changelog, version, tag name, upgrade notes, and manual rollback notes are
   reviewed.
-- [ ] Use an immutable RC tag that does not overwrite existing release tags.
-  The reviewed next tag is `atlas-v0.6-rc1.9`; it was confirmed unused on
-  2026-08-13 and has not been created.
+- [x] Use an immutable RC tag that does not overwrite existing release tags.
+  `atlas-v0.6-rc1.9` was published at
+  `6d85df5b112b4bde28ec31fc60cce88560c9dbfc` on 2026-08-13 and remains the
+  immutable validated RC baseline.
+
+### Atlas v0.6.0 final release
+
+Authorized final tag candidate: `atlas-v0.6.0`.
+
+- [ ] Record the exact final integration commit SHA.
+- [ ] Run and record the complete release validation matrix on that exact SHA.
+- [ ] Confirm required CI checks pass on the final integration commit.
+- [ ] Re-review dependency and accepted-advisory status for the final release.
+- [ ] Confirm the final tracked tree contains only intended release files and
+  that local-only smoke artifacts remain outside release provenance.
+- [ ] Record final operator/release-lead sign-off name and date:
+  - Sign-off name:
+  - Sign-off date:
+- [ ] Confirm `atlas-v0.6.0` remains unused immediately before tagging.
+- [ ] Create the immutable annotated `atlas-v0.6.0` tag on the validated final
+  integration commit.
 
 ### Core
 

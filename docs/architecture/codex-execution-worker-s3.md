@@ -1,5 +1,11 @@
 # S3 Execution Backend Adapter
 
+> Historical design note: this document records the S3 adapter milestone before
+> production worker integration. The current production boundary is documented
+> in `codex-execution-sandbox-hardening.md`; statements below about future or
+> non-production worker mode describe S3 history rather than current release
+> status.
+
 S3 introduces a synchronous `ExecutionBackend` seam behind the existing
 `ExecutionEngine` facade. `LocalExecutionBackend` retains the current
 `SubprocessRunner`, `shell=False`, policy, timeout, output, and failure behavior.

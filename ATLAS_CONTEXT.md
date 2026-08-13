@@ -258,7 +258,7 @@ vortex469/atlas-os
 
 ## Atlas v0.6 project status
 
-Atlas v0.6 is a release candidate for the completed Phase 3 candidate workflow. Atlas remains local-first, provider-neutral, and approval-gated.
+Atlas v0.6.0 is the final release line for the completed Phase 3 candidate workflow. Atlas remains local-first, provider-neutral, and approval-gated.
 
 Current supported capability:
 

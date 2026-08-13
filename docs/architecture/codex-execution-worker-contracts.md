@@ -1,5 +1,10 @@
 # Codex Execution Worker Contracts
 
+> Historical design note: this document records the S1 contract milestone as
+> designed at that stage. The current production boundary is documented in
+> `codex-execution-sandbox-hardening.md`; statements below about future or
+> disabled integration describe S1 history rather than current release status.
+
 S1 defines the versioned data boundary for a future `atlas-execution-worker`.
 It does not create the worker, transport, sandbox, or execution path.
 

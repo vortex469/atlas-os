@@ -6,6 +6,14 @@ release boundaries.
 
 ## Unreleased
 
+No changes recorded after the v0.6.0 release boundary.
+
+## atlas-v0.6.0 — Atlas v0.6.0 (pending)
+
+Atlas v0.6.0 promotes the validated `atlas-v0.6-rc1.9` baseline at
+`6d85df5b112b4bde28ec31fc60cce88560c9dbfc`. The final integration commit,
+validation record, sign-off, and immutable tag remain pending.
+
 ### Added
 
 - Hardened Codex `workspace-write` execution with an immutable named permission
@@ -20,9 +28,13 @@ release boundaries.
 - Optional daily systemd backups with persistent scheduling, strict
   verification, and minimum-count retention safeguards.
 
-## atlas-v0.6-rc1 — Recovery Candidate RC1 (2026-08-05)
+### Validated RC baseline
 
-### Implemented in RC1
+`atlas-v0.6-rc1.9` was published on 2026-08-13 at
+`6d85df5b112b4bde28ec31fc60cce88560c9dbfc` as the validated release-candidate
+baseline for v0.6.0.
+
+### Implemented in v0.6.0
 
 - Discovery Center compatibility engine, evidence flow, and catalog integration now
   drive execution-candidate projection with compatibility context available to
@@ -82,7 +94,7 @@ release boundaries.
 - Candidate UI execution affordances in Mission Control beyond current shell,
   audit, and status workflows.
 
-### Completed RC1 milestone
+### Completed v0.6.0 milestone
 
 **Codex Execution Sandbox Hardening** provides an isolated runsc execution
 runtime, disposable `workspace-write` and outside-workspace denial proofs,
@@ -95,7 +107,7 @@ approval boundary without creating the validation-only commit.
 
 - Atlas Core has an existing repository-wide backlog of 90 Ruff violations.
 - Atlas Agent has an existing repository-wide backlog of 20 Ruff violations.
-  RC1 blocks new violations in changed production and test files while leaving
+  v0.6.0 blocks new violations in changed production and test files while leaving
   both services' inherited cleanup outside release scope.
 - Mission Control currently emits a large JavaScript chunk warning during build.
 - Some Atlas Core source-boundary tests assume Atlas Core working-directory layout.

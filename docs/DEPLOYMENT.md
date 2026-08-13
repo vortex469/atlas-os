@@ -278,7 +278,7 @@ connection overrides, and provider connection secrets. The tracked
 `config/policies.yaml`, `config/atlas.yaml`, and `inventory/services.yaml`
 files remain immutable defaults or legacy fallback sources.
 
-## Atlas v0.6 RC upgrade and manual rollback
+## Atlas v0.6.0 upgrade and manual rollback
 
 Atlas v0.6 operations are upgraded and rolled back manually. V0.6 does not
 implement automatic rollback.
