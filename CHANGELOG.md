@@ -94,6 +94,9 @@ approval boundary without creating the validation-only commit.
 ### Inherited technical debt
 
 - Atlas Core has an existing repository-wide backlog of 90 Ruff violations.
+- Atlas Agent has an existing repository-wide backlog of 20 Ruff violations.
+  RC1 blocks new violations in changed production and test files while leaving
+  both services' inherited cleanup outside release scope.
 - Mission Control currently emits a large JavaScript chunk warning during build.
 - Some Atlas Core source-boundary tests assume Atlas Core working-directory layout.
 

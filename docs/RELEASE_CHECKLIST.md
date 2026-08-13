@@ -66,10 +66,10 @@ entities.
 
 - [x] Record the exact commit checked for atlas-v0.6-rc1 packaging.
 - [x] Record commands used and pass/fail status for:
-  - `./scripts/rc1-python-ruff-gate services/atlas-core`
-  - `cd services/atlas-core && python -m pytest -q`
-  - `./scripts/rc1-python-ruff-gate services/atlas-agent`
-  - `PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
+  - `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-core`
+  - `cd services/atlas-core && PATH=/opt/atlas/.venv/bin:$PATH python -m pytest -q`
+  - `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-agent`
+  - `PATH=/opt/atlas/.venv/bin:$PATH PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
   - `cd services/mission-control && npm run lint`
   - `cd services/mission-control && npm test -- --run`
   - `cd services/mission-control && npm run build`
@@ -183,10 +183,22 @@ and workflow
 
 The blocking RC1 Ruff gate checks Python files changed after commit
 `0216b7bfe7f3b160a762269802aa34244ae70a72`, including untracked Python files,
-using the pinned Ruff version in each service's development requirements. This
-keeps new RC1 changes lint-clean without treating unrelated inherited cleanup as
-release scope. Repository-wide scans remain informational: the recorded Core
-backlog is 90 findings, and Agent tests currently have 18 import-order findings.
+using the pinned Ruff version in each service's development requirements. Core
+checks `services/atlas-core/app`; Core has no separate `tests/` directory. Agent
+checks both `services/atlas-agent/app` and `services/atlas-agent/tests`. Changed
+production and test files must pass: no new Ruff violation may be introduced by
+RC1 changes. Existing documented debt does not block RC1 by itself and remains
+tracked for later cleanup rather than being fixed as release scope.
+
+A fresh repository-wide informational scan with the validated toolchain on
+2026-08-13 reports exactly 90 Core findings and 20 Agent findings. The Agent
+count supersedes the earlier 18-finding observation; do not use the older
+expected count of 22 unless it is independently reproduced.
+
+The commands above show the repository-local virtual environment used for local
+release validation. CI installs the same development requirements into the
+Python environment supplied by `actions/setup-python`, so its equivalent
+commands intentionally use `python` without the local `.venv` path prefix.
 
 ### Manual release sign-off
 
@@ -206,15 +218,15 @@ backlog is 90 findings, and Agent tests currently have 18 import-order findings.
 
 ### Core
 
-- [x] `./scripts/rc1-python-ruff-gate services/atlas-core`
-- [x] `cd services/atlas-core && python -m pytest -q`
+- [x] `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-core`
+- [x] `cd services/atlas-core && PATH=/opt/atlas/.venv/bin:$PATH python -m pytest -q`
 - [x] Execution candidate, planning-intake, and route-contract tests pass.
 - [x] API/OpenAPI contract regression is current.
 
 ### Atlas Agent
 
-- [x] `./scripts/rc1-python-ruff-gate services/atlas-agent`
-- [x] `PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
+- [x] `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-agent`
+- [x] `PATH=/opt/atlas/.venv/bin:$PATH PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
 - [x] End-to-end candidate workflow test passes.
 - [x] Audit-chain validator tests pass.
 - [x] Restart-recovery matrix tests pass.

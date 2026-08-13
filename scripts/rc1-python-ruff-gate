@@ -13,7 +13,12 @@ fi
 
 service_path="$1"
 case "$service_path" in
-    services/atlas-core|services/atlas-agent) ;;
+    services/atlas-core)
+        lint_paths=("$service_path/app")
+        ;;
+    services/atlas-agent)
+        lint_paths=("$service_path/app" "$service_path/tests")
+        ;;
     *)
         echo "Unsupported Atlas Python service: $service_path" >&2
         exit 2
@@ -30,9 +35,9 @@ fi
 mapfile -d '' changed_files < <(
     {
         git diff --name-only --diff-filter=ACMR -z "$RC1_BASELINE" -- \
-            "$service_path/app" "$service_path/tests"
+            "${lint_paths[@]}"
         git ls-files --others --exclude-standard -z -- \
-            "$service_path/app" "$service_path/tests"
+            "${lint_paths[@]}"
     } | while IFS= read -r -d '' path; do
         [[ "$path" == *.py ]] && printf '%s\0' "$path"
     done | sort -zu
