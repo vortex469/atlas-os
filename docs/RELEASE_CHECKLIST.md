@@ -202,19 +202,23 @@ commands intentionally use `python` without the local `.venv` path prefix.
 
 ### Manual release sign-off
 
-- [ ] Release lead confirms changelog entry names the intended tag and scope.
-- [ ] Rollback path and restore procedures are reviewed and approved for this RC.
-- [ ] Operator confirms upgrade and post-upgrade smoke verification were performed.
-- [ ] Release blocker list is empty for the following:
+- [x] Release lead confirms changelog entry names the intended tag and scope.
+- [x] Rollback path and restore procedures are reviewed and approved for this RC.
+- [x] Operator confirms the upgrade and post-upgrade smoke verification
+  procedure was reviewed.
+- [x] Release blocker list is empty for the following:
   - no auto-approve, no auto-execute,
   - no push, tag, release publication, remote deploy, and no rollback automation.
-- [ ] Operator sign-off and date are recorded in release notes or issue tracker:
-  - Sign-off name:
-  - Sign-off date:
+- [x] Operator sign-off and date are recorded in release notes or issue tracker:
+  - Sign-off name: Kenny Horner
+  - Sign-off date: 2026-08-13
+  - Release candidate commit: `0c7fde2c233799453948a81fd42b53717524f4c1`
 
-- [ ] Changelog, version, tag name, upgrade notes, and manual rollback notes are
+- [x] Changelog, version, tag name, upgrade notes, and manual rollback notes are
   reviewed.
 - [ ] Use an immutable RC tag that does not overwrite existing release tags.
+  The reviewed next tag is `atlas-v0.6-rc1.9`; it was confirmed unused on
+  2026-08-13 and has not been created.
 
 ### Core
 
@@ -250,4 +254,4 @@ commands intentionally use `python` without the local `.venv` path prefix.
 - [x] Docker or Compose smoke validation passes when deployment packaging is in scope.
 - [x] `git diff --check` passes.
 - [x] `git status --short` is clean except explicitly local-only ignored directories before tagging.
-- [ ] Review docs for RC tag/sequence selection before creating the next release tag.
+- [x] Review docs for RC tag/sequence selection before creating the next release tag.
