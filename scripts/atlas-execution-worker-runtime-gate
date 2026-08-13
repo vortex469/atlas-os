@@ -27,8 +27,21 @@ relay_json=$(printf '%s' "$compose_json" | jq '.services["atlas-execution-worker
 agent_json=$(printf '%s' "$compose_json" | jq '.services["atlas-agent"]')
 auth_stager_json=$(printf '%s' "$compose_json" | jq '.services["atlas-execution-auth-stager"]')
 
+case "${ATLAS_CONTAINER_GATE_MODE:-production}" in
+    production)
+        expected_runtime=runsc
+        ;;
+    github-integration)
+        expected_runtime=runc
+        ;;
+    *)
+        echo "ERROR: unsupported ATLAS_CONTAINER_GATE_MODE: ${ATLAS_CONTAINER_GATE_MODE}" >&2
+        exit 2
+        ;;
+esac
+
 [[ "$(printf '%s' "$worker_json" | jq -r '.user')" == "10001:10001" ]] || { echo "ERROR: worker user is not 10001:10001"; exit 1; }
-[[ "$(printf '%s' "$worker_json" | jq -r '.runtime')" == "runsc" ]] || { echo "ERROR: worker runtime is not runsc"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.runtime')" == "$expected_runtime" ]] || { echo "ERROR: worker runtime is not $expected_runtime"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.read_only')" == "true" ]] || { echo "ERROR: worker read_only is not true"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.ports // [] | length')" == "0" ]] || { echo "ERROR: worker publishes TCP ports"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.cap_drop[]' | grep -Fx ALL)" == "ALL" ]] || { echo "ERROR: worker cap_drop ALL missing"; exit 1; }
@@ -60,6 +73,7 @@ agent_container=$("${compose[@]}" ps -q atlas-agent)
 relay_container=$("${compose[@]}" ps -q atlas-execution-worker-relay)
 [[ -n "$worker_container" && -n "$agent_container" && -n "$relay_container" ]] || { echo "ERROR: worker, relay, and Agent containers must be running"; exit 1; }
 [[ "$(docker inspect "$worker_container" --format '{{.State.Health.Status}}')" == "healthy" ]] || { echo "ERROR: worker is not healthy"; exit 1; }
+[[ "$(docker inspect "$worker_container" --format '{{.HostConfig.Runtime}}')" == "$expected_runtime" ]] || { echo "ERROR: live worker runtime is not $expected_runtime"; exit 1; }
 [[ "$(docker inspect "$worker_container" --format '{{.HostConfig.ReadonlyRootfs}}')" == "true" ]] || { echo "ERROR: worker rootfs is not read-only"; exit 1; }
 [[ "$(docker exec "$worker_container" sh -c 'id -u')" == "10001" ]] || { echo "ERROR: worker uid is not 10001"; exit 1; }
 [[ "$(docker exec "$worker_container" sh -c 'id -g')" == "10001" ]] || { echo "ERROR: worker gid is not 10001"; exit 1; }
@@ -67,7 +81,8 @@ relay_container=$("${compose[@]}" ps -q atlas-execution-worker-relay)
 [[ "$(docker inspect "$worker_container" --format '{{json .HostConfig.SecurityOpt}}')" == *'no-new-privileges:true'* ]] || { echo "ERROR: worker NoNewPrivs is not configured"; exit 1; }
 docker exec "$worker_container" python /opt/atlas/services/atlas-execution-worker/healthcheck.py
 
-docker exec "$worker_container" sh -ceu '
+if [[ "$expected_runtime" = "runsc" ]]; then
+    docker exec "$worker_container" sh -ceu '
 workspace=$(mktemp -d /tmp/atlas-codex-sandbox-proof.XXXXXX)
 outside=/opt/atlas/execution-worker-state/atlas-codex-outside-proof
 trap '\''rm -r "$workspace"; rm -f "$outside"'\'' EXIT
@@ -82,6 +97,9 @@ codex sandbox \
 test "$(cat "$workspace/workspace-proof")" = workspace-write-ok
 test "$(cat "$outside")" = unchanged
 '
+else
+    echo "NOTICE: skipping the runsc/Codex nested-sandbox proof in runc integration mode"
+fi
 
 docker exec "$worker_container" python - <<'PY'
 import socket
@@ -108,4 +126,8 @@ assert health['status'] == 'healthy'
 assert health['execution_enabled'] is False
 PY
 
-echo "atlas-execution-worker runtime gate passed"
+if [[ "$expected_runtime" = "runsc" ]]; then
+    echo "atlas-execution-worker production runsc sandbox gate passed"
+else
+    echo "atlas-execution-worker container integration gate passed with runc; gVisor/runsc was not validated"
+fi

@@ -6,6 +6,26 @@ SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
 COMPOSE_FILE="$ATLAS_ROOT/compose.production.yaml"
 HTTPS_COMPOSE_FILE="$ATLAS_ROOT/compose.https.yaml"
+POLICY_TEMPLATE_FILE="$ATLAS_ROOT/config/policies.yaml"
+ATLAS_CONFIG_FILE="$ATLAS_ROOT/config/atlas.yaml"
+INVENTORY_FILE="$ATLAS_ROOT/inventory/services.yaml"
+
+case "${ATLAS_CONTAINER_GATE_MODE:-production}" in
+    production)
+        gate_runtime=runsc
+        gate_worker_runtime_yaml=""
+        ;;
+    github-integration)
+        gate_runtime=runc
+        gate_worker_runtime_yaml="    runtime: runc"
+        echo "NOTICE: GitHub container integration mode uses runc; gVisor/runsc is not validated by this run."
+        ;;
+    *)
+        echo "Unsupported ATLAS_CONTAINER_GATE_MODE: ${ATLAS_CONTAINER_GATE_MODE}" >&2
+        exit 2
+        ;;
+esac
+
 GATE_DIRECTORY="$(mktemp -d /tmp/atlas-container-gate.XXXXXX)"
 GATE_ENV_FILE="$GATE_DIRECTORY/atlas.env"
 GATE_CERT_FILE="$GATE_DIRECTORY/tls.crt"
@@ -15,9 +35,6 @@ GATE_CODEX_AUTH_FILE="$GATE_DIRECTORY/codex-auth.json"
 GATE_COMPOSE_FILE="$GATE_DIRECTORY/compose.gate.yaml"
 GATE_PROXY_CONFIG_FILE="$GATE_DIRECTORY/atlas-execution-worker-squid.conf"
 GATE_PROJECT="atlas-release-gate-$$"
-POLICY_TEMPLATE_FILE="$ATLAS_ROOT/config/policies.yaml"
-ATLAS_CONFIG_FILE="$ATLAS_ROOT/config/atlas.yaml"
-INVENTORY_FILE="$ATLAS_ROOT/inventory/services.yaml"
 
 for executable in docker curl openssl python3; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -30,6 +47,17 @@ if [[ ! -S /var/run/docker.sock ]]; then
     echo "Docker socket not found: /var/run/docker.sock" >&2
     exit 1
 fi
+
+docker info --format '{{json .Runtimes}}' \
+    | python3 -c '
+import json
+import sys
+
+required = sys.argv[1]
+runtimes = json.load(sys.stdin)
+if required not in runtimes:
+    raise SystemExit(f"Required container runtime is unavailable: {required}")
+' "$gate_runtime"
 
 cleanup() {
     cleanup_status=$?
@@ -141,6 +169,7 @@ sed \
 printf '%s\n' \
     'services:' \
     '  atlas-execution-worker:' \
+    "$gate_worker_runtime_yaml" \
     '    networks:' \
     '      atlas-execution-worker-net:' \
     "        ipv4_address: $gate_worker_address" \
@@ -204,7 +233,11 @@ echo "Building production images"
 echo "Starting isolated production stack"
 "${compose[@]}" up --detach --wait --wait-timeout 90
 
-echo "Checking execution worker sandbox and transport boundary"
+if [[ "${ATLAS_CONTAINER_GATE_MODE:-production}" = "production" ]]; then
+    echo "Checking production runsc sandbox and transport boundary"
+else
+    echo "Checking container integration hardening with runc (not a gVisor proof)"
+fi
 ATLAS_EXECUTION_GATE_COMPOSE_OVERRIDE="$GATE_COMPOSE_FILE" \
     ATLAS_EXECUTION_GATE_COMPOSE_SECONDARY="$HTTPS_COMPOSE_FILE" \
     ATLAS_EXECUTION_GATE_PROJECT="$GATE_PROJECT" \
