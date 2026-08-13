@@ -64,8 +64,8 @@ entities.
 
 ### RC1 verification artifacts
 
-- [ ] Record the exact commit checked for atlas-v0.6-rc1 packaging.
-- [ ] Record commands used and pass/fail status for:
+- [x] Record the exact commit checked for atlas-v0.6-rc1 packaging.
+- [x] Record commands used and pass/fail status for:
   - `./scripts/rc1-python-ruff-gate services/atlas-core`
   - `cd services/atlas-core && python -m pytest -q`
   - `./scripts/rc1-python-ruff-gate services/atlas-agent`
@@ -74,6 +74,27 @@ entities.
   - `cd services/mission-control && npm test -- --run`
   - `cd services/mission-control && npm run build`
   - `./scripts/container-release-gate`
+
+Validated on 2026-08-13 at commit
+`70997b398727471d261a297e41831f5901b83a18`. Commands ran from
+`/opt/atlas` unless a different working directory is shown:
+
+| Command | Working directory | Exit | Result |
+| --- | --- | ---: | --- |
+| `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-core` | `/opt/atlas` | 0 | All changed-file checks passed. |
+| `PATH=/opt/atlas/.venv/bin:$PATH python -m pytest -q` | `/opt/atlas/services/atlas-core` | 0 | 692 passed, 1 dependency deprecation warning. |
+| `PATH=/opt/atlas/.venv/bin:$PATH ./scripts/rc1-python-ruff-gate services/atlas-agent` | `/opt/atlas` | 0 | All changed-file checks passed. |
+| `PATH=/opt/atlas/.venv/bin:$PATH PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests` | `/opt/atlas` | 0 | 816 passed, 1 dependency deprecation warning. |
+| `npm run lint` | `/opt/atlas/services/mission-control` | 0 | 0 errors, 1 React hook dependency warning. |
+| `npm test -- --run` | `/opt/atlas/services/mission-control` | 0 | 28 files and 190 tests passed. |
+| `npm run build` | `/opt/atlas/services/mission-control` | 0 | Production build passed with a chunk-size warning. |
+| `./scripts/container-release-gate` | `/opt/atlas` | 0 | Compose rendering, production images, isolated hardened runtime, HTTP/HTTPS, data recovery, and Rest Server recovery passed. |
+
+The literal Python commands were also attempted without the repository virtual
+environment on this validation host. Both exited `127` because the host has no
+global `python` executable. The successful commands above make the required
+repository-local tool context explicit; CI supplies the equivalent Python tool
+context through `actions/setup-python` and dependency installation.
 
 ### RC1 candidate execution boundary
 
@@ -185,36 +206,36 @@ backlog is 90 findings, and Agent tests currently have 18 import-order findings.
 
 ### Core
 
-- [ ] `./scripts/rc1-python-ruff-gate services/atlas-core`
-- [ ] `cd services/atlas-core && python -m pytest -q`
-- [ ] Execution candidate, planning-intake, and route-contract tests pass.
-- [ ] API/OpenAPI contract regression is current.
+- [x] `./scripts/rc1-python-ruff-gate services/atlas-core`
+- [x] `cd services/atlas-core && python -m pytest -q`
+- [x] Execution candidate, planning-intake, and route-contract tests pass.
+- [x] API/OpenAPI contract regression is current.
 
 ### Atlas Agent
 
-- [ ] `./scripts/rc1-python-ruff-gate services/atlas-agent`
-- [ ] `PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
-- [ ] End-to-end candidate workflow test passes.
-- [ ] Audit-chain validator tests pass.
-- [ ] Restart-recovery matrix tests pass.
-- [ ] Concurrency and idempotency tests pass.
-- [ ] Commit-path security tests pass.
-- [ ] Roadmap workflow regression tests pass.
+- [x] `./scripts/rc1-python-ruff-gate services/atlas-agent`
+- [x] `PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests`
+- [x] End-to-end candidate workflow test passes.
+- [x] Audit-chain validator tests pass.
+- [x] Restart-recovery matrix tests pass.
+- [x] Concurrency and idempotency tests pass.
+- [x] Commit-path security tests pass.
+- [x] Roadmap workflow regression tests pass.
 
 ### Mission Control
 
-- [ ] `cd services/mission-control && npm run lint`
-- [ ] `cd services/mission-control && npm test -- --run`
-- [ ] `cd services/mission-control && npm run build`
-- [ ] UI does not imply unsupported Phase 3 execution controls.
+- [x] `cd services/mission-control && npm run lint`
+- [x] `cd services/mission-control && npm test -- --run`
+- [x] `cd services/mission-control && npm run build`
+- [x] UI does not imply unsupported Phase 3 execution controls.
 
 ### Security and release operation
 
-- [ ] Approval-boundary review confirms exact immutable implementation, verification, and commit approvals.
-- [ ] No automatic approval, automatic execution, push, tag, release, remote deploy, or rollback path is enabled.
-- [ ] No secrets, logs, `jcode/`, local state, dependency folders, virtual environments, or generated builds are committed.
-- [ ] State migration and restart-recovery tests pass.
-- [ ] Docker or Compose smoke validation passes when deployment packaging is in scope.
-- [ ] `git diff --check` passes.
-- [ ] `git status --short` is clean except explicitly local-only ignored directories before tagging.
+- [x] Approval-boundary review confirms exact immutable implementation, verification, and commit approvals.
+- [x] No automatic approval, automatic execution, push, tag, release, remote deploy, or rollback path is enabled.
+- [x] No secrets, logs, `jcode/`, local state, dependency folders, virtual environments, or generated builds are committed.
+- [x] State migration and restart-recovery tests pass.
+- [x] Docker or Compose smoke validation passes when deployment packaging is in scope.
+- [x] `git diff --check` passes.
+- [x] `git status --short` is clean except explicitly local-only ignored directories before tagging.
 - [ ] Review docs for RC tag/sequence selection before creating the next release tag.
