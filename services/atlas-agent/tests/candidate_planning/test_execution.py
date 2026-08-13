@@ -37,6 +37,7 @@ from app.core_client.models import (
     CoreCandidatePlanningIntakeResponse,
     CoreExecutionCandidateSnapshot,
 )
+from app.execution.worker_contracts import CODEX_WORKSPACE_EXEC_ARGV_PREFIX
 from app.repository.models import RepositorySnapshot
 from app.workflow.models import (
     CandidateWorkflowMetadata,
@@ -188,7 +189,7 @@ def implementation_request(root: Path, plan_fingerprint: str) -> CandidateImplem
         repository_root=root,
         repository_branch="feature/atlas-agent",
         repository_head="abc123",
-        argv=("codex", "exec", "approved prompt"),
+        argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "approved prompt"),
         working_directory=root,
         affected_files=(Path("compose.production.yaml"),),
         evidence_ids=("evidence-1",),
@@ -313,7 +314,7 @@ def test_approved_candidate_request_validates_to_exact_execution_request(tmp_pat
 
     assert result.approved is True
     assert result.execution_request is not None
-    assert result.execution_request.argv == ("codex", "exec", "approved prompt")
+    assert result.execution_request.argv == (*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "approved prompt")
     assert result.execution_request.working_directory == tmp_path
     assert core.calls == [("candidate-1", "candidate-fingerprint-v1:aaa")]
 

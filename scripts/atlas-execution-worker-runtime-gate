@@ -4,15 +4,28 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ATLAS_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 COMPOSE_FILE="$ATLAS_ROOT/compose.production.yaml"
+compose=(docker compose)
+if [[ -n "${ATLAS_EXECUTION_GATE_PROJECT:-}" ]]; then
+    compose+=(--project-name "$ATLAS_EXECUTION_GATE_PROJECT")
+fi
+compose+=(--file "$COMPOSE_FILE")
+if [[ -n "${ATLAS_EXECUTION_GATE_COMPOSE_SECONDARY:-}" ]]; then
+    compose+=(--file "$ATLAS_EXECUTION_GATE_COMPOSE_SECONDARY")
+fi
+if [[ -n "${ATLAS_EXECUTION_GATE_COMPOSE_OVERRIDE:-}" ]]; then
+    compose+=(--file "$ATLAS_EXECUTION_GATE_COMPOSE_OVERRIDE")
+fi
 
 cd "$ATLAS_ROOT"
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is required" >&2; exit 1; }
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required" >&2; exit 1; }
 
-compose_json=$(docker compose -f "$COMPOSE_FILE" config --format json)
+compose_json=$("${compose[@]}" config --format json)
 worker_json=$(printf '%s' "$compose_json" | jq '.services["atlas-execution-worker"]')
 proxy_json=$(printf '%s' "$compose_json" | jq '.services["atlas-egress-proxy"]')
+relay_json=$(printf '%s' "$compose_json" | jq '.services["atlas-execution-worker-relay"]')
 agent_json=$(printf '%s' "$compose_json" | jq '.services["atlas-agent"]')
+auth_stager_json=$(printf '%s' "$compose_json" | jq '.services["atlas-execution-auth-stager"]')
 
 [[ "$(printf '%s' "$worker_json" | jq -r '.user')" == "10001:10001" ]] || { echo "ERROR: worker user is not 10001:10001"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.runtime')" == "runsc" ]] || { echo "ERROR: worker runtime is not runsc"; exit 1; }
@@ -20,31 +33,70 @@ agent_json=$(printf '%s' "$compose_json" | jq '.services["atlas-agent"]')
 [[ "$(printf '%s' "$worker_json" | jq -r '.ports // [] | length')" == "0" ]] || { echo "ERROR: worker publishes TCP ports"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.cap_drop[]' | grep -Fx ALL)" == "ALL" ]] || { echo "ERROR: worker cap_drop ALL missing"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.security_opt[]' | grep -Fx 'no-new-privileges:true')" == "no-new-privileges:true" ]] || { echo "ERROR: worker no-new-privileges missing"; exit 1; }
-[[ "$(printf '%s' "$worker_json" | jq -r '.environment.HTTPS_PROXY')" == "http://172.31.0.2:3128" ]] || { echo "ERROR: worker HTTPS proxy is not the dedicated proxy"; exit 1; }
+proxy_address=$(printf '%s' "$proxy_json" | jq -r '.networks["atlas-execution-worker-net"].ipv4_address')
+[[ "$(printf '%s' "$worker_json" | jq -r '.environment.HTTPS_PROXY')" == "http://$proxy_address:3128" ]] || { echo "ERROR: worker HTTPS proxy is not the dedicated proxy"; exit 1; }
 [[ "$(printf '%s' "$worker_json" | jq -r '.networks | keys | join(",")')" == "atlas-execution-worker-net" ]] || { echo "ERROR: worker has a non-private network attachment"; exit 1; }
 [[ "$(printf '%s' "$proxy_json" | jq -r '.image')" == ubuntu/squid@sha256:* ]] || { echo "ERROR: egress proxy image is not pinned"; exit 1; }
 [[ "$(printf '%s' "$proxy_json" | jq -r '.ports // [] | length')" == "0" ]] || { echo "ERROR: egress proxy publishes TCP ports"; exit 1; }
 [[ "$(printf '%s' "$proxy_json" | jq -r '.networks | keys | join(",")')" == "atlas-execution-worker-net,default" ]] || { echo "ERROR: egress proxy network topology is unexpected"; exit 1; }
+[[ "$(printf '%s' "$relay_json" | jq -r '.networks | keys | join(",")')" == "atlas-execution-transport-net,atlas-execution-worker-net" ]] || { echo "ERROR: relay network topology is unexpected"; exit 1; }
+[[ "$(printf '%s' "$relay_json" | jq -r '.environment.ATLAS_EXECUTION_RELAY_HOST')" == "atlas-execution-worker-relay-transport" ]] || { echo "ERROR: relay is not bound to its transport-only alias"; exit 1; }
+[[ "$(printf '%s' "$relay_json" | jq -r '.read_only')" == "true" ]] || { echo "ERROR: relay rootfs is not read-only"; exit 1; }
+[[ "$(printf '%s' "$relay_json" | jq -r '.cap_drop[]' | grep -Fx ALL)" == "ALL" ]] || { echo "ERROR: relay cap_drop ALL missing"; exit 1; }
+[[ "$(printf '%s' "$agent_json" | jq -r '.networks | keys | join(",")')" == "atlas-execution-transport-net,default" ]] || { echo "ERROR: Agent has direct worker-network access"; exit 1; }
+[[ "$(printf '%s' "$auth_stager_json" | jq -r '.cap_add // [] | join(",")')" != *SYS_ADMIN* ]] || { echo "ERROR: auth stager has SYS_ADMIN"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.environment.ATLAS_EXECUTION_WORKER_AUTH_FILE')" == "/run/atlas-execution-auth/token" ]] || { echo "ERROR: worker authentication file is not configured"; exit 1; }
+relay_address=$(printf '%s' "$relay_json" | jq -r '.networks["atlas-execution-worker-net"].ipv4_address')
+[[ "$(printf '%s' "$worker_json" | jq -r '.environment.ATLAS_EXECUTION_WORKER_ALLOWED_CLIENT_HOST')" == "$relay_address" ]] || { echo "ERROR: worker trusted peer is not the isolated relay"; exit 1; }
+[[ "$(printf '%s' "$agent_json" | jq -r '.environment.ATLAS_EXECUTION_WORKER_AUTH_FILE')" == "/run/atlas-execution-auth/token" ]] || { echo "ERROR: Agent authentication file is not configured"; exit 1; }
 worker_mounts=$(printf '%s' "$worker_json" | jq -r '.volumes[]?.target')
 [[ -z "$(printf '%s\n' "$worker_mounts" | grep -Fx /run/atlas-execution-worker || true)" ]] || { echo "ERROR: obsolete worker socket mount present"; exit 1; }
-[[ -z "$(printf '%s\n' "$worker_mounts" | grep -E '/workspace/repository|/opt/atlas/agent-state|docker.sock' || true)" ]] || { echo "ERROR: worker has forbidden mount"; exit 1; }
+[[ -z "$(printf '%s\n' "$worker_mounts" | grep -E '/opt/atlas/agent-state|docker.sock' || true)" ]] || { echo "ERROR: worker has forbidden mount"; exit 1; }
+[[ "$(printf '%s' "$worker_json" | jq -r '.volumes[] | select(.target == "/workspace/repository") | .read_only')" == "true" ]] || { echo "ERROR: worker repository source is not read-only"; exit 1; }
 [[ "$(printf '%s' "$agent_json" | jq -r '.environment.ATLAS_EXECUTION_BACKEND')" == "local" ]] || { echo "ERROR: Agent worker backend is not local by default"; exit 1; }
 
-worker_container=$(docker compose -f "$COMPOSE_FILE" ps -q atlas-execution-worker)
-agent_container=$(docker compose -f "$COMPOSE_FILE" ps -q atlas-agent)
-[[ -n "$worker_container" && -n "$agent_container" ]] || { echo "ERROR: worker and Agent containers must be running"; exit 1; }
+worker_container=$("${compose[@]}" ps -q atlas-execution-worker)
+agent_container=$("${compose[@]}" ps -q atlas-agent)
+relay_container=$("${compose[@]}" ps -q atlas-execution-worker-relay)
+[[ -n "$worker_container" && -n "$agent_container" && -n "$relay_container" ]] || { echo "ERROR: worker, relay, and Agent containers must be running"; exit 1; }
 [[ "$(docker inspect "$worker_container" --format '{{.State.Health.Status}}')" == "healthy" ]] || { echo "ERROR: worker is not healthy"; exit 1; }
 [[ "$(docker inspect "$worker_container" --format '{{.HostConfig.ReadonlyRootfs}}')" == "true" ]] || { echo "ERROR: worker rootfs is not read-only"; exit 1; }
 [[ "$(docker exec "$worker_container" sh -c 'id -u')" == "10001" ]] || { echo "ERROR: worker uid is not 10001"; exit 1; }
 [[ "$(docker exec "$worker_container" sh -c 'id -g')" == "10001" ]] || { echo "ERROR: worker gid is not 10001"; exit 1; }
 [[ "$(docker exec "$worker_container" sh -c "awk '/^CapEff:/{print \$2}' /proc/1/status")" == "0000000000000000" ]] || { echo "ERROR: worker capabilities are not empty"; exit 1; }
-[[ "$(docker exec "$worker_container" sh -c "awk '/^NoNewPrivs:/{print \$2}' /proc/1/status")" == "1" ]] || { echo "ERROR: worker NoNewPrivs is not enabled"; exit 1; }
+[[ "$(docker inspect "$worker_container" --format '{{json .HostConfig.SecurityOpt}}')" == *'no-new-privileges:true'* ]] || { echo "ERROR: worker NoNewPrivs is not configured"; exit 1; }
 docker exec "$worker_container" python /opt/atlas/services/atlas-execution-worker/healthcheck.py
+
+docker exec "$worker_container" sh -ceu '
+workspace=$(mktemp -d /tmp/atlas-codex-sandbox-proof.XXXXXX)
+outside=/opt/atlas/execution-worker-state/atlas-codex-outside-proof
+trap '\''rm -r "$workspace"; rm -f "$outside"'\'' EXIT
+printf "unchanged\n" >"$outside"
+codex sandbox \
+  -P atlas-workspace \
+  -c '\''permissions.atlas-workspace.extends=":workspace"'\'' \
+  -c '\''permissions.atlas-workspace.network.enabled=true'\'' \
+  -C "$workspace" \
+  python /opt/atlas/services/atlas-execution-worker/sandbox_probe.py \
+    "$outside" /run/atlas-execution-auth/token
+test "$(cat "$workspace/workspace-proof")" = workspace-write-ok
+test "$(cat "$outside")" = unchanged
+'
+
+docker exec "$worker_container" python - <<'PY'
+import socket
+try:
+    socket.create_connection(('atlas-execution-worker-relay', 8081), timeout=1)
+except OSError:
+    pass
+else:
+    raise SystemExit('worker can reach the relay control-plane listener')
+PY
 
 docker exec "$agent_container" python - <<'PY'
 import json
 import socket
-s = socket.create_connection(('atlas-execution-worker', 8081), timeout=3)
+s = socket.create_connection(('atlas-execution-worker-relay', 8081), timeout=3)
 s.settimeout(3)
 s.sendall(b'GET /health HTTP/1.1\r\nHost: worker\r\nConnection: close\r\n\r\n')
 data = b''

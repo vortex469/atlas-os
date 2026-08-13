@@ -207,6 +207,7 @@ class Settings:
     execution_worker_repository_token: str = "atlas-repository"
     execution_worker_host: str = "atlas-execution-worker"
     execution_worker_port: int = 8081
+    execution_worker_auth_file: Path = Path("/run/atlas-execution-auth/token")
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -242,6 +243,12 @@ class Settings:
             ),
             execution_worker_port=int(
                 os.getenv("ATLAS_EXECUTION_WORKER_PORT", "8081")
+            ),
+            execution_worker_auth_file=Path(
+                os.getenv(
+                    "ATLAS_EXECUTION_WORKER_AUTH_FILE",
+                    "/run/atlas-execution-auth/token",
+                )
             ),
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),
             port=_load_port(),

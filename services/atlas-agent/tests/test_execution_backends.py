@@ -12,6 +12,7 @@ from app.execution.exceptions import ExecutionValidationError
 from app.execution.models import ExecutionRequest, ExecutionStatus, RunnerOutcome
 from app.execution.worker_client import TcpWorkerClient, WorkerTransportError
 from app.execution.worker_contracts import (
+    CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
     BoundedOutput,
     WorkerAttestation,
     WorkerExecutionRequest,
@@ -67,7 +68,7 @@ def make_request() -> ExecutionRequest:
     return ExecutionRequest(
         identifier="execution-1",
         plan=plan,
-        argv=("codex", "exec", "approved prompt"),
+        argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "approved prompt"),
         working_directory=plan.repository_root,
     )
 

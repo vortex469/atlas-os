@@ -40,6 +40,17 @@ class WorkerExecutionIntent(StrEnum):
 RC1_SMOKE_TARGET = "services/atlas-agent/tests/test_execution_engine.py"
 RC1_SMOKE_MARKER = "# Atlas RC1 execution smoke marker"
 RC1_SMOKE_ARGV = ("atlas-rc1-validation-smoke",)
+CODEX_WORKSPACE_PROFILE = "atlas-workspace"
+CODEX_WORKSPACE_EXEC_ARGV_PREFIX = (
+    "codex",
+    "exec",
+    "-c",
+    f'default_permissions="{CODEX_WORKSPACE_PROFILE}"',
+    "-c",
+    f'permissions.{CODEX_WORKSPACE_PROFILE}.extends=":workspace"',
+    "-c",
+    f"permissions.{CODEX_WORKSPACE_PROFILE}.network.enabled=true",
+)
 
 
 class WorkerExecutionStatus(StrEnum):
@@ -294,8 +305,12 @@ class WorkerExecutionRequest:
                 raise ValueError("RC1 validation smoke must run at repository root")
             if self.allowed_affected_files != (RC1_SMOKE_TARGET,):
                 raise ValueError("RC1 validation smoke target is fixed")
-        elif self.argv[0] != "codex" or len(self.argv) < 3 or self.argv[1] != "exec":
-            raise ValueError("unsupported Codex argv")
+        elif (
+            len(self.argv) != len(CODEX_WORKSPACE_EXEC_ARGV_PREFIX) + 1
+            or self.argv[:-1] != CODEX_WORKSPACE_EXEC_ARGV_PREFIX
+            or not self.argv[-1].strip()
+        ):
+            raise ValueError("unsupported Codex workspace profile argv")
         _validate_path(self.working_directory, "working directory", allow_dot=True)
         _canonical_files(self.allowed_affected_files)
         if not isinstance(self.timeout_seconds, (int, float)) or not math.isfinite(self.timeout_seconds):

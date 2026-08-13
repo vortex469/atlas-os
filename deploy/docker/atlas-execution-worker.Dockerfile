@@ -28,7 +28,9 @@ RUN python -m pip install --no-cache-dir --requirement /tmp/requirements.txt \
 COPY services/atlas-agent/app /opt/atlas/services/atlas-agent/app
 COPY services/atlas-execution-worker/atlas_execution_worker ./atlas_execution_worker
 COPY services/atlas-execution-worker/healthcheck.py ./healthcheck.py
+COPY services/atlas-execution-worker/sandbox_probe.py ./sandbox_probe.py
 COPY deploy/docker/atlas-execution-worker-entrypoint.sh /usr/local/bin/atlas-execution-worker-entrypoint
+COPY deploy/docker/atlas-execution-auth-stager.py /usr/local/bin/atlas-execution-auth-stager
 
 RUN groupadd --gid 10001 atlas \
     && useradd \

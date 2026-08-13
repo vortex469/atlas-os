@@ -147,8 +147,17 @@ def create_app() -> FastAPI:
     runner = SubprocessRunner()
     execution_backend = None
     if settings.execution_backend == "worker":
+        execution_worker_token = settings.execution_worker_auth_file.read_text(
+            encoding="ascii"
+        ).strip()
+        if not execution_worker_token:
+            raise ValueError("execution worker authentication token is empty")
         execution_backend = WorkerExecutionBackend(
-            TcpWorkerClient(settings.execution_worker_host, settings.execution_worker_port),
+            TcpWorkerClient(
+                settings.execution_worker_host,
+                settings.execution_worker_port,
+                authentication_token=execution_worker_token,
+            ),
             repository_token=settings.execution_worker_repository_token,
         )
     review_engine = ReviewEngine()

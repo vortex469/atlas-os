@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from app.execution.worker_contracts import (
+    CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
     RC1_SMOKE_MARKER,
     RC1_SMOKE_TARGET,
     WorkerExecutionIntent,
@@ -34,7 +35,7 @@ def _request(head: str, *, request_id: str = "execution-1", allowed: tuple[str, 
         repository_token="trusted-repository",
         expected_repository_head=head,
         repository_branch=None,
-        argv=("codex", "exec", "test-prompt"),
+        argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "test-prompt"),
         working_directory=".",
         allowed_affected_files=allowed,
         timeout_seconds=10,

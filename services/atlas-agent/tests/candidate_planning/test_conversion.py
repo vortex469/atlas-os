@@ -410,6 +410,9 @@ def test_candidate_workflow_shell_translates_to_exact_implementation_approval(tm
     assert workflow.candidate_implementation_request is not None
     implementation = workflow.candidate_implementation_request
     assert implementation.argv[0:2] == ("codex", "exec")
+    assert 'default_permissions="atlas-workspace"' in implementation.argv
+    assert 'permissions.atlas-workspace.extends=":workspace"' in implementation.argv
+    assert "permissions.atlas-workspace.network.enabled=true" in implementation.argv
     assert implementation.working_directory == tmp_path / "repo"
     assert implementation.repository_head == "abc123"
     approval = approvals.get_request(response.exact_approval_request_id)

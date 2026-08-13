@@ -3,8 +3,8 @@
 from dataclasses import replace
 
 import pytest
-
 from app.execution.worker_contracts import (
+    CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
     BoundedOutput,
     WorkerAttestation,
     WorkerExecutionRequest,
@@ -29,7 +29,7 @@ def make_request(**overrides: object) -> WorkerExecutionRequest:
         "repository_token": "repository-token-1",
         "expected_repository_head": HEAD,
         "repository_branch": "feature/worker",
-        "argv": ("codex", "exec", "update compose image"),
+        "argv": (*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "update compose image"),
         "working_directory": ".",
         "allowed_affected_files": ("compose.production.yaml",),
         "timeout_seconds": 120,
@@ -80,7 +80,10 @@ def test_request_canonicalizes_unordered_files_and_digest_is_deterministic() -> 
 
 def test_security_sensitive_request_changes_change_digest() -> None:
     request = make_request()
-    assert make_request(argv=("codex", "exec", "other")).request_digest != request.request_digest
+    assert (
+        make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "other")).request_digest
+        != request.request_digest
+    )
     assert make_request(expected_repository_head="b" * 40).request_digest != request.request_digest
     assert make_request(plan_fingerprint="other-plan").request_digest != request.request_digest
     assert make_request(timeout_seconds=121).request_digest != request.request_digest

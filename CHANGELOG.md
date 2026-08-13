@@ -8,6 +8,11 @@ release boundaries.
 
 ### Added
 
+- Hardened Codex `workspace-write` execution with an immutable named permission
+  profile, runsc isolation, a segmented Agent-to-worker relay, peer-bound bearer
+  authentication, and production-gate proofs for disposable workspace writes,
+  outside-workspace denial, and direct worker-control-plane denial.
+
 - Configurable loopback or LAN HTTP binding and an optional authenticated
   HTTPS ingress overlay.
 - Online, integrity-checked backups and guarded restores for persistent

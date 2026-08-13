@@ -9,6 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from app.execution.worker_contracts import CODEX_WORKSPACE_EXEC_ARGV_PREFIX
 from atlas_execution_worker.api import _disabled_result, create_app
 from atlas_execution_worker.durable_ledger import (
     DurableLedgerConflictError,
@@ -41,7 +42,7 @@ def test_conflicting_digest_after_restart_is_rejected(tmp_path: Path) -> None:
     ledger.claim(request)
     with pytest.raises(DurableLedgerConflictError):
         DurableRequestLedger(database).claim(
-            make_request(argv=("codex", "exec", "different prompt"))
+            make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "different prompt"))
         )
 
 

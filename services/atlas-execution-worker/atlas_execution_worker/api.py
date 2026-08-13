@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import secrets
 from typing import Any
 
 from app.execution.worker_contracts import (
@@ -66,6 +67,8 @@ def create_app(
     *,
     execution_enabled: bool = False,
     runners: dict[str, WorkspaceExecutionRunner] | None = None,
+    authentication_token: str | None = None,
+    allowed_client_address: str | None = None,
 ) -> FastAPI:
     """Create the execution-disabled app with an injectable ledger."""
 
@@ -98,6 +101,16 @@ def create_app(
 
     @app.post("/v1/executions")
     async def submit(request: Request) -> JSONResponse:
+        if (
+            allowed_client_address is not None
+            and (request.client is None or request.client.host != allowed_client_address)
+        ):
+            return _error(403, "untrusted_peer", "worker client network identity rejected")
+        if authentication_token is not None and not secrets.compare_digest(
+            request.headers.get("authorization", ""),
+            f"Bearer {authentication_token}",
+        ):
+            return _error(401, "authentication_required", "worker authentication failed")
         try:
             payload = await request.json()
             worker_request = WorkerExecutionRequest.from_dict(payload)
@@ -165,7 +178,17 @@ def create_app(
         )
 
     @app.get("/v1/executions/{execution_request_id}")
-    async def get_result(execution_request_id: str) -> JSONResponse:
+    async def get_result(execution_request_id: str, request: Request) -> JSONResponse:
+        if (
+            allowed_client_address is not None
+            and (request.client is None or request.client.host != allowed_client_address)
+        ):
+            return _error(403, "untrusted_peer", "worker client network identity rejected")
+        if authentication_token is not None and not secrets.compare_digest(
+            request.headers.get("authorization", ""),
+            f"Bearer {authentication_token}",
+        ):
+            return _error(401, "authentication_required", "worker authentication failed")
         try:
             entry = request_ledger.get(execution_request_id)
         except DurableLedgerCorruptionError:

@@ -31,6 +31,15 @@ if [[ ! -S /var/run/docker.sock ]]; then
 fi
 
 cleanup() {
+    cleanup_status=$?
+    if [[ "$cleanup_status" -ne 0 ]]; then
+        docker compose \
+            --project-name "$GATE_PROJECT" \
+            --file "$COMPOSE_FILE" \
+            --file "$HTTPS_COMPOSE_FILE" \
+            --file "$GATE_COMPOSE_FILE" \
+            logs atlas-execution-worker atlas-execution-worker-relay >&2 || true
+    fi
     docker compose \
         --project-name "$GATE_PROJECT" \
         --file "$COMPOSE_FILE" \
@@ -49,6 +58,7 @@ cleanup() {
         "$GATE_COMPOSE_FILE" \
         "$GATE_PROXY_CONFIG_FILE"
     rmdir "$GATE_DIRECTORY" 2>/dev/null || true
+    return "$cleanup_status"
 }
 
 trap cleanup EXIT
@@ -112,6 +122,7 @@ else:
 )"
 gate_worker_prefix="${gate_worker_subnet%0/24}"
 gate_proxy_address="${gate_worker_prefix}2"
+gate_relay_address="${gate_worker_prefix}3"
 gate_worker_address="${gate_worker_prefix}10"
 
 sed \
@@ -129,10 +140,15 @@ printf '%s\n' \
     "      HTTPS_PROXY: http://$gate_proxy_address:3128" \
     "      HTTP_PROXY: http://$gate_proxy_address:3128" \
     "      ALL_PROXY: http://$gate_proxy_address:3128" \
+    "      ATLAS_EXECUTION_WORKER_ALLOWED_CLIENT_HOST: $gate_relay_address" \
     '  atlas-egress-proxy:' \
     '    networks:' \
     '      atlas-execution-worker-net:' \
     "        ipv4_address: $gate_proxy_address" \
+    '  atlas-execution-worker-relay:' \
+    '    networks:' \
+    '      atlas-execution-worker-net:' \
+    "        ipv4_address: $gate_relay_address" \
     '    volumes:' \
     "      - $GATE_PROXY_CONFIG_FILE:/etc/squid/squid.conf:ro" \
     'networks:' \
@@ -179,6 +195,12 @@ echo "Building production images"
 
 echo "Starting isolated production stack"
 "${compose[@]}" up --detach --wait --wait-timeout 90
+
+echo "Checking execution worker sandbox and transport boundary"
+ATLAS_EXECUTION_GATE_COMPOSE_OVERRIDE="$GATE_COMPOSE_FILE" \
+    ATLAS_EXECUTION_GATE_COMPOSE_SECONDARY="$HTTPS_COMPOSE_FILE" \
+    ATLAS_EXECUTION_GATE_PROJECT="$GATE_PROJECT" \
+    "$ATLAS_ROOT/scripts/atlas-execution-worker-runtime-gate"
 
 core_container="$("${compose[@]}" ps --quiet atlas-core)"
 agent_container="$("${compose[@]}" ps --quiet atlas-agent)"

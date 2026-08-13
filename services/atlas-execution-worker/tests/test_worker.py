@@ -10,7 +10,10 @@ from pathlib import Path
 
 import pytest
 import uvicorn
-from app.execution.worker_contracts import WorkerExecutionRequest
+from app.execution.worker_contracts import (
+    CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
+    WorkerExecutionRequest,
+)
 from atlas_execution_worker.api import _disabled_result, create_app
 from atlas_execution_worker.durable_ledger import DurableRequestLedger
 from atlas_execution_worker.ledger import RequestConflictError, RequestLedger
@@ -31,7 +34,7 @@ def make_request(**overrides: object) -> WorkerExecutionRequest:
         "repository_token": "repository-token-1",
         "expected_repository_head": HEAD,
         "repository_branch": "feature/worker",
-        "argv": ("codex", "exec", "do not execute this prompt"),
+        "argv": (*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "do not execute this prompt"),
         "working_directory": ".",
         "allowed_affected_files": ("compose.production.yaml",),
         "timeout_seconds": 120,
@@ -76,7 +79,7 @@ def test_validation_conflict_and_lookup_errors_are_deterministic() -> None:
     assert digest_error.json()["error"]["code"] == "invalid_request"
 
     assert client.post("/v1/executions", json=request.to_dict()).status_code == 200
-    conflicting = make_request(argv=("codex", "exec", "different prompt"))
+    conflicting = make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "different prompt"))
     conflict = client.post("/v1/executions", json=conflicting.to_dict())
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "request_id_conflict"
@@ -105,7 +108,7 @@ def test_ledger_claims_identical_request_once_and_reuses_completion() -> None:
 def test_ledger_rejects_same_id_with_different_digest() -> None:
     ledger = RequestLedger()
     ledger.claim(make_request())
-    different = make_request(argv=("codex", "exec", "different prompt"))
+    different = make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "different prompt"))
 
     with pytest.raises(RequestConflictError):
         ledger.claim(different)
@@ -143,7 +146,7 @@ def test_tcp_health_and_submit_through_private_tcp(tmp_path: Path) -> None:
     probe.bind(("127.0.0.1", 0))
     port = probe.getsockname()[1]
     probe.close()
-    app = create_app()
+    app = create_app(authentication_token="test-worker-token")
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="critical")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
@@ -154,7 +157,11 @@ def test_tcp_health_and_submit_through_private_tcp(tmp_path: Path) -> None:
     try:
         from app.execution.worker_client import TcpWorkerClient
 
-        client = TcpWorkerClient("127.0.0.1", port)
+        client = TcpWorkerClient(
+            "127.0.0.1",
+            port,
+            authentication_token="test-worker-token",
+        )
         assert client.health()["execution_enabled"] is False
         result = client.submit(make_request())
         assert result["result"]["failure_code"] == "worker_unavailable"
@@ -165,11 +172,46 @@ def test_tcp_health_and_submit_through_private_tcp(tmp_path: Path) -> None:
     assert not thread.is_alive()
 
 
+def test_execution_control_plane_rejects_missing_or_invalid_authentication() -> None:
+    client = TestClient(create_app(authentication_token="test-worker-token"))
+    request = make_request()
+
+    missing = client.post("/v1/executions", json=request.to_dict())
+    invalid = client.post(
+        "/v1/executions",
+        json=request.to_dict(),
+        headers={"Authorization": "Bearer wrong-token"},
+    )
+    lookup = client.get("/v1/executions/execution-1")
+
+    assert missing.status_code == 401
+    assert invalid.status_code == 401
+    assert lookup.status_code == 401
+    assert missing.json()["error"]["code"] == "authentication_required"
+
+
+def test_execution_control_plane_rejects_authenticated_untrusted_peer() -> None:
+    client = TestClient(
+        create_app(
+            authentication_token="test-worker-token",
+            allowed_client_address="relay-only",
+        )
+    )
+
+    response = client.get(
+        "/v1/executions/execution-1",
+        headers={"Authorization": "Bearer test-worker-token"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "untrusted_peer"
+
+
 def test_prompt_and_auth_like_values_are_not_logged(caplog: pytest.LogCaptureFixture) -> None:
     client = TestClient(create_app())
     prompt = "SECRET_PROMPT_SHOULD_NOT_BE_LOGGED"
     auth_like = "sk-secret-value"
-    request = make_request(argv=("codex", "exec", prompt + " " + auth_like))
+    request = make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, prompt + " " + auth_like))
 
     with caplog.at_level(logging.INFO):
         assert client.post("/v1/executions", json=request.to_dict()).status_code == 200
@@ -209,7 +251,7 @@ def test_enabled_execution_claims_runs_once_and_reuses_durable_result(tmp_path: 
     assert first.json() == second.json()
     assert runner.calls == 1
 
-    conflicting = make_request(argv=("codex", "exec", "different prompt"))
+    conflicting = make_request(argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "different prompt"))
     response = client.post("/v1/executions", json=conflicting.to_dict())
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "request_id_conflict"

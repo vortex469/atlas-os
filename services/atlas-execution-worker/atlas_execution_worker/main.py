@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import socket
 from pathlib import Path
 
 import uvicorn
@@ -16,6 +17,20 @@ from .workspace import WorkerWorkspaceManager
 
 
 def main() -> None:
+    authentication_file = Path(
+        os.environ.get(
+            "ATLAS_EXECUTION_WORKER_AUTH_FILE",
+            "/run/atlas-execution-auth/token",
+        )
+    )
+    authentication_token = authentication_file.read_text(encoding="ascii").strip()
+    if not authentication_token:
+        raise ValueError("execution worker authentication token is empty")
+    allowed_client_host = os.environ.get(
+        "ATLAS_EXECUTION_WORKER_ALLOWED_CLIENT_HOST",
+        "atlas-execution-worker-relay",
+    )
+    allowed_client_address = socket.gethostbyname(allowed_client_host)
     state_dir = Path(
         os.environ.get(
             "ATLAS_EXECUTION_WORKER_STATE_DIR",
@@ -48,6 +63,8 @@ def main() -> None:
         durable_ledger=ledger,
         execution_enabled=worker_settings.execution_enabled,
         runners=runners,
+        authentication_token=authentication_token,
+        allowed_client_address=allowed_client_address,
     )
     host = os.environ.get("ATLAS_EXECUTION_WORKER_HOST", DEFAULT_HOST)
     port = validate_port(

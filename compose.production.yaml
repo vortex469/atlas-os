@@ -44,13 +44,17 @@ services:
     depends_on:
       atlas-core:
         condition: service_healthy
+      atlas-execution-worker-relay:
+        condition: service_healthy
       atlas-execution-worker:
         condition: service_healthy
       atlas-agent-auth-stager:
         condition: service_completed_successfully
+      atlas-execution-auth-stager:
+        condition: service_completed_successfully
     networks:
       default: {}
-      atlas-execution-worker-net: {}
+      atlas-execution-transport-net: {}
     environment:
       ATLAS_AGENT_ENVIRONMENT: production
       ATLAS_AGENT_HOST: 0.0.0.0
@@ -66,8 +70,9 @@ services:
       ATLAS_CORE_REQUIRED: "false"
       ATLAS_EXECUTION_BACKEND: ${ATLAS_EXECUTION_BACKEND:-local}
       ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN: ${ATLAS_EXECUTION_WORKER_REPOSITORY_TOKEN:-atlas-repository}
-      ATLAS_EXECUTION_WORKER_HOST: atlas-execution-worker
+      ATLAS_EXECUTION_WORKER_HOST: atlas-execution-worker-relay
       ATLAS_EXECUTION_WORKER_PORT: "8081"
+      ATLAS_EXECUTION_WORKER_AUTH_FILE: /run/atlas-execution-auth/token
       GIT_CONFIG_COUNT: "1"
       GIT_CONFIG_KEY_0: safe.directory
       GIT_CONFIG_VALUE_0: /workspace/repository
@@ -75,6 +80,7 @@ services:
       - ${ATLAS_REPOSITORY_HOST_PATH:?set ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository
       - atlas-agent-state:/opt/atlas/agent-state
       - atlas-agent-auth-staging:/run/secrets:ro
+      - atlas-execution-auth-staging:/run/atlas-execution-auth:ro
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
@@ -119,6 +125,8 @@ services:
     depends_on:
       atlas-egress-proxy:
         condition: service_healthy
+      atlas-execution-auth-stager:
+        condition: service_completed_successfully
     runtime: runsc
     networks:
       atlas-execution-worker-net:
@@ -133,9 +141,12 @@ services:
       ATLAS_EXECUTION_WORKER_REPOSITORY_MAP: "atlas-repository=/workspace/repository"
       ATLAS_EXECUTION_WORKER_HOST: 0.0.0.0
       ATLAS_EXECUTION_WORKER_PORT: "8081"
+      ATLAS_EXECUTION_WORKER_AUTH_FILE: /run/atlas-execution-auth/token
+      ATLAS_EXECUTION_WORKER_ALLOWED_CLIENT_HOST: 172.31.0.3
     volumes:
       - ${ATLAS_REPOSITORY_HOST_PATH:?set ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository:ro
       - atlas-execution-worker-state:/opt/atlas/execution-worker-state
+      - atlas-execution-auth-staging:/run/atlas-execution-auth:ro
     read_only: true
     user: "10001:10001"
     tmpfs:
@@ -153,6 +164,55 @@ services:
       retries: 3
     expose:
       - "8081"
+
+  atlas-execution-worker-relay:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-execution-worker.Dockerfile
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "atlas_execution_worker.relay"]
+    networks:
+      atlas-execution-transport-net:
+        aliases:
+          - atlas-execution-worker-relay-transport
+      atlas-execution-worker-net:
+        ipv4_address: 172.31.0.3
+    environment:
+      ATLAS_EXECUTION_RELAY_HOST: atlas-execution-worker-relay-transport
+      ATLAS_EXECUTION_RELAY_PORT: "8081"
+      ATLAS_EXECUTION_RELAY_UPSTREAM_HOST: atlas-execution-worker
+      ATLAS_EXECUTION_RELAY_UPSTREAM_PORT: "8081"
+    read_only: true
+    user: "10001:10001"
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, socket; socket.create_connection((os.environ['ATLAS_EXECUTION_RELAY_HOST'], 8081), timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  atlas-execution-auth-stager:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-execution-worker.Dockerfile
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["python", "/usr/local/bin/atlas-execution-auth-stager"]
+    volumes:
+      - atlas-execution-auth-staging:/staging
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
 
   atlas-egress-proxy:
     image: ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
@@ -208,9 +268,12 @@ volumes:
   atlas-agent-state:
   atlas-data:
   atlas-execution-worker-state:
+  atlas-execution-auth-staging:
   atlas-agent-auth-staging:
 
 networks:
+  atlas-execution-transport-net:
+    internal: true
   atlas-execution-worker-net:
     internal: true
     ipam:

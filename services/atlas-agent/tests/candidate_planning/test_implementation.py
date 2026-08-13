@@ -21,6 +21,7 @@ from app.candidate_planning.models import (
     CoreCandidatePlanningIntakeStatus,
 )
 from app.execution.policy import ToolPolicy
+from app.execution.worker_contracts import CODEX_WORKSPACE_EXEC_ARGV_PREFIX
 from app.repository.models import RepositorySnapshot
 from app.workflow.models import (
     CandidateWorkflowMetadata,
@@ -161,7 +162,7 @@ def test_translator_generates_deterministic_tool_policy_validated_request(tmp_pa
 
     assert first.request is not None
     assert first.request == second.request
-    assert first.request.argv[0] == "codex"
+    assert first.request.argv[:-1] == CODEX_WORKSPACE_EXEC_ARGV_PREFIX
     assert first.request.working_directory == tmp_path
     assert first.request.affected_files == (Path("compose.production.yaml"),)
     assert first.request.translator_version == TRANSLATOR_VERSION

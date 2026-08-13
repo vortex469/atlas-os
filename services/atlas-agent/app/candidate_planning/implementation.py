@@ -20,11 +20,12 @@ from app.candidate_planning.models import (
 )
 from app.execution.models import ExecutionRequest
 from app.execution.policy import ToolPolicy
+from app.execution.worker_contracts import CODEX_WORKSPACE_EXEC_ARGV_PREFIX
 from app.planning.models import ImplementationPlan
 from app.repository.models import RepositorySnapshot
 from app.workflow.models import WorkflowSession
 
-TRANSLATOR_VERSION = "candidate-update-compose-stack-v1"
+TRANSLATOR_VERSION = "candidate-update-compose-stack-v2"
 _SUPPORTED_INTENT = "update-compose-stack"
 _ALLOWED_TARGETS = frozenset({"atlas-compose", "atlas-repository"})
 _ALLOWED_AFFECTED_FILES = frozenset({Path("compose.production.yaml")})
@@ -219,7 +220,7 @@ def _argv_for_candidate(
             "Stop after preparing the repository change for later verification and review.",
         )
     )
-    return ("codex", "exec", prompt)
+    return (*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, prompt)
 
 
 def _execution_request_for_validation(

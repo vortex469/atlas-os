@@ -217,7 +217,13 @@ class WorkspaceExecutionRunner:
             duration_seconds=max(0.0, time.monotonic() - started),
             failure_code=failure,
             workspace_head=workspace_head,
-            worker_attestation=WorkerAttestation(10001, True, True, "0000000000000000", "runsc-squid"),
+            worker_attestation=WorkerAttestation(
+                10001,
+                True,
+                True,
+                "0000000000000000",
+                "runsc-squid+atlas-workspace",
+            ),
             base_repository_head=base,
             patch=patch,
         )

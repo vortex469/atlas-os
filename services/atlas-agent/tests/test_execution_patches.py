@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from app.execution.patches import PatchApplicationError, WorkerPatchApplier
 from app.execution.worker_contracts import (
+    CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
     BoundedOutput,
     WorkerAttestation,
     WorkerExecutionRequest,
@@ -34,7 +35,7 @@ def request(root: Path, head: str, files: tuple[str, ...] = ("compose.production
         repository_token="atlas-repository",
         expected_repository_head=head,
         repository_branch="main",
-        argv=("codex", "exec", "approved prompt"),
+        argv=(*CODEX_WORKSPACE_EXEC_ARGV_PREFIX, "approved prompt"),
         working_directory=".",
         allowed_affected_files=files,
         timeout_seconds=120,
