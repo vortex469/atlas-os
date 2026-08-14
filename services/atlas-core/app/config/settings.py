@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +65,7 @@ class IntelligenceSettings(BaseModel):
 
 class OperationalDispatchSettings(BaseModel):
     database: str = "/opt/atlas/data/operational_dispatch.db"
+    agent_auth_file: str = "/run/atlas-core-agent-auth/token"
 
 
 class Settings(BaseModel):
@@ -101,7 +103,17 @@ def load_yaml_config() -> dict[str, Any]:
 
 def load_settings() -> Settings:
     try:
-        return Settings.model_validate(load_yaml_config())
+        loaded = Settings.model_validate(load_yaml_config())
+        auth_file = os.getenv("ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE")
+        if auth_file:
+            loaded = loaded.model_copy(
+                update={
+                    "operational_dispatch": loaded.operational_dispatch.model_copy(
+                        update={"agent_auth_file": auth_file}
+                    )
+                }
+            )
+        return loaded
     except ValidationError as error:
         raise RuntimeError(
             f"Atlas configuration validation failed:\n{error}"

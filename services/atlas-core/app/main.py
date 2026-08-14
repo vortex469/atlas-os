@@ -16,7 +16,9 @@ from app.core.middleware import RequestLoggingMiddleware
 from app.intelligence.development_fixture import (
     development_fixture_enabled_and_validated,
 )
+from app.operational_dispatch.auth import OperationalDispatchAuthenticator
 from app.operational_dispatch.ledger import OperationalDispatchLedger
+from app.operational_dispatch.service import OperationalDispatchService
 from app.providers.loader import load_provider_registry
 from app.routes.ace import router as ace_router
 from app.routes.ai import router as ai_router
@@ -50,6 +52,12 @@ async def lifespan(app: FastAPI):
     )
     reconciliation = operational_ledger.reconcile_startup()
     app.state.operational_dispatch_ledger = operational_ledger
+    app.state.operational_dispatch_authenticator = OperationalDispatchAuthenticator(
+        settings.operational_dispatch.agent_auth_file
+    )
+    app.state.operational_dispatch_service = OperationalDispatchService(
+        ledger=operational_ledger
+    )
     logger.info(
         "Operational dispatch ledger initialized",
         extra={"operational_reconciliation": reconciliation},

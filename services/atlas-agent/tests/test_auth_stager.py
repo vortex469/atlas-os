@@ -76,6 +76,14 @@ def test_agent_remains_non_root_and_execution_is_disabled() -> None:
     assert "USER atlas" in DOCKERFILE.read_text()
     compose = Path("compose.production.yaml").read_text()
     assert "atlas-agent-auth-staging:/run/secrets:ro" in compose
+    assert "atlas-core-agent-auth-staging:/run/atlas-core-agent-auth:ro" in compose
+    assert compose.count(
+        "atlas-core-agent-auth-staging:/run/atlas-core-agent-auth:ro"
+    ) == 2
+    mission_control = compose.split("  mission-control:", 1)[1].split(
+        "\nvolumes:", 1
+    )[0]
+    assert "atlas-core-agent-auth" not in mission_control
     assert "atlas-execution-transport-net: {}" in compose
     assert "ATLAS_EXECUTION_WORKER_HOST: atlas-execution-worker-relay" in compose
     assert 'ATLAS_EXECUTION_WORKER_EXECUTION_ENABLED: "false"' in compose

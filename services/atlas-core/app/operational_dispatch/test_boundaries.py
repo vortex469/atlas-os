@@ -11,6 +11,7 @@ def test_dispatch_foundations_have_no_mutation_or_execution_dependencies() -> No
             "registry.py",
             "service.py",
             "verification.py",
+            "auth.py",
         )
     )
     for forbidden in (
@@ -25,6 +26,16 @@ def test_dispatch_foundations_have_no_mutation_or_execution_dependencies() -> No
         assert forbidden not in production_sources
 
 
-def test_no_operational_dispatch_http_route_exists_without_service_auth() -> None:
+def test_operational_dispatch_route_authenticates_before_reading_body() -> None:
     routes = Path(__file__).parents[1] / "routes"
     assert not (routes / "operational_dispatch.py").exists()
+    source = (routes / "internal_operational_actions.py").read_text(encoding="utf-8")
+    assert source.index(".authenticate(") < source.index("await request.body()")
+    for forbidden in (
+        "app.actions",
+        "execute_action(",
+        "subprocess",
+        "app.providers.proxmox",
+        "var/run/docker.sock",
+    ):
+        assert forbidden not in source

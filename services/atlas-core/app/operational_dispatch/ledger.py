@@ -11,6 +11,7 @@ from pathlib import Path
 from threading import Lock
 
 from app.operational_dispatch.models import (
+    OperationalDispatchAuditEvent,
     OperationalDispatchRequest,
     OperationalDispatchResult,
     OperationalVerificationResult,
@@ -113,6 +114,20 @@ class OperationalDispatchLedger:
                     verification_result_json TEXT
                 )
                 """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS operational_dispatch_events (
+                    event_id TEXT PRIMARY KEY,
+                    status TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL,
+                    event_json TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """CREATE INDEX IF NOT EXISTS idx_operational_dispatch_events_time
+                   ON operational_dispatch_events (occurred_at DESC)"""
             )
 
     @staticmethod
@@ -315,6 +330,40 @@ class OperationalDispatchLedger:
                 "SELECT * FROM operational_dispatch WHERE request_id=?", (request_id,)
             ).fetchone()
             return self._entry(row) if row is not None else None
+
+    def append_event(self, event: OperationalDispatchAuditEvent) -> None:
+        event = OperationalDispatchAuditEvent.model_validate(event.model_dump())
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                """INSERT INTO operational_dispatch_events
+                   (event_id, status, occurred_at, event_json)
+                   VALUES (?, ?, ?, ?)""",
+                (
+                    event.event_id,
+                    event.status.value,
+                    event.occurred_at.isoformat(),
+                    event.model_dump_json(),
+                ),
+            )
+
+    def list_events(self, *, limit: int = 100) -> tuple[OperationalDispatchAuditEvent, ...]:
+        if limit < 1 or limit > 1000:
+            raise ValueError("operational event limit must be between 1 and 1000")
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """SELECT event_json FROM operational_dispatch_events
+                   ORDER BY occurred_at DESC, event_id DESC LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        try:
+            return tuple(
+                OperationalDispatchAuditEvent.model_validate_json(row["event_json"])
+                for row in rows
+            )
+        except (ValueError, json.JSONDecodeError) as error:
+            raise OperationalLedgerCorruptionError(
+                "stored operational dispatch event is invalid"
+            ) from error
 
     def _transition(
         self,

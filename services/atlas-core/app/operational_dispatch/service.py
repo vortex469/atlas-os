@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from app.operational_dispatch.ledger import (
     OperationalDispatchLedger,
     OperationalLedgerState,
 )
 from app.operational_dispatch.models import (
+    OperationalDispatchAuditEvent,
+    OperationalDispatchAuditStatus,
     OperationalDispatchRequest,
     OperationalDispatchResult,
     OperationalDispatchStatus,
@@ -62,10 +65,12 @@ class OperationalDispatchService:
             request.resource_type,
         )
         if request.execution_intent not in self._execution_intents:
+            self._audit(request, OperationalDispatchAuditStatus.EXECUTION_DISABLED)
             return self._terminal_failure(
                 request, now, "Operational execution capability is disabled."
             )
         if handler is None:
+            self._audit(request, OperationalDispatchAuditStatus.NO_HANDLER)
             return self._terminal_failure(
                 request, now, "No exact operational handler is registered."
             )
@@ -81,9 +86,11 @@ class OperationalDispatchService:
             ProviderNotFoundError,
             ProviderResourcesNotSupportedError,
         ):
+            self._audit(request, OperationalDispatchAuditStatus.TARGET_BLOCKED)
             return self._target_replaced(request, now)
         except ProviderResourceOperationError:
             # The durable claim remains pre-dispatch and may be retried safely.
+            self._audit(request, OperationalDispatchAuditStatus.TARGET_BLOCKED)
             return OperationalDispatchResult(
                 status=OperationalDispatchStatus.FAILED,
                 request_id=request.request_id,
@@ -94,6 +101,7 @@ class OperationalDispatchService:
                 sanitized_message="Operational target is temporarily unavailable.",
             )
         if not self._target_matches(request, target):
+            self._audit(request, OperationalDispatchAuditStatus.TARGET_BLOCKED)
             return self._target_replaced(request, now)
 
         self._ledger.mark_revalidated(request)
@@ -134,9 +142,33 @@ class OperationalDispatchService:
             if result.status is OperationalDispatchStatus.FAILED
             else OperationalLedgerState.OUTCOME_UNKNOWN
         )
+        self._audit(request, OperationalDispatchAuditStatus.DISPATCH_RESULT)
         return self._ledger.persist_dispatch_result(
             request, result, state=state
         ).dispatch_result  # type: ignore[return-value]
+
+    def _audit(
+        self,
+        request: OperationalDispatchRequest,
+        status: OperationalDispatchAuditStatus,
+    ) -> None:
+        self._ledger.append_event(
+            OperationalDispatchAuditEvent(
+                event_id=uuid4().hex,
+                status=status,
+                occurred_at=datetime.now(UTC),
+                request_id=request.request_id,
+                request_digest=request.request_digest,
+                workflow_session_id=request.workflow_session_id,
+                candidate_planning_session_id=request.candidate_planning_session_id,
+                candidate_id=request.candidate_id,
+                candidate_plan_id=request.candidate_plan_id,
+                provider_id=request.provider_id,
+                resource_id=request.resource_id,
+                resource_type=request.resource_type,
+                target_fingerprint=request.target_fingerprint,
+            )
+        )
 
     @staticmethod
     def _target_matches(

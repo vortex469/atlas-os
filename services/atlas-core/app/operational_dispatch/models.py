@@ -136,6 +136,33 @@ class OperationalDispatchStatus(StrEnum):
     OUTCOME_UNKNOWN = "outcome_unknown"
 
 
+class OperationalDispatchAuditStatus(StrEnum):
+    AUTH_ATTEMPTED = "auth_attempted"
+    AUTH_REJECTED = "auth_rejected"
+    REQUEST_ACCEPTED = "request_accepted"
+    EXECUTION_DISABLED = "execution_disabled"
+    NO_HANDLER = "no_handler"
+    REQUEST_CONFLICT = "request_conflict"
+    TARGET_BLOCKED = "target_blocked"
+    DISPATCH_RESULT = "dispatch_result"
+
+
+class OperationalDispatchAuditEvent(OperationalDispatchModel):
+    event_id: str
+    status: OperationalDispatchAuditStatus
+    occurred_at: datetime
+    request_id: str | None = None
+    request_digest: str | None = None
+    workflow_session_id: str | None = None
+    candidate_planning_session_id: str | None = None
+    candidate_id: str | None = None
+    candidate_plan_id: str | None = None
+    provider_id: str | None = None
+    resource_id: str | None = None
+    resource_type: str | None = None
+    target_fingerprint: str | None = None
+
+
 class OperationalDispatchResult(OperationalDispatchModel):
     status: OperationalDispatchStatus
     request_id: str
