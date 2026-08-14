@@ -189,16 +189,48 @@ through a separate reviewed cleanup decision.
 
 ### Deployment sign-off required before an RC
 
-- [ ] Re-run and record the full Core, Agent, Mission Control, worker, Compose,
+- [x] Re-run and record the full Core, Agent, Mission Control, worker, Compose,
   container, dependency, and credential-hygiene gates on the final RC commit.
-- [ ] Push the reviewed documentation commit and require both GitHub workflows
+- [x] Push the reviewed documentation commit and require both GitHub workflows
   to pass on that exact SHA.
 - [x] Document the supported
   [v0.6.0 to v0.7 upgrade and rollback](DEPLOYMENT.md#atlas-v060-to-v07-upgrade-and-rollback),
   including schema-v3 downgrade handling and in-flight dispatch preservation.
-- [ ] Review those v0.7 upgrade and rollback instructions and record
+- [x] Review those v0.7 upgrade and rollback instructions and record
   release-lead sign-off.
-- [ ] Create an immutable RC tag only after the exact pushed SHA is green.
+- [x] Create an immutable RC tag only after the exact pushed SHA is green.
+- [ ] Create and publish the final immutable `atlas-v0.7.0` tag only after the
+  documentation provenance fix is committed and required CI passes on that new
+  final SHA.
+
+### Final RC1 provenance and production soak — 2026-08-14
+
+Release candidate `atlas-v0.7-rc1` resolves to
+`5b1321091af0fc191844cdf71e9e0d919e4ea415`.
+
+- [x] Quality gates run `31850208419` passed on the exact RC SHA: `atlas-core`,
+  `atlas-agent`, and `mission-control` all succeeded.
+- [x] Container release gate run `31850208435` passed on the exact RC SHA.
+- [x] Dependency Graph run `31850211284` passed on the exact RC SHA.
+- [x] Production was rebuilt from the exact RC1 checkout with no-cache images
+  and deployed using only `compose.production.yaml`, `compose.https.yaml`, and
+  `compose.operator-auth.yaml`. The untracked
+  `compose.execution-smoke.override.yaml` was not used.
+- [x] Running Core and Agent source checksums matched the RC1 checkout, and the
+  running Mission Control image identity matched the exact RC1 build.
+- [x] Sequential restarts of Atlas Agent, Atlas Core, Mission Control, and Atlas
+  Edge passed; all production services were healthy afterward.
+- [x] The completed operational workflow remained terminal, and the production
+  ledger remained unchanged with exactly one historical barrier crossing, one
+  historical provider operation, one historical dispatch result, and no
+  replay.
+- [x] VM 110's `qmreboot` count remained `3`, and its authoritative target
+  fingerprint remained unchanged throughout the redeploy and soak.
+- [x] Operator-auth private files remained untracked, and the trusted origin
+  remained exactly `https://atlas.internal`.
+- [x] Agent and Core execution gates remained exactly `restart-service`; the
+  production registry remained exactly one tuple:
+  `restart-service / proxmox / qemu`.
 
 ### Post-hardening RC1 execution validation
 

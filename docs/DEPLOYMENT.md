@@ -551,7 +551,7 @@ git diff --cached --quiet
    than discovering the expected SHA from the fetched tag itself:
 
 ```bash
-ATLAS_V07_REF=atlas-v0.7.0-rc1
+ATLAS_V07_REF=atlas-v0.7-rc1
 ATLAS_V07_EXPECTED_SHA=replace-with-reviewed-release-sha
 git fetch origin tag "$ATLAS_V07_REF"
 test "$(git rev-parse "$ATLAS_V07_REF^{}")" = "$ATLAS_V07_EXPECTED_SHA"
