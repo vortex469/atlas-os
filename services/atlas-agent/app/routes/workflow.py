@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
@@ -41,6 +42,7 @@ from app.verification.models import (
 )
 from app.workflow.models import (
     SprintStatus,
+    WorkflowEffectKind,
     WorkflowRequest,
     WorkflowResult,
     WorkflowSessionState,
@@ -212,6 +214,25 @@ class WorkflowImplementationRequestSummary(BaseModel):
     affected_files: list[str]
     repository: str
     translator_version: str | None
+
+
+class WorkflowOperationalActionRequestSummary(BaseModel):
+    """Sanitized display-only operational action contract."""
+
+    request_id: str
+    request_digest: str
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    target_fingerprint: str
+    target_version: str | None
+    expected_pre_state: str
+    intended_action: str
+    disruption_scope: str
+    verification: dict[str, str]
+    generated_at: str
+    expires_at: str
+    execution_enabled: bool = False
 
 
 class WorkflowTimelineStageResponse(BaseModel):
@@ -429,6 +450,8 @@ class WorkflowDetailResponse(BaseModel):
     translator_version: str | None
     affected_files: list[str]
     implementation_request: WorkflowImplementationRequestSummary | None
+    effect_kind: str
+    operational_action_request: WorkflowOperationalActionRequestSummary | None
     timeline: list[WorkflowTimelineStageResponse]
     execution: WorkflowExecutionSummaryResponse
     verification_plan: WorkflowVerificationPlanResponse
@@ -960,6 +983,9 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         commit=request.app.state.container.approval_repository.get_request(
             f"approval-commit-{workflow.identifier}"
         ),
+        operational_action=request.app.state.container.approval_repository.get_request(
+            workflow.operational_action_approval_id
+        ),
     )
     shell_approval_id = f"approval-{workflow.identifier}"
     shell_approval_status = _audit_approval_status(request, shell_approval_id)
@@ -1302,6 +1328,7 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         )
 
     implementation = workflow.candidate_implementation_request
+    operational = workflow.operational_action_request
     metadata = workflow.candidate_metadata
     summary = None
     if implementation is not None:
@@ -1314,7 +1341,34 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
             translator_version=implementation.translator_version,
         )
 
-    approval_status = _approval_status(request, workflow.candidate_implementation_approval_id)
+    operational_summary = None
+    if operational is not None:
+        operational_summary = WorkflowOperationalActionRequestSummary(
+            request_id=operational.request_id,
+            request_digest=operational.request_digest,
+            provider_id=operational.provider_id,
+            resource_id=operational.resource_id,
+            resource_type=operational.resource_type,
+            target_fingerprint=operational.target_fingerprint,
+            target_version=operational.target_version,
+            expected_pre_state=operational.expected_pre_state,
+            intended_action=operational.execution_intent,
+            disruption_scope=operational.disruption_scope,
+            verification={
+                "pre_state": operational.verification.pre_state,
+                "expected_post_state": operational.verification.expected_post_state,
+                "health_requirement": operational.verification.health_requirement,
+                "unknown_outcome_policy": operational.verification.unknown_outcome_policy,
+            },
+            generated_at=operational.generated_at.isoformat(),
+            expires_at=operational.expires_at.isoformat(),
+        )
+    approval_status = _approval_status(
+        request,
+        workflow.operational_action_approval_id
+        if operational is not None
+        else workflow.candidate_implementation_approval_id,
+    )
     verification_approval = _verification_approval_status(request, workflow)
     commit_approval = _commit_approval_status(request, workflow)
     return WorkflowDetailResponse(
@@ -1331,6 +1385,8 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         translator_version=implementation.translator_version if implementation else None,
         affected_files=[str(path) for path in implementation.affected_files] if implementation else [],
         implementation_request=summary,
+        effect_kind=workflow.effect_kind.value,
+        operational_action_request=operational_summary,
         timeline=_workflow_timeline(workflow, approval_status),
         execution=_workflow_execution_summary(workflow),
         verification_plan=_workflow_verification_plan(workflow),
@@ -1532,7 +1588,11 @@ async def submit_workflow_implementation_approval(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "stale_workflow", "message": "Workflow is not awaiting implementation approval"},
         )
-    approval_id = workflow.candidate_implementation_approval_id
+    approval_id = (
+        workflow.operational_action_approval_id
+        if workflow.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+        else workflow.candidate_implementation_approval_id
+    )
     if approval_id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1548,6 +1608,16 @@ async def submit_workflow_implementation_approval(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "approval_already_decided", "message": "Approval already decided"},
+        )
+    if (
+        stored.decision.request.purpose is ApprovalPurpose.OPERATIONAL_ACTION
+        and stored.decision.request.operational_metadata is not None
+        and stored.decision.request.operational_metadata.expires_at
+        <= datetime.now(UTC)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "approval_expired", "message": "Operational action request expired"},
         )
 
     persistence = getattr(request.app.state.container, "state_persistence", None)
@@ -1580,7 +1650,14 @@ async def submit_workflow_implementation_approval(
         workflow_id=workflow.identifier,
         workflow_state=workflow.state.value,
         implementation_approval_status=decision.status.value,
-        message="Implementation approved. Execution is now available." if decision.status is ApprovalStatus.APPROVED else "Approval rejected.",
+        message=(
+            "Exact operational action approved. Operational execution is not enabled."
+            if workflow.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+            and decision.status is ApprovalStatus.APPROVED
+            else "Implementation approved. Execution is now available."
+            if decision.status is ApprovalStatus.APPROVED
+            else "Approval rejected."
+        ),
     )
 
 

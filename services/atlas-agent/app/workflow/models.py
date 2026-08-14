@@ -140,6 +140,7 @@ class WorkflowSession:
     candidate_implementation_request: CandidateImplementationRequest | None = None
     operational_action_request: OperationalActionRequest | None = None
     candidate_implementation_approval_id: str | None = None
+    operational_action_approval_id: str | None = None
     planning_analysis: ModelResponse | None = None
     review_analysis: ModelResponse | None = None
     context: AgentContext | None = None
@@ -176,6 +177,24 @@ class WorkflowSession:
             and self.candidate_implementation_request is not None
         ):
             raise ValueError("operational_action workflows cannot carry repository requests")
+        if (
+            self.effect_kind is WorkflowEffectKind.REPOSITORY_CHANGE
+            and self.operational_action_approval_id is not None
+        ):
+            raise ValueError("repository_change workflows cannot carry operational approvals")
+        if self.operational_action_request is not None:
+            request = self.operational_action_request
+            metadata = self.candidate_metadata
+            if metadata is None:
+                raise ValueError("operational requests require candidate metadata")
+            if (
+                request.workflow_session_id != self.identifier
+                or request.candidate_id != metadata.candidate_id
+                or request.candidate_fingerprint != metadata.candidate_fingerprint
+                or request.candidate_plan_fingerprint
+                != metadata.candidate_plan_fingerprint
+            ):
+                raise ValueError("operational request does not match workflow identity")
 
 
 @dataclass(frozen=True, slots=True)

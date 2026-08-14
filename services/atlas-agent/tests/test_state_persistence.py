@@ -343,7 +343,7 @@ def test_candidate_plan_round_trips_after_restart(tmp_path: Path) -> None:
     assert recovered_session.planning_status is CandidatePlanningSessionStatus.PLAN_READY
 
 
-def test_schema_v2_operational_artifacts_round_trip(tmp_path: Path) -> None:
+def test_schema_v3_operational_artifacts_round_trip(tmp_path: Path) -> None:
     candidate_state = CandidatePlanningStateStore()
     workflow_state = WorkflowStateStore()
     persistence = coordinator(
@@ -357,13 +357,38 @@ def test_schema_v2_operational_artifacts_round_trip(tmp_path: Path) -> None:
         candidate_planning_session(),
         operational_plan=operational_plan(),
     )
+    action_request = operational_request()
+    metadata = CandidateWorkflowMetadata(
+        candidate_planning_session_id=action_request.candidate_planning_session_id,
+        candidate_id=action_request.candidate_id,
+        candidate_fingerprint=action_request.candidate_fingerprint,
+        candidate_plan_id=action_request.candidate_plan_id,
+        candidate_plan_fingerprint=action_request.candidate_plan_fingerprint,
+        source_recommendation_id="recommendation-1",
+        source_subsystem="discovery",
+        catalog_item_id=None,
+        target_id=action_request.resource_id,
+        target_type=action_request.resource_type,
+        execution_category="operational",
+        execution_intent=action_request.execution_intent,
+        evidence_ids=action_request.evidence_ids,
+        compatibility_assessment_id=None,
+        compatibility_status=None,
+        relationship_ids=(),
+        conversion_timestamp=action_request.generated_at,
+        core_revalidation_status="accepted_for_planning",
+        core_revalidation_fingerprint=action_request.candidate_fingerprint,
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+    )
     stored_workflow = WorkflowSession(
         identifier="workflow-1",
         request=None,
         plan=None,
         state=WorkflowSessionState.BLOCKED,
         effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
-        operational_action_request=operational_request(),
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=metadata,
+        operational_action_request=action_request,
     )
 
     def store_operational(workflows, _approvals, candidate_planning):
@@ -373,7 +398,7 @@ def test_schema_v2_operational_artifacts_round_trip(tmp_path: Path) -> None:
     persistence.mutate_aggregate(store_operational)
 
     payload = json.loads(persistence.snapshot_path.read_text())
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     recovered_candidates = CandidatePlanningStateStore()
     recovered_workflows = WorkflowStateStore()
     coordinator(
@@ -385,6 +410,37 @@ def test_schema_v2_operational_artifacts_round_trip(tmp_path: Path) -> None:
 
     assert recovered_candidates.get_session(stored_candidate.identifier) == stored_candidate
     assert recovered_workflows.get_session(stored_workflow.identifier) == stored_workflow
+
+
+def test_schema_v2_operational_plan_ready_session_remains_readable(tmp_path: Path) -> None:
+    candidate_state = CandidatePlanningStateStore()
+    persistence = coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        candidate_state,
+    )
+    persistence.initialize()
+    stored = replace(
+        candidate_planning_session(),
+        planning_status=CandidatePlanningSessionStatus.PLAN_READY,
+        operational_plan=operational_plan(),
+    )
+    persistence.mutate_candidate_planning(lambda state: state.create_session(stored))
+    payload = json.loads(persistence.snapshot_path.read_text())
+    payload["schema_version"] = 2
+    persistence.snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    recovered = CandidatePlanningStateStore()
+    coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        recovered,
+    ).initialize()
+
+    assert recovered.get_session(stored.identifier) == stored
+    assert json.loads(persistence.snapshot_path.read_text())["schema_version"] == 2
 
 
 def test_schema_v1_defaults_workflow_effect_to_repository_change(tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 """Immutable approval models."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
@@ -20,6 +21,7 @@ class ApprovalPurpose(StrEnum):
     CANDIDATE_WORKFLOW_SHELL = "candidate_workflow_shell"
     VERIFICATION = "verification"
     COMMIT = "commit"
+    OPERATIONAL_ACTION = "operational_action"
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +55,31 @@ class CommitApprovalMetadata:
 
 
 @dataclass(frozen=True, slots=True)
+class OperationalApprovalMetadata:
+    """Exact semantic binding for one non-executable operational request."""
+
+    action_request_id: str
+    action_request_digest: str
+    candidate_id: str
+    candidate_fingerprint: str
+    operational_plan_fingerprint: str
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    target_fingerprint: str
+    target_version: str | None
+    operation_intent: str
+    disruption_scope: str
+    verification_digest: str
+    generated_at: datetime
+    expires_at: datetime
+
+    def __post_init__(self) -> None:
+        if self.expires_at <= self.generated_at:
+            raise ValueError("operational approval expiry must follow generation time")
+
+
+@dataclass(frozen=True, slots=True)
 class ApprovalRequest:
     """One tool-execution request requiring human approval."""
 
@@ -67,6 +94,7 @@ class ApprovalRequest:
     purpose: ApprovalPurpose = ApprovalPurpose.IMPLEMENTATION
     verification_checks: tuple[VerificationApprovalCheck, ...] = ()
     commit_metadata: CommitApprovalMetadata | None = None
+    operational_metadata: OperationalApprovalMetadata | None = None
 
 
 @dataclass(frozen=True, slots=True)

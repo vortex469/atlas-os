@@ -14,6 +14,10 @@ from app.approval.models import (
     ApprovalStatus,
 )
 from app.approval.repository import ApprovalRepository
+from app.candidate_planning.audit import (
+    CandidateAuditApprovals,
+    CandidateAuditChainValidator,
+)
 from app.candidate_planning.conversion import candidate_plan_fingerprint
 from app.candidate_planning.models import (
     CandidateImplementationTranslationRequest,
@@ -24,17 +28,22 @@ from app.candidate_planning.models import (
     CandidateWorkflowConversionRequest,
     ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
+    OperationalCandidatePlan,
+    OperationalTargetReference,
+    OperationalVerificationSpecification,
 )
+from app.candidate_planning.operational import operational_plan_fingerprint
 from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.service import CandidatePlanningService
 from app.candidate_planning.state import CandidatePlanningStateStore
 from app.core_client.models import (
     CoreCandidatePlanningIntakeResponse,
     CoreExecutionCandidateSnapshot,
+    CoreOperationalTargetReference,
 )
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.repository.models import RepositorySnapshot
-from app.workflow.models import WorkflowSessionState, WorkflowSource
+from app.workflow.models import WorkflowEffectKind, WorkflowSessionState, WorkflowSource
 from app.workflow.state import WorkflowStateStore
 
 NOW = datetime(2026, 8, 2, tzinfo=UTC)
@@ -50,6 +59,7 @@ class FakeCoreClient:
         candidate_id: str,
         *,
         expected_candidate_fingerprint: str | None = None,
+        expected_operational_target_fingerprint: str | None = None,
     ) -> CoreCandidatePlanningIntakeResponse:
         self.calls.append((candidate_id, expected_candidate_fingerprint))
         return self.responses.pop(0)
@@ -220,6 +230,177 @@ def service_with(
         clock=lambda: NOW,
     )
     return service, candidate_state, workflow_state, approvals, persistence
+
+
+def operational_core_response() -> CoreCandidatePlanningIntakeResponse:
+    candidate = candidate_snapshot(intent="restart-service").model_copy(
+        update={
+            "effect_kind": "operational_action",
+            "target_id": "qemu/101",
+            "target_type": "qemu",
+            "mutation": None,
+            "operational_target": CoreOperationalTargetReference(
+                provider_id="proxmox",
+                resource_id="qemu/101",
+                resource_type="qemu",
+                resource_fingerprint="target-fingerprint-v1:aaa",
+                resource_version="7",
+                expected_state="running",
+            ),
+        }
+    )
+    return CoreCandidatePlanningIntakeResponse(
+        status="accepted_for_planning",
+        candidate_id="candidate-1",
+        planning_allowed=True,
+        reason_codes=(),
+        current_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        current_candidate=candidate,
+    )
+
+
+def operational_plan_ready_session() -> CandidatePlanningSession:
+    target = OperationalTargetReference(
+        provider_id="proxmox",
+        resource_id="qemu/101",
+        resource_type="qemu",
+        resource_fingerprint="target-fingerprint-v1:aaa",
+        resource_version="7",
+        expected_state="running",
+    )
+    snapshot = CandidateSnapshot(
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        source_recommendation_id="finding-1",
+        source_subsystem="orion",
+        recommendation_class="update_compose_stack",
+        catalog_item_id="frigate",
+        target_id="qemu/101",
+        target_type="qemu",
+        execution_category="update",
+        execution_intent="restart-service",
+        required_approval_level="standard",
+        rationale="Update the compose stack.",
+        constraints=("requires-current-evidence",),
+        evidence_ids=("evidence-1",),
+        compatibility_assessment_id="assessment-1",
+        compatibility_status="compatible",
+        relationship_ids=("relationship-1",),
+        expires_at=None,
+        intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+        intake_reason_codes=(),
+        intake_timestamp=NOW,
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+        operational_target=target,
+    )
+    plan = OperationalCandidatePlan(
+        identifier="operational-plan-1",
+        session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+        execution_intent="restart-service",
+        provider_id="proxmox",
+        resource_id="qemu/101",
+        resource_type="qemu",
+        target_fingerprint=target.resource_fingerprint,
+        target_version=target.resource_version,
+        expected_pre_state="running",
+        intended_action="restart-service",
+        disruption_scope="one service interruption",
+        verification=OperationalVerificationSpecification(
+            pre_state="running",
+            expected_post_state="running-and-healthy",
+            identity_fingerprint=target.resource_fingerprint,
+            health_requirement="healthy",
+            unknown_outcome_policy="stop-and-reconcile",
+        ),
+        failure_considerations=("Unknown outcomes require operator review.",),
+        evidence_ids=("evidence-1",),
+        created_at=NOW,
+        revalidated_candidate_fingerprint="candidate-fingerprint-v1:aaa",
+    )
+    return CandidatePlanningSession(
+        identifier="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="candidate-fingerprint-v1:aaa",
+        status=CandidatePlanningSessionStatus.READY_FOR_PLANNING,
+        snapshot=snapshot,
+        created_at=NOW,
+        planning_status=CandidatePlanningSessionStatus.PLAN_READY,
+        operational_plan=plan,
+    )
+
+
+def test_operational_shell_and_exact_request_are_atomic_and_non_executable(
+    tmp_path: Path,
+) -> None:
+    session = operational_plan_ready_session()
+    core = FakeCoreClient([operational_core_response(), operational_core_response()])
+    service, candidate_state, workflow_state, approvals, persistence = service_with(
+        tmp_path, core, session=session
+    )
+    fingerprint = operational_plan_fingerprint(session.operational_plan)  # type: ignore[arg-type]
+    conversion = run(
+        service.convert_plan_to_workflow_shell(
+            session.identifier,
+            CandidateWorkflowConversionRequest(expected_plan_fingerprint=fingerprint),
+        )
+    )
+    workflow = workflow_state.get_session(conversion.workflow_session_id or "")
+    assert workflow is not None
+    assert workflow.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+    assert workflow.request is None
+    shell = approvals.get_request(f"approval-{workflow.identifier}")
+    assert shell is not None
+    assert shell.decision.request.requested_command == ()
+    approvals.update_decision(
+        shell.decision.request.identifier,
+        ApprovalDecision(
+            request=shell.decision.request,
+            status=ApprovalStatus.APPROVED,
+            reviewer="operator",
+        ),
+    )
+    translated = run(
+        service.translate_workflow_shell_to_implementation(
+            session.identifier,
+            CandidateImplementationTranslationRequest(
+                expected_candidate_fingerprint=session.candidate_fingerprint,
+                expected_plan_fingerprint=fingerprint,
+            ),
+        )
+    )
+    prepared = workflow_state.get_session(workflow.identifier)
+    assert prepared is not None and prepared.operational_action_request is not None
+    assert prepared.candidate_implementation_request is None
+    assert prepared.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
+    exact = approvals.get_request(prepared.operational_action_approval_id or "")
+    assert exact is not None
+    assert exact.decision.request.purpose is ApprovalPurpose.OPERATIONAL_ACTION
+    assert translated.exact_approval_request_id == exact.decision.request.identifier
+    assert candidate_state.get_session(session.identifier).implementation_request_id == prepared.operational_action_request.request_id  # type: ignore[union-attr]
+
+    recovered_workflows = WorkflowStateStore()
+    recovered_approvals = ApprovalRepository()
+    recovered_candidates = CandidatePlanningStateStore()
+    AgentStatePersistenceCoordinator(
+        state_dir=persistence.snapshot_path.parent,
+        workflow_state=recovered_workflows,
+        approval_repository=recovered_approvals,
+        candidate_planning_state=recovered_candidates,
+    ).initialize()
+    assert recovered_workflows.get_session(workflow.identifier) == prepared
+    assert recovered_approvals.get_request(exact.decision.request.identifier) == exact
+    audit = CandidateAuditChainValidator().validate(
+        planning_session=candidate_state.get_session(session.identifier),
+        workflow=prepared,
+        approvals=CandidateAuditApprovals(operational_action=exact),
+    )
+    assert audit.valid is True
+    assert audit.chain is not None
+    assert audit.chain.commit_sha is None
+    assert audit.chain.operational_action_request_digest == prepared.operational_action_request.request_digest
 
 
 def test_plan_ready_session_converts_to_candidate_workflow_shell(tmp_path: Path) -> None:

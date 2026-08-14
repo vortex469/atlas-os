@@ -5,11 +5,13 @@ from datetime import UTC, datetime
 
 import pytest
 from app.candidate_planning.models import (
+    OPERATIONAL_EXECUTION_INTENTS,
     OPERATIONAL_PLANNING_INTENTS,
     SUPPORTED_EXECUTION_INTENTS,
     CandidatePlanningSessionStatus,
     CandidatePlanRequest,
     build_candidate_planning_session_id,
+    is_operational_execution_enabled,
     is_operational_planning_intent,
     is_supported_execution_intent,
 )
@@ -28,9 +30,11 @@ def test_candidate_request_is_immutable() -> None:
 def test_supported_intent_policy_is_narrow() -> None:
     assert SUPPORTED_EXECUTION_INTENTS == frozenset({"update-compose-stack"})
     assert OPERATIONAL_PLANNING_INTENTS == frozenset({"restart-service"})
+    assert OPERATIONAL_EXECUTION_INTENTS == frozenset()
     assert is_supported_execution_intent("update-compose-stack") is True
     assert is_supported_execution_intent("restart-service") is False
     assert is_operational_planning_intent("restart-service") is True
+    assert is_operational_execution_enabled("restart-service") is False
 
 
 def test_rc1_smoke_intent_requires_explicit_gate(monkeypatch: pytest.MonkeyPatch) -> None:

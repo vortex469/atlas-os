@@ -20,6 +20,7 @@ from app.approval.models import (
     ApprovalResult,
     ApprovalStatus,
     CommitApprovalMetadata,
+    OperationalApprovalMetadata,
     VerificationApprovalCheck,
     VerificationApprovalEnvironment,
 )
@@ -84,8 +85,8 @@ from app.workflow.models import (
 )
 from app.workflow.state import WorkflowStateSnapshot, WorkflowStateStore
 
-SCHEMA_VERSION = 2
-SUPPORTED_SCHEMA_VERSIONS = frozenset({1, SCHEMA_VERSION})
+SCHEMA_VERSION = 3
+SUPPORTED_SCHEMA_VERSIONS = frozenset({1, 2, SCHEMA_VERSION})
 APPLICATION = "atlas-agent"
 SNAPSHOT_FILENAME = "atlas-agent-state.json"
 _ENV_DIGEST_LENGTH = 64
@@ -592,9 +593,18 @@ class AgentStatePersistenceCoordinator:
                     is ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
                 ):
                     purpose = ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
+            if (
+                session.state is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
+                and session.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+            ):
+                purpose = ApprovalPurpose.OPERATIONAL_ACTION
             if purpose is None:
                 continue
             approval_id = (
+                session.operational_action_approval_id
+                if purpose is ApprovalPurpose.OPERATIONAL_ACTION
+                and session.operational_action_approval_id is not None
+                else
                 session.candidate_implementation_approval_id
                 if purpose is ApprovalPurpose.IMPLEMENTATION
                 and session.source is WorkflowSource.CANDIDATE
@@ -619,6 +629,8 @@ class AgentStatePersistenceCoordinator:
                 raise StatePersistenceError("Waiting workflow approval does not match")
             if purpose is ApprovalPurpose.COMMIT:
                 _validate_commit_approval_matches_session(request, session)
+            if purpose is ApprovalPurpose.OPERATIONAL_ACTION:
+                _validate_operational_approval_matches_session(request, session)
 
         for identifier, result in approvals.storage.items():
             request = result.decision.request
@@ -644,6 +656,8 @@ def _approval_id_for(workflow_id: str, purpose: ApprovalPurpose) -> str:
         return f"approval-{workflow_id}"
     if purpose is ApprovalPurpose.VERIFICATION:
         return f"approval-verification-{workflow_id}"
+    if purpose is ApprovalPurpose.OPERATIONAL_ACTION:
+        return f"approval-operational-{workflow_id}"
     return f"approval-commit-{workflow_id}"
 
 
@@ -675,6 +689,13 @@ def _validate_approval_request(request: ApprovalRequest) -> None:
         _validate_digest(request.commit_metadata.reviewed_content_fingerprint)
     elif request.commit_metadata is not None:
         raise StatePersistenceError("Only commit approvals may contain commit metadata")
+    if request.purpose is ApprovalPurpose.OPERATIONAL_ACTION:
+        if request.operational_metadata is None:
+            raise StatePersistenceError("Operational approval metadata is required")
+    elif request.operational_metadata is not None:
+        raise StatePersistenceError(
+            "Only operational approvals may contain operational metadata"
+        )
     for check in request.verification_checks:
         for variable in check.environment:
             _validate_digest(variable.value_digest)
@@ -685,6 +706,54 @@ def _validate_digest(value: str) -> None:
         character not in "0123456789abcdef" for character in value
     ):
         raise StatePersistenceError("Malformed SHA-256 digest metadata")
+
+
+def _validate_operational_approval_matches_session(
+    request: ApprovalRequest,
+    session: WorkflowSession,
+) -> None:
+    action = session.operational_action_request
+    metadata = request.operational_metadata
+    if action is None or metadata is None:
+        raise StatePersistenceError("Operational approval request artifact is missing")
+    from app.candidate_planning.models import operational_verification_digest
+
+    expected = (
+        action.request_id,
+        action.request_digest,
+        action.candidate_id,
+        action.candidate_fingerprint,
+        action.candidate_plan_fingerprint,
+        action.provider_id,
+        action.resource_id,
+        action.resource_type,
+        action.target_fingerprint,
+        action.target_version,
+        action.execution_intent,
+        action.disruption_scope,
+        operational_verification_digest(action.verification),
+        action.generated_at,
+        action.expires_at,
+    )
+    actual = (
+        metadata.action_request_id,
+        metadata.action_request_digest,
+        metadata.candidate_id,
+        metadata.candidate_fingerprint,
+        metadata.operational_plan_fingerprint,
+        metadata.provider_id,
+        metadata.resource_id,
+        metadata.resource_type,
+        metadata.target_fingerprint,
+        metadata.target_version,
+        metadata.operation_intent,
+        metadata.disruption_scope,
+        metadata.verification_digest,
+        metadata.generated_at,
+        metadata.expires_at,
+    )
+    if actual != expected:
+        raise StatePersistenceError("Operational approval does not bind exact request")
 
 
 def _path(path: Path | None) -> str | None:
@@ -715,6 +784,13 @@ def _require_str(payload: dict[str, Any], key: str) -> str:
     if not isinstance(value, str):
         raise StatePersistenceError(f"Expected string field: {key}")
     return value
+
+
+def _reject_unknown_fields(payload: dict[str, Any], allowed: frozenset[str]) -> None:
+    if unknown := set(payload) - allowed:
+        raise StatePersistenceError(
+            f"Unexpected persisted fields: {', '.join(sorted(unknown))}"
+        )
 
 
 def _tuple_str(values: Any) -> tuple[str, ...]:
@@ -1755,7 +1831,9 @@ def _encode_operational_action_request(
     if request is None:
         return None
     return {
-        "identifier": request.identifier,
+        "request_id": request.request_id,
+        "request_digest": request.request_digest,
+        "idempotency_key": request.idempotency_key,
         "workflow_session_id": request.workflow_session_id,
         "candidate_planning_session_id": request.candidate_planning_session_id,
         "candidate_id": request.candidate_id,
@@ -1785,8 +1863,41 @@ def _decode_operational_action_request(payload: Any) -> OperationalActionRequest
         return None
     if not isinstance(payload, dict):
         raise StatePersistenceError("Invalid operational action request")
+    _reject_unknown_fields(
+        payload,
+        frozenset(
+            {
+                "request_id",
+                "request_digest",
+                "idempotency_key",
+                "workflow_session_id",
+                "candidate_planning_session_id",
+                "candidate_id",
+                "candidate_fingerprint",
+                "candidate_plan_id",
+                "candidate_plan_fingerprint",
+                "effect_kind",
+                "execution_intent",
+                "provider_id",
+                "resource_id",
+                "resource_type",
+                "provider_action_id",
+                "target_fingerprint",
+                "target_version",
+                "disruption_scope",
+                "evidence_ids",
+                "expected_pre_state",
+                "verification",
+                "expires_at",
+                "translator_version",
+                "generated_at",
+            }
+        ),
+    )
     return OperationalActionRequest(
-        identifier=_require_str(payload, "identifier"),
+        request_id=_require_str(payload, "request_id"),
+        request_digest=_require_str(payload, "request_digest"),
+        idempotency_key=_require_str(payload, "idempotency_key"),
         workflow_session_id=_require_str(payload, "workflow_session_id"),
         candidate_planning_session_id=_require_str(
             payload, "candidate_planning_session_id"
@@ -2002,6 +2113,7 @@ def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
     return {
         "blocked_reason": session.blocked_reason,
         "candidate_implementation_approval_id": session.candidate_implementation_approval_id,
+        "operational_action_approval_id": session.operational_action_approval_id,
         "candidate_implementation_request": _encode_candidate_implementation_request(
             session.candidate_implementation_request
         ),
@@ -2072,11 +2184,16 @@ def _decode_workflow_session(
         ),
         operational_action_request=(
             _decode_operational_action_request(payload.get("operational_action_request"))
-            if schema_version >= 2
+            if schema_version >= 3
             else None
         ),
         candidate_implementation_approval_id=payload.get(
             "candidate_implementation_approval_id"
+        ),
+        operational_action_approval_id=(
+            payload.get("operational_action_approval_id")
+            if schema_version >= 3
+            else None
         ),
         planning_analysis=_decode_model_response(payload.get("planning_analysis")),
         review_analysis=_decode_model_response(payload.get("review_analysis")),
@@ -2186,10 +2303,85 @@ def _decode_commit_metadata(payload: Any) -> CommitApprovalMetadata | None:
     )
 
 
+def _encode_operational_metadata(
+    metadata: OperationalApprovalMetadata | None,
+) -> dict[str, Any] | None:
+    if metadata is None:
+        return None
+    return {
+        "action_request_id": metadata.action_request_id,
+        "action_request_digest": metadata.action_request_digest,
+        "candidate_id": metadata.candidate_id,
+        "candidate_fingerprint": metadata.candidate_fingerprint,
+        "operational_plan_fingerprint": metadata.operational_plan_fingerprint,
+        "provider_id": metadata.provider_id,
+        "resource_id": metadata.resource_id,
+        "resource_type": metadata.resource_type,
+        "target_fingerprint": metadata.target_fingerprint,
+        "target_version": metadata.target_version,
+        "operation_intent": metadata.operation_intent,
+        "disruption_scope": metadata.disruption_scope,
+        "verification_digest": metadata.verification_digest,
+        "generated_at": _encode_datetime(metadata.generated_at),
+        "expires_at": _encode_datetime(metadata.expires_at),
+    }
+
+
+def _decode_operational_metadata(payload: Any) -> OperationalApprovalMetadata | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid operational approval metadata")
+    _reject_unknown_fields(
+        payload,
+        frozenset(
+            {
+                "action_request_id",
+                "action_request_digest",
+                "candidate_id",
+                "candidate_fingerprint",
+                "operational_plan_fingerprint",
+                "provider_id",
+                "resource_id",
+                "resource_type",
+                "target_fingerprint",
+                "target_version",
+                "operation_intent",
+                "disruption_scope",
+                "verification_digest",
+                "generated_at",
+                "expires_at",
+            }
+        ),
+    )
+    return OperationalApprovalMetadata(
+        action_request_id=_require_str(payload, "action_request_id"),
+        action_request_digest=_require_str(payload, "action_request_digest"),
+        candidate_id=_require_str(payload, "candidate_id"),
+        candidate_fingerprint=_require_str(payload, "candidate_fingerprint"),
+        operational_plan_fingerprint=_require_str(
+            payload, "operational_plan_fingerprint"
+        ),
+        provider_id=_require_str(payload, "provider_id"),
+        resource_id=_require_str(payload, "resource_id"),
+        resource_type=_require_str(payload, "resource_type"),
+        target_fingerprint=_require_str(payload, "target_fingerprint"),
+        target_version=payload.get("target_version"),
+        operation_intent=_require_str(payload, "operation_intent"),
+        disruption_scope=_require_str(payload, "disruption_scope"),
+        verification_digest=_require_str(payload, "verification_digest"),
+        generated_at=_decode_datetime(payload.get("generated_at")),
+        expires_at=_decode_datetime(payload.get("expires_at")),
+    )
+
+
 def _encode_approval_request(request: ApprovalRequest) -> dict[str, Any]:
     return {
         "checkpoint_id": request.checkpoint_id,
         "commit_metadata": _encode_commit_metadata(request.commit_metadata),
+        "operational_metadata": _encode_operational_metadata(
+            request.operational_metadata
+        ),
         "identifier": request.identifier,
         "purpose": request.purpose.value,
         "rationale": request.rationale,
@@ -2241,6 +2433,9 @@ def _decode_approval_request(
             for item in payload.get("verification_checks", [])
         ),
         commit_metadata=_decode_commit_metadata(payload.get("commit_metadata")),
+        operational_metadata=_decode_operational_metadata(
+            payload.get("operational_metadata")
+        ),
     )
 
 

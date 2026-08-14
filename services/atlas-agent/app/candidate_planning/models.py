@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -13,6 +14,7 @@ from app.workflow.models import WorkflowEffectKind
 
 SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})
 OPERATIONAL_PLANNING_INTENTS = frozenset({"restart-service"})
+OPERATIONAL_EXECUTION_INTENTS = frozenset()
 RC1_VALIDATION_SMOKE_INTENT = "rc1-validation-smoke"
 
 
@@ -384,7 +386,9 @@ class CandidateImplementationRequest:
 class OperationalActionRequest:
     """Immutable non-executable request for a future operational action."""
 
-    identifier: str
+    request_id: str
+    request_digest: str
+    idempotency_key: str
     workflow_session_id: str
     candidate_planning_session_id: str
     candidate_id: str
@@ -410,8 +414,46 @@ class OperationalActionRequest:
     def __post_init__(self) -> None:
         if self.effect_kind is not WorkflowEffectKind.OPERATIONAL_ACTION:
             raise ValueError("operational requests require operational_action effect kind")
+        from app.candidate_planning.operational_translation import (
+            resolve_provider_action_id,
+        )
+
+        expected_action = resolve_provider_action_id(
+            execution_intent=self.execution_intent,
+            provider_id=self.provider_id,
+            resource_type=self.resource_type,
+        )
+        if self.provider_action_id != expected_action:
+            raise ValueError("operational request action does not match closed translation")
+        if not self.target_fingerprint.strip():
+            raise ValueError("operational request requires target fingerprint")
         if self.expires_at <= self.generated_at:
             raise ValueError("operational request expiry must follow generation time")
+        expected_digest = operational_action_request_digest(self)
+        if not self.request_digest and not self.idempotency_key:
+            object.__setattr__(self, "request_digest", expected_digest)
+            object.__setattr__(
+                self,
+                "idempotency_key",
+                operational_action_idempotency_key(
+                    request_id=self.request_id,
+                    request_digest=expected_digest,
+                ),
+            )
+        if self.request_digest != expected_digest:
+            raise ValueError("operational request digest does not match immutable payload")
+        expected_key = operational_action_idempotency_key(
+            request_id=self.request_id,
+            request_digest=self.request_digest,
+        )
+        if self.idempotency_key != expected_key:
+            raise ValueError("operational request idempotency key does not match")
+
+    @property
+    def identifier(self) -> str:
+        """Compatibility alias for generic identifier projections."""
+
+        return self.request_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -472,3 +514,79 @@ def is_operational_planning_intent(execution_intent: str) -> bool:
     """Return whether an intent may produce a descriptive operational plan only."""
 
     return execution_intent in OPERATIONAL_PLANNING_INTENTS
+
+
+def is_operational_execution_enabled(execution_intent: str) -> bool:
+    """Return whether an operational intent may cross the execution boundary."""
+
+    return execution_intent in OPERATIONAL_EXECUTION_INTENTS
+
+
+OPERATIONAL_REQUEST_DIGEST_VERSION = "operational-action-request-digest-v1"
+OPERATIONAL_IDEMPOTENCY_KEY_VERSION = "operational-action-execution-key-v1"
+OPERATIONAL_VERIFICATION_DIGEST_VERSION = "operational-verification-digest-v1"
+
+
+def operational_verification_digest(
+    verification: OperationalVerificationSpecification,
+) -> str:
+    """Bind the complete semantic verification contract."""
+
+    payload = {
+        "expected_post_state": verification.expected_post_state,
+        "health_requirement": verification.health_requirement,
+        "identity_fingerprint": verification.identity_fingerprint,
+        "pre_state": verification.pre_state,
+        "unknown_outcome_policy": verification.unknown_outcome_policy,
+        "version": OPERATIONAL_VERIFICATION_DIGEST_VERSION,
+    }
+    return _versioned_digest(OPERATIONAL_VERIFICATION_DIGEST_VERSION, payload)
+
+
+def operational_action_request_digest(request: OperationalActionRequest) -> str:
+    """Return the canonical digest excluding the digest and derived key fields."""
+
+    payload = {
+        "candidate_fingerprint": request.candidate_fingerprint,
+        "candidate_id": request.candidate_id,
+        "candidate_plan_fingerprint": request.candidate_plan_fingerprint,
+        "candidate_plan_id": request.candidate_plan_id,
+        "candidate_planning_session_id": request.candidate_planning_session_id,
+        "disruption_scope": request.disruption_scope,
+        "effect_kind": request.effect_kind.value,
+        "evidence_ids": sorted(request.evidence_ids),
+        "execution_intent": request.execution_intent,
+        "expected_pre_state": request.expected_pre_state,
+        "expires_at": request.expires_at.isoformat(),
+        "generated_at": request.generated_at.isoformat(),
+        "provider_action_id": request.provider_action_id,
+        "provider_id": request.provider_id,
+        "request_id": request.request_id,
+        "resource_id": request.resource_id,
+        "resource_type": request.resource_type,
+        "target_fingerprint": request.target_fingerprint,
+        "target_version": request.target_version,
+        "translator_version": request.translator_version,
+        "verification_digest": operational_verification_digest(request.verification),
+        "version": OPERATIONAL_REQUEST_DIGEST_VERSION,
+        "workflow_session_id": request.workflow_session_id,
+    }
+    return _versioned_digest(OPERATIONAL_REQUEST_DIGEST_VERSION, payload)
+
+
+def operational_action_idempotency_key(*, request_id: str, request_digest: str) -> str:
+    """Derive a stable future execution key from immutable request identity."""
+
+    return _versioned_digest(
+        OPERATIONAL_IDEMPOTENCY_KEY_VERSION,
+        {
+            "request_digest": request_digest,
+            "request_id": request_id,
+            "version": OPERATIONAL_IDEMPOTENCY_KEY_VERSION,
+        },
+    )
+
+
+def _versioned_digest(prefix: str, payload: dict[str, object]) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"{prefix}:{hashlib.sha256(encoded.encode()).hexdigest()}"

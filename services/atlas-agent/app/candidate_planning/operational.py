@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import datetime
 
 from app.candidate_planning.models import (
@@ -13,6 +14,43 @@ from app.candidate_planning.models import (
     PlanningDecision,
 )
 from app.workflow.models import WorkflowEffectKind
+
+OPERATIONAL_PLAN_FINGERPRINT_VERSION = "operational-plan-fingerprint-v1"
+
+
+def operational_plan_fingerprint(plan: OperationalCandidatePlan) -> str:
+    """Bind every security-relevant sanitized operational plan field."""
+
+    payload = {
+        "candidate_fingerprint": plan.candidate_fingerprint,
+        "candidate_id": plan.candidate_id,
+        "created_at": plan.created_at.isoformat(),
+        "disruption_scope": plan.disruption_scope,
+        "effect_kind": plan.effect_kind.value,
+        "evidence_ids": sorted(plan.evidence_ids),
+        "execution_intent": plan.execution_intent,
+        "expected_pre_state": plan.expected_pre_state,
+        "failure_considerations": sorted(plan.failure_considerations),
+        "identifier": plan.identifier,
+        "intended_action": plan.intended_action,
+        "provider_id": plan.provider_id,
+        "resource_id": plan.resource_id,
+        "resource_type": plan.resource_type,
+        "revalidated_candidate_fingerprint": plan.revalidated_candidate_fingerprint,
+        "session_id": plan.session_id,
+        "target_fingerprint": plan.target_fingerprint,
+        "target_version": plan.target_version,
+        "verification": {
+            "expected_post_state": plan.verification.expected_post_state,
+            "health_requirement": plan.verification.health_requirement,
+            "identity_fingerprint": plan.verification.identity_fingerprint,
+            "pre_state": plan.verification.pre_state,
+            "unknown_outcome_policy": plan.verification.unknown_outcome_policy,
+        },
+        "version": OPERATIONAL_PLAN_FINGERPRINT_VERSION,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"{OPERATIONAL_PLAN_FINGERPRINT_VERSION}:{hashlib.sha256(encoded.encode()).hexdigest()}"
 
 
 def create_operational_plan(

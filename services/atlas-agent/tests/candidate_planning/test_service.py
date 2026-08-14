@@ -761,7 +761,13 @@ def test_generate_plan_is_idempotent_after_plan_ready(tmp_path: Path) -> None:
 
 
 def test_restart_service_is_planning_only_and_does_not_resolve_repository() -> None:
-    core = FakeCoreClient([operational_accepted_response(), operational_accepted_response()])
+    core = FakeCoreClient(
+        [
+            operational_accepted_response(),
+            operational_accepted_response(),
+            operational_accepted_response(),
+        ]
+    )
 
     def repository_inspection_forbidden(_root: Path):
         raise AssertionError("operational planning must not inspect a repository")
@@ -786,14 +792,13 @@ def test_restart_service_is_planning_only_and_does_not_resolve_repository() -> N
     assert stored.implementation_request_id is None
     assert stored.implementation_approval_request_id is None
 
-    conversion = run(
-        service.convert_plan_to_workflow_shell(
-            intake.session_id,
-            CandidateWorkflowConversionRequest(),
+    with pytest.raises(CandidatePlanningServiceError, match="aggregate persistence"):
+        run(
+            service.convert_plan_to_workflow_shell(
+                intake.session_id,
+                CandidateWorkflowConversionRequest(),
+            )
         )
-    )
-    assert conversion.workflow_session_id is None
-    assert conversion.conversion_status is CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED
 
 
 def test_operational_target_replacement_is_stale_before_planning() -> None:

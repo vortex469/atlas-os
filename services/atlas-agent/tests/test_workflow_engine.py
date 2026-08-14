@@ -66,6 +66,7 @@ from app.workflow.models import (
     WorkflowSource,
 )
 from app.workflow.state import WorkflowStateStore
+from tests.candidate_planning.test_operational_models import operational_request
 
 
 def make_checkpoint() -> RoadmapCheckpoint:
@@ -313,6 +314,61 @@ def published_phases(state_store: Mock) -> list[SprintPhase]:
         invocation.args[0].phase
         for invocation in state_store.publish_sprint.call_args_list
     ]
+
+
+def test_approved_operational_workflow_resume_fails_closed_without_execution(
+    tmp_path: Path,
+) -> None:
+    engine, _, execution_engine, verification_engine, review_engine, _, state_store = (
+        make_engine(
+            tmp_path,
+            execution_result=make_execution_result(tmp_path),
+            verification_report=make_verification_report(tmp_path),
+            review_report=make_review_report(),
+        )
+    )
+    action = operational_request()
+    metadata = CandidateWorkflowMetadata(
+        candidate_planning_session_id=action.candidate_planning_session_id,
+        candidate_id=action.candidate_id,
+        candidate_fingerprint=action.candidate_fingerprint,
+        candidate_plan_id=action.candidate_plan_id,
+        candidate_plan_fingerprint=action.candidate_plan_fingerprint,
+        source_recommendation_id="recommendation-1",
+        source_subsystem="orion",
+        catalog_item_id=None,
+        target_id=action.resource_id,
+        target_type=action.resource_type,
+        execution_category="restart",
+        execution_intent=action.execution_intent,
+        evidence_ids=action.evidence_ids,
+        compatibility_assessment_id=None,
+        compatibility_status=None,
+        relationship_ids=(),
+        conversion_timestamp=action.generated_at,
+        core_revalidation_status="accepted_for_planning",
+        core_revalidation_fingerprint=action.candidate_fingerprint,
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+    )
+    session = WorkflowSession(
+        identifier=action.workflow_session_id,
+        request=None,
+        plan=None,
+        state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=metadata,
+        operational_action_request=action,
+        operational_action_approval_id="approval-operational-workflow-1",
+    )
+    state_store.get_session.return_value = session
+
+    result = engine.resume(session.identifier)
+
+    assert result.error_message == "operational_execution_not_enabled"
+    execution_engine.execute.assert_not_called()
+    verification_engine.verify.assert_not_called()
+    review_engine.review.assert_not_called()
 
 
 def test_run_captures_context_once_before_planning(tmp_path: Path) -> None:
