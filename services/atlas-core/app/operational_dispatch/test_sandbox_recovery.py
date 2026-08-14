@@ -138,6 +138,26 @@ def test_recovery_rejects_production_missing_and_unsafe_ledgers(
         validate_recovery_ledger_path(path)
 
 
+def test_recovery_rejects_production_ledger_through_deployment_symlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    deployment = tmp_path / "atlas"
+    deployment.symlink_to(workspace, target_is_directory=True)
+    production_ledger = deployment / "data" / "operational_dispatch.db"
+    resolved_production_ledger = workspace / "data" / "operational_dispatch.db"
+    monkeypatch.setattr(
+        "app.operational_dispatch.sandbox_recovery._PRODUCTION_LEDGER",
+        production_ledger,
+    )
+
+    with pytest.raises(ValueError, match="production"):
+        validate_recovery_ledger_path(production_ledger)
+    with pytest.raises(ValueError, match="production"):
+        validate_recovery_ledger_path(resolved_production_ledger)
+
+
 @pytest.mark.parametrize(
     ("state", "expected_action", "verifier_calls"),
     (

@@ -63,7 +63,14 @@ class SandboxRecoveryResult:
 def validate_recovery_ledger_path(path: Path) -> None:
     """Reject anything except one caller-owned mode-0600 regular ledger."""
 
-    if path.resolve(strict=False) == _PRODUCTION_LEDGER:
+    candidate_literal, candidate_resolved = _normalized_ledger_paths(path)
+    production_literal, production_resolved = _normalized_ledger_paths(
+        _PRODUCTION_LEDGER
+    )
+    if (
+        candidate_literal == production_literal
+        or candidate_resolved == production_resolved
+    ):
         raise ValueError("production operational ledger is forbidden")
     try:
         metadata = path.lstat()
@@ -75,6 +82,13 @@ def validate_recovery_ledger_path(path: Path) -> None:
         raise PermissionError(
             "sandbox recovery ledger must be caller-owned with mode 0600"
         )
+
+
+def _normalized_ledger_paths(path: Path) -> tuple[Path, Path]:
+    """Return comparable lexical and symlink-resolved absolute paths."""
+
+    lexical = Path(os.path.abspath(path))
+    return lexical, lexical.resolve(strict=False)
 
 
 def load_recovery_request(path: Path) -> OperationalDispatchRequest:
