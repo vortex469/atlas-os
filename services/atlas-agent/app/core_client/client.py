@@ -159,11 +159,16 @@ class AtlasCoreClient:
         candidate_id: str,
         *,
         expected_candidate_fingerprint: str | None = None,
+        expected_operational_target_fingerprint: str | None = None,
     ) -> CoreCandidatePlanningIntakeResponse:
         url = f"{self._base_url}/api/v1/execution-candidates/{candidate_id}/planning-intake"
         payload = {
             "expected_candidate_fingerprint": expected_candidate_fingerprint,
         }
+        if expected_operational_target_fingerprint is not None:
+            payload["expected_operational_target_fingerprint"] = (
+                expected_operational_target_fingerprint
+            )
         try:
             response = await self._get_client().post(
                 url,

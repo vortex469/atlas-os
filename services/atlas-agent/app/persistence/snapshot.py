@@ -1009,6 +1009,7 @@ def _encode_candidate_snapshot(snapshot: CandidateSnapshot) -> dict[str, Any]:
         "evidence_ids": list(snapshot.evidence_ids),
         "execution_category": snapshot.execution_category,
         "execution_intent": snapshot.execution_intent,
+        "effect_kind": snapshot.effect_kind.value,
         "expires_at": _encode_datetime(snapshot.expires_at),
         "intake_reason_codes": list(snapshot.intake_reason_codes),
         "intake_status": snapshot.intake_status.value,
@@ -1038,6 +1039,9 @@ def _decode_candidate_snapshot(payload: dict[str, Any]) -> CandidateSnapshot:
         target_type=_require_str(payload, "target_type"),
         execution_category=_require_str(payload, "execution_category"),
         execution_intent=_require_str(payload, "execution_intent"),
+        effect_kind=WorkflowEffectKind(
+            payload.get("effect_kind", WorkflowEffectKind.REPOSITORY_CHANGE.value)
+        ),
         required_approval_level=_require_str(payload, "required_approval_level"),
         rationale=_require_str(payload, "rationale"),
         constraints=_tuple_str(payload.get("constraints", [])),

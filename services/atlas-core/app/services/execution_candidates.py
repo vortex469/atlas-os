@@ -9,6 +9,8 @@ from app.execution_candidates.models import (
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionIntent,
+    OperationalTargetReference,
+    OperationalTargetResolutionReason,
 )
 from app.execution_candidates.projection import project_execution_candidates
 from app.intelligence.coordinator import (
@@ -23,6 +25,18 @@ from app.intelligence.development_fixture import (
     is_rc1_validation_smoke_enabled,
 )
 from app.intelligence.findings import Finding
+from app.providers import ProviderNotFoundError
+from app.services.provider_resources import (
+    OperationalTargetAmbiguousError,
+    OperationalTargetIdentityUnavailableError,
+    OperationalTargetMarkedMissingError,
+    OperationalTargetResourceNotFoundError,
+    OperationalTargetSelectorError,
+    OperationalTargetTypeMismatchError,
+    ProviderResourceOperationError,
+    ProviderResourcesNotSupportedError,
+    resolve_operational_target,
+)
 
 logger = get_logger("atlas.execution_candidates")
 FindingCollector = Callable[[], Iterable[Finding]]
@@ -38,6 +52,79 @@ class ExecutionCandidateCollectionError(ExecutionCandidateServiceError):
 
 class ExecutionCandidateNotFoundError(ExecutionCandidateServiceError):
     """Raised when a current candidate ID is not present."""
+
+
+_OPERATIONAL_RESOLUTION_REASONS = {
+    OperationalTargetResourceNotFoundError: OperationalTargetResolutionReason.NOT_FOUND,
+    OperationalTargetAmbiguousError: OperationalTargetResolutionReason.AMBIGUOUS,
+    OperationalTargetTypeMismatchError: OperationalTargetResolutionReason.TYPE_MISMATCH,
+    OperationalTargetMarkedMissingError: OperationalTargetResolutionReason.MARKED_MISSING,
+    OperationalTargetIdentityUnavailableError: OperationalTargetResolutionReason.IDENTITY_UNAVAILABLE,
+    OperationalTargetSelectorError: OperationalTargetResolutionReason.SELECTOR_INVALID,
+}
+
+
+async def _enrich_operational_candidate(
+    candidate: ExecutionCandidate,
+    finding: Finding,
+    *,
+    available_evidence_ids: Iterable[str],
+    now: datetime,
+) -> ExecutionCandidate:
+    if candidate.execution_intent is not ExecutionIntent.RESTART_SERVICE:
+        return candidate
+
+    provider_id = finding.details.get("provider_id")
+    if not isinstance(provider_id, str) or not provider_id.strip():
+        return candidate.model_copy(
+            update={
+                "status": ExecutionCandidateStatus.NOT_ELIGIBLE,
+                "operational_target_resolution_reason": OperationalTargetResolutionReason.SELECTOR_INVALID,
+            }
+        )
+    try:
+        resolved = await resolve_operational_target(
+            provider_id.strip(), candidate.target_id, candidate.target_type
+        )
+    except tuple(_OPERATIONAL_RESOLUTION_REASONS) as error:
+        reason = _OPERATIONAL_RESOLUTION_REASONS[type(error)]
+        return candidate.model_copy(
+            update={
+                "status": ExecutionCandidateStatus.NOT_ELIGIBLE,
+                "operational_target_resolution_reason": reason,
+            }
+        )
+    except (
+        ProviderNotFoundError,
+        ProviderResourceOperationError,
+        ProviderResourcesNotSupportedError,
+    ) as error:
+        raise ExecutionCandidateCollectionError(
+            "Unable to determine current operational target state."
+        ) from error
+
+    enriched = candidate.model_copy(
+        update={
+            "status": ExecutionCandidateStatus.ELIGIBLE,
+            "operational_target": OperationalTargetReference(
+                provider_id=resolved.provider.id,
+                resource_id=resolved.resource.resource_id,
+                resource_type=resolved.resource.resource_type,
+                resource_fingerprint=resolved.resource_fingerprint,
+                resource_version=None,
+                expected_state=resolved.resource.current_state,
+            ),
+            "operational_target_resolution_reason": None,
+        }
+    )
+    from app.execution_candidates.eligibility import validate_candidate_for_planning
+
+    eligibility = validate_candidate_for_planning(
+        enriched,
+        available_evidence_ids=available_evidence_ids,
+        now=now,
+    )
+    return enriched.model_copy(update={"status": eligibility.status})
 
 
 def _sort_candidates(
@@ -143,6 +230,7 @@ async def collect_current_execution_candidates(
         available_evidence_ids=augmented_evidence_ids,
         now=projection_time,
     )
+    findings_by_id = {finding.id: finding for finding in findings}
     candidates: list[ExecutionCandidate] = []
     for result in results:
         if result.candidate is None:
@@ -152,7 +240,16 @@ async def collect_current_execution_candidates(
                 result.reason_code.value,
             )
             continue
-        candidates.append(result.candidate)
+        candidate = result.candidate
+        finding = findings_by_id.get(result.source_finding_id)
+        if finding is not None:
+            candidate = await _enrich_operational_candidate(
+                candidate,
+                finding,
+                available_evidence_ids=augmented_evidence_ids,
+                now=projection_time,
+            )
+        candidates.append(candidate)
     return _sort_candidates(candidates)
 
 

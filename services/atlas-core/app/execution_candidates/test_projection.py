@@ -78,11 +78,11 @@ def test_executable_class_maps_to_expected_category_and_intent() -> None:
         now=NOW,
     )
 
-    assert result.status == ProjectionStatus.PROJECTED
+    assert result.status == ProjectionStatus.INSUFFICIENT_DATA
     assert result.candidate is not None
     assert result.candidate.execution_category == ExecutionCategory.RESTART
     assert result.candidate.execution_intent == ExecutionIntent.RESTART_SERVICE
-    assert result.candidate.status == ExecutionCandidateStatus.ELIGIBLE
+    assert result.candidate.status == ExecutionCandidateStatus.NOT_ELIGIBLE
 
 
 def test_unknown_class_returns_unsupported() -> None:
@@ -120,16 +120,16 @@ def test_missing_evidence_yields_not_eligible_candidate() -> None:
     assert result.candidate.evidence_ids == ()
 
 
-def test_complete_evidence_yields_projected_eligible_candidate() -> None:
+def test_operational_projection_requires_service_layer_identity_enrichment() -> None:
     result = execution_candidate_from_finding(
         finding(),
         available_evidence_ids=("evidence-1",),
         now=NOW,
     )
 
-    assert result.status == ProjectionStatus.PROJECTED
+    assert result.status == ProjectionStatus.INSUFFICIENT_DATA
     assert result.candidate is not None
-    assert result.candidate.status == ExecutionCandidateStatus.ELIGIBLE
+    assert result.candidate.status == ExecutionCandidateStatus.NOT_ELIGIBLE
 
 
 def test_stable_finding_id_produces_stable_candidate_id() -> None:
@@ -178,7 +178,7 @@ def test_duplicate_findings_do_not_duplicate_projected_candidates() -> None:
     )
 
     assert len(results) == 1
-    assert results[0].status == ProjectionStatus.PROJECTED
+    assert results[0].status == ProjectionStatus.INSUFFICIENT_DATA
 
 
 def test_insufficient_compatibility_blocks_eligibility() -> None:

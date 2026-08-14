@@ -19,6 +19,7 @@ from app.execution_candidates.models import (
     ApprovalLevel,
     ComposeMutationSpecification,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateModel,
     ExecutionCandidateStatus,
     ExecutionCategory,
@@ -256,6 +257,11 @@ def _build_candidate_result(
             target_type=target_type,
             execution_category=classification.execution_category,
             execution_intent=classification.execution_intent,
+            effect_kind=(
+                ExecutionCandidateEffectKind.OPERATIONAL_ACTION
+                if classification.execution_intent is ExecutionIntent.RESTART_SERVICE
+                else ExecutionCandidateEffectKind.REPOSITORY_CHANGE
+            ),
             status=ExecutionCandidateStatus.ELIGIBLE,
             required_approval_level=classification.required_approval_level,
             rationale=finding.message,

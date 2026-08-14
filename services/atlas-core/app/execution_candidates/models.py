@@ -74,11 +74,29 @@ class OperationalTargetReference(ExecutionCandidateModel):
         return normalized
 
 
+class OperationalTargetResolutionReason(StrEnum):
+    """Sanitized reason an operational selector could not be resolved."""
+
+    NOT_FOUND = "operational_target_not_found"
+    AMBIGUOUS = "operational_target_ambiguous"
+    TYPE_MISMATCH = "operational_target_type_mismatch"
+    MARKED_MISSING = "operational_target_marked_missing"
+    IDENTITY_UNAVAILABLE = "operational_target_identity_unavailable"
+    SELECTOR_INVALID = "operational_target_selector_invalid"
+
+
 class ExecutionCandidateStatus(StrEnum):
     """Planning eligibility state for an execution candidate."""
 
     ELIGIBLE = "eligible"
     NOT_ELIGIBLE = "not_eligible"
+
+
+class ExecutionCandidateEffectKind(StrEnum):
+    """The kind of effect a candidate could eventually produce."""
+
+    REPOSITORY_CHANGE = "repository_change"
+    OPERATIONAL_ACTION = "operational_action"
 
 
 class ExecutionCategory(StrEnum):
@@ -264,6 +282,7 @@ class ExecutionCandidate(ExecutionCandidateModel):
     target_type: str = Field(pattern=EXECUTION_CANDIDATE_ID_PATTERN)
     execution_category: ExecutionCategory
     execution_intent: ExecutionIntent
+    effect_kind: ExecutionCandidateEffectKind = ExecutionCandidateEffectKind.REPOSITORY_CHANGE
     status: ExecutionCandidateStatus
     required_approval_level: ApprovalLevel
     rationale: str = Field(min_length=1)
@@ -276,6 +295,7 @@ class ExecutionCandidate(ExecutionCandidateModel):
     expires_at: datetime | None = None
     mutation: ComposeMutationSpecification | None = None
     operational_target: OperationalTargetReference | None = None
+    operational_target_resolution_reason: OperationalTargetResolutionReason | None = None
 
     @field_validator("constraints", mode="before")
     @classmethod
@@ -326,4 +346,11 @@ class ExecutionCandidate(ExecutionCandidateModel):
             raise ValueError("id must match deterministic execution candidate identity.")
         if self.expires_at is not None and self.expires_at <= self.created_at:
             raise ValueError("expires_at must be after created_at.")
+        if self.execution_intent is ExecutionIntent.RESTART_SERVICE:
+            if self.effect_kind is not ExecutionCandidateEffectKind.OPERATIONAL_ACTION:
+                raise ValueError("restart-service candidates require operational_action effect kind.")
+        elif self.effect_kind is ExecutionCandidateEffectKind.OPERATIONAL_ACTION:
+            raise ValueError("operational_action effect kind is not supported for this intent.")
+        if self.operational_target is not None and self.operational_target_resolution_reason is not None:
+            raise ValueError("resolved operational targets cannot carry a resolution failure.")
         return self

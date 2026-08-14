@@ -8,6 +8,7 @@ from app.execution_candidates.models import (
     ApprovalLevel,
     ComposeMutationSpecification,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionConstraint,
@@ -28,6 +29,7 @@ class ExecutionCandidateResponse(BaseModel):
     target_type: str
     execution_category: ExecutionCategory
     execution_intent: ExecutionIntent
+    effect_kind: ExecutionCandidateEffectKind
     status: ExecutionCandidateStatus
     required_approval_level: ApprovalLevel
     rationale: str
@@ -70,6 +72,7 @@ def candidate_to_response(candidate: ExecutionCandidate) -> ExecutionCandidateRe
         target_type=candidate.target_type,
         execution_category=candidate.execution_category,
         execution_intent=candidate.execution_intent,
+        effect_kind=candidate.effect_kind,
         status=candidate.status,
         required_approval_level=candidate.required_approval_level,
         rationale=candidate.rationale,

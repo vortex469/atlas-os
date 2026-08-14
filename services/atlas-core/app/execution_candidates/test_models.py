@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from app.execution_candidates.models import (
     ApprovalLevel,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionConstraint,
@@ -29,6 +30,7 @@ def make_candidate(**overrides: object) -> ExecutionCandidate:
         "target_type": "host",
         "execution_category": ExecutionCategory.RESTART,
         "execution_intent": ExecutionIntent.RESTART_SERVICE,
+        "effect_kind": ExecutionCandidateEffectKind.OPERATIONAL_ACTION,
         "status": ExecutionCandidateStatus.ELIGIBLE,
         "required_approval_level": ApprovalLevel.STANDARD,
         "rationale": "Restart the service after an approved operator decision.",

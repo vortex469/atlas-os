@@ -40,8 +40,10 @@ from app.candidate_planning.models import (
     OperationalTargetReference,
     build_candidate_planning_session_id,
     build_candidate_successor_planning_session_id,
+    is_operational_planning_intent,
     is_supported_execution_intent,
 )
+from app.candidate_planning.operational import create_operational_plan
 from app.candidate_planning.planner import (
     RepositoryResolver,
     UpdateComposeStackCandidatePlanner,
@@ -118,6 +120,7 @@ def _snapshot_from_intake(
         target_type=candidate.target_type,
         execution_category=candidate.execution_category,
         execution_intent=candidate.execution_intent,
+        effect_kind=WorkflowEffectKind(candidate.effect_kind),
         required_approval_level=candidate.required_approval_level,
         rationale=candidate.rationale,
         constraints=tuple(sorted(candidate.constraints)),
@@ -168,6 +171,7 @@ def _response_from_session(session: CandidatePlanningSession) -> CandidatePlanRe
         candidate_fingerprint=session.candidate_fingerprint,
         unsupported_reason=session.unsupported_reason,
         plan=session.plan,
+        operational_plan=session.operational_plan,
         planning_failure=session.planning_failure,
         predecessor_session_id=session.predecessor_session_id,
         successor_session_id=session.successor_session_id,
@@ -437,7 +441,7 @@ class CandidatePlanningService:
             return _rejection_response(request=request, intake=intake)
 
         snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
-        if not is_supported_execution_intent(snapshot.execution_intent):
+        if not _is_plannable_snapshot(snapshot):
             return CandidatePlanResponse(
                 session_id=None,
                 candidate_id=request.candidate_id,
@@ -517,7 +521,7 @@ class CandidatePlanningService:
             return _rejection_response(request=request, intake=intake)
 
         snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
-        if not is_supported_execution_intent(snapshot.execution_intent):
+        if not _is_plannable_snapshot(snapshot):
             return CandidatePlanResponse(
                 session_id=None,
                 candidate_id=request.candidate_id,
@@ -630,7 +634,7 @@ class CandidatePlanningService:
                 "Candidate planning session is not ready for planning.",
             )
             return _response_from_session(self._persist_session_update(updated))
-        if not is_supported_execution_intent(session.snapshot.execution_intent):
+        if not _is_plannable_snapshot(session.snapshot):
             updated = self._with_failure(
                 session,
                 CandidatePlanningSessionStatus.PLANNING_NOT_SUPPORTED,
@@ -652,13 +656,18 @@ class CandidatePlanningService:
             started,
             planning_status=decision.status,
             plan=decision.plan,
+            operational_plan=decision.operational_plan,
             planning_failure=decision.failure,
             planning_completed_at=self._clock(),
             last_revalidation_fingerprint=(
-                decision.plan.revalidated_candidate_fingerprint if decision.plan else None
+                decision.plan.revalidated_candidate_fingerprint
+                if decision.plan
+                else decision.operational_plan.revalidated_candidate_fingerprint
+                if decision.operational_plan
+                else None
             ),
             last_revalidation_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING
-            if decision.plan
+            if decision.plan or decision.operational_plan
             else started.last_revalidation_status,
         )
         return _response_from_session(self._persist_session_update(completed))
@@ -733,9 +742,15 @@ class CandidatePlanningService:
                 plan_fingerprint=plan_fingerprint,
             )
         try:
+            intake_kwargs = {
+                "expected_candidate_fingerprint": session.candidate_fingerprint,
+            }
+            if session.snapshot.operational_target is not None:
+                intake_kwargs["expected_operational_target_fingerprint"] = (
+                    session.snapshot.operational_target.resource_fingerprint
+                )
             intake = await self._core_client.validate_candidate_planning_intake(
-                session.candidate_id,
-                expected_candidate_fingerprint=session.candidate_fingerprint,
+                session.candidate_id, **intake_kwargs
             )
         except AtlasCoreClientError as error:
             raise CandidatePlanningServiceError(
@@ -1278,9 +1293,15 @@ class CandidatePlanningService:
 
     async def _plan_started_session(self, session: CandidatePlanningSession):
         try:
+            intake_kwargs = {
+                "expected_candidate_fingerprint": session.candidate_fingerprint,
+            }
+            if session.snapshot.operational_target is not None:
+                intake_kwargs["expected_operational_target_fingerprint"] = (
+                    session.snapshot.operational_target.resource_fingerprint
+                )
             intake = await self._core_client.validate_candidate_planning_intake(
-                session.candidate_id,
-                expected_candidate_fingerprint=session.candidate_fingerprint,
+                session.candidate_id, **intake_kwargs
             )
         except AtlasCoreClientError:
             return unsupported_decision(
@@ -1306,6 +1327,18 @@ class CandidatePlanningService:
                 CandidatePlanningFailureCode.CANDIDATE_STALE,
                 "Candidate fingerprint changed before planning.",
             )
+        if session.snapshot.operational_target is not None:
+            try:
+                return create_operational_plan(
+                    session,
+                    created_at=self._clock(),
+                    revalidated_candidate_fingerprint=snapshot.candidate_fingerprint,
+                )
+            except ValueError:
+                return unsupported_decision(
+                    CandidatePlanningFailureCode.PLANNING_VALIDATION_FAILED,
+                    "Operational candidate plan could not be generated.",
+                )
         resolver = self._repository_resolver
         if resolver is None:
             return unsupported_decision(
@@ -1396,6 +1429,7 @@ class CandidatePlanningService:
             CoreCandidatePlanningIntakeStatus.NOT_ELIGIBLE: CandidatePlanningFailureCode.CANDIDATE_NOT_ELIGIBLE,
             CoreCandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE: CandidatePlanningFailureCode.EVIDENCE_UNAVAILABLE,
             CoreCandidatePlanningIntakeStatus.NOT_FOUND: CandidatePlanningFailureCode.SESSION_NOT_FOUND,
+            CoreCandidatePlanningIntakeStatus.TARGET_UNAVAILABLE: CandidatePlanningFailureCode.TARGET_UNAVAILABLE,
         }
         return unsupported_decision(
             mapping.get(status, CandidatePlanningFailureCode.PLANNING_VALIDATION_FAILED),
@@ -1448,11 +1482,26 @@ def _matches_session_snapshot(
     expected: CandidateSnapshot,
     actual: CandidateSnapshot,
 ) -> bool:
-    return (
+    matches = (
         expected.candidate_id == actual.candidate_id
         and expected.target_id == actual.target_id
         and expected.target_type == actual.target_type
         and expected.execution_intent == actual.execution_intent
+    )
+    if not matches:
+        return False
+    if expected.operational_target is not None or actual.operational_target is not None:
+        return expected.operational_target == actual.operational_target
+    return True
+
+
+def _is_plannable_snapshot(snapshot: CandidateSnapshot) -> bool:
+    if is_supported_execution_intent(snapshot.execution_intent):
+        return True
+    return (
+        snapshot.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+        and snapshot.operational_target is not None
+        and is_operational_planning_intent(snapshot.execution_intent)
     )
 
 

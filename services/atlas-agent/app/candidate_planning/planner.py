@@ -188,6 +188,7 @@ def unsupported_decision(code: CandidatePlanningFailureCode, message: str) -> Pl
         CandidatePlanningFailureCode.CANDIDATE_EXPIRED,
         CandidatePlanningFailureCode.CANDIDATE_NOT_ELIGIBLE,
         CandidatePlanningFailureCode.EVIDENCE_UNAVAILABLE,
+        CandidatePlanningFailureCode.TARGET_UNAVAILABLE,
     }:
         status = CandidatePlanningSessionStatus.STALE_BEFORE_PLANNING
     elif code in {

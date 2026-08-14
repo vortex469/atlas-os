@@ -47,12 +47,20 @@ class CandidatePlanningIntakeReasonCode(StrEnum):
     UNRESOLVED_REQUIRED_RELATIONSHIP = "unresolved_required_relationship"
     DESTRUCTIVE_APPROVAL_REQUIRED = "destructive_approval_required"
     SERVICE_DISRUPTION_CONSTRAINT_REQUIRED = "service_disruption_constraint_required"
+    OPERATIONAL_TARGET_NOT_FOUND = "operational_target_not_found"
+    OPERATIONAL_TARGET_AMBIGUOUS = "operational_target_ambiguous"
+    OPERATIONAL_TARGET_TYPE_MISMATCH = "operational_target_type_mismatch"
+    OPERATIONAL_TARGET_MARKED_MISSING = "operational_target_marked_missing"
+    OPERATIONAL_TARGET_IDENTITY_UNAVAILABLE = "operational_target_identity_unavailable"
+    OPERATIONAL_TARGET_SELECTOR_INVALID = "operational_target_selector_invalid"
+    OPERATIONAL_TARGET_FINGERPRINT_MISMATCH = "operational_target_fingerprint_mismatch"
 
 
 class CandidatePlanningIntakeRequest(ExecutionCandidateModel):
     """Side-effect-free request to revalidate a current candidate for planning."""
 
     expected_candidate_fingerprint: str | None = None
+    expected_operational_target_fingerprint: str | None = None
     requested_by: str | None = Field(default=None, max_length=200)
 
 

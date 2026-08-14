@@ -12,6 +12,7 @@ from pathlib import Path
 from app.workflow.models import WorkflowEffectKind
 
 SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})
+OPERATIONAL_PLANNING_INTENTS = frozenset({"restart-service"})
 RC1_VALIDATION_SMOKE_INTENT = "rc1-validation-smoke"
 
 
@@ -65,6 +66,7 @@ class CandidatePlanningFailureCode(StrEnum):
     CANDIDATE_EXPIRED = "candidate_expired"
     CANDIDATE_NOT_ELIGIBLE = "candidate_not_eligible"
     EVIDENCE_UNAVAILABLE = "evidence_unavailable"
+    TARGET_UNAVAILABLE = "target_unavailable"
     REPOSITORY_MAPPING_UNAVAILABLE = "repository_mapping_unavailable"
     REPOSITORY_INSPECTION_FAILED = "repository_inspection_failed"
     PLANNING_VALIDATION_FAILED = "planning_validation_failed"
@@ -142,6 +144,7 @@ class CandidateSnapshot:
     intake_status: CoreCandidatePlanningIntakeStatus
     intake_reason_codes: tuple[str, ...]
     intake_timestamp: datetime
+    effect_kind: WorkflowEffectKind = WorkflowEffectKind.REPOSITORY_CHANGE
     mutation: ComposeMutationSpecification | None = None
     operational_target: OperationalTargetReference | None = None
 
@@ -256,6 +259,7 @@ class PlanningDecision:
 
     status: CandidatePlanningSessionStatus
     plan: CandidatePlan | None = None
+    operational_plan: OperationalCandidatePlan | None = None
     failure: CandidatePlanningFailure | None = None
 
 
@@ -310,6 +314,7 @@ class CandidatePlanResponse:
     candidate_fingerprint: str | None = None
     unsupported_reason: str | None = None
     plan: CandidatePlan | None = None
+    operational_plan: OperationalCandidatePlan | None = None
     planning_failure: CandidatePlanningFailure | None = None
     predecessor_session_id: str | None = None
     successor_session_id: str | None = None
@@ -461,3 +466,9 @@ def is_supported_execution_intent(execution_intent: str) -> bool:
         execution_intent == RC1_VALIDATION_SMOKE_INTENT
         and os.getenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "false").lower() == "true"
     )
+
+
+def is_operational_planning_intent(execution_intent: str) -> bool:
+    """Return whether an intent may produce a descriptive operational plan only."""
+
+    return execution_intent in OPERATIONAL_PLANNING_INTENTS

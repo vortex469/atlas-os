@@ -90,6 +90,7 @@ class CoreExecutionCandidateSnapshot(BaseModel):
     target_type: str
     execution_category: str
     execution_intent: str
+    effect_kind: str = "repository_change"
     status: str
     required_approval_level: str
     rationale: str
@@ -106,6 +107,7 @@ class CoreExecutionCandidateSnapshot(BaseModel):
 
 class CoreCandidatePlanningIntakeRequest(BaseModel):
     expected_candidate_fingerprint: str | None = None
+    expected_operational_target_fingerprint: str | None = None
 
 
 class CoreCandidatePlanningIntakeResponse(BaseModel):

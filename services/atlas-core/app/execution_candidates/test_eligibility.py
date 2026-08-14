@@ -9,10 +9,12 @@ from app.execution_candidates.eligibility import (
 from app.execution_candidates.models import (
     ApprovalLevel,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionConstraint,
     ExecutionIntent,
+    OperationalTargetReference,
     build_execution_candidate_id,
 )
 
@@ -29,6 +31,7 @@ def make_candidate(**overrides: object) -> ExecutionCandidate:
         "target_type": "host",
         "execution_category": ExecutionCategory.RESTART,
         "execution_intent": ExecutionIntent.RESTART_SERVICE,
+        "effect_kind": ExecutionCandidateEffectKind.OPERATIONAL_ACTION,
         "status": ExecutionCandidateStatus.ELIGIBLE,
         "required_approval_level": ApprovalLevel.STANDARD,
         "rationale": "Restart the service after approval.",
@@ -38,8 +41,18 @@ def make_candidate(**overrides: object) -> ExecutionCandidate:
         "compatibility_status": "compatible",
         "relationship_ids": ("rel-1",),
         "created_at": CREATED_AT,
+        "operational_target": OperationalTargetReference(
+            provider_id="docker",
+            resource_id="host-1",
+            resource_type="host",
+            resource_fingerprint="operational-target-v1:abc",
+            expected_state="running",
+        ),
     }
     values.update(overrides)
+    if values["execution_intent"] is not ExecutionIntent.RESTART_SERVICE:
+        values["effect_kind"] = ExecutionCandidateEffectKind.REPOSITORY_CHANGE
+        values["operational_target"] = None
     values["id"] = build_execution_candidate_id(
         source_subsystem=str(values["source_subsystem"]),
         source_recommendation_id=str(values["source_recommendation_id"]),

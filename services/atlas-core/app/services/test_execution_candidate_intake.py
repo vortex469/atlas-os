@@ -15,10 +15,12 @@ from app.execution_candidates.models import (
     ApprovalLevel,
     ComposeMutationSpecification,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionConstraint,
     ExecutionIntent,
+    OperationalTargetReference,
     build_execution_candidate_id,
 )
 from app.intelligence import development_fixture as fixture
@@ -44,6 +46,7 @@ def candidate(**overrides: object) -> ExecutionCandidate:
         "target_type": "service",
         "execution_category": ExecutionCategory.RESTART,
         "execution_intent": ExecutionIntent.RESTART_SERVICE,
+        "effect_kind": ExecutionCandidateEffectKind.OPERATIONAL_ACTION,
         "status": ExecutionCandidateStatus.ELIGIBLE,
         "required_approval_level": ApprovalLevel.STANDARD,
         "rationale": "Restart the service after approval.",
@@ -54,8 +57,18 @@ def candidate(**overrides: object) -> ExecutionCandidate:
         "relationship_ids": (),
         "created_at": NOW,
         "expires_at": None,
+        "operational_target": OperationalTargetReference(
+            provider_id="docker",
+            resource_id="service-frigate",
+            resource_type="service",
+            resource_fingerprint="operational-target-v1:abc",
+            expected_state="running",
+        ),
     }
     values.update(overrides)
+    if values["execution_intent"] is not ExecutionIntent.RESTART_SERVICE:
+        values["effect_kind"] = ExecutionCandidateEffectKind.REPOSITORY_CHANGE
+        values["operational_target"] = None
     values["id"] = build_execution_candidate_id(
         source_subsystem=str(values["source_subsystem"]),
         source_recommendation_id=str(values["source_recommendation_id"]),
@@ -382,6 +395,25 @@ async def test_repeated_intake_is_deterministic() -> None:
     )
 
     assert first == second
+
+
+@pytest.mark.anyio
+async def test_operational_target_replacement_is_stale() -> None:
+    current = candidate()
+    result = await validate_candidate_planning_intake(
+        current.id,
+        CandidatePlanningIntakeRequest(
+            expected_operational_target_fingerprint="operational-target-v1:old"
+        ),
+        now=NOW,
+        candidate_resolver=resolver(current),
+        evidence_resolver=lambda candidate: candidate.evidence_ids,
+    )
+
+    assert result.status is CandidatePlanningIntakeStatus.STALE
+    assert result.reason_codes == (
+        CandidatePlanningIntakeReasonCode.OPERATIONAL_TARGET_FINGERPRINT_MISMATCH,
+    )
 
 
 @pytest.mark.anyio
