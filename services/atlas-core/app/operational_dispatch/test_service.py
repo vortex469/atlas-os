@@ -16,6 +16,7 @@ from app.operational_dispatch.registry import (
 )
 from app.operational_dispatch.service import OperationalDispatchService
 from app.operational_dispatch.test_support import make_request, make_target
+from app.providers.proxmox_operational import ProxmoxQemuGracefulRestartHandler
 from app.services.provider_resources import ProviderResourceOperationError
 
 
@@ -32,6 +33,31 @@ def test_production_defaults_fail_closed_without_resolving_or_mutating(
     assert result.sanitized_message == "Operational execution capability is disabled."
     resolver.assert_not_awaited()
     assert ledger.get(result.request_id).state is OperationalLedgerState.FAILED  # type: ignore[union-attr]
+
+
+def test_empty_production_gate_blocks_even_an_injected_proxmox_handler(tmp_path) -> None:
+    client_factory = AsyncMock()
+    handler = ProxmoxQemuGracefulRestartHandler(
+        AsyncMock(), client_factory=client_factory
+    )
+    registry = OperationalHandlerRegistry(
+        (
+            OperationalHandlerRegistration(
+                "restart-service", "proxmox", "qemu", handler
+            ),
+        )
+    )
+    resolver = AsyncMock()
+    result = asyncio.run(
+        OperationalDispatchService(
+            ledger=OperationalDispatchLedger(tmp_path / "operational.db"),
+            registry=registry,
+            resolver=resolver,
+        ).dispatch(make_request())
+    )
+    assert result.sanitized_message == "Operational execution capability is disabled."
+    resolver.assert_not_awaited()
+    client_factory.assert_not_called()
 
 
 def test_target_replacement_blocks_before_dispatch_barrier(tmp_path) -> None:

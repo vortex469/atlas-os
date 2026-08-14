@@ -19,6 +19,7 @@ from app.models.resources import (
     ProviderResource,
     ProviderResourceCollection,
     ProviderResourceExpectation,
+    ProviderResourceIdentity,
     ProviderResourceSummary,
     UpdateResourceExpectationResult,
 )
@@ -29,6 +30,7 @@ from app.providers.capabilities import (
     ProviderWorkspace,
 )
 from app.providers.models import ProviderHealth, ProviderMetadata
+from app.providers.proxmox_identity import build_proxmox_qemu_identity
 from app.services.atlas_contexts import LegacyAtlasContextResolver
 from app.services.proxmox_service import get_proxmox_guests, get_proxmox_status
 
@@ -231,6 +233,7 @@ class ProxmoxProvider(Provider):
             vmid = str(guest.get("vmid"))
             seen_vmids.add(vmid)
             resource_type = str(guest.get("type", "unknown"))
+            identity = _qemu_identity(guest, node=node)
             expected = _configured_expectation(configured_guests, vmid)
             resources.append(
                 ProviderResource(
@@ -241,6 +244,7 @@ class ProxmoxProvider(Provider):
                     ),
                     resource_type=resource_type,
                     current_state=str(guest.get("status", "unknown")),
+                    identity=identity,
                     expectation=self._resource_expectation(
                         resource_type,
                         expected,
@@ -254,6 +258,8 @@ class ProxmoxProvider(Provider):
                         "memory_used_gib": guest.get("memory_used_gib"),
                         "memory_total_gib": guest.get("memory_total_gib"),
                         "uptime_seconds": guest.get("uptime_seconds"),
+                        "template": bool(guest.get("template", False)),
+                        "lock": guest.get("lock"),
                     },
                 )
             )
@@ -525,6 +531,18 @@ def _resource_sort_key(resource_id: str) -> tuple[int, int | str]:
         return (0, int(resource_id))
     except ValueError:
         return (1, resource_id)
+
+
+def _qemu_identity(
+    guest: Mapping[str, Any], *, node: str
+) -> ProviderResourceIdentity | None:
+    if guest.get("type") != "qemu" or not guest.get("vmgenid"):
+        return None
+    return build_proxmox_qemu_identity(
+        node=node,
+        vmid=guest.get("vmid"),
+        vmgenid=str(guest["vmgenid"]),
+    )
 
 
 def _resource_summary(

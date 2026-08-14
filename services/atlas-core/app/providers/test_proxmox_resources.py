@@ -35,8 +35,11 @@ def guest_inventory() -> dict:
             {
                 "vmid": 100,
                 "name": "router",
-                "type": "vm",
+                "type": "qemu",
                 "status": "running",
+                "vmgenid": "11111111-1111-1111-1111-111111111111",
+                "template": False,
+                "lock": None,
                 "cpu_percent": 1.5,
                 "memory_used_gib": 2.0,
                 "memory_total_gib": 4.0,
@@ -55,8 +58,9 @@ def guest_inventory() -> dict:
             {
                 "vmid": 110,
                 "name": "batch",
-                "type": "vm",
+                "type": "qemu",
                 "status": "stopped",
+                "vmgenid": "22222222-2222-2222-2222-222222222222",
             },
         ],
     }
@@ -102,8 +106,11 @@ def test_live_proxmox_guest_maps_to_generic_resource(
     assert resource.provider_id == "proxmox"
     assert resource.resource_id == "100"
     assert resource.display_name == "router"
-    assert resource.resource_type == "vm"
+    assert resource.resource_type == "qemu"
     assert resource.current_state == "running"
+    assert resource.identity is not None
+    assert resource.identity.token_version == "proxmox-qemu-identity-v1"
+    assert "11111111" not in resource.identity.token
 
 
 def test_vmid_and_node_remain_stable_metadata(
