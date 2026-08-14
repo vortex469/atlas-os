@@ -5,7 +5,6 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 
-
 ATLAS_ROOT = Path("/opt/atlas")
 CONFIG_FILE = ATLAS_ROOT / "config" / "atlas.yaml"
 ENV_FILE = ATLAS_ROOT / ".env"
@@ -63,6 +62,10 @@ class IntelligenceSettings(BaseModel):
     telemetry_retention_days: int = Field(default=30, ge=1)
 
 
+class OperationalDispatchSettings(BaseModel):
+    database: str = "/opt/atlas/data/operational_dispatch.db"
+
+
 class Settings(BaseModel):
     atlas: AtlasSettings
     infrastructure: InfrastructureSettings
@@ -73,6 +76,9 @@ class Settings(BaseModel):
     audit: AuditSettings = Field(default_factory=AuditSettings)
     intelligence: IntelligenceSettings = Field(
         default_factory=IntelligenceSettings,
+    )
+    operational_dispatch: OperationalDispatchSettings = Field(
+        default_factory=OperationalDispatchSettings,
     )
 
 
@@ -86,7 +92,7 @@ def load_yaml_config() -> dict[str, Any]:
         config = yaml.safe_load(config_file)
 
     if not isinstance(config, dict):
-        raise RuntimeError(
+        raise RuntimeError(  # noqa: TRY004 - preserve configuration error contract
             f"Atlas configuration is invalid: {CONFIG_FILE}"
         )
 

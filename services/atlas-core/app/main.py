@@ -13,6 +13,10 @@ from app.core.exceptions import (
 )
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware
+from app.intelligence.development_fixture import (
+    development_fixture_enabled_and_validated,
+)
+from app.operational_dispatch.ledger import OperationalDispatchLedger
 from app.providers.loader import load_provider_registry
 from app.routes.ace import router as ace_router
 from app.routes.ai import router as ai_router
@@ -26,10 +30,6 @@ from app.routes.ops import router as ops_router
 from app.routes.policies import router as policies_router
 from app.routes.providers import router as providers_router
 from app.routes.proxmox import router as proxmox_router
-from app.intelligence.development_fixture import (
-    development_fixture_enabled_and_validated,
-)
-
 
 configure_logging()
 logger = get_logger("atlas")
@@ -44,6 +44,16 @@ async def lifespan(app: FastAPI):
 
     load_provider_registry()
     logger.info("Provider registry initialized")
+
+    operational_ledger = OperationalDispatchLedger(
+        settings.operational_dispatch.database
+    )
+    reconciliation = operational_ledger.reconcile_startup()
+    app.state.operational_dispatch_ledger = operational_ledger
+    logger.info(
+        "Operational dispatch ledger initialized",
+        extra={"operational_reconciliation": reconciliation},
+    )
 
     logger.info("Atlas Cognitive Engine ready")
     logger.info("Atlas Core ready")
