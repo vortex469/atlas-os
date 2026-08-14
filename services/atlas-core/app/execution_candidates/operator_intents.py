@@ -245,6 +245,9 @@ def validate_restart_target(target: ResolvedOperationalTarget) -> None:
         raise ValueError("operator intent target is locked or migrating")
     if bool(metadata.get("migrating")):
         raise ValueError("operator intent target is migrating")
+    qmp = metadata.get("qmp")
+    if qmp is not None and qmp != "running":
+        raise ValueError("operator intent target QMP state is unavailable")
 
 
 def record_from_request(

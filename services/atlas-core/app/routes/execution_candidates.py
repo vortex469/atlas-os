@@ -16,12 +16,20 @@ from app.execution_candidates.models import (
     ExecutionCategory,
     ExecutionIntent,
 )
+from app.execution_candidates.operator_intent_selector import (
+    OperatorIntentResourceCollection,
+    OperatorIntentResourceCollectionError,
+    collect_operator_intent_resources,
+)
 from app.execution_candidates.operator_intents import (
     OperatorOperationalIntentRequest,
     create_operator_intent,
 )
 from app.models.contracts import APIError
-from app.operator_auth.dependencies import require_operator_mutation
+from app.operator_auth.dependencies import (
+    require_operator_mutation,
+    require_operator_permission,
+)
 from app.operator_auth.models import OPERATIONAL_INTENT_CREATE, OperatorPrincipal
 from app.providers import ProviderNotFoundError
 from app.routes.operator_auth import read_strict_operator_json
@@ -45,7 +53,9 @@ router = APIRouter(
     tags=["Execution Candidates"],
 )
 _require_intent_creation = require_operator_mutation(OPERATIONAL_INTENT_CREATE)
+_require_intent_read = require_operator_permission(OPERATIONAL_INTENT_CREATE)
 OperatorIntentPrincipal = Annotated[OperatorPrincipal, Depends(_require_intent_creation)]
+OperatorIntentReadPrincipal = Annotated[OperatorPrincipal, Depends(_require_intent_read)]
 
 StatusFilters = Annotated[list[ExecutionCandidateStatus] | None, Query(alias="status")]
 CategoryFilters = Annotated[list[ExecutionCategory] | None, Query(alias="category")]
@@ -106,6 +116,25 @@ async def list_execution_candidates(
         offset=offset,
         has_more=has_more,
     )
+
+
+@router.get(
+    "/operator-intents/resources",
+    response_model=OperatorIntentResourceCollection,
+    responses={503: {"model": APIError}},
+    summary="List sanitized authoritative operator-intent resources",
+)
+async def list_operator_intent_resources(
+    principal: OperatorIntentReadPrincipal,
+) -> OperatorIntentResourceCollection:
+    del principal
+    try:
+        return await collect_operator_intent_resources()
+    except OperatorIntentResourceCollectionError as error:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Operator-intent resources are temporarily unavailable.",
+        ) from error
 
 
 @router.get(
