@@ -14,6 +14,7 @@ from app.operational_dispatch.models import (
     OperationalDispatchAuditStatus,
     OperationalDispatchRequest,
     OperationalDispatchResult,
+    OperationalLifecycleStatus,
 )
 
 MAX_OPERATIONAL_DISPATCH_BODY_BYTES = 65_536
@@ -96,7 +97,7 @@ async def dispatch_operational_action(request: Request) -> OperationalDispatchRe
         )
     )
     try:
-        return await request.app.state.operational_dispatch_service.dispatch(
+        return await request.app.state.operational_lifecycle_service.dispatch(
             dispatch_request
         )
     except OperationalLedgerConflictError as error:
@@ -113,3 +114,30 @@ async def dispatch_operational_action(request: Request) -> OperationalDispatchRe
             status_code=status.HTTP_409_CONFLICT,
             detail="Operational dispatch request identity conflicts.",
         ) from error
+
+
+@router.get(
+    "/{request_id}",
+    response_model=OperationalLifecycleStatus,
+    include_in_schema=False,
+)
+async def operational_action_status(
+    request_id: str, request: Request
+) -> OperationalLifecycleStatus:
+    _record(request, OperationalDispatchAuditStatus.AUTH_ATTEMPTED)
+    if not request.app.state.operational_dispatch_authenticator.authenticate(
+        request.headers.get("Authorization")
+    ):
+        _record(request, OperationalDispatchAuditStatus.AUTH_REJECTED)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Operational dispatch authentication failed.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    lifecycle_status = request.app.state.operational_lifecycle_service.status(request_id)
+    if lifecycle_status is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Operational dispatch request was not found.",
+        )
+    return lifecycle_status

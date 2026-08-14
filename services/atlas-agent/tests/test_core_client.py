@@ -832,3 +832,36 @@ def test_repository_core_requests_do_not_receive_operational_auth_header(tmp_pat
         client=http_client,
     )
     asyncio.run(client.get_health())
+
+
+def test_operational_status_reader_is_typed_authenticated_and_read_only(tmp_path) -> None:
+    token = "agent-core-status-token"
+    token_file = tmp_path / "token"
+    token_file.write_text(f"{token}\n", encoding="ascii")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/api/v1/internal/operational-actions/request-1"
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        assert request.content == b""
+        return httpx.Response(
+            200,
+            json={
+                "request_id": "request-1",
+                "request_digest": "operational-action-request-digest-v1:abc",
+                "ledger_state": "outcome_unknown",
+                "dispatch_result": None,
+                "verification_result": None,
+                "verification_resumable": False,
+            },
+        )
+
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client = AtlasCoreClient(
+        settings=create_test_settings(operational_auth_file=token_file),
+        client=http_client,
+    )
+    result = asyncio.run(client.get_operational_action_status("request-1"))
+    assert result.ledger_state == "outcome_unknown"
+    with pytest.raises(AtlasCorePayloadError):
+        asyncio.run(client.get_operational_action_status("../request-1"))

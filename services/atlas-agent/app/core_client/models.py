@@ -206,3 +206,39 @@ class CoreOperationalDispatchResult(CoreOperationalModel):
     started_at: datetime
     completed_at: datetime | None = None
     sanitized_message: str | None = None
+
+
+class CoreOperationalVerificationResult(CoreOperationalModel):
+    status: Literal[
+        "succeeded",
+        "verification_failed",
+        "outcome_unknown",
+        "target_replaced",
+    ]
+    request_id: str
+    observed_target_fingerprint: str | None = None
+    observed_state: str | None = None
+    health_status: str | None = None
+    started_at: datetime
+    completed_at: datetime
+    deadline: datetime
+
+
+class CoreOperationalLifecycleStatus(CoreOperationalModel):
+    request_id: str
+    request_digest: str
+    ledger_state: Literal[
+        "claimed",
+        "revalidated",
+        "dispatching",
+        "succeeded",
+        "failed",
+        "outcome_unknown",
+        "verifying",
+        "verified",
+        "verification_failed",
+        "target_replaced",
+    ]
+    dispatch_result: CoreOperationalDispatchResult | None = None
+    verification_result: CoreOperationalVerificationResult | None = None
+    verification_resumable: bool = False

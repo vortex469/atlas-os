@@ -145,6 +145,15 @@ class OperationalDispatchAuditStatus(StrEnum):
     REQUEST_CONFLICT = "request_conflict"
     TARGET_BLOCKED = "target_blocked"
     DISPATCH_RESULT = "dispatch_result"
+    BARRIER_CROSSED = "barrier_crossed"
+    PROVIDER_OPERATION_CAPTURED = "provider_operation_captured"
+    OUTCOME_UNKNOWN = "outcome_unknown"
+    VERIFICATION_STARTED = "verification_started"
+    VERIFICATION_RESUMED = "verification_resumed"
+    VERIFICATION_SUCCEEDED = "verification_succeeded"
+    VERIFICATION_FAILED = "verification_failed"
+    VERIFICATION_TARGET_REPLACED = "verification_target_replaced"
+    RECOVERY_RECONCILED = "recovery_reconciled"
 
 
 class OperationalDispatchAuditEvent(OperationalDispatchModel):
@@ -190,6 +199,15 @@ class OperationalVerificationResult(OperationalDispatchModel):
     started_at: datetime
     completed_at: datetime
     deadline: datetime
+
+
+class OperationalLifecycleStatus(OperationalDispatchModel):
+    request_id: str
+    request_digest: str
+    ledger_state: str
+    dispatch_result: OperationalDispatchResult | None = None
+    verification_result: OperationalVerificationResult | None = None
+    verification_resumable: bool = False
 
 
 def operational_verification_digest(

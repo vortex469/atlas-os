@@ -9,9 +9,11 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from threading import Lock
+from uuid import uuid4
 
 from app.operational_dispatch.models import (
     OperationalDispatchAuditEvent,
+    OperationalDispatchAuditStatus,
     OperationalDispatchRequest,
     OperationalDispatchResult,
     OperationalVerificationResult,
@@ -223,7 +225,10 @@ class OperationalDispatchLedger:
             return self._entry(row)
 
     def begin_verification(
-        self, request: OperationalDispatchRequest
+        self,
+        request: OperationalDispatchRequest,
+        *,
+        resume_interrupted: bool = False,
     ) -> tuple[OperationalLedgerEntry, bool]:
         with self._lock, self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -231,18 +236,21 @@ class OperationalDispatchLedger:
             self._check_digest(row, request)
             state = OperationalLedgerState(row["state"])
             owner = False
+            if row["verification_result_json"] is not None:
+                connection.commit()
+                return self._entry(row), False
             if state in {
                 OperationalLedgerState.SUCCEEDED,
                 OperationalLedgerState.OUTCOME_UNKNOWN,
-                OperationalLedgerState.VERIFYING,
             }:
-                if state is not OperationalLedgerState.VERIFYING:
-                    connection.execute(
-                        "UPDATE operational_dispatch SET state='verifying', updated_at=? WHERE request_id=?",
-                        (self._now().isoformat(), request.request_id),
-                    )
-                    owner = True
+                connection.execute(
+                    "UPDATE operational_dispatch SET state='verifying', updated_at=? WHERE request_id=?",
+                    (self._now().isoformat(), request.request_id),
+                )
+                owner = True
                 row = self._row_for(connection, request.request_id)
+            elif state is OperationalLedgerState.VERIFYING and resume_interrupted:
+                owner = True
             connection.commit()
             return self._entry(row), owner
 
@@ -256,7 +264,7 @@ class OperationalDispatchLedger:
         state = {
             "succeeded": OperationalLedgerState.VERIFIED,
             "verification_failed": OperationalLedgerState.VERIFICATION_FAILED,
-            "outcome_unknown": OperationalLedgerState.VERIFICATION_FAILED,
+            "outcome_unknown": OperationalLedgerState.OUTCOME_UNKNOWN,
             "target_replaced": OperationalLedgerState.TARGET_REPLACED,
         }[result.status.value]
         encoded = result.model_dump_json()
@@ -318,6 +326,31 @@ class OperationalDispatchLedger:
                 "SELECT COUNT(*) FROM operational_dispatch WHERE state='verifying'"
             ).fetchone()[0]
             connection.commit()
+        for row in rows:
+            request = OperationalDispatchRequest.model_validate_json(row["request_json"])
+            for status in (
+                OperationalDispatchAuditStatus.OUTCOME_UNKNOWN,
+                OperationalDispatchAuditStatus.RECOVERY_RECONCILED,
+            ):
+                self.append_event(
+                    OperationalDispatchAuditEvent(
+                        event_id=uuid4().hex,
+                        status=status,
+                        occurred_at=now,
+                        request_id=request.request_id,
+                        request_digest=request.request_digest,
+                        workflow_session_id=request.workflow_session_id,
+                        candidate_planning_session_id=(
+                            request.candidate_planning_session_id
+                        ),
+                        candidate_id=request.candidate_id,
+                        candidate_plan_id=request.candidate_plan_id,
+                        provider_id=request.provider_id,
+                        resource_id=request.resource_id,
+                        resource_type=request.resource_type,
+                        target_fingerprint=request.target_fingerprint,
+                    )
+                )
         return {
             "retryable_pre_dispatch": int(claimed),
             "outcome_unknown": len(rows),
@@ -330,6 +363,27 @@ class OperationalDispatchLedger:
                 "SELECT * FROM operational_dispatch WHERE request_id=?", (request_id,)
             ).fetchone()
             return self._entry(row) if row is not None else None
+
+    def list_verification_candidates(self) -> tuple[OperationalLedgerEntry, ...]:
+        """Return immutable entries eligible only for read-only reconciliation."""
+
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM operational_dispatch
+                   WHERE verification_result_json IS NULL
+                     AND state IN ('succeeded', 'outcome_unknown', 'verifying')
+                   ORDER BY created_at, request_id"""
+            ).fetchall()
+        entries = tuple(self._entry(row) for row in rows)
+        return tuple(
+            entry
+            for entry in entries
+            if entry.state is OperationalLedgerState.VERIFYING
+            or (
+                entry.dispatch_result is not None
+                and entry.dispatch_result.provider_operation_id is not None
+            )
+        )
 
     def append_event(self, event: OperationalDispatchAuditEvent) -> None:
         event = OperationalDispatchAuditEvent.model_validate(event.model_dump())
@@ -442,8 +496,19 @@ class OperationalDispatchLedger:
                 raise ValueError("stored dispatch result does not match ledger row")
             if state in DISPATCH_RESULT_STATES and dispatch is None:
                 raise ValueError("dispatch result state is missing durable result")
-            if state in FINAL_STATES and state is not OperationalLedgerState.TARGET_REPLACED and verification is None:
+            if (
+                state in FINAL_STATES
+                and state is not OperationalLedgerState.TARGET_REPLACED
+                and verification is None
+            ):
                 raise ValueError("verification terminal state is missing durable result")
+            if verification is not None and state not in {
+                OperationalLedgerState.VERIFIED,
+                OperationalLedgerState.VERIFICATION_FAILED,
+                OperationalLedgerState.TARGET_REPLACED,
+                OperationalLedgerState.OUTCOME_UNKNOWN,
+            }:
+                raise ValueError("verification result does not match ledger state")
             return OperationalLedgerEntry(
                 request_id=row["request_id"],
                 request_digest=row["request_digest"],

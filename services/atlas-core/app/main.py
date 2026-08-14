@@ -18,8 +18,15 @@ from app.intelligence.development_fixture import (
 )
 from app.operational_dispatch.auth import OperationalDispatchAuthenticator
 from app.operational_dispatch.ledger import OperationalDispatchLedger
+from app.operational_dispatch.lifecycle import (
+    OperationalLifecycleService,
+    OperationalVerifierRegistry,
+)
 from app.operational_dispatch.service import OperationalDispatchService
 from app.providers.loader import load_provider_registry
+from app.providers.proxmox import ProxmoxProvider
+from app.providers.proxmox_operational import ProxmoxQemuVerificationService
+from app.providers.registry import provider_registry
 from app.routes.ace import router as ace_router
 from app.routes.ai import router as ai_router
 from app.routes.analysis import router as analysis_router
@@ -55,18 +62,49 @@ async def lifespan(app: FastAPI):
     app.state.operational_dispatch_authenticator = OperationalDispatchAuthenticator(
         settings.operational_dispatch.agent_auth_file
     )
-    app.state.operational_dispatch_service = OperationalDispatchService(
+    operational_dispatch_service = OperationalDispatchService(
         ledger=operational_ledger
     )
+    app.state.operational_dispatch_service = operational_dispatch_service
+    verifier_registry = OperationalVerifierRegistry()
+    proxmox_provider = provider_registry.get("proxmox")
+    if isinstance(proxmox_provider, ProxmoxProvider):
+        proxmox_verifier = ProxmoxQemuVerificationService(
+            proxmox_provider.atlas_context
+        )
+
+        async def verify_proxmox_qemu(request, result, deadline):
+            return await proxmox_verifier.verify(
+                request, result, deadline=deadline
+            )
+
+        verifier_registry.register(
+            execution_intent="restart-service",
+            provider_id="proxmox",
+            resource_type="qemu",
+            verifier=verify_proxmox_qemu,
+        )
+    operational_lifecycle = OperationalLifecycleService(
+        ledger=operational_ledger,
+        dispatcher=operational_dispatch_service,
+        verifiers=verifier_registry,
+    )
+    app.state.operational_lifecycle_service = operational_lifecycle
+    recovery_scheduled = operational_lifecycle.schedule_startup_recovery()
     logger.info(
         "Operational dispatch ledger initialized",
-        extra={"operational_reconciliation": reconciliation},
+        extra={
+            "operational_reconciliation": reconciliation,
+            "operational_recovery_scheduled": recovery_scheduled,
+        },
     )
 
     logger.info("Atlas Cognitive Engine ready")
     logger.info("Atlas Core ready")
 
     yield
+
+    await operational_lifecycle.close()
 
     logger.info("Atlas Core shutting down")
 

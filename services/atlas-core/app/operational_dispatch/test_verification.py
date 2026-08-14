@@ -65,4 +65,5 @@ def test_verification_can_resume_from_durable_unknown_without_mutation(
         deadline=now + timedelta(seconds=5),
     ))
     completed = resumed.persist_verification_result(request, result)
-    assert completed.state is OperationalLedgerState.VERIFICATION_FAILED
+    assert completed.state is OperationalLedgerState.OUTCOME_UNKNOWN
+    assert completed.verification_result is not None

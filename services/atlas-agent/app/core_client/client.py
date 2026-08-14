@@ -24,6 +24,7 @@ from .models import (
     CoreOperationalApprovalBinding,
     CoreOperationalDispatchRequest,
     CoreOperationalDispatchResult,
+    CoreOperationalLifecycleStatus,
     CoreOperationalVerificationSpecification,
 )
 
@@ -317,6 +318,56 @@ class AtlasCoreClient:
         except (json.JSONDecodeError, ValidationError) as error:
             raise AtlasCorePayloadError(
                 "Operational dispatch returned an invalid response."
+            ) from error
+
+    async def get_operational_action_status(
+        self, request_id: str
+    ) -> CoreOperationalLifecycleStatus:
+        """Read one durable operational lifecycle status without provider input."""
+
+        if (
+            not request_id
+            or request_id != request_id.strip()
+            or any(character in request_id for character in "/?#")
+        ):
+            raise AtlasCorePayloadError("Operational request ID is invalid.")
+        url = (
+            f"{self._base_url}/api/v1/internal/operational-actions/{request_id}"
+        )
+        try:
+            token = self.settings.operational_dispatch_auth_file.read_text(
+                encoding="ascii"
+            ).strip()
+            if not token:
+                raise AtlasCoreConnectionError(
+                    "Operational dispatch authentication is unavailable."
+                )
+            response = await self._get_client().get(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+            return CoreOperationalLifecycleStatus.model_validate(response.json())
+        except (OSError, UnicodeError) as error:
+            raise AtlasCoreConnectionError(
+                "Operational dispatch authentication is unavailable."
+            ) from error
+        except httpx.TimeoutException as error:
+            raise AtlasCoreTimeoutError(
+                "Operational status request timed out."
+            ) from error
+        except httpx.HTTPStatusError as error:
+            raise AtlasCoreResponseError(
+                f"Operational status was rejected with HTTP {error.response.status_code}."
+            ) from error
+        except httpx.RequestError as error:
+            raise AtlasCoreConnectionError(
+                "Operational status boundary is unavailable."
+            ) from error
+        except (json.JSONDecodeError, ValidationError) as error:
+            raise AtlasCorePayloadError(
+                "Operational status returned an invalid response."
             ) from error
 
     async def close(self) -> None:

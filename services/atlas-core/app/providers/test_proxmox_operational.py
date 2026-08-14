@@ -263,3 +263,44 @@ def test_verification_timeout_is_unknown_and_never_reboots() -> None:
     verified = asyncio.run(verifier.verify(request, result, deadline=deadline))
     assert verified.status is OperationalVerificationStatus.OUTCOME_UNKNOWN
     proxmox.nodes.return_value.qemu.return_value.status.reboot.post.assert_not_called()
+
+
+def test_successful_task_without_running_guest_fails_at_deadline() -> None:
+    request = make_request(resource_id="101")
+    result = dispatch_result(request)
+    deadline = result.started_at + timedelta(seconds=1)
+    proxmox = client()
+    proxmox.nodes.return_value.tasks.return_value.status.get.return_value = {
+        "status": "stopped",
+        "exitstatus": "OK",
+    }
+    verifier = ProxmoxQemuVerificationService(
+        MagicMock(),
+        client_factory=lambda _context: proxmox,
+        resolver=AsyncMock(return_value=target(current_state="stopped")),
+        poll_interval_seconds=0,
+        now=Clock([result.started_at, deadline, deadline]),
+        sleep=AsyncMock(),
+    )
+    verified = asyncio.run(verifier.verify(request, result, deadline=deadline))
+    assert verified.status is OperationalVerificationStatus.VERIFICATION_FAILED
+
+
+def test_unavailable_task_status_is_unknown_at_deadline() -> None:
+    request = make_request(resource_id="101")
+    result = dispatch_result(request)
+    deadline = result.started_at + timedelta(seconds=1)
+    proxmox = client()
+    proxmox.nodes.return_value.tasks.return_value.status.get.side_effect = RuntimeError(
+        "task unavailable"
+    )
+    verifier = ProxmoxQemuVerificationService(
+        MagicMock(),
+        client_factory=lambda _context: proxmox,
+        resolver=AsyncMock(return_value=target()),
+        poll_interval_seconds=0,
+        now=Clock([result.started_at, deadline, deadline]),
+        sleep=AsyncMock(),
+    )
+    verified = asyncio.run(verifier.verify(request, result, deadline=deadline))
+    assert verified.status is OperationalVerificationStatus.OUTCOME_UNKNOWN

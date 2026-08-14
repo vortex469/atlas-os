@@ -5,6 +5,10 @@ from fastapi.testclient import TestClient
 
 from app.operational_dispatch.auth import OperationalDispatchAuthenticator
 from app.operational_dispatch.ledger import OperationalDispatchLedger
+from app.operational_dispatch.lifecycle import (
+    OperationalLifecycleService,
+    OperationalVerifierRegistry,
+)
 from app.operational_dispatch.models import OperationalDispatchAuditStatus
 from app.operational_dispatch.service import OperationalDispatchService
 from app.operational_dispatch.test_support import make_request
@@ -22,7 +26,13 @@ def _client(tmp_path) -> tuple[TestClient, OperationalDispatchLedger, str]:
     app.state.operational_dispatch_authenticator = OperationalDispatchAuthenticator(
         token_file
     )
-    app.state.operational_dispatch_service = OperationalDispatchService(ledger=ledger)
+    dispatcher = OperationalDispatchService(ledger=ledger)
+    app.state.operational_dispatch_service = dispatcher
+    app.state.operational_lifecycle_service = OperationalLifecycleService(
+        ledger=ledger,
+        dispatcher=dispatcher,
+        verifiers=OperationalVerifierRegistry(),
+    )
     app.include_router(router, prefix="/api/v1")
     return TestClient(app), ledger, token
 
@@ -99,3 +109,18 @@ def test_internal_dispatch_route_is_not_published_in_openapi(tmp_path) -> None:
     assert "/api/v1/internal/operational-actions/dispatch" not in client.get(
         "/openapi.json"
     ).json()["paths"]
+
+
+def test_authenticated_status_is_typed_read_only_and_missing_auth_is_rejected(
+    tmp_path,
+) -> None:
+    client, _ledger, token = _client(tmp_path)
+    request = make_request()
+    _post(client, token, request.model_dump(mode="json"))
+    url = f"/api/v1/internal/operational-actions/{request.request_id}"
+    assert client.get(url).status_code == 401
+    response = client.get(url, headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert response.json()["request_digest"] == request.request_digest
+    assert response.json()["ledger_state"] == "failed"
+    assert response.json()["verification_resumable"] is False

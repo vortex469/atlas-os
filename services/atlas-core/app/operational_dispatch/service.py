@@ -117,6 +117,7 @@ class OperationalDispatchService:
                 started_at=entry.dispatch_started_at or now,
                 sanitized_message="Operational dispatch is already in progress.",
             )
+        self._audit(request, OperationalDispatchAuditStatus.BARRIER_CROSSED)
         try:
             result = await handler(request, target)
             if (
@@ -142,6 +143,12 @@ class OperationalDispatchService:
             if result.status is OperationalDispatchStatus.FAILED
             else OperationalLedgerState.OUTCOME_UNKNOWN
         )
+        if result.provider_operation_id is not None:
+            self._audit(
+                request, OperationalDispatchAuditStatus.PROVIDER_OPERATION_CAPTURED
+            )
+        if result.status is OperationalDispatchStatus.OUTCOME_UNKNOWN:
+            self._audit(request, OperationalDispatchAuditStatus.OUTCOME_UNKNOWN)
         self._audit(request, OperationalDispatchAuditStatus.DISPATCH_RESULT)
         return self._ledger.persist_dispatch_result(
             request, result, state=state
