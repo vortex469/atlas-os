@@ -12,6 +12,11 @@ from app.execution_candidates.models import (
     OperationalTargetReference,
     OperationalTargetResolutionReason,
 )
+from app.execution_candidates.operator_intents import (
+    OperatorIntentStore,
+    TargetResolver,
+    project_operator_intent_with_reason,
+)
 from app.execution_candidates.projection import project_execution_candidates
 from app.intelligence.coordinator import (
     _performance_findings,
@@ -205,6 +210,8 @@ async def collect_current_execution_candidates(
     available_evidence_ids: Iterable[str] | None = (),
     now: datetime | None = None,
     finding_collector: Callable[[], tuple[Finding, ...]] | None = None,
+    operator_intent_store: OperatorIntentStore | None = None,
+    operational_target_resolver: TargetResolver = resolve_operational_target,
 ) -> tuple[ExecutionCandidate, ...]:
     """Project the current read-only candidate set from current findings."""
 
@@ -250,6 +257,23 @@ async def collect_current_execution_candidates(
                 now=projection_time,
             )
         candidates.append(candidate)
+    if operator_intent_store is not None:
+        for record in operator_intent_store.list():
+            projection = await project_operator_intent_with_reason(
+                record,
+                resolver=operational_target_resolver,
+                now=projection_time,
+            )
+            candidate = projection.candidate
+            candidates.append(candidate)
+            operator_intent_store.append_audit(
+                event="candidate_projected",
+                reason=projection.reason,
+                occurred_at=projection_time,
+                record_id=record.record_id,
+                candidate_id=candidate.id,
+                operator_id=record.operator_id,
+            )
     return _sort_candidates(candidates)
 
 
@@ -259,6 +283,8 @@ async def get_current_execution_candidate(
     available_evidence_ids: Iterable[str] | None = (),
     now: datetime | None = None,
     finding_collector: Callable[[], tuple[Finding, ...]] | None = None,
+    operator_intent_store: OperatorIntentStore | None = None,
+    operational_target_resolver: TargetResolver = resolve_operational_target,
 ) -> ExecutionCandidate:
     """Return one current candidate by deterministic ID."""
 
@@ -266,6 +292,8 @@ async def get_current_execution_candidate(
         available_evidence_ids=available_evidence_ids,
         now=now,
         finding_collector=finding_collector,
+        operator_intent_store=operator_intent_store,
+        operational_target_resolver=operational_target_resolver,
     )
     for candidate in candidates:
         if candidate.id == candidate_id:

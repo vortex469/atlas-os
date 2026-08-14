@@ -79,6 +79,7 @@ class OperatorAuthSettings(BaseModel):
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     session_database: str = "/opt/atlas/data/operator_sessions.db"
     audit_database: str = "/opt/atlas/data/operator_security_audit.db"
+    intent_database: str = "/opt/atlas/data/operator_intents.db"
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
@@ -154,6 +155,7 @@ def load_settings() -> Settings:
             "trusted_origins": os.getenv("ATLAS_OPERATOR_AUTH_TRUSTED_ORIGINS"),
             "session_database": os.getenv("ATLAS_OPERATOR_AUTH_SESSION_DATABASE"),
             "audit_database": os.getenv("ATLAS_OPERATOR_AUTH_AUDIT_DATABASE"),
+            "intent_database": os.getenv("ATLAS_OPERATOR_INTENT_DATABASE"),
         }
         for key, value in environment_overrides.items():
             if value is None:

@@ -71,7 +71,8 @@ def _result(
 
 
 def _default_evidence_resolver(candidate: ExecutionCandidate) -> tuple[str, ...]:
-    del candidate
+    if candidate.source_subsystem == "operator-intent":
+        return candidate.evidence_ids
 
     try:
         development_fixture_enabled_and_validated()

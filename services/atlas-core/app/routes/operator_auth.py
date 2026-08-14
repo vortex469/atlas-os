@@ -52,7 +52,7 @@ def _audit(
     )
 
 
-async def _strict_json(request: Request, model_type):
+async def read_strict_operator_json(request: Request, model_type):
     if request.headers.get("content-type", "").split(";", 1)[0].strip().lower() != "application/json":
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Operator request must use application/json.")
     declared = request.headers.get("content-length")
@@ -83,7 +83,7 @@ async def operator_login(request: Request, response: Response) -> OperatorSessio
     if not request.app.state.operator_login_rate_limiter.allow(client_network_key(request)):
         _audit(request, action="operator.login", outcome="rejected", reason="rate_limited")
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Operator login rate limit exceeded.")
-    login = await _strict_json(request, OperatorLoginRequest)
+    login = await read_strict_operator_json(request, OperatorLoginRequest)
     credential = request.app.state.operator_credential_verifier.authenticate(
         login.operator_id, login.password
     )
@@ -118,7 +118,7 @@ def operator_session(request: Request, response: Response) -> OperatorSessionRes
 async def operator_logout(request: Request, response: Response) -> OperatorLogoutResponse:
     _enabled(request)
     principal = require_authenticated_mutation(request)
-    await _strict_json(request, OperatorProbeRequest)
+    await read_strict_operator_json(request, OperatorProbeRequest)
     session = request.state.operator_session
     request.app.state.operator_session_store.revoke(session)
     response.delete_cookie(OPERATOR_SESSION_COOKIE, path="/api/v1/", secure=True, httponly=True, samesite="strict")
@@ -132,7 +132,7 @@ async def operator_probe(
     principal: OperatorProbePrincipal,
 ) -> OperatorProbeResponse:
     _enabled(request)
-    probe = await _strict_json(request, OperatorProbeRequest)
+    probe = await read_strict_operator_json(request, OperatorProbeRequest)
     _audit(
         request,
         action=probe.action,

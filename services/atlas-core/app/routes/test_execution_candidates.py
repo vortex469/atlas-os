@@ -367,7 +367,7 @@ def test_intelligence_routes_remain_registered() -> None:
     assert "/api/v1/intelligence/telemetry/history/export" in paths
 
 
-def test_execution_candidate_openapi_is_get_only() -> None:
+def test_execution_candidate_openapi_exposes_only_reviewed_methods() -> None:
     paths = {
         path: methods
         for path, methods in app.openapi()["paths"].items()
@@ -378,10 +378,12 @@ def test_execution_candidate_openapi_is_get_only() -> None:
         "/api/v1/execution-candidates",
         "/api/v1/execution-candidates/{candidate_id}",
         "/api/v1/execution-candidates/{candidate_id}/planning-intake",
+        "/api/v1/execution-candidates/operator-intents",
     }
     assert set(paths["/api/v1/execution-candidates"]) == {"get"}
     assert set(paths["/api/v1/execution-candidates/{candidate_id}"]) == {"get"}
     assert set(paths["/api/v1/execution-candidates/{candidate_id}/planning-intake"]) == {"post"}
+    assert set(paths["/api/v1/execution-candidates/operator-intents"]) == {"post"}
 
 
 def test_execution_candidate_openapi_uses_public_dtos_only() -> None:

@@ -59,6 +59,14 @@ class ExecutionCandidatePageResponse(BaseModel):
     has_more: bool
 
 
+class OperatorIntentCreationResponse(BaseModel):
+    """Sanitized result of an authenticated operator-intent request."""
+
+    outcome: str
+    candidate_id: str
+    candidate: ExecutionCandidateResponse
+
+
 def candidate_to_response(candidate: ExecutionCandidate) -> ExecutionCandidateResponse:
     """Convert an internal candidate to the public API DTO."""
 

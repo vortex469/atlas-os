@@ -18,7 +18,12 @@ from app.execution_candidates.models import (
     contains_unsafe_payload,
 )
 
-SUPPORTED_SOURCE_SUBSYSTEMS: Final[tuple[str, ...]] = ("orion", "discovery", "intelligence")
+SUPPORTED_SOURCE_SUBSYSTEMS: Final[tuple[str, ...]] = (
+    "orion",
+    "discovery",
+    "intelligence",
+    "operator-intent",
+)
 _AMBIGUOUS_TARGET_IDS: Final[frozenset[str]] = frozenset({"*", "all", "unknown", "ambiguous"})
 _BYPASS_MARKERS: Final[tuple[str, ...]] = (
     "bypass approval",

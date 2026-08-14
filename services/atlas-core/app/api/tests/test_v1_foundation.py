@@ -13,6 +13,7 @@ EXPECTED_EXECUTION_CANDIDATE_PATHS = {
     "/api/v1/execution-candidates",
     "/api/v1/execution-candidates/{candidate_id}",
     "/api/v1/execution-candidates/{candidate_id}/planning-intake",
+    "/api/v1/execution-candidates/operator-intents",
 }
 
 INTERNAL_DISCOVERY_SCHEMA_NAMES = {
@@ -87,6 +88,9 @@ def test_execution_candidate_routes_expose_expected_methods() -> None:
     assert set(
         schema["paths"]["/api/v1/execution-candidates/{candidate_id}/planning-intake"]
     ) == {"post"}
+    assert set(schema["paths"]["/api/v1/execution-candidates/operator-intents"]) == {
+        "post"
+    }
 
 
 def test_execution_candidate_openapi_uses_public_response_dtos() -> None:

@@ -13,6 +13,7 @@ from app.core.exceptions import (
 )
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware
+from app.execution_candidates.operator_intents import OperatorIntentStore
 from app.intelligence.development_fixture import (
     development_fixture_enabled_and_validated,
 )
@@ -60,6 +61,9 @@ async def lifespan(app: FastAPI):
     development_fixture_enabled_and_validated()
 
     operator_settings = settings.operator_auth
+    app.state.operator_intent_store = OperatorIntentStore(
+        operator_settings.intent_database
+    )
     app.state.operator_auth_enabled = operator_settings.enabled
     app.state.operator_auth_trusted_origins = frozenset(operator_settings.trusted_origins)
     if operator_settings.enabled:
