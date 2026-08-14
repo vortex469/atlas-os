@@ -2,10 +2,21 @@
 
 import asyncio
 import json
+from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock
 
 import httpx
 import pytest
+from app.approval.models import (
+    ApprovalDecision,
+    ApprovalPurpose,
+    ApprovalRequest,
+    ApprovalResult,
+    ApprovalStatus,
+    OperationalApprovalMetadata,
+)
+from app.candidate_planning.models import operational_verification_digest
 from app.config.settings import Settings
 from app.core_client.client import AtlasCoreClient
 from app.core_client.exceptions import (
@@ -19,14 +30,23 @@ from app.core_client.models import (
     AtlasCoreIntelligenceSummary,
     AtlasCoreStatus,
 )
+from tests.candidate_planning.test_operational_models import operational_request
 
 
-def create_test_settings(host="127.0.0.1", port=8643, timeout=10.0):
+def create_test_settings(
+    host="127.0.0.1",
+    port=8643,
+    timeout=10.0,
+    operational_auth_file: Path | None = None,
+):
     """Create test settings with custom values."""
     return Settings(
         atlas_core_host=host,
         atlas_core_port=port,
-        atlas_core_timeout_seconds=timeout
+        atlas_core_timeout_seconds=timeout,
+        operational_dispatch_auth_file=(
+            operational_auth_file or Path("/run/atlas-core-agent-auth/token")
+        ),
     )
 
 
@@ -722,3 +742,126 @@ def test_useful_context_preserved_in_error_messages(atlas_core_client):
             # The error message should contain the URL and original error
             assert "http://127.0.0.1:8643/api/v1/health" in str(e)
             assert "timeout" in str(e)
+
+
+def test_operational_dispatch_uses_dedicated_header_and_typed_payload(tmp_path) -> None:
+    token = "agent-core-test-token"
+    token_file = tmp_path / "token"
+    token_file.write_text(f"{token}\n", encoding="ascii")
+    action = operational_request()
+    approval = OperationalApprovalMetadata(
+        action_request_id=action.request_id,
+        action_request_digest=action.request_digest,
+        candidate_id=action.candidate_id,
+        candidate_fingerprint=action.candidate_fingerprint,
+        operational_plan_fingerprint=action.candidate_plan_fingerprint,
+        provider_id=action.provider_id,
+        resource_id=action.resource_id,
+        resource_type=action.resource_type,
+        target_fingerprint=action.target_fingerprint,
+        target_version=action.target_version,
+        operation_intent=action.execution_intent,
+        disruption_scope=action.disruption_scope,
+        verification_digest=operational_verification_digest(action.verification),
+        generated_at=action.generated_at,
+        expires_at=action.expires_at,
+    )
+    approval_result = ApprovalResult(
+        decision=ApprovalDecision(
+            request=ApprovalRequest(
+                identifier="approval-operational-1",
+                checkpoint_id="implementation-approval",
+                title="Approve exact operational request",
+                requested_tool="operational-action",
+                requested_command=(),
+                rationale="Exact semantic approval",
+                workflow_id=action.workflow_session_id,
+                purpose=ApprovalPurpose.IMPLEMENTATION,
+                operational_metadata=approval,
+            ),
+            status=ApprovalStatus.APPROVED,
+        )
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v1/internal/operational-actions/dispatch"
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        payload = json.loads(request.content)
+        assert "authorization" not in json.dumps(payload).lower()
+        assert payload["request_digest"] == action.request_digest
+        assert payload["approval"]["action_request_digest"] == action.request_digest
+        return httpx.Response(
+            200,
+            json={
+                "status": "failed",
+                "request_id": action.request_id,
+                "request_digest": action.request_digest,
+                "target_fingerprint": action.target_fingerprint,
+                "started_at": datetime.now(UTC).isoformat(),
+                "completed_at": datetime.now(UTC).isoformat(),
+                "sanitized_message": "Operational execution capability is disabled.",
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    http_client = httpx.AsyncClient(transport=transport)
+    client = AtlasCoreClient(
+        settings=create_test_settings(operational_auth_file=token_file),
+        client=http_client,
+    )
+    result = asyncio.run(
+        client.dispatch_operational_action(
+            action,
+            approval_result,
+        )
+    )
+    assert result.status == "failed"
+
+
+def test_repository_core_requests_do_not_receive_operational_auth_header(tmp_path) -> None:
+    token_file = tmp_path / "token"
+    token_file.write_text("must-not-leak\n", encoding="ascii")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert "Authorization" not in request.headers
+        return httpx.Response(200, json=create_mock_health_response())
+
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client = AtlasCoreClient(
+        settings=create_test_settings(operational_auth_file=token_file),
+        client=http_client,
+    )
+    asyncio.run(client.get_health())
+
+
+def test_operational_status_reader_is_typed_authenticated_and_read_only(tmp_path) -> None:
+    token = "agent-core-status-token"
+    token_file = tmp_path / "token"
+    token_file.write_text(f"{token}\n", encoding="ascii")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/api/v1/internal/operational-actions/request-1"
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        assert request.content == b""
+        return httpx.Response(
+            200,
+            json={
+                "request_id": "request-1",
+                "request_digest": "operational-action-request-digest-v1:abc",
+                "ledger_state": "outcome_unknown",
+                "dispatch_result": None,
+                "verification_result": None,
+                "verification_resumable": False,
+            },
+        )
+
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client = AtlasCoreClient(
+        settings=create_test_settings(operational_auth_file=token_file),
+        client=http_client,
+    )
+    result = asyncio.run(client.get_operational_action_status("request-1"))
+    assert result.ledger_state == "outcome_unknown"
+    with pytest.raises(AtlasCorePayloadError):
+        asyncio.run(client.get_operational_action_status("../request-1"))

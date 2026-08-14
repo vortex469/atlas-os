@@ -9,7 +9,12 @@ from pathlib import Path
 from app.approval.models import ApprovalPurpose, ApprovalResult, ApprovalStatus
 from app.candidate_planning.models import CandidatePlanningSession
 from app.repository.models import CommitResult
-from app.workflow.models import WorkflowSession, WorkflowSessionState, WorkflowSource
+from app.workflow.models import (
+    WorkflowEffectKind,
+    WorkflowSession,
+    WorkflowSessionState,
+    WorkflowSource,
+)
 
 
 class CandidateAuditFailureCode(StrEnum):
@@ -62,6 +67,9 @@ class CandidateAuditChain:
     commit_approval_id: str | None = None
     commit_sha: str | None = None
     committed_files: tuple[Path, ...] = ()
+    operational_action_request_id: str | None = None
+    operational_action_request_digest: str | None = None
+    operational_action_approval_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +88,7 @@ class CandidateAuditApprovals:
     implementation: ApprovalResult | None = None
     verification: ApprovalResult | None = None
     commit: ApprovalResult | None = None
+    operational_action: ApprovalResult | None = None
 
 
 class CandidateAuditChainValidator:
@@ -101,7 +110,10 @@ class CandidateAuditChainValidator:
             return _failure(CandidateAuditFailureCode.MISSING_CANDIDATE_METADATA)
         if planning_session is None:
             return _failure(CandidateAuditFailureCode.MISSING_PLANNING_SESSION)
-        if planning_session.plan is None:
+        if (
+            planning_session.plan is None
+            and planning_session.operational_plan is None
+        ):
             return _failure(CandidateAuditFailureCode.MISSING_CANDIDATE_PLAN)
         if not _same(
             planning_session.identifier,
@@ -110,7 +122,13 @@ class CandidateAuditChainValidator:
             return _failure(CandidateAuditFailureCode.IDENTITY_MISMATCH)
         if not _same(planning_session.candidate_fingerprint, metadata.candidate_fingerprint):
             return _failure(CandidateAuditFailureCode.FINGERPRINT_MISMATCH)
-        plan = planning_session.plan
+        plan = (
+            planning_session.operational_plan
+            if workflow.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+            else planning_session.plan
+        )
+        if plan is None:
+            return _failure(CandidateAuditFailureCode.MISSING_CANDIDATE_PLAN)
         if not _same(plan.identifier, metadata.candidate_plan_id) or not _same(
             plan.candidate_id,
             metadata.candidate_id,
@@ -120,6 +138,14 @@ class CandidateAuditChainValidator:
             return _failure(CandidateAuditFailureCode.FINGERPRINT_MISMATCH)
         if planning_session.candidate_plan_fingerprint not in (None, metadata.candidate_plan_fingerprint):
             return _failure(CandidateAuditFailureCode.FINGERPRINT_MISMATCH)
+
+        if workflow.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION:
+            return _validate_operational_audit(
+                workflow=workflow,
+                approvals=approvals,
+                metadata=metadata,
+                require_complete=require_complete,
+            )
 
         require_complete = workflow.state is WorkflowSessionState.COMPLETED if require_complete is None else require_complete
         request = workflow.candidate_implementation_request
@@ -266,6 +292,64 @@ def _validate_request(metadata, workflow, request) -> CandidateAuditFailureCode 
     return None
 
 
+def _validate_operational_audit(
+    *,
+    workflow,
+    approvals,
+    metadata,
+    require_complete,
+) -> CandidateAuditValidationResult:
+    request = workflow.operational_action_request
+    require_complete = False if require_complete is None else require_complete
+    if request is None:
+        return _maybe_incomplete(
+            require_complete,
+            CandidateAuditFailureCode.MISSING_IMPLEMENTATION_REQUEST,
+            metadata,
+            workflow,
+        )
+    if _validate_request(metadata, workflow, request) is not None:
+        return _failure(CandidateAuditFailureCode.IDENTITY_MISMATCH)
+    approval_id = workflow.operational_action_approval_id
+    approval = approvals.operational_action
+    if approval is None:
+        return CandidateAuditValidationResult(
+            valid=not require_complete,
+            chain=_chain(
+                metadata,
+                workflow,
+                operational_action_request_id=request.request_id,
+                operational_action_request_digest=request.request_digest,
+                operational_action_approval_id=approval_id,
+            )
+            if not require_complete
+            else None,
+            failure_code=(
+                CandidateAuditFailureCode.MISSING_IMPLEMENTATION_APPROVAL
+                if require_complete
+                else None
+            ),
+        )
+    if _validate_approval(
+        approval,
+        expected_id=approval_id,
+        workflow_id=workflow.identifier,
+        purpose=ApprovalPurpose.OPERATIONAL_ACTION,
+        allow_pending=True,
+    ) is not None:
+        return _failure(CandidateAuditFailureCode.APPROVAL_MISMATCH)
+    return CandidateAuditValidationResult(
+        valid=True,
+        chain=_chain(
+            metadata,
+            workflow,
+            operational_action_request_id=request.request_id,
+            operational_action_request_digest=request.request_digest,
+            operational_action_approval_id=approval_id,
+        ),
+    )
+
+
 def _validate_approval(
     result: ApprovalResult,
     *,
@@ -350,6 +434,8 @@ def _duplicate_identifier(chain: CandidateAuditChain) -> bool:
         chain.review_result_id,
         chain.commit_approval_id,
         chain.commit_sha,
+        chain.operational_action_request_id,
+        chain.operational_action_approval_id,
     ]
     present = [value for value in values if value]
     return len(present) != len(set(present))

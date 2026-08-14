@@ -18,7 +18,12 @@ from app.execution_candidates.models import (
     contains_unsafe_payload,
 )
 
-SUPPORTED_SOURCE_SUBSYSTEMS: Final[tuple[str, ...]] = ("orion", "discovery", "intelligence")
+SUPPORTED_SOURCE_SUBSYSTEMS: Final[tuple[str, ...]] = (
+    "orion",
+    "discovery",
+    "intelligence",
+    "operator-intent",
+)
 _AMBIGUOUS_TARGET_IDS: Final[frozenset[str]] = frozenset({"*", "all", "unknown", "ambiguous"})
 _BYPASS_MARKERS: Final[tuple[str, ...]] = (
     "bypass approval",
@@ -50,6 +55,7 @@ class ExecutionEligibilityReason(StrEnum):
     BYPASSES_AGENT_OR_APPROVAL = "bypasses-agent-or-approval"
     DESTRUCTIVE_APPROVAL_REQUIRED = "destructive-approval-required"
     SERVICE_DISRUPTION_CONSTRAINT_REQUIRED = "service-disruption-constraint-required"
+    OPERATIONAL_TARGET_REQUIRED = "operational-target-required"
 
 
 class ExecutionEligibilityFinding(ExecutionCandidateModel):
@@ -148,6 +154,14 @@ def validate_candidate_for_planning(
             _finding(
                 ExecutionEligibilityReason.UNSUPPORTED_INTENT_CATEGORY,
                 "The execution intent is not supported by the execution category.",
+            )
+        )
+
+    if candidate.execution_intent.value == "restart-service" and candidate.operational_target is None:
+        findings.append(
+            _finding(
+                ExecutionEligibilityReason.OPERATIONAL_TARGET_REQUIRED,
+                "Operational planning requires an authoritative provider resource identity.",
             )
         )
 

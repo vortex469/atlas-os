@@ -20,6 +20,7 @@ from app.candidate_planning.models import (
     CandidateWorkflowConversionRequest,
     CandidateWorkflowConversionResponse,
     CoreCandidatePlanningIntakeStatus,
+    OperationalCandidatePlan,
 )
 from app.candidate_planning.service import (
     CandidatePlanningPredecessorNotFoundError,
@@ -251,6 +252,36 @@ class CandidatePlanApiResponse(BaseModel):
     revalidated_candidate_fingerprint: str
 
 
+class OperationalVerificationApiResponse(BaseModel):
+    pre_state: str
+    expected_post_state: str
+    identity_fingerprint: str
+    health_requirement: str
+    unknown_outcome_policy: str
+
+
+class OperationalCandidatePlanApiResponse(BaseModel):
+    identifier: str
+    session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    effect_kind: str
+    execution_intent: str
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    target_fingerprint: str
+    target_version: str | None
+    expected_pre_state: str
+    intended_action: str
+    disruption_scope: str
+    verification: OperationalVerificationApiResponse
+    failure_considerations: tuple[str, ...]
+    evidence_ids: tuple[str, ...]
+    created_at: str
+    revalidated_candidate_fingerprint: str
+
+
 class CandidatePlanningResponse(BaseModel):
     """Serialized candidate-planning session response."""
 
@@ -263,6 +294,7 @@ class CandidatePlanningResponse(BaseModel):
     candidate_fingerprint: str | None = None
     unsupported_reason: str | None = None
     plan: CandidatePlanApiResponse | None = None
+    operational_plan: OperationalCandidatePlanApiResponse | None = None
     planning_failure: CandidatePlanningFailureResponse | None = None
     predecessor_session_id: str | None = None
     successor_session_id: str | None = None
@@ -307,6 +339,40 @@ def _plan_response(plan: CandidatePlan | None) -> CandidatePlanApiResponse | Non
     )
 
 
+def _operational_plan_response(
+    plan: OperationalCandidatePlan | None,
+) -> OperationalCandidatePlanApiResponse | None:
+    if plan is None:
+        return None
+    return OperationalCandidatePlanApiResponse(
+        identifier=plan.identifier,
+        session_id=plan.session_id,
+        candidate_id=plan.candidate_id,
+        candidate_fingerprint=plan.candidate_fingerprint,
+        effect_kind=plan.effect_kind.value,
+        execution_intent=plan.execution_intent,
+        provider_id=plan.provider_id,
+        resource_id=plan.resource_id,
+        resource_type=plan.resource_type,
+        target_fingerprint=plan.target_fingerprint,
+        target_version=plan.target_version,
+        expected_pre_state=plan.expected_pre_state,
+        intended_action=plan.intended_action,
+        disruption_scope=plan.disruption_scope,
+        verification=OperationalVerificationApiResponse(
+            pre_state=plan.verification.pre_state,
+            expected_post_state=plan.verification.expected_post_state,
+            identity_fingerprint=plan.verification.identity_fingerprint,
+            health_requirement=plan.verification.health_requirement,
+            unknown_outcome_policy=plan.verification.unknown_outcome_policy,
+        ),
+        failure_considerations=plan.failure_considerations,
+        evidence_ids=plan.evidence_ids,
+        created_at=plan.created_at.isoformat(),
+        revalidated_candidate_fingerprint=plan.revalidated_candidate_fingerprint,
+    )
+
+
 def _failure_response(
     failure: CandidatePlanningFailure | None,
 ) -> CandidatePlanningFailureResponse | None:
@@ -329,6 +395,7 @@ def _to_response(response: CandidatePlanResponse) -> CandidatePlanningResponse:
         candidate_fingerprint=response.candidate_fingerprint,
         unsupported_reason=response.unsupported_reason,
         plan=_plan_response(response.plan),
+        operational_plan=_operational_plan_response(response.operational_plan),
         planning_failure=_failure_response(response.planning_failure),
         predecessor_session_id=response.predecessor_session_id,
         successor_session_id=response.successor_session_id,

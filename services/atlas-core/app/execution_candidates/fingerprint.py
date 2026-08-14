@@ -10,6 +10,7 @@ from typing import Any
 from app.execution_candidates.models import ExecutionCandidate
 
 FINGERPRINT_VERSION = "candidate-fingerprint-v1"
+OPERATIONAL_FINGERPRINT_VERSION = "operational-candidate-fingerprint-v1"
 
 
 def _normalize_text(value: str | None) -> str | None:
@@ -63,6 +64,10 @@ def build_candidate_fingerprint(candidate: ExecutionCandidate) -> str:
     """Build a deterministic, versioned fingerprint for a current candidate."""
 
     payload = _fingerprint_payload(candidate)
+    version = FINGERPRINT_VERSION
+    if candidate.operational_target is not None:
+        version = OPERATIONAL_FINGERPRINT_VERSION
+        payload["operational_target"] = candidate.operational_target.model_dump(mode="json")
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     digest = hashlib.sha256(encoded).hexdigest()
-    return f"{FINGERPRINT_VERSION}:{digest}"
+    return f"{version}:{digest}"

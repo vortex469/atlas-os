@@ -98,7 +98,7 @@ def test_get_proxmox_connection_schema_returns_secret_safe_fields() -> None:
     body = response.json()
     assert body["provider_id"] == "proxmox"
     fields = fields_by_key(body)
-    assert fields["host"]["current_value"] == "10.10.50.10"
+    assert fields["host"]["current_value"] == "10.10.60.100"
     assert fields["token_value"]["current_value"] is None
     assert fields["token_value"]["secret_state"] in {"configured", "missing"}
     assert "compat-value" not in response.text

@@ -1,10 +1,12 @@
 import asyncio
 import json
 from types import TracebackType
-from typing import Self, TypeAlias
+from typing import TYPE_CHECKING, Self, TypeAlias
 
 import httpx
 from pydantic import ValidationError
+
+from app.approval.models import ApprovalResult
 
 from ..config.settings import Settings
 from .exceptions import (
@@ -19,7 +21,15 @@ from .models import (
     AtlasCoreIntelligenceSummary,
     AtlasCoreStatus,
     CoreCandidatePlanningIntakeResponse,
+    CoreOperationalApprovalBinding,
+    CoreOperationalDispatchRequest,
+    CoreOperationalDispatchResult,
+    CoreOperationalLifecycleStatus,
+    CoreOperationalVerificationSpecification,
 )
+
+if TYPE_CHECKING:
+    from app.candidate_planning.models import OperationalActionRequest
 
 __all__ = [
     'AtlasCoreClient',
@@ -159,11 +169,16 @@ class AtlasCoreClient:
         candidate_id: str,
         *,
         expected_candidate_fingerprint: str | None = None,
+        expected_operational_target_fingerprint: str | None = None,
     ) -> CoreCandidatePlanningIntakeResponse:
         url = f"{self._base_url}/api/v1/execution-candidates/{candidate_id}/planning-intake"
         payload = {
             "expected_candidate_fingerprint": expected_candidate_fingerprint,
         }
+        if expected_operational_target_fingerprint is not None:
+            payload["expected_operational_target_fingerprint"] = (
+                expected_operational_target_fingerprint
+            )
         try:
             response = await self._get_client().post(
                 url,
@@ -196,6 +211,164 @@ class AtlasCoreClient:
 
     async def validate_connection(self) -> None:
         await self.get_health()
+
+    async def dispatch_operational_action(
+        self,
+        action_request: "OperationalActionRequest",
+        approval_result: ApprovalResult,
+    ) -> CoreOperationalDispatchResult:
+        """Submit one exact approved request over the dedicated internal boundary."""
+
+        if not approval_result.approved:
+            raise AtlasCorePayloadError("Operational dispatch requires exact approval.")
+        approval_request = approval_result.decision.request
+        approval = approval_request.operational_metadata
+        if approval is None:
+            raise AtlasCorePayloadError("Operational approval metadata is unavailable.")
+        payload = CoreOperationalDispatchRequest(
+            request_id=action_request.request_id,
+            request_digest=action_request.request_digest,
+            idempotency_key=action_request.idempotency_key,
+            workflow_session_id=action_request.workflow_session_id,
+            candidate_planning_session_id=action_request.candidate_planning_session_id,
+            candidate_id=action_request.candidate_id,
+            candidate_fingerprint=action_request.candidate_fingerprint,
+            candidate_plan_id=action_request.candidate_plan_id,
+            candidate_plan_fingerprint=action_request.candidate_plan_fingerprint,
+            effect_kind=action_request.effect_kind.value,
+            execution_intent=action_request.execution_intent,
+            provider_id=action_request.provider_id,
+            resource_id=action_request.resource_id,
+            resource_type=action_request.resource_type,
+            provider_action_id=action_request.provider_action_id,
+            target_fingerprint=action_request.target_fingerprint,
+            target_version=action_request.target_version,
+            expected_pre_state=action_request.expected_pre_state,
+            disruption_scope=action_request.disruption_scope,
+            evidence_ids=action_request.evidence_ids,
+            verification=CoreOperationalVerificationSpecification(
+                pre_state=action_request.verification.pre_state,
+                expected_post_state=action_request.verification.expected_post_state,
+                identity_fingerprint=(
+                    action_request.verification.identity_fingerprint
+                ),
+                health_requirement=action_request.verification.health_requirement,
+                unknown_outcome_policy=(
+                    action_request.verification.unknown_outcome_policy
+                ),
+            ),
+            generated_at=action_request.generated_at,
+            expires_at=action_request.expires_at,
+            translator_version=action_request.translator_version,
+            approval=CoreOperationalApprovalBinding(
+                approval_request_id=approval_request.identifier,
+                action_request_id=approval.action_request_id,
+                action_request_digest=approval.action_request_digest,
+                candidate_id=approval.candidate_id,
+                candidate_fingerprint=approval.candidate_fingerprint,
+                operational_plan_fingerprint=approval.operational_plan_fingerprint,
+                provider_id=approval.provider_id,
+                resource_id=approval.resource_id,
+                resource_type=approval.resource_type,
+                target_fingerprint=approval.target_fingerprint,
+                target_version=approval.target_version,
+                operation_intent=approval.operation_intent,
+                disruption_scope=approval.disruption_scope,
+                verification_digest=approval.verification_digest,
+                generated_at=approval.generated_at,
+                expires_at=approval.expires_at,
+            ),
+        )
+        url = f"{self._base_url}/api/v1/internal/operational-actions/dispatch"
+        try:
+            token = self.settings.operational_dispatch_auth_file.read_text(
+                encoding="ascii"
+            ).strip()
+            if not token:
+                raise AtlasCoreConnectionError(
+                    "Operational dispatch authentication is unavailable."
+                )
+            response = await self._get_client().post(
+                url,
+                content=payload.model_dump_json(),
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+            return CoreOperationalDispatchResult.model_validate(response.json())
+        except (OSError, UnicodeError) as error:
+            raise AtlasCoreConnectionError(
+                "Operational dispatch authentication is unavailable."
+            ) from error
+        except httpx.TimeoutException as error:
+            raise AtlasCoreTimeoutError(
+                "Operational dispatch request timed out."
+            ) from error
+        except httpx.HTTPStatusError as error:
+            raise AtlasCoreResponseError(
+                f"Operational dispatch was rejected with HTTP {error.response.status_code}."
+            ) from error
+        except httpx.RequestError as error:
+            raise AtlasCoreConnectionError(
+                "Operational dispatch boundary is unavailable."
+            ) from error
+        except (json.JSONDecodeError, ValidationError) as error:
+            raise AtlasCorePayloadError(
+                "Operational dispatch returned an invalid response."
+            ) from error
+
+    async def get_operational_action_status(
+        self, request_id: str
+    ) -> CoreOperationalLifecycleStatus:
+        """Read one durable operational lifecycle status without provider input."""
+
+        if (
+            not request_id
+            or request_id != request_id.strip()
+            or any(character in request_id for character in "/?#")
+        ):
+            raise AtlasCorePayloadError("Operational request ID is invalid.")
+        url = (
+            f"{self._base_url}/api/v1/internal/operational-actions/{request_id}"
+        )
+        try:
+            token = self.settings.operational_dispatch_auth_file.read_text(
+                encoding="ascii"
+            ).strip()
+            if not token:
+                raise AtlasCoreConnectionError(
+                    "Operational dispatch authentication is unavailable."
+                )
+            response = await self._get_client().get(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+            return CoreOperationalLifecycleStatus.model_validate(response.json())
+        except (OSError, UnicodeError) as error:
+            raise AtlasCoreConnectionError(
+                "Operational dispatch authentication is unavailable."
+            ) from error
+        except httpx.TimeoutException as error:
+            raise AtlasCoreTimeoutError(
+                "Operational status request timed out."
+            ) from error
+        except httpx.HTTPStatusError as error:
+            raise AtlasCoreResponseError(
+                f"Operational status was rejected with HTTP {error.response.status_code}."
+            ) from error
+        except httpx.RequestError as error:
+            raise AtlasCoreConnectionError(
+                "Operational status boundary is unavailable."
+            ) from error
+        except (json.JSONDecodeError, ValidationError) as error:
+            raise AtlasCorePayloadError(
+                "Operational status returned an invalid response."
+            ) from error
 
     async def close(self) -> None:
         if not self._owns_client or self._client is None:

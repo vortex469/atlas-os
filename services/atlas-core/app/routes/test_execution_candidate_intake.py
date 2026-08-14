@@ -13,10 +13,12 @@ from app.execution_candidates.intake import (
 from app.execution_candidates.models import (
     ApprovalLevel,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionConstraint,
     ExecutionIntent,
+    OperationalTargetReference,
     build_execution_candidate_id,
 )
 from app.main import app
@@ -46,12 +48,20 @@ def candidate() -> ExecutionCandidate:
         target_type="service",
         execution_category=ExecutionCategory.RESTART,
         execution_intent=ExecutionIntent.RESTART_SERVICE,
+        effect_kind=ExecutionCandidateEffectKind.OPERATIONAL_ACTION,
         status=ExecutionCandidateStatus.ELIGIBLE,
         required_approval_level=ApprovalLevel.STANDARD,
         rationale="Restart the service after approval.",
         constraints=(ExecutionConstraint.SERVICE_DISRUPTION,),
         evidence_ids=("evidence-1",),
         created_at=NOW,
+        operational_target=OperationalTargetReference(
+            provider_id="docker",
+            resource_id=target_id,
+            resource_type="service",
+            resource_fingerprint="operational-target-v1:abc",
+            expected_state="running",
+        ),
     )
 
 

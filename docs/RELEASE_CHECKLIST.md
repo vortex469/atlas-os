@@ -155,6 +155,51 @@ provenance. Recommendation: retain it as a maintained operator smoke harness
 until the evidence and operator procedure are no longer needed, then remove it
 through a separate reviewed cleanup decision.
 
+## Atlas v0.7 P1.3 release-candidate readiness
+
+### Operational capability and security boundary
+
+- [x] Production capability is closed to `restart-service / proxmox / qemu`.
+- [x] Core-owned operator sessions require authenticated HTTPS, one exact
+  trusted origin, CSRF validation, and `operational_intent:create`.
+- [x] Edge Basic authentication remains defense-in-depth and is not accepted as
+  Core operator identity.
+- [x] Agent-to-Core authentication is separate from browser authentication.
+- [x] Authoritative QEMU identity and fingerprint revalidation bind planning,
+  approval, dispatch, and verification.
+- [x] Exact `OPERATIONAL_ACTION` approval binds the immutable action request ID,
+  digest, target, provider action, verification policy, and expiry.
+- [x] Core persists the dispatch barrier before provider mutation and never
+  replays a crossed or ambiguous mutation boundary.
+- [x] UPID-backed verification and verifier-only recovery are read-only.
+
+### Production acceptance — 2026-08-14
+
+- [x] Approved target: `vorex469 / VM 110 / Frigate`.
+- [x] The normal operator-intent, planning, preparation-approval, exact-action
+  approval, Agent dispatch, Core handler, and verification path completed.
+- [x] Exactly one new `qmreboot`, one dispatching transition, one barrier
+  crossing, one provider-operation capture, and one dispatch result occurred.
+- [x] The production ledger reached `verified`; Agent projected the workflow as
+  `completed`.
+- [x] Final VM and QMP states were running and the authoritative fingerprint was
+  unchanged.
+- [x] No replay, sandbox path, non-production ledger, direct provider mutation,
+  commit, tag, or release action occurred.
+
+### Deployment sign-off required before an RC
+
+- [ ] Re-run and record the full Core, Agent, Mission Control, worker, Compose,
+  container, dependency, and credential-hygiene gates on the final RC commit.
+- [ ] Push the reviewed documentation commit and require both GitHub workflows
+  to pass on that exact SHA.
+- [x] Document the supported
+  [v0.6.0 to v0.7 upgrade and rollback](DEPLOYMENT.md#atlas-v060-to-v07-upgrade-and-rollback),
+  including schema-v3 downgrade handling and in-flight dispatch preservation.
+- [ ] Review those v0.7 upgrade and rollback instructions and record
+  release-lead sign-off.
+- [ ] Create an immutable RC tag only after the exact pushed SHA is green.
+
 ### Post-hardening RC1 execution validation
 
 Validated on commit `0bddaf6ee46fbef94a2a1eb9f20cfcb1db0ca2be` using a fresh
@@ -279,10 +324,9 @@ outside release provenance.
   - Sign-off date: 2026-08-13
 - [x] Confirm `atlas-v0.6.0` was unused before final tag preparation on
   2026-08-13. It must still be reconfirmed immediately before tag creation.
-- [ ] Create the immutable annotated `atlas-v0.6.0` tag on the validated final
-  commit. This checklist edit creates a new final SHA; the resulting
-  documentation commit must receive passing required CI before it becomes the
-  tag target. The tag has not been created or published.
+- [x] The immutable annotated `atlas-v0.6.0` tag was published at
+  `03c1e03099b0f638dc674235312a3b3e70768c2f` after the required CI passed on
+  that final documentation SHA.
 
 ### Core
 

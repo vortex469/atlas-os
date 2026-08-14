@@ -6,13 +6,45 @@ release boundaries.
 
 ## Unreleased
 
-No changes recorded after the v0.6.0 release boundary.
+### Added for Atlas v0.7
 
-## atlas-v0.6.0 — Atlas v0.6.0 (pending)
+- Added the approval-gated `restart-service / proxmox / qemu` operational
+  workflow, including authoritative QEMU identity, deterministic candidate
+  planning, immutable action requests, exact approvals, authenticated
+  Agent-to-Core dispatch, a durable exactly-once barrier, provider UPID
+  capture, bounded verification, and verifier-only recovery.
+- Added Core-owned operator authentication with Argon2id verifier provisioning,
+  secure sessions, exact HTTPS trusted-origin enforcement, CSRF protection,
+  rate limits, security audit records, and the closed
+  `operational_intent:create` permission.
+- Added durable operator-intent candidates and a sanitized authoritative
+  resource selector. Mission Control now provides operator login and bounded
+  maintenance-request pages without exposing provider commands, action IDs,
+  native identities, or arbitrary parameters.
+- Added one-shot sandbox and verifier-only recovery harnesses used to validate
+  the operational contracts without enabling a generic execution path.
 
-Atlas v0.6.0 promotes the validated `atlas-v0.6-rc1.9` baseline at
-`6d85df5b112b4bde28ec31fc60cce88560c9dbfc`. The final integration commit,
-validation record, sign-off, and immutable tag remain pending.
+### Changed for Atlas v0.7
+
+- Provider health and intelligence collection are bounded concurrently so one
+  slow provider cannot serially multiply the dashboard startup timeout.
+- Production Compose supports the explicit operator-auth overlay and separate
+  Agent-to-Core dispatch credential while retaining existing container
+  hardening.
+
+### Validated for Atlas v0.7
+
+- On 2026-08-14, the normal production workflow performed exactly one approved
+  graceful restart of Proxmox QEMU VM 110 (`Frigate`). The workflow completed,
+  the durable ledger reached `verified`, the same authoritative fingerprint was
+  observed afterward, and barrier, provider-operation, and dispatch-result
+  counts were each exactly one with no replay.
+
+## atlas-v0.6.0 — Atlas v0.6.0 (2026-08-13)
+
+Atlas v0.6.0 promotes the validated `atlas-v0.6-rc1.9` baseline and was
+published as the immutable `atlas-v0.6.0` release at
+`03c1e03099b0f638dc674235312a3b3e70768c2f`.
 
 ### Added
 

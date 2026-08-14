@@ -1,10 +1,10 @@
 """Tests for the approval engine."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-
 from app.approval.engine import ApprovalEngine, ApprovalValidationError
 from app.approval.models import (
     ApprovalDecision,
@@ -12,10 +12,83 @@ from app.approval.models import (
     ApprovalRequest,
     ApprovalStatus,
     CommitApprovalMetadata,
+    OperationalApprovalMetadata,
     VerificationApprovalCheck,
     VerificationApprovalEnvironment,
 )
 from app.approval.repository import ApprovalRepository
+
+
+def operational_approval_request() -> ApprovalRequest:
+    now = datetime(2026, 8, 14, tzinfo=UTC)
+    return ApprovalRequest(
+        identifier="approval-operational-workflow-1",
+        checkpoint_id="operational-action-1",
+        title="Approve exact operational action",
+        requested_tool="atlas-agent-operational-contract",
+        requested_command=(),
+        rationale="Approve the immutable semantic request.",
+        workflow_id="workflow-1",
+        purpose=ApprovalPurpose.OPERATIONAL_ACTION,
+        operational_metadata=OperationalApprovalMetadata(
+            action_request_id="operational-action-1",
+            action_request_digest="operational-action-request-digest-v1:" + "a" * 64,
+            candidate_id="candidate-1",
+            candidate_fingerprint="candidate-fingerprint-v1:" + "b" * 64,
+            operational_plan_fingerprint="operational-plan-fingerprint-v1:" + "c" * 64,
+            provider_id="proxmox",
+            resource_id="qemu/101",
+            resource_type="qemu",
+            target_fingerprint="operational-target-v1:" + "d" * 64,
+            target_version="1",
+            operation_intent="restart-service",
+            disruption_scope="one service interruption",
+            verification_digest="operational-verification-digest-v1:" + "e" * 64,
+            generated_at=now,
+            expires_at=now + timedelta(minutes=5),
+        ),
+    )
+
+
+def test_operational_approval_accepts_only_typed_non_executable_metadata() -> None:
+    request = operational_approval_request()
+    result = ApprovalEngine().evaluate(
+        ApprovalDecision(request=request, status=ApprovalStatus.PENDING)
+    )
+    assert result.decision.request == request
+    assert result.decision.request.requested_command == ()
+
+
+def test_operational_metadata_is_rejected_on_repository_approval() -> None:
+    request = operational_approval_request()
+    with pytest.raises(ApprovalValidationError, match="Only operational"):
+        ApprovalEngine().evaluate(
+            ApprovalDecision(
+                request=ApprovalRequest(
+                    identifier=request.identifier,
+                    checkpoint_id=request.checkpoint_id,
+                    title=request.title,
+                    requested_tool="codex",
+                    requested_command=("codex",),
+                    rationale=request.rationale,
+                    purpose=ApprovalPurpose.IMPLEMENTATION,
+                    operational_metadata=request.operational_metadata,
+                ),
+                status=ApprovalStatus.PENDING,
+            )
+        )
+
+
+def test_expired_operational_approval_is_rejected() -> None:
+    request = operational_approval_request()
+    with pytest.raises(ApprovalValidationError, match="expired"):
+        ApprovalEngine(clock=lambda: request.operational_metadata.expires_at).evaluate(  # type: ignore[union-attr]
+            ApprovalDecision(
+                request=request,
+                status=ApprovalStatus.APPROVED,
+                reviewer="operator",
+            )
+        )
 
 
 def test_pending_decision_accepted_without_reviewer():

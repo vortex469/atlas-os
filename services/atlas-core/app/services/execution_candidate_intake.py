@@ -16,7 +16,11 @@ from app.execution_candidates.intake import (
     CandidatePlanningIntakeResult,
     CandidatePlanningIntakeStatus,
 )
-from app.execution_candidates.models import ExecutionCandidate, ExecutionCandidateStatus
+from app.execution_candidates.models import (
+    ExecutionCandidate,
+    ExecutionCandidateStatus,
+    OperationalTargetResolutionReason,
+)
 from app.intelligence.development_fixture import (
     development_fixture_enabled_and_validated,
     fixture_evidence_ids,
@@ -67,7 +71,8 @@ def _result(
 
 
 def _default_evidence_resolver(candidate: ExecutionCandidate) -> tuple[str, ...]:
-    del candidate
+    if candidate.source_subsystem == "operator-intent":
+        return candidate.evidence_ids
 
     try:
         development_fixture_enabled_and_validated()
@@ -96,6 +101,7 @@ def _map_reason(reason: ExecutionEligibilityReason) -> CandidatePlanningIntakeRe
         ExecutionEligibilityReason.BYPASSES_AGENT_OR_APPROVAL: CandidatePlanningIntakeReasonCode.BYPASSES_AGENT_OR_APPROVAL,
         ExecutionEligibilityReason.DESTRUCTIVE_APPROVAL_REQUIRED: CandidatePlanningIntakeReasonCode.DESTRUCTIVE_APPROVAL_REQUIRED,
         ExecutionEligibilityReason.SERVICE_DISRUPTION_CONSTRAINT_REQUIRED: CandidatePlanningIntakeReasonCode.SERVICE_DISRUPTION_CONSTRAINT_REQUIRED,
+        ExecutionEligibilityReason.OPERATIONAL_TARGET_REQUIRED: CandidatePlanningIntakeReasonCode.TARGET_UNAVAILABLE,
     }
     return mapping[reason]
 
@@ -159,7 +165,37 @@ async def validate_candidate_planning_intake(
             "Unable to collect current execution candidates for planning intake."
         ) from error
 
+    operational_reason_map = {
+        OperationalTargetResolutionReason.NOT_FOUND: CandidatePlanningIntakeReasonCode.OPERATIONAL_TARGET_NOT_FOUND,
+        OperationalTargetResolutionReason.AMBIGUOUS: CandidatePlanningIntakeReasonCode.OPERATIONAL_TARGET_AMBIGUOUS,
+        OperationalTargetResolutionReason.TYPE_MISMATCH: CandidatePlanningIntakeReasonCode.OPERATIONAL_TARGET_TYPE_MISMATCH,
+        OperationalTargetResolutionReason.MARKED_MISSING: CandidatePlanningIntakeReasonCode.OPERATIONAL_TARGET_MARKED_MISSING,
+        OperationalTargetResolutionReason.IDENTITY_UNAVAILABLE: CandidatePlanningIntakeReasonCode.OPERATIONAL_TARGET_IDENTITY_UNAVAILABLE,
+        OperationalTargetResolutionReason.SELECTOR_INVALID: CandidatePlanningIntakeReasonCode.OPERATIONAL_TARGET_SELECTOR_INVALID,
+    }
+    if candidate.operational_target_resolution_reason is not None:
+        return _result(
+            status=CandidatePlanningIntakeStatus.TARGET_UNAVAILABLE,
+            candidate_id=candidate_id,
+            reason_codes=(operational_reason_map[candidate.operational_target_resolution_reason],),
+            candidate=candidate,
+        )
+
     current_fingerprint = build_candidate_fingerprint(candidate)
+    expected_target_fingerprint = intake_request.expected_operational_target_fingerprint
+    if expected_target_fingerprint is not None and (
+        candidate.operational_target is None
+        or candidate.operational_target.resource_fingerprint != expected_target_fingerprint
+    ):
+        return _result(
+            status=CandidatePlanningIntakeStatus.STALE,
+            candidate_id=candidate_id,
+            reason_codes=(
+                CandidatePlanningIntakeReasonCode.OPERATIONAL_TARGET_FINGERPRINT_MISMATCH,
+            ),
+            candidate=candidate,
+            fingerprint=current_fingerprint,
+        )
     if (
         intake_request.expected_candidate_fingerprint is not None
         and intake_request.expected_candidate_fingerprint != current_fingerprint

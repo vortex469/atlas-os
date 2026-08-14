@@ -1,0 +1,73 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+OPERATIONAL_INTENT_CREATE = "operational_intent:create"
+SUPPORTED_OPERATOR_PERMISSIONS = frozenset({OPERATIONAL_INTENT_CREATE})
+
+
+class OperatorAuthModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class OperatorCredential(OperatorAuthModel):
+    operator_id: str = Field(min_length=1, max_length=200, pattern=r"^[a-zA-Z0-9._@-]+$")
+    password_hash: str = Field(min_length=1)
+    enabled: bool = True
+    permissions: tuple[str, ...]
+
+    @model_validator(mode="after")
+    def validate_permissions(self) -> OperatorCredential:
+        if len(set(self.permissions)) != len(self.permissions):
+            raise ValueError("operator permissions must be unique")
+        if not set(self.permissions) <= SUPPORTED_OPERATOR_PERMISSIONS:
+            raise ValueError("operator credential contains an unsupported permission")
+        return self
+
+
+class OperatorCredentialFile(OperatorAuthModel):
+    schema_version: Literal[1]
+    operators: tuple[OperatorCredential, ...]
+
+    @model_validator(mode="after")
+    def validate_operator_ids(self) -> OperatorCredentialFile:
+        identifiers = [operator.operator_id for operator in self.operators]
+        if len(set(identifiers)) != len(identifiers):
+            raise ValueError("operator IDs must be unique")
+        return self
+
+
+class OperatorPrincipal(OperatorAuthModel):
+    operator_id: str
+    authenticated_at: datetime
+    permissions: tuple[str, ...]
+    auth_method: Literal["core_session"] = "core_session"
+
+
+class OperatorLoginRequest(OperatorAuthModel):
+    operator_id: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=4096)
+
+
+class OperatorSessionResponse(OperatorAuthModel):
+    authenticated: Literal[True] = True
+    principal: OperatorPrincipal
+    expires_at: datetime
+
+
+class OperatorLogoutResponse(OperatorAuthModel):
+    authenticated: Literal[False] = False
+
+
+class OperatorProbeRequest(OperatorAuthModel):
+    action: Literal["operator-auth-boundary-probe"] = "operator-auth-boundary-probe"
+
+
+class OperatorProbeResponse(OperatorAuthModel):
+    operator_id: str
+    permission: Literal["operational_intent:create"]
+    action: Literal["operator-auth-boundary-probe"]
+    authorized: Literal[True] = True

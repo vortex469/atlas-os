@@ -1,0 +1,8 @@
+services:
+  atlas-core:
+    environment:
+      ATLAS_OPERATOR_AUTH_ENABLED: "true"
+      ATLAS_OPERATOR_AUTH_VERIFIER_FILE: /run/atlas-operator-auth/operators.json
+      ATLAS_OPERATOR_AUTH_TRUSTED_ORIGINS: ${ATLAS_OPERATOR_AUTH_TRUSTED_ORIGINS:?set exact HTTPS operator origin}
+    volumes:
+      - ${ATLAS_OPERATOR_AUTH_VERIFIER_HOST_PATH:?set private operator verifier path}:/run/atlas-operator-auth/operators.json:ro

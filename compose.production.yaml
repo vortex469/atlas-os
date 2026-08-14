@@ -6,6 +6,9 @@ services:
       context: .
       dockerfile: deploy/docker/atlas-core.Dockerfile
     restart: unless-stopped
+    depends_on:
+      atlas-core-agent-auth-stager:
+        condition: service_completed_successfully
     env_file:
       - path: ${ATLAS_ENV_FILE:-.env}
         required: true
@@ -17,11 +20,13 @@ services:
       ATLAS_PROVIDER_CONNECTION_FILE: /opt/atlas/data/config/provider-connections.yaml
       ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE: /opt/atlas/config/provider-connections.yaml
       ATLAS_PROVIDER_SECRET_FILE: /opt/atlas/data/secrets/provider-connections.yaml
+      ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE: /run/atlas-core-agent-auth/token
     volumes:
       - ./config/atlas.yaml:/opt/atlas/config/atlas.yaml:ro
       - ./config/policies.yaml:/opt/atlas/config/policies.yaml:ro
       - ./inventory/services.yaml:/opt/atlas/inventory/services.yaml:ro
       - atlas-data:/opt/atlas/data
+      - atlas-core-agent-auth-staging:/run/atlas-core-agent-auth:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     group_add:
       - "${DOCKER_GID:-999}"
@@ -52,6 +57,8 @@ services:
         condition: service_completed_successfully
       atlas-execution-auth-stager:
         condition: service_completed_successfully
+      atlas-core-agent-auth-stager:
+        condition: service_completed_successfully
     networks:
       default: {}
       atlas-execution-transport-net: {}
@@ -73,6 +80,7 @@ services:
       ATLAS_EXECUTION_WORKER_HOST: atlas-execution-worker-relay
       ATLAS_EXECUTION_WORKER_PORT: "8081"
       ATLAS_EXECUTION_WORKER_AUTH_FILE: /run/atlas-execution-auth/token
+      ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE: /run/atlas-core-agent-auth/token
       GIT_CONFIG_COUNT: "1"
       GIT_CONFIG_KEY_0: safe.directory
       GIT_CONFIG_VALUE_0: /workspace/repository
@@ -81,6 +89,7 @@ services:
       - atlas-agent-state:/opt/atlas/agent-state
       - atlas-agent-auth-staging:/run/secrets:ro
       - atlas-execution-auth-staging:/run/atlas-execution-auth:ro
+      - atlas-core-agent-auth-staging:/run/atlas-core-agent-auth:ro
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
@@ -214,6 +223,25 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  atlas-core-agent-auth-stager:
+    build:
+      context: .
+      dockerfile: deploy/docker/atlas-execution-worker.Dockerfile
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["python", "/usr/local/bin/atlas-execution-auth-stager"]
+    environment:
+      ATLAS_EXECUTION_AUTH_STAGING_FILE: /staging/token
+    volumes:
+      - atlas-core-agent-auth-staging:/staging
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+
   atlas-egress-proxy:
     image: ubuntu/squid@sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029
     restart: unless-stopped
@@ -269,6 +297,7 @@ volumes:
   atlas-data:
   atlas-execution-worker-state:
   atlas-execution-auth-staging:
+  atlas-core-agent-auth-staging:
   atlas-agent-auth-staging:
 
 networks:

@@ -7,12 +7,12 @@ from threading import Barrier
 from unittest.mock import Mock
 
 import pytest
-
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.workflow.models import (
     SprintPhase,
     SprintStatus,
+    WorkflowEffectKind,
     WorkflowRequest,
     WorkflowSession,
     WorkflowSessionState,
@@ -70,6 +70,7 @@ def make_session(
         request=request or make_request(root),
         plan=plan or make_plan(root),
         state=WorkflowSessionState.PLANNED,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         planning_analysis=planning_analysis,
     )
 
@@ -198,6 +199,7 @@ def test_awaiting_approval_state_is_supported(tmp_path: Path) -> None:
         request=make_request(tmp_path),
         plan=make_plan(tmp_path),
         state=WorkflowSessionState.AWAITING_APPROVAL,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
     )
     store = WorkflowStateStore()
 
@@ -280,6 +282,7 @@ def test_concurrent_session_transition_allows_one_claim(
         request=make_request(tmp_path),
         plan=make_plan(tmp_path),
         state=WorkflowSessionState.AWAITING_APPROVAL,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
     )
     store.create_session(session)
     barrier = Barrier(2)

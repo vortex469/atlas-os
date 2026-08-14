@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.approval.exceptions import ApprovalValidationError
@@ -14,6 +16,7 @@ from app.approval.models import (
     ApprovalResult,
     ApprovalStatus,
     CommitApprovalMetadata,
+    OperationalApprovalMetadata,
     VerificationApprovalCheck,
     VerificationApprovalEnvironment,
 )
@@ -24,6 +27,8 @@ _SHA256_DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 @dataclass(frozen=True, slots=True)
 class ApprovalEngine:
     """Engine for validating and normalizing approval decisions."""
+
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC)
 
     def evaluate(
         self,
@@ -60,7 +65,14 @@ class ApprovalEngine:
             raise ApprovalValidationError("Approval request rationale cannot be blank")
 
         # Validate requested_command
-        if not request.requested_command:
+        if (
+            not request.requested_command
+            and request.purpose
+            not in {
+                ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL,
+                ApprovalPurpose.OPERATIONAL_ACTION,
+            }
+        ):
             raise ApprovalValidationError("Approval request requested_command must contain at least one item")
 
         # Check each command item is nonblank after stripping
@@ -87,6 +99,7 @@ class ApprovalEngine:
             purpose=request.purpose,
             verification_checks=self._normalize_verification_checks(request),
             commit_metadata=self._normalize_commit_metadata(request),
+            operational_metadata=self._normalize_operational_metadata(request),
         )
 
         # Validate the ApprovalDecision
@@ -102,6 +115,12 @@ class ApprovalEngine:
         elif status == ApprovalStatus.APPROVED:
             if reviewer is None or not reviewer.strip():
                 raise ApprovalValidationError("Approved decisions must have a nonblank reviewer")
+            if (
+                request.purpose is ApprovalPurpose.OPERATIONAL_ACTION
+                and request.operational_metadata is not None
+                and request.operational_metadata.expires_at <= self.clock()
+            ):
+                raise ApprovalValidationError("Operational approval request has expired")
         # REJECTED validation
         elif status == ApprovalStatus.REJECTED:
             if reviewer is None or not reviewer.strip():
@@ -262,3 +281,54 @@ class ApprovalEngine:
             reviewed_content_fingerprint=metadata.reviewed_content_fingerprint,
             commit_message=commit_message,
         )
+
+    @staticmethod
+    def _normalize_operational_metadata(
+        request: ApprovalRequest,
+    ) -> OperationalApprovalMetadata | None:
+        metadata = request.operational_metadata
+        if request.purpose is not ApprovalPurpose.OPERATIONAL_ACTION:
+            if metadata is not None:
+                raise ApprovalValidationError(
+                    "Only operational action approvals may contain operational metadata"
+                )
+            return None
+        if request.commit_metadata is not None or request.verification_checks:
+            raise ApprovalValidationError(
+                "Operational action approvals cannot contain repository approval metadata"
+            )
+        if request.requested_command or request.requested_working_directory is not None:
+            raise ApprovalValidationError(
+                "Operational action approvals cannot contain executable fields"
+            )
+        if request.workflow_id is None or not request.workflow_id.strip():
+            raise ApprovalValidationError(
+                "Operational action approvals require a workflow_id"
+            )
+        if metadata is None:
+            raise ApprovalValidationError(
+                "Operational action approvals require operational metadata"
+            )
+        required = (
+            metadata.action_request_id,
+            metadata.action_request_digest,
+            metadata.candidate_id,
+            metadata.candidate_fingerprint,
+            metadata.operational_plan_fingerprint,
+            metadata.provider_id,
+            metadata.resource_id,
+            metadata.resource_type,
+            metadata.target_fingerprint,
+            metadata.operation_intent,
+            metadata.disruption_scope,
+            metadata.verification_digest,
+        )
+        if any(not value.strip() for value in required):
+            raise ApprovalValidationError(
+                "Operational approval metadata fields must not be blank"
+            )
+        if metadata.expires_at <= metadata.generated_at:
+            raise ApprovalValidationError(
+                "Operational approval expiry must follow generation time"
+            )
+        return metadata

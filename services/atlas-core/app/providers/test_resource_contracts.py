@@ -10,6 +10,7 @@ from app.models.resources import (
     ProviderResource,
     ProviderResourceCollection,
     ProviderResourceExpectation,
+    ProviderResourceIdentity,
     ProviderResourceSummary,
     UpdateResourceExpectationRequest,
     UpdateResourceExpectationResult,
@@ -55,6 +56,24 @@ def test_resource_contract_accepts_needs_review_without_value() -> None:
     assert resource.needs_review is True
     assert resource.configured is False
     assert resource.metadata == {"node": "vorex469"}
+    assert resource.identity is None
+
+
+def test_resource_contract_accepts_immutable_authoritative_identity() -> None:
+    identity = ProviderResourceIdentity(
+        token="provider-native-uid-109",
+        token_version="uid-v1",
+    )
+
+    assert identity.token == "provider-native-uid-109"
+    with pytest.raises(ValidationError, match="frozen"):
+        identity.token = "replacement"  # type: ignore[misc]
+
+
+@pytest.mark.parametrize("token", ["", " *", "*", "all", "unknown"])
+def test_resource_identity_rejects_non_exact_tokens(token: str) -> None:
+    with pytest.raises(ValidationError):
+        ProviderResourceIdentity(token=token, token_version="uid-v1")
 
 
 def test_resource_contract_accepts_provider_defined_expectation() -> None:

@@ -12,6 +12,7 @@ type NavigationItem = {
 const navigationItems: NavigationItem[] = [
     { label: "Mission Control", path: "/", enabled: true },
     { label: "Operations", path: "/operations", enabled: true },
+    { label: "Maintenance", path: "/operations/request", enabled: true },
     { label: "Discovery", path: "/discovery", enabled: true },
     { label: "Execution Candidates", path: "/execution-candidates", enabled: true },
     { label: "Workflows", path: "/workflows", enabled: true },

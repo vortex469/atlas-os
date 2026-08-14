@@ -9,13 +9,13 @@ infrastructure:
   domain: home.arpa
 
 proxmox:
-  host: 10.10.50.10
+  host: 10.10.60.100
   port: 8006
   node: vorex469
   verify_ssl: false
 
 home_assistant:
-  url: http://10.10.40.140:8123
+  url: http://10.10.20.100:8123
 
 docker:
   socket: unix:///var/run/docker.sock

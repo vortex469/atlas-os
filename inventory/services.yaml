@@ -2,7 +2,7 @@ services:
   
   hermes:
     name: "Hermes"
-    host: "10.10.50.60"
+    host: "10.10.60.60"
     port: 8642
     protocol: "http"
     health_endpoint: "/health"
@@ -13,7 +13,7 @@ services:
 
   open_webui:
     name: "Open WebUI"
-    host: "10.10.50.60"
+    host: "10.10.60.60"
     port: 3000
     protocol: "http"
     health_endpoint: "/"
@@ -24,7 +24,7 @@ services:
 
   kokoro:
     name: "Kokoro"
-    host: "10.10.50.60"
+    host: "10.10.60.60"
     port: 8880
     protocol: "http"
     health_endpoint: "/v1/audio/voices"
@@ -35,7 +35,7 @@ services:
 
   searxng:
     name: "SearXNG"
-    host: "10.10.50.51"
+    host: "10.10.60.51"
     port: 8888
     protocol: "http"
     health_endpoint: "/"
@@ -46,7 +46,7 @@ services:
 
   ollama:
     name: "Ollama"
-    host: "10.10.30.146"
+    host: "10.10.50.77"
     port: 11434
     protocol: "http"
     health_endpoint: "/api/version"
@@ -57,7 +57,7 @@ services:
 
   home_assistant:
     name: "Home Assistant"
-    host: "10.10.40.140"
+    host: "10.10.20.100"
     port: 8123
     protocol: "http"
     health_endpoint: "/"
@@ -68,7 +68,7 @@ services:
 
   ifileshare:
     name: "iFileshare"
-    host: "10.10.50.30"
+    host: "10.10.60.30"
     port: 8080
     protocol: "http"
     health_endpoint: "/"

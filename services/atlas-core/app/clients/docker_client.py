@@ -64,7 +64,13 @@ def create_docker_client(atlas_context: AtlasContext) -> docker.DockerClient:
     resolution in this migrated path.
     """
 
-    return docker.DockerClient(base_url=_socket_uri(atlas_context))
+    connection = atlas_context.connection
+    if connection is None:
+        raise RuntimeError("Docker Unix socket is not configured.")
+    return docker.DockerClient(
+        base_url=_socket_uri(atlas_context),
+        timeout=connection.timeout_seconds,
+    )
 
 
 def docker_connection_diagnostics(atlas_context: AtlasContext) -> dict[str, Any]:

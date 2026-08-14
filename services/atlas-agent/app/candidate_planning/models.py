@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
+from app.workflow.models import WorkflowEffectKind
+
 SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})
+OPERATIONAL_PLANNING_INTENTS = frozenset({"restart-service"})
+OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})
 RC1_VALIDATION_SMOKE_INTENT = "rc1-validation-smoke"
 
 
@@ -63,6 +68,7 @@ class CandidatePlanningFailureCode(StrEnum):
     CANDIDATE_EXPIRED = "candidate_expired"
     CANDIDATE_NOT_ELIGIBLE = "candidate_not_eligible"
     EVIDENCE_UNAVAILABLE = "evidence_unavailable"
+    TARGET_UNAVAILABLE = "target_unavailable"
     REPOSITORY_MAPPING_UNAVAILABLE = "repository_mapping_unavailable"
     REPOSITORY_INSPECTION_FAILED = "repository_inspection_failed"
     PLANNING_VALIDATION_FAILED = "planning_validation_failed"
@@ -93,6 +99,18 @@ class ComposeMutationSpecification:
     desired_value: str
     expected_value: str | None = None
     preservation_constraints: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class OperationalTargetReference:
+    """Immutable provider-resource identity supplied by Atlas Core."""
+
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    resource_fingerprint: str
+    resource_version: str | None
+    expected_state: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,7 +146,9 @@ class CandidateSnapshot:
     intake_status: CoreCandidatePlanningIntakeStatus
     intake_reason_codes: tuple[str, ...]
     intake_timestamp: datetime
+    effect_kind: WorkflowEffectKind = WorkflowEffectKind.REPOSITORY_CHANGE
     mutation: ComposeMutationSpecification | None = None
+    operational_target: OperationalTargetReference | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,11 +216,52 @@ class CandidatePlan:
 
 
 @dataclass(frozen=True, slots=True)
+class OperationalVerificationSpecification:
+    """Non-executable verification contract for a future operational action."""
+
+    pre_state: str
+    expected_post_state: str
+    identity_fingerprint: str
+    health_requirement: str
+    unknown_outcome_policy: str
+
+
+@dataclass(frozen=True, slots=True)
+class OperationalCandidatePlan:
+    """Repository-independent descriptive plan for an operational action."""
+
+    identifier: str
+    session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    effect_kind: WorkflowEffectKind
+    execution_intent: str
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    target_fingerprint: str
+    target_version: str | None
+    expected_pre_state: str
+    intended_action: str
+    disruption_scope: str
+    verification: OperationalVerificationSpecification
+    failure_considerations: tuple[str, ...]
+    evidence_ids: tuple[str, ...]
+    created_at: datetime
+    revalidated_candidate_fingerprint: str
+
+    def __post_init__(self) -> None:
+        if self.effect_kind is not WorkflowEffectKind.OPERATIONAL_ACTION:
+            raise ValueError("operational plans require operational_action effect kind")
+
+
+@dataclass(frozen=True, slots=True)
 class PlanningDecision:
     """Result of attempting read-only candidate-aware plan generation."""
 
     status: CandidatePlanningSessionStatus
     plan: CandidatePlan | None = None
+    operational_plan: OperationalCandidatePlan | None = None
     failure: CandidatePlanningFailure | None = None
 
 
@@ -217,6 +278,7 @@ class CandidatePlanningSession:
     unsupported_reason: str | None = None
     planning_status: CandidatePlanningSessionStatus = CandidatePlanningSessionStatus.READY_FOR_PLANNING
     plan: CandidatePlan | None = None
+    operational_plan: OperationalCandidatePlan | None = None
     planning_failure: CandidatePlanningFailure | None = None
     planning_started_at: datetime | None = None
     planning_completed_at: datetime | None = None
@@ -234,6 +296,12 @@ class CandidatePlanningSession:
     predecessor_session_id: str | None = None
     successor_session_id: str | None = None
 
+    def __post_init__(self) -> None:
+        if self.plan is not None and self.operational_plan is not None:
+            raise ValueError(
+                "candidate planning sessions cannot carry both repository and operational plans"
+            )
+
 
 @dataclass(frozen=True, slots=True)
 class CandidatePlanResponse:
@@ -248,6 +316,7 @@ class CandidatePlanResponse:
     candidate_fingerprint: str | None = None
     unsupported_reason: str | None = None
     plan: CandidatePlan | None = None
+    operational_plan: OperationalCandidatePlan | None = None
     planning_failure: CandidatePlanningFailure | None = None
     predecessor_session_id: str | None = None
     successor_session_id: str | None = None
@@ -314,6 +383,80 @@ class CandidateImplementationRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class OperationalActionRequest:
+    """Immutable non-executable request for a future operational action."""
+
+    request_id: str
+    request_digest: str
+    idempotency_key: str
+    workflow_session_id: str
+    candidate_planning_session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    candidate_plan_id: str
+    candidate_plan_fingerprint: str
+    effect_kind: WorkflowEffectKind
+    execution_intent: str
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    provider_action_id: str
+    target_fingerprint: str
+    target_version: str | None
+    disruption_scope: str
+    evidence_ids: tuple[str, ...]
+    expected_pre_state: str
+    verification: OperationalVerificationSpecification
+    expires_at: datetime
+    translator_version: str
+    generated_at: datetime
+
+    def __post_init__(self) -> None:
+        if self.effect_kind is not WorkflowEffectKind.OPERATIONAL_ACTION:
+            raise ValueError("operational requests require operational_action effect kind")
+        from app.candidate_planning.operational_translation import (
+            resolve_provider_action_id,
+        )
+
+        expected_action = resolve_provider_action_id(
+            execution_intent=self.execution_intent,
+            provider_id=self.provider_id,
+            resource_type=self.resource_type,
+        )
+        if self.provider_action_id != expected_action:
+            raise ValueError("operational request action does not match closed translation")
+        if not self.target_fingerprint.strip():
+            raise ValueError("operational request requires target fingerprint")
+        if self.expires_at <= self.generated_at:
+            raise ValueError("operational request expiry must follow generation time")
+        expected_digest = operational_action_request_digest(self)
+        if not self.request_digest and not self.idempotency_key:
+            object.__setattr__(self, "request_digest", expected_digest)
+            object.__setattr__(
+                self,
+                "idempotency_key",
+                operational_action_idempotency_key(
+                    request_id=self.request_id,
+                    request_digest=expected_digest,
+                ),
+            )
+        if self.request_digest != expected_digest:
+            raise ValueError("operational request digest does not match immutable payload")
+        expected_key = operational_action_idempotency_key(
+            request_id=self.request_id,
+            request_digest=self.request_digest,
+        )
+        if self.idempotency_key != expected_key:
+            raise ValueError("operational request idempotency key does not match")
+
+    @property
+    def identifier(self) -> str:
+        """Compatibility alias for generic identifier projections."""
+
+        return self.request_id
+
+
+@dataclass(frozen=True, slots=True)
 class CandidateImplementationTranslationResponse:
     """Response for candidate implementation translation."""
 
@@ -365,3 +508,85 @@ def is_supported_execution_intent(execution_intent: str) -> bool:
         execution_intent == RC1_VALIDATION_SMOKE_INTENT
         and os.getenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", "false").lower() == "true"
     )
+
+
+def is_operational_planning_intent(execution_intent: str) -> bool:
+    """Return whether an intent may produce a descriptive operational plan only."""
+
+    return execution_intent in OPERATIONAL_PLANNING_INTENTS
+
+
+def is_operational_execution_enabled(execution_intent: str) -> bool:
+    """Return whether an operational intent may cross the execution boundary."""
+
+    return execution_intent in OPERATIONAL_EXECUTION_INTENTS
+
+
+OPERATIONAL_REQUEST_DIGEST_VERSION = "operational-action-request-digest-v1"
+OPERATIONAL_IDEMPOTENCY_KEY_VERSION = "operational-action-execution-key-v1"
+OPERATIONAL_VERIFICATION_DIGEST_VERSION = "operational-verification-digest-v1"
+
+
+def operational_verification_digest(
+    verification: OperationalVerificationSpecification,
+) -> str:
+    """Bind the complete semantic verification contract."""
+
+    payload = {
+        "expected_post_state": verification.expected_post_state,
+        "health_requirement": verification.health_requirement,
+        "identity_fingerprint": verification.identity_fingerprint,
+        "pre_state": verification.pre_state,
+        "unknown_outcome_policy": verification.unknown_outcome_policy,
+        "version": OPERATIONAL_VERIFICATION_DIGEST_VERSION,
+    }
+    return _versioned_digest(OPERATIONAL_VERIFICATION_DIGEST_VERSION, payload)
+
+
+def operational_action_request_digest(request: OperationalActionRequest) -> str:
+    """Return the canonical digest excluding the digest and derived key fields."""
+
+    payload = {
+        "candidate_fingerprint": request.candidate_fingerprint,
+        "candidate_id": request.candidate_id,
+        "candidate_plan_fingerprint": request.candidate_plan_fingerprint,
+        "candidate_plan_id": request.candidate_plan_id,
+        "candidate_planning_session_id": request.candidate_planning_session_id,
+        "disruption_scope": request.disruption_scope,
+        "effect_kind": request.effect_kind.value,
+        "evidence_ids": sorted(request.evidence_ids),
+        "execution_intent": request.execution_intent,
+        "expected_pre_state": request.expected_pre_state,
+        "expires_at": request.expires_at.isoformat(),
+        "generated_at": request.generated_at.isoformat(),
+        "provider_action_id": request.provider_action_id,
+        "provider_id": request.provider_id,
+        "request_id": request.request_id,
+        "resource_id": request.resource_id,
+        "resource_type": request.resource_type,
+        "target_fingerprint": request.target_fingerprint,
+        "target_version": request.target_version,
+        "translator_version": request.translator_version,
+        "verification_digest": operational_verification_digest(request.verification),
+        "version": OPERATIONAL_REQUEST_DIGEST_VERSION,
+        "workflow_session_id": request.workflow_session_id,
+    }
+    return _versioned_digest(OPERATIONAL_REQUEST_DIGEST_VERSION, payload)
+
+
+def operational_action_idempotency_key(*, request_id: str, request_digest: str) -> str:
+    """Derive a stable future execution key from immutable request identity."""
+
+    return _versioned_digest(
+        OPERATIONAL_IDEMPOTENCY_KEY_VERSION,
+        {
+            "request_digest": request_digest,
+            "request_id": request_id,
+            "version": OPERATIONAL_IDEMPOTENCY_KEY_VERSION,
+        },
+    )
+
+
+def _versioned_digest(prefix: str, payload: dict[str, object]) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"{prefix}:{hashlib.sha256(encoded.encode()).hexdigest()}"

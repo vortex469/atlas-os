@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 
@@ -43,6 +43,9 @@ from app.verification.models import (
 from app.workflow.engine import WorkflowEngine
 from app.workflow.models import (
     CandidateWorkflowMetadata,
+    OperationalExecutionReference,
+    OperationalExecutionStage,
+    WorkflowEffectKind,
     WorkflowRequest,
     WorkflowSession,
     WorkflowSessionState,
@@ -52,6 +55,10 @@ from app.workflow.state import WorkflowStateStore
 from tests.candidate_planning.test_audit import (
     _complete_workflow,
     _planning_session_with_plan,
+)
+from tests.candidate_planning.test_operational_models import (
+    operational_plan,
+    operational_request,
 )
 from tests.routes.test_workflow import (
     candidate_planning_session_for_workflow,
@@ -116,6 +123,7 @@ def session(
         request=request(root),
         plan=plan(root),
         state=state,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
     )
 
 
@@ -337,6 +345,143 @@ def test_candidate_plan_round_trips_after_restart(tmp_path: Path) -> None:
     assert recovered_session.planning_status is CandidatePlanningSessionStatus.PLAN_READY
 
 
+def test_schema_v3_operational_artifacts_round_trip(tmp_path: Path) -> None:
+    candidate_state = CandidatePlanningStateStore()
+    workflow_state = WorkflowStateStore()
+    persistence = coordinator(
+        tmp_path,
+        workflow_state,
+        ApprovalRepository(),
+        candidate_state,
+    )
+    persistence.initialize()
+    stored_candidate = replace(
+        candidate_planning_session(),
+        operational_plan=operational_plan(),
+    )
+    action_request = operational_request()
+    metadata = CandidateWorkflowMetadata(
+        candidate_planning_session_id=action_request.candidate_planning_session_id,
+        candidate_id=action_request.candidate_id,
+        candidate_fingerprint=action_request.candidate_fingerprint,
+        candidate_plan_id=action_request.candidate_plan_id,
+        candidate_plan_fingerprint=action_request.candidate_plan_fingerprint,
+        source_recommendation_id="recommendation-1",
+        source_subsystem="discovery",
+        catalog_item_id=None,
+        target_id=action_request.resource_id,
+        target_type=action_request.resource_type,
+        execution_category="operational",
+        execution_intent=action_request.execution_intent,
+        evidence_ids=action_request.evidence_ids,
+        compatibility_assessment_id=None,
+        compatibility_status=None,
+        relationship_ids=(),
+        conversion_timestamp=action_request.generated_at,
+        core_revalidation_status="accepted_for_planning",
+        core_revalidation_fingerprint=action_request.candidate_fingerprint,
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+    )
+    stored_workflow = WorkflowSession(
+        identifier="workflow-1",
+        request=None,
+        plan=None,
+        state=WorkflowSessionState.BLOCKED,
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+        source=WorkflowSource.CANDIDATE,
+        candidate_metadata=metadata,
+        operational_action_request=action_request,
+        operational_execution_reference=OperationalExecutionReference(
+            request_id=action_request.request_id,
+            request_digest=action_request.request_digest,
+            stage=OperationalExecutionStage.VERIFICATION_PENDING,
+            dispatch_status="succeeded",
+            ledger_state="verifying",
+            provider_operation_id="UPID:sanitized",
+            verification_status=None,
+            submitted_at=action_request.generated_at + timedelta(seconds=1),
+            last_observed_at=action_request.generated_at + timedelta(seconds=2),
+            terminal=False,
+            audit_events=("authenticated_dispatch_submitted", "verification_pending"),
+        ),
+    )
+
+    def store_operational(workflows, _approvals, candidate_planning):
+        workflows.create_session(stored_workflow)
+        candidate_planning.create_session(stored_candidate)
+
+    persistence.mutate_aggregate(store_operational)
+
+    payload = json.loads(persistence.snapshot_path.read_text())
+    assert payload["schema_version"] == 3
+    recovered_candidates = CandidatePlanningStateStore()
+    recovered_workflows = WorkflowStateStore()
+    coordinator(
+        tmp_path,
+        recovered_workflows,
+        ApprovalRepository(),
+        recovered_candidates,
+    ).initialize()
+
+    assert recovered_candidates.get_session(stored_candidate.identifier) == stored_candidate
+    assert recovered_workflows.get_session(stored_workflow.identifier) == stored_workflow
+
+
+def test_schema_v2_operational_plan_ready_session_remains_readable(tmp_path: Path) -> None:
+    candidate_state = CandidatePlanningStateStore()
+    persistence = coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        candidate_state,
+    )
+    persistence.initialize()
+    stored = replace(
+        candidate_planning_session(),
+        planning_status=CandidatePlanningSessionStatus.PLAN_READY,
+        operational_plan=operational_plan(),
+    )
+    persistence.mutate_candidate_planning(lambda state: state.create_session(stored))
+    payload = json.loads(persistence.snapshot_path.read_text())
+    payload["schema_version"] = 2
+    persistence.snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    recovered = CandidatePlanningStateStore()
+    coordinator(
+        tmp_path,
+        WorkflowStateStore(),
+        ApprovalRepository(),
+        recovered,
+    ).initialize()
+
+    assert recovered.get_session(stored.identifier) == stored
+    assert json.loads(persistence.snapshot_path.read_text())["schema_version"] == 2
+
+
+def test_schema_v1_defaults_workflow_effect_to_repository_change(tmp_path: Path) -> None:
+    workflow_state = WorkflowStateStore()
+    persistence = coordinator(tmp_path, workflow_state)
+    persistence.initialize()
+    persistence.mutate_aggregate(
+        lambda workflows, _approvals: workflows.create_session(
+            session(tmp_path, WorkflowSessionState.BLOCKED)
+        )
+    )
+    payload = json.loads(persistence.snapshot_path.read_text())
+    payload["schema_version"] = 1
+    stored_workflow = payload["workflow_state"]["sessions"]["workflow-a15"]
+    stored_workflow.pop("effect_kind")
+    persistence.snapshot_path.write_text(json.dumps(payload))
+
+    recovered_workflows = WorkflowStateStore()
+    coordinator(tmp_path, recovered_workflows).initialize()
+
+    recovered = recovered_workflows.get_session("workflow-a15")
+    assert recovered is not None
+    assert recovered.effect_kind is WorkflowEffectKind.REPOSITORY_CHANGE
+    assert json.loads(persistence.snapshot_path.read_text())["schema_version"] == 1
+
+
 def test_candidate_planning_lineage_fields_round_trip(tmp_path: Path) -> None:
     candidate_state = CandidatePlanningStateStore()
     persistence = coordinator(
@@ -454,12 +599,14 @@ def test_candidate_workflow_shell_linkage_round_trips_after_restart(tmp_path: Pa
         conversion_timestamp=converted_at,
         core_revalidation_status="accepted_for_planning",
         core_revalidation_fingerprint=stored_session.candidate_fingerprint,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
     )
     workflow = WorkflowSession(
         identifier=workflow_id,
         request=None,
         plan=None,
         state=WorkflowSessionState.AWAITING_APPROVAL,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=metadata,
     )
@@ -914,6 +1061,7 @@ def test_old_snapshot_without_candidate_planning_still_recovers_orphaned_workflo
         request=None,
         plan=None,
         state=WorkflowSessionState.AWAITING_APPROVAL,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=CandidateWorkflowMetadata(
             candidate_planning_session_id="candidate-plan-1",
@@ -935,6 +1083,7 @@ def test_old_snapshot_without_candidate_planning_still_recovers_orphaned_workflo
             conversion_timestamp=datetime(2026, 8, 2, tzinfo=timezone.utc),
             core_revalidation_status="accepted_for_planning",
             core_revalidation_fingerprint="candidate-fingerprint-v1:aaa",
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         ),
     )
     persistence.mutate_aggregate(
@@ -1422,6 +1571,7 @@ def test_interrupted_candidate_execution_recovers_blocked_and_not_replayable(tmp
             conversion_timestamp=datetime(2026, 8, 2, tzinfo=timezone.utc),
             core_revalidation_status="accepted_for_planning",
             core_revalidation_fingerprint="candidate-fingerprint-v1:aaa",
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         ),
     )
     persistence = coordinator(tmp_path / "state", workflow_state=workflow_state)

@@ -52,12 +52,20 @@ def get_proxmox_guests(
     guests = []
 
     for vm in proxmox_client.nodes(node).qemu.get():
+        vmid = vm["vmid"]
+        try:
+            config = proxmox_client.nodes(node).qemu(vmid).config.get()
+        except Exception:  # noqa: BLE001 - optional identity enrichment fails closed
+            config = {}
         guests.append(
             {
-                "vmid": vm["vmid"],
+                "vmid": vmid,
                 "name": vm.get("name", f"VM-{vm['vmid']}"),
-                "type": "vm",
+                "type": "qemu",
                 "status": vm.get("status", "unknown"),
+                "vmgenid": config.get("vmgenid"),
+                "template": bool(config.get("template", vm.get("template", 0))),
+                "lock": config.get("lock") or vm.get("lock"),
                 "cpu_percent": round(vm.get("cpu", 0) * 100, 2),
                 "memory_used_gib": bytes_to_gib(vm.get("mem", 0)),
                 "memory_total_gib": bytes_to_gib(vm.get("maxmem", 0)),

@@ -9,10 +9,12 @@ from app.execution_candidates.fingerprint import (
 from app.execution_candidates.models import (
     ApprovalLevel,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionConstraint,
     ExecutionIntent,
+    OperationalTargetReference,
     build_execution_candidate_id,
 )
 
@@ -29,6 +31,7 @@ def candidate(**overrides: object) -> ExecutionCandidate:
         "target_type": "service",
         "execution_category": ExecutionCategory.RESTART,
         "execution_intent": ExecutionIntent.RESTART_SERVICE,
+        "effect_kind": ExecutionCandidateEffectKind.OPERATIONAL_ACTION,
         "status": ExecutionCandidateStatus.ELIGIBLE,
         "required_approval_level": ApprovalLevel.STANDARD,
         "rationale": "Restart the service after approval.",
@@ -109,3 +112,25 @@ def test_material_rationale_change_changes_fingerprint() -> None:
     assert build_candidate_fingerprint(candidate(rationale="Restart the service after approval.")) != build_candidate_fingerprint(
         candidate(rationale="Restart a different service after approval.")
     )
+
+
+def test_operational_target_uses_distinct_fingerprint_and_binds_identity() -> None:
+    first = candidate(
+        operational_target=OperationalTargetReference(
+            provider_id="docker",
+            resource_id="service-frigate",
+            resource_type="service",
+            resource_fingerprint="operational-target-v1:first",
+            expected_state="running",
+        )
+    )
+    replaced = first.model_copy(
+        update={
+            "operational_target": first.operational_target.model_copy(
+                update={"resource_fingerprint": "operational-target-v1:replacement"}
+            )
+        }
+    )
+
+    assert build_candidate_fingerprint(first).startswith("operational-candidate-fingerprint-v1:")
+    assert build_candidate_fingerprint(first) != build_candidate_fingerprint(replaced)

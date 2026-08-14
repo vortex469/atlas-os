@@ -15,6 +15,10 @@ from app.routes.execution_candidates import router as execution_candidates_route
 from app.routes.health import router as health_router
 from app.routes.homeassistant import router as homeassistant_router
 from app.routes.intelligence import router as intelligence_router
+from app.routes.internal_operational_actions import (
+    router as internal_operational_actions_router,
+)
+from app.routes.operator_auth import router as operator_auth_router
 from app.routes.ops import router as ops_router
 from app.routes.policies import router as policies_router
 from app.routes.provider_connections import router as provider_connections_router
@@ -63,11 +67,13 @@ router.include_router(discovery_router)
 router.include_router(execution_candidates_router)
 router.include_router(execution_candidate_intake_router)
 router.include_router(ops_router)
+router.include_router(operator_auth_router)
 router.include_router(policies_router)
 router.include_router(docker_router)
 router.include_router(proxmox_router)
 router.include_router(homeassistant_router)
 router.include_router(intelligence_router)
+router.include_router(internal_operational_actions_router)
 router.include_router(ace_router)
 router.include_router(ai_router)
 router.include_router(dashboard_router)

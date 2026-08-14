@@ -37,8 +37,9 @@ def test_docker_client_uses_resolved_socket_not_from_env(
     captured: dict[str, object] = {}
 
     class FakeDockerClient:
-        def __init__(self, *, base_url: str) -> None:
+        def __init__(self, *, base_url: str, timeout: float) -> None:
             captured["base_url"] = base_url
+            captured["timeout"] = timeout
 
     def fail_from_env() -> None:
         raise AssertionError("docker.from_env must not be used")
@@ -48,24 +49,30 @@ def test_docker_client_uses_resolved_socket_not_from_env(
 
     docker_client.create_docker_client(docker_context("/run/docker.sock"))
 
-    assert captured == {"base_url": "unix:///run/docker.sock"}
+    assert captured == {
+        "base_url": "unix:///run/docker.sock",
+        "timeout": 10.0,
+    }
 
 
 def test_changing_context_changes_docker_client_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    base_urls: list[str] = []
+    clients: list[tuple[str, float]] = []
 
     class FakeDockerClient:
-        def __init__(self, *, base_url: str) -> None:
-            base_urls.append(base_url)
+        def __init__(self, *, base_url: str, timeout: float) -> None:
+            clients.append((base_url, timeout))
 
     monkeypatch.setattr(docker_client.docker, "DockerClient", FakeDockerClient)
 
     docker_client.create_docker_client(docker_context("/first.sock"))
     docker_client.create_docker_client(docker_context("/second.sock"))
 
-    assert base_urls == ["unix:///first.sock", "unix:///second.sock"]
+    assert clients == [
+        ("unix:///first.sock", 10.0),
+        ("unix:///second.sock", 10.0),
+    ]
 
 
 def test_invalid_context_blocks_client_construction() -> None:

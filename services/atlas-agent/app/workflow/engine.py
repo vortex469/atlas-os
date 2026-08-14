@@ -31,6 +31,7 @@ from app.candidate_planning.execution import (
     CandidateExecutionValidationResult,
     CandidateExecutionValidator,
 )
+from app.candidate_planning.models import is_operational_execution_enabled
 from app.candidate_planning.verification import (
     CandidateReviewAdapter,
     CandidateVerificationFailureCode,
@@ -67,6 +68,7 @@ from app.verification.models import VerificationCheck, VerificationStatus
 from app.workflow.models import (
     SprintPhase,
     SprintStatus,
+    WorkflowEffectKind,
     WorkflowRequest,
     WorkflowResult,
     WorkflowSession,
@@ -242,6 +244,7 @@ class WorkflowEngine:
             request=request,
             plan=plan,
             state=WorkflowSessionState.AWAITING_APPROVAL,
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
             planning_analysis=planning_analysis,
             context=context,
         )
@@ -351,6 +354,8 @@ class WorkflowEngine:
             session.state
             is WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL
         ):
+            if session.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION:
+                return self._resume_operational_action(session)
             return self._resume_candidate_implementation(session)
         if session.state is WorkflowSessionState.PATCH_APPLIED_PENDING_VERIFICATION:
             return self._resume_patch_applied_candidate(session)
@@ -367,6 +372,24 @@ class WorkflowEngine:
         return self._blocked_session_result(
             session=session,
             error_message="Workflow is not resumable",
+        )
+
+    def _resume_operational_action(self, session: WorkflowSession) -> WorkflowResult:
+        """Fail closed until a separately reviewed execution capability is enabled."""
+
+        request = session.operational_action_request
+        if request is None or not is_operational_execution_enabled(
+            request.execution_intent
+        ):
+            return self._block_candidate_session(
+                session=session,
+                error_message="operational_execution_not_enabled",
+            )
+        # P1.3a intentionally has no dispatcher. Membership alone can never make
+        # execution possible without a future explicit implementation here.
+        return self._block_candidate_session(
+            session=session,
+            error_message="operational_execution_handler_unavailable",
         )
 
     def _resume_implementation(

@@ -41,6 +41,7 @@ from app.routes.workflow import router as workflow_router
 from app.verification.engine import VerificationEngine
 from app.version import AGENT_VERSION
 from app.workflow.engine import WorkflowEngine
+from app.workflow.operational_execution import OperationalExecutionOrchestrator
 from app.workflow.orchestrator import WorkflowOrchestrator
 from app.workflow.state import WorkflowStateStore
 
@@ -193,6 +194,12 @@ def create_app() -> FastAPI:
         context_engine=context_engine,
         atlas_core_required=settings.atlas_core_required,
     )
+    operational_execution_orchestrator = OperationalExecutionOrchestrator(
+        core_client=core_client,
+        approval_repository=approval_repository,
+        workflow_state=workflow_state,
+        state_persistence=state_persistence,
+    )
 
     container = ApplicationContainer(
         settings=settings,
@@ -210,6 +217,7 @@ def create_app() -> FastAPI:
         review_advisor=review_advisor,
         workflow_engine=workflow_engine,
         workflow_orchestrator=workflow_orchestrator,
+        operational_execution_orchestrator=operational_execution_orchestrator,
         state_persistence=state_persistence,
     )
 

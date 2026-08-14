@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 from app.config.policy_models import (
     IntelligencePolicy,
@@ -294,7 +295,7 @@ def test_build_report_includes_discovery_recommendations(
         providers=[],
     )
 
-    async def no_provider_findings():
+    async def no_provider_findings(**_kwargs):
         return [], telemetry
 
     monkeypatch.setattr(coordinator, "PROVIDERS", ())
@@ -331,7 +332,7 @@ def test_discovery_collection_failure_is_log_only_in_report(
         providers=[],
     )
 
-    async def no_provider_findings():
+    async def no_provider_findings(**_kwargs):
         return [], telemetry
 
     def failing_discovery_collection():
@@ -358,3 +359,149 @@ def test_discovery_collection_failure_is_log_only_in_report(
 
     assert report.findings == [legacy_finding]
     assert report.recommendations == []
+
+
+def test_legacy_collectors_are_concurrent_ordered_and_attributed(
+    monkeypatch,
+) -> None:
+    def collector(source: str, delay: float):
+        def collect() -> list[Finding]:
+            time.sleep(delay)
+            finding = make_test_finding().model_copy(
+                update={"id": source, "source": source},
+            )
+            return [finding]
+
+        return collect
+
+    home = collector("home", 0.06)
+    docker = collector("docker", 0.02)
+    proxmox = collector("proxmox", 0.04)
+    monkeypatch.setattr(coordinator, "PROVIDERS", (home, docker, proxmox))
+    monkeypatch.setattr(
+        coordinator,
+        "LEGACY_PROVIDER_IDENTITIES",
+        {
+            home: ("home-assistant", "Home Assistant"),
+            docker: ("docker", "Docker"),
+            proxmox: ("proxmox", "Proxmox"),
+        },
+    )
+
+    started_at = time.perf_counter()
+    findings, timings = asyncio.run(
+        coordinator.collect_legacy_findings_with_telemetry(
+            timeout_seconds=0.5,
+        )
+    )
+    duration = time.perf_counter() - started_at
+
+    assert duration < 0.11
+    assert [finding.id for finding in findings] == ["home", "docker", "proxmox"]
+    assert [timing.provider_id for timing in timings] == [
+        "home-assistant",
+        "docker",
+        "proxmox",
+    ]
+    assert all(timing.status == "completed" for timing in timings)
+    assert all(timing.duration_ms > 0 for timing in timings)
+
+
+def test_legacy_blocking_collector_does_not_block_loop_and_times_out(
+    monkeypatch,
+) -> None:
+    def slow() -> list[Finding]:
+        time.sleep(0.1)
+        return []
+
+    def successful() -> list[Finding]:
+        return [make_test_finding()]
+
+    monkeypatch.setattr(coordinator, "PROVIDERS", (slow, successful))
+
+    async def exercise():
+        started_at = time.perf_counter()
+        task = asyncio.create_task(
+            coordinator.collect_legacy_findings_with_telemetry(
+                timeout_seconds=0.02,
+            )
+        )
+        await asyncio.sleep(0.005)
+        loop_remained_responsive_at = time.perf_counter() - started_at
+        findings, timings = await task
+        returned_at = time.perf_counter() - started_at
+        return loop_remained_responsive_at, returned_at, findings, timings
+
+    responsive_at, returned_at, findings, timings = asyncio.run(exercise())
+
+    assert responsive_at < 0.02
+    assert returned_at < 0.06
+    assert timings[0].status == "timed_out"
+    assert timings[1].status == "completed"
+    assert findings[0].id.endswith("timed-out")
+    assert findings[1] == make_test_finding()
+
+
+def test_legacy_failure_does_not_suppress_success(monkeypatch) -> None:
+    def failing() -> list[Finding]:
+        raise RuntimeError("sensitive internal failure")
+
+    def successful() -> list[Finding]:
+        return [make_test_finding()]
+
+    monkeypatch.setattr(coordinator, "PROVIDERS", (failing, successful))
+
+    findings, timings = asyncio.run(
+        coordinator.collect_legacy_findings_with_telemetry(
+            timeout_seconds=1,
+        )
+    )
+
+    assert timings[0].status == "failed"
+    assert timings[1].status == "completed"
+    assert findings[0].message == (
+        "ACE could not collect findings from Legacy Provider 1."
+    )
+    assert "sensitive" not in findings[0].model_dump_json()
+    assert findings[1] == make_test_finding()
+
+
+def test_build_report_does_not_double_count_registered_findings(
+    monkeypatch,
+    isolated_intelligence_history,
+) -> None:
+    telemetry = IntelligenceTelemetry(
+        provider_collection_duration_ms=1,
+        provider_timeout_seconds=10,
+        providers=[
+            ProviderCollectionTiming(
+                provider_id="registered-provider",
+                provider_name="Registered Provider",
+                status="completed",
+                duration_ms=1,
+                finding_count=1,
+            )
+        ],
+    )
+
+    async def registered_findings(**_kwargs):
+        return [make_test_finding()], telemetry
+
+    monkeypatch.setattr(coordinator, "PROVIDERS", ())
+    monkeypatch.setattr(
+        coordinator,
+        "collect_provider_findings_with_telemetry",
+        registered_findings,
+    )
+    monkeypatch.setattr(
+        coordinator,
+        "collect_discovery_compatibility_findings",
+        list,
+    )
+
+    report = asyncio.run(coordinator.build_report())
+
+    assert report.findings == [make_test_finding()]
+    assert [timing.provider_id for timing in report.telemetry.providers] == [
+        "registered-provider"
+    ]

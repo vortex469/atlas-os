@@ -8,10 +8,12 @@ from app.execution_candidates.models import (
     ApprovalLevel,
     ComposeMutationSpecification,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionConstraint,
     ExecutionIntent,
+    OperationalTargetReference,
 )
 
 
@@ -27,6 +29,7 @@ class ExecutionCandidateResponse(BaseModel):
     target_type: str
     execution_category: ExecutionCategory
     execution_intent: ExecutionIntent
+    effect_kind: ExecutionCandidateEffectKind
     status: ExecutionCandidateStatus
     required_approval_level: ApprovalLevel
     rationale: str
@@ -43,6 +46,7 @@ class CandidatePlanningExecutionCandidateResponse(ExecutionCandidateResponse):
     """Planning-intake DTO carrying actionable mutation evidence."""
 
     mutation: ComposeMutationSpecification | None = None
+    operational_target: OperationalTargetReference | None = None
 
 
 class ExecutionCandidatePageResponse(BaseModel):
@@ -53,6 +57,14 @@ class ExecutionCandidatePageResponse(BaseModel):
     limit: int = Field(ge=1, le=100)
     offset: int = Field(ge=0)
     has_more: bool
+
+
+class OperatorIntentCreationResponse(BaseModel):
+    """Sanitized result of an authenticated operator-intent request."""
+
+    outcome: str
+    candidate_id: str
+    candidate: ExecutionCandidateResponse
 
 
 def candidate_to_response(candidate: ExecutionCandidate) -> ExecutionCandidateResponse:
@@ -68,6 +80,7 @@ def candidate_to_response(candidate: ExecutionCandidate) -> ExecutionCandidateRe
         target_type=candidate.target_type,
         execution_category=candidate.execution_category,
         execution_intent=candidate.execution_intent,
+        effect_kind=candidate.effect_kind,
         status=candidate.status,
         required_approval_level=candidate.required_approval_level,
         rationale=candidate.rationale,
@@ -89,4 +102,5 @@ def candidate_to_planning_response(
     return CandidatePlanningExecutionCandidateResponse(
         **candidate_to_response(candidate).model_dump(),
         mutation=candidate.mutation,
+        operational_target=candidate.operational_target,
     )

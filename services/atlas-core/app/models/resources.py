@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 ResourceExpectationState = Literal[
     "needs_review",
@@ -11,6 +11,27 @@ ResourceExpectationState = Literal[
     "ignored",
     "unsupported",
 ]
+
+
+class ProviderResourceIdentity(BaseModel):
+    """Provider-issued identity that distinguishes resource replacement."""
+
+    model_config = ConfigDict(frozen=True)
+
+    token: str = Field(min_length=1)
+    token_version: str = Field(
+        min_length=1,
+        pattern=r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+    )
+
+    @field_validator("token")
+    @classmethod
+    def validate_token(cls, value: str) -> str:
+        if value != value.strip():
+            raise ValueError("identity token must not have surrounding whitespace.")
+        if value.casefold() in {"*", "all", "ambiguous", "unknown"}:
+            raise ValueError("identity token must identify exactly one resource.")
+        return value
 
 
 class ProviderExpectationOption(BaseModel):
@@ -66,6 +87,7 @@ class ProviderResource(BaseModel):
     display_name: str = Field(min_length=1)
     resource_type: str = Field(min_length=1)
     current_state: str = Field(min_length=1)
+    identity: ProviderResourceIdentity | None = None
     expectation: ProviderResourceExpectation
     configured: bool
     missing: bool = False

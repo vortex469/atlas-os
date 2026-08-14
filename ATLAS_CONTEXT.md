@@ -296,3 +296,33 @@ Unsupported capabilities:
 - automatic execution
 
 Design principles: Core remains authoritative for candidate source state; Agent executes only exact immutable requests with exact approval; side-effect stages are restart-safe and at-most-once; audit links are machine-readable; Mission Control must not bypass Core or Agent trust boundaries.
+
+## Atlas v0.7 project status
+
+P1.3 is complete for one closed production capability:
+
+- `restart-service / proxmox / qemu`
+
+Core owns operator authentication, exact authoritative target resolution,
+operator-intent persistence, the production dispatch ledger, the provider
+handler, and read-only verification. Agent owns candidate planning, preparation
+approval, immutable `OperationalActionRequest` translation, exact action
+approval, authenticated dispatch, and terminal lifecycle projection. Mission
+Control exposes login and sanitized maintenance-request views without accepting
+commands, provider action IDs, native identities, endpoints, or arbitrary
+parameters.
+
+Production operator mutations require HTTPS, one exact trusted origin, CSRF,
+and a Core-owned session carrying `operational_intent:create`. Agent-to-Core
+authentication is a separate internal trust boundary. Proxmox access for this
+capability is least-privilege: `VM.Audit` and `VM.PowerMgmt` scoped to the
+approved VM target.
+
+The 2026-08-14 normal-path production acceptance restarted approved VM 110
+(`Frigate`) exactly once. Core recorded one durable barrier, one provider UPID,
+one dispatch result, successful verification, and no replay. The final VM and
+QMP states were running and the authoritative fingerprint was unchanged.
+
+Still unsupported: `backup`, `restore`, `install-provider`, `update-image`,
+push, tag/release publication, remote deployment, automated rollback, automatic
+approval, and unrestricted operational actions.

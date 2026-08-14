@@ -43,6 +43,7 @@ from app.workflow.models import (
     CandidateWorkflowMetadata,
     SprintPhase,
     SprintStatus,
+    WorkflowEffectKind,
     WorkflowRequest,
     WorkflowResult,
     WorkflowSession,
@@ -627,12 +628,14 @@ def candidate_workflow_session(repository: Path) -> WorkflowSession:
         conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
         core_revalidation_status="accepted_for_planning",
         core_revalidation_fingerprint="candidate-fingerprint-123",
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
     )
     return WorkflowSession(
         identifier="workflow-123",
         request=None,
         plan=None,
         state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=metadata,
         candidate_implementation_request=implementation,
@@ -1282,6 +1285,7 @@ def test_candidate_workflow_audit_after_shell_creation_shows_planning_without_im
         request=None,
         plan=None,
         state=WorkflowSessionState.AWAITING_APPROVAL,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=CandidateWorkflowMetadata(
             candidate_planning_session_id="candidate-plan-123",
@@ -1303,6 +1307,7 @@ def test_candidate_workflow_audit_after_shell_creation_shows_planning_without_im
             conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
             core_revalidation_status="accepted_for_planning",
             core_revalidation_fingerprint="candidate-fingerprint-123",
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         ),
         candidate_implementation_request=None,
         candidate_implementation_approval_id="approval-workflow-456",

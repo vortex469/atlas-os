@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.config.settings import IntelligenceSettings
+from app.config.settings import IntelligenceSettings, OperatorAuthSettings
 
 
 def test_provider_intelligence_timeout_defaults_to_ten_seconds() -> None:
@@ -34,3 +34,26 @@ def test_provider_intelligence_history_is_bounded(
 ) -> None:
     with pytest.raises(ValidationError):
         IntelligenceSettings(**overrides)
+
+
+def test_operator_auth_is_disabled_safely_by_default() -> None:
+    assert OperatorAuthSettings().enabled is False
+    assert OperatorAuthSettings().trusted_origins == ()
+
+
+def test_enabled_operator_auth_requires_exact_https_origin() -> None:
+    with pytest.raises(ValidationError):
+        OperatorAuthSettings(enabled=True)
+    for origin in (
+        "http://atlas.test",
+        "https://*.atlas.test",
+        "https://atlas.test/path",
+        "https://user@atlas.test",
+    ):
+        with pytest.raises(ValidationError):
+            OperatorAuthSettings(enabled=True, trusted_origins=(origin,))
+    configured = OperatorAuthSettings(
+        enabled=True,
+        trusted_origins=("https://atlas.test/",),
+    )
+    assert configured.trusted_origins == ("https://atlas.test",)

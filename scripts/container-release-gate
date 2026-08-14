@@ -74,6 +74,7 @@ cleanup() {
             logs \
             atlas-agent-auth-stager \
             atlas-execution-auth-stager \
+            atlas-core-agent-auth-stager \
             atlas-agent \
             atlas-execution-worker \
             atlas-execution-worker-relay \
@@ -306,6 +307,14 @@ else
 fi
 test "$(docker exec "$agent_container" cat /run/secrets/codex-auth.json)" = \
     "$gate_auth_fixture_contents"
+
+echo "Checking dedicated Agent-to-Core authentication staging"
+for container in "$core_container" "$agent_container"; do
+    docker exec "$container" python -c "from pathlib import Path; metadata = Path('/run/atlas-core-agent-auth/token').stat(); assert metadata.st_uid == 10001; assert metadata.st_gid == 10001; assert metadata.st_mode & 0o777 == 0o400"
+done
+core_agent_token_digest="$(docker exec "$core_container" sha256sum /run/atlas-core-agent-auth/token | awk '{print $1}')"
+test "$core_agent_token_digest" = \
+    "$(docker exec "$agent_container" sha256sum /run/atlas-core-agent-auth/token | awk '{print $1}')"
 
 echo "Checking Atlas Core Docker socket access and hardening"
 test "$(docker exec "$core_container" id -u)" = "10001"

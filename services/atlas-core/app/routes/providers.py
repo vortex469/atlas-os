@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Request
 
 from app.actions import (
@@ -8,6 +10,7 @@ from app.actions import (
     ProviderActionResult,
     execute_provider_action,
 )
+from app.config.settings import settings
 from app.models.contracts import APIError, ProviderResponse
 from app.providers import (
     Provider,
@@ -38,10 +41,20 @@ def get_registered_provider(provider_id: str) -> Provider:
 
 @router.get("", response_model=list[ProviderResponse])
 async def list_providers():
-    return [
-        await serialize_provider(provider)
-        for provider in provider_registry.all()
-    ]
+    providers = provider_registry.all()
+    return list(
+        await asyncio.gather(
+            *(
+                serialize_provider(
+                    provider,
+                    timeout_seconds=(
+                        settings.intelligence.provider_timeout_seconds
+                    ),
+                )
+                for provider in providers
+            )
+        )
+    )
 
 
 @router.get(
@@ -52,7 +65,10 @@ async def list_providers():
 async def get_provider(provider_id: str):
     provider = get_registered_provider(provider_id)
 
-    return await serialize_provider(provider)
+    return await serialize_provider(
+        provider,
+        timeout_seconds=settings.intelligence.provider_timeout_seconds,
+    )
 
 
 @router.get(

@@ -14,6 +14,7 @@ from app.candidate_planning.models import (
     CandidatePlanningSessionStatus,
     CandidatePlanRequest,
     CandidateSnapshot,
+    CandidateWorkflowConversionRequest,
     ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
 )
@@ -29,6 +30,7 @@ from app.core_client.models import (
     CoreCandidatePlanningIntakeResponse,
     CoreComposeMutationSpecification,
     CoreExecutionCandidateSnapshot,
+    CoreOperationalTargetReference,
 )
 from app.persistence.snapshot import (
     AgentStatePersistenceCoordinator,
@@ -49,6 +51,7 @@ class FakeCoreClient:
     ) -> None:
         self.responses = responses or []
         self.calls: list[tuple[str, str | None]] = []
+        self.target_fingerprint_calls: list[str | None] = []
         self.error: Exception | None = None
         self.delay_seconds = delay_seconds
         self._active_calls = 0
@@ -59,10 +62,12 @@ class FakeCoreClient:
         candidate_id: str,
         *,
         expected_candidate_fingerprint: str | None = None,
+        expected_operational_target_fingerprint: str | None = None,
     ) -> CoreCandidatePlanningIntakeResponse:
         self._active_calls += 1
         self.max_active_calls = max(self.max_active_calls, self._active_calls)
         self.calls.append((candidate_id, expected_candidate_fingerprint))
+        self.target_fingerprint_calls.append(expected_operational_target_fingerprint)
         try:
             if self.delay_seconds:
                 await asyncio.sleep(self.delay_seconds)
@@ -199,6 +204,40 @@ def accepted_response(
         reason_codes=(),
         current_candidate_fingerprint=fingerprint,
         current_candidate=candidate_snapshot(intent=intent),
+    )
+
+
+def operational_accepted_response(
+    *,
+    fingerprint: str = "operational-candidate-fingerprint-v1:aaa",
+    target_fingerprint: str = "operational-target-v1:aaa",
+) -> CoreCandidatePlanningIntakeResponse:
+    candidate = candidate_snapshot(intent="restart-service").model_copy(
+        update={
+            "recommendation_class": "restart-service",
+            "target_id": "service-frigate",
+            "target_type": "service",
+            "execution_category": "restart",
+            "effect_kind": "operational_action",
+            "constraints": ("service-disruption",),
+            "mutation": None,
+            "operational_target": CoreOperationalTargetReference(
+                provider_id="docker",
+                resource_id="service-frigate",
+                resource_type="service",
+                resource_fingerprint=target_fingerprint,
+                resource_version=None,
+                expected_state="running",
+            ),
+        }
+    )
+    return CoreCandidatePlanningIntakeResponse(
+        status="accepted_for_planning",
+        candidate_id="candidate-1",
+        planning_allowed=True,
+        reason_codes=(),
+        current_candidate_fingerprint=fingerprint,
+        current_candidate=candidate,
     )
 
 
@@ -719,6 +758,79 @@ def test_generate_plan_is_idempotent_after_plan_ready(tmp_path: Path) -> None:
 
     assert first.plan == second.plan
     assert core.calls == [("candidate-1", None), ("candidate-1", "candidate-fingerprint-v1:aaa")]
+
+
+def test_restart_service_is_planning_only_and_does_not_resolve_repository() -> None:
+    core = FakeCoreClient(
+        [
+            operational_accepted_response(),
+            operational_accepted_response(),
+            operational_accepted_response(),
+        ]
+    )
+
+    def repository_inspection_forbidden(_root: Path):
+        raise AssertionError("operational planning must not inspect a repository")
+
+    service = service_with(
+        core,
+        repository_root=Path("/repository-must-not-be-used"),
+        repository_inspector_factory=repository_inspection_forbidden,
+    )
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+    response = run(service.generate_plan(intake.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.PLAN_READY
+    assert response.plan is None
+    assert response.operational_plan is not None
+    assert response.operational_plan.execution_intent == "restart-service"
+    assert response.operational_plan.target_fingerprint == "operational-target-v1:aaa"
+    assert core.target_fingerprint_calls == [None, "operational-target-v1:aaa"]
+    stored = service.get_session(intake.session_id)
+    assert stored is not None
+    assert stored.workflow_session_id is None
+    assert stored.implementation_request_id is None
+    assert stored.implementation_approval_request_id is None
+
+    with pytest.raises(CandidatePlanningServiceError, match="aggregate persistence"):
+        run(
+            service.convert_plan_to_workflow_shell(
+                intake.session_id,
+                CandidateWorkflowConversionRequest(),
+            )
+        )
+
+
+def test_operational_target_replacement_is_stale_before_planning() -> None:
+    core = FakeCoreClient(
+        [
+            operational_accepted_response(),
+            rejected_response("stale"),
+        ]
+    )
+    service = service_with(core)
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+    response = run(service.generate_plan(intake.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.STALE_BEFORE_PLANNING
+    assert response.operational_plan is None
+    assert response.planning_failure is not None
+    assert response.planning_failure.code is CandidatePlanningFailureCode.CANDIDATE_STALE
+
+
+def test_operational_full_target_snapshot_mismatch_is_stale() -> None:
+    core = FakeCoreClient(
+        [
+            operational_accepted_response(),
+            operational_accepted_response(target_fingerprint="operational-target-v1:replacement"),
+        ]
+    )
+    service = service_with(core)
+    intake = run(service.create_planning_session(CandidatePlanRequest(candidate_id="candidate-1")))
+    response = run(service.generate_plan(intake.session_id))
+
+    assert response.status is CandidatePlanningSessionStatus.STALE_BEFORE_PLANNING
+    assert response.operational_plan is None
 
 
 def test_generate_plan_blocks_stale_core_revalidation(tmp_path: Path) -> None:

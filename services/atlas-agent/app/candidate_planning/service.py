@@ -6,13 +6,14 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from app.approval.models import (
     ApprovalPurpose,
     ApprovalRequest,
     ApprovalStatus,
+    OperationalApprovalMetadata,
 )
 from app.candidate_planning.conversion import (
     build_candidate_workflow_id,
@@ -37,9 +38,19 @@ from app.candidate_planning.models import (
     CandidateWorkflowConversionResponse,
     ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
+    OperationalTargetReference,
     build_candidate_planning_session_id,
     build_candidate_successor_planning_session_id,
+    is_operational_planning_intent,
     is_supported_execution_intent,
+    operational_verification_digest,
+)
+from app.candidate_planning.operational import (
+    create_operational_plan,
+    operational_plan_fingerprint,
+)
+from app.candidate_planning.operational_translation import (
+    translate_operational_action_request,
 )
 from app.candidate_planning.planner import (
     RepositoryResolver,
@@ -62,6 +73,7 @@ from app.repository.exceptions import RepositoryInspectionError
 from app.repository.inspector import GitInspector
 from app.workflow.models import (
     CandidateWorkflowMetadata,
+    WorkflowEffectKind,
     WorkflowSession,
     WorkflowSessionState,
     WorkflowSource,
@@ -104,6 +116,7 @@ def _snapshot_from_intake(
         )
     candidate = intake.current_candidate
     mutation = candidate.mutation
+    operational_target = candidate.operational_target
     return CandidateSnapshot(
         candidate_id=candidate.id,
         candidate_fingerprint=intake.current_candidate_fingerprint,
@@ -115,6 +128,7 @@ def _snapshot_from_intake(
         target_type=candidate.target_type,
         execution_category=candidate.execution_category,
         execution_intent=candidate.execution_intent,
+        effect_kind=WorkflowEffectKind(candidate.effect_kind),
         required_approval_level=candidate.required_approval_level,
         rationale=candidate.rationale,
         constraints=tuple(sorted(candidate.constraints)),
@@ -139,6 +153,18 @@ def _snapshot_from_intake(
             if mutation is not None
             else None
         ),
+        operational_target=(
+            OperationalTargetReference(
+                provider_id=operational_target.provider_id,
+                resource_id=operational_target.resource_id,
+                resource_type=operational_target.resource_type,
+                resource_fingerprint=operational_target.resource_fingerprint,
+                resource_version=operational_target.resource_version,
+                expected_state=operational_target.expected_state,
+            )
+            if operational_target is not None
+            else None
+        ),
     )
 
 
@@ -153,6 +179,7 @@ def _response_from_session(session: CandidatePlanningSession) -> CandidatePlanRe
         candidate_fingerprint=session.candidate_fingerprint,
         unsupported_reason=session.unsupported_reason,
         plan=session.plan,
+        operational_plan=session.operational_plan,
         planning_failure=session.planning_failure,
         predecessor_session_id=session.predecessor_session_id,
         successor_session_id=session.successor_session_id,
@@ -302,7 +329,13 @@ def _conversion_response_from_session(
         candidate_planning_session_id=session.identifier,
         candidate_id=session.candidate_id,
         candidate_fingerprint=session.candidate_fingerprint,
-        candidate_plan_id=session.plan.identifier if session.plan is not None else None,
+        candidate_plan_id=(
+            session.plan.identifier
+            if session.plan is not None
+            else session.operational_plan.identifier
+            if session.operational_plan is not None
+            else None
+        ),
         candidate_plan_fingerprint=session.candidate_plan_fingerprint,
         workflow_session_id=session.workflow_session_id,
         workflow_status=WorkflowSessionState.AWAITING_APPROVAL.value
@@ -359,7 +392,7 @@ def _implementation_failure(
 def _implementation_response_from_session(
     session: CandidatePlanningSession,
     *,
-    repository_head: str | None,
+    repository_head: str | None = None,
 ) -> CandidateImplementationTranslationResponse:
     return CandidateImplementationTranslationResponse(
         candidate_planning_session_id=session.identifier,
@@ -422,7 +455,7 @@ class CandidatePlanningService:
             return _rejection_response(request=request, intake=intake)
 
         snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
-        if not is_supported_execution_intent(snapshot.execution_intent):
+        if not _is_plannable_snapshot(snapshot):
             return CandidatePlanResponse(
                 session_id=None,
                 candidate_id=request.candidate_id,
@@ -502,7 +535,7 @@ class CandidatePlanningService:
             return _rejection_response(request=request, intake=intake)
 
         snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
-        if not is_supported_execution_intent(snapshot.execution_intent):
+        if not _is_plannable_snapshot(snapshot):
             return CandidatePlanResponse(
                 session_id=None,
                 candidate_id=request.candidate_id,
@@ -615,7 +648,7 @@ class CandidatePlanningService:
                 "Candidate planning session is not ready for planning.",
             )
             return _response_from_session(self._persist_session_update(updated))
-        if not is_supported_execution_intent(session.snapshot.execution_intent):
+        if not _is_plannable_snapshot(session.snapshot):
             updated = self._with_failure(
                 session,
                 CandidatePlanningSessionStatus.PLANNING_NOT_SUPPORTED,
@@ -637,13 +670,18 @@ class CandidatePlanningService:
             started,
             planning_status=decision.status,
             plan=decision.plan,
+            operational_plan=decision.operational_plan,
             planning_failure=decision.failure,
             planning_completed_at=self._clock(),
             last_revalidation_fingerprint=(
-                decision.plan.revalidated_candidate_fingerprint if decision.plan else None
+                decision.plan.revalidated_candidate_fingerprint
+                if decision.plan
+                else decision.operational_plan.revalidated_candidate_fingerprint
+                if decision.operational_plan
+                else None
             ),
             last_revalidation_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING
-            if decision.plan
+            if decision.plan or decision.operational_plan
             else started.last_revalidation_status,
         )
         return _response_from_session(self._persist_session_update(completed))
@@ -677,14 +715,19 @@ class CandidatePlanningService:
                 CandidatePlanningFailureCode.PLAN_NOT_READY,
                 "Candidate plan is not ready for workflow conversion.",
             )
-        if session.plan is None:
+        operational = session.operational_plan is not None
+        if session.plan is None and not operational:
             return _conversion_failure_from_session(
                 session,
                 CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
                 CandidatePlanningFailureCode.PLAN_NOT_READY,
                 "Candidate planning session has no persisted plan.",
             )
-        plan_fingerprint = candidate_plan_fingerprint(session.plan)
+        plan_fingerprint = (
+            operational_plan_fingerprint(session.operational_plan)
+            if session.operational_plan is not None
+            else candidate_plan_fingerprint(session.plan)  # type: ignore[arg-type]
+        )
         if (
             request.expected_candidate_fingerprint is not None
             and request.expected_candidate_fingerprint != session.candidate_fingerprint
@@ -707,20 +750,27 @@ class CandidatePlanningService:
                 "Candidate plan fingerprint did not match the persisted plan.",
                 plan_fingerprint=plan_fingerprint,
             )
+        if session.plan is not None:
+            try:
+                validate_candidate_plan_safe(session.plan)
+            except ValueError:
+                return _conversion_failure_from_session(
+                    session,
+                    CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                    CandidatePlanningFailureCode.PLAN_INTEGRITY_FAILED,
+                    "Candidate plan failed workflow-shell safety validation.",
+                    plan_fingerprint=plan_fingerprint,
+                )
         try:
-            validate_candidate_plan_safe(session.plan)
-        except ValueError:
-            return _conversion_failure_from_session(
-                session,
-                CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
-                CandidatePlanningFailureCode.PLAN_INTEGRITY_FAILED,
-                "Candidate plan failed workflow-shell safety validation.",
-                plan_fingerprint=plan_fingerprint,
-            )
-        try:
+            intake_kwargs = {
+                "expected_candidate_fingerprint": session.candidate_fingerprint,
+            }
+            if session.snapshot.operational_target is not None:
+                intake_kwargs["expected_operational_target_fingerprint"] = (
+                    session.snapshot.operational_target.resource_fingerprint
+                )
             intake = await self._core_client.validate_candidate_planning_intake(
-                session.candidate_id,
-                expected_candidate_fingerprint=session.candidate_fingerprint,
+                session.candidate_id, **intake_kwargs
             )
         except AtlasCoreClientError as error:
             raise CandidatePlanningServiceError(
@@ -765,6 +815,24 @@ class CandidatePlanningService:
                 plan_fingerprint=plan_fingerprint,
                 core_status=snapshot.intake_status,
             )
+        if operational:
+            if (
+                session.snapshot.effect_kind is not WorkflowEffectKind.OPERATIONAL_ACTION
+                or not is_operational_planning_intent(session.snapshot.execution_intent)
+            ):
+                return _conversion_failure_from_session(
+                    session,
+                    CandidatePlanningSessionStatus.WORKFLOW_CONVERSION_FAILED,
+                    CandidatePlanningFailureCode.UNSUPPORTED_INTENT,
+                    "Atlas Agent cannot prepare this operational intent.",
+                    plan_fingerprint=plan_fingerprint,
+                    core_status=snapshot.intake_status,
+                )
+            return self._persist_operational_workflow_shell(
+                session,
+                plan_fingerprint=plan_fingerprint,
+                revalidated=snapshot,
+            )
         if not is_supported_execution_intent(session.snapshot.execution_intent):
             return _conversion_failure_from_session(
                 session,
@@ -791,6 +859,112 @@ class CandidatePlanningService:
             session,
             plan_fingerprint=plan_fingerprint,
             revalidated=snapshot,
+        )
+
+    def _persist_operational_workflow_shell(
+        self,
+        session: CandidatePlanningSession,
+        *,
+        plan_fingerprint: str,
+        revalidated: CandidateSnapshot,
+    ) -> CandidateWorkflowConversionResponse:
+        """Persist a non-executable operational preparation boundary."""
+
+        if self._state_persistence is None or session.operational_plan is None:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Operational workflow shell requires aggregate persistence.",
+            )
+        plan = session.operational_plan
+        workflow_id = build_candidate_workflow_id(
+            candidate_planning_session_id=session.identifier,
+            candidate_fingerprint=session.candidate_fingerprint,
+            plan_fingerprint=plan_fingerprint,
+        )
+        approval_id = f"approval-{workflow_id}"
+        converted_at = self._clock()
+        metadata = CandidateWorkflowMetadata(
+            candidate_planning_session_id=session.identifier,
+            candidate_id=session.candidate_id,
+            candidate_fingerprint=session.candidate_fingerprint,
+            candidate_plan_id=plan.identifier,
+            candidate_plan_fingerprint=plan_fingerprint,
+            source_recommendation_id=session.snapshot.source_recommendation_id,
+            source_subsystem=session.snapshot.source_subsystem,
+            catalog_item_id=session.snapshot.catalog_item_id,
+            target_id=session.snapshot.target_id,
+            target_type=session.snapshot.target_type,
+            execution_category=session.snapshot.execution_category,
+            execution_intent=session.snapshot.execution_intent,
+            evidence_ids=session.snapshot.evidence_ids,
+            compatibility_assessment_id=session.snapshot.compatibility_assessment_id,
+            compatibility_status=session.snapshot.compatibility_status,
+            relationship_ids=session.snapshot.relationship_ids,
+            conversion_timestamp=converted_at,
+            core_revalidation_status=revalidated.intake_status.value,
+            core_revalidation_fingerprint=revalidated.candidate_fingerprint,
+            effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+        )
+        workflow = WorkflowSession(
+            identifier=workflow_id,
+            request=None,
+            plan=None,
+            state=WorkflowSessionState.AWAITING_APPROVAL,
+            effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+            source=WorkflowSource.CANDIDATE,
+            candidate_metadata=metadata,
+        )
+        approval = ApprovalRequest(
+            identifier=approval_id,
+            workflow_id=workflow_id,
+            checkpoint_id=plan.identifier,
+            title="Approve operational action preparation",
+            requested_tool="atlas-agent",
+            requested_command=(),
+            requested_working_directory=None,
+            rationale=(
+                "Approve preparation of an exact immutable operational request. "
+                "This approval authorizes no execution."
+            ),
+            purpose=ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL,
+        )
+
+        def mutate(workflow_state, approvals, candidate_planning):
+            current = candidate_planning.get_session(session.identifier)
+            if current is None:
+                raise ValueError("Candidate planning session disappeared during conversion")
+            if current.workflow_session_id is not None:
+                return current
+            if current.operational_plan is None:
+                raise ValueError("Operational plan disappeared during conversion")
+            if operational_plan_fingerprint(current.operational_plan) != plan_fingerprint:
+                raise ValueError("Operational plan fingerprint changed during conversion")
+            workflow_state.create_session(workflow)
+            approvals.save_request(approval)
+            updated = replace(
+                current,
+                workflow_session_id=workflow_id,
+                implementation_approval_request_id=approval_id,
+                candidate_plan_fingerprint=plan_fingerprint,
+                workflow_conversion_status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+                workflow_conversion_completed_at=converted_at,
+                last_revalidation_fingerprint=revalidated.candidate_fingerprint,
+                last_revalidation_status=revalidated.intake_status,
+            )
+            candidate_planning.replace_session(updated)
+            return updated
+
+        try:
+            updated = self._state_persistence.mutate_aggregate(mutate)
+        except (OSError, ValueError, StatePersistenceError) as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Operational workflow shell could not be persisted.",
+            ) from error
+        return _conversion_response_from_session(
+            updated,
+            status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+            core_status=revalidated.intake_status,
         )
 
     def _persist_workflow_shell(
@@ -833,12 +1007,14 @@ class CandidatePlanningService:
             conversion_timestamp=converted_at,
             core_revalidation_status=revalidated.intake_status.value,
             core_revalidation_fingerprint=revalidated.candidate_fingerprint,
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         )
         workflow = WorkflowSession(
             identifier=workflow_id,
             request=None,
             plan=None,
             state=WorkflowSessionState.AWAITING_APPROVAL,
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
             source=WorkflowSource.CANDIDATE,
             candidate_metadata=metadata,
         )
@@ -916,6 +1092,8 @@ class CandidatePlanningService:
                 code=CandidatePlanningFailureCode.SESSION_NOT_FOUND,
                 message="Candidate planning session was not found.",
             )
+        if session.operational_plan is not None:
+            return await self._translate_operational_workflow_shell(session, request)
         if session.implementation_request_id is not None:
             return _implementation_response_from_session(
                 session,
@@ -1065,6 +1243,194 @@ class CandidatePlanningService:
             session,
             repository_snapshot=repository_snapshot,
         )
+
+    async def _translate_operational_workflow_shell(
+        self,
+        session: CandidatePlanningSession,
+        request: CandidateImplementationTranslationRequest,
+    ) -> CandidateImplementationTranslationResponse:
+        """Prepare an exact operational request after trusted revalidation."""
+
+        plan = session.operational_plan
+        assert plan is not None
+        plan_fingerprint = operational_plan_fingerprint(plan)
+        if session.implementation_request_id is not None:
+            return _implementation_response_from_session(session)
+        if (
+            session.workflow_session_id is None
+            or session.candidate_plan_fingerprint != plan_fingerprint
+        ):
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.PLAN_FINGERPRINT_MISMATCH,
+                message="Operational plan changed before action translation.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        if request.expected_candidate_fingerprint not in {
+            None,
+            session.candidate_fingerprint,
+        } or request.expected_plan_fingerprint not in {None, plan_fingerprint}:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.PLAN_FINGERPRINT_MISMATCH,
+                message="Operational translation expectation did not match.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        try:
+            intake = await self._core_client.validate_candidate_planning_intake(
+                session.candidate_id,
+                expected_candidate_fingerprint=session.candidate_fingerprint,
+                expected_operational_target_fingerprint=plan.target_fingerprint,
+            )
+        except AtlasCoreClientError as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.ATLAS_CORE_UNAVAILABLE,
+                "Atlas Core planning intake is unavailable.",
+            ) from error
+        if intake.status != CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING.value:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=_conversion_code_for_intake(CoreCandidatePlanningIntakeStatus(intake.status)),
+                message="Operational target was not accepted during revalidation.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        try:
+            snapshot = _snapshot_from_intake(intake, intake_timestamp=self._clock())
+        except CandidatePlanningServiceError:
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.TARGET_UNAVAILABLE,
+                message="Operational target revalidation was invalid.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        target = snapshot.operational_target
+        if (
+            not _matches_workflow_snapshot(session.snapshot, snapshot)
+            or target is None
+            or target.provider_id != plan.provider_id
+            or target.resource_id != plan.resource_id
+            or target.resource_type != plan.resource_type
+            or target.resource_fingerprint != plan.target_fingerprint
+            or target.resource_version != plan.target_version
+        ):
+            return _implementation_failure(
+                session_id=session.identifier,
+                workflow_id=session.workflow_session_id,
+                status=CandidatePlanningSessionStatus.STALE_BEFORE_IMPLEMENTATION,
+                code=CandidatePlanningFailureCode.CANDIDATE_STALE,
+                message="Operational target changed before action translation.",
+                candidate_fingerprint=session.candidate_fingerprint,
+                plan_fingerprint=plan_fingerprint,
+            )
+        return self._persist_operational_translation(session, plan_fingerprint)
+
+    def _persist_operational_translation(
+        self,
+        session: CandidatePlanningSession,
+        plan_fingerprint: str,
+    ) -> CandidateImplementationTranslationResponse:
+        if self._state_persistence is None:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Operational translation requires aggregate persistence.",
+            )
+        generated_at = self._clock()
+        candidate_expiry = session.snapshot.expires_at
+        expires_at = min(
+            candidate_expiry or generated_at + timedelta(minutes=15),
+            generated_at + timedelta(minutes=15),
+        )
+
+        def mutate(workflow_state, approvals, candidate_planning):
+            current = candidate_planning.get_session(session.identifier)
+            if current is None or current.operational_plan is None:
+                raise ValueError("Operational planning session disappeared")
+            workflow = workflow_state.get_session(current.workflow_session_id or "")
+            if workflow is None or workflow.effect_kind is not WorkflowEffectKind.OPERATIONAL_ACTION:
+                raise ValueError("Operational workflow disappeared")
+            shell_approval = approvals.get_request(f"approval-{workflow.identifier}")
+            if (
+                shell_approval is None
+                or shell_approval.decision.status is not ApprovalStatus.APPROVED
+            ):
+                raise ValueError("Operational preparation approval is required")
+            if workflow.operational_action_request is not None:
+                return _implementation_response_from_session(current)
+            if operational_plan_fingerprint(current.operational_plan) != plan_fingerprint:
+                raise ValueError("Operational plan changed during translation")
+            action_request = translate_operational_action_request(
+                plan=current.operational_plan,
+                workflow_session_id=workflow.identifier,
+                generated_at=generated_at,
+                expires_at=expires_at,
+            )
+            approval_id = f"approval-operational-{workflow.identifier}"
+            approval = ApprovalRequest(
+                identifier=approval_id,
+                workflow_id=workflow.identifier,
+                checkpoint_id=action_request.request_id,
+                title="Approve exact operational action request",
+                requested_tool="atlas-agent-operational-contract",
+                requested_command=(),
+                requested_working_directory=None,
+                rationale="Approve this exact immutable operational request; execution remains capability-gated.",
+                purpose=ApprovalPurpose.OPERATIONAL_ACTION,
+                operational_metadata=OperationalApprovalMetadata(
+                    action_request_id=action_request.request_id,
+                    action_request_digest=action_request.request_digest,
+                    candidate_id=action_request.candidate_id,
+                    candidate_fingerprint=action_request.candidate_fingerprint,
+                    operational_plan_fingerprint=action_request.candidate_plan_fingerprint,
+                    provider_id=action_request.provider_id,
+                    resource_id=action_request.resource_id,
+                    resource_type=action_request.resource_type,
+                    target_fingerprint=action_request.target_fingerprint,
+                    target_version=action_request.target_version,
+                    operation_intent=action_request.execution_intent,
+                    disruption_scope=action_request.disruption_scope,
+                    verification_digest=operational_verification_digest(
+                        action_request.verification
+                    ),
+                    generated_at=action_request.generated_at,
+                    expires_at=action_request.expires_at,
+                ),
+            )
+            approvals.save_request(approval)
+            workflow_state.sessions[workflow.identifier] = replace(
+                workflow,
+                state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+                operational_action_request=action_request,
+                operational_action_approval_id=approval_id,
+            )
+            updated = replace(
+                current,
+                implementation_request_id=action_request.request_id,
+                exact_implementation_approval_request_id=approval_id,
+                implementation_translation_status=CandidatePlanningSessionStatus.IMPLEMENTATION_READY,
+                implementation_translation_completed_at=generated_at,
+            )
+            candidate_planning.replace_session(updated)
+            return _implementation_response_from_session(updated)
+
+        try:
+            return self._state_persistence.mutate_aggregate(mutate)
+        except (OSError, ValueError, StatePersistenceError) as error:
+            raise CandidatePlanningServiceError(
+                CandidatePlanningFailureCode.PERSISTENCE_FAILED,
+                "Operational action request could not be persisted.",
+            ) from error
 
     def _persist_implementation_translation(
         self,
@@ -1261,9 +1627,15 @@ class CandidatePlanningService:
 
     async def _plan_started_session(self, session: CandidatePlanningSession):
         try:
+            intake_kwargs = {
+                "expected_candidate_fingerprint": session.candidate_fingerprint,
+            }
+            if session.snapshot.operational_target is not None:
+                intake_kwargs["expected_operational_target_fingerprint"] = (
+                    session.snapshot.operational_target.resource_fingerprint
+                )
             intake = await self._core_client.validate_candidate_planning_intake(
-                session.candidate_id,
-                expected_candidate_fingerprint=session.candidate_fingerprint,
+                session.candidate_id, **intake_kwargs
             )
         except AtlasCoreClientError:
             return unsupported_decision(
@@ -1289,6 +1661,18 @@ class CandidatePlanningService:
                 CandidatePlanningFailureCode.CANDIDATE_STALE,
                 "Candidate fingerprint changed before planning.",
             )
+        if session.snapshot.operational_target is not None:
+            try:
+                return create_operational_plan(
+                    session,
+                    created_at=self._clock(),
+                    revalidated_candidate_fingerprint=snapshot.candidate_fingerprint,
+                )
+            except ValueError:
+                return unsupported_decision(
+                    CandidatePlanningFailureCode.PLANNING_VALIDATION_FAILED,
+                    "Operational candidate plan could not be generated.",
+                )
         resolver = self._repository_resolver
         if resolver is None:
             return unsupported_decision(
@@ -1379,6 +1763,7 @@ class CandidatePlanningService:
             CoreCandidatePlanningIntakeStatus.NOT_ELIGIBLE: CandidatePlanningFailureCode.CANDIDATE_NOT_ELIGIBLE,
             CoreCandidatePlanningIntakeStatus.EVIDENCE_UNAVAILABLE: CandidatePlanningFailureCode.EVIDENCE_UNAVAILABLE,
             CoreCandidatePlanningIntakeStatus.NOT_FOUND: CandidatePlanningFailureCode.SESSION_NOT_FOUND,
+            CoreCandidatePlanningIntakeStatus.TARGET_UNAVAILABLE: CandidatePlanningFailureCode.TARGET_UNAVAILABLE,
         }
         return unsupported_decision(
             mapping.get(status, CandidatePlanningFailureCode.PLANNING_VALIDATION_FAILED),
@@ -1431,11 +1816,26 @@ def _matches_session_snapshot(
     expected: CandidateSnapshot,
     actual: CandidateSnapshot,
 ) -> bool:
-    return (
+    matches = (
         expected.candidate_id == actual.candidate_id
         and expected.target_id == actual.target_id
         and expected.target_type == actual.target_type
         and expected.execution_intent == actual.execution_intent
+    )
+    if not matches:
+        return False
+    if expected.operational_target is not None or actual.operational_target is not None:
+        return expected.operational_target == actual.operational_target
+    return True
+
+
+def _is_plannable_snapshot(snapshot: CandidateSnapshot) -> bool:
+    if is_supported_execution_intent(snapshot.execution_intent):
+        return True
+    return (
+        snapshot.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+        and snapshot.operational_target is not None
+        and is_operational_planning_intent(snapshot.execution_intent)
     )
 
 

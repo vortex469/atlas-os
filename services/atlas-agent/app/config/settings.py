@@ -208,6 +208,7 @@ class Settings:
     execution_worker_host: str = "atlas-execution-worker"
     execution_worker_port: int = 8081
     execution_worker_auth_file: Path = Path("/run/atlas-execution-auth/token")
+    operational_dispatch_auth_file: Path = Path("/run/atlas-core-agent-auth/token")
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -248,6 +249,12 @@ class Settings:
                 os.getenv(
                     "ATLAS_EXECUTION_WORKER_AUTH_FILE",
                     "/run/atlas-execution-auth/token",
+                )
+            ),
+            operational_dispatch_auth_file=Path(
+                os.getenv(
+                    "ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE",
+                    "/run/atlas-core-agent-auth/token",
                 )
             ),
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),

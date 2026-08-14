@@ -5,8 +5,6 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from app.approval.models import ApprovalPurpose, ApprovalRequest
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.models import (
@@ -20,6 +18,8 @@ from app.candidate_planning.models import (
     CandidateSnapshot,
     CandidateWorkflowConversionResponse,
     CoreCandidatePlanningIntakeStatus,
+    OperationalCandidatePlan,
+    OperationalVerificationSpecification,
 )
 from app.candidate_planning.service import (
     CandidatePlanningPredecessorNotFoundError,
@@ -31,11 +31,13 @@ from app.main import create_app
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.workflow.models import (
     CandidateWorkflowMetadata,
+    WorkflowEffectKind,
     WorkflowSession,
     WorkflowSessionState,
     WorkflowSource,
 )
 from app.workflow.state import WorkflowStateStore
+from fastapi.testclient import TestClient
 
 
 class FakeCandidatePlanningService:
@@ -149,6 +151,46 @@ def planned_response(tmp_path: Path) -> CandidatePlanResponse:
     )
 
 
+def operational_planned_response() -> CandidatePlanResponse:
+    plan = OperationalCandidatePlan(
+        identifier="operational-plan-1",
+        session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        candidate_fingerprint="operational-candidate-fingerprint-v1:aaa",
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+        execution_intent="restart-service",
+        provider_id="docker",
+        resource_id="service-frigate",
+        resource_type="service",
+        target_fingerprint="operational-target-v1:aaa",
+        target_version=None,
+        expected_pre_state="running",
+        intended_action="restart-service",
+        disruption_scope="The exact service may be temporarily unavailable.",
+        verification=OperationalVerificationSpecification(
+            pre_state="running",
+            expected_post_state="service-running-and-healthy",
+            identity_fingerprint="operational-target-v1:aaa",
+            health_requirement="The same service must report healthy.",
+            unknown_outcome_policy="Stop and require operator review.",
+        ),
+        failure_considerations=("The outcome may be unknown.",),
+        evidence_ids=("evidence-1",),
+        created_at=datetime(2026, 8, 14, tzinfo=UTC),
+        revalidated_candidate_fingerprint="operational-candidate-fingerprint-v1:aaa",
+    )
+    return CandidatePlanResponse(
+        session_id="candidate-plan-1",
+        candidate_id="candidate-1",
+        status=CandidatePlanningSessionStatus.PLAN_READY,
+        planning_allowed=True,
+        intake_status=CoreCandidatePlanningIntakeStatus.ACCEPTED_FOR_PLANNING,
+        intake_reason_codes=(),
+        candidate_fingerprint="operational-candidate-fingerprint-v1:aaa",
+        operational_plan=plan,
+    )
+
+
 def workflow_response(tmp_path: Path) -> CandidateWorkflowConversionResponse:
     plan = planned_response(tmp_path).plan
     assert plan is not None
@@ -249,6 +291,7 @@ def linked_candidate_workflow(
         request=None,
         plan=None,
         state=workflow_state,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=CandidateWorkflowMetadata(
             candidate_planning_session_id=planning_session_id,
@@ -270,6 +313,7 @@ def linked_candidate_workflow(
             conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
             core_revalidation_status="accepted_for_planning",
             core_revalidation_fingerprint="candidate-fingerprint-v1:aaa",
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         ),
         candidate_implementation_approval_id="approval-candidate-workflow-1",
     )
@@ -353,6 +397,24 @@ def test_generate_plan_route_accepts_empty_body_only(monkeypatch, tmp_path: Path
     assert payload["status"] == "plan_ready"
     assert payload["plan"]["likely_affected_files"] == ["compose.production.yaml"]
     assert service.requests == ["candidate-plan-1"]
+
+
+def test_generate_operational_plan_route_exposes_only_typed_description(
+    monkeypatch, tmp_path: Path
+) -> None:
+    service = FakeCandidatePlanningService(operational_planned_response())
+    client = make_client(monkeypatch, tmp_path, service)
+
+    response = client.post("/candidate-planning/candidate-plan-1/plan")
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["plan"] is None
+    assert payload["operational_plan"]["effect_kind"] == "operational_action"
+    assert payload["operational_plan"]["target_fingerprint"] == "operational-target-v1:aaa"
+    serialized = json.dumps(payload["operational_plan"])
+    for forbidden in ("argv", "environment", "endpoint", "working_directory"):
+        assert forbidden not in serialized
 
 
 def test_get_plan_route_returns_existing_plan_without_generation(monkeypatch, tmp_path: Path) -> None:

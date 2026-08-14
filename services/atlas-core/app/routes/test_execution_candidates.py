@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.execution_candidates.models import (
     ApprovalLevel,
     ExecutionCandidate,
+    ExecutionCandidateEffectKind,
     ExecutionCandidateStatus,
     ExecutionCategory,
     ExecutionConstraint,
@@ -70,6 +71,11 @@ def candidate(
         target_type="service",
         execution_category=category,
         execution_intent=intent,
+        effect_kind=(
+            ExecutionCandidateEffectKind.OPERATIONAL_ACTION
+            if intent is ExecutionIntent.RESTART_SERVICE
+            else ExecutionCandidateEffectKind.REPOSITORY_CHANGE
+        ),
         status=status,
         required_approval_level=ApprovalLevel.STANDARD,
         rationale="Restart the service after approval.",
@@ -111,7 +117,14 @@ async def test_advisory_only_findings_produce_not_eligible_candidate_collection(
 @pytest.mark.anyio
 async def test_resolved_evidence_allows_eligible_candidate() -> None:
     candidates = await service.collect_current_execution_candidates(
-        finding_collector=lambda: (finding(evidence_ids=("evidence-1",)),),
+        finding_collector=lambda: (
+            finding(
+                recommendation_class="update_compose_stack",
+                target_id="atlas-compose",
+                target_type="repository",
+                evidence_ids=("evidence-1",),
+            ),
+        ),
         available_evidence_ids=("evidence-1",),
         now=NOW,
     )
@@ -123,7 +136,14 @@ async def test_resolved_evidence_allows_eligible_candidate() -> None:
 @pytest.mark.anyio
 async def test_unresolved_evidence_produces_not_eligible_candidate() -> None:
     candidates = await service.collect_current_execution_candidates(
-        finding_collector=lambda: (finding(evidence_ids=("evidence-1",)),),
+        finding_collector=lambda: (
+            finding(
+                recommendation_class="update_compose_stack",
+                target_id="atlas-compose",
+                target_type="repository",
+                evidence_ids=("evidence-1",),
+            ),
+        ),
         available_evidence_ids=(),
         now=NOW,
     )
@@ -311,7 +331,8 @@ def test_public_dto_excludes_internal_projection_and_secret_fields(monkeypatch: 
         "target_id",
         "target_type",
         "execution_category",
-        "execution_intent",
+            "execution_intent",
+            "effect_kind",
         "status",
         "required_approval_level",
         "rationale",
@@ -346,7 +367,7 @@ def test_intelligence_routes_remain_registered() -> None:
     assert "/api/v1/intelligence/telemetry/history/export" in paths
 
 
-def test_execution_candidate_openapi_is_get_only() -> None:
+def test_execution_candidate_openapi_exposes_only_reviewed_methods() -> None:
     paths = {
         path: methods
         for path, methods in app.openapi()["paths"].items()
@@ -357,10 +378,16 @@ def test_execution_candidate_openapi_is_get_only() -> None:
         "/api/v1/execution-candidates",
         "/api/v1/execution-candidates/{candidate_id}",
         "/api/v1/execution-candidates/{candidate_id}/planning-intake",
+        "/api/v1/execution-candidates/operator-intents",
+        "/api/v1/execution-candidates/operator-intents/resources",
     }
     assert set(paths["/api/v1/execution-candidates"]) == {"get"}
     assert set(paths["/api/v1/execution-candidates/{candidate_id}"]) == {"get"}
     assert set(paths["/api/v1/execution-candidates/{candidate_id}/planning-intake"]) == {"post"}
+    assert set(paths["/api/v1/execution-candidates/operator-intents"]) == {"post"}
+    assert set(paths["/api/v1/execution-candidates/operator-intents/resources"]) == {
+        "get"
+    }
 
 
 def test_execution_candidate_openapi_uses_public_dtos_only() -> None:
