@@ -71,6 +71,15 @@ class CoreComposeMutationSpecification(BaseModel):
     preservation_constraints: tuple[str, ...] = ()
 
 
+class CoreOperationalTargetReference(BaseModel):
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    resource_fingerprint: str
+    resource_version: str | None = None
+    expected_state: str
+
+
 class CoreExecutionCandidateSnapshot(BaseModel):
     id: str
     source_recommendation_id: str
@@ -92,6 +101,7 @@ class CoreExecutionCandidateSnapshot(BaseModel):
     created_at: datetime
     expires_at: datetime | None = None
     mutation: CoreComposeMutationSpecification | None = None
+    operational_target: CoreOperationalTargetReference | None = None
 
 
 class CoreCandidatePlanningIntakeRequest(BaseModel):

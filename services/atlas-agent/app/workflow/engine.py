@@ -67,6 +67,7 @@ from app.verification.models import VerificationCheck, VerificationStatus
 from app.workflow.models import (
     SprintPhase,
     SprintStatus,
+    WorkflowEffectKind,
     WorkflowRequest,
     WorkflowResult,
     WorkflowSession,
@@ -242,6 +243,7 @@ class WorkflowEngine:
             request=request,
             plan=plan,
             state=WorkflowSessionState.AWAITING_APPROVAL,
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
             planning_analysis=planning_analysis,
             context=context,
         )

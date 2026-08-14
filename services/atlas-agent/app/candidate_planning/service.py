@@ -37,6 +37,7 @@ from app.candidate_planning.models import (
     CandidateWorkflowConversionResponse,
     ComposeMutationSpecification,
     CoreCandidatePlanningIntakeStatus,
+    OperationalTargetReference,
     build_candidate_planning_session_id,
     build_candidate_successor_planning_session_id,
     is_supported_execution_intent,
@@ -62,6 +63,7 @@ from app.repository.exceptions import RepositoryInspectionError
 from app.repository.inspector import GitInspector
 from app.workflow.models import (
     CandidateWorkflowMetadata,
+    WorkflowEffectKind,
     WorkflowSession,
     WorkflowSessionState,
     WorkflowSource,
@@ -104,6 +106,7 @@ def _snapshot_from_intake(
         )
     candidate = intake.current_candidate
     mutation = candidate.mutation
+    operational_target = candidate.operational_target
     return CandidateSnapshot(
         candidate_id=candidate.id,
         candidate_fingerprint=intake.current_candidate_fingerprint,
@@ -137,6 +140,18 @@ def _snapshot_from_intake(
                 preservation_constraints=tuple(sorted(mutation.preservation_constraints)),
             )
             if mutation is not None
+            else None
+        ),
+        operational_target=(
+            OperationalTargetReference(
+                provider_id=operational_target.provider_id,
+                resource_id=operational_target.resource_id,
+                resource_type=operational_target.resource_type,
+                resource_fingerprint=operational_target.resource_fingerprint,
+                resource_version=operational_target.resource_version,
+                expected_state=operational_target.expected_state,
+            )
+            if operational_target is not None
             else None
         ),
     )
@@ -833,12 +848,14 @@ class CandidatePlanningService:
             conversion_timestamp=converted_at,
             core_revalidation_status=revalidated.intake_status.value,
             core_revalidation_fingerprint=revalidated.candidate_fingerprint,
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         )
         workflow = WorkflowSession(
             identifier=workflow_id,
             request=None,
             plan=None,
             state=WorkflowSessionState.AWAITING_APPROVAL,
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
             source=WorkflowSource.CANDIDATE,
             candidate_metadata=metadata,
         )

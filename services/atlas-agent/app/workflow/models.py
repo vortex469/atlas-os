@@ -18,7 +18,10 @@ from app.review.models import ArchitectureAssessment, ReviewReport, TestEvidence
 from app.verification.models import VerificationCheck, VerificationReport
 
 if TYPE_CHECKING:
-    from app.candidate_planning.models import CandidateImplementationRequest
+    from app.candidate_planning.models import (
+        CandidateImplementationRequest,
+        OperationalActionRequest,
+    )
     from app.candidate_planning.verification import (
         CandidateReviewResult,
         CandidateVerificationEvidence,
@@ -65,6 +68,13 @@ class WorkflowSource(StrEnum):
     MANUAL = "manual"
 
 
+class WorkflowEffectKind(StrEnum):
+    """Kind of side effect represented by a workflow."""
+
+    REPOSITORY_CHANGE = "repository_change"
+    OPERATIONAL_ACTION = "operational_action"
+
+
 @dataclass(frozen=True, slots=True)
 class CandidateWorkflowMetadata:
     """Immutable audit linkage for a candidate-derived workflow shell."""
@@ -88,6 +98,7 @@ class CandidateWorkflowMetadata:
     conversion_timestamp: datetime
     core_revalidation_status: str
     core_revalidation_fingerprint: str
+    effect_kind: WorkflowEffectKind
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,9 +134,11 @@ class WorkflowSession:
     request: WorkflowRequest | None
     plan: ImplementationPlan | None
     state: WorkflowSessionState
+    effect_kind: WorkflowEffectKind
     source: WorkflowSource = WorkflowSource.ROADMAP
     candidate_metadata: CandidateWorkflowMetadata | None = None
     candidate_implementation_request: CandidateImplementationRequest | None = None
+    operational_action_request: OperationalActionRequest | None = None
     candidate_implementation_approval_id: str | None = None
     planning_analysis: ModelResponse | None = None
     review_analysis: ModelResponse | None = None
@@ -146,6 +159,23 @@ class WorkflowSession:
     expected_head: str | None = None
     reviewed_content_fingerprint: str | None = None
     blocked_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            self.candidate_metadata is not None
+            and self.candidate_metadata.effect_kind is not self.effect_kind
+        ):
+            raise ValueError("workflow effect kind must match candidate metadata")
+        if (
+            self.effect_kind is WorkflowEffectKind.REPOSITORY_CHANGE
+            and self.operational_action_request is not None
+        ):
+            raise ValueError("repository_change workflows cannot carry operational requests")
+        if (
+            self.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+            and self.candidate_implementation_request is not None
+        ):
+            raise ValueError("operational_action workflows cannot carry repository requests")
 
 
 @dataclass(frozen=True, slots=True)

@@ -49,6 +49,31 @@ class ComposeMutationSpecification(ExecutionCandidateModel):
     preservation_constraints: tuple[str, ...] = ()
 
 
+class OperationalTargetReference(ExecutionCandidateModel):
+    """Immutable provider-resource identity for a future operational action."""
+
+    provider_id: str = Field(pattern=EXECUTION_CANDIDATE_ID_PATTERN)
+    resource_id: str = Field(pattern=EXECUTION_CANDIDATE_ID_PATTERN)
+    resource_type: str = Field(pattern=EXECUTION_CANDIDATE_ID_PATTERN)
+    resource_fingerprint: str = Field(min_length=1)
+    resource_version: str | None = None
+    expected_state: str = Field(min_length=1)
+
+    @field_validator("resource_fingerprint", "resource_version", "expected_state")
+    @classmethod
+    def validate_safe_operational_value(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("operational target values must not be empty.")
+        if contains_unsafe_payload(normalized):
+            raise ValueError(
+                "operational target values must not contain command or secret-like payloads."
+            )
+        return normalized
+
+
 class ExecutionCandidateStatus(StrEnum):
     """Planning eligibility state for an execution candidate."""
 
@@ -250,6 +275,7 @@ class ExecutionCandidate(ExecutionCandidateModel):
     created_at: datetime
     expires_at: datetime | None = None
     mutation: ComposeMutationSpecification | None = None
+    operational_target: OperationalTargetReference | None = None
 
     @field_validator("constraints", mode="before")
     @classmethod

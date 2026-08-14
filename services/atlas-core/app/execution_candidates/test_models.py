@@ -12,6 +12,7 @@ from app.execution_candidates.models import (
     ExecutionCategory,
     ExecutionConstraint,
     ExecutionIntent,
+    OperationalTargetReference,
     build_execution_candidate_id,
 )
 
@@ -56,6 +57,41 @@ def test_valid_minimal_candidate() -> None:
     assert candidate.status == ExecutionCandidateStatus.ELIGIBLE
     assert candidate.id == "candidate-orion-rec-1-frigate-host-1-restart-restart-service"
     assert candidate.execution_category == ExecutionCategory.RESTART
+
+
+def test_operational_target_is_typed_immutable_and_safe() -> None:
+    target = OperationalTargetReference(
+        provider_id="docker",
+        resource_id="atlas-core",
+        resource_type="container",
+        resource_fingerprint="sha256:abc123",
+        resource_version="1",
+        expected_state="running",
+    )
+    candidate = make_candidate(operational_target=target)
+
+    assert candidate.operational_target == target
+    with pytest.raises(ValidationError):
+        target.expected_state = "stopped"  # type: ignore[misc]
+
+
+def test_operational_target_rejects_invalid_identity_and_unsafe_values() -> None:
+    with pytest.raises(ValidationError):
+        OperationalTargetReference(
+            provider_id="Display Name",
+            resource_id="atlas-core",
+            resource_type="container",
+            resource_fingerprint="sha256:abc123",
+            expected_state="running",
+        )
+    with pytest.raises(ValidationError):
+        OperationalTargetReference(
+            provider_id="docker",
+            resource_id="atlas-core",
+            resource_type="container",
+            resource_fingerprint="token=secret",
+            expected_state="running",
+        )
 
 
 def test_candidate_is_immutable() -> None:

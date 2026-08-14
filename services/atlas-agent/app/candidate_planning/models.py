@@ -9,6 +9,8 @@ from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
+from app.workflow.models import WorkflowEffectKind
+
 SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})
 RC1_VALIDATION_SMOKE_INTENT = "rc1-validation-smoke"
 
@@ -96,6 +98,18 @@ class ComposeMutationSpecification:
 
 
 @dataclass(frozen=True, slots=True)
+class OperationalTargetReference:
+    """Immutable provider-resource identity supplied by Atlas Core."""
+
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    resource_fingerprint: str
+    resource_version: str | None
+    expected_state: str
+
+
+@dataclass(frozen=True, slots=True)
 class CandidatePlanRequest:
     """Agent-facing request to create or reuse a planning-only session."""
 
@@ -129,6 +143,7 @@ class CandidateSnapshot:
     intake_reason_codes: tuple[str, ...]
     intake_timestamp: datetime
     mutation: ComposeMutationSpecification | None = None
+    operational_target: OperationalTargetReference | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +211,46 @@ class CandidatePlan:
 
 
 @dataclass(frozen=True, slots=True)
+class OperationalVerificationSpecification:
+    """Non-executable verification contract for a future operational action."""
+
+    pre_state: str
+    expected_post_state: str
+    identity_fingerprint: str
+    health_requirement: str
+    unknown_outcome_policy: str
+
+
+@dataclass(frozen=True, slots=True)
+class OperationalCandidatePlan:
+    """Repository-independent descriptive plan for an operational action."""
+
+    identifier: str
+    session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    effect_kind: WorkflowEffectKind
+    execution_intent: str
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    target_fingerprint: str
+    target_version: str | None
+    expected_pre_state: str
+    intended_action: str
+    disruption_scope: str
+    verification: OperationalVerificationSpecification
+    failure_considerations: tuple[str, ...]
+    evidence_ids: tuple[str, ...]
+    created_at: datetime
+    revalidated_candidate_fingerprint: str
+
+    def __post_init__(self) -> None:
+        if self.effect_kind is not WorkflowEffectKind.OPERATIONAL_ACTION:
+            raise ValueError("operational plans require operational_action effect kind")
+
+
+@dataclass(frozen=True, slots=True)
 class PlanningDecision:
     """Result of attempting read-only candidate-aware plan generation."""
 
@@ -217,6 +272,7 @@ class CandidatePlanningSession:
     unsupported_reason: str | None = None
     planning_status: CandidatePlanningSessionStatus = CandidatePlanningSessionStatus.READY_FOR_PLANNING
     plan: CandidatePlan | None = None
+    operational_plan: OperationalCandidatePlan | None = None
     planning_failure: CandidatePlanningFailure | None = None
     planning_started_at: datetime | None = None
     planning_completed_at: datetime | None = None
@@ -233,6 +289,12 @@ class CandidatePlanningSession:
     implementation_translation_completed_at: datetime | None = None
     predecessor_session_id: str | None = None
     successor_session_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.plan is not None and self.operational_plan is not None:
+            raise ValueError(
+                "candidate planning sessions cannot carry both repository and operational plans"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -311,6 +373,40 @@ class CandidateImplementationRequest:
     compatibility_status: str | None
     translator_version: str
     generated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class OperationalActionRequest:
+    """Immutable non-executable request for a future operational action."""
+
+    identifier: str
+    workflow_session_id: str
+    candidate_planning_session_id: str
+    candidate_id: str
+    candidate_fingerprint: str
+    candidate_plan_id: str
+    candidate_plan_fingerprint: str
+    effect_kind: WorkflowEffectKind
+    execution_intent: str
+    provider_id: str
+    resource_id: str
+    resource_type: str
+    provider_action_id: str
+    target_fingerprint: str
+    target_version: str | None
+    disruption_scope: str
+    evidence_ids: tuple[str, ...]
+    expected_pre_state: str
+    verification: OperationalVerificationSpecification
+    expires_at: datetime
+    translator_version: str
+    generated_at: datetime
+
+    def __post_init__(self) -> None:
+        if self.effect_kind is not WorkflowEffectKind.OPERATIONAL_ACTION:
+            raise ValueError("operational requests require operational_action effect kind")
+        if self.expires_at <= self.generated_at:
+            raise ValueError("operational request expiry must follow generation time")
 
 
 @dataclass(frozen=True, slots=True)

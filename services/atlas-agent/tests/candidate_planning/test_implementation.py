@@ -25,6 +25,7 @@ from app.execution.worker_contracts import CODEX_WORKSPACE_EXEC_ARGV_PREFIX
 from app.repository.models import RepositorySnapshot
 from app.workflow.models import (
     CandidateWorkflowMetadata,
+    WorkflowEffectKind,
     WorkflowSession,
     WorkflowSessionState,
     WorkflowSource,
@@ -105,6 +106,7 @@ def workflow(candidate_session: CandidatePlanningSession) -> WorkflowSession:
         request=None,
         plan=None,
         state=WorkflowSessionState.AWAITING_APPROVAL,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=CandidateWorkflowMetadata(
             candidate_planning_session_id=candidate_session.identifier,
@@ -126,6 +128,7 @@ def workflow(candidate_session: CandidatePlanningSession) -> WorkflowSession:
             conversion_timestamp=NOW,
             core_revalidation_status="accepted_for_planning",
             core_revalidation_fingerprint=candidate_session.candidate_fingerprint,
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         ),
     )
 

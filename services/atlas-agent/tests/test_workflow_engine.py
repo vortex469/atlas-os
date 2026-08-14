@@ -58,6 +58,7 @@ from app.workflow.engine import WorkflowEngine
 from app.workflow.models import (
     CandidateWorkflowMetadata,
     SprintPhase,
+    WorkflowEffectKind,
     WorkflowRequest,
     WorkflowResult,
     WorkflowSession,
@@ -854,6 +855,7 @@ def make_resume_engine(
         request=request,
         plan=plan,
         state=session_state,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         context=context,
     )
     state_store = WorkflowStateStore()
@@ -2219,6 +2221,7 @@ def make_candidate_workflow(root: Path) -> WorkflowSession:
         request=None,
         plan=None,
         state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=CandidateWorkflowMetadata(
             candidate_planning_session_id=request.candidate_planning_session_id,
@@ -2240,6 +2243,7 @@ def make_candidate_workflow(root: Path) -> WorkflowSession:
             conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
             core_revalidation_status="accepted_for_planning",
             core_revalidation_fingerprint=request.candidate_fingerprint,
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         ),
         candidate_implementation_request=request,
         candidate_implementation_approval_id="approval-candidate-workflow-1",

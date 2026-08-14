@@ -5,8 +5,6 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from app.approval.models import ApprovalPurpose, ApprovalRequest
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.models import (
@@ -31,11 +29,13 @@ from app.main import create_app
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.workflow.models import (
     CandidateWorkflowMetadata,
+    WorkflowEffectKind,
     WorkflowSession,
     WorkflowSessionState,
     WorkflowSource,
 )
 from app.workflow.state import WorkflowStateStore
+from fastapi.testclient import TestClient
 
 
 class FakeCandidatePlanningService:
@@ -249,6 +249,7 @@ def linked_candidate_workflow(
         request=None,
         plan=None,
         state=workflow_state,
+        effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=CandidateWorkflowMetadata(
             candidate_planning_session_id=planning_session_id,
@@ -270,6 +271,7 @@ def linked_candidate_workflow(
             conversion_timestamp=datetime(2026, 8, 2, tzinfo=UTC),
             core_revalidation_status="accepted_for_planning",
             core_revalidation_fingerprint="candidate-fingerprint-v1:aaa",
+            effect_kind=WorkflowEffectKind.REPOSITORY_CHANGE,
         ),
         candidate_implementation_approval_id="approval-candidate-workflow-1",
     )

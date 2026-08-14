@@ -12,6 +12,7 @@ from app.execution_candidates.models import (
     ExecutionCategory,
     ExecutionConstraint,
     ExecutionIntent,
+    OperationalTargetReference,
 )
 
 
@@ -43,6 +44,7 @@ class CandidatePlanningExecutionCandidateResponse(ExecutionCandidateResponse):
     """Planning-intake DTO carrying actionable mutation evidence."""
 
     mutation: ComposeMutationSpecification | None = None
+    operational_target: OperationalTargetReference | None = None
 
 
 class ExecutionCandidatePageResponse(BaseModel):
@@ -89,4 +91,5 @@ def candidate_to_planning_response(
     return CandidatePlanningExecutionCandidateResponse(
         **candidate_to_response(candidate).model_dump(),
         mutation=candidate.mutation,
+        operational_target=candidate.operational_target,
     )
