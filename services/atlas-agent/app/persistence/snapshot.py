@@ -75,6 +75,8 @@ from app.verification.models import (
 )
 from app.workflow.models import (
     CandidateWorkflowMetadata,
+    OperationalExecutionReference,
+    OperationalExecutionStage,
     SprintPhase,
     SprintStatus,
     WorkflowEffectKind,
@@ -2109,11 +2111,68 @@ def _decode_candidate_review_result(payload: Any) -> CandidateReviewResult | Non
     )
 
 
+def _encode_operational_execution_reference(
+    reference: OperationalExecutionReference | None,
+) -> dict[str, Any] | None:
+    if reference is None:
+        return None
+    return {
+        "audit_events": list(reference.audit_events),
+        "controlled_reason": reference.controlled_reason,
+        "dispatch_status": reference.dispatch_status,
+        "last_observed_at": _encode_datetime(reference.last_observed_at),
+        "ledger_state": reference.ledger_state,
+        "provider_operation_id": reference.provider_operation_id,
+        "request_digest": reference.request_digest,
+        "request_id": reference.request_id,
+        "stage": reference.stage.value,
+        "submitted_at": (
+            _encode_datetime(reference.submitted_at)
+            if reference.submitted_at is not None
+            else None
+        ),
+        "terminal": reference.terminal,
+        "verification_status": reference.verification_status,
+    }
+
+
+def _decode_operational_execution_reference(
+    payload: Any,
+) -> OperationalExecutionReference | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise StatePersistenceError("Invalid operational execution reference")
+    submitted_at = payload.get("submitted_at")
+    audit_events = payload.get("audit_events", [])
+    if not isinstance(audit_events, list) or not all(
+        isinstance(event, str) for event in audit_events
+    ):
+        raise StatePersistenceError("Invalid operational execution audit events")
+    return OperationalExecutionReference(
+        request_id=_require_str(payload, "request_id"),
+        request_digest=_require_str(payload, "request_digest"),
+        stage=OperationalExecutionStage(_require_str(payload, "stage")),
+        dispatch_status=payload.get("dispatch_status"),
+        ledger_state=payload.get("ledger_state"),
+        provider_operation_id=payload.get("provider_operation_id"),
+        verification_status=payload.get("verification_status"),
+        submitted_at=_decode_datetime(submitted_at) if submitted_at is not None else None,
+        last_observed_at=_decode_datetime(payload.get("last_observed_at")),
+        terminal=bool(payload.get("terminal")),
+        controlled_reason=payload.get("controlled_reason"),
+        audit_events=tuple(audit_events),
+    )
+
+
 def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
     return {
         "blocked_reason": session.blocked_reason,
         "candidate_implementation_approval_id": session.candidate_implementation_approval_id,
         "operational_action_approval_id": session.operational_action_approval_id,
+        "operational_execution_reference": _encode_operational_execution_reference(
+            session.operational_execution_reference
+        ),
         "candidate_implementation_request": _encode_candidate_implementation_request(
             session.candidate_implementation_request
         ),
@@ -2194,6 +2253,9 @@ def _decode_workflow_session(
             payload.get("operational_action_approval_id")
             if schema_version >= 3
             else None
+        ),
+        operational_execution_reference=_decode_operational_execution_reference(
+            payload.get("operational_execution_reference")
         ),
         planning_analysis=_decode_model_response(payload.get("planning_analysis")),
         review_analysis=_decode_model_response(payload.get("review_analysis")),

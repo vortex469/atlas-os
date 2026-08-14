@@ -14,6 +14,7 @@ from app.planning.advisor import PlanningAdvisor
 from app.repository.inspector import GitInspector
 from app.review.advisor import ReviewAdvisor
 from app.workflow.engine import WorkflowEngine
+from app.workflow.operational_execution import OperationalExecutionOrchestrator
 from app.workflow.orchestrator import WorkflowOrchestrator
 from app.workflow.state import WorkflowStateStore
 
@@ -35,4 +36,5 @@ class ApplicationContainer:
     review_advisor: ReviewAdvisor
     workflow_engine: WorkflowEngine
     workflow_orchestrator: WorkflowOrchestrator
+    operational_execution_orchestrator: OperationalExecutionOrchestrator | None = None
     state_persistence: AgentStatePersistenceCoordinator | None = None

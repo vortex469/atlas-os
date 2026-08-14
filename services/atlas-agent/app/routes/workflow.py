@@ -434,6 +434,21 @@ class WorkflowAuditResponse(BaseModel):
     commit: WorkflowAuditCommitResponse
 
 
+class WorkflowOperationalExecutionResponse(BaseModel):
+    """Sanitized Agent projection of the Core operational lifecycle."""
+
+    request_id: str
+    request_digest: str
+    stage: str
+    dispatch_status: str | None
+    ledger_state: str | None
+    provider_operation_id: str | None
+    verification_status: str | None
+    terminal: bool
+    controlled_reason: str | None
+    audit_events: tuple[str, ...]
+
+
 class WorkflowDetailResponse(BaseModel):
     """Read-only workflow implementation approval detail."""
 
@@ -452,6 +467,7 @@ class WorkflowDetailResponse(BaseModel):
     implementation_request: WorkflowImplementationRequestSummary | None
     effect_kind: str
     operational_action_request: WorkflowOperationalActionRequestSummary | None
+    operational_execution: WorkflowOperationalExecutionResponse | None
     timeline: list[WorkflowTimelineStageResponse]
     execution: WorkflowExecutionSummaryResponse
     verification_plan: WorkflowVerificationPlanResponse
@@ -1387,6 +1403,22 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         implementation_request=summary,
         effect_kind=workflow.effect_kind.value,
         operational_action_request=operational_summary,
+        operational_execution=(
+            WorkflowOperationalExecutionResponse(
+                request_id=workflow.operational_execution_reference.request_id,
+                request_digest=workflow.operational_execution_reference.request_digest,
+                stage=workflow.operational_execution_reference.stage.value,
+                dispatch_status=workflow.operational_execution_reference.dispatch_status,
+                ledger_state=workflow.operational_execution_reference.ledger_state,
+                provider_operation_id=workflow.operational_execution_reference.provider_operation_id,
+                verification_status=workflow.operational_execution_reference.verification_status,
+                terminal=workflow.operational_execution_reference.terminal,
+                controlled_reason=workflow.operational_execution_reference.controlled_reason,
+                audit_events=workflow.operational_execution_reference.audit_events,
+            )
+            if workflow.operational_execution_reference is not None
+            else None
+        ),
         timeline=_workflow_timeline(workflow, approval_status),
         execution=_workflow_execution_summary(workflow),
         verification_plan=_workflow_verification_plan(workflow),
@@ -1651,7 +1683,7 @@ async def submit_workflow_implementation_approval(
         workflow_state=workflow.state.value,
         implementation_approval_status=decision.status.value,
         message=(
-            "Exact operational action approved. Operational execution is not enabled."
+            "Exact operational action approved. Resume remains subject to the operational execution capability gate."
             if workflow.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
             and decision.status is ApprovalStatus.APPROVED
             else "Implementation approved. Execution is now available."
@@ -1864,10 +1896,19 @@ async def resume_workflow(request: Request, workflow_id: str) -> WorkflowResult:
     """Resume one approved workflow from its stored plan."""
 
     try:
-        result = await run_in_threadpool(
-            request.app.state.container.workflow_engine.resume,
-            workflow_id,
-        )
+        workflow = request.app.state.container.workflow_state.get_session(workflow_id)
+        if (
+            workflow is not None
+            and workflow.effect_kind is WorkflowEffectKind.OPERATIONAL_ACTION
+        ):
+            result = await request.app.state.container.operational_execution_orchestrator.resume(
+                workflow_id
+            )
+        else:
+            result = await run_in_threadpool(
+                request.app.state.container.workflow_engine.resume,
+                workflow_id,
+            )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

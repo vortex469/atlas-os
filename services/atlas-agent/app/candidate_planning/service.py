@@ -1385,7 +1385,7 @@ class CandidatePlanningService:
                 requested_tool="atlas-agent-operational-contract",
                 requested_command=(),
                 requested_working_directory=None,
-                rationale="Approve this exact immutable operational request; execution remains disabled.",
+                rationale="Approve this exact immutable operational request; execution remains capability-gated.",
                 purpose=ApprovalPurpose.OPERATIONAL_ACTION,
                 operational_metadata=OperationalApprovalMetadata(
                     action_request_id=action_request.request_id,

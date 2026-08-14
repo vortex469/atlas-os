@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 
 import pytest
+
 from app.approval.models import (
     ApprovalDecision,
     ApprovalPurpose,
@@ -43,6 +44,8 @@ from app.verification.models import (
 from app.workflow.engine import WorkflowEngine
 from app.workflow.models import (
     CandidateWorkflowMetadata,
+    OperationalExecutionReference,
+    OperationalExecutionStage,
     WorkflowEffectKind,
     WorkflowRequest,
     WorkflowSession,
@@ -389,6 +392,19 @@ def test_schema_v3_operational_artifacts_round_trip(tmp_path: Path) -> None:
         source=WorkflowSource.CANDIDATE,
         candidate_metadata=metadata,
         operational_action_request=action_request,
+        operational_execution_reference=OperationalExecutionReference(
+            request_id=action_request.request_id,
+            request_digest=action_request.request_digest,
+            stage=OperationalExecutionStage.VERIFICATION_PENDING,
+            dispatch_status="succeeded",
+            ledger_state="verifying",
+            provider_operation_id="UPID:sanitized",
+            verification_status=None,
+            submitted_at=action_request.generated_at + timedelta(seconds=1),
+            last_observed_at=action_request.generated_at + timedelta(seconds=2),
+            terminal=False,
+            audit_events=("authenticated_dispatch_submitted", "verification_pending"),
+        ),
     )
 
     def store_operational(workflows, _approvals, candidate_planning):

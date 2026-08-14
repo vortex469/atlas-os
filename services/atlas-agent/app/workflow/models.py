@@ -75,6 +75,38 @@ class WorkflowEffectKind(StrEnum):
     OPERATIONAL_ACTION = "operational_action"
 
 
+class OperationalExecutionStage(StrEnum):
+    """Agent projection of one Core-owned operational lifecycle."""
+
+    EXECUTION_BLOCKED = "execution_blocked"
+    SUBMISSION_OUTCOME_UNKNOWN = "submission_outcome_unknown"
+    DISPATCH_PENDING = "dispatch_pending"
+    VERIFICATION_PENDING = "verification_pending"
+    VERIFIED = "verified"
+    FAILED = "failed"
+    VERIFICATION_FAILED = "verification_failed"
+    TARGET_REPLACED = "target_replaced"
+    OUTCOME_UNKNOWN = "outcome_unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class OperationalExecutionReference:
+    """Minimal non-secret reference to a Core operational lifecycle."""
+
+    request_id: str
+    request_digest: str
+    stage: OperationalExecutionStage
+    dispatch_status: str | None
+    ledger_state: str | None
+    provider_operation_id: str | None
+    verification_status: str | None
+    submitted_at: datetime | None
+    last_observed_at: datetime
+    terminal: bool
+    controlled_reason: str | None = None
+    audit_events: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True, slots=True)
 class CandidateWorkflowMetadata:
     """Immutable audit linkage for a candidate-derived workflow shell."""
@@ -141,6 +173,7 @@ class WorkflowSession:
     operational_action_request: OperationalActionRequest | None = None
     candidate_implementation_approval_id: str | None = None
     operational_action_approval_id: str | None = None
+    operational_execution_reference: OperationalExecutionReference | None = None
     planning_analysis: ModelResponse | None = None
     review_analysis: ModelResponse | None = None
     context: AgentContext | None = None
@@ -195,6 +228,14 @@ class WorkflowSession:
                 != metadata.candidate_plan_fingerprint
             ):
                 raise ValueError("operational request does not match workflow identity")
+        if self.operational_execution_reference is not None:
+            request = self.operational_action_request
+            reference = self.operational_execution_reference
+            if request is None or (
+                reference.request_id != request.request_id
+                or reference.request_digest != request.request_digest
+            ):
+                raise ValueError("operational execution reference does not match request")
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,3 +253,4 @@ class WorkflowResult:
     review_report: ReviewReport | None = None
     commit_result: CommitResult | None = None
     error_message: str | None = None
+    EXECUTION_BLOCKED = "execution_blocked"
