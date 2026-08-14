@@ -36,6 +36,12 @@ PROVIDERS: tuple[FindingProvider, ...] = (
     collect_proxmox_findings,
 )
 
+LEGACY_PROVIDER_IDENTITIES = {
+    collect_homeassistant_findings: ("home-assistant", "Home Assistant"),
+    collect_docker_findings: ("docker", "Docker"),
+    collect_proxmox_findings: ("proxmox", "Proxmox"),
+}
+
 
 def collect_findings() -> list[Finding]:
     findings: list[Finding] = []
@@ -44,6 +50,92 @@ def collect_findings() -> list[Finding]:
         findings.extend(provider())
 
     return findings
+
+
+def _legacy_provider_identity(
+    provider: FindingProvider,
+    index: int,
+) -> tuple[str, str]:
+    return LEGACY_PROVIDER_IDENTITIES.get(
+        provider,
+        (f"legacy-provider-{index + 1}", f"Legacy Provider {index + 1}"),
+    )
+
+
+async def collect_legacy_findings_with_telemetry(
+    *,
+    timeout_seconds: float,
+) -> tuple[list[Finding], list[ProviderCollectionTiming]]:
+    """Run synchronous legacy collectors concurrently within one deadline."""
+
+    async def collect_one(
+        provider: FindingProvider,
+        index: int,
+    ) -> tuple[list[Finding], ProviderCollectionTiming]:
+        provider_id, provider_name = _legacy_provider_identity(provider, index)
+        started_at = perf_counter()
+        status = "completed"
+        try:
+            findings = await asyncio.wait_for(
+                asyncio.to_thread(provider),
+                timeout=timeout_seconds,
+            )
+        except TimeoutError:
+            status = "timed_out"
+            findings = [
+                Finding(
+                    id=f"{provider_id}-finding-collection-timed-out",
+                    severity=Severity.CRITICAL,
+                    category="provider",
+                    source=provider_id,
+                    component=provider_name,
+                    title="Provider intelligence collection timed out",
+                    message=(
+                        f"ACE stopped waiting for findings from {provider_name} "
+                        f"after {timeout_seconds:g} seconds."
+                    ),
+                    recommendation=(
+                        "Review provider connectivity, response time, and "
+                        "Atlas Core logs."
+                    ),
+                    score_penalty=20,
+                    details={"timeout_seconds": timeout_seconds},
+                )
+            ]
+        except Exception as error:  # noqa: BLE001
+            status = "failed"
+            findings = [
+                Finding(
+                    id=f"{provider_id}-finding-collection-failed",
+                    severity=Severity.CRITICAL,
+                    category="provider",
+                    source=provider_id,
+                    component=provider_name,
+                    title="Provider intelligence collection failed",
+                    message=f"ACE could not collect findings from {provider_name}.",
+                    recommendation=(
+                        "Review provider connectivity, response time, and "
+                        "Atlas Core logs."
+                    ),
+                    score_penalty=20,
+                    details={"error_type": type(error).__name__},
+                )
+            ]
+        return findings, ProviderCollectionTiming(
+            provider_id=provider_id,
+            provider_name=provider_name,
+            status=status,
+            duration_ms=round((perf_counter() - started_at) * 1000, 2),
+            finding_count=len(findings),
+        )
+
+    results = await asyncio.gather(
+        *(collect_one(provider, index) for index, provider in enumerate(PROVIDERS))
+    )
+    return (
+        [finding for findings, _ in results for finding in findings],
+        [timing for _, timing in results],
+    )
 
 
 async def collect_provider_findings(
@@ -66,6 +158,7 @@ async def collect_provider_findings_with_telemetry(
     timeout_seconds: float = (
         settings.intelligence.provider_timeout_seconds
     ),
+    excluded_provider_ids: frozenset[str] = frozenset(),
 ) -> tuple[list[Finding], IntelligenceTelemetry]:
     collection_started_at = perf_counter()
 
@@ -168,6 +261,7 @@ async def collect_provider_findings_with_telemetry(
         *(
             collect_from_provider(provider)
             for provider in registry.all()
+            if provider.metadata.id not in excluded_provider_ids
         ),
     )
 
@@ -192,11 +286,33 @@ async def collect_provider_findings_with_telemetry(
 
 async def build_report() -> SituationReport:
     """Collect all provider findings and build the ACE Situation Report."""
-    findings = collect_findings()
-    provider_findings, telemetry = (
-        await collect_provider_findings_with_telemetry()
+    collection_started_at = perf_counter()
+    timeout_seconds = settings.intelligence.provider_timeout_seconds
+    legacy_provider_ids = frozenset(
+        _legacy_provider_identity(provider, index)[0]
+        for index, provider in enumerate(PROVIDERS)
     )
-    findings.extend(provider_findings)
+    (
+        (legacy_findings, legacy_timings),
+        (provider_findings, provider_telemetry),
+    ) = await asyncio.gather(
+        collect_legacy_findings_with_telemetry(
+            timeout_seconds=timeout_seconds,
+        ),
+        collect_provider_findings_with_telemetry(
+            timeout_seconds=timeout_seconds,
+            excluded_provider_ids=legacy_provider_ids,
+        ),
+    )
+    findings = [*legacy_findings, *provider_findings]
+    telemetry = IntelligenceTelemetry(
+        provider_collection_duration_ms=round(
+            (perf_counter() - collection_started_at) * 1000,
+            2,
+        ),
+        provider_timeout_seconds=timeout_seconds,
+        providers=[*legacy_timings, *provider_telemetry.providers],
+    )
     try:
         findings.extend(collect_discovery_compatibility_findings())
     except Exception:
