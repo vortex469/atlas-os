@@ -88,7 +88,7 @@ def test_proxmox_schema_exposes_editable_fields_and_secret_states(tmp_path: Path
 
     assert schema.editable is True
     assert field(schema, "host").editable is True
-    assert field(schema, "host").current_value == "10.10.50.10"
+    assert field(schema, "host").current_value == "10.10.60.100"
     assert field(schema, "port").validation == {"min": 1, "max": 65535}
     assert field(schema, "token_value").secret is True
     assert field(schema, "token_value").current_value is None
@@ -142,7 +142,7 @@ def test_proxmox_candidate_test_uses_values_without_persisting(
     assert seen == {"host": "candidate.invalid", "token": "candidate-secret"}
     assert get_provider_connection_values("proxmox", connection_file) == {}
     assert get_provider_secret_value("proxmox", "token_value", secret_file) is None
-    assert registry.get("proxmox").atlas_context.connection.host == "10.10.50.10"
+    assert registry.get("proxmox").atlas_context.connection.host == "10.10.60.100"
 
 
 def test_proxmox_candidate_test_failure_is_sanitized(
@@ -163,7 +163,7 @@ def test_proxmox_candidate_test_failure_is_sanitized(
 
     assert result.status == "failure"
     assert "super-secret-token" not in result.model_dump_json()
-    assert registry.get("proxmox").atlas_context.connection.host == "10.10.50.10"
+    assert registry.get("proxmox").atlas_context.connection.host == "10.10.60.100"
 
 
 def test_docker_test_reports_socket_diagnostics(tmp_path: Path) -> None:
