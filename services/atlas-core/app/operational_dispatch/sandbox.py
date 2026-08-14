@@ -190,6 +190,7 @@ async def _run(args: argparse.Namespace) -> int:
         )
     )
     ledger = OperationalDispatchLedger(args.ledger)
+    args.ledger.chmod(0o600)
     dispatcher = OperationalDispatchService(
         ledger=ledger,
         registry=handlers,
