@@ -206,6 +206,70 @@ Set `ATLAS_HTTPS_PORT` to override port `443`. Certificate issuance and
 renewal remain operator responsibilities; certificates from an internal
 CA are suitable when every client trusts that CA.
 
+### Core-owned operator authentication
+
+Sensitive browser mutation boundaries are disabled in the base deployment.
+Enable the Core-owned operator session boundary only with authenticated HTTPS
+and the explicit `compose.operator-auth.yaml` overlay. Atlas Edge HTTP Basic
+remains defense-in-depth; Core independently authenticates its own operator
+session and never trusts a proxy identity header.
+
+Provision a private verifier outside version control. The following command
+prompts without echoing the password and writes the Argon2id verifier directly
+to the file without printing the password or hash:
+
+```bash
+mkdir -p secrets
+chmod 700 secrets
+services/atlas-core/.venv/bin/python - <<'PY'
+import getpass
+import json
+from pathlib import Path
+
+from argon2 import PasswordHasher
+
+password = getpass.getpass("Atlas operator password: ")
+confirmation = getpass.getpass("Confirm Atlas operator password: ")
+if password != confirmation or not password:
+    raise SystemExit("Passwords did not match or were empty.")
+payload = {
+    "schema_version": 1,
+    "operators": [{
+        "operator_id": "atlas-operator",
+        "password_hash": PasswordHasher().hash(password),
+        "enabled": True,
+        "permissions": ["operational_intent:create"],
+    }],
+}
+path = Path("secrets/atlas-operators.json")
+path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+path.chmod(0o400)
+PY
+sudo chown 10001:10001 secrets/atlas-operators.json
+sudo chmod 0400 secrets/atlas-operators.json
+```
+
+Start Atlas with one exact HTTPS origin; wildcard and HTTP origins are rejected:
+
+```bash
+ATLAS_HTTP_BIND=127.0.0.1 \
+ATLAS_OPERATOR_AUTH_VERIFIER_HOST_PATH=./secrets/atlas-operators.json \
+ATLAS_OPERATOR_AUTH_TRUSTED_ORIGINS=https://atlas.example.internal \
+ATLAS_TLS_CERT_FILE=./secrets/atlas.crt \
+ATLAS_TLS_KEY_FILE=./secrets/atlas.key \
+ATLAS_HTPASSWD_FILE=./secrets/atlas.htpasswd \
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  up --build -d
+```
+
+The verifier must be a regular, non-symlink file owned by Core's runtime UID
+10001 with mode `0400`. Core stores only opaque-session and CSRF digests in the
+private `atlas-data` volume. Secure operator cookies are unusable over the
+direct HTTP listener, which remains available for existing read-only operation.
+
 ## Operate Atlas
 
 Inspect health and logs:

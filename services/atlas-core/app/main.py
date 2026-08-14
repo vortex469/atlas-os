@@ -27,6 +27,10 @@ from app.operational_dispatch.production import (
 )
 from app.operational_dispatch.registry import OperationalHandlerRegistry
 from app.operational_dispatch.service import OperationalDispatchService
+from app.operator_auth.audit import OperatorSecurityAuditStore
+from app.operator_auth.credentials import OperatorCredentialVerifier
+from app.operator_auth.rate_limit import OperatorRateLimiter
+from app.operator_auth.sessions import OperatorSessionStore
 from app.providers.loader import load_provider_registry
 from app.providers.proxmox import ProxmoxProvider
 from app.providers.proxmox_operational import ProxmoxQemuVerificationService
@@ -54,6 +58,29 @@ async def lifespan(app: FastAPI):
     validate_configuration()
     logger.info("Atlas configuration validated")
     development_fixture_enabled_and_validated()
+
+    operator_settings = settings.operator_auth
+    app.state.operator_auth_enabled = operator_settings.enabled
+    app.state.operator_auth_trusted_origins = frozenset(operator_settings.trusted_origins)
+    if operator_settings.enabled:
+        app.state.operator_credential_verifier = OperatorCredentialVerifier(
+            operator_settings.verifier_file
+        )
+        app.state.operator_session_store = OperatorSessionStore(
+            operator_settings.session_database,
+            operator_settings.session_lifetime_seconds,
+        )
+        app.state.operator_security_audit = OperatorSecurityAuditStore(
+            operator_settings.audit_database
+        )
+        app.state.operator_login_rate_limiter = OperatorRateLimiter(
+            operator_settings.login_rate_limit,
+            operator_settings.rate_limit_window_seconds,
+        )
+        app.state.operator_mutation_rate_limiter = OperatorRateLimiter(
+            operator_settings.mutation_rate_limit,
+            operator_settings.rate_limit_window_seconds,
+        )
 
     load_provider_registry()
     logger.info("Provider registry initialized")

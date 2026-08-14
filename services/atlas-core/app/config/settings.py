@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 ATLAS_ROOT = Path("/opt/atlas")
 CONFIG_FILE = ATLAS_ROOT / "config" / "atlas.yaml"
@@ -68,6 +69,47 @@ class OperationalDispatchSettings(BaseModel):
     agent_auth_file: str = "/run/atlas-core-agent-auth/token"
 
 
+class OperatorAuthSettings(BaseModel):
+    enabled: bool = False
+    verifier_file: str = "/run/atlas-operator-auth/operators.json"
+    trusted_origins: tuple[str, ...] = ()
+    session_lifetime_seconds: int = Field(default=28_800, ge=300, le=86_400)
+    login_rate_limit: int = Field(default=5, ge=1, le=100)
+    mutation_rate_limit: int = Field(default=10, ge=1, le=1000)
+    rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
+    session_database: str = "/opt/atlas/data/operator_sessions.db"
+    audit_database: str = "/opt/atlas/data/operator_security_audit.db"
+
+    @model_validator(mode="after")
+    def validate_enabled_configuration(self) -> "OperatorAuthSettings":
+        if not self.enabled:
+            return self
+        if not self.verifier_file.strip():
+            raise ValueError("operator auth verifier file is required")
+        if not self.trusted_origins:
+            raise ValueError("operator auth requires at least one trusted HTTPS origin")
+        normalized: list[str] = []
+        for origin in self.trusted_origins:
+            value = origin.strip().rstrip("/")
+            parsed = urlsplit(value)
+            if (
+                parsed.scheme != "https"
+                or not parsed.netloc
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+                or parsed.username is not None
+                or parsed.password is not None
+                or "*" in value
+            ):
+                raise ValueError("operator auth origins must be exact HTTPS origins")
+            normalized.append(value)
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("operator auth origins must be unique")
+        object.__setattr__(self, "trusted_origins", tuple(normalized))
+        return self
+
+
 class Settings(BaseModel):
     atlas: AtlasSettings
     infrastructure: InfrastructureSettings
@@ -82,6 +124,7 @@ class Settings(BaseModel):
     operational_dispatch: OperationalDispatchSettings = Field(
         default_factory=OperationalDispatchSettings,
     )
+    operator_auth: OperatorAuthSettings = Field(default_factory=OperatorAuthSettings)
 
 
 def load_yaml_config() -> dict[str, Any]:
@@ -103,7 +146,26 @@ def load_yaml_config() -> dict[str, Any]:
 
 def load_settings() -> Settings:
     try:
-        loaded = Settings.model_validate(load_yaml_config())
+        raw = load_yaml_config()
+        operator_raw = dict(raw.get("operator_auth") or {})
+        environment_overrides = {
+            "enabled": os.getenv("ATLAS_OPERATOR_AUTH_ENABLED"),
+            "verifier_file": os.getenv("ATLAS_OPERATOR_AUTH_VERIFIER_FILE"),
+            "trusted_origins": os.getenv("ATLAS_OPERATOR_AUTH_TRUSTED_ORIGINS"),
+            "session_database": os.getenv("ATLAS_OPERATOR_AUTH_SESSION_DATABASE"),
+            "audit_database": os.getenv("ATLAS_OPERATOR_AUTH_AUDIT_DATABASE"),
+        }
+        for key, value in environment_overrides.items():
+            if value is None:
+                continue
+            if key == "enabled":
+                operator_raw[key] = value.strip().lower() in {"1", "true", "yes", "on"}
+            elif key == "trusted_origins":
+                operator_raw[key] = tuple(item.strip() for item in value.split(",") if item.strip())
+            else:
+                operator_raw[key] = value
+        raw["operator_auth"] = operator_raw
+        loaded = Settings.model_validate(raw)
         auth_file = os.getenv("ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE")
         if auth_file:
             loaded = loaded.model_copy(

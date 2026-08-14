@@ -18,6 +18,7 @@ from app.routes.intelligence import router as intelligence_router
 from app.routes.internal_operational_actions import (
     router as internal_operational_actions_router,
 )
+from app.routes.operator_auth import router as operator_auth_router
 from app.routes.ops import router as ops_router
 from app.routes.policies import router as policies_router
 from app.routes.provider_connections import router as provider_connections_router
@@ -66,6 +67,7 @@ router.include_router(discovery_router)
 router.include_router(execution_candidates_router)
 router.include_router(execution_candidate_intake_router)
 router.include_router(ops_router)
+router.include_router(operator_auth_router)
 router.include_router(policies_router)
 router.include_router(docker_router)
 router.include_router(proxmox_router)
