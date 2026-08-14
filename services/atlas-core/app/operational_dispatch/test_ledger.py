@@ -36,6 +36,11 @@ def test_concurrent_dispatch_barrier_has_one_owner(tmp_path) -> None:
         results = list(pool.map(lambda _: ledger.mark_dispatching(request), range(8)))
     assert sum(owner for _, owner in results) == 1
     assert ledger.get(request.request_id).state is OperationalLedgerState.DISPATCHING  # type: ignore[union-attr]
+    assert [transition.state for transition in ledger.list_transitions(request.request_id)] == [
+        OperationalLedgerState.CLAIMED,
+        OperationalLedgerState.REVALIDATED,
+        OperationalLedgerState.DISPATCHING,
+    ]
 
 
 def test_startup_recovery_marks_dispatching_unknown_without_replay(tmp_path) -> None:

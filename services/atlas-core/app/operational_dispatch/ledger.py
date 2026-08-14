@@ -75,6 +75,16 @@ class OperationalLedgerEntry:
     verification_result: OperationalVerificationResult | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class OperationalLedgerTransition:
+    sequence: int
+    request_id: str
+    request_digest: str
+    previous_state: OperationalLedgerState | None
+    state: OperationalLedgerState
+    occurred_at: datetime
+
+
 class OperationalDispatchLedger:
     """Single-owner operational ledger with an explicit dispatch barrier."""
 
@@ -131,6 +141,22 @@ class OperationalDispatchLedger:
                 """CREATE INDEX IF NOT EXISTS idx_operational_dispatch_events_time
                    ON operational_dispatch_events (occurred_at DESC)"""
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS operational_dispatch_transitions (
+                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                    request_id TEXT NOT NULL,
+                    request_digest TEXT NOT NULL,
+                    previous_state TEXT,
+                    state TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """CREATE INDEX IF NOT EXISTS idx_operational_dispatch_transitions_request
+                   ON operational_dispatch_transitions (request_id, sequence)"""
+            )
 
     @staticmethod
     def _now() -> datetime:
@@ -154,6 +180,13 @@ class OperationalDispatchLedger:
                     VALUES (?, ?, 'claimed', ?, ?, ?)
                     """,
                     (request.request_id, request.request_digest, encoded, now, now),
+                )
+                self._record_transition(
+                    connection,
+                    request,
+                    previous_state=None,
+                    state=OperationalLedgerState.CLAIMED,
+                    occurred_at=now,
                 )
                 row = self._row_for(connection, request.request_id)
             elif row["request_digest"] != request.request_digest:
@@ -214,11 +247,19 @@ class OperationalDispatchLedger:
             }:
                 connection.rollback()
                 raise OperationalLedgerError("dispatch result cannot be persisted from state")
+            previous_state = OperationalLedgerState(row["state"])
             connection.execute(
                 """UPDATE operational_dispatch
                    SET state=?, dispatch_result_json=?, updated_at=?
                    WHERE request_id=?""",
                 (state.value, encoded, now, request.request_id),
+            )
+            self._record_transition(
+                connection,
+                request,
+                previous_state=previous_state,
+                state=state,
+                occurred_at=now,
             )
             row = self._row_for(connection, request.request_id)
             connection.commit()
@@ -243,9 +284,17 @@ class OperationalDispatchLedger:
                 OperationalLedgerState.SUCCEEDED,
                 OperationalLedgerState.OUTCOME_UNKNOWN,
             }:
+                now = self._now().isoformat()
                 connection.execute(
                     "UPDATE operational_dispatch SET state='verifying', updated_at=? WHERE request_id=?",
-                    (self._now().isoformat(), request.request_id),
+                    (now, request.request_id),
+                )
+                self._record_transition(
+                    connection,
+                    request,
+                    previous_state=state,
+                    state=OperationalLedgerState.VERIFYING,
+                    occurred_at=now,
                 )
                 owner = True
                 row = self._row_for(connection, request.request_id)
@@ -282,11 +331,19 @@ class OperationalDispatchLedger:
             if OperationalLedgerState(row["state"]) is not OperationalLedgerState.VERIFYING:
                 connection.rollback()
                 raise OperationalLedgerError("verification result requires verifying state")
+            now = self._now().isoformat()
             connection.execute(
                 """UPDATE operational_dispatch
                    SET state=?, verification_result_json=?, updated_at=?
                    WHERE request_id=?""",
-                (state.value, encoded, self._now().isoformat(), request.request_id),
+                (state.value, encoded, now, request.request_id),
+            )
+            self._record_transition(
+                connection,
+                request,
+                previous_state=OperationalLedgerState.VERIFYING,
+                state=state,
+                occurred_at=now,
             )
             row = self._row_for(connection, request.request_id)
             connection.commit()
@@ -302,13 +359,14 @@ class OperationalDispatchLedger:
                 "SELECT * FROM operational_dispatch WHERE state='dispatching'"
             ).fetchall()
             for row in rows:
+                request = OperationalDispatchRequest.model_validate_json(
+                    row["request_json"]
+                )
                 result = OperationalDispatchResult(
                     status="outcome_unknown",
                     request_id=row["request_id"],
                     request_digest=row["request_digest"],
-                    target_fingerprint=OperationalDispatchRequest.model_validate_json(
-                        row["request_json"]
-                    ).target_fingerprint,
+                    target_fingerprint=request.target_fingerprint,
                     started_at=datetime.fromisoformat(row["dispatch_started_at"]),
                     completed_at=now,
                     sanitized_message="Dispatch outcome is unknown after Core restart.",
@@ -318,6 +376,13 @@ class OperationalDispatchLedger:
                        SET state='outcome_unknown', dispatch_result_json=?, updated_at=?
                        WHERE request_id=? AND state='dispatching'""",
                     (result.model_dump_json(), now.isoformat(), row["request_id"]),
+                )
+                self._record_transition(
+                    connection,
+                    request,
+                    previous_state=OperationalLedgerState.DISPATCHING,
+                    state=OperationalLedgerState.OUTCOME_UNKNOWN,
+                    occurred_at=now.isoformat(),
                 )
             claimed = connection.execute(
                 "SELECT COUNT(*) FROM operational_dispatch WHERE state IN ('claimed','revalidated')"
@@ -385,6 +450,40 @@ class OperationalDispatchLedger:
             )
         )
 
+    def list_transitions(
+        self, request_id: str
+    ) -> tuple[OperationalLedgerTransition, ...]:
+        if not request_id or request_id != request_id.strip():
+            raise ValueError("operational request ID must be exact and nonblank")
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """SELECT sequence, request_id, request_digest, previous_state,
+                          state, occurred_at
+                   FROM operational_dispatch_transitions
+                   WHERE request_id=? ORDER BY sequence""",
+                (request_id,),
+            ).fetchall()
+        try:
+            return tuple(
+                OperationalLedgerTransition(
+                    sequence=row["sequence"],
+                    request_id=row["request_id"],
+                    request_digest=row["request_digest"],
+                    previous_state=(
+                        OperationalLedgerState(row["previous_state"])
+                        if row["previous_state"] is not None
+                        else None
+                    ),
+                    state=OperationalLedgerState(row["state"]),
+                    occurred_at=datetime.fromisoformat(row["occurred_at"]),
+                )
+                for row in rows
+            )
+        except (TypeError, ValueError) as error:
+            raise OperationalLedgerCorruptionError(
+                "stored operational ledger transition is invalid"
+            ) from error
+
     def append_event(self, event: OperationalDispatchAuditEvent) -> None:
         event = OperationalDispatchAuditEvent.model_validate(event.model_dump())
         with self._lock, self._connect() as connection:
@@ -447,6 +546,14 @@ class OperationalDispatchLedger:
                         (target.value, now, request.request_id, expected.value),
                     )
                 owner = connection.total_changes == 1
+                if owner:
+                    self._record_transition(
+                        connection,
+                        request,
+                        previous_state=expected,
+                        state=target,
+                        occurred_at=now,
+                    )
                 row = self._row_for(connection, request.request_id)
             connection.commit()
             return self._entry(row), owner
@@ -466,6 +573,28 @@ class OperationalDispatchLedger:
             raise OperationalLedgerConflictError(
                 "operational request ID has a different digest"
             )
+
+    @staticmethod
+    def _record_transition(
+        connection: sqlite3.Connection,
+        request: OperationalDispatchRequest,
+        *,
+        previous_state: OperationalLedgerState | None,
+        state: OperationalLedgerState,
+        occurred_at: str,
+    ) -> None:
+        connection.execute(
+            """INSERT INTO operational_dispatch_transitions
+               (request_id, request_digest, previous_state, state, occurred_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                request.request_id,
+                request.request_digest,
+                previous_state.value if previous_state is not None else None,
+                state.value,
+                occurred_at,
+            ),
+        )
 
     @staticmethod
     def _entry(row: sqlite3.Row) -> OperationalLedgerEntry:

@@ -100,6 +100,49 @@ def _load_private_model(path: Path, model_type):
     return model_type.model_validate_json(path.read_bytes())
 
 
+def print_sandbox_evidence(
+    ledger: OperationalDispatchLedger,
+    request: OperationalDispatchRequest,
+) -> None:
+    print("durable ledger transitions:")
+    for transition in ledger.list_transitions(request.request_id):
+        previous = transition.previous_state.value if transition.previous_state else "initial"
+        print(
+            f"  {transition.sequence}: {previous} -> {transition.state.value} "
+            f"at {transition.occurred_at.isoformat()}"
+        )
+    print("sanitized operational audit events:")
+    events = tuple(
+        event
+        for event in reversed(ledger.list_events(limit=1000))
+        if event.request_id == request.request_id
+    )
+    for event in events:
+        print(f"  {event.status.value} at {event.occurred_at.isoformat()}")
+
+
+def print_sandbox_preflight(
+    request: OperationalDispatchRequest,
+    *,
+    ledger_path: Path,
+    node: str,
+    vmid: str,
+    display_name: str,
+    current_state: str | None,
+    resource_fingerprint: str,
+) -> None:
+    print(f"node: {node}")
+    print(f"VMID: {vmid}")
+    print(f"VM name: {display_name}")
+    print(f"current state: {current_state}")
+    print(f"resource fingerprint: {resource_fingerprint}")
+    print(f"request digest: {request.request_digest}")
+    print(f"provider action ID: {request.provider_action_id}")
+    print(f"sandbox ledger path: {ledger_path}")
+    print(f"expected disruption: {request.disruption_scope}")
+    print(f"verification deadline: {request.expires_at.isoformat()}")
+
+
 async def _run(args: argparse.Namespace) -> int:
     request = _load_private_model(args.request_file, OperationalDispatchRequest)
     authorization = _load_private_model(
@@ -125,14 +168,15 @@ async def _run(args: argparse.Namespace) -> int:
         vmid=vmid,
         fingerprint=target.resource_fingerprint,
     )
-    print(f"node: {node}")
-    print(f"VMID: {vmid}")
-    print(f"VM name: {target.resource.display_name}")
-    print(f"current state: {target.resource.current_state}")
-    print(f"resource fingerprint: {target.resource_fingerprint}")
-    print(f"request digest: {request.request_digest}")
-    print(f"expected disruption: {request.disruption_scope}")
-    print(f"verification deadline: {request.expires_at.isoformat()}")
+    print_sandbox_preflight(
+        request,
+        ledger_path=args.ledger,
+        node=node,
+        vmid=vmid,
+        display_name=target.resource.display_name,
+        current_state=target.resource.current_state,
+        resource_fingerprint=target.resource_fingerprint,
+    )
     phrase = f"RESTART {node} {vmid} {request.request_digest}"
     if input(f"Type exactly '{phrase}' to continue: ") != phrase:
         raise PermissionError("sandbox confirmation did not match")
@@ -176,6 +220,7 @@ async def _run(args: argparse.Namespace) -> int:
     print(f"dispatch status: {dispatch.status.value}")
     print(f"provider operation captured: {dispatch.provider_operation_id is not None}")
     print(f"final ledger state: {final.ledger_state if final else 'unknown'}")
+    print_sandbox_evidence(ledger, request)
     return 0
 
 
