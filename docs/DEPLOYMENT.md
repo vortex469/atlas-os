@@ -463,6 +463,294 @@ docker compose -f compose.production.yaml logs -f
 ./scripts/container-release-gate
 ```
 
+## Atlas v0.6.0 to v0.7 upgrade and rollback
+
+The supported starting point for the Atlas v0.7 release line is the immutable
+`atlas-v0.6.0` release at
+`03c1e03099b0f638dc674235312a3b3e70768c2f`. Atlas does not perform this
+upgrade or its rollback automatically.
+
+### Before upgrading
+
+Require all of the following before changing the checked-out release:
+
+- the tracked worktree is clean;
+- Atlas Core, Atlas Agent, Mission Control, and the configured ingress are
+  healthy;
+- the production Compose environment and existing credential paths are
+  available;
+- the Proxmox provider is reachable through Atlas;
+- TLS keys, the edge `htpasswd`, and operator verifier material are stored
+  outside Git; and
+- a current verified Atlas data backup exists.
+
+Create the Atlas data backup while v0.6.0 is still running and record its exact
+path:
+
+```bash
+./scripts/atlas-data-backup /path/to/protected-atlas-backups
+```
+
+The Agent state volume is separate from `atlas-data` and is not included by
+that command. Before the upgrade, preserve a storage-level snapshot or verified
+offline archive of the `atlas-agent-state` named volume using the host's
+approved volume-backup mechanism. Record the Compose project name, volume
+identity, snapshot identifier, and creation time. This pre-upgrade Agent-state
+snapshot is required for a fail-safe downgrade because v0.6 is not guaranteed
+to decode v0.7 schema-v3 state.
+
+Do not put either backup in the Git repository. Treat Atlas backups as secret
+material because they can contain provider connection secrets and operational
+history.
+
+### New v0.7 deployment requirements
+
+Operator mutations require all three Compose files:
+
+```text
+compose.production.yaml
+compose.https.yaml
+compose.operator-auth.yaml
+```
+
+They also require:
+
+- a browser-trusted TLS certificate and matching private key;
+- an edge `htpasswd` file for defense-in-depth HTTP Basic authentication;
+- one exact HTTPS browser origin in
+  `ATLAS_OPERATOR_AUTH_TRUSTED_ORIGINS` (no wildcard and no HTTP origin);
+- a Core operator verifier supplied through
+  `ATLAS_OPERATOR_AUTH_VERIFIER_HOST_PATH`;
+- an enabled operator carrying exactly the required
+  `operational_intent:create` permission; and
+- a dedicated Proxmox identity with `VM.Audit` and `VM.PowerMgmt` scoped to
+  each approved `/vms/<VMID>` target.
+
+The Core verifier must be a regular non-symlink file owned by UID/GID
+`10001:10001` with mode `0400`. The TLS private key and edge password database
+must remain private and readable only by the configured edge runtime identity;
+the certificate may be mode `0644`. Follow the provisioning commands in
+[Core-owned operator authentication](#core-owned-operator-authentication) and
+[Authenticated HTTPS](#authenticated-https). Do not grant `Sys.PowerMgmt`,
+permission-management, cluster-root, broad `VM.Config.*`, or administrative
+roles for the restart capability.
+
+### Upgrade procedure
+
+1. Confirm the starting release and clean tracked tree:
+
+```bash
+test "$(git rev-parse atlas-v0.6.0^{})" = \
+  "03c1e03099b0f638dc674235312a3b3e70768c2f"
+git diff --quiet
+git diff --cached --quiet
+```
+
+2. Fetch the reviewed v0.7 release reference, verify its expected immutable
+   SHA, and check it out. Set both values from the signed release record rather
+   than discovering the expected SHA from the fetched tag itself:
+
+```bash
+ATLAS_V07_REF=atlas-v0.7.0-rc1
+ATLAS_V07_EXPECTED_SHA=replace-with-reviewed-release-sha
+git fetch origin tag "$ATLAS_V07_REF"
+test "$(git rev-parse "$ATLAS_V07_REF^{}")" = "$ATLAS_V07_EXPECTED_SHA"
+git switch --detach "$ATLAS_V07_REF^{}"
+```
+
+3. Reconfirm that the pre-upgrade Atlas data backup and Agent-state snapshot
+   are present and verified. Do not continue if either artifact is missing.
+
+4. Export the existing production environment and the new private file paths.
+   Use the exact HTTPS origin operators will enter in their browsers:
+
+```bash
+export ATLAS_REPOSITORY_HOST_PATH="$PWD"
+export DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+export ATLAS_TLS_CERT_FILE=/path/to/atlas.crt
+export ATLAS_TLS_KEY_FILE=/path/to/atlas.key
+export ATLAS_HTPASSWD_FILE=/path/to/atlas.htpasswd
+export ATLAS_OPERATOR_AUTH_VERIFIER_HOST_PATH=/path/to/atlas-operators.json
+export ATLAS_OPERATOR_AUTH_TRUSTED_ORIGINS=https://atlas.example.internal
+```
+
+5. Render the complete configuration before changing containers:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  config --quiet
+```
+
+6. Build and recreate the deployment with the same three-file Compose set:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  up --build --detach
+```
+
+7. Require Core, Agent, Mission Control, and Atlas Edge to report healthy:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  ps
+```
+
+8. Confirm the closed operational capability and production handler contract:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  exec -T atlas-agent python -c \
+  'from app.candidate_planning.models import OPERATIONAL_EXECUTION_INTENTS; assert OPERATIONAL_EXECUTION_INTENTS == frozenset({"restart-service"})'
+
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  exec -T atlas-core python -c \
+  'from app.operational_dispatch.registry import OPERATIONAL_EXECUTION_INTENTS; assert OPERATIONAL_EXECUTION_INTENTS == frozenset({"restart-service"})'
+```
+
+Confirm through the deployed Core startup log or release diagnostic that the
+production registry contains exactly one tuple:
+`restart-service / proxmox / qemu`. A missing or additional tuple is a failed
+upgrade check.
+
+9. Open the exact trusted HTTPS origin through a client that trusts the issuing
+   CA. Confirm edge Basic authentication, then log in through Mission Control.
+   Require the Core-owned session to identify the intended operator and expose
+   only its configured permissions. Require a same-origin, CSRF-protected
+   `/api/v1/operator-auth/probe` request to succeed; missing/wrong CSRF and a
+   different Origin must remain rejected. Never print or retain the password,
+   cookie, CSRF value, or verifier hash in release evidence.
+
+10. Load the maintenance resource selector through that authenticated session.
+    Confirm it is read-only, contains only sanitized resource fields, and marks
+    only authoritative, running, unlocked, non-migrating QEMU targets as
+    requestable. Loading or selecting a resource must not create a candidate,
+    approval, dispatch record, or provider operation.
+
+Ordinary upgrade validation stops here. Do not request or perform a live
+restart merely to validate an installation.
+
+### Persistence and downgrade compatibility
+
+Atlas Agent writes aggregate snapshot schema v3 in v0.7. Its implemented
+decoder accepts schemas v1, v2, and v3, so existing v0.6 repository workflows
+remain supported when upgrading. This is forward compatibility in v0.7; it is
+not proof that v0.6 can open a schema-v3 snapshot.
+
+V0.7 also creates persistent Core databases in the `atlas-data` volume for:
+
+- operational dispatch records, transitions, results, and audit events;
+- operator-intent records and audit events;
+- operator sessions; and
+- operator security audit events.
+
+These databases are separate from the existing action-history and provider
+intelligence databases. The current `atlas-data-backup` format protects the
+established v0.6 databases and runtime configuration, but does not claim to be
+a downgrade archive for Agent schema-v3 state or all new v0.7 databases.
+
+Consequently, in-place mutable-data downgrade compatibility is **not
+guaranteed**. A rollback to v0.6.0 must restore the verified pre-upgrade Atlas
+data backup and the pre-upgrade `atlas-agent-state` volume snapshot. Before
+doing so, preserve a separate offline snapshot/archive of the complete v0.7
+`atlas-data` and `atlas-agent-state` volumes so operational evidence is not
+lost.
+
+### In-flight operational actions
+
+Before rollback, inspect the production operational ledger. If no request is
+in a non-terminal state, proceed with the normal rollback sequence below.
+
+If any request reached `dispatching` or crossed the durable dispatch barrier:
+
+- do not retry, recreate, or replace the mutation request;
+- do not assume an interrupted HTTP response means the provider rejected it;
+- preserve the production ledger, request digest, transition history, captured
+  UPID, and sanitized audit evidence;
+- use the existing v0.7 read-only lifecycle/status reconciliation until the
+  request reaches `verified`, `verification_failed`, `target_replaced`, or
+  `outcome_unknown`; and
+- begin rollback only after the operator has reviewed that terminal result.
+
+An unresolved barrier-crossed request blocks ordinary rollback. Downgrading
+Core first would remove the verifier needed to establish the durable outcome
+and could invite an unsafe manual replay.
+
+### Rollback to atlas-v0.6.0
+
+This is a code/container **and mutable-data** rollback. Do not delete or
+overwrite the v0.7 volumes until their complete offline preservation has been
+verified.
+
+1. Confirm there is no in-flight operational request using the rules above.
+2. Record the running v0.7 SHA and preserve full offline snapshots/archives of
+   both `atlas-data` and `atlas-agent-state`.
+3. Stop the v0.7 three-overlay deployment:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  down
+```
+
+4. Restore the pre-upgrade `atlas-agent-state` volume snapshot using the same
+   host-approved volume restore mechanism used to create it. Restore the
+   pre-upgrade Atlas data backup while services are stopped:
+
+```bash
+./scripts/atlas-data-restore \
+  /path/to/protected-atlas-backups/atlas-data-YYYYMMDDTHHMMSSZ \
+  --confirm
+```
+
+5. Check out and verify the immutable v0.6.0 release:
+
+```bash
+git switch --detach atlas-v0.6.0^{}
+test "$(git rev-parse HEAD)" = \
+  "03c1e03099b0f638dc674235312a3b3e70768c2f"
+```
+
+6. Render the v0.6 production deployment using only the overlays supported by
+   that release, then rebuild and recreate it:
+
+```bash
+export ATLAS_REPOSITORY_HOST_PATH="$PWD"
+export DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+docker compose -f compose.production.yaml config --quiet
+docker compose -f compose.production.yaml up --build --detach
+```
+
+Include `compose.https.yaml` and its private file variables when HTTPS was part
+of the v0.6 deployment. Do not include `compose.operator-auth.yaml`; it is a
+v0.7 overlay.
+
+7. Require all v0.6 services to become healthy and confirm that
+   `restart-service` is absent from Agent and Core operational execution
+   capabilities and that no v0.7 operational handler is registered. Do not
+   perform a provider mutation as a rollback smoke test.
+
+The v0.7 operator verifier, TLS material, and `htpasswd` may remain in their
+private, ignored host locations. V0.6 does not consume the operator-auth
+overlay or Core verifier. Deleting those files is not required for rollback;
+normal credential-retention and rotation policy still applies.
+
 ## Back up and restore data
 
 Create a consistent online backup while Atlas remains available:

@@ -1,15 +1,16 @@
 # Proxmox QEMU graceful-restart contract
 
-Atlas P1.3d defines, but does not enable, one provider-owned operational action:
+Atlas v0.7 P1.3 enables one closed provider-owned operational action:
 
 ```text
 restart-service + proxmox + qemu
   -> proxmox-qemu-graceful-restart-v1
 ```
 
-Both Agent and Core operational execution intent sets remain empty, and the
-production operational handler registry remains empty. This contract therefore
-cannot perform a production mutation in P1.3d.
+Agent and Core independently allow only `restart-service` at this operational
+boundary. Core registers exactly one production handler tuple:
+`restart-service / proxmox / qemu`. Planning capability, provider metadata, and
+approval state never implicitly enable execution.
 
 ## Identity and action
 
@@ -37,9 +38,23 @@ task-status access first and add that narrowly scoped read-only privilege only
 when required. Do not grant `PVEAdmin`, cluster-root ACLs, `Sys.PowerMgmt`,
 `VM.Config.*`, or permission-management privileges for this action.
 
-Existing credentials are not modified automatically. Before future execution
-enablement, the release operator must confirm the token has only the required
-VM and, if necessary, node-read scope.
+Existing credentials are not modified automatically. Before enabling the
+capability for a target, the release operator must confirm the configured
+identity has only the required VM scope and, if necessary, narrowly scoped
+task-read access.
+
+## Authentication and approval boundary
+
+Mission Control operator mutations require authenticated HTTPS, an exact
+trusted origin, CSRF validation, and a Core-owned session with
+`operational_intent:create`. Edge Basic authentication remains an independent
+defense-in-depth layer. The browser does not call the internal dispatch API.
+
+Agent dispatches only an immutable request whose ID, digest, candidate and plan
+fingerprints, provider/resource tuple, target fingerprint, action mapping,
+verification policy, and expiry exactly match the persisted
+`OPERATIONAL_ACTION` approval. Agent-to-Core bearer authentication is separate
+from the browser operator session.
 
 ## Verification
 
@@ -53,3 +68,12 @@ Identity replacement fails closed. A completed failed task or a successful task
 whose guest does not return to running by the deadline is verification failure.
 An unavailable or still-running task at the deadline is an unknown outcome.
 Verification is read-only and never issues another reboot.
+
+## Production acceptance
+
+On 2026-08-14 the normal production workflow exercised this contract once for
+the approved non-critical QEMU guest VM 110 (`Frigate`) on `vorex469`. The
+provider accepted exactly one graceful reboot and returned one UPID. The durable
+ledger recorded one dispatch barrier, one provider-operation capture, and one
+dispatch result. Verification completed with the VM and QMP running, the
+authoritative fingerprint unchanged, and no mutation replay.

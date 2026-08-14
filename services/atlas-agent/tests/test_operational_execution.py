@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-
 from app.approval.models import (
     ApprovalDecision,
     ApprovalPurpose,

@@ -4,7 +4,6 @@ from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from app.candidate_planning.models import (
     OPERATIONAL_EXECUTION_INTENTS,
     operational_action_request_digest,

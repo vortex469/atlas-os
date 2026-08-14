@@ -4,7 +4,6 @@ from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime
 
 import pytest
-
 from app.candidate_planning.models import (
     OPERATIONAL_EXECUTION_INTENTS,
     OPERATIONAL_PLANNING_INTENTS,

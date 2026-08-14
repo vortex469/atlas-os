@@ -1,3 +1,25 @@
+## Atlas v0.7 development
+
+Atlas v0.7 adds the first approval-gated operational-action workflow:
+
+- `restart-service / proxmox / qemu`
+
+An operator request identifies one authoritative QEMU resource; it does not
+submit a command or provider payload. Atlas then requires deterministic
+planning, workflow-shell approval, immutable action-request translation, and
+exact action approval. Agent and Core independently enforce the enabled intent,
+Core revalidates the target fingerprint before a durable dispatch barrier, and
+verification follows only the provider UPID captured from that one operation.
+Unknown outcomes never trigger an automatic replay.
+
+Browser mutation access requires authenticated HTTPS, a Core-owned operator
+session with `operational_intent:create`, an exact trusted origin, and CSRF
+validation. Edge HTTP Basic authentication remains defense-in-depth and does
+not replace Core authentication. See the
+[deployment guide](docs/DEPLOYMENT.md#core-owned-operator-authentication),
+[restart contract](docs/architecture/proxmox-qemu-operational-restart.md), and
+[verification/recovery contract](docs/architecture/operational-verification-recovery.md).
+
 ## Atlas v0.6.0
 
 Atlas v0.6 completes the Phase 3 candidate workflow while preserving Atlas's provider-neutral, local-first design. Atlas Core owns Discovery evidence, intelligence recommendations, execution-candidate projection, and planning-intake revalidation. Atlas Agent owns local approval-gated orchestration, restart-safe side effects, audit-chain validation, deterministic review, and local Git commit. Mission Control presents state and does not currently expose Phase 3 execution controls.

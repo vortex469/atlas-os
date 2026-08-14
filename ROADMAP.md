@@ -107,3 +107,42 @@ Distributed orchestration, clustering, cross-host recovery, and advanced provide
 ### Future ideas
 
 Dynamic discovery sources, semantic search, Mission Control candidate controls, release workflows, and rollback automation remain future ideas. They are not part of v0.6.
+
+## Atlas v0.7 roadmap status
+
+### Completed: P1.3 operational restart
+
+- `restart-service / proxmox / qemu` is enabled as the first production
+  operational-action capability.
+- An authenticated operator with `operational_intent:create` can request a
+  candidate for one exact authoritative QEMU resource. The candidate still
+  traverses planning, workflow-shell approval, immutable action translation,
+  exact operational-action approval, Agent orchestration, and authenticated
+  Core dispatch.
+- Core binds execution to the authoritative QEMU identity and fingerprint,
+  revalidates the target before crossing a durable exactly-once dispatch
+  barrier, captures the provider UPID, and performs bounded read-only
+  verification. Ambiguous outcomes fail closed without mutation replay.
+- Verifier-only recovery can resume interrupted verification without
+  constructing a mutation handler or reopening the dispatch barrier.
+- Mission Control provides Core-owned operator login and a sanitized,
+  resource-scoped maintenance-request flow. It accepts no provider action ID,
+  command, native provider identity, endpoint, environment, or arbitrary
+  parameters.
+
+Production acceptance on 2026-08-14 exercised the normal path against the
+approved non-critical Proxmox QEMU guest VM 110 (`Frigate`). Exactly one
+graceful restart was accepted, the workflow reached `COMPLETED`, verification
+observed the same guest running with QMP running, and the authoritative target
+fingerprint remained unchanged. The dispatch ledger recorded one barrier, one
+provider-operation capture, one dispatch result, and no replay.
+
+### Remaining v0.7 work
+
+- Decide the v0.7 release boundary and complete release-candidate packaging,
+  documentation, CI, upgrade, and rollback evidence.
+- `backup`, `restore`, `install-provider`, and `update-image` remain unsupported
+  execution intents and require their own contracts, security review, recovery
+  behavior, and end-to-end validation.
+- Automated rollback, push, tag/release publication, and remote deployment
+  remain out of scope.

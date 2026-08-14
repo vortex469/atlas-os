@@ -1,8 +1,9 @@
 # Operational verification and recovery
 
-P1.3e keeps both operational execution intent sets empty and the production
-handler registry empty. It adds only durable, read-only reconciliation after a
-future successful or ambiguous dispatch that has a Proxmox task UPID.
+Atlas v0.7 P1.3 enables `restart-service` independently in Agent and Core and
+registers exactly one production handler for `restart-service / proxmox /
+qemu`. This document describes the durable, read-only reconciliation that
+follows a successful or ambiguous dispatch with a Proxmox task UPID.
 
 ## Durable lifecycle
 
@@ -25,18 +26,14 @@ Unverified `succeeded`, UPID-bearing `outcome_unknown`, and interrupted
 `verifying` entries schedule provider-specific read-only verification. Verified
 and failed results are never reopened.
 
-## Production ACL inspection
+## Production least privilege
 
-The 2026-08-14 read-only inspection established that the configured Proxmox
-identity can read QEMU configuration, current QEMU status, effective
-permissions, node task listings, and has `VM.Audit` and `Sys.Audit`. It does not
-have `VM.PowerMgmt`, `Sys.PowerMgmt`, or permission-management privileges. No
-recent owned `qmreboot` UPID was available, so exact owned-task status access
-remains unproven.
-
-No ACL was changed. Live sandbox execution remains blocked until an operator
-confirms a non-critical target and grants only the required VM-scoped
-`VM.PowerMgmt` permission.
+The configured Proxmox identity requires `VM.Audit` and `VM.PowerMgmt` only on
+the approved `/vms/<VMID>` target. It must not receive `Sys.PowerMgmt`,
+permission-management, broad `VM.Config.*`, cluster-root, or administrative
+roles. Some Proxmox installations may additionally require narrowly scoped
+read-only task access to inspect the UPID returned by Atlas; operators must add
+that only when their Proxmox version requires it.
 
 ## One-shot sandbox harness
 
@@ -56,6 +53,18 @@ constructs an in-process one-shot handler registry and intent set, records one
 dispatch attempt, then performs only read-only verification. It does not alter
 the Agent or Core production capability sets or registry.
 
-The harness must not be used until change control has approved the target as
-non-critical and the operator has reviewed the generated immutable request and
-authorization files.
+The harness is evidence tooling, not the production workflow. Production uses
+the Core ledger and registered handler through authenticated Agent dispatch;
+sandbox ledgers and authorizations are never accepted by that path.
+
+## Acceptance evidence
+
+The 2026-08-14 normal-path acceptance recorded:
+
+- one production ledger record;
+- `claimed -> revalidated -> dispatching -> succeeded -> verifying -> verified`;
+- one durable barrier crossing;
+- one provider-operation capture and one dispatch result;
+- successful UPID-backed verification with the VM and QMP running;
+- an unchanged authoritative target fingerprint; and
+- no replay during Agent lifecycle reconciliation.
