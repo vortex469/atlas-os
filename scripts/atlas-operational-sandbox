@@ -3,5 +3,10 @@
 set -euo pipefail
 
 atlas_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+atlas_python="$atlas_root/.venv/bin/python"
+if [[ ! -x "$atlas_python" ]]; then
+    echo "Atlas sandbox interpreter unavailable: expected executable $atlas_python" >&2
+    exit 127
+fi
 export PYTHONPATH="$atlas_root/services/atlas-core"
-exec python -m app.operational_dispatch.sandbox "$@"
+exec "$atlas_python" -m app.operational_dispatch.sandbox "$@"
