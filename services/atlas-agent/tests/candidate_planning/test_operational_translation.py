@@ -4,6 +4,7 @@ from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
+
 from app.candidate_planning.models import (
     OPERATIONAL_EXECUTION_INTENTS,
     operational_action_request_digest,
@@ -42,14 +43,14 @@ def test_plan_fingerprint_binds_target_and_verification() -> None:
     )
 
 
-def test_translation_is_deterministic_immutable_and_execution_disabled() -> None:
+def test_translation_is_deterministic_immutable_and_narrowly_enabled() -> None:
     first = translate()
     repeated = translate()
     assert first == repeated
     assert first.request_digest == operational_action_request_digest(first)
     assert first.idempotency_key == repeated.idempotency_key
     assert first.provider_action_id == "proxmox-qemu-graceful-restart-v1"
-    assert OPERATIONAL_EXECUTION_INTENTS == frozenset()
+    assert OPERATIONAL_EXECUTION_INTENTS == frozenset({"restart-service"})
     with pytest.raises(FrozenInstanceError):
         first.resource_id = "qemu/999"  # type: ignore[misc]
 

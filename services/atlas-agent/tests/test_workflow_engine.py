@@ -8,6 +8,7 @@ from threading import Event
 from unittest.mock import Mock, call
 
 import pytest
+
 from app.approval.engine import ApprovalEngine
 from app.approval.models import (
     ApprovalDecision,
@@ -316,7 +317,7 @@ def published_phases(state_store: Mock) -> list[SprintPhase]:
     ]
 
 
-def test_approved_operational_workflow_resume_fails_closed_without_execution(
+def test_synchronous_repository_engine_cannot_execute_operational_workflow(
     tmp_path: Path,
 ) -> None:
     engine, _, execution_engine, verification_engine, review_engine, _, state_store = (
@@ -365,7 +366,7 @@ def test_approved_operational_workflow_resume_fails_closed_without_execution(
 
     result = engine.resume(session.identifier)
 
-    assert result.error_message == "operational_execution_not_enabled"
+    assert result.error_message == "operational_execution_handler_unavailable"
     execution_engine.execute.assert_not_called()
     verification_engine.verify.assert_not_called()
     review_engine.review.assert_not_called()

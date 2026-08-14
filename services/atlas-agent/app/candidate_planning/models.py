@@ -14,7 +14,7 @@ from app.workflow.models import WorkflowEffectKind
 
 SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})
 OPERATIONAL_PLANNING_INTENTS = frozenset({"restart-service"})
-OPERATIONAL_EXECUTION_INTENTS = frozenset()
+OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})
 RC1_VALIDATION_SMOKE_INTENT = "rc1-validation-smoke"
 
 

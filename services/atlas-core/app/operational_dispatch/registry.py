@@ -11,7 +11,7 @@ from app.operational_dispatch.models import (
 )
 from app.services.provider_resources import ResolvedOperationalTarget
 
-OPERATIONAL_EXECUTION_INTENTS = frozenset()
+OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})
 
 OperationalHandler = Callable[
     [OperationalDispatchRequest, ResolvedOperationalTarget],

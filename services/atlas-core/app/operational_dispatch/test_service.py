@@ -20,13 +20,14 @@ from app.providers.proxmox_operational import ProxmoxQemuGracefulRestartHandler
 from app.services.provider_resources import ProviderResourceOperationError
 
 
-def test_production_defaults_fail_closed_without_resolving_or_mutating(
+def test_explicit_empty_gate_fails_closed_without_resolving_or_mutating(
     tmp_path,
 ) -> None:
     resolver = AsyncMock()
     ledger = OperationalDispatchLedger(tmp_path / "operational.db")
     result = asyncio.run(OperationalDispatchService(
         ledger=ledger,
+        execution_intents=frozenset(),
         resolver=resolver,
     ).dispatch(make_request()))
     assert result.status is OperationalDispatchStatus.FAILED
@@ -35,7 +36,7 @@ def test_production_defaults_fail_closed_without_resolving_or_mutating(
     assert ledger.get(result.request_id).state is OperationalLedgerState.FAILED  # type: ignore[union-attr]
 
 
-def test_empty_production_gate_blocks_even_an_injected_proxmox_handler(tmp_path) -> None:
+def test_explicit_empty_gate_blocks_even_an_injected_proxmox_handler(tmp_path) -> None:
     client_factory = AsyncMock()
     handler = ProxmoxQemuGracefulRestartHandler(
         AsyncMock(), client_factory=client_factory
@@ -52,6 +53,7 @@ def test_empty_production_gate_blocks_even_an_injected_proxmox_handler(tmp_path)
         OperationalDispatchService(
             ledger=OperationalDispatchLedger(tmp_path / "operational.db"),
             registry=registry,
+            execution_intents=frozenset(),
             resolver=resolver,
         ).dispatch(make_request())
     )

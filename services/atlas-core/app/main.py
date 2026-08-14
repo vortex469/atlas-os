@@ -22,6 +22,10 @@ from app.operational_dispatch.lifecycle import (
     OperationalLifecycleService,
     OperationalVerifierRegistry,
 )
+from app.operational_dispatch.production import (
+    build_production_operational_handler_registry,
+)
+from app.operational_dispatch.registry import OperationalHandlerRegistry
 from app.operational_dispatch.service import OperationalDispatchService
 from app.providers.loader import load_provider_registry
 from app.providers.proxmox import ProxmoxProvider
@@ -62,13 +66,13 @@ async def lifespan(app: FastAPI):
     app.state.operational_dispatch_authenticator = OperationalDispatchAuthenticator(
         settings.operational_dispatch.agent_auth_file
     )
-    operational_dispatch_service = OperationalDispatchService(
-        ledger=operational_ledger
-    )
-    app.state.operational_dispatch_service = operational_dispatch_service
     verifier_registry = OperationalVerifierRegistry()
     proxmox_provider = provider_registry.get("proxmox")
+    handler_registry = OperationalHandlerRegistry()
     if isinstance(proxmox_provider, ProxmoxProvider):
+        handler_registry = build_production_operational_handler_registry(
+            proxmox_provider.atlas_context
+        )
         proxmox_verifier = ProxmoxQemuVerificationService(
             proxmox_provider.atlas_context
         )
@@ -84,6 +88,11 @@ async def lifespan(app: FastAPI):
             resource_type="qemu",
             verifier=verify_proxmox_qemu,
         )
+    operational_dispatch_service = OperationalDispatchService(
+        ledger=operational_ledger,
+        registry=handler_registry,
+    )
+    app.state.operational_dispatch_service = operational_dispatch_service
     operational_lifecycle = OperationalLifecycleService(
         ledger=operational_ledger,
         dispatcher=operational_dispatch_service,

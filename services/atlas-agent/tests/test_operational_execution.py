@@ -134,13 +134,13 @@ def _orchestrator(*, enabled=False, approval=None):
     return service, core, state, session
 
 
-def test_production_gate_remains_empty_and_makes_no_core_call() -> None:
+def test_explicit_disabled_policy_makes_no_core_call() -> None:
     session = _session()
     service, core, state, _ = _orchestrator(approval=_approval(session))
 
     result = asyncio.run(service.resume(session.identifier))
 
-    assert OPERATIONAL_EXECUTION_INTENTS == frozenset()
+    assert OPERATIONAL_EXECUTION_INTENTS == frozenset({"restart-service"})
     assert result.error_message == "operational_execution_not_enabled"
     core.dispatch_operational_action.assert_not_awaited()
     reference = state.get_session(session.identifier).operational_execution_reference

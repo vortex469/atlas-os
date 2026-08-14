@@ -26,7 +26,10 @@ def _client(tmp_path) -> tuple[TestClient, OperationalDispatchLedger, str]:
     app.state.operational_dispatch_authenticator = OperationalDispatchAuthenticator(
         token_file
     )
-    dispatcher = OperationalDispatchService(ledger=ledger)
+    dispatcher = OperationalDispatchService(
+        ledger=ledger,
+        execution_intents=frozenset(),
+    )
     app.state.operational_dispatch_service = dispatcher
     app.state.operational_lifecycle_service = OperationalLifecycleService(
         ledger=ledger,
@@ -57,7 +60,7 @@ def test_missing_malformed_and_wrong_auth_are_rejected_before_body_parse(tmp_pat
     assert statuses.count(OperationalDispatchAuditStatus.AUTH_REJECTED) == 3
 
 
-def test_authenticated_strict_request_reaches_empty_execution_gate(tmp_path) -> None:
+def test_authenticated_strict_request_reaches_explicit_empty_execution_gate(tmp_path) -> None:
     client, ledger, token = _client(tmp_path)
     request = make_request()
     response = _post(client, token, request.model_dump(mode="json"))
