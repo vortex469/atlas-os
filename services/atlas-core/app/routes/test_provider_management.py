@@ -136,4 +136,4 @@ def test_contract_contains_no_timestamp_or_write_authority(
             "updated_at",
         }
     )
-    assert management_descriptor.schema_version == "provider-management-v1"
+    assert management_descriptor.schema_version == "provider-management-v2"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -7,7 +8,13 @@ import yaml
 
 from app.actions.history import ProviderActionHistory
 from app.config import policies as policy_config
+from app.config.settings import (
+    ProviderIntentActivation,
+    ProviderIntentSettings,
+)
 from app.main import app
+from app.provider_intents.authority import ProxmoxMonitoringIntentAuthority
+from app.provider_intents.store import ProviderIntentStore
 from app.providers.loader import load_provider_registry
 from app.testing import ASGITestClient
 
@@ -128,6 +135,65 @@ def test_put_without_confirmation_returns_409() -> None:
     assert body["error"]["message"] == (
         "Resource expectation updates require confirmed=true."
     )
+
+
+def test_activated_put_is_rejected_without_yaml_mutation(
+    provider_resource_test_setup: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_action_history: ProviderActionHistory,
+) -> None:
+    import app.services.provider_resources as resource_service
+
+    database = provider_resource_test_setup.parent / "provider_intents.db"
+    store = ProviderIntentStore(database)
+    authority = ProxmoxMonitoringIntentAuthority(
+        ProviderIntentSettings(
+            activation=ProviderIntentActivation.ACTIVATED,
+            database=str(database),
+            expected_legacy_import_id=(
+                "provider-intent-legacy-policy-import-v1:" + "a" * 64
+            ),
+        ),
+        store,
+    )
+
+    monkeypatch.setattr(
+        resource_service,
+        "get_monitoring_intent_authority",
+        lambda: authority,
+    )
+    before = provider_resource_test_setup.read_bytes()
+    with sqlite3.connect(database) as connection:
+        store_counts = tuple(
+            connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in (
+                "provider_intent_records",
+                "provider_intent_audit",
+                "provider_intent_requests",
+            )
+        )
+
+    response = client.request(
+        "PUT",
+        "/api/v1/providers/proxmox/resources/109/expectation",
+        json={"expectation": "ignored", "confirmed": True},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["message"] == (
+        "Provider Intent mutation is unavailable until P3."
+    )
+    assert provider_resource_test_setup.read_bytes() == before
+    assert isolated_action_history.list(limit=10) == []
+    with sqlite3.connect(database) as connection:
+        assert store_counts == tuple(
+            connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in (
+                "provider_intent_records",
+                "provider_intent_audit",
+                "provider_intent_requests",
+            )
+        )
 
 
 def test_invalid_expectation_returns_422() -> None:

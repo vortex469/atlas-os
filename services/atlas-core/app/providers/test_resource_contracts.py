@@ -12,6 +12,8 @@ from app.models.resources import (
     ProviderResourceExpectation,
     ProviderResourceIdentity,
     ProviderResourceSummary,
+    ResourceIntentAuthority,
+    ResourceIntentReason,
     UpdateResourceExpectationRequest,
     UpdateResourceExpectationResult,
 )
@@ -153,6 +155,21 @@ def test_needs_review_expectation_cannot_persist_value() -> None:
             value="running",
             label="Needs Review",
             state="needs_review",
+        )
+
+
+def test_provider_intent_expectation_state_matrix_is_structural() -> None:
+    with pytest.raises(ValidationError, match="contradict"):
+        ProviderResourceExpectation(
+            authority=ResourceIntentAuthority.PROVIDER_INTENT,
+            state="needs_review",
+            reason=ResourceIntentReason.MATCHING_ACTIVE_INTENT,
+        )
+    with pytest.raises(ValidationError, match="contradict"):
+        ProviderResourceExpectation(
+            authority=ResourceIntentAuthority.LEGACY_POLICY,
+            state="unavailable",
+            reason=ResourceIntentReason.AUTHORITY_STORE_UNAVAILABLE,
         )
 
 

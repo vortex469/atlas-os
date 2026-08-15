@@ -163,4 +163,16 @@ def test_activated_validation_rejects_unsupported_or_corrupt_store(
 
 def test_activation_helper_has_no_production_wiring() -> None:
     main = Path(__file__).parents[1] / "main.py"
-    assert "validate_provider_intent_activation" not in main.read_text(encoding="utf-8")
+    source = main.read_text(encoding="utf-8")
+    assert source.index("assert_restore_state_clean(") < source.index(
+        "validate_configuration()"
+    )
+    assert source.index("validate_configuration()") < source.index(
+        "validate_provider_intent_activation("
+    )
+    assert source.index("validate_provider_intent_activation(") < source.index(
+        "development_fixture_enabled_and_validated()"
+    )
+    assert source.index("validate_provider_intent_activation(") < source.index(
+        "load_provider_registry()"
+    )

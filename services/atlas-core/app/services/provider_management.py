@@ -9,10 +9,14 @@ import re
 from app.models.provider_management import (
     ManagedResourceIdentityAssurance,
     ManagedResourceProjection,
+    ProviderIntentReadAuthority,
+    ProviderIntentReadReason,
+    ProviderIntentReadStatus,
     ProviderManagementDescriptor,
     ProviderManagementSection,
     ProviderManagementSectionAvailability,
     ProviderManagementSectionDescriptor,
+    ProviderMonitoringExpectation,
     ProviderResourceManagementSupport,
 )
 from app.models.resources import ProviderResource
@@ -110,6 +114,26 @@ def project_managed_resource(
         missing=resource.missing,
         identity_assurance=_identity_assurance(resource, support),
         management_fingerprint=_management_fingerprint(resource, support),
+        intent_authority=ProviderIntentReadAuthority(
+            resource.expectation.authority.value
+        ),
+        intent_status=ProviderIntentReadStatus(
+            "missing" if resource.missing else resource.expectation.state
+        ),
+        intent_reason=ProviderIntentReadReason(resource.expectation.reason.value),
+        expectation=(
+            ProviderMonitoringExpectation(resource.expectation.value)
+            if resource.expectation.value is not None
+            else None
+        ),
+        record_version=resource.expectation.record_version,
+        legacy_review_available=resource.expectation.legacy_review_available,
+        legacy_expectation=(
+            ProviderMonitoringExpectation(resource.expectation.legacy_expectation)
+            if resource.expectation.legacy_expectation is not None
+            else None
+        ),
+        replacement_detected=resource.expectation.replacement_detected,
     )
 
 
@@ -157,4 +181,14 @@ async def get_provider_management_descriptor(
         ),
         resource_types=registry.for_provider(provider_id),
         resources=resources,
+        provider_intent_activation=(
+            collection.intent_authority.value == "provider_intent"
+            and "activated"
+            or "not_activated"
+        ) if isinstance(provider, ProviderResourceAdapter) else "not_activated",
+        provider_intent_authority_status=(
+            collection.intent_authority_status
+            if isinstance(provider, ProviderResourceAdapter)
+            else "available"
+        ),
     )

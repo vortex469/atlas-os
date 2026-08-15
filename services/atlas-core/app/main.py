@@ -34,6 +34,8 @@ from app.operator_auth.audit import OperatorSecurityAuditStore
 from app.operator_auth.credentials import OperatorCredentialVerifier
 from app.operator_auth.rate_limit import OperatorRateLimiter
 from app.operator_auth.sessions import OperatorSessionStore
+from app.provider_intents.activation import validate_provider_intent_activation
+from app.provider_intents.authority import configure_monitoring_intent_authority
 from app.providers.loader import load_provider_registry
 from app.providers.proxmox import ProxmoxProvider
 from app.providers.proxmox_operational import ProxmoxQemuVerificationService
@@ -63,6 +65,13 @@ async def lifespan(app: FastAPI):
     )
     validate_configuration()
     logger.info("Atlas configuration validated")
+    provider_intent_store = validate_provider_intent_activation(
+        settings.provider_intents
+    )
+    app.state.monitoring_intent_authority = configure_monitoring_intent_authority(
+        settings.provider_intents,
+        provider_intent_store,
+    )
     development_fixture_enabled_and_validated()
 
     operator_settings = settings.operator_auth

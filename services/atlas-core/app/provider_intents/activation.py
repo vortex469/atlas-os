@@ -1,4 +1,4 @@
-"""Explicit Provider Intent activation validation without startup wiring."""
+"""Fail-closed Provider Intent activation validation for Core startup."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def validate_provider_intent_activation(
     *,
     policy_path: Path = Path("/opt/atlas/data/config/policies.yaml"),
 ) -> ProviderIntentStore | None:
-    """Validate a future startup authority choice without changing authority."""
+    """Validate the configured startup authority without mutating durable state."""
 
     database = Path(settings.database)
     if settings.activation is ProviderIntentActivation.NOT_ACTIVATED:

@@ -259,7 +259,7 @@ def test_resolver_has_no_provider_network_or_execution_dependencies() -> None:
         assert forbidden not in source.casefold()
 
 
-def test_existing_production_authority_consumers_remain_unchanged() -> None:
+def test_p2c2_consumers_use_shared_authority_without_changing_execution() -> None:
     app_root = Path(__file__).parents[1]
     runtime = (app_root / "services" / "runtime_resolver.py").read_text(
         encoding="utf-8"
@@ -269,8 +269,8 @@ def test_existing_production_authority_consumers_remain_unchanged() -> None:
         encoding="utf-8"
     )
     main = (app_root / "main.py").read_text(encoding="utf-8")
-    assert "policy_config.load_policies" in runtime
-    assert "reader.list_guest_expectations" in provider
-    assert "get_expected_guest_state" in intelligence
-    assert "ProviderMonitoringIntentResolver" not in main
+    assert "get_monitoring_intent_authority" in runtime
+    assert "list_guest_expectations" not in provider
+    assert "get_expected_guest_state" not in intelligence
+    assert "validate_provider_intent_activation" in main
     assert ProviderIntentSettings().activation is ProviderIntentActivation.NOT_ACTIVATED

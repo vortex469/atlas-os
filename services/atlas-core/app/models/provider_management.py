@@ -42,6 +42,32 @@ class ProviderMonitoringExpectation(StrEnum):
     IGNORED = "ignored"
 
 
+class ProviderIntentReadStatus(StrEnum):
+    CONFIGURED = "configured"
+    NEEDS_REVIEW = "needs_review"
+    MISSING = "missing"
+    UNSUPPORTED = "unsupported"
+    UNAVAILABLE = "unavailable"
+
+
+class ProviderIntentReadAuthority(StrEnum):
+    LEGACY_POLICY = "legacy_policy"
+    PROVIDER_INTENT = "provider_intent"
+
+
+class ProviderIntentReadReason(StrEnum):
+    LEGACY_POLICY_MATCH = "legacy_policy_match"
+    NO_LEGACY_POLICY = "no_legacy_policy"
+    MATCHING_ACTIVE_INTENT = "matching_active_intent"
+    NO_ACTIVE_INTENT = "no_active_intent"
+    LEGACY_UNBOUND_EVIDENCE = "legacy_unbound_evidence"
+    INCARNATION_MISMATCH = "incarnation_mismatch"
+    IDENTITY_UNAVAILABLE = "identity_unavailable"
+    RESOURCE_MISSING = "resource_missing"
+    RESOURCE_TYPE_UNSUPPORTED = "resource_type_unsupported"
+    AUTHORITY_STORE_UNAVAILABLE = "authority_store_unavailable"
+
+
 class ProviderManagementSectionDescriptor(ProviderManagementModel):
     section: ProviderManagementSection
     availability: ProviderManagementSectionAvailability
@@ -113,6 +139,17 @@ class ManagedResourceProjection(ProviderManagementModel):
         default=None,
         pattern=PROVIDER_MANAGEMENT_FINGERPRINT_PATTERN,
     )
+    intent_authority: ProviderIntentReadAuthority = (
+        ProviderIntentReadAuthority.LEGACY_POLICY
+    )
+    intent_status: ProviderIntentReadStatus = ProviderIntentReadStatus.NEEDS_REVIEW
+    intent_reason: ProviderIntentReadReason = ProviderIntentReadReason.NO_LEGACY_POLICY
+    expectation: ProviderMonitoringExpectation | None = None
+    record_version: int | None = Field(default=None, ge=1)
+    legacy_review_available: bool = False
+    legacy_expectation: ProviderMonitoringExpectation | None = None
+    replacement_detected: bool = False
+    mutation_available: Literal[False] = False
     operationally_requestable: Literal[False] = False
     grants_execution: Literal[False] = False
 
@@ -126,16 +163,97 @@ class ManagedResourceProjection(ProviderManagementModel):
             raise ValueError(
                 "only authoritative identity may have a management fingerprint."
             )
+        provider_intent_configured = (
+            self.intent_authority is ProviderIntentReadAuthority.PROVIDER_INTENT
+            and self.intent_status
+            in {ProviderIntentReadStatus.CONFIGURED, ProviderIntentReadStatus.MISSING}
+        )
+        if provider_intent_configured != (self.record_version is not None):
+            raise ValueError(
+                "configured Provider Intent state requires expectation and version."
+            )
+        if provider_intent_configured and self.expectation is None:
+            raise ValueError(
+                "configured Provider Intent state requires expectation and version."
+            )
+        if self.legacy_review_available != (self.legacy_expectation is not None):
+            raise ValueError(
+                "legacy review availability and expectation must agree."
+            )
+        if self.replacement_detected != (
+            self.intent_reason is ProviderIntentReadReason.INCARNATION_MISMATCH
+        ):
+            raise ValueError("replacement detection and reason must agree.")
+        valid_reasons = {
+            ProviderIntentReadAuthority.LEGACY_POLICY: {
+                ProviderIntentReadStatus.CONFIGURED: {
+                    ProviderIntentReadReason.LEGACY_POLICY_MATCH
+                },
+                ProviderIntentReadStatus.MISSING: {
+                    ProviderIntentReadReason.LEGACY_POLICY_MATCH
+                },
+                ProviderIntentReadStatus.NEEDS_REVIEW: {
+                    ProviderIntentReadReason.NO_LEGACY_POLICY
+                },
+            },
+            ProviderIntentReadAuthority.PROVIDER_INTENT: {
+                ProviderIntentReadStatus.CONFIGURED: {
+                    ProviderIntentReadReason.MATCHING_ACTIVE_INTENT
+                },
+                ProviderIntentReadStatus.MISSING: {
+                    ProviderIntentReadReason.RESOURCE_MISSING
+                },
+                ProviderIntentReadStatus.NEEDS_REVIEW: {
+                    ProviderIntentReadReason.NO_ACTIVE_INTENT,
+                    ProviderIntentReadReason.LEGACY_UNBOUND_EVIDENCE,
+                    ProviderIntentReadReason.INCARNATION_MISMATCH,
+                    ProviderIntentReadReason.IDENTITY_UNAVAILABLE,
+                },
+                ProviderIntentReadStatus.UNSUPPORTED: {
+                    ProviderIntentReadReason.RESOURCE_TYPE_UNSUPPORTED
+                },
+                ProviderIntentReadStatus.UNAVAILABLE: {
+                    ProviderIntentReadReason.AUTHORITY_STORE_UNAVAILABLE
+                },
+            },
+        }
+        if self.intent_reason not in valid_reasons[self.intent_authority].get(
+            self.intent_status, set()
+        ):
+            raise ValueError(
+                "monitoring intent authority, status, and reason contradict."
+            )
+        if (
+            self.intent_authority is ProviderIntentReadAuthority.PROVIDER_INTENT
+            and self.intent_status is ProviderIntentReadStatus.CONFIGURED
+            and self.identity_assurance
+            is not ManagedResourceIdentityAssurance.AUTHORITATIVE
+        ):
+            raise ValueError(
+                "configured Provider Intent requires current authoritative identity."
+            )
+        if (
+            self.intent_status is ProviderIntentReadStatus.MISSING
+            and self.identity_assurance
+            is ManagedResourceIdentityAssurance.AUTHORITATIVE
+        ):
+            raise ValueError("missing resources cannot claim current identity.")
         return self
 
 
 class ProviderManagementDescriptor(ProviderManagementModel):
-    schema_version: Literal["provider-management-v1"] = "provider-management-v1"
+    schema_version: Literal["provider-management-v2"] = "provider-management-v2"
     provider_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     provider_name: str = Field(min_length=1)
     sections: tuple[ProviderManagementSectionDescriptor, ...]
     resource_types: tuple[ProviderResourceManagementSupport, ...]
     resources: tuple[ManagedResourceProjection, ...]
+    provider_intent_activation: Literal["not_activated", "activated"] = (
+        "not_activated"
+    )
+    provider_intent_authority_status: Literal["available", "unavailable"] = (
+        "available"
+    )
     grants_permission: Literal[False] = False
     grants_execution: Literal[False] = False
 

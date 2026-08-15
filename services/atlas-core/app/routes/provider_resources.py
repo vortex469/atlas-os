@@ -10,6 +10,7 @@ from app.models.resources import (
 )
 from app.providers import ProviderNotFoundError
 from app.services.provider_resources import (
+    ProviderIntentMutationUnavailableError,
     ProviderResourceConfirmationRequiredError,
     ProviderResourceInvalidExpectationError,
     ProviderResourceOperationError,
@@ -104,6 +105,8 @@ async def update_provider_resource_intent(
             detail=f"Unknown provider '{provider_id}'.",
         ) from error
     except ProviderResourceConfirmationRequiredError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except ProviderIntentMutationUnavailableError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     except ProviderResourceInvalidExpectationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error

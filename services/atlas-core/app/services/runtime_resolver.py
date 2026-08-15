@@ -1,25 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from app.config import policies as policy_config
-from app.config.resource_policies import update_proxmox_guest_expectation
 from app.context import MetadataContext, RuntimeContext
-
-
-class ProxmoxRuntimeIntentService:
-    """Runtime-backed Proxmox intent access hidden behind AtlasContext."""
-
-    def list_guest_expectations(self) -> dict[str, Any]:
-        return dict(policy_config.load_policies().proxmox.guests)
-
-    def update_guest_expectation(
-        self,
-        resource_id: str,
-        expectation: str,
-    ) -> str:
-        return update_proxmox_guest_expectation(resource_id, expectation)
+from app.provider_intents.authority import get_monitoring_intent_authority
 
 
 class RuntimeContextResolver:
@@ -51,7 +35,7 @@ class RuntimeContextResolver:
         )
 
 
-def _intent_service_for(consumer_id: str) -> ProxmoxRuntimeIntentService | None:
+def _intent_service_for(consumer_id: str):
     if consumer_id == "proxmox":
-        return ProxmoxRuntimeIntentService()
+        return get_monitoring_intent_authority()
     return None

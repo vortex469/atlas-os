@@ -13,6 +13,7 @@ from app.context import (
     RuntimeContext,
     SecretContext,
 )
+from app.provider_intents.authority import get_monitoring_intent_authority
 from app.providers.capabilities import ProviderCapability
 from app.providers.proxmox import ProxmoxProvider
 from app.providers.resources import ProviderExpectationAdapter, ProviderResourceAdapter
@@ -91,6 +92,7 @@ def configure_provider_test(
 
 def resources_by_id(provider: ProxmoxProvider) -> dict[str, object]:
     collection = asyncio.run(provider.list_resources())
+    collection = get_monitoring_intent_authority().resolve_collection(collection)
     return {resource.resource_id: resource for resource in collection.resources}
 
 
@@ -443,7 +445,7 @@ def test_provider_metadata_comes_from_context_and_is_context_aware() -> None:
     }.issubset(provider.metadata.capabilities)
 
 
-def test_resource_listing_reads_expectations_through_context_runtime_intent_reader(
+def test_provider_adapter_does_not_read_context_runtime_intent_reader(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import app.providers.proxmox as proxmox_provider
@@ -451,12 +453,15 @@ def test_resource_listing_reads_expectations_through_context_runtime_intent_read
     intent_service = RecordingIntentService({"109": "stopped"})
     monkeypatch.setattr(proxmox_provider, "get_proxmox_guests", guest_inventory)
 
-    resources = resources_by_id(
-        ProxmoxProvider(proxmox_context(intent_service=intent_service))
+    collection = asyncio.run(
+        ProxmoxProvider(
+            proxmox_context(intent_service=intent_service)
+        ).list_resources()
     )
+    resources = {resource.resource_id: resource for resource in collection.resources}
 
-    assert resources["109"].expectation.value == "stopped"
-    assert resources["109"].configured is True
+    assert resources["109"].expectation.value is None
+    assert resources["109"].configured is False
     assert resources["100"].needs_review is True
 
 

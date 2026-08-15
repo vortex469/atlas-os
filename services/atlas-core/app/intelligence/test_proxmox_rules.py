@@ -1,5 +1,29 @@
+from app.config.settings import ProviderIntentActivation
 from app.intelligence.findings import Severity
 from app.intelligence.proxmox_rules import evaluate_proxmox
+from app.models.provider_intents import ProviderIntentValue
+from app.provider_intents.resolver import (
+    ProviderIntentResolution,
+    ProviderIntentResolutionReason,
+    ProviderIntentResolutionSet,
+    ProviderIntentResolutionStatus,
+)
+
+
+def _resolution(
+    *resources: ProviderIntentResolution,
+    available: bool = True,
+) -> ProviderIntentResolutionSet:
+    return ProviderIntentResolutionSet(
+        activation=ProviderIntentActivation.ACTIVATED,
+        authority_available=available,
+        authority_reason=(
+            None
+            if available
+            else ProviderIntentResolutionReason.AUTHORITY_STORE_UNAVAILABLE
+        ),
+        resources=tuple(resources),
+    )
 
 
 def test_unexpected_stopped_guest() -> None:
@@ -168,6 +192,77 @@ def test_critical_memory() -> None:
     assert critical.severity == Severity.CRITICAL
     assert critical.score_penalty == 20
     assert critical.metric["memory_percent"] == 96.88
+
+
+def test_activated_intent_only_flags_exact_configured_running_qemu() -> None:
+    fingerprint = "provider-management-fingerprint-v1:" + "a" * 64
+    configured = ProviderIntentResolution(
+        provider_id="proxmox",
+        resource_type="qemu",
+        resource_id="101",
+        status=ProviderIntentResolutionStatus.CONFIGURED,
+        reason=ProviderIntentResolutionReason.MATCHING_ACTIVE_INTENT,
+        expectation=ProviderIntentValue.RUNNING,
+        record_version=1,
+        bound_management_fingerprint=fingerprint,
+    )
+    review = ProviderIntentResolution(
+        provider_id="proxmox",
+        resource_type="qemu",
+        resource_id="102",
+        status=ProviderIntentResolutionStatus.NEEDS_REVIEW,
+        reason=ProviderIntentResolutionReason.INCARNATION_MISMATCH,
+        replacement_detected=True,
+    )
+    findings = evaluate_proxmox(
+        status={"node": "node-a"},
+        guests={
+            "guests": [
+                {"vmid": 101, "type": "qemu", "status": "stopped"},
+                {"vmid": 102, "type": "qemu", "status": "stopped"},
+                {"vmid": 109, "type": "lxc", "status": "stopped"},
+            ]
+        },
+        intent_resolution=_resolution(configured, review),
+    )
+    mismatch = next(
+        item for item in findings if item.id == "proxmox-guests-unexpected-stopped"
+    )
+    assert mismatch.metric["unexpected_stopped"] == 1
+
+
+def test_activated_degraded_and_missing_findings_preserve_cpu_findings() -> None:
+    degraded = evaluate_proxmox(
+        status={"node": "node-a", "cpu_percent": 96},
+        guests={"guests": []},
+        intent_resolution=_resolution(available=False),
+    )
+    assert {item.id for item in degraded}.issuperset(
+        {
+            "proxmox-provider-intent-authority-unavailable",
+            "proxmox-cpu-critical",
+            "proxmox-node-status",
+        }
+    )
+
+    missing = ProviderIntentResolution(
+        provider_id="proxmox",
+        resource_type="qemu",
+        resource_id="110",
+        status=ProviderIntentResolutionStatus.MISSING,
+        reason=ProviderIntentResolutionReason.RESOURCE_MISSING,
+        expectation=ProviderIntentValue.RUNNING,
+        record_version=1,
+        bound_management_fingerprint=(
+            "provider-management-fingerprint-v1:" + "b" * 64
+        ),
+    )
+    findings = evaluate_proxmox(
+        status={"node": "node-a"},
+        guests={"guests": []},
+        intent_resolution=_resolution(missing),
+    )
+    assert "proxmox-configured-qemu-missing" in {item.id for item in findings}
 
 
 if __name__ == "__main__":

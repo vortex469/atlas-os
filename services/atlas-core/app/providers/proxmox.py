@@ -224,17 +224,13 @@ class ProxmoxProvider(Provider):
 
     async def list_resources(self) -> ProviderResourceCollection:
         guest_inventory = _call_proxmox_guests(self.atlas_context)
-        configured_guests = _configured_guest_expectations(self.atlas_context)
         node = str(guest_inventory.get("node", "unknown"))
         resources: list[ProviderResource] = []
-        seen_vmids: set[str] = set()
 
         for guest in guest_inventory.get("guests", []):
             vmid = str(guest.get("vmid"))
-            seen_vmids.add(vmid)
             resource_type = str(guest.get("type", "unknown"))
             identity = _qemu_identity(guest, node=node)
-            expected = _configured_expectation(configured_guests, vmid)
             resources.append(
                 ProviderResource(
                     provider_id=PROVIDER_ID,
@@ -245,11 +241,8 @@ class ProxmoxProvider(Provider):
                     resource_type=resource_type,
                     current_state=str(guest.get("status", "unknown")),
                     identity=identity,
-                    expectation=self._resource_expectation(
-                        resource_type,
-                        expected,
-                    ),
-                    configured=expected is not None,
+                    expectation=self._resource_expectation(resource_type, None),
+                    configured=False,
                     missing=False,
                     metadata={
                         "node": node,
@@ -260,30 +253,6 @@ class ProxmoxProvider(Provider):
                         "uptime_seconds": guest.get("uptime_seconds"),
                         "template": bool(guest.get("template", False)),
                         "lock": guest.get("lock"),
-                    },
-                )
-            )
-
-        for vmid, expectation in configured_guests.items():
-            if vmid in seen_vmids:
-                continue
-
-            resources.append(
-                ProviderResource(
-                    provider_id=PROVIDER_ID,
-                    resource_id=vmid,
-                    display_name=f"Missing Proxmox guest {vmid}",
-                    resource_type="unknown",
-                    current_state="missing",
-                    expectation=self._resource_expectation(
-                        "unknown",
-                        expectation,
-                    ),
-                    configured=True,
-                    missing=True,
-                    metadata={
-                        "node": node,
-                        "vmid": _metadata_vmid(vmid),
                     },
                 )
             )
@@ -478,18 +447,6 @@ def _call_proxmox_guests(atlas_context: AtlasContext) -> dict:
         return get_proxmox_guests()
 
 
-def _configured_guest_expectations(
-    atlas_context: AtlasContext,
-) -> dict[str, str]:
-    reader = atlas_context.runtime.intent_reader
-    if reader is None:
-        return {}
-    return {
-        str(vmid): _guest_policy_expectation(guest_policy)
-        for vmid, guest_policy in reader.list_guest_expectations().items()
-    }
-
-
 def _update_guest_expectation(
     atlas_context: AtlasContext,
     resource_id: str,
@@ -504,26 +461,6 @@ def _update_guest_expectation(
     if writer is None:
         raise RuntimeError("Proxmox runtime intent writer is not configured.")
     writer.update_guest_expectation(str(resource_id), expectation)
-
-
-def _configured_expectation(
-    configured_guests: dict[str, str],
-    vmid: str,
-) -> str | None:
-    return configured_guests.get(vmid)
-
-
-def _guest_policy_expectation(guest_policy: Any) -> str:
-    if isinstance(guest_policy, str):
-        return guest_policy
-    return str(guest_policy.expected)
-
-
-def _metadata_vmid(vmid: str) -> int | str:
-    try:
-        return int(vmid)
-    except ValueError:
-        return vmid
 
 
 def _resource_sort_key(resource_id: str) -> tuple[int, int | str]:

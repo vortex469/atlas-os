@@ -1,5 +1,9 @@
-from app.config.policies import get_expected_guest_state, is_expected_guest
 from app.intelligence.findings import Finding, Severity
+from app.provider_intents.authority import ProxmoxMonitoringIntentSnapshot
+from app.provider_intents.resolver import (
+    ProviderIntentResolutionSet,
+    ProviderIntentResolutionStatus,
+)
 
 CPU_WARNING_PERCENT = 85
 CPU_CRITICAL_PERCENT = 95
@@ -11,10 +15,20 @@ MEMORY_CRITICAL_PERCENT = 95
 def evaluate_proxmox(
     status: dict,
     guests: dict,
-    expected_guest_checker=is_expected_guest,
-    expected_guest_state_getter=get_expected_guest_state,
+    expected_guest_checker=None,
+    expected_guest_state_getter=None,
+    intent_resolution: ProviderIntentResolutionSet | None = None,
+    monitoring_intent: ProxmoxMonitoringIntentSnapshot | None = None,
 ) -> list[Finding]:
     findings: list[Finding] = []
+
+    if monitoring_intent is not None:
+        intent_resolution = monitoring_intent.provider_intent_resolution
+        legacy_expectations = dict(monitoring_intent.legacy_expectations)
+        expected_guest_state_getter = lambda vmid: legacy_expectations.get(str(vmid))
+        expected_guest_checker = (
+            lambda vmid, state: legacy_expectations.get(str(vmid)) == state
+        )
 
     node = status.get("node", "unknown")
     cpu_percent = float(status.get("cpu_percent", 0))
@@ -141,6 +155,25 @@ def evaluate_proxmox(
             )
         )
 
+    if intent_resolution is not None and not intent_resolution.authority_available:
+        findings.append(
+            Finding(
+                id="proxmox-provider-intent-authority-unavailable",
+                severity=Severity.CRITICAL,
+                category="infrastructure",
+                source="proxmox",
+                component="Proxmox",
+                title="Proxmox monitoring intent authority unavailable",
+                message="Atlas cannot validate Proxmox monitoring expectations.",
+                recommendation="Restore the configured Provider Intent authority.",
+                score_penalty=20,
+            )
+        )
+
+    resolved = {
+        (item.resource_type, item.resource_id): item
+        for item in (intent_resolution.resources if intent_resolution else ())
+    }
     unexpected_stopped = []
 
     for guest in guest_items:
@@ -149,13 +182,25 @@ def evaluate_proxmox(
 
         vmid = guest.get("vmid")
 
-        expected_state = expected_guest_state_getter(vmid)
-
-        if expected_state in {"ignored", "stopped"}:
-            continue
-
-        if expected_guest_checker(vmid, "stopped"):
-            continue
+        if intent_resolution is not None:
+            item = resolved.get((str(guest.get("type", "unknown")), str(vmid)))
+            if item is None or item.status is not ProviderIntentResolutionStatus.CONFIGURED:
+                continue
+            expected_state = item.expectation.value if item.expectation else None
+            if expected_state in {"ignored", "stopped"}:
+                continue
+        else:
+            expected_state = (
+                expected_guest_state_getter(vmid)
+                if expected_guest_state_getter is not None
+                else None
+            )
+            if expected_state in {"ignored", "stopped"}:
+                continue
+            if expected_guest_checker is not None and expected_guest_checker(
+                vmid, "stopped"
+            ):
+                continue
 
         unexpected_stopped.append(
             {
@@ -190,6 +235,29 @@ def evaluate_proxmox(
                     "node": node,
                     "guests": unexpected_stopped,
                 },
+                score_penalty=5,
+            )
+        )
+
+    missing_running = [
+        item
+        for item in (intent_resolution.resources if intent_resolution else ())
+        if item.status is ProviderIntentResolutionStatus.MISSING
+        and item.expectation is not None
+        and item.expectation.value == "running"
+    ]
+    if missing_running:
+        findings.append(
+            Finding(
+                id="proxmox-configured-qemu-missing",
+                severity=Severity.WARNING,
+                category="infrastructure",
+                source="proxmox",
+                component="Proxmox",
+                title="Configured Proxmox QEMU missing",
+                message=f"{len(missing_running)} configured QEMU resource(s) are missing.",
+                recommendation="Review provider discovery and the configured resources.",
+                metric={"missing_configured_qemu": len(missing_running)},
                 score_penalty=5,
             )
         )

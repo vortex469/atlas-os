@@ -8,16 +8,22 @@ from pydantic import ValidationError
 from app.models.provider_management import (
     ManagedResourceIdentityAssurance,
     ManagedResourceProjection,
+    ProviderIntentReadAuthority,
+    ProviderIntentReadReason,
+    ProviderIntentReadStatus,
     ProviderManagementDescriptor,
     ProviderManagementSection,
     ProviderManagementSectionAvailability,
     ProviderManagementSectionDescriptor,
+    ProviderMonitoringExpectation,
     ProviderResourceManagementSupport,
 )
 from app.models.resources import (
     ProviderResource,
     ProviderResourceExpectation,
     ProviderResourceIdentity,
+    ResourceIntentAuthority,
+    ResourceIntentReason,
 )
 from app.providers.management import provider_resource_management_registry
 from app.providers.proxmox_identity import build_proxmox_qemu_identity
@@ -91,6 +97,23 @@ def test_management_models_are_strict_frozen_and_closed() -> None:
             display_name="Frigate",
             current_state="running",
             identity_assurance=ManagedResourceIdentityAssurance.AUTHORITATIVE,
+        )
+    with pytest.raises(ValidationError, match="contradict"):
+        ManagedResourceProjection(
+            provider_id="proxmox",
+            resource_id="110",
+            resource_type="qemu",
+            display_name="Frigate",
+            current_state="running",
+            identity_assurance=ManagedResourceIdentityAssurance.AUTHORITATIVE,
+            management_fingerprint=(
+                "provider-management-fingerprint-v1:" + "a" * 64
+            ),
+            intent_authority=ProviderIntentReadAuthority.PROVIDER_INTENT,
+            intent_status=ProviderIntentReadStatus.CONFIGURED,
+            intent_reason=ProviderIntentReadReason.NO_ACTIVE_INTENT,
+            expectation=ProviderMonitoringExpectation.RUNNING,
+            record_version=1,
         )
     with pytest.raises(ValidationError, match="only authoritative"):
         ManagedResourceProjection(
@@ -259,6 +282,29 @@ def test_public_support_contract_has_no_arbitrary_or_execution_fields() -> None:
             "handler",
             "selector",
         }
+    )
+
+
+def test_v2_projection_exposes_only_bounded_provider_intent_state() -> None:
+    resource = _resource()
+    resource.expectation = ProviderResourceExpectation(
+        value="running",
+        label="Expected Running",
+        state="configured",
+        authority=ResourceIntentAuthority.PROVIDER_INTENT,
+        reason=ResourceIntentReason.MATCHING_ACTIVE_INTENT,
+        record_version=2,
+    )
+
+    projected = project_managed_resource(resource)
+
+    assert projected.intent_authority.value == "provider_intent"
+    assert projected.intent_status.value == "configured"
+    assert projected.expectation.value == "running"
+    assert projected.record_version == 2
+    assert projected.mutation_available is False
+    assert set(ManagedResourceProjection.model_fields).isdisjoint(
+        {"intent_id", "source_reference", "import_id", "request_id", "audit"}
     )
 
 

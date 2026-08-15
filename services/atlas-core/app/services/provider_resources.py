@@ -12,6 +12,10 @@ from app.models.resources import (
     ProviderResourceCollection,
     UpdateResourceExpectationResult,
 )
+from app.provider_intents.authority import (
+    ProviderIntentMutationUnavailableError,
+    get_monitoring_intent_authority,
+)
 from app.providers import Provider, ProviderNotFoundError
 from app.providers.models import ProviderMetadata
 from app.providers.registry import provider_registry
@@ -118,7 +122,8 @@ async def list_provider_resources(
     adapter = get_resource_adapter(provider_id)
 
     try:
-        return await adapter.list_resources()
+        collection = await adapter.list_resources()
+        return get_monitoring_intent_authority().resolve_collection(collection)
     except ProviderResourceError:
         raise
     except Exception as error:
@@ -207,7 +212,8 @@ async def refresh_provider_resources(
     adapter = get_resource_adapter(provider_id)
 
     try:
-        return await adapter.refresh_resources()
+        collection = await adapter.refresh_resources()
+        return get_monitoring_intent_authority().resolve_collection(collection)
     except ProviderResourceError:
         raise
     except Exception as error:
@@ -244,6 +250,9 @@ async def update_provider_resource_expectation(
                 "Resource expectation updates require confirmed=true."
             )
 
+        if provider_id == "proxmox":
+            get_monitoring_intent_authority().require_legacy_mutation_available()
+
         provider.normalize_expectation("unknown", expectation)
         result = await provider.update_resource_expectation(
             resource_id,
@@ -270,6 +279,8 @@ async def update_provider_resource_expectation(
             started_at=started_at,
             started_timer=started_timer,
         )
+        raise
+    except ProviderIntentMutationUnavailableError:
         raise
     except ValueError as error:
         wrapped = ProviderResourceInvalidExpectationError(
