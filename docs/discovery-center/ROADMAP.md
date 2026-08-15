@@ -2,7 +2,7 @@
 
 Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. This roadmap describes direction and progress.
 
-## Current implementation status (as of Atlas v0.7.0)
+## Current implementation status (as of Atlas v0.8.0)
 
 Implemented:
 
@@ -255,10 +255,13 @@ Non-goals:
 
 Exit criteria:
 
-- V0.8 integration, if implemented, is proposal/navigation-only and cannot
-  create an action request or dispatch a mutation.
+- Any D9 integration is proposal/navigation-only and cannot create a candidate,
+  action request, or dispatch mutation.
 - Any later executable work remains routed through authoritative candidate
   creation and Atlas Agent approval-controlled planning and execution.
+
+D9 remains separate proposal/navigation-only future work and is not part of the
+Atlas v0.9 Operational Recovery and Evidence Automation release scope.
 
 ## D10 — Dynamic Source Adapters
 

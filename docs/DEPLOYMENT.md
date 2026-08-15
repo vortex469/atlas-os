@@ -786,6 +786,11 @@ The supported starting point is immutable release `atlas-v0.7.0` at
 `8dbc43de73dda300b50c121f19324cb5174df2a9`. Atlas does not automatically
 upgrade or roll back a deployment.
 
+The reviewed upgrade target is final release `atlas-v0.8.0` at
+`f83cd90982d4682ce49e60308e93dc9840984211`, promoted from immutable candidate
+`atlas-v0.8-rc1` at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa`.
+
 ### Pre-upgrade requirements
 
 Before selecting a reviewed v0.8 release reference, require:
@@ -826,8 +831,8 @@ git diff --cached --quiet
    recorded release SHA before checking it out:
 
 ```bash
-ATLAS_V08_REF=replace-with-reviewed-v0.8-rc-tag
-ATLAS_V08_EXPECTED_SHA=replace-with-reviewed-release-sha
+ATLAS_V08_REF=atlas-v0.8.0
+ATLAS_V08_EXPECTED_SHA=f83cd90982d4682ce49e60308e93dc9840984211
 git fetch origin tag "$ATLAS_V08_REF"
 test "$(git rev-parse "$ATLAS_V08_REF^{}")" = "$ATLAS_V08_EXPECTED_SHA"
 git switch --detach "$ATLAS_V08_REF^{}"
@@ -965,6 +970,138 @@ docker compose \
 The v0.8 operator verifier, TLS material, and edge `htpasswd` may remain in
 their private ignored locations; v0.7 already consumes the three-file
 operator-auth deployment. Deletion is not required for rollback.
+
+## Atlas v0.8.0 to v0.9 upgrade and rollback
+
+The supported starting point is the immutable `atlas-v0.8.0` release at
+`f83cd90982d4682ce49e60308e93dc9840984211`. Before upgrading, require a clean
+tracked worktree, a current Atlas data backup, a current `atlas-agent-state`
+snapshot, preserved operator-auth and TLS private material outside Git, healthy
+services, a reachable configured provider, and the exact production Compose
+environment.
+
+### Upgrade to v0.9
+
+1. Confirm there is no in-flight operational request. Preserve any terminal
+   lifecycle and audit evidence needed for support or release review.
+2. Create an Atlas data backup and snapshot `atlas-agent-state` using the
+   approved host mechanism:
+
+```bash
+./scripts/atlas-data-backup /path/to/protected-atlas-backups
+```
+
+3. Fetch the reviewed v0.9 release reference, compare it with the independently
+   recorded release SHA, and check out that exact commit:
+
+```bash
+ATLAS_V09_REF=atlas-v0.9.0
+ATLAS_V09_EXPECTED_SHA='<independently-recorded-release-sha>'
+git fetch origin tag "$ATLAS_V09_REF"
+test "$(git rev-parse "$ATLAS_V09_REF^{}")" = "$ATLAS_V09_EXPECTED_SHA"
+git switch --detach "$ATLAS_V09_REF^{}"
+```
+
+4. Export the existing private file paths and exact trusted HTTPS origin, then
+   render and deploy the same three-file hardened stack:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  config --quiet
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  up --build --detach
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  ps
+```
+
+5. Require all services to become healthy. Run
+   `./scripts/operational-capability-parity` and require exactly
+   `restart-service/proxmox/qemu`. Through authenticated Edge HTTPS, verify the
+   operator session/probe, read-only lifecycle diagnostic, bounded operational
+   history, and local support-bundle preview. Do not perform a provider
+   mutation merely to validate an ordinary upgrade.
+
+V0.9 adds read-only recovery diagnostics, bounded sanitized support bundles,
+check-only release-evidence collection, and Mission Control recovery/history
+presentation. Support bundles download locally only; release evidence is
+written only when an operator explicitly redirects or retains command output.
+
+### Persistence and compatibility
+
+Atlas Agent snapshot schema remains v3, with the existing v1/v2/v3 readers.
+Core operational dispatch schema version and the dispatch, event, and
+transition table definitions are unchanged. V0.9 adds read queries and derived
+projections only. Support bundles and release evidence have no runtime database
+and are not automatically persisted. Mission Control additions are UI-only and
+use no durable browser state.
+
+No migration is required for forward upgrade. End-to-end downgrade
+compatibility is not explicitly guaranteed, however. A fail-safe rollback must
+preserve the complete v0.9 data/state first, then restore both the pre-upgrade
+Atlas data backup and the pre-upgrade `atlas-agent-state` snapshot.
+
+### In-flight action handling
+
+Normal rollback requires no in-flight operational request. If a request has
+reached `dispatching` or crossed the durable barrier, do not retry or recreate
+the mutation. Preserve its ledger, request digest, transitions, provider
+operation reference, diagnostic, and sanitized support evidence. Reconcile it
+read-only to a terminal `verified`, `verification_failed`, `target_replaced`,
+or `outcome_unknown` state and require operator review before rollback. An
+unresolved barrier-crossed request blocks ordinary rollback.
+
+### Rollback to atlas-v0.8.0
+
+1. Confirm no operational request is in flight under the rule above.
+2. Record the v0.9 SHA and preserve offline copies of the complete v0.9 Atlas
+   data and Agent-state volumes.
+3. Stop the three-file v0.9 deployment with `docker compose ... down` using the
+   same three Compose files.
+4. Restore the pre-upgrade `atlas-agent-state` snapshot and Atlas data backup
+   while services are stopped:
+
+```bash
+./scripts/atlas-data-restore \
+  /path/to/protected-atlas-backups/atlas-data-YYYYMMDDTHHMMSSZ \
+  --confirm
+```
+
+5. Check out and verify the immutable v0.8.0 release, then render and recreate
+   its three-file production deployment:
+
+```bash
+git switch --detach 'atlas-v0.8.0^{}'
+test "$(git rev-parse HEAD)" = \
+  "f83cd90982d4682ce49e60308e93dc9840984211"
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  config --quiet
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  up --build --detach
+```
+
+6. Require all services healthy and confirm v0.9 diagnostic, support-bundle,
+   release-evidence, and recovery-summary surfaces are absent. Confirm the
+   operational capability remains exactly `restart-service/proxmox/qemu`; do
+   not use a live provider mutation as a rollback smoke test.
+
+Existing TLS, edge `htpasswd`, and operator-verifier files may remain in their
+private ignored locations. They are still used by the v0.8 three-file hardened
+deployment and need not be deleted for rollback.
 
 ## Back up and restore data
 
@@ -1155,6 +1292,50 @@ Run the isolated end-to-end recovery test with:
 It starts a temporary TLS Rest Server, initializes a repository, uploads a
 verified Atlas backup, checks the repository, restores the latest
 snapshot, compares the restored database, and removes all test data.
+
+## Read-only release evidence
+
+Use the local release-evidence collector during RC selection and final-tag
+preparation to replace manual transcription of provenance checks:
+
+```bash
+./scripts/release-evidence \
+  --expected-base atlas-v0.8.0 \
+  --candidate-tag atlas-v0.9-rc1 \
+  --expected-sha <reviewed-commit-sha> \
+  --require-main \
+  --require-tag
+```
+
+Add `--json` for the bounded `atlas-release-evidence-v1` representation. Add
+`--check-running-images` only on a host with the intended production deployment;
+the option performs Docker inspection only and never rebuilds or recreates a
+container. Unknown options fail closed.
+
+The collector reads Git identity and worktree state, peels annotated tags,
+requires CI evidence to match the exact candidate SHA, reuses
+`scripts/operational-capability-parity`, renders the base and hardened Compose
+configurations, checks Edge-only hardened ingress, inspects tracked path names
+and presence-only private-key/verifier signatures for release-sensitive
+material without printing matched values, and runs bounded local syntax and
+diff checks. Missing GitHub CLI access, unavailable private Compose inputs, and
+unavailable requested image inspection are reported as incomplete rather than
+invented as passing evidence. The allowed untracked exception is exactly
+`compose.execution-smoke.override.yaml`.
+
+Exit status is deterministic:
+
+- `0`: ready; all evidence required by this tool passed.
+- `1`: blocked; at least one required check failed.
+- `2`: incomplete; required evidence was unavailable or pending.
+- `3`: invalid invocation or collector configuration error.
+
+This command is evidence automation, not deployment or release automation. It
+does not run the container release gate, deploy or restart services, create or
+modify tags, push commits, mutate GitHub state, or perform provider actions.
+The container release gate, exact-SHA production soak, operator review, and
+human approval to create immutable RC/final tags remain separate release
+steps.
 
 ## Security notes
 

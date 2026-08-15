@@ -15,14 +15,14 @@ promise. Product direction is guided by the
 
 ## Atlas Runtime Foundation
 
-Long-running foundation track. The bounded v0.8 release theme is defined below.
+Long-running foundation track. The bounded v0.9 release theme is defined below.
 
-- Define immutable defaults under `config/` and mutable runtime state under `data/`
-- Keep shipped templates read-only in production
-- Move normal Mission Control writes to runtime state so they must not dirty the Git checkout
-- Initialize missing runtime configuration from validated templates without overwriting existing user state
-- Make runtime policy storage explicit with `ATLAS_POLICY_FILE` and `ATLAS_POLICY_TEMPLATE_FILE`
-- Include runtime configuration in backup and restore with backward compatibility for version-1 database-only backups
+Completed foundations include immutable defaults under `config/`, mutable
+runtime state under `data/`, read-only production templates, validated runtime
+initialization, explicit policy paths, and runtime-configuration backup and
+restore with version-1 database-only backup compatibility. Further Runtime
+Foundation work remains a cross-release track rather than unfinished v0.8
+scope.
 
 ## Provider Management Framework
 
@@ -239,8 +239,9 @@ It must not change execution behavior.
 
 P0 through P5 are complete. The immutable `atlas-v0.8-rc1` candidate at
 `cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed required CI, exact-SHA
-production deployment, and sequential restart soak validation. Final
-`atlas-v0.8.0` publication remains pending.
+production deployment, and sequential restart soak validation. The final
+`atlas-v0.8.0` release was published at
+`f83cd90982d4682ce49e60308e93dc9840984211`.
 
 ### V0.8 non-goals
 
@@ -258,3 +259,145 @@ Operational production execution is exactly `restart-service / proxmox / qemu`:
 the Agent planning gate, Agent execution gate, and Core execution gate contain
 only `restart-service`, and the production registry contains exactly the one
 `restart-service/proxmox/qemu` tuple.
+
+## Atlas v0.9 roadmap
+
+**Theme: Operational Recovery and Evidence Automation**
+
+Objective: make Atlas easier to diagnose, recover, support, and release safely
+using the existing durable operational lifecycle, without adding any new
+provider mutation capability. The dependency order is
+`V0.9-P0 → V0.9-P1 → V0.9-P2 → V0.9-P3 → V0.9-P4 → V0.9-P5`.
+
+### Current v0.8 production boundary
+
+- Repository execution is the separate `update-compose-stack` workflow.
+- Operational production execution is exactly
+  `restart-service / proxmox / qemu`.
+- Agent planning and execution gates contain only `restart-service`.
+- Core execution gate contains only `restart-service`.
+- Agent translation and Core semantic action mapping contain exactly the QEMU
+  graceful-restart action.
+- The production handler registry contains exactly one QEMU restart handler.
+- `restart-service / proxmox / lxc` remains unsupported and non-requestable.
+
+### LXC feasibility decision
+
+The read-only LXC identity feasibility investigation completed with a NO-GO.
+Current Atlas-visible Proxmox APIs expose no provider-authoritative,
+configuration-independent LXC incarnation identifier comparable to QEMU
+`vmgenid`. Node and VMID are reusable; configuration digest is mutable and
+reproducible; rootfs naming is reusable; MAC values are mutable; task history
+is not authoritatively bound to the current incarnation; and no UUID, GUID, or
+instance-generation token was found.
+
+Atlas will not synthesize identity from those fields merely to enable
+execution. The former tuple-expansion P2–P5 do not proceed for LXC. LXC may be
+reconsidered only if an independently demonstrated provider-authoritative
+incarnation identity becomes available. This is a successful fail-closed
+architecture decision, not an implementation failure.
+
+### V0.9-P0 — Release-state reconciliation and LXC feasibility closure
+
+**Status: complete.**
+
+- Goal: establish the final v0.8 baseline and revised v0.9 scope.
+- Deliverables: final release identity, LXC identity NO-GO record, revised
+  recovery/evidence milestones, dependencies, and non-goals.
+- Dependencies: final `atlas-v0.8.0` release and completed read-only LXC audit.
+- Non-goals: runtime code, identity synthesis, gates, handlers, ACLs, or
+  mutation.
+- Exit criteria: current-state documentation agrees, P0 is complete, and LXC
+  feasibility is closed NO-GO.
+
+### V0.9-P1 — Read-only recovery diagnostics
+
+**Status: complete.**
+
+- Goal: provide one operator-facing diagnostic projection for ambiguous and
+  recovery states.
+- Deliverables: lifecycle consistency, Core/Agent availability,
+  request-to-ledger correlation, target-fingerprint state, controlled recovery
+  reason, and recommended safe next action.
+- Dependencies: P0 and existing Agent/Core lifecycle projections.
+- Non-goals: provider calls, reconciliation writes, mutation endpoints,
+  retries, handlers, or gate changes.
+- Exit criteria: diagnostics are deterministic, controlled, sanitized, and
+  strictly read-only.
+
+The first code-bearing slice is a strictly read-only operational recovery
+diagnostic model derived from existing Agent lifecycle and Core durable-ledger
+projections. It adds no provider call, reconciliation write, mutation endpoint,
+handler, or gate change and exposes only controlled reasons.
+
+### V0.9-P2 — Sanitized operational support bundle
+
+**Status: complete.**
+
+- Goal: generate a bounded local evidence package from already-safe
+  projections.
+- Deliverables: release and image identity, service health, workflow/candidate/
+  planning/request IDs, approval presentation, sanitized lifecycle,
+  transitions and verification state, target fingerprint, capability parity,
+  and selected audit IDs.
+- Dependencies: P1 diagnostic contract.
+- Non-goals: credentials, cookies, CSRF or bearer tokens, TLS keys, edge
+  `htpasswd` or operator-verifier material, provider-native payloads,
+  `vmgenid` or raw identity tokens, commands, environment, arbitrary exception
+  text, or any automatic upload destination.
+- Exit criteria: output is bounded, deterministic, local, sanitized, and
+  independently testable for forbidden fields.
+
+### V0.9-P3 — Release evidence automation
+
+**Status: complete.**
+
+- Goal: automate collection and validation of release evidence currently
+  gathered manually.
+- Deliverables: exact SHA/tag, required CI, container-gate, image/source parity,
+  capability parity, ingress policy, worktree provenance, secret hygiene, and
+  immutable-tag checks.
+- Dependencies: P2 evidence contracts where shared.
+- Non-goals: automatic tagging, production deployment mutation, or release
+  publication.
+- Exit criteria: check-only tooling reproduces the required release evidence
+  and fails closed on inconsistency.
+
+### V0.9-P4 — Recovery/history operator UX
+
+**Status: complete.**
+
+- Goal: surface recovery diagnostics and evidence availability in Mission
+  Control.
+- Deliverables: diagnostic state, correlation IDs, evidence availability,
+  safe support-bundle generation/download, and clear guidance for
+  `outcome_unknown`, `target_replaced`, and `verification_failed`.
+- Dependencies: P1 and P2.
+- Non-goals: retry, run-again, reconciliation writes, or mutation controls.
+- Exit criteria: operators can understand and export controlled evidence
+  without any execution affordance.
+
+### V0.9-P5 — Release acceptance and documentation
+
+**Status: complete.** P0 through P5 are implemented and locally accepted. RC
+selection, exact-candidate CI, immutable RC deployment/soak, and final tags
+remain pending.
+
+- Goal: validate the read-only recovery/evidence toolchain under production
+  service-restart soak and finalize release documentation.
+- Deliverables: focused/full test evidence, production restart-soak evidence,
+  redaction/security review, upgrade/rollback guidance, and release checklist.
+- Dependencies: P3 and P4.
+- Non-goals: a new operational intent, provider handler, automatic tag, or
+  deployment mutation.
+- Exit criteria: the toolchain remains read-only and accurate across service
+  restarts, and the existing QEMU mutation boundary is unchanged.
+
+### V0.9 non-goals
+
+V0.9 does not add LXC execution, backup execution, restore execution, a new
+operational intent, a new provider, a new mutation handler, automatic provider
+retry, automatic rollback, automatic approval, automatic tag publishing,
+automatic production deployment, Discovery-to-dispatch coupling, remote or
+distributed execution, new Docker socket authority, broader Proxmox ACLs, or
+synthetic LXC incarnation identity.

@@ -13,8 +13,9 @@ Use this checklist before creating a Foundry release tag.
 
 P0 through P5 are complete. The immutable `atlas-v0.8-rc1` candidate at
 `cf09dfe1eebbd138d37ba7144d91b893f70732fa` has completed required CI,
-exact-SHA production deployment, and production soak. Only final
-`atlas-v0.8.0` publication remains pending.
+exact-SHA production deployment, and production soak. The final
+`atlas-v0.8.0` release was published at
+`f83cd90982d4682ce49e60308e93dc9840984211`.
 
 ## Atlas v0.8 RC selection and sign-off
 
@@ -34,7 +35,62 @@ exact-SHA production deployment, and production soak. Only final
   v0.7.0 rollback procedures.
 - [x] Create the immutable v0.8 RC tag: `atlas-v0.8-rc1`.
 - [x] Complete and record the exact-RC production soak.
-- [ ] Create the final immutable `atlas-v0.8.0` tag.
+- [x] Create the final immutable `atlas-v0.8.0` tag at
+  `f83cd90982d4682ce49e60308e93dc9840984211`.
+
+## Atlas v0.9 implementation status
+
+- [x] V0.9-P0 — Release-state reconciliation and LXC feasibility closure.
+- [x] LXC feasibility investigation — complete / NO-GO.
+- [x] V0.9-P1 — Read-only recovery diagnostics.
+- [x] V0.9-P2 — Sanitized operational support bundle.
+- [x] V0.9-P3 — Release evidence automation.
+- [x] V0.9-P4 — Recovery/history operator UX.
+- [x] V0.9-P5 — Release acceptance and documentation.
+
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. The LXC identity gate
+closed fail-safe: no authoritative incarnation identity was proven, no
+synthetic identity was accepted, and no LXC candidate, selector, translation,
+gate, handler, ACL, or mutation is enabled. The revised P1–P5 milestones are
+read-only recovery, evidence, UX, and release work.
+
+P0 through P5 implementation and local release acceptance are complete. RC
+selection, exact-candidate CI, immutable RC deployment/soak, and final release
+publication remain pending.
+
+## Atlas v0.9 RC selection and sign-off
+
+- [ ] Record the exact reviewed RC candidate SHA after the documentation commit.
+- [ ] Require Quality gates to pass on that exact SHA and record the run ID and
+  Core, Agent, and Mission Control conclusions.
+- [ ] Require Container release gate to pass on that exact SHA and record its
+  run ID.
+- [ ] Run `./scripts/release-evidence` against the exact SHA and annotated RC
+  tag; require `atlas-release-evidence-v1` status `ready` without fabricated
+  private or CI evidence.
+- [x] Run `./scripts/operational-capability-parity` and require exactly
+  `restart-service/proxmox/qemu`.
+- [x] Confirm recovery diagnostics are deterministic and read-only for healthy,
+  pending/recovery, Core-unavailable, immutable-mismatch,
+  transition-mismatch, target-replaced, outcome-uncertain, and
+  terminal-mismatch states.
+- [x] Confirm `atlas-operational-support-bundle-v1` remains bounded,
+  deterministic, redacted, explicitly partial/truncated where applicable, and
+  local-only with no upload destination.
+- [x] Confirm Mission Control recovery/history UX separates network failure
+  from operational failure and exposes no retry, run-again, replay,
+  reconciliation-write, upload, or share control.
+- [x] Confirm the production mutation boundary contains exactly one tuple and
+  v0.9 adds no intent or handler.
+- [x] Confirm `restart-service/proxmox/lxc` remains unsupported: no synthetic
+  identity, candidate, selector, translation, gate, handler, ACL, or mutation
+  was added.
+- [x] Review the documented v0.8.0 to v0.9 upgrade and v0.9 to v0.8.0
+  fail-safe rollback procedure, including in-flight barrier handling.
+- [ ] Create the immutable annotated `atlas-v0.9-rc1` tag.
+- [ ] Complete and record exact-RC production deployment and service-restart
+  soak without performing a provider mutation merely for soak validation.
+- [ ] Create the final immutable `atlas-v0.9.0` tag.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
@@ -85,6 +141,25 @@ exact-SHA production deployment, and production soak. Only final
   `restart-service / proxmox / qemu`.
 
 ## Automated gates
+
+Generate bounded read-only RC/final provenance evidence with:
+
+```bash
+./scripts/release-evidence \
+  --expected-base atlas-v0.8.0 \
+  --candidate-tag atlas-v0.9-rc1 \
+  --expected-sha <reviewed-commit-sha> \
+  --require-main \
+  --require-tag \
+  --json
+```
+
+Require exit `0` and retain the JSON with the release review. Exit `1` means a
+required check failed, exit `2` means required evidence is incomplete, and exit
+`3` means the invocation is invalid. A green run proves only the bounded facts
+reported by `atlas-release-evidence-v1`; it does not prove production soak,
+container-gate completion, or human approval to create a tag. Those steps
+remain explicit checklist items.
 
 - [x] Atlas Core installs from `requirements-dev.txt`.
 - [x] Atlas Core test suite passes.

@@ -234,17 +234,16 @@ Current
 
 # Current Sprint
 
-Atlas Runtime Foundation
+Atlas v0.9 — Operational Recovery and Evidence Automation
 
 Active major milestone
 
-- Define immutable defaults in `config/` and runtime state in `data/`
-- Make runtime policy storage explicit with `ATLAS_POLICY_FILE`
-- Preserve Provider Management Framework as the subsystem for provider resources and user intent
-- Implement Discovery Center as the provider-neutral catalog and compatibility subsystem; design foundations remain in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md)
-- Mission Control policy management for provider resources must write runtime state, not repository files
-- Needs Review workflows for newly discovered resources remain derived, not persisted
-- AI suggests intent changes; users decide and approve policy updates
+- Prepare the completed V0.9-P0 through V0.9-P5 scope for RC selection.
+- Preserve the successful fail-closed LXC identity NO-GO and Provider
+  Management Framework/Discovery Center ownership boundaries.
+- Keep the existing QEMU tuple unchanged while validating read-only recovery
+  diagnostics, support evidence, release checks, and operator UX for RC
+  preparation.
 
 Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the tracked template and then treats runtime state as authoritative. Mission Control changes must not dirty the Git checkout.
 
@@ -346,10 +345,35 @@ deployment and security ergonomics are complete. The immutable
 `31856384892`, Container release gate run `31856384891`, exact-SHA production
 deployment, source/image parity, and sequential service-restart soak
 validation. The completed operational workflow remained terminal, verified,
-and lifecycle-consistent without replay. Final `atlas-v0.8.0` publication
-remains pending.
+and lifecycle-consistent without replay. The final `atlas-v0.8.0` release was
+published at `f83cd90982d4682ce49e60308e93dc9840984211`.
 
 V0.8 adds no execution intent or provider mutation handler. Repository change
 execution remains separately gated as `update-compose-stack`; operational
 execution remains exactly `restart-service / proxmox / qemu`, independently
 allowed by the Agent and Core and backed by exactly one production handler.
+
+## Atlas v0.9 scope
+
+Atlas v0.9 has the theme **Operational Recovery and Evidence Automation**. Its
+objective is to make the existing durable operational lifecycle easier to
+diagnose, recover, support, and release safely without adding provider mutation
+capability. Production remains exactly `restart-service / proxmox / qemu`.
+
+The read-only LXC feasibility investigation completed successfully with a
+NO-GO: Atlas-visible Proxmox APIs expose no provider-authoritative,
+configuration-independent LXC incarnation identity comparable to QEMU
+`vmgenid`. Node/VMID, configuration digest, rootfs naming, MAC values, and task
+history are mutable, reusable, or not bound to the current incarnation. Atlas
+will not synthesize an identity from them. LXC remains unsupported and
+non-requestable, and the former tuple-expansion P2–P5 do not proceed for LXC.
+It may be reconsidered only if a provider-authoritative identity source is
+independently demonstrated.
+
+V0.9-P0 through V0.9-P5 are complete. The implemented scope is a strictly
+read-only recovery diagnostic derived from existing lifecycle/ledger facts, a
+bounded sanitized local support bundle, check-only release-evidence automation,
+and Mission Control recovery/history UX. None adds a provider call,
+reconciliation write, mutation endpoint, handler, gate change, upload
+destination, or synthetic LXC identity. V0.9-P5 release acceptance and
+documentation is complete; RC and final tags remain pending.

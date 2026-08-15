@@ -6,12 +6,40 @@ release boundaries.
 
 ## Unreleased
 
-Atlas v0.8 is scoped to Operational Control Plane Clarity and Observability.
-P0 through P5 implementation is complete. The immutable `atlas-v0.8-rc1`
-candidate at `cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed Quality gates
-run `31856384892`, Container release gate run `31856384891`, exact-SHA
-production deployment, and sequential service-restart soak validation. The
-final `atlas-v0.8.0` release tag has not been created yet.
+Atlas v0.9 is in RC preparation with the theme Operational Recovery and
+Evidence Automation. P0 through P5 are complete; RC and final tags remain
+pending.
+
+### Added
+
+- Added a deterministic read-only recovery diagnostic covering lifecycle
+  consistency, Core availability, immutable correlation, transition validity,
+  target replacement, outcome uncertainty, and controlled safe-next-action
+  guidance.
+- Added bounded, allow-listed `atlas-operational-support-bundle-v1` evidence
+  with deterministic integrity/correlation digests and explicit truncation.
+- Added check-only `atlas-release-evidence-v1` automation with fail-closed
+  worktree, exact-SHA/tag, CI, Compose, capability, image, and secret-hygiene
+  evidence.
+- Added Mission Control recovery summaries, bounded enriched operational
+  history, controlled filters, and local-only support-evidence preview/download.
+
+### Safety boundary
+
+A read-only feasibility audit rejected `restart-service / proxmox / lxc`
+because no provider-authoritative, configuration-independent incarnation
+identifier was available. Atlas did not synthesize identity from mutable or
+reusable fields, and added no LXC candidate, selector, translation, gate,
+handler, ACL, or mutation. The operational production boundary remains exactly
+`restart-service / proxmox / qemu`; v0.9 adds no mutation intent or handler.
+
+## atlas-v0.8.0 — Atlas v0.8.0 (2026-08-15)
+
+Atlas v0.8.0 was published at
+`f83cd90982d4682ce49e60308e93dc9840984211`, promoting the immutable
+`atlas-v0.8-rc1` candidate at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa` after required CI, exact-SHA
+production deployment, and sequential service-restart soak validation.
 
 ### Added
 

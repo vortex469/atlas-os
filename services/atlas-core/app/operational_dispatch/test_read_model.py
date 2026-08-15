@@ -91,9 +91,27 @@ def test_verification_pending_projection_is_nonterminal(tmp_path) -> None:
     assert result.terminal is False
     assert result.barrier_crossing_count == 1
     assert result.provider_operation_capture_count == 1
+    assert result.transition_sequence_valid is True
     assert [item.sequence for item in result.transitions] == sorted(
         item.sequence for item in result.transitions
     )
+
+
+def test_invalid_transition_chain_is_reported_without_repair(tmp_path) -> None:
+    ledger, request, _now = _verifying_ledger(tmp_path)
+    with ledger._connect() as connection:
+        connection.execute(
+            """UPDATE operational_dispatch_transitions
+               SET previous_state='claimed'
+               WHERE request_id=? AND state='dispatching'""",
+            (request.request_id,),
+        )
+
+    result = project_operational_lifecycle(ledger, request.request_id)
+
+    assert result is not None
+    assert result.transition_sequence_valid is False
+    assert ledger.get(request.request_id).state is OperationalLedgerState.VERIFYING
 
 
 @pytest.mark.parametrize(

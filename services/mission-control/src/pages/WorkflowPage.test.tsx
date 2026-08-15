@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     getWorkflowDetail,
     getWorkflowOperationalLifecycle,
+    getWorkflowRecoveryDiagnostic,
+    getWorkflowSupportBundle,
     resumeWorkflow,
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
@@ -18,6 +20,8 @@ vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowDetail: vi.fn(),
     getWorkflowOperationalLifecycle: vi.fn(),
+    getWorkflowRecoveryDiagnostic: vi.fn(),
+    getWorkflowSupportBundle: vi.fn(),
     resumeWorkflow: vi.fn(),
     submitWorkflowCommitApproval: vi.fn(),
     submitWorkflowImplementationApproval: vi.fn(),
@@ -26,6 +30,8 @@ vi.mock("../api/atlas-agent", () => ({
 
 const mockedGetWorkflowDetail = vi.mocked(getWorkflowDetail);
 const mockedGetWorkflowOperationalLifecycle = vi.mocked(getWorkflowOperationalLifecycle);
+const mockedGetWorkflowRecoveryDiagnostic = vi.mocked(getWorkflowRecoveryDiagnostic);
+const mockedGetWorkflowSupportBundle = vi.mocked(getWorkflowSupportBundle);
 const mockedResumeWorkflow = vi.mocked(resumeWorkflow);
 const mockedSubmitWorkflowCommitApproval = vi.mocked(submitWorkflowCommitApproval);
 const mockedSubmitWorkflowImplementationApproval = vi.mocked(submitWorkflowImplementationApproval);
@@ -172,6 +178,8 @@ describe("WorkflowPage", () => {
         vi.clearAllMocks();
         mockedGetWorkflowDetail.mockResolvedValue(workflow());
         mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle());
+        mockedGetWorkflowRecoveryDiagnostic.mockResolvedValue(null);
+        mockedGetWorkflowSupportBundle.mockResolvedValue(null);
         mockedResumeWorkflow.mockResolvedValue(undefined);
     });
 
@@ -480,12 +488,54 @@ describe("WorkflowPage", () => {
         expect(screen.getAllByText("resolved (approved)")).toHaveLength(2);
     });
 
+    it("downloads only the sanitized in-memory support bundle", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        mockedGetWorkflowSupportBundle.mockResolvedValue({
+            applicable: true,
+            metadata: { schema_version: "atlas-operational-support-bundle-v1", generated_at: "2026-08-15T00:00:00Z", agent_version: "0.9", workflow_id: "workflow-123" },
+            workflow: { candidate_id: "candidate-123", planning_session_id: "plan-123", effect_kind: "operational_action", execution_intent: "restart-service", target_label: "proxmox/qemu/110" },
+            approvals: { preparation: null, operational_action: null },
+            lifecycle: { availability: "complete", request_id: "request-1", request_digest: "digest-1", agent_execution_stage: "verified", core_ledger_state: "verified", transitions: [], transition_sequence_valid: true, barrier_crossed: true, barrier_crossing_count: 1, provider_operation_captured: true, provider_operation_capture_count: 1, dispatch_status: "succeeded", dispatch_result_known: true, provider_operation_reference: "UPID:sanitized", verification_status: "succeeded", observed_state: "running", observed_health: "running", terminal: true },
+            diagnostic: { applicable: true, diagnostic_status: "healthy", consistency: "consistent", correlation: { workflow_id: "workflow-123", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true }, dispatch_evidence: { barrier_crossed: true, provider_operation_captured: true, dispatch_result_known: true, transition_sequence_valid: true }, verification_evidence: { status: "succeeded", target_fingerprint_state: "unchanged", observed_state: "running", observed_health: "running", terminal_evidence: true }, controlled_reason: null, safe_next_action: "none" },
+            service_health: [],
+            capability_boundary: { production_tuples: ["restart-service/proxmox/qemu"], agent_execution_intents: ["restart-service"], parity_status: "not_evaluated" },
+            audit_refs: [],
+            truncation: { transitions_truncated: true, audit_references_truncated: false, text_fields_truncated: [] },
+            integrity: { digest: "operational-support-bundle-digest-v1:abc", purpose: "integrity_and_correlation_only" },
+        });
+        const createObjectURL = vi.fn(() => "blob:support-evidence");
+        const revokeObjectURL = vi.fn();
+        Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+        Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
+        const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Prepare support evidence" }));
+
+        await screen.findByText("atlas-operational-support-bundle-v1");
+        expect(mockedGetWorkflowSupportBundle).toHaveBeenCalledWith("workflow-123");
+        expect(screen.getByText(/integrity and correlation only/i)).toBeInTheDocument();
+        expect(screen.getByText("Partial or truncated").nextElementSibling).toHaveTextContent("Yes");
+        expect(createObjectURL).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", { name: "Download support evidence" }));
+
+        expect(createObjectURL).toHaveBeenCalledOnce();
+        expect(click).toHaveBeenCalledOnce();
+        expect(revokeObjectURL).toHaveBeenCalledWith("blob:support-evidence");
+        expect(screen.queryByRole("button", { name: /retry|run again|reconcile|upload/i })).not.toBeInTheDocument();
+    });
+
     it("never loads operational lifecycle for a repository workflow", async () => {
         renderPage();
 
         await screen.findByRole("heading", { name: "Implementation approval" });
         expect(mockedGetWorkflowOperationalLifecycle).not.toHaveBeenCalled();
+        expect(mockedGetWorkflowRecoveryDiagnostic).not.toHaveBeenCalled();
+        expect(mockedGetWorkflowSupportBundle).not.toHaveBeenCalled();
         expect(screen.queryByRole("heading", { name: "Operational lifecycle" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Support evidence" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Recovery summary")).not.toBeInTheDocument();
     });
 
     it("deterministically refreshes workflow and operational lifecycle together", async () => {
