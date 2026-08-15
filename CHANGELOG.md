@@ -6,12 +6,19 @@ release boundaries.
 
 ## Unreleased
 
-Atlas v0.8 is scoped to Operational Control Plane Clarity and Observability.
-P0 through P5 implementation is complete. The immutable `atlas-v0.8-rc1`
-candidate at `cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed Quality gates
-run `31856384892`, Container release gate run `31856384891`, exact-SHA
-production deployment, and sequential service-restart soak validation. The
-final `atlas-v0.8.0` release tag has not been created yet.
+Atlas v0.9 is scoped to Safe Operational Tuple Expansion. No v0.9 runtime
+implementation exists yet. The contingent target is
+`restart-service / proxmox / lxc`, and work must stop before candidate,
+translation, gate, handler, ACL, or mutation changes unless authoritative LXC
+incarnation identity is proven read-only.
+
+## atlas-v0.8.0 — Atlas v0.8.0 (2026-08-15)
+
+Atlas v0.8.0 was published at
+`f83cd90982d4682ce49e60308e93dc9840984211`, promoting the immutable
+`atlas-v0.8-rc1` candidate at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa` after required CI, exact-SHA
+production deployment, and sequential service-restart soak validation.
 
 ### Added
 

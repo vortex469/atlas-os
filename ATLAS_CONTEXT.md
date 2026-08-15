@@ -234,17 +234,17 @@ Current
 
 # Current Sprint
 
-Atlas Runtime Foundation
+Atlas v0.9 — Safe Operational Tuple Expansion
 
 Active major milestone
 
-- Define immutable defaults in `config/` and runtime state in `data/`
-- Make runtime policy storage explicit with `ATLAS_POLICY_FILE`
-- Preserve Provider Management Framework as the subsystem for provider resources and user intent
-- Implement Discovery Center as the provider-neutral catalog and compatibility subsystem; design foundations remain in [docs/discovery-center](docs/discovery-center/ARCHITECTURE.md)
-- Mission Control policy management for provider resources must write runtime state, not repository files
-- Needs Review workflows for newly discovered resources remain derived, not persisted
-- AI suggests intent changes; users decide and approve policy updates
+- Reconcile the final v0.8.0 release state and establish the v0.9 roadmap.
+- Prove authoritative LXC incarnation identity read-only before any execution
+  expansion.
+- Preserve Provider Management Framework and Discovery Center ownership
+  boundaries.
+- Keep the existing QEMU tuple unchanged while multi-tuple permissions, parity,
+  planning, dispatch, recovery, and enablement are reviewed in order.
 
 Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the tracked template and then treats runtime state as authoritative. Mission Control changes must not dirty the Git checkout.
 
@@ -346,10 +346,31 @@ deployment and security ergonomics are complete. The immutable
 `31856384892`, Container release gate run `31856384891`, exact-SHA production
 deployment, source/image parity, and sequential service-restart soak
 validation. The completed operational workflow remained terminal, verified,
-and lifecycle-consistent without replay. Final `atlas-v0.8.0` publication
-remains pending.
+and lifecycle-consistent without replay. The final `atlas-v0.8.0` release was
+published at `f83cd90982d4682ce49e60308e93dc9840984211`.
 
 V0.8 adds no execution intent or provider mutation handler. Repository change
 execution remains separately gated as `update-compose-stack`; operational
 execution remains exactly `restart-service / proxmox / qemu`, independently
 allowed by the Agent and Core and backed by exactly one production handler.
+
+## Atlas v0.9 scope
+
+Atlas v0.9 has the theme **Safe Operational Tuple Expansion**. Its objective is
+to prove that Atlas can add one second closed tuple without weakening identity
+binding, approval isolation, exactly-once dispatch, recovery, or the existing
+QEMU path. The contingent target is `restart-service / proxmox / lxc`.
+
+LXC work has a hard read-only identity gate: VMID plus node is insufficient.
+Atlas must prove a stable same-incarnation fingerprint, replacement detection,
+and fail-closed stale, missing, duplicate, ambiguous, and uncertain identity
+handling. If it cannot, LXC execution work stops. No LXC candidate,
+translation, execution gate, descriptor advertisement, requestable selector,
+handler, ACL, or restart is enabled by P0 or the first P1 identity slice.
+
+Before LXC becomes requestable, P2 must provide backward-compatible,
+tuple-aware operator authorization. The existing `operational_intent:create`
+permission must not silently authorize every future tuple. Multi-tuple parity
+must compare Agent planning, translation, and execution with Core execution,
+semantic action mapping, handler registration, capability description, and
+selector registration; mismatches fail closed without auto-repair.

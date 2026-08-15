@@ -13,8 +13,9 @@ Use this checklist before creating a Foundry release tag.
 
 P0 through P5 are complete. The immutable `atlas-v0.8-rc1` candidate at
 `cf09dfe1eebbd138d37ba7144d91b893f70732fa` has completed required CI,
-exact-SHA production deployment, and production soak. Only final
-`atlas-v0.8.0` publication remains pending.
+exact-SHA production deployment, and production soak. The final
+`atlas-v0.8.0` release was published at
+`f83cd90982d4682ce49e60308e93dc9840984211`.
 
 ## Atlas v0.8 RC selection and sign-off
 
@@ -34,7 +35,21 @@ exact-SHA production deployment, and production soak. Only final
   v0.7.0 rollback procedures.
 - [x] Create the immutable v0.8 RC tag: `atlas-v0.8-rc1`.
 - [x] Complete and record the exact-RC production soak.
-- [ ] Create the final immutable `atlas-v0.8.0` tag.
+- [x] Create the final immutable `atlas-v0.8.0` tag at
+  `f83cd90982d4682ce49e60308e93dc9840984211`.
+
+## Atlas v0.9 implementation status
+
+- [x] V0.9-P0 — Release-state and tuple-readiness reconciliation.
+- [ ] V0.9-P1 — Authoritative LXC identity and read-only eligibility.
+- [ ] V0.9-P2 — Multi-tuple capability and permission contracts.
+- [ ] V0.9-P3 — Dormant LXC planning and dispatch contracts.
+- [ ] V0.9-P4 — Handler, verification, and recovery validation.
+- [ ] V0.9-P5 — Controlled enablement and release acceptance.
+
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 changes only
+documentation. No LXC candidate, translation, gate, handler, ACL, or mutation
+is enabled by completing it.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

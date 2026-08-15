@@ -469,8 +469,31 @@ exact-SHA production parity, and sequential service-restart soak validation.
 Agent changes are limited to effect-aware approval presentation, sanitized
 lifecycle correlation, and read-only capability consistency. Agent planning,
 translation, and execution remain closed to the existing
-`restart-service / proxmox / qemu` operational tuple; final `atlas-v0.8.0`
-publication remains pending.
+`restart-service / proxmox / qemu` operational tuple. The final
+`atlas-v0.8.0` release was published at
+`f83cd90982d4682ce49e60308e93dc9840984211`.
+
+## Atlas v0.9 — Safe Operational Tuple Expansion
+
+The contingent second tuple is `restart-service / proxmox / lxc`, but it is not
+enabled. Work proceeds in order through P0 release reconciliation, P1 read-only
+authoritative LXC identity, P2 multi-tuple capability and permission contracts,
+P3 dormant planning and dispatch contracts, P4 handler/verification/recovery
+validation, and P5 controlled enablement and acceptance.
+
+P1 is a hard stop: VMID plus node is insufficient, and Atlas must prove stable
+same-incarnation fingerprints and replacement, stale, missing, duplicate,
+ambiguous, and uncertain identity rejection. The first code slice changes only
+read-only, versioned LXC identity and fingerprint contracts and tests. It does
+not change planning, translation, Agent or Core execution gates, capability
+advertisement, selector requestability, handler registration, ACLs, or provider
+state.
+
+P2 must prevent the existing broad `operational_intent:create` permission from
+silently authorizing future tuples. Every tuple must also match across Agent
+planning, translation, and execution plus Core execution, semantic action,
+handler, descriptor, and selector sources; mismatches fail closed without
+auto-repair.
 
 ### Planned Phase 5
 

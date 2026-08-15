@@ -1,3 +1,16 @@
+## Atlas v0.8.0
+
+The immutable `atlas-v0.8.0` release was published at
+`f83cd90982d4682ce49e60308e93dc9840984211`, promoting the immutable
+`atlas-v0.8-rc1` candidate at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa`. V0.8 completed Operational
+Control Plane Clarity and Observability without widening the operational
+mutation boundary beyond `restart-service / proxmox / qemu`.
+
+It adds effect-aware approval presentation, a unified read-only lifecycle,
+operational history and recovery UX, provider-neutral capability and selector
+descriptors, and hardened Edge-only HTTPS ingress and operator-session UX.
+
 ## Atlas v0.7.0
 
 The immutable `atlas-v0.7.0` release was published at
@@ -24,18 +37,14 @@ not replace Core authentication. See the
 [restart contract](docs/architecture/proxmox-qemu-operational-restart.md), and
 [verification/recovery contract](docs/architecture/operational-verification-recovery.md).
 
-## Atlas v0.8 RC1
+## Atlas v0.9 development
 
-Atlas v0.8 focuses on **Operational Control Plane Clarity and Observability**:
-effect-aware workflow and approval presentation, a unified read-only
-operational lifecycle model, Mission Control history and recovery UX,
-provider-neutral read-only capability descriptors, and deployment/security
-ergonomics. P0 through P5 implementation is complete. The immutable
-`atlas-v0.8-rc1` candidate at
-`cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed required CI, exact-SHA
-production deployment, and sequential service-restart soak validation. The
-final `atlas-v0.8.0` publication remains pending. The operational mutation
-boundary remains exactly `restart-service / proxmox / qemu`.
+Atlas v0.9 has the theme **Safe Operational Tuple Expansion**. Its contingent
+target is `restart-service / proxmox / lxc`, but LXC execution work must stop
+unless Atlas can prove an authoritative container-incarnation identity. The
+existing `restart-service / proxmox / qemu` path remains the only operational
+production tuple while that read-only identity gate and later approval,
+permission, parity, recovery, and validation milestones are completed.
 
 - [Atlas v0.7.0 to v0.8 upgrade](docs/DEPLOYMENT.md#atlas-v070-to-v08-upgrade-and-rollback)
 - [Atlas v0.8 to v0.7.0 rollback](docs/DEPLOYMENT.md#rollback-to-atlas-v070)
@@ -248,7 +257,7 @@ Current capabilities:
 
 Planned direction:
 
-- Atlas v0.8 Operational Control Plane Clarity and Observability as the current bounded release theme
+- Atlas v0.9 Safe Operational Tuple Expansion as the current bounded release theme
 - Atlas Runtime Foundation as a continuing cross-release track for separating immutable defaults from mutable runtime state
 - Provider Management Framework as a Runtime Foundation subsystem for provider connection, discovery, resources, monitoring, actions, and diagnostics
 - Discovery Center runtime status:

@@ -786,6 +786,11 @@ The supported starting point is immutable release `atlas-v0.7.0` at
 `8dbc43de73dda300b50c121f19324cb5174df2a9`. Atlas does not automatically
 upgrade or roll back a deployment.
 
+The reviewed upgrade target is final release `atlas-v0.8.0` at
+`f83cd90982d4682ce49e60308e93dc9840984211`, promoted from immutable candidate
+`atlas-v0.8-rc1` at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa`.
+
 ### Pre-upgrade requirements
 
 Before selecting a reviewed v0.8 release reference, require:
@@ -826,8 +831,8 @@ git diff --cached --quiet
    recorded release SHA before checking it out:
 
 ```bash
-ATLAS_V08_REF=replace-with-reviewed-v0.8-rc-tag
-ATLAS_V08_EXPECTED_SHA=replace-with-reviewed-release-sha
+ATLAS_V08_REF=atlas-v0.8.0
+ATLAS_V08_EXPECTED_SHA=f83cd90982d4682ce49e60308e93dc9840984211
 git fetch origin tag "$ATLAS_V08_REF"
 test "$(git rev-parse "$ATLAS_V08_REF^{}")" = "$ATLAS_V08_EXPECTED_SHA"
 git switch --detach "$ATLAS_V08_REF^{}"
