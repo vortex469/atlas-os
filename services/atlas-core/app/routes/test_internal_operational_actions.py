@@ -77,6 +77,30 @@ def test_authenticated_strict_request_reaches_explicit_empty_execution_gate(tmp_
     assert b"Authorization" not in persisted
 
 
+def test_sanitized_lifecycle_read_requires_auth_and_does_not_write(tmp_path) -> None:
+    client, ledger, token = _client(tmp_path)
+    request = make_request()
+    _post(client, token, request.model_dump(mode="json"))
+    url = f"/api/v1/internal/operational-actions/lifecycle/{request.request_id}"
+    before = ledger.list_events(limit=1000)
+
+    assert client.get(url).status_code == 401
+    response = client.get(url, headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["request_id"] == request.request_id
+    assert payload["ledger_state"] == "failed"
+    assert payload["barrier_crossing_count"] == 0
+    assert payload["provider_operation_capture_count"] == 0
+    assert payload["controlled_reason"] == "dispatch_failed"
+    assert ledger.list_events(limit=1000) == before
+    serialized = json.dumps(payload)
+    assert "approval" not in serialized
+    assert "Authorization" not in serialized
+    assert "vmgenid" not in serialized
+
+
 def test_authenticated_request_rejects_extra_fields_and_large_body(tmp_path) -> None:
     client, _ledger, token = _client(tmp_path)
     payload = make_request().model_dump(mode="json")

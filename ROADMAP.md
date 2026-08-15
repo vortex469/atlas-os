@@ -15,7 +15,7 @@ promise. Product direction is guided by the
 
 ## Atlas Runtime Foundation
 
-Active major Atlas milestone.
+Long-running foundation track. The bounded v0.8 release theme is defined below.
 
 - Define immutable defaults under `config/` and mutable runtime state under `data/`
 - Keep shipped templates read-only in production
@@ -88,8 +88,8 @@ Provider-neutral catalog and compatibility subsystem. D0 architecture and planni
 
 ### Planned
 
-- v0.7+ carries the v0.6 deferrals for execution and release operations:
-  - `restart-service`
+- At the end of v0.6, the following work was deferred to later releases:
+  - `restart-service` (the first closed tuple subsequently shipped in v0.7)
   - `backup`
   - `restore`
   - `install-provider`
@@ -98,7 +98,10 @@ Provider-neutral catalog and compatibility subsystem. D0 architecture and planni
 
 #### Phase 4: new execution intents
 
-Future execution intents such as `restart-service`, `backup`, `restore`, `install-provider`, and `update-image` require separate architecture, contracts, exact approvals, recovery behavior, security review, and end-to-end tests.
+Beyond the closed `restart-service / proxmox / qemu` capability delivered in
+v0.7, additional execution intents or provider/resource tuples require separate
+architecture, contracts, exact approvals, recovery behavior, security review,
+and end-to-end tests.
 
 #### Phase 5: distributed orchestration
 
@@ -109,6 +112,11 @@ Distributed orchestration, clustering, cross-host recovery, and advanced provide
 Dynamic discovery sources, semantic search, Mission Control candidate controls, release workflows, and rollback automation remain future ideas. They are not part of v0.6.
 
 ## Atlas v0.7 roadmap status
+
+Atlas v0.7 is complete and was released as `atlas-v0.7.0` at
+`8dbc43de73dda300b50c121f19324cb5174df2a9`. Its immutable release candidate,
+`atlas-v0.7-rc1`, remains at
+`5b1321091af0fc191844cdf71e9e0d919e4ea415`.
 
 ### Completed: P1.3 operational restart
 
@@ -137,12 +145,114 @@ observed the same guest running with QMP running, and the authoritative target
 fingerprint remained unchanged. The dispatch ledger recorded one barrier, one
 provider-operation capture, one dispatch result, and no replay.
 
-### Remaining v0.7 work
+### Deferred beyond v0.7
 
-- Decide the v0.7 release boundary and complete release-candidate packaging,
-  documentation, CI, upgrade, and rollback evidence.
 - `backup`, `restore`, `install-provider`, and `update-image` remain unsupported
   execution intents and require their own contracts, security review, recovery
   behavior, and end-to-end validation.
 - Automated rollback, push, tag/release publication, and remote deployment
   remain out of scope.
+
+## Atlas v0.8 roadmap
+
+**Theme: Operational Control Plane Clarity and Observability**
+
+Purpose: make the existing operational capability understandable, auditable,
+recoverable, and safely extensible without widening the mutation boundary.
+
+The dependency order is:
+`V0.8-P0 → V0.8-P1 → V0.8-P2 → V0.8-P3 → V0.8-P4 → V0.8-P5`.
+
+### V0.8-P0 — Roadmap and release-state reconciliation
+
+**Status: Complete.**
+
+- Goal: establish the authoritative post-v0.7 release state and v0.8 scope.
+- Deliverables: consistent release identities, current production boundaries,
+  milestones, dependency order, and non-goals across project documentation.
+- Non-goal: runtime, test, deployment, or security-control changes.
+- Exit criteria: documentation consistently records v0.7.0 as final and defines
+  one coherent v0.8 roadmap.
+
+### V0.8-P1 — Effect-aware workflow and approval clarity
+
+**Status: Complete.**
+
+- Goal: make repository and operational workflows unmistakably distinct.
+- Deliverables: effect-aware approval presentation; explicit stale, historical,
+  and superseded states; exact actionability rules; deterministic refresh after
+  decisions; and proof that operational workflows never expose commit approval.
+- Non-goal: any execution, gate, handler, or approval-binding behavior change.
+- Exit criteria: Mission Control presents only currently actionable approvals
+  as actionable and renders repository-only stages only for repository changes.
+
+The first code slice is limited to those presentation and read-contract changes.
+It must not change execution behavior.
+
+### V0.8-P2 — Unified operational lifecycle read model
+
+**Status: Complete.**
+
+- Goal: provide one sanitized, correlated explanation of an operational action.
+- Deliverables: a read-only projection covering intent provenance, candidate,
+  plan, approvals, workflow, ledger transitions, barrier/provider-operation
+  counts, verification, recovery, and terminal outcome.
+- Non-goal: merging Core and Agent persistence or trust ownership.
+- Exit criteria: stable correlation identifiers and redacted, paginated,
+  filterable lifecycle responses explain the complete durable history.
+
+### V0.8-P3 — Mission Control operational history and recovery UX
+
+**Status: Complete.**
+
+- Goal: make operational lifecycle and recovery state understandable to an
+  operator without direct database or container access.
+- Deliverables: operational history, lifecycle detail, verification and recovery
+  states, terminal evidence, and fail-closed operator guidance.
+- Non-goal: mutation retry, provider controls, or automatic reconciliation that
+  can cross a dispatch barrier.
+- Exit criteria: Mission Control accurately distinguishes pending verification,
+  failure, replacement, unknown outcome, and verified terminal states.
+
+### V0.8-P4 — Provider-neutral capability and selector descriptors
+
+**Status: Complete.**
+
+- Goal: make supported capabilities discoverable without granting execution.
+- Deliverables: typed read-only capability descriptors and a provider-neutral
+  selector contract implemented by the existing Proxmox QEMU projection.
+- Non-goal: new intent, provider/resource tuple, translation, or handler.
+- Exit criteria: tests prove descriptors cannot enable a gate, register a
+  handler, derive arbitrary provider actions, or bypass authoritative resolution.
+
+### V0.8-P5 — Deployment and security ergonomics
+
+**Status: Complete.**
+
+- Goal: clarify the supported browser ingress and operational-auth experience.
+- Deliverables: direct Mission Control HTTP exposure review, session-expiry and
+  reauthentication UX, evidence-retention guidance, and release checks for
+  redaction, stale approvals, gate/registry parity, and ingress policy.
+- Non-goal: weaker origin, CSRF, credential, container, or network controls.
+- Exit criteria: production has one clearly documented browser-access model and
+  reproducible security assertions.
+
+P0 through P5 are complete. Atlas v0.8 is in RC preparation; neither an RC tag
+nor the final `atlas-v0.8.0` tag has been created.
+
+### V0.8 non-goals
+
+V0.8 does not add new operational execution intents, new provider mutation
+handlers, backup execution, restore execution, `update-image` execution,
+`install-provider` execution, automatic rollback, arbitrary provider actions,
+mutation retry after ambiguity, remote deployment, distributed orchestration,
+conversational execution, automatic approval, Proxmox ACL expansion, or direct
+Discovery Center-to-dispatch coupling.
+
+### Current production execution boundary
+
+Repository execution remains the separate `update-compose-stack` workflow.
+Operational production execution is exactly `restart-service / proxmox / qemu`:
+the Agent planning gate, Agent execution gate, and Core execution gate contain
+only `restart-service`, and the production registry contains exactly the one
+`restart-service/proxmox/qemu` tuple.

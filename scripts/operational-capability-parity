@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Fail closed when the reviewed operational capability boundaries diverge."""
+
+from __future__ import annotations
+
+import ast
+import os
+from pathlib import Path
+
+ROOT = Path(
+    os.environ.get("ATLAS_CAPABILITY_PARITY_ROOT", Path(__file__).resolve().parent.parent)
+)
+EXPECTED = {("restart-service", "proxmox", "qemu")}
+
+
+def tree(path: str) -> ast.Module:
+    return ast.parse((ROOT / path).read_text(encoding="utf-8"), filename=path)
+
+
+def literal_assignment(module: ast.Module, name: str):
+    for node in module.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == name for target in node.targets
+        ):
+            if (
+                isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Name)
+                and node.value.func.id == "frozenset"
+            ):
+                if not node.value.args:
+                    return frozenset()
+                if len(node.value.args) == 1:
+                    return frozenset(ast.literal_eval(node.value.args[0]))
+            return ast.literal_eval(node.value)
+    raise AssertionError(f"missing closed capability source: {name}")
+
+
+agent_models = tree("services/atlas-agent/app/candidate_planning/models.py")
+planning = set(literal_assignment(agent_models, "OPERATIONAL_PLANNING_INTENTS"))
+agent_execution = set(
+    literal_assignment(agent_models, "OPERATIONAL_EXECUTION_INTENTS")
+)
+translation = set(
+    literal_assignment(
+        tree(
+            "services/atlas-agent/app/candidate_planning/operational_translation.py"
+        ),
+        "_TRANSLATION_ACTIONS",
+    )
+)
+core_execution = set(
+    literal_assignment(
+        tree("services/atlas-core/app/operational_dispatch/registry.py"),
+        "OPERATIONAL_EXECUTION_INTENTS",
+    )
+)
+
+production = tree("services/atlas-core/app/operational_dispatch/production.py")
+registrations = set()
+for node in ast.walk(production):
+    if not (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "OperationalHandlerRegistration"
+    ):
+        continue
+    values = {item.arg: item.value for item in node.keywords}
+    registrations.add(
+        (
+            ast.literal_eval(values["operation_intent"]),
+            ast.literal_eval(values["provider_id"]),
+            ast.literal_eval(values["resource_type"]),
+        )
+    )
+
+descriptor = tree(
+    "services/atlas-core/app/execution_candidates/operational_capabilities.py"
+)
+descriptor_tuples = {
+    tuple(ast.literal_eval(argument) for argument in node.args)
+    for node in ast.walk(descriptor)
+    if isinstance(node, ast.Call)
+    and isinstance(node.func, ast.Attribute)
+    and node.func.attr == "capability_boundary"
+}
+
+boundaries = {
+    "Agent planning gate": {(intent, "proxmox", "qemu") for intent in planning},
+    "Agent translation table": translation,
+    "Agent execution gate": {
+        (intent, "proxmox", "qemu") for intent in agent_execution
+    },
+    "Core execution gate": {
+        (intent, "proxmox", "qemu") for intent in core_execution
+    },
+    "Core production registry": registrations,
+    "Core capability projection": descriptor_tuples,
+}
+for label, actual in boundaries.items():
+    if actual != EXPECTED:
+        raise SystemExit(f"Operational capability mismatch: {label}={sorted(actual)!r}")
+
+print("Operational capability parity passed: restart-service/proxmox/qemu")

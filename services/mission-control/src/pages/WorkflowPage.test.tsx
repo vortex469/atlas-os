@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     getWorkflowDetail,
+    getWorkflowOperationalLifecycle,
     resumeWorkflow,
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
@@ -11,10 +12,12 @@ import {
 } from "../api/atlas-agent";
 import { WorkflowPage } from "./WorkflowPage";
 import type { WorkflowDetailResponse } from "../types/atlasAgent";
+import { operationalLifecycle } from "../test/operationalLifecycle";
 
 vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowDetail: vi.fn(),
+    getWorkflowOperationalLifecycle: vi.fn(),
     resumeWorkflow: vi.fn(),
     submitWorkflowCommitApproval: vi.fn(),
     submitWorkflowImplementationApproval: vi.fn(),
@@ -22,6 +25,7 @@ vi.mock("../api/atlas-agent", () => ({
 }));
 
 const mockedGetWorkflowDetail = vi.mocked(getWorkflowDetail);
+const mockedGetWorkflowOperationalLifecycle = vi.mocked(getWorkflowOperationalLifecycle);
 const mockedResumeWorkflow = vi.mocked(resumeWorkflow);
 const mockedSubmitWorkflowCommitApproval = vi.mocked(submitWorkflowCommitApproval);
 const mockedSubmitWorkflowImplementationApproval = vi.mocked(submitWorkflowImplementationApproval);
@@ -31,6 +35,7 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
     return {
         workflow_id: "workflow-123",
         workflow_source: "candidate",
+        effect_kind: "repository_change",
         workflow_state: "awaiting_implementation_approval",
         planning_session_id: "candidate-plan-123",
         candidate_id: "candidate-123",
@@ -49,6 +54,9 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
             repository: "/opt/atlas",
             translator_version: "candidate-translator-v1",
         },
+        operational_action_request: null,
+        operational_execution: null,
+        approval_presentations: [],
         timeline: [
             { name: "Execution Candidate", status: "completed" },
             { name: "Planning Session", status: "completed" },
@@ -163,6 +171,7 @@ describe("WorkflowPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetWorkflowDetail.mockResolvedValue(workflow());
+        mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle());
         mockedResumeWorkflow.mockResolvedValue(undefined);
     });
 
@@ -421,6 +430,9 @@ describe("WorkflowPage", () => {
     });
 
     it("hides implementation approval controls after an approve response without state transition", async () => {
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(workflow())
+            .mockResolvedValueOnce(workflow({ implementation_approval_status: "approved" }));
         mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_implementation_approval",
@@ -449,6 +461,41 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: /verify/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    });
+
+    it("presents operational action approval without repository-only controls", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            effect_kind: "operational_action",
+            operational_action_request: { request_id: "action-request-123" },
+        }));
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Operational action approval" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Approve Exact Action" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Implementation Request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Verification Plan" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Commit Request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Operational lifecycle" })).toBeInTheDocument();
+        expect(screen.getAllByText("resolved (approved)")).toHaveLength(2);
+    });
+
+    it("never loads operational lifecycle for a repository workflow", async () => {
+        renderPage();
+
+        await screen.findByRole("heading", { name: "Implementation approval" });
+        expect(mockedGetWorkflowOperationalLifecycle).not.toHaveBeenCalled();
+        expect(screen.queryByRole("heading", { name: "Operational lifecycle" })).not.toBeInTheDocument();
+    });
+
+    it("deterministically refreshes workflow and operational lifecycle together", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Refresh lifecycle" }));
+
+        await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
+        expect(mockedGetWorkflowOperationalLifecycle).toHaveBeenCalledTimes(2);
     });
 
     it("shows workflow not found", async () => {
@@ -494,7 +541,12 @@ describe("WorkflowPage", () => {
     });
 
     it("hides verification controls after a verification approve response without state transition", async () => {
-        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_verification_approval" }));
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(workflow({ workflow_state: "awaiting_verification_approval" }))
+            .mockResolvedValueOnce(workflow({
+                workflow_state: "awaiting_verification_approval",
+                verification_approval_status: "approved",
+            }));
         mockedSubmitWorkflowVerificationApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_verification_approval",
@@ -568,7 +620,9 @@ describe("WorkflowPage", () => {
     });
 
     it("hides commit controls after a commit approve response without state transition", async () => {
-        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(workflowAwaitingCommit())
+            .mockResolvedValueOnce(workflowAwaitingCommit({ commit_approval_status: "approved" }));
         mockedSubmitWorkflowCommitApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_commit_approval",

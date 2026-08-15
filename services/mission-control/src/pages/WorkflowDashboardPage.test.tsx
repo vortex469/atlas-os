@@ -31,6 +31,8 @@ function workflow(overrides: Partial<WorkflowSummary> = {}): WorkflowSummary {
         workflow_id: "workflow-123",
         workflow_source: "candidate",
         workflow_state: "awaiting_implementation_approval",
+        effect_kind: "repository_change",
+        execution_intent: "update-compose-stack",
         candidate_id: "candidate-123",
         planning_session_id: "planning-123",
         repository: "/repo",

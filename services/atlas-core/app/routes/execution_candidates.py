@@ -16,10 +16,15 @@ from app.execution_candidates.models import (
     ExecutionCategory,
     ExecutionIntent,
 )
+from app.execution_candidates.operational_capabilities import (
+    OperationalCapabilityCollection,
+    project_operational_capabilities,
+)
 from app.execution_candidates.operator_intent_selector import (
     OperatorIntentResourceCollection,
     OperatorIntentResourceCollectionError,
     collect_operator_intent_resources,
+    resolve_operational_resource_selector,
 )
 from app.execution_candidates.operator_intents import (
     OperatorOperationalIntentRequest,
@@ -116,6 +121,47 @@ async def list_execution_candidates(
         offset=offset,
         has_more=has_more,
     )
+
+
+@router.get(
+    "/operator-intents/capabilities",
+    response_model=OperationalCapabilityCollection,
+    summary="Describe closed operational capabilities",
+)
+async def list_operator_intent_capabilities(
+    principal: OperatorIntentReadPrincipal,
+    request: Request,
+) -> OperationalCapabilityCollection:
+    del principal
+    return project_operational_capabilities(
+        request.app.state.operational_dispatch_service
+    )
+
+
+@router.get(
+    "/operator-intents/capabilities/{selector_id}/resources",
+    response_model=OperatorIntentResourceCollection,
+    responses={404: {"model": APIError}, 503: {"model": APIError}},
+    summary="List resources through a fixed operational selector",
+)
+async def list_capability_resources(
+    selector_id: str,
+    principal: OperatorIntentReadPrincipal,
+) -> OperatorIntentResourceCollection:
+    del principal
+    selector = resolve_operational_resource_selector(selector_id)
+    if selector is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Operational resource selector was not found.",
+        )
+    try:
+        return await selector.collect()
+    except OperatorIntentResourceCollectionError as error:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Operator-intent resources are temporarily unavailable.",
+        ) from error
 
 
 @router.get(

@@ -8,6 +8,7 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
     return {
         workflow_id: "workflow-123",
         workflow_source: "candidate",
+        effect_kind: "repository_change",
         workflow_state: "awaiting_implementation_approval",
         planning_session_id: "candidate-plan-123",
         candidate_id: "candidate-123",
@@ -19,6 +20,9 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
         translator_version: "candidate-translator-v1",
         affected_files: ["compose.yaml"],
         implementation_request: null,
+        operational_action_request: null,
+        operational_execution: null,
+        approval_presentations: [],
         timeline: [
             { name: "Execution Candidate", status: "completed" },
             { name: "Planning Session", status: "completed" },

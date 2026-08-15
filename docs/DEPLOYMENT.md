@@ -145,8 +145,10 @@ external firewall restricts access.
 
 ### Authenticated HTTPS
 
-The HTTPS overlay keeps the direct HTTP listener on loopback and
-publishes a TLS listener on port `443`. It requires:
+The HTTPS overlay removes Mission Control's inherited host HTTP publication and
+publishes Atlas Edge as the only browser ingress on port `443`. Mission Control
+port `8080` remains available only on the Compose network so Atlas Edge can
+serve the SPA and proxy Agent/Core APIs. It requires:
 
 - a certificate whose subject names include the Atlas hostname;
 - the matching private key;
@@ -267,8 +269,35 @@ docker compose \
 
 The verifier must be a regular, non-symlink file owned by Core's runtime UID
 10001 with mode `0400`. Core stores only opaque-session and CSRF digests in the
-private `atlas-data` volume. Secure operator cookies are unusable over the
-direct HTTP listener, which remains available for existing read-only operation.
+private `atlas-data` volume. In this three-file deployment the browser path is
+always `browser -> Atlas Edge HTTPS -> Mission Control -> Agent/Core`; there is
+no direct Mission Control host listener. Base production without the HTTPS
+overlay retains loopback HTTP for local compatibility.
+
+Expired sessions, failed CSRF rotation, missing permission, and Core
+unavailability fail closed in Mission Control. Reauthentication returns the
+operator to the originally requested maintenance or history page. Atlas does
+not store passwords, cookies, CSRF values, or bearer tokens in browser storage,
+and it never automatically retries a maintenance mutation.
+
+### Read-only operational support evidence
+
+Collect only the evidence needed to correlate an incident, and retain it under
+the site's existing restricted support-data policy:
+
+1. Record the exact release tag/SHA and running service/image identities.
+2. Record health status plus the workflow and immutable action-request IDs.
+3. Export or transcribe the sanitized lifecycle projection, ledger state and
+   ordered transitions, approval state, target fingerprint, and relevant audit
+   event IDs.
+4. Confirm barrier/provider-operation counts and whether the lifecycle is
+   terminal. Evidence collection is read-only and must not resume, retry, or
+   reconcile a mutation through an execution endpoint.
+
+Never include credentials, Authorization headers, cookies, CSRF or bearer
+tokens, TLS private keys, operator-verifier hashes, provider-native secrets,
+raw `vmgenid` values, or identity tokens. Atlas defines no automatic upload
+destination; transfer and retention remain an operator-controlled process.
 
 ## Operate Atlas
 
@@ -750,6 +779,192 @@ The v0.7 operator verifier, TLS material, and `htpasswd` may remain in their
 private, ignored host locations. V0.6 does not consume the operator-auth
 overlay or Core verifier. Deleting those files is not required for rollback;
 normal credential-retention and rotation policy still applies.
+
+## Atlas v0.7.0 to v0.8 upgrade and rollback
+
+The supported starting point is immutable release `atlas-v0.7.0` at
+`8dbc43de73dda300b50c121f19324cb5174df2a9`. Atlas does not automatically
+upgrade or roll back a deployment.
+
+### Pre-upgrade requirements
+
+Before selecting a reviewed v0.8 release reference, require:
+
+- a clean tracked worktree;
+- a current verified Atlas data backup;
+- a current host-approved snapshot or offline archive of the
+  `atlas-agent-state` volume;
+- operator-auth verifier, TLS key/certificate, and edge `htpasswd` material
+  preserved outside Git;
+- healthy Core, Agent, Mission Control, Edge, worker, relay, and egress proxy;
+- the configured provider reachable through Atlas; and
+- the exact production Compose environment and private paths available.
+
+Record backup/snapshot identities and retain them outside the repository. Atlas
+data and Agent state may contain operational history or secrets and must be
+handled as restricted material.
+
+### Upgrade procedure
+
+1. Verify the starting release and clean tracked state:
+
+```bash
+test "$(git rev-parse 'atlas-v0.7.0^{}')" = \
+  "8dbc43de73dda300b50c121f19324cb5174df2a9"
+git diff --quiet
+git diff --cached --quiet
+```
+
+2. Create and verify the Atlas data backup, then snapshot
+   `atlas-agent-state` with the approved host mechanism:
+
+```bash
+./scripts/atlas-data-backup /path/to/protected-atlas-backups
+```
+
+3. Fetch the reviewed v0.8 reference and verify it against the independently
+   recorded release SHA before checking it out:
+
+```bash
+ATLAS_V08_REF=replace-with-reviewed-v0.8-rc-tag
+ATLAS_V08_EXPECTED_SHA=replace-with-reviewed-release-sha
+git fetch origin tag "$ATLAS_V08_REF"
+test "$(git rev-parse "$ATLAS_V08_REF^{}")" = "$ATLAS_V08_EXPECTED_SHA"
+git switch --detach "$ATLAS_V08_REF^{}"
+```
+
+4. Export the existing production paths and exact browser origin. Do not print
+   private file contents:
+
+```bash
+export ATLAS_REPOSITORY_HOST_PATH="$PWD"
+export DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+export ATLAS_TLS_CERT_FILE=/path/to/atlas.crt
+export ATLAS_TLS_KEY_FILE=/path/to/atlas.key
+export ATLAS_HTPASSWD_FILE=/path/to/atlas.htpasswd
+export ATLAS_OPERATOR_AUTH_VERIFIER_HOST_PATH=/path/to/atlas-operators.json
+export ATLAS_OPERATOR_AUTH_TRUSTED_ORIGINS=https://atlas.example.internal
+```
+
+5. Render, build, and recreate the same three-file production deployment:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  config --quiet
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  up --build --detach
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  ps
+```
+
+6. Require every service to become healthy. Run
+   `./scripts/operational-capability-parity` and require exactly
+   `restart-service / proxmox / qemu`. Through authenticated HTTPS, confirm
+   session restore/CSRF rotation, the protected probe, the sanitized capability
+   descriptor, resource selector, and read-only operational history.
+
+7. Confirm the hardened browser path is
+   `browser -> Atlas Edge HTTPS -> Mission Control -> Agent/Core`. The HTTPS
+   overlay intentionally removes Mission Control's direct host publication;
+   internal Edge-to-Mission-Control routing remains available.
+
+V0.8 adds effect-aware approval presentation, a unified lifecycle read model,
+operational history/recovery UX, and provider-neutral descriptors. These are
+read/presentation controls and do not widen execution. Do not request a live VM
+restart merely to validate an ordinary upgrade.
+
+### Persistence and data compatibility
+
+V0.8 does not change Atlas Agent's aggregate snapshot schema: it remains schema
+v3 with the implemented v1/v2/v3 readers. Core's operational dispatch table,
+event table, and transition table definitions are also unchanged. P2 adds
+ordered read queries and sanitized projections; P3 is UI/read behavior; P4
+descriptors and P5 ingress/session ergonomics add no persistent migration.
+
+Those facts establish forward upgrade without a v0.8 migration, but the project
+does not provide an explicit end-to-end guarantee that v0.7.0 can safely open
+every state written while v0.8 is running. Fail-safe rollback therefore
+requires restoring both the pre-upgrade Atlas data backup and the pre-upgrade
+`atlas-agent-state` snapshot. Preserve complete v0.8 copies of both volumes
+before restoration so lifecycle and audit evidence are not lost.
+
+### In-flight action handling
+
+Normal rollback requires no in-flight operational request. If a request reached
+`dispatching` or crossed the durable barrier:
+
+- do not retry, recreate, or replace it;
+- preserve its ledger, digest, transitions, provider-operation reference, and
+  sanitized audit evidence;
+- use v0.8 read-only lifecycle/status views to determine the durable outcome;
+- wait for `verified`, `verification_failed`, `target_replaced`, or
+  `outcome_unknown`; and
+- require operator review of that terminal state before rollback.
+
+An unresolved barrier-crossed request blocks ordinary rollback.
+
+### Rollback to atlas-v0.7.0
+
+1. Confirm no operational request is in flight under the rules above.
+2. Record the v0.8 SHA and preserve offline copies of the complete v0.8
+   `atlas-data` and `atlas-agent-state` volumes.
+3. Stop the v0.8 three-file deployment:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  down
+```
+
+4. Restore the pre-upgrade `atlas-agent-state` snapshot with the same approved
+   host mechanism and restore the pre-upgrade Atlas backup while services are
+   stopped:
+
+```bash
+./scripts/atlas-data-restore \
+  /path/to/protected-atlas-backups/atlas-data-YYYYMMDDTHHMMSSZ \
+  --confirm
+```
+
+5. Check out the immutable v0.7.0 release, render, and recreate its supported
+   three-file production deployment:
+
+```bash
+git switch --detach 'atlas-v0.7.0^{}'
+test "$(git rev-parse HEAD)" = \
+  "8dbc43de73dda300b50c121f19324cb5174df2a9"
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  config --quiet
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  up --build --detach
+```
+
+6. Require all services to become healthy and confirm v0.8-only lifecycle
+   history, descriptor, and effect-presentation surfaces are absent. Confirm
+   the v0.7 production boundary remains exactly
+   `restart-service / proxmox / qemu`. Do not perform a provider mutation as a
+   rollback smoke test.
+
+The v0.8 operator verifier, TLS material, and edge `htpasswd` may remain in
+their private ignored locations; v0.7 already consumes the three-file
+operator-auth deployment. Deletion is not required for rollback.
 
 ## Back up and restore data
 

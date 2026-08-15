@@ -16,6 +16,7 @@ from app.approval.models import (
     ApprovalRequest,
     ApprovalStatus,
 )
+from app.approval.presentation import classify_approval
 from app.candidate_planning.audit import (
     CandidateAuditApprovals,
     CandidateAuditChainValidator,
@@ -26,6 +27,7 @@ from app.candidate_planning.execution import CandidateExecutionFailureCode
 from app.candidate_planning.models import CandidateImplementationTranslationRequest
 from app.candidate_planning.verification import CandidateVerificationFailureCode
 from app.context.models import AgentContext
+from app.core_client.exceptions import AtlasCoreClientError
 from app.execution.models import EnvironmentVariable, ExecutionResult
 from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import StatePersistenceError
@@ -233,6 +235,15 @@ class WorkflowOperationalActionRequestSummary(BaseModel):
     generated_at: str
     expires_at: str
     execution_enabled: bool = False
+
+
+class WorkflowApprovalPresentationResponse(BaseModel):
+    approval_id: str
+    purpose: str
+    decision_status: str
+    presentation_state: str
+    actionable: bool
+    reason: str
 
 
 class WorkflowTimelineStageResponse(BaseModel):
@@ -449,6 +460,71 @@ class WorkflowOperationalExecutionResponse(BaseModel):
     audit_events: tuple[str, ...]
 
 
+class OperationalLifecycleApprovalResponse(BaseModel):
+    approval_id: str | None
+    decision_status: str
+    presentation_state: str
+    actionable: bool
+    expires_at: datetime | None = None
+
+
+class OperationalLifecycleTransitionResponse(BaseModel):
+    sequence: int
+    state: str
+    occurred_at: datetime
+
+
+class WorkflowOperationalLifecycleResponse(BaseModel):
+    """Effect-aware aggregation that preserves Agent and Core ownership."""
+
+    applicable: bool
+    availability: str
+    consistency_status: str
+    controlled_reason: str | None
+    workflow_id: str
+    workflow_state: str
+    agent_execution_stage: str | None
+    candidate_id: str | None
+    planning_session_id: str | None
+    effect_kind: str
+    execution_intent: str | None
+    provider_id: str | None
+    resource_id: str | None
+    resource_type: str | None
+    target_label: str | None
+    operator_intent_record_id: str | None
+    candidate_source_subsystem: str | None
+    candidate_fingerprint: str | None
+    plan_fingerprint: str | None
+    preparation_approval: OperationalLifecycleApprovalResponse | None
+    action_approval: OperationalLifecycleApprovalResponse | None
+    action_request_id: str | None
+    request_digest: str | None
+    target_fingerprint: str | None
+    target_version: str | None
+    disruption_scope: str | None
+    request_created_at: datetime | None
+    request_expires_at: datetime | None
+    core_record_state: str | None
+    transitions: tuple[OperationalLifecycleTransitionResponse, ...] = ()
+    barrier_crossed: bool = False
+    barrier_crossing_count: int = 0
+    provider_operation_captured: bool = False
+    provider_operation_capture_count: int = 0
+    dispatch_status: str | None
+    provider_operation_reference: str | None
+    dispatch_started_at: datetime | None
+    dispatch_completed_at: datetime | None
+    verification_status: str | None
+    observed_target_fingerprint: str | None
+    observed_state: str | None
+    observed_health: str | None
+    verification_started_at: datetime | None
+    verification_completed_at: datetime | None
+    verification_deadline: datetime | None
+    terminal: bool
+
+
 class WorkflowDetailResponse(BaseModel):
     """Read-only workflow implementation approval detail."""
 
@@ -468,6 +544,7 @@ class WorkflowDetailResponse(BaseModel):
     effect_kind: str
     operational_action_request: WorkflowOperationalActionRequestSummary | None
     operational_execution: WorkflowOperationalExecutionResponse | None
+    approval_presentations: list[WorkflowApprovalPresentationResponse]
     timeline: list[WorkflowTimelineStageResponse]
     execution: WorkflowExecutionSummaryResponse
     verification_plan: WorkflowVerificationPlanResponse
@@ -485,6 +562,8 @@ class WorkflowSummaryResponse(BaseModel):
     workflow_id: str
     workflow_source: str
     workflow_state: str
+    effect_kind: str
+    execution_intent: str | None
     candidate_id: str | None
     planning_session_id: str | None
     repository: str | None
@@ -1219,6 +1298,232 @@ async def get_workflow_audit(
     return _candidate_audit_detail(request, workflow)
 
 
+def _lifecycle_approval(
+    presentations: list[WorkflowApprovalPresentationResponse],
+    purpose: ApprovalPurpose,
+    *,
+    expires_at: datetime | None = None,
+) -> OperationalLifecycleApprovalResponse | None:
+    match = next((item for item in presentations if item.purpose == purpose.value), None)
+    if match is None:
+        return None
+    return OperationalLifecycleApprovalResponse(
+        approval_id=match.approval_id,
+        decision_status=match.decision_status,
+        presentation_state=match.presentation_state,
+        actionable=match.actionable,
+        expires_at=expires_at,
+    )
+
+
+@router.get(
+    "/{workflow_id}/operational-lifecycle",
+    response_model=WorkflowOperationalLifecycleResponse,
+    responses=_ERROR_RESPONSES,
+)
+async def get_workflow_operational_lifecycle(
+    request: Request,
+    workflow_id: str,
+) -> WorkflowOperationalLifecycleResponse:
+    """Aggregate sanitized operational facts without mutating either owner."""
+
+    workflow = request.app.state.container.workflow_state.get_session(workflow_id)
+    if workflow is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "workflow_not_found", "message": "Workflow not found"},
+        )
+    detail = _workflow_detail(request, workflow_id)
+    metadata = workflow.candidate_metadata
+    action = workflow.operational_action_request
+    reference = workflow.operational_execution_reference
+    if workflow.effect_kind is not WorkflowEffectKind.OPERATIONAL_ACTION:
+        return WorkflowOperationalLifecycleResponse(
+            applicable=False,
+            availability="not_applicable",
+            consistency_status="not_applicable",
+            controlled_reason=None,
+            workflow_id=workflow.identifier,
+            workflow_state=workflow.state.value,
+            agent_execution_stage=None,
+            candidate_id=metadata.candidate_id if metadata else None,
+            planning_session_id=(metadata.candidate_planning_session_id if metadata else None),
+            effect_kind=workflow.effect_kind.value,
+            execution_intent=None,
+            provider_id=None,
+            resource_id=None,
+            resource_type=None,
+            target_label=None,
+            operator_intent_record_id=None,
+            candidate_source_subsystem=metadata.source_subsystem if metadata else None,
+            candidate_fingerprint=metadata.candidate_fingerprint if metadata else None,
+            plan_fingerprint=metadata.candidate_plan_fingerprint if metadata else None,
+            preparation_approval=None,
+            action_approval=None,
+            action_request_id=None,
+            request_digest=None,
+            target_fingerprint=None,
+            target_version=None,
+            disruption_scope=None,
+            request_created_at=None,
+            request_expires_at=None,
+            core_record_state=None,
+            dispatch_status=None,
+            provider_operation_reference=None,
+            dispatch_started_at=None,
+            dispatch_completed_at=None,
+            verification_status=None,
+            observed_target_fingerprint=None,
+            observed_state=None,
+            observed_health=None,
+            verification_started_at=None,
+            verification_completed_at=None,
+            verification_deadline=None,
+            terminal=workflow.state is WorkflowSessionState.COMPLETED,
+        )
+
+    provider_id = action.provider_id if action else None
+    resource_id = action.resource_id if action else metadata.target_id if metadata else None
+    resource_type = action.resource_type if action else metadata.target_type if metadata else None
+    common = {
+        "applicable": True,
+        "workflow_id": workflow.identifier,
+        "workflow_state": workflow.state.value,
+        "agent_execution_stage": reference.stage.value if reference else None,
+        "candidate_id": metadata.candidate_id if metadata else None,
+        "planning_session_id": metadata.candidate_planning_session_id if metadata else None,
+        "effect_kind": workflow.effect_kind.value,
+        "execution_intent": action.execution_intent if action else metadata.execution_intent if metadata else None,
+        "provider_id": provider_id,
+        "resource_id": resource_id,
+        "resource_type": resource_type,
+        "target_label": (
+            f"{provider_id}/{resource_type}/{resource_id}"
+            if provider_id and resource_type and resource_id
+            else None
+        ),
+        "operator_intent_record_id": (
+            metadata.source_recommendation_id
+            if metadata and metadata.source_subsystem == "operator-intent"
+            else None
+        ),
+        "candidate_source_subsystem": metadata.source_subsystem if metadata else None,
+        "candidate_fingerprint": metadata.candidate_fingerprint if metadata else None,
+        "plan_fingerprint": metadata.candidate_plan_fingerprint if metadata else None,
+        "preparation_approval": _lifecycle_approval(
+            detail.approval_presentations, ApprovalPurpose.CANDIDATE_WORKFLOW_SHELL
+        ),
+        "action_approval": _lifecycle_approval(
+            detail.approval_presentations,
+            ApprovalPurpose.OPERATIONAL_ACTION,
+            expires_at=action.expires_at if action else None,
+        ),
+        "action_request_id": action.request_id if action else None,
+        "request_digest": action.request_digest if action else None,
+        "target_fingerprint": action.target_fingerprint if action else None,
+        "target_version": action.target_version if action else None,
+        "disruption_scope": action.disruption_scope if action else None,
+        "request_created_at": action.generated_at if action else None,
+        "request_expires_at": action.expires_at if action else None,
+    }
+    if action is None or reference is None:
+        return WorkflowOperationalLifecycleResponse(
+            **common,
+            availability="agent_only",
+            consistency_status="agent_only",
+            controlled_reason="not_submitted",
+            core_record_state=None,
+            dispatch_status=None,
+            provider_operation_reference=None,
+            dispatch_started_at=None,
+            dispatch_completed_at=None,
+            verification_status=None,
+            observed_target_fingerprint=None,
+            observed_state=None,
+            observed_health=None,
+            verification_started_at=None,
+            verification_completed_at=None,
+            verification_deadline=None,
+            terminal=False,
+        )
+    try:
+        core = await request.app.state.container.core_client.get_operational_lifecycle_read(
+            action.request_id
+        )
+    except AtlasCoreClientError:
+        core = None
+        availability = "unavailable"
+        consistency = "core_unavailable"
+        reason = "core_lifecycle_unavailable"
+    else:
+        availability = "agent_only" if core is None else "complete"
+        consistency = "agent_only" if core is None else "consistent"
+        reason = (
+            reference.controlled_reason or "core_record_not_found"
+            if core is None
+            else core.controlled_reason
+        )
+    if core is None:
+        return WorkflowOperationalLifecycleResponse(
+            **common,
+            availability=availability,
+            consistency_status=consistency,
+            controlled_reason=reason,
+            core_record_state=None,
+            dispatch_status=reference.dispatch_status,
+            provider_operation_reference=reference.provider_operation_id,
+            dispatch_started_at=reference.submitted_at,
+            dispatch_completed_at=None,
+            verification_status=reference.verification_status,
+            observed_target_fingerprint=None,
+            observed_state=None,
+            observed_health=None,
+            verification_started_at=None,
+            verification_completed_at=None,
+            verification_deadline=None,
+            terminal=reference.terminal,
+        )
+    if (
+        reference.request_id != action.request_id
+        or reference.request_digest != action.request_digest
+        or core.request_id != action.request_id
+        or core.request_digest != action.request_digest
+    ):
+        consistency = "mismatch"
+        reason = "immutable_request_mismatch"
+    return WorkflowOperationalLifecycleResponse(
+        **common,
+        availability=availability,
+        consistency_status=consistency,
+        controlled_reason=reason,
+        core_record_state=core.ledger_state,
+        transitions=tuple(
+            OperationalLifecycleTransitionResponse(
+                sequence=item.sequence,
+                state=item.state,
+                occurred_at=item.occurred_at,
+            )
+            for item in core.transitions
+        ),
+        barrier_crossed=core.barrier_crossed,
+        barrier_crossing_count=core.barrier_crossing_count,
+        provider_operation_captured=core.provider_operation_captured,
+        provider_operation_capture_count=core.provider_operation_capture_count,
+        dispatch_status=core.dispatch_status,
+        provider_operation_reference=core.provider_operation_reference,
+        dispatch_started_at=core.dispatch_started_at,
+        dispatch_completed_at=core.dispatch_completed_at,
+        verification_status=core.verification_status,
+        observed_target_fingerprint=core.observed_target_fingerprint,
+        observed_state=core.observed_state,
+        observed_health=core.observed_health,
+        verification_started_at=core.verification_started_at,
+        verification_completed_at=core.verification_completed_at,
+        verification_deadline=core.verification_deadline,
+        terminal=core.terminal,
+    )
+
+
 def _stage_status(workflow, stage: str, approval_status: str) -> str:
     state = workflow.state.value
     execution = workflow.execution_result
@@ -1307,6 +1612,8 @@ def _workflow_summary(request: Request, workflow) -> WorkflowSummaryResponse:
         workflow_id=workflow.identifier,
         workflow_source=workflow.source.value,
         workflow_state=workflow.state.value,
+        effect_kind=workflow.effect_kind.value,
+        execution_intent=metadata.execution_intent if metadata else None,
         candidate_id=metadata.candidate_id if metadata else None,
         planning_session_id=(
             metadata.candidate_planning_session_id if metadata else None
@@ -1325,10 +1632,13 @@ def _workflow_summary_matches(
     source: str | None,
     candidate_id: str | None,
     workflow_id: str | None,
+    effect_kind: str | None,
 ) -> bool:
     if state and item.workflow_state != state:
         return False
     if source and item.workflow_source != source:
+        return False
+    if effect_kind and item.effect_kind != effect_kind:
         return False
     if candidate_id and candidate_id.lower() not in (item.candidate_id or "").lower():
         return False
@@ -1387,6 +1697,33 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
     )
     verification_approval = _verification_approval_status(request, workflow)
     commit_approval = _commit_approval_status(request, workflow)
+    planning = (
+        request.app.state.container.candidate_planning_state.get_session(
+            metadata.candidate_planning_session_id
+        )
+        if metadata is not None
+        else None
+    )
+    approval_presentations = []
+    for result in request.app.state.container.approval_repository.export_snapshot().values():
+        if result.decision.request.workflow_id != workflow.identifier:
+            continue
+        presentation = classify_approval(
+            result,
+            workflow,
+            successor_exists=planning is not None and planning.successor_session_id is not None,
+        )
+        approval_presentations.append(
+            WorkflowApprovalPresentationResponse(
+                approval_id=result.decision.request.identifier,
+                purpose=result.decision.request.purpose.value,
+                decision_status=result.decision.status.value,
+                presentation_state=presentation.state.value,
+                actionable=presentation.actionable,
+                reason=presentation.reason,
+            )
+        )
+    approval_presentations.sort(key=lambda item: item.approval_id)
     return WorkflowDetailResponse(
         workflow_id=workflow.identifier,
         workflow_source=workflow.source.value,
@@ -1419,6 +1756,7 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
             if workflow.operational_execution_reference is not None
             else None
         ),
+        approval_presentations=approval_presentations,
         timeline=_workflow_timeline(workflow, approval_status),
         execution=_workflow_execution_summary(workflow),
         verification_plan=_workflow_verification_plan(workflow),
@@ -1438,6 +1776,7 @@ async def list_workflows(
     source: str | None = None,
     candidate_id: str | None = None,
     workflow_id: str | None = None,
+    effect_kind: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> WorkflowListResponse:
@@ -1459,6 +1798,7 @@ async def list_workflows(
             source=source,
             candidate_id=candidate_id,
             workflow_id=workflow_id,
+            effect_kind=effect_kind,
         )
     ]
     filtered.sort(key=lambda item: item.workflow_id)

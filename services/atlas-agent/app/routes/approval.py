@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from app.approval.engine import ApprovalEngine
 from app.approval.exceptions import ApprovalValidationError
 from app.approval.models import ApprovalDecision, ApprovalRequest, ApprovalStatus
+from app.approval.presentation import classify_approval
 from app.approval.repository import ApprovalRepository
 
 router = APIRouter(prefix="/api/v1/agent/approval", tags=["approval"])
@@ -84,14 +85,40 @@ async def get_pending_requests(
         A list of pending approval requests.
     """
     repository = _repository(request)
-    return [
-        {
-            "identifier": result.decision.request.identifier,
-            "request": asdict(result.decision.request),
-            "status": result.decision.status,
-        }
-        for result in repository.get_pending_requests()
-    ]
+    container = request.app.state.container
+    presentations = []
+    for result in repository.get_pending_requests():
+        approval_request = result.decision.request
+        if approval_request.workflow_id is None:
+            continue
+        workflow = container.workflow_state.get_session(approval_request.workflow_id)
+        if workflow is None:
+            continue
+        planning = (
+            container.candidate_planning_state.get_session(
+                workflow.candidate_metadata.candidate_planning_session_id
+            )
+            if workflow.candidate_metadata is not None
+            else None
+        )
+        presentation = classify_approval(
+            result,
+            workflow,
+            successor_exists=planning is not None and planning.successor_session_id is not None,
+        )
+        if not presentation.actionable:
+            continue
+        presentations.append(
+            {
+                "identifier": approval_request.identifier,
+                "request": asdict(approval_request),
+                "status": result.decision.status,
+                "presentation_state": presentation.state,
+                "actionable": presentation.actionable,
+                "presentation_reason": presentation.reason,
+            }
+        )
+    return presentations
 
 
 @router.get("/{request_id}")

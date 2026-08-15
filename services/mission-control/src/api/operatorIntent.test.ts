@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { atlas } from "./atlas";
-import { getOperatorIntentResources, requestRestartServiceIntent } from "./operatorIntent";
+import { getCapabilityResources, getOperationalCapabilities, getOperatorIntentResources, requestRestartServiceIntent } from "./operatorIntent";
 
 vi.mock("./atlas", () => ({ atlas: { get: vi.fn(), post: vi.fn() } }));
 
@@ -13,6 +13,22 @@ describe("operator intent API", () => {
         await getOperatorIntentResources();
         expect(atlas.get).toHaveBeenCalledWith(
             "/execution-candidates/operator-intents/resources",
+            { withCredentials: true },
+        );
+    });
+
+    it("loads descriptors and resources through a fixed encoded selector ID", async () => {
+        vi.mocked(atlas.get).mockResolvedValue({ data: { capabilities: [] } });
+        await getOperationalCapabilities();
+        await getCapabilityResources("restart-service--proxmox--qemu");
+        expect(atlas.get).toHaveBeenNthCalledWith(
+            1,
+            "/execution-candidates/operator-intents/capabilities",
+            { withCredentials: true },
+        );
+        expect(atlas.get).toHaveBeenNthCalledWith(
+            2,
+            "/execution-candidates/operator-intents/capabilities/restart-service--proxmox--qemu/resources",
             { withCredentials: true },
         );
     });

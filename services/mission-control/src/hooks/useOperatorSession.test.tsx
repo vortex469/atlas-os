@@ -1,13 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { restoreOperatorSession } from "../api/operatorAuth";
+import { OperatorSessionProtectionError, restoreOperatorSession } from "../api/operatorAuth";
 import { useOperatorSession } from "./operatorSessionContext";
 import { OperatorSessionProvider } from "./useOperatorSession";
 
 vi.mock("../api/operatorAuth", () => ({
     loginOperator: vi.fn(),
     logoutOperator: vi.fn(),
+    OperatorSessionProtectionError: class OperatorSessionProtectionError extends Error {},
     restoreOperatorSession: vi.fn(),
 }));
 
@@ -40,6 +41,20 @@ describe("OperatorSessionProvider", () => {
     it("treats an expired session as unauthenticated", async () => {
         vi.mocked(restoreOperatorSession).mockRejectedValue({ isAxiosError: true, response: { status: 401 } });
         render(<OperatorSessionProvider><Probe /></OperatorSessionProvider>);
-        await waitFor(() => expect(screen.getByText("anonymous")).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/session expired/i)).toBeInTheDocument());
+    });
+
+    it("fails closed with a controlled message when CSRF rotation is absent", async () => {
+        vi.mocked(restoreOperatorSession).mockRejectedValue(
+            new OperatorSessionProtectionError("missing csrf"),
+        );
+        render(<OperatorSessionProvider><Probe /></OperatorSessionProvider>);
+        await waitFor(() => expect(screen.getByText(/session protection/i)).toBeInTheDocument());
+    });
+
+    it("distinguishes Core unavailability from an expired session", async () => {
+        vi.mocked(restoreOperatorSession).mockRejectedValue({ isAxiosError: true });
+        render(<OperatorSessionProvider><Probe /></OperatorSessionProvider>);
+        await waitFor(() => expect(screen.getByText(/Atlas Core is unavailable/i)).toBeInTheDocument());
     });
 });

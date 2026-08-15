@@ -440,7 +440,7 @@ A12 scope. The roadmap does not define a sub-checkpoint ordering between those
 unfinished tracks, so the next implementation checkpoint is pending human
 selection.
 
-## v0.6 completion and future phases
+## v0.6 and v0.7 completion and future phases
 
 ### Completed
 
@@ -452,7 +452,22 @@ selection.
 
 ### Planned Phase 4
 
-Add additional execution intents only after separate design, public contracts, immutable requests, exact approvals, recovery behavior, security tests, and end-to-end coverage. Candidate examples include `restart-service`, `backup`, `restore`, `install-provider`, and `update-image`.
+V0.7 completed the first closed Phase 4 slice:
+`restart-service / proxmox / qemu`, with typed operational planning, immutable
+requests, exact approvals, authenticated Core dispatch, durable exactly-once
+barrier, bounded verification, and recovery.
+
+Additional execution intents or provider/resource tuples may be added only
+after separate design, public contracts, immutable requests, exact approvals,
+recovery behavior, security tests, and end-to-end coverage. `backup`, `restore`,
+`install-provider`, and `update-image` remain examples of unsupported future
+intents; v0.8 deliberately adds none of them.
+
+Atlas v0.8 P0 through P5 are complete for RC preparation. Agent changes are
+limited to effect-aware approval presentation, sanitized lifecycle correlation,
+and read-only capability consistency. Agent planning, translation, and
+execution remain closed to the existing `restart-service / proxmox / qemu`
+operational tuple; RC and final tags remain pending.
 
 ### Planned Phase 5
 

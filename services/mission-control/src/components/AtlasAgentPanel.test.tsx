@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAtlasAgent } from "../hooks/useAtlasAgent";
@@ -139,27 +140,32 @@ describe("AtlasAgentPanel", () => {
                     checkpoint_id: "A15",
                     request: {
                         checkpoint_id: "A15",
+                        workflow_id: "workflow-1",
                         title: "Approve candidate workflow",
                         requested_tool: "git",
                         requested_command: ["status"],
                         rationale: "Need review before proceeding",
                     },
                     status: "pending",
+                    presentation_state: "actionable",
+                    actionable: true,
+                    presentation_reason: "Approval matches the current workflow checkpoint.",
                 },
             ],
             isLoading: false,
             error: null,
         });
 
-        render(<AtlasAgentPanel />);
+        render(<MemoryRouter><AtlasAgentPanel /></MemoryRouter>);
 
         expect(screen.getByRole("heading", { name: "Pending Decisions" })).toBeInTheDocument();
         expect(
             screen.getByText("Approve candidate workflow"),
         ).toBeInTheDocument();
         expect(screen.getByText("Need review before proceeding")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /approve/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /reject/i })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /review workflow/i })).toHaveAttribute("href", "/workflows/workflow-1");
+        expect(screen.queryByRole("button", { name: /approve/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /reject/i })).not.toBeInTheDocument();
     });
 
     it("shows only the panel unavailable state after a request failure", () => {

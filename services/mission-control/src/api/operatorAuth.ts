@@ -6,13 +6,17 @@ import type {
 
 const CSRF_HEADER = "x-atlas-csrf-token";
 
+export class OperatorSessionProtectionError extends Error {}
+
 function sessionResult(
     session: OperatorSessionResponse,
     headers: Record<string, unknown>,
 ): OperatorSessionResult {
     const csrfToken = headers[CSRF_HEADER];
     if (typeof csrfToken !== "string" || csrfToken.length === 0) {
-        throw new Error("Operator session response did not include CSRF protection.");
+        throw new OperatorSessionProtectionError(
+            "Operator session response did not include CSRF protection.",
+        );
     }
     return { session, csrfToken };
 }

@@ -2,6 +2,61 @@
 
 Use this checklist before creating a Foundry release tag.
 
+## Atlas v0.8 implementation status
+
+- [x] V0.8-P0 — Roadmap and release-state reconciliation.
+- [x] V0.8-P1 — Effect-aware workflow and approval clarity.
+- [x] V0.8-P2 — Unified operational lifecycle read model.
+- [x] V0.8-P3 — Mission Control operational history and recovery UX.
+- [x] V0.8-P4 — Provider-neutral capability and selector descriptors.
+- [x] V0.8-P5 — Deployment and security ergonomics.
+
+P0 through P5 are complete on the v0.8 feature branch. RC selection, immutable
+RC tagging, exact-RC production soak, and final `atlas-v0.8.0` tagging remain
+pending.
+
+## Atlas v0.8 RC selection and sign-off
+
+- [ ] Record the exact reviewed RC SHA.
+- [ ] Require Quality gates to pass on that exact SHA and record the run ID.
+- [ ] Require Container release gate to pass on that exact SHA and record the
+  run ID.
+- [ ] Run `./scripts/operational-capability-parity` and record the exact
+  `restart-service/proxmox/qemu` result.
+- [ ] Confirm lifecycle response redaction and effect-aware approval security
+  tests pass on the exact RC SHA.
+- [ ] Confirm the production registry contains exactly one tuple and no new
+  mutation intent or handler exists.
+- [ ] Review and approve the documented v0.7.0 to v0.8 upgrade and v0.8 to
+  v0.7.0 rollback procedures.
+- [ ] Create the immutable v0.8 RC tag.
+- [ ] Complete and record the exact-RC production soak.
+- [ ] Create the final immutable `atlas-v0.8.0` tag.
+
+## Atlas v0.8 exact-RC deployment and security checks
+
+- [ ] Render base production Compose and confirm Mission Control publishes only
+  the default loopback HTTP binding.
+- [ ] Render the HTTPS plus operator-auth deployment and confirm Atlas Edge is
+  the only host-published browser ingress while internal Mission Control routing
+  remains healthy.
+- [ ] Confirm unauthenticated HTTPS receives the Edge authentication challenge
+  and authenticated HTTPS reaches the SPA, Core API, and Agent API.
+- [ ] Confirm expired/unavailable sessions clear authenticated UI state;
+  permission failures remain distinct; missing CSRF rotation fails closed; and
+  reauthentication returns to the intended safe page.
+- [ ] Run `./scripts/operational-capability-parity` and require exact parity
+  across Agent planning, translation and execution, plus Core execution,
+  registry, and descriptor projection.
+- [ ] Confirm lifecycle response-model redaction tests reject credentials,
+  authorization headers, cookies, CSRF, bearer tokens, raw identity,
+  provider-native payloads, commands, environment data, arbitrary exceptions,
+  and worker/sandbox internals.
+- [ ] Confirm operational history and lifecycle views remain read-only and
+  expose no retry or run-again control, including ambiguous outcomes.
+- [ ] Confirm the production registry contains exactly one tuple:
+  `restart-service / proxmox / qemu`.
+
 ## Automated gates
 
 - [x] Atlas Core installs from `requirements-dev.txt`.
@@ -199,9 +254,9 @@ through a separate reviewed cleanup decision.
 - [x] Review those v0.7 upgrade and rollback instructions and record
   release-lead sign-off.
 - [x] Create an immutable RC tag only after the exact pushed SHA is green.
-- [ ] Create and publish the final immutable `atlas-v0.7.0` tag only after the
-  documentation provenance fix is committed and required CI passes on that new
-  final SHA.
+- [x] The final immutable `atlas-v0.7.0` tag was published at
+  `8dbc43de73dda300b50c121f19324cb5174df2a9` after the documentation provenance
+  fix and required CI passed on that exact final SHA.
 
 ### Final RC1 provenance and production soak — 2026-08-14
 

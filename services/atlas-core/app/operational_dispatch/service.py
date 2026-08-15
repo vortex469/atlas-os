@@ -50,6 +50,17 @@ class OperationalDispatchService:
         self._execution_intents = execution_intents
         self._resolver = resolver
 
+    def capability_boundary(
+        self, execution_intent: str, provider_id: str, resource_type: str
+    ) -> tuple[bool, bool]:
+        """Describe independent Core gates without granting or registering anything."""
+
+        return (
+            execution_intent in self._execution_intents,
+            self._registry.resolve(execution_intent, provider_id, resource_type)
+            is not None,
+        )
+
     async def dispatch(
         self, request: OperationalDispatchRequest
     ) -> OperationalDispatchResult:

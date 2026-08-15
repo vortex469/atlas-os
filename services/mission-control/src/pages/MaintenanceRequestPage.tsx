@@ -3,13 +3,15 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 
 import {
-    getOperatorIntentResources,
+    getCapabilityResources,
+    getOperationalCapabilities,
     requestRestartServiceIntent,
 } from "../api/operatorIntent";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
 import { OPERATIONAL_INTENT_CREATE } from "../types/operatorAuth";
 import type {
     OperatorIntentCreationResponse,
+    OperationalCapabilityDescriptor,
     OperatorIntentResource,
 } from "../types/operatorIntent";
 
@@ -21,9 +23,16 @@ function errorMessage(status: number | undefined): string {
     return "The maintenance request could not be completed.";
 }
 
+function descriptorLabel(value: string | undefined): string {
+    if (!value) return "Not available";
+    if (value === "qemu") return "QEMU";
+    return value.charAt(0).toUpperCase() + value.slice(1).replaceAll("-", " ");
+}
+
 export function MaintenanceRequestPage() {
     const session = useOperatorSession();
     const [resources, setResources] = useState<OperatorIntentResource[]>([]);
+    const [capability, setCapability] = useState<OperationalCapabilityDescriptor | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -35,7 +44,18 @@ export function MaintenanceRequestPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await getOperatorIntentResources();
+            const capabilities = await getOperationalCapabilities();
+            const selectedCapability = capabilities.capabilities.find(
+                (item) => item.production_enabled && item.selector_available,
+            ) ?? null;
+            if (!selectedCapability) {
+                setCapability(null);
+                setResources([]);
+                setError("No consistent production maintenance capability is currently available.");
+                return;
+            }
+            const response = await getCapabilityResources(selectedCapability.selector_id);
+            setCapability(selectedCapability);
             setResources(response.resources);
         } catch (requestError) {
             const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
@@ -98,9 +118,9 @@ export function MaintenanceRequestPage() {
                 <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. This creates a candidate only; it does not restart anything.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
             </header>
             <section className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 sm:grid-cols-3">
-                <FixedField label="Action" value="Restart service" />
-                <FixedField label="Provider" value="Proxmox" />
-                <FixedField label="Resource type" value="QEMU" />
+                <FixedField label="Action" value={capability?.label ?? "Loading capability"} />
+                <FixedField label="Provider" value={descriptorLabel(capability?.provider_id)} />
+                <FixedField label="Resource type" value={descriptorLabel(capability?.resource_type)} />
             </section>
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your operator session lacks maintenance permission.</p>}
             {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</p>}

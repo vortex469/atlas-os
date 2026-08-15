@@ -105,6 +105,9 @@ describe("useAtlasAgent", () => {
                     rationale: "Testing approval flow",
                 },
                 status: "pending",
+                presentation_state: "actionable",
+                actionable: true,
+                presentation_reason: "Approval is current.",
             },
         ]);
 

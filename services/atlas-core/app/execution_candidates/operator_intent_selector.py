@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Protocol
 
 from pydantic import Field
 
@@ -126,7 +127,7 @@ def _ineligible_reason(target: ResolvedOperationalTarget) -> OperatorIntentResou
     return None
 
 
-async def collect_operator_intent_resources(
+async def _collect_proxmox_qemu_resources(
     *,
     collector: ResourceCollector = list_provider_resources,
     resolver: TargetResolver = resolve_operational_target,
@@ -210,4 +211,67 @@ async def collect_operator_intent_resources(
     return OperatorIntentResourceCollection(
         generated_at=(now or datetime.now(UTC)).astimezone(UTC),
         resources=tuple(projected),
+    )
+
+
+class OperationalResourceSelector(Protocol):
+    """Read-only server-owned selector for one closed operational tuple."""
+
+    capability_id: str
+    execution_intent: str
+    provider_id: str
+    resource_type: str
+
+    async def collect(self) -> OperatorIntentResourceCollection: ...
+
+
+class ProxmoxQemuOperationalResourceSelector:
+    capability_id = "restart-service--proxmox--qemu"
+    execution_intent = "restart-service"
+    provider_id = "proxmox"
+    resource_type = "qemu"
+
+    def __init__(
+        self,
+        *,
+        collector: ResourceCollector = list_provider_resources,
+        resolver: TargetResolver = resolve_operational_target,
+    ) -> None:
+        self._collector = collector
+        self._resolver = resolver
+
+    async def collect(self) -> OperatorIntentResourceCollection:
+        return await _collect_proxmox_qemu_resources(
+            collector=self._collector,
+            resolver=self._resolver,
+        )
+
+
+_SELECTORS: dict[str, OperationalResourceSelector] = {
+    ProxmoxQemuOperationalResourceSelector.capability_id: (
+        ProxmoxQemuOperationalResourceSelector()
+    )
+}
+
+
+def resolve_operational_resource_selector(
+    selector_id: str,
+) -> OperationalResourceSelector | None:
+    """Resolve only a fixed server-side identifier, never a route or URL."""
+
+    return _SELECTORS.get(selector_id)
+
+
+async def collect_operator_intent_resources(
+    *,
+    collector: ResourceCollector = list_provider_resources,
+    resolver: TargetResolver = resolve_operational_target,
+    now: datetime | None = None,
+) -> OperatorIntentResourceCollection:
+    """Compatibility wrapper preserving the existing selector contract."""
+
+    return await _collect_proxmox_qemu_resources(
+        collector=collector,
+        resolver=resolver,
+        now=now,
     )

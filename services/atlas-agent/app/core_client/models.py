@@ -242,3 +242,33 @@ class CoreOperationalLifecycleStatus(CoreOperationalModel):
     dispatch_result: CoreOperationalDispatchResult | None = None
     verification_result: CoreOperationalVerificationResult | None = None
     verification_resumable: bool = False
+
+
+class CoreOperationalLifecycleTransition(CoreOperationalModel):
+    sequence: int
+    state: str
+    occurred_at: datetime
+
+
+class CoreOperationalLifecycleRead(CoreOperationalModel):
+    request_id: str
+    request_digest: str
+    ledger_state: str
+    transitions: tuple[CoreOperationalLifecycleTransition, ...]
+    barrier_crossed: bool
+    barrier_crossing_count: int
+    provider_operation_captured: bool
+    provider_operation_capture_count: int
+    dispatch_status: str | None
+    provider_operation_reference: str | None
+    dispatch_started_at: datetime | None
+    dispatch_completed_at: datetime | None
+    verification_status: str | None
+    observed_target_fingerprint: str | None
+    observed_state: str | None
+    observed_health: str | None
+    verification_started_at: datetime | None
+    verification_completed_at: datetime | None
+    verification_deadline: datetime | None
+    terminal: bool
+    controlled_reason: str | None

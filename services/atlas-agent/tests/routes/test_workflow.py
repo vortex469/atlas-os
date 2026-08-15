@@ -1441,8 +1441,10 @@ def test_list_workflows_returns_read_only_summaries(tmp_path: Path, monkeypatch:
     summary = body["items"][0]
     assert summary == {
         "workflow_id": "workflow-123",
-        "workflow_source": "candidate",
-        "workflow_state": "awaiting_implementation_approval",
+            "workflow_source": "candidate",
+            "workflow_state": "awaiting_implementation_approval",
+            "effect_kind": "repository_change",
+            "execution_intent": "update-compose-stack",
         "candidate_id": "candidate-123",
         "planning_session_id": "candidate-plan-123",
         "repository": str(tmp_path),

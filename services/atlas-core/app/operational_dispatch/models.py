@@ -210,6 +210,38 @@ class OperationalLifecycleStatus(OperationalDispatchModel):
     verification_resumable: bool = False
 
 
+class OperationalLifecycleTransitionRead(OperationalDispatchModel):
+    sequence: int
+    state: str
+    occurred_at: datetime
+
+
+class OperationalLifecycleRead(OperationalDispatchModel):
+    """Sanitized, durable lifecycle facts exposed to the authenticated Agent."""
+
+    request_id: str
+    request_digest: str
+    ledger_state: str
+    transitions: tuple[OperationalLifecycleTransitionRead, ...]
+    barrier_crossed: bool
+    barrier_crossing_count: int
+    provider_operation_captured: bool
+    provider_operation_capture_count: int
+    dispatch_status: str | None
+    provider_operation_reference: str | None
+    dispatch_started_at: datetime | None
+    dispatch_completed_at: datetime | None
+    verification_status: str | None
+    observed_target_fingerprint: str | None
+    observed_state: str | None
+    observed_health: str | None
+    verification_started_at: datetime | None
+    verification_completed_at: datetime | None
+    verification_deadline: datetime | None
+    terminal: bool
+    controlled_reason: str | None
+
+
 def operational_verification_digest(
     verification: OperationalVerificationSpecification,
 ) -> str:

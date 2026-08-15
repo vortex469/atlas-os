@@ -43,14 +43,14 @@ describe("OperatorLoginPage", () => {
     });
 
     it("shows a generic failure and clears password", async () => {
-        session(vi.fn().mockResolvedValue(false), "Operator authentication failed.");
+        session(vi.fn().mockResolvedValue(false), "Operator credentials were rejected.");
         const user = userEvent.setup();
         renderPage();
         const password = screen.getByLabelText("Password");
         await user.type(screen.getByLabelText("Operator ID"), "kenny");
         await user.type(password, "wrong");
         await user.click(screen.getByRole("button", { name: "Sign in" }));
-        expect(screen.getByRole("alert")).toHaveTextContent("Operator authentication failed.");
+        expect(screen.getByRole("alert")).toHaveTextContent("Operator credentials were rejected.");
         expect(password).toHaveValue("");
     });
 });

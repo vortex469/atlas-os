@@ -299,7 +299,12 @@ Design principles: Core remains authoritative for candidate source state; Agent 
 
 ## Atlas v0.7 project status
 
-P1.3 is complete for one closed production capability:
+Atlas v0.7 is complete. The immutable final release `atlas-v0.7.0` resolves to
+`8dbc43de73dda300b50c121f19324cb5174df2a9`; its immutable RC
+`atlas-v0.7-rc1` resolves to
+`5b1321091af0fc191844cdf71e9e0d919e4ea415`.
+
+P1.3 completed one closed production capability:
 
 - `restart-service / proxmox / qemu`
 
@@ -326,3 +331,19 @@ QMP states were running and the authoritative fingerprint was unchanged.
 Still unsupported: `backup`, `restore`, `install-provider`, `update-image`,
 push, tag/release publication, remote deployment, automated rollback, automatic
 approval, and unrestricted operational actions.
+
+## Atlas v0.8 RC preparation
+
+The v0.8 theme is **Operational Control Plane Clarity and Observability**. It
+makes the existing operational capability understandable, auditable,
+recoverable, and safely extensible without widening the mutation boundary.
+P0 roadmap reconciliation, P1 effect-aware workflow and approval clarity, P2 a
+unified read-only lifecycle model, P3 Mission Control history and recovery UX,
+P4 provider-neutral read-only capability and selector descriptors, and P5
+deployment and security ergonomics are complete. RC selection and final release
+validation remain pending; no v0.8 RC or final tag exists yet.
+
+V0.8 adds no execution intent or provider mutation handler. Repository change
+execution remains separately gated as `update-compose-stack`; operational
+execution remains exactly `restart-service / proxmox / qemu`, independently
+allowed by the Agent and Core and backed by exactly one production handler.

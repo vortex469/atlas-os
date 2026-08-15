@@ -1,4 +1,6 @@
 export interface ApprovalRequest {
+    workflow_id?: string | null;
+    purpose?: "implementation" | "candidate_workflow_shell" | "verification" | "commit" | "operational_action";
     checkpoint_id: string;
     title: string;
     requested_tool: string;
@@ -21,4 +23,7 @@ export interface ApprovalResult {
     created_at?: string;
     reviewer?: string;
     reason?: string;
+    presentation_state: "actionable" | "historical" | "expired" | "superseded" | "resolved";
+    actionable: boolean;
+    presentation_reason: string;
 }
