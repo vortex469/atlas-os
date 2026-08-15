@@ -57,5 +57,11 @@ describe("operator intent API", () => {
         expect(payload).not.toHaveProperty("provider_action_id");
         expect(payload).not.toHaveProperty("parameters");
         expect(payload).not.toHaveProperty("command");
+        expect(payload).not.toHaveProperty("proposal_id");
+        expect(payload).not.toHaveProperty("proposal_fingerprint");
+        expect(payload).not.toHaveProperty("target_hints");
+        expect(payload).not.toHaveProperty("catalog_item_id");
+        expect(payload).not.toHaveProperty("compatibility_status");
+        expect(payload).not.toHaveProperty("source_state_fingerprint");
     });
 });

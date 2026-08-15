@@ -6,11 +6,13 @@ import {
     getDiscoveryCompatibility,
     getDiscoveryItem,
     getDiscoveryRelationships,
+    listDiscoveryProposals,
 } from "../api/discovery";
 import type {
     DiscoveryCatalogEntry,
     DiscoveryCompatibilityAssessment,
     DiscoveryRelationshipCollection,
+    DiscoveryProposalNavigation,
 } from "../types/discovery";
 import { DiscoveryItemPage } from "./DiscoveryItemPage";
 
@@ -23,11 +25,13 @@ vi.mock("../api/discovery", () => ({
     getDiscoveryItem: vi.fn(),
     getDiscoveryRelationships: vi.fn(),
     getDiscoveryCompatibility: vi.fn(),
+    listDiscoveryProposals: vi.fn(),
 }));
 
 const mockedGetDiscoveryItem = vi.mocked(getDiscoveryItem);
 const mockedGetDiscoveryRelationships = vi.mocked(getDiscoveryRelationships);
 const mockedGetDiscoveryCompatibility = vi.mocked(getDiscoveryCompatibility);
+const mockedListDiscoveryProposals = vi.mocked(listDiscoveryProposals);
 
 const compatibilityAssessment = (
     overrides: Partial<DiscoveryCompatibilityAssessment> = {},
@@ -174,6 +178,25 @@ function relationships(): DiscoveryRelationshipCollection {
     };
 }
 
+function proposal(): DiscoveryProposalNavigation {
+    return {
+        proposal_id: `discovery-operator-proposal-${"b".repeat(64)}`,
+        destination_kind: "discovery_detail",
+        catalog_item_id: "frigate",
+        catalog_source_type: "curated",
+        compatibility_status: "compatible",
+        finding_reference_count: 0,
+        evidence_reference_count: 1,
+        status: "current",
+        reason: "compatible",
+        intent_hint: null,
+        target_hints: [{ catalog_target_id: "atlas" }],
+        generated_at: "2026-08-15T00:00:00Z",
+        expires_at: "2026-08-15T00:30:00Z",
+        actionable_navigation: false,
+    };
+}
+
 function renderPage(path = "/discovery/items/frigate") {
     return render(
         <MemoryRouter initialEntries={[path]}>
@@ -190,6 +213,7 @@ describe("DiscoveryItemPage", () => {
         mockedGetDiscoveryItem.mockResolvedValue(entry());
         mockedGetDiscoveryRelationships.mockResolvedValue(relationships());
         mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment());
+        mockedListDiscoveryProposals.mockResolvedValue({ proposals: [], total: 0, limit: 25 });
     });
 
     it("renders item details, requirements, provenance, approved metadata, and compatibility", async () => {
@@ -214,6 +238,26 @@ describe("DiscoveryItemPage", () => {
         expect(screen.getByText("Code: f0001")).toBeInTheDocument();
         expect(screen.getByText("Evidence e0001")).toBeInTheDocument();
         expect(mockedGetDiscoveryCompatibility).toHaveBeenCalledWith("frigate");
+    });
+
+    it("loads a bounded related proposal section", async () => {
+        mockedListDiscoveryProposals.mockResolvedValue({
+            proposals: [proposal(), { ...proposal(), proposal_id: `discovery-operator-proposal-${"c".repeat(64)}`, catalog_item_id: "other" }],
+            total: 2,
+            limit: 25,
+        });
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Operator proposals" })).toBeInTheDocument();
+        expect(await screen.findByText("Advisory proposal")).toBeInTheDocument();
+        expect(mockedListDiscoveryProposals).toHaveBeenCalledWith(25);
+        expect(screen.queryByText("other")).not.toBeInTheDocument();
+    });
+
+    it("distinguishes proposal transport failure from provider state", async () => {
+        mockedListDiscoveryProposals.mockRejectedValue(new Error("transport unavailable"));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Proposal context is temporarily unavailable");
+        expect(screen.getByText(/provider state were not affected/i)).toBeInTheDocument();
     });
 
     it.each([

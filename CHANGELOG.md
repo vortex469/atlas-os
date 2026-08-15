@@ -6,12 +6,39 @@ release boundaries.
 
 ## Unreleased
 
-Atlas v0.9 has the theme Operational Recovery and Evidence Automation. P0
-through P5 are complete. The immutable `atlas-v0.9-rc1` candidate at
+Atlas v0.10 implements a sanitized, stale-aware Discovery-to-Operator Proposal
+Handoff without expanding execution authority.
+
+### Added
+
+- Immutable, extra-forbid proposal, provenance, compatibility, destination,
+  target-hint, identity, expiry, and source-state contracts.
+- Read-only derivation and evaluation with bounded process-local observation of
+  stale or expired proposals and no durable proposal persistence.
+- Bounded GET-only proposal list/detail APIs with sanitized, closed navigation.
+- Mission Control proposal cards, review-only stale/incompatible presentation,
+  compatibility navigation, and separate advisory maintenance context.
+
+### Security boundary
+
+- Proposal existence or navigation cannot create a candidate, planning session,
+  approval, action request, dispatch record, or provider operation.
+- Maintenance selection reloads current operator permission, production
+  capability descriptors, selector resources, state, requestability, and target
+  fingerprint. Proposal hints are presentation-only.
+- Production mutation remains exactly `restart-service/proxmox/qemu`; LXC and
+  all other mutation tuples remain unsupported. RC and final tags are pending.
+
+## atlas-v0.9.0 — Atlas v0.9.0 (2026-08-15)
+
+Atlas v0.9 completed Operational Recovery and Evidence Automation. The final
+release was published at
+`7a5beac58e1677cd97b9bcc2f160dc30573582aa`, promoting the immutable
+`atlas-v0.9-rc1` candidate at
 `bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed required CI,
 `atlas-release-evidence-v1`, exact-SHA no-cache production deployment, and
-sequential restart soak and is accepted for final promotion. The final
-`atlas-v0.9.0` release remains pending.
+sequential restart soak. Final Quality gates run `31861408265` and Container
+release gate run `31861408264` passed.
 
 ### Added
 

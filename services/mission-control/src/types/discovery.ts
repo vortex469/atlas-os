@@ -209,6 +209,53 @@ export type DiscoveryCompatibilityAssessment = {
     unknown_facts: string[];
 };
 
+export type DiscoveryProposalDestination =
+    | "discovery_detail"
+    | "compatibility_review"
+    | "operator_maintenance_selection";
+
+export type DiscoveryProposalStatus = "current" | "stale" | "expired" | "not_actionable";
+
+export type DiscoveryProposalReason =
+    | "compatible"
+    | "compatibility_warning"
+    | "incompatible"
+    | "insufficient_information"
+    | "unsupported_resource"
+    | "source_changed"
+    | "source_missing"
+    | "evidence_changed"
+    | "evidence_missing"
+    | "expired"
+    | "no_supported_destination";
+
+export type DiscoveryProposalNavigation = {
+    proposal_id: string;
+    destination_kind: DiscoveryProposalDestination;
+    catalog_item_id: string;
+    catalog_source_type: CatalogProvenance["source_type"];
+    compatibility_status: DiscoveryCompatibilityStatus;
+    finding_reference_count: number;
+    evidence_reference_count: number;
+    status: DiscoveryProposalStatus;
+    reason: DiscoveryProposalReason;
+    intent_hint?: "restart-service" | null;
+    target_hints: Array<{
+        catalog_target_id?: string | null;
+        provider_hint?: string | null;
+        resource_type_hint?: string | null;
+    }>;
+    generated_at: string;
+    expires_at: string;
+    actionable_navigation: boolean;
+};
+
+export type DiscoveryProposalPage = {
+    proposals: DiscoveryProposalNavigation[];
+    total: number;
+    limit: number;
+};
+
 export type DiscoveryListQuery = {
     limit?: number;
     offset?: number;

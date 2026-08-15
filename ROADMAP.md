@@ -269,7 +269,7 @@ using the existing durable operational lifecycle, without adding any new
 provider mutation capability. The dependency order is
 `V0.9-P0 → V0.9-P1 → V0.9-P2 → V0.9-P3 → V0.9-P4 → V0.9-P5`.
 
-### Current v0.8 production boundary
+### Current production boundary
 
 - Repository execution is the separate `update-compose-stack` workflow.
 - Operational production execution is exactly
@@ -383,8 +383,9 @@ handler, or gate change and exposes only controlled reasons.
 `atlas-v0.9-rc1` candidate at
 `bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed exact-candidate CI,
 release-evidence validation, exact-RC production deployment, and sequential
-restart soak. RC1 is accepted for final promotion; `atlas-v0.9.0` publication
-remains pending.
+restart soak. The final `atlas-v0.9.0` release was published at
+`7a5beac58e1677cd97b9bcc2f160dc30573582aa`; final Quality gates and Container
+release gate passed.
 
 - Goal: validate the read-only recovery/evidence toolchain under production
   service-restart soak and finalize release documentation.
@@ -404,3 +405,141 @@ retry, automatic rollback, automatic approval, automatic tag publishing,
 automatic production deployment, Discovery-to-dispatch coupling, remote or
 distributed execution, new Docker socket authority, broader Proxmox ACLs, or
 synthetic LXC incarnation identity.
+
+## Atlas v0.10 roadmap
+
+**Theme: Discovery-to-Operator Proposal Handoff**
+
+Objective: turn trusted Discovery and Orion advisory evidence into sanitized,
+stale-aware operator proposals that navigate to existing authoritative review
+or operator-intent surfaces without granting Discovery execution authority.
+The dependency order is
+`V0.10-P0 → V0.10-P1 → V0.10-P2 → V0.10-P3 → V0.10-P4 → V0.10-P5`.
+
+### Proposal trust boundary
+
+Atlas Core's Discovery/intelligence layer initially owns proposals. They are
+derived rather than persisted. A proposal may contain its ID, catalog item and
+provenance, source finding, compatibility assessment/finding/evidence
+references, a closed intent hint, sanitized target hints, a closed destination,
+generation and expiry times, and a source-state fingerprint.
+
+Proposal context is never sufficient to create an operational request. It
+cannot create an `ExecutionCandidate` or `OperationalActionRequest`, approve or
+dispatch, select an authoritative resource, assert a target fingerprint,
+supply a provider action ID or arbitrary parameters, or bypass authentication,
+capability, or selector boundaries. At the destination Atlas must freshly load
+the current capability descriptor, authoritative selector, target state and
+fingerprint, and operator authentication/permission state. Any operator-intent
+POST uses only those freshly resolved server facts.
+
+Proposal identity is a versioned canonical digest over schema/version, catalog
+item ID, provenance source type/entry ID/version or a deterministic entry
+fingerprint, applicable source finding ID, compatibility target ID/type/status,
+sorted finding and evidence IDs, controlled intent hint, sanitized target hints,
+and controlled destination. Display text, `checked_at`, `generated_at`, and
+arbitrary UI state are excluded. A proposal is stale when expired or when its
+catalog source, compatibility evidence, source finding, or required evidence no
+longer matches or resolves. Stale proposals remain inspectable but are not
+actionable.
+
+Compatibility is evidence, never execution permission. Compatible and
+supported proposals may navigate to an existing authoritative surface;
+incompatible proposals are review/troubleshooting-only; insufficient-information
+proposals are review/investigation-only; unsupported resources never become
+requestable. Destinations and intent hints use closed enums and mappings;
+unknown or arbitrary routes, URLs, intents, provider actions, and parameters
+fail closed.
+
+### V0.10-P0 — Release-state and D9 boundary reconciliation
+
+**Status: complete.**
+
+- Goal: record final v0.9.0 and establish the authoritative D9 boundary.
+- Deliverables: release-state consistency, proposal ownership, authority,
+  identity, freshness, compatibility, navigation, milestones, and non-goals.
+- Dependencies: final `atlas-v0.9.0` release.
+- Non-goals: runtime, tests, deployment, security-control, or execution changes.
+- Exit criteria: current documentation agrees and D9 cannot grant authority.
+
+### V0.10-P1 — Sanitized proposal contracts and provenance
+
+**Status: complete.**
+
+- Goal: define immutable internal proposal contracts.
+- Deliverables: frozen extra-forbid models, controlled enums, bounded fields,
+  provenance, deterministic identity, expiry, and security tests.
+- Dependencies: P0 and shipped Discovery contracts.
+- Non-goals: routes, persistence, UI, candidates, operator intent, Agent, or providers.
+- Exit criteria: contracts deterministically reject malformed or unsafe content.
+
+### V0.10-P2 — Derivation, compatibility, and staleness
+
+**Status: complete.**
+
+- Goal: derive proposals from current catalog, compatibility, and D8 evidence.
+- Deliverables: read-only derivation, source-state validation, closed hints,
+  stale detection, and compatibility-specific navigation eligibility.
+- Dependencies: P1.
+- Non-goals: authoritative selection, candidate creation, or mutation.
+- Exit criteria: changed, expired, missing, incompatible, and unsupported facts
+  fail closed without making a resource requestable.
+
+### V0.10-P3 — Authoritative navigation contract
+
+**Status: complete.**
+
+- Goal: navigate without transferring proposal authority.
+- Deliverables: closed destination descriptors and fresh server-side reload of
+  capability, selector, target, fingerprint, and operator authority.
+- Dependencies: P2 and existing operator boundaries.
+- Non-goals: copied authoritative fields or automatic submission.
+- Exit criteria: stale or tampered navigation state cannot influence a request.
+
+### V0.10-P4 — Mission Control proposal UX
+
+**Status: complete.**
+
+- Goal: present proposals, provenance, compatibility, and safe next steps.
+- Deliverables: proposal list/detail, stale presentation, controlled navigation,
+  and explicit advisory/non-authority messaging.
+- Dependencies: P2 and P3.
+- Non-goals: execute/install, approval, retry, or arbitrary parameter controls.
+- Exit criteria: UI tests prove stale and unsupported proposals non-actionable.
+
+### V0.10-P5 — Boundary integration and release acceptance
+
+**Status: local acceptance and documentation complete; exact-RC evidence pending.**
+
+- Goal: validate D9 end to end without widening execution.
+- Deliverables: Core/UI boundary tests, Agent regressions, redaction and release
+  gates, upgrade/rollback documentation, and acceptance evidence.
+- Dependencies: P1 through P4.
+- Non-goals: provider mutation acceptance or new execution capability.
+- Exit criteria: proposals create no candidate, approval, action request, or
+  dispatch record, and capability parity remains QEMU restart only.
+
+P0 through P5 implementation is complete. Local boundary, redaction,
+staleness, tampering, capability-parity, and release validation are complete.
+RC selection, exact-candidate CI, immutable tagging, production deployment and
+soak, and final publication remain separate pending release steps.
+
+### V0.10 non-goals
+
+V0.10 adds no operational intent, provider mutation handler, LXC or synthetic
+LXC identity, backup/restore/install-provider/update-image execution, automatic
+approval, direct Discovery dispatch, arbitrary provider action or parameter,
+automatic retry or rollback, remote/distributed execution, automatic deployment
+or tagging, Proxmox ACL expansion, proposal-derived target authority, D10
+dynamic adapters, D11 semantic search, D12 community/private catalogs, or new
+incident persistence subsystem. Repository execution remains separately gated
+as `update-compose-stack`; operational execution remains exactly
+`restart-service / proxmox / qemu`.
+
+The first P1 code slice is limited to immutable internal
+`DiscoveryOperatorProposal`, `DiscoveryProposalProvenance`,
+`DiscoveryProposalCompatibility`, and `DiscoveryProposalDestination` contracts,
+controlled status/reason enums, canonical fingerprinting, time/bounds
+validation, and deterministic identity/staleness/security tests. It adds no API,
+persistence, UI, candidate, operator-intent or Agent integration, provider call,
+or mutation.

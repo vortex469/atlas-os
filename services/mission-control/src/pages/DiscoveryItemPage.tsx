@@ -5,6 +5,7 @@ import { getAtlasErrorMessage } from "../api/atlas";
 import {
     getDiscoveryCompatibility,
     getDiscoveryItem,
+    listDiscoveryProposals,
     getDiscoveryRelationships,
 } from "../api/discovery";
 import type {
@@ -12,7 +13,9 @@ import type {
     DiscoveryCompatibilityAssessment,
     DiscoveryRelationshipReference,
     DiscoveryRequirements,
+    DiscoveryProposalNavigation,
 } from "../types/discovery";
+import { DiscoveryProposalCard } from "../features/discovery/DiscoveryProposalCard";
 
 type DetailState = {
     entry: DiscoveryCatalogEntry | null;
@@ -34,6 +37,9 @@ export function DiscoveryItemPage() {
     const [error, setError] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
     const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
+    const [proposals, setProposals] = useState<DiscoveryProposalNavigation[]>([]);
+    const [proposalsLoading, setProposalsLoading] = useState(true);
+    const [proposalsError, setProposalsError] = useState<string | null>(null);
     const compatibilityRequestId = useRef(0);
     const compatibilityLoadHandle = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
@@ -124,6 +130,32 @@ export function DiscoveryItemPage() {
             }
         };
     }, [itemId, loadCompatibility]);
+
+    useEffect(() => {
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) {
+                setProposalsLoading(true);
+                setProposalsError(null);
+            }
+        });
+        listDiscoveryProposals(25)
+            .then((page) => {
+                if (!cancelled) {
+                    setProposals(page.proposals.filter((proposal) => proposal.catalog_item_id === itemId));
+                }
+            })
+            .catch((requestError: unknown) => {
+                if (!cancelled) {
+                    console.error(`Unable to load Discovery proposals for ${itemId}:`, requestError);
+                    setProposalsError("Proposal context is temporarily unavailable. Discovery and provider state were not affected.");
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setProposalsLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, [itemId]);
 
     if (isLoading) {
         return (
@@ -241,6 +273,17 @@ export function DiscoveryItemPage() {
                 targetItemId={itemId}
                 onRetry={loadCompatibility}
             />
+
+            <section aria-labelledby="discovery-proposals-heading" className="space-y-4">
+                <div>
+                    <h2 id="discovery-proposals-heading" className="text-xl font-semibold text-white">Operator proposals</h2>
+                    <p className="mt-1 text-sm text-slate-400">Read-only Discovery guidance. Proposals do not grant operational authority.</p>
+                </div>
+                {proposalsLoading && <p className="text-sm text-slate-400">Loading bounded proposal context…</p>}
+                {proposalsError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{proposalsError}</p>}
+                {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No current or observed proposals relate to this item.</p>}
+                {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} />)}
+            </section>
 
             <RequirementsPanel requirements={item.requirements} />
 
