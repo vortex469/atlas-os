@@ -39,6 +39,7 @@ class DiscoveryProposalStatus(StrEnum):
 
 class DiscoveryProposalReason(StrEnum):
     COMPATIBLE = "compatible"
+    COMPATIBILITY_WARNING = "compatibility_warning"
     INCOMPATIBLE = "incompatible"
     INSUFFICIENT_INFORMATION = "insufficient_information"
     UNSUPPORTED_RESOURCE = "unsupported_resource"
