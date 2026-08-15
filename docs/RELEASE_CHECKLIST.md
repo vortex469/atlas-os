@@ -259,6 +259,60 @@ tuple `restart-service/proxmox/qemu`; LXC remains unsupported.
   provider state, configuration, permissions, gates, handlers, ACLs, or
   production execution.
 
+## Atlas v0.11 P2b recovery and compatibility acceptance
+
+The accepted implementation chain is bounded by the backup-v3 contract
+(`47b6ef0`), v3 creation (`f33f70c`), transactional engine (`c4d8650`),
+production recovery integration (`a8390c2`), legacy-partial guard (`cef5226`),
+and compatibility/lineage guidance (`b5390ba`).
+
+- [x] Backup v3 defines an exact, complete generation for the declared managed
+  Atlas Core durable-state boundary; it is not a whole-system backup and does
+  not include `atlas-agent-state`.
+- [x] `operational_dispatch.db` is required and validated as safety-authoritative
+  no-replay state, and restored ledger evidence retains no-replay behavior.
+- [x] `operator_intents.db` is required, validated, and preserved as durable
+  operator authority.
+- [x] `operator_sessions.db` is excluded and invalidated on v3 restore; raw
+  snapshot rollback guidance also requires session invalidation while stopped.
+- [x] Current manifests require
+  `provider_intent_activation=not_activated` and explicitly require
+  `provider_intents.db` absent; no Provider Intent activation or public write
+  authority is claimed.
+- [x] Backup directories and artifacts enforce private `0700`/`0600`
+  permissions, including secret-bearing provider connection state.
+- [x] Transactional v3 restore preserves set-wide managed-state coherence,
+  exact rollback on handled failure, and durable recovery evidence on
+  interruption.
+- [x] Restore crash recovery and the Core startup interlock fail closed while
+  unresolved transaction evidence remains.
+- [x] The accepted disposable recovery gate covered audit-present and
+  approved-absent branches, session invalidation, Provider Intent
+  pre-activation cleanup, YAML/config/secret restoration, operational-ledger
+  and operator-intent preservation, unmanaged sentinel preservation, handled
+  rollback, and interrupted-restore recovery without a real provider mutation.
+  It explicitly guarded and did not target the production `atlas_atlas-data`
+  volume.
+- [x] Format v1/v2 verification compatibility remains historical
+  `legacy_partial`; only v3 is complete for the declared Core boundary.
+- [x] V1/v2 restore refuses any populated managed Core path or managed SQLite
+  sidecar, including operational, operator-intent, session, audit, and Provider
+  Intent state.
+- [x] V1/v2 restore onto managed-empty state requires `--confirm` plus explicit
+  `--allow-legacy-partial-new-lineage` acknowledgement and creates only a new
+  partial lineage.
+- [x] Safe v0.11-to-v0.10 downgrade requires paired pre-upgrade complete Core
+  and Agent snapshots plus retained operational no-replay evidence; a v2 export
+  is supplemental only.
+- [x] Restoring v3 and then starting v0.10 is explicitly prohibited.
+- [x] Re-upgrade must either resume the preserved v0.11 Core/Agent lineage or
+  continue the rolled-back v0.10 lineage into a new v3 recovery point; the two
+  histories are mutually exclusive and are not automatically merged.
+- [x] V0.11-P2b-4 — Legacy-partial guard, recovery compatibility guidance, and
+  release-acceptance closure.
+- [ ] V0.11-P2b-5 — Not started.
+- [ ] V0.11-P2b-6 — Not started.
+
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
 - [x] Production was rebuilt with no-cache images from the exact RC1 checkout.
