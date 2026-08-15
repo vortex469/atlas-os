@@ -332,7 +332,7 @@ Still unsupported: `backup`, `restore`, `install-provider`, `update-image`,
 push, tag/release publication, remote deployment, automated rollback, automatic
 approval, and unrestricted operational actions.
 
-## Atlas v0.8 RC preparation
+## Atlas v0.8 RC1 validation
 
 The v0.8 theme is **Operational Control Plane Clarity and Observability**. It
 makes the existing operational capability understandable, auditable,
@@ -340,8 +340,14 @@ recoverable, and safely extensible without widening the mutation boundary.
 P0 roadmap reconciliation, P1 effect-aware workflow and approval clarity, P2 a
 unified read-only lifecycle model, P3 Mission Control history and recovery UX,
 P4 provider-neutral read-only capability and selector descriptors, and P5
-deployment and security ergonomics are complete. RC selection and final release
-validation remain pending; no v0.8 RC or final tag exists yet.
+deployment and security ergonomics are complete. The immutable
+`atlas-v0.8-rc1` candidate at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed Quality gates run
+`31856384892`, Container release gate run `31856384891`, exact-SHA production
+deployment, source/image parity, and sequential service-restart soak
+validation. The completed operational workflow remained terminal, verified,
+and lifecycle-consistent without replay. Final `atlas-v0.8.0` publication
+remains pending.
 
 V0.8 adds no execution intent or provider mutation handler. Repository change
 execution remains separately gated as `update-compose-stack`; operational

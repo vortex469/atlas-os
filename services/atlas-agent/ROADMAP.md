@@ -463,11 +463,14 @@ recovery behavior, security tests, and end-to-end coverage. `backup`, `restore`,
 `install-provider`, and `update-image` remain examples of unsupported future
 intents; v0.8 deliberately adds none of them.
 
-Atlas v0.8 P0 through P5 are complete for RC preparation. Agent changes are
-limited to effect-aware approval presentation, sanitized lifecycle correlation,
-and read-only capability consistency. Agent planning, translation, and
-execution remain closed to the existing `restart-service / proxmox / qemu`
-operational tuple; RC and final tags remain pending.
+Atlas v0.8 P0 through P5 are complete. The immutable `atlas-v0.8-rc1`
+candidate at `cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed required CI,
+exact-SHA production parity, and sequential service-restart soak validation.
+Agent changes are limited to effect-aware approval presentation, sanitized
+lifecycle correlation, and read-only capability consistency. Agent planning,
+translation, and execution remain closed to the existing
+`restart-service / proxmox / qemu` operational tuple; final `atlas-v0.8.0`
+publication remains pending.
 
 ### Planned Phase 5
 

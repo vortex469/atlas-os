@@ -237,8 +237,10 @@ It must not change execution behavior.
 - Exit criteria: production has one clearly documented browser-access model and
   reproducible security assertions.
 
-P0 through P5 are complete. Atlas v0.8 is in RC preparation; neither an RC tag
-nor the final `atlas-v0.8.0` tag has been created.
+P0 through P5 are complete. The immutable `atlas-v0.8-rc1` candidate at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed required CI, exact-SHA
+production deployment, and sequential restart soak validation. Final
+`atlas-v0.8.0` publication remains pending.
 
 ### V0.8 non-goals
 

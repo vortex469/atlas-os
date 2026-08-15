@@ -7,8 +7,11 @@ release boundaries.
 ## Unreleased
 
 Atlas v0.8 is scoped to Operational Control Plane Clarity and Observability.
-P0 through P5 implementation is complete and awaiting RC selection; no RC or
-final release tag has been created yet.
+P0 through P5 implementation is complete. The immutable `atlas-v0.8-rc1`
+candidate at `cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed Quality gates
+run `31856384892`, Container release gate run `31856384891`, exact-SHA
+production deployment, and sequential service-restart soak validation. The
+final `atlas-v0.8.0` release tag has not been created yet.
 
 ### Added
 
@@ -36,6 +39,24 @@ final release tag has been created yet.
 The production mutation boundary remains exactly
 `restart-service / proxmox / qemu`; v0.8 adds no intent or provider mutation
 handler.
+
+### RC1 validation
+
+- Rebuilt no-cache production images from the exact RC1 checkout and proved
+  Core, Agent, and Mission Control source/image parity.
+- Validated the three-file production deployment, Edge-only HTTPS ingress,
+  absence of a Mission Control host port, and exact operational capability
+  parity for `restart-service/proxmox/qemu`.
+- Restarted Agent, Core, Mission Control, and Atlas Edge sequentially; all
+  services remained healthy and the accepted operational workflow remained
+  terminal, verified, and lifecycle-consistent.
+- Confirmed stale and historical approvals remained non-actionable, no commit
+  approval appeared for the operational workflow, and lifecycle/history views
+  exposed no retry or run-again control.
+- Confirmed exactly-once evidence remained unchanged: one dispatch record, six
+  transitions, one dispatching/barrier transition, one provider operation, one
+  dispatch result, one verification success, and VM 110 `qmreboot` count `3`,
+  with no new request ID and no target-fingerprint change.
 
 ## atlas-v0.7.0 — Atlas v0.7.0 (2026-08-14)
 

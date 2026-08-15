@@ -11,50 +11,77 @@ Use this checklist before creating a Foundry release tag.
 - [x] V0.8-P4 — Provider-neutral capability and selector descriptors.
 - [x] V0.8-P5 — Deployment and security ergonomics.
 
-P0 through P5 are complete on the v0.8 feature branch. RC selection, immutable
-RC tagging, exact-RC production soak, and final `atlas-v0.8.0` tagging remain
-pending.
+P0 through P5 are complete. The immutable `atlas-v0.8-rc1` candidate at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa` has completed required CI,
+exact-SHA production deployment, and production soak. Only final
+`atlas-v0.8.0` publication remains pending.
 
 ## Atlas v0.8 RC selection and sign-off
 
-- [ ] Record the exact reviewed RC SHA.
-- [ ] Require Quality gates to pass on that exact SHA and record the run ID.
-- [ ] Require Container release gate to pass on that exact SHA and record the
-  run ID.
-- [ ] Run `./scripts/operational-capability-parity` and record the exact
+- [x] Record the exact reviewed RC SHA:
+  `cf09dfe1eebbd138d37ba7144d91b893f70732fa`.
+- [x] Require Quality gates to pass on that exact SHA and record run
+  `31856384892`: `atlas-core`, `atlas-agent`, and `mission-control` succeeded.
+- [x] Require Container release gate to pass on that exact SHA and record the
+  successful run `31856384891`.
+- [x] Run `./scripts/operational-capability-parity` and record the exact
   `restart-service/proxmox/qemu` result.
-- [ ] Confirm lifecycle response redaction and effect-aware approval security
+- [x] Confirm lifecycle response redaction and effect-aware approval security
   tests pass on the exact RC SHA.
-- [ ] Confirm the production registry contains exactly one tuple and no new
+- [x] Confirm the production registry contains exactly one tuple and no new
   mutation intent or handler exists.
-- [ ] Review and approve the documented v0.7.0 to v0.8 upgrade and v0.8 to
+- [x] Review and approve the documented v0.7.0 to v0.8 upgrade and v0.8 to
   v0.7.0 rollback procedures.
-- [ ] Create the immutable v0.8 RC tag.
-- [ ] Complete and record the exact-RC production soak.
+- [x] Create the immutable v0.8 RC tag: `atlas-v0.8-rc1`.
+- [x] Complete and record the exact-RC production soak.
 - [ ] Create the final immutable `atlas-v0.8.0` tag.
+
+### Atlas v0.8 RC1 promotion evidence — 2026-08-15
+
+- [x] Production was rebuilt with no-cache images from the exact RC1 checkout.
+- [x] Core and Agent source/image checksum parity passed, and Mission Control
+  running-image parity matched the RC1 build.
+- [x] The three-file deployment used `compose.production.yaml`,
+  `compose.https.yaml`, and `compose.operator-auth.yaml`; Atlas Edge was the
+  sole HTTPS browser ingress and Mission Control had no host-published port.
+- [x] Agent, Core, Mission Control, and Atlas Edge sequential restarts passed;
+  all required services remained healthy.
+- [x] The completed operational workflow remained terminal and verified with
+  consistent lifecycle correlation. Historical approvals remained
+  non-actionable, no operational commit approval appeared, and history and
+  lifecycle views remained read-only with no retry or run-again control.
+- [x] Durable exactly-once evidence remained one dispatch record, six
+  transitions, one dispatching/barrier transition, one provider operation, one
+  dispatch result, and one verification success. VM 110 `qmreboot` count
+  remained `3`; no new operational request ID appeared and the authoritative
+  target fingerprint remained unchanged.
+- [x] Production remained closed to exactly
+  `restart-service/proxmox/qemu`; no new mutation intent or handler appeared.
+  The selector remained sanitized without `vmgenid` or raw identity material,
+  and private credentials and TLS material remained untracked.
 
 ## Atlas v0.8 exact-RC deployment and security checks
 
-- [ ] Render base production Compose and confirm Mission Control publishes only
+- [x] Render base production Compose and confirm Mission Control publishes only
   the default loopback HTTP binding.
-- [ ] Render the HTTPS plus operator-auth deployment and confirm Atlas Edge is
+- [x] Render the HTTPS plus operator-auth deployment and confirm Atlas Edge is
   the only host-published browser ingress while internal Mission Control routing
   remains healthy.
-- [ ] Confirm unauthenticated HTTPS receives the Edge authentication challenge
+- [x] Confirm unauthenticated HTTPS receives the Edge authentication challenge
   and authenticated HTTPS reaches the SPA, Core API, and Agent API.
-- [ ] Confirm expired/unavailable sessions clear authenticated UI state;
+- [x] Confirm expired/unavailable sessions clear authenticated UI state;
   permission failures remain distinct; missing CSRF rotation fails closed; and
   reauthentication returns to the intended safe page.
-- [ ] Run `./scripts/operational-capability-parity` and require exact parity
+- [x] Run `./scripts/operational-capability-parity` and require exact parity
   across Agent planning, translation and execution, plus Core execution,
   registry, and descriptor projection.
-- [ ] Confirm lifecycle response-model redaction tests reject credentials,
+- [x] Confirm lifecycle response-model redaction tests reject credentials,
   authorization headers, cookies, CSRF, bearer tokens, raw identity,
   provider-native payloads, commands, environment data, arbitrary exceptions,
   and worker/sandbox internals.
-- [ ] Confirm operational history and lifecycle views remain read-only and
+- [x] Confirm operational history and lifecycle views remain read-only and
   expose no retry or run-again control, including ambiguous outcomes.
-- [ ] Confirm the production registry contains exactly one tuple:
+- [x] Confirm the production registry contains exactly one tuple:
   `restart-service / proxmox / qemu`.
 
 ## Automated gates

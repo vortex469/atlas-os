@@ -24,16 +24,18 @@ not replace Core authentication. See the
 [restart contract](docs/architecture/proxmox-qemu-operational-restart.md), and
 [verification/recovery contract](docs/architecture/operational-verification-recovery.md).
 
-## Atlas v0.8 RC preparation
+## Atlas v0.8 RC1
 
 Atlas v0.8 focuses on **Operational Control Plane Clarity and Observability**:
 effect-aware workflow and approval presentation, a unified read-only
 operational lifecycle model, Mission Control history and recovery UX,
 provider-neutral read-only capability descriptors, and deployment/security
-ergonomics. P0 through P5 implementation is complete and the release is being
-prepared for RC selection. No v0.8 RC or final tag has been created yet. The
-operational mutation boundary remains exactly
-`restart-service / proxmox / qemu`.
+ergonomics. P0 through P5 implementation is complete. The immutable
+`atlas-v0.8-rc1` candidate at
+`cf09dfe1eebbd138d37ba7144d91b893f70732fa` passed required CI, exact-SHA
+production deployment, and sequential service-restart soak validation. The
+final `atlas-v0.8.0` publication remains pending. The operational mutation
+boundary remains exactly `restart-service / proxmox / qemu`.
 
 - [Atlas v0.7.0 to v0.8 upgrade](docs/DEPLOYMENT.md#atlas-v070-to-v08-upgrade-and-rollback)
 - [Atlas v0.8 to v0.7.0 rollback](docs/DEPLOYMENT.md#rollback-to-atlas-v070)
