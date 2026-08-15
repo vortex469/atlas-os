@@ -1161,6 +1161,50 @@ It starts a temporary TLS Rest Server, initializes a repository, uploads a
 verified Atlas backup, checks the repository, restores the latest
 snapshot, compares the restored database, and removes all test data.
 
+## Read-only release evidence
+
+Use the local release-evidence collector during RC selection and final-tag
+preparation to replace manual transcription of provenance checks:
+
+```bash
+./scripts/release-evidence \
+  --expected-base atlas-v0.8.0 \
+  --candidate-tag atlas-v0.9-rc1 \
+  --expected-sha <reviewed-commit-sha> \
+  --require-main \
+  --require-tag
+```
+
+Add `--json` for the bounded `atlas-release-evidence-v1` representation. Add
+`--check-running-images` only on a host with the intended production deployment;
+the option performs Docker inspection only and never rebuilds or recreates a
+container. Unknown options fail closed.
+
+The collector reads Git identity and worktree state, peels annotated tags,
+requires CI evidence to match the exact candidate SHA, reuses
+`scripts/operational-capability-parity`, renders the base and hardened Compose
+configurations, checks Edge-only hardened ingress, inspects tracked path names
+and presence-only private-key/verifier signatures for release-sensitive
+material without printing matched values, and runs bounded local syntax and
+diff checks. Missing GitHub CLI access, unavailable private Compose inputs, and
+unavailable requested image inspection are reported as incomplete rather than
+invented as passing evidence. The allowed untracked exception is exactly
+`compose.execution-smoke.override.yaml`.
+
+Exit status is deterministic:
+
+- `0`: ready; all evidence required by this tool passed.
+- `1`: blocked; at least one required check failed.
+- `2`: incomplete; required evidence was unavailable or pending.
+- `3`: invalid invocation or collector configuration error.
+
+This command is evidence automation, not deployment or release automation. It
+does not run the container release gate, deploy or restart services, create or
+modify tags, push commits, mutate GitHub state, or perform provider actions.
+The container release gate, exact-SHA production soak, operator review, and
+human approval to create immutable RC/final tags remain separate release
+steps.
+
 ## Security notes
 
 The Core container has access to the Docker socket, which is equivalent

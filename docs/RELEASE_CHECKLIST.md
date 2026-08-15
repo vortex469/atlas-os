@@ -104,6 +104,25 @@ read-only recovery, evidence, UX, and release work.
 
 ## Automated gates
 
+Generate bounded read-only RC/final provenance evidence with:
+
+```bash
+./scripts/release-evidence \
+  --expected-base atlas-v0.8.0 \
+  --candidate-tag atlas-v0.9-rc1 \
+  --expected-sha <reviewed-commit-sha> \
+  --require-main \
+  --require-tag \
+  --json
+```
+
+Require exit `0` and retain the JSON with the release review. Exit `1` means a
+required check failed, exit `2` means required evidence is incomplete, and exit
+`3` means the invocation is invalid. A green run proves only the bounded facts
+reported by `atlas-release-evidence-v1`; it does not prove production soak,
+container-gate completion, or human approval to create a tag. Those steps
+remain explicit checklist items.
+
 - [x] Atlas Core installs from `requirements-dev.txt`.
 - [x] Atlas Core test suite passes.
 - [x] Mission Control installs reproducibly with `npm ci`.
