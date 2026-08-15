@@ -7,7 +7,35 @@ release boundaries.
 ## Unreleased
 
 Atlas v0.8 is scoped to Operational Control Plane Clarity and Observability.
-No v0.8 runtime changes have been implemented yet.
+P0 through P5 implementation is complete and awaiting RC selection; no RC or
+final release tag has been created yet.
+
+### Added
+
+- Added effect-aware approval presentation with explicit actionable,
+  historical, superseded, and expired states and effect-specific approval
+  boundaries.
+- Added a unified sanitized operational lifecycle read model correlating
+  provenance, planning, approvals, dispatch-barrier evidence, provider
+  operation capture, verification, recovery, and terminal outcome.
+- Added read-only Mission Control operational history and recovery guidance
+  with no mutation retry or run-again controls.
+- Added provider-neutral, read-only capability and resource-selector
+  descriptors projected from existing closed capability sources.
+
+### Changed
+
+- Hardened HTTPS deployments so Atlas Edge is the only host-published browser
+  ingress while Mission Control remains reachable on the internal Compose
+  network.
+- Improved expired-session, reauthentication, permission, CSRF-rotation, and
+  Core-unavailable operator UX without adding automatic mutation retry.
+- Added release assertions for Agent/Core/translation/registry/descriptor
+  parity and lifecycle-response redaction.
+
+The production mutation boundary remains exactly
+`restart-service / proxmox / qemu`; v0.8 adds no intent or provider mutation
+handler.
 
 ## atlas-v0.7.0 — Atlas v0.7.0 (2026-08-14)
 

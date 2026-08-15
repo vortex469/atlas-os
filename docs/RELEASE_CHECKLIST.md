@@ -2,7 +2,38 @@
 
 Use this checklist before creating a Foundry release tag.
 
-## Atlas v0.8 deployment and security ergonomics
+## Atlas v0.8 implementation status
+
+- [x] V0.8-P0 — Roadmap and release-state reconciliation.
+- [x] V0.8-P1 — Effect-aware workflow and approval clarity.
+- [x] V0.8-P2 — Unified operational lifecycle read model.
+- [x] V0.8-P3 — Mission Control operational history and recovery UX.
+- [x] V0.8-P4 — Provider-neutral capability and selector descriptors.
+- [x] V0.8-P5 — Deployment and security ergonomics.
+
+P0 through P5 are complete on the v0.8 feature branch. RC selection, immutable
+RC tagging, exact-RC production soak, and final `atlas-v0.8.0` tagging remain
+pending.
+
+## Atlas v0.8 RC selection and sign-off
+
+- [ ] Record the exact reviewed RC SHA.
+- [ ] Require Quality gates to pass on that exact SHA and record the run ID.
+- [ ] Require Container release gate to pass on that exact SHA and record the
+  run ID.
+- [ ] Run `./scripts/operational-capability-parity` and record the exact
+  `restart-service/proxmox/qemu` result.
+- [ ] Confirm lifecycle response redaction and effect-aware approval security
+  tests pass on the exact RC SHA.
+- [ ] Confirm the production registry contains exactly one tuple and no new
+  mutation intent or handler exists.
+- [ ] Review and approve the documented v0.7.0 to v0.8 upgrade and v0.8 to
+  v0.7.0 rollback procedures.
+- [ ] Create the immutable v0.8 RC tag.
+- [ ] Complete and record the exact-RC production soak.
+- [ ] Create the final immutable `atlas-v0.8.0` tag.
+
+## Atlas v0.8 exact-RC deployment and security checks
 
 - [ ] Render base production Compose and confirm Mission Control publishes only
   the default loopback HTTP binding.

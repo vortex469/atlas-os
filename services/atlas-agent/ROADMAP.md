@@ -463,6 +463,12 @@ recovery behavior, security tests, and end-to-end coverage. `backup`, `restore`,
 `install-provider`, and `update-image` remain examples of unsupported future
 intents; v0.8 deliberately adds none of them.
 
+Atlas v0.8 P0 through P5 are complete for RC preparation. Agent changes are
+limited to effect-aware approval presentation, sanitized lifecycle correlation,
+and read-only capability consistency. Agent planning, translation, and
+execution remain closed to the existing `restart-service / proxmox / qemu`
+operational tuple; RC and final tags remain pending.
+
 ### Planned Phase 5
 
 Distributed orchestration, clustering, multi-process locking, and cross-host recovery require a persistence and coordination design beyond the current local single-process Agent state store.

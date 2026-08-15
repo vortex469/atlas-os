@@ -165,6 +165,8 @@ The dependency order is:
 
 ### V0.8-P0 — Roadmap and release-state reconciliation
 
+**Status: Complete.**
+
 - Goal: establish the authoritative post-v0.7 release state and v0.8 scope.
 - Deliverables: consistent release identities, current production boundaries,
   milestones, dependency order, and non-goals across project documentation.
@@ -173,6 +175,8 @@ The dependency order is:
   one coherent v0.8 roadmap.
 
 ### V0.8-P1 — Effect-aware workflow and approval clarity
+
+**Status: Complete.**
 
 - Goal: make repository and operational workflows unmistakably distinct.
 - Deliverables: effect-aware approval presentation; explicit stale, historical,
@@ -187,6 +191,8 @@ It must not change execution behavior.
 
 ### V0.8-P2 — Unified operational lifecycle read model
 
+**Status: Complete.**
+
 - Goal: provide one sanitized, correlated explanation of an operational action.
 - Deliverables: a read-only projection covering intent provenance, candidate,
   plan, approvals, workflow, ledger transitions, barrier/provider-operation
@@ -196,6 +202,8 @@ It must not change execution behavior.
   filterable lifecycle responses explain the complete durable history.
 
 ### V0.8-P3 — Mission Control operational history and recovery UX
+
+**Status: Complete.**
 
 - Goal: make operational lifecycle and recovery state understandable to an
   operator without direct database or container access.
@@ -208,6 +216,8 @@ It must not change execution behavior.
 
 ### V0.8-P4 — Provider-neutral capability and selector descriptors
 
+**Status: Complete.**
+
 - Goal: make supported capabilities discoverable without granting execution.
 - Deliverables: typed read-only capability descriptors and a provider-neutral
   selector contract implemented by the existing Proxmox QEMU projection.
@@ -217,6 +227,8 @@ It must not change execution behavior.
 
 ### V0.8-P5 — Deployment and security ergonomics
 
+**Status: Complete.**
+
 - Goal: clarify the supported browser ingress and operational-auth experience.
 - Deliverables: direct Mission Control HTTP exposure review, session-expiry and
   reauthentication UX, evidence-retention guidance, and release checks for
@@ -224,6 +236,9 @@ It must not change execution behavior.
 - Non-goal: weaker origin, CSRF, credential, container, or network controls.
 - Exit criteria: production has one clearly documented browser-access model and
   reproducible security assertions.
+
+P0 through P5 are complete. Atlas v0.8 is in RC preparation; neither an RC tag
+nor the final `atlas-v0.8.0` tag has been created.
 
 ### V0.8 non-goals
 
