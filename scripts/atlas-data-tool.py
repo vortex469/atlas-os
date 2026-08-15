@@ -647,6 +647,20 @@ def _validate_sqlite_rows(connection: sqlite3.Connection, managed_path: ManagedP
         _validate_operational_rows(connection)
 
 
+def _parse_operational_timestamp(value: object) -> datetime:
+    if not isinstance(value, str):
+        raise RuntimeError(  # noqa: TRY004
+            "operational event evidence is inconsistent"
+        )
+    try:
+        timestamp = datetime.fromisoformat(value)
+    except ValueError as error:
+        raise RuntimeError("operational event evidence is inconsistent") from error
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise RuntimeError("operational event evidence is inconsistent")
+    return timestamp.astimezone(timezone.utc)
+
+
 def _validate_operational_rows(connection: sqlite3.Connection) -> None:
     orphan_count = connection.execute(
         "SELECT count(*) FROM operational_dispatch_transitions AS transitions "
@@ -662,7 +676,8 @@ def _validate_operational_rows(connection: sqlite3.Connection) -> None:
             not isinstance(event, dict)
             or event.get("event_id") != event_row["event_id"]
             or event.get("status") != event_row["status"]
-            or event.get("occurred_at") != event_row["occurred_at"]
+            or _parse_operational_timestamp(event.get("occurred_at"))
+            != _parse_operational_timestamp(event_row["occurred_at"])
         ):
             raise RuntimeError("operational event evidence is inconsistent")
     for row in connection.execute("SELECT * FROM operational_dispatch"):

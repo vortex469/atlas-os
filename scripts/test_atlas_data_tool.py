@@ -27,6 +27,7 @@ from scripts.atlas_data_backup_models import (
 
 TOOL = runpy.run_path(str(Path(__file__).with_name("atlas-data-tool.py")))
 ProviderIntentActivation = TOOL["ProviderIntentActivation"]
+_validate_operational_rows = TOOL["_validate_operational_rows"]
 create_backup = TOOL["create_backup"]
 legacy_restore_conflicts = TOOL["legacy_restore_conflicts"]
 restore_backup = TOOL["restore_backup"]
@@ -198,6 +199,81 @@ def _source(root: Path, *, audit: bool = False) -> dict[str, sqlite3.Connection]
 def _close(connections: dict[str, sqlite3.Connection]) -> None:
     for connection in connections.values():
         connection.close()
+
+
+def _operational_event_connection(
+    indexed_timestamp: str,
+    payload_timestamp: str,
+    *,
+    indexed_status: str = "verified",
+    payload_status: str = "verified",
+) -> sqlite3.Connection:
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    connection.executescript(SCHEMAS["operational_dispatch.db"])
+    event = {
+        "event_id": "event-1",
+        "status": payload_status,
+        "occurred_at": payload_timestamp,
+    }
+    connection.execute(
+        "INSERT INTO operational_dispatch_events VALUES (?,?,?,?)",
+        ("event-1", indexed_status, indexed_timestamp, json.dumps(event)),
+    )
+    return connection
+
+
+@pytest.mark.parametrize(
+    ("indexed_timestamp", "payload_timestamp"),
+    (
+        ("2026-08-15T12:34:56+00:00", "2026-08-15T12:34:56Z"),
+        ("2026-08-15T12:34:56+00:00", "2026-08-15T12:34:56+00:00"),
+        ("2026-08-15T13:34:56+01:00", "2026-08-15T12:34:56Z"),
+    ),
+)
+def test_operational_event_validation_accepts_equal_aware_timestamps(
+    indexed_timestamp: str,
+    payload_timestamp: str,
+) -> None:
+    with _operational_event_connection(
+        indexed_timestamp, payload_timestamp
+    ) as connection:
+        _validate_operational_rows(connection)
+
+
+@pytest.mark.parametrize(
+    ("indexed_timestamp", "payload_timestamp"),
+    (
+        ("2026-08-15T12:34:56+00:00", "2026-08-15T12:34:57Z"),
+        ("2026-08-15T12:34:56+00:00", "2026-08-15T12:34:56Z-invalid"),
+        ("2026-08-15T12:34:56", "2026-08-15T12:34:56Z"),
+        ("2026-08-15T12:34:56+25:00", "2026-08-15T12:34:56Z"),
+        ("invalid", "2026-08-15T12:34:56Z"),
+        ("2026-08-15T12:34:56+00:00", "invalid"),
+    ),
+)
+def test_operational_event_validation_rejects_unequal_or_invalid_timestamps(
+    indexed_timestamp: str,
+    payload_timestamp: str,
+) -> None:
+    with _operational_event_connection(
+        indexed_timestamp, payload_timestamp
+    ) as connection, pytest.raises(
+        RuntimeError, match="operational event evidence is inconsistent"
+    ):
+        _validate_operational_rows(connection)
+
+
+def test_operational_event_validation_retains_other_index_integrity() -> None:
+    with _operational_event_connection(
+        "2026-08-15T12:34:56+00:00",
+        "2026-08-15T12:34:56Z",
+        indexed_status="verified",
+        payload_status="outcome_unknown",
+    ) as connection, pytest.raises(
+        RuntimeError, match="operational event evidence is inconsistent"
+    ):
+        _validate_operational_rows(connection)
 
 
 def _activate_provider_intents(source: Path) -> str:

@@ -236,12 +236,12 @@ def seed(root: Path, audit: bool) -> None:
                     (
                         "event",
                         "dispatching",
-                        "2026-01-01",
+                        "2026-01-01T00:00:00+00:00",
                         json.dumps(
                             {
                                 "event_id": "event",
                                 "status": "dispatching",
-                                "occurred_at": "2026-01-01",
+                                "occurred_at": "2026-01-01T00:00:00Z",
                             }
                         ),
                     ),
