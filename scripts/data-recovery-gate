@@ -4,15 +4,57 @@ set -euo pipefail
 
 SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_IMAGE="python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+CORE_IMAGE="${ATLAS_CORE_VALIDATION_IMAGE:-atlas-core:latest}"
 GATE_DIRECTORY="$(mktemp -d /tmp/atlas-recovery-gate.XXXXXX)"
 GATE_PREFIX="atlas-recovery-gate-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
 PRODUCTION_VOLUME="atlas_atlas-data"
 created_volumes=()
+passed_checks=()
+evidence_output=""
+expected_sha=""
+gate_completed=false
+staging_volumes_before="$(docker volume ls --format '{{.Name}}' | grep '^atlas-restore-staging-' | sort || true)"
+trap 'rm -rf -- "$GATE_DIRECTORY"' EXIT
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --evidence-output)
+            [[ $# -ge 2 ]] || { echo "--evidence-output requires a path" >&2; exit 2; }
+            evidence_output="$2"
+            shift 2
+            ;;
+        --expected-sha)
+            [[ $# -ge 2 ]] || { echo "--expected-sha requires a value" >&2; exit 2; }
+            expected_sha="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown recovery-gate option: $1" >&2
+            exit 2
+            ;;
+    esac
+done
+
+tested_sha="$(git -C "$SCRIPT_DIRECTORY/.." rev-parse HEAD)"
+if [[ -n "$expected_sha" && "$tested_sha" != "$expected_sha" ]]; then
+    echo "Recovery evidence expected SHA does not match HEAD" >&2
+    exit 1
+fi
+if [[ -n "$evidence_output" && -z "$expected_sha" ]]; then
+    echo "--evidence-output requires --expected-sha" >&2
+    exit 2
+fi
+if [[ -n "$expected_sha" ]] \
+    && git -C "$SCRIPT_DIRECTORY/.." diff --quiet \
+    && git -C "$SCRIPT_DIRECTORY/.." diff --cached --quiet; then
+    passed_checks+=(exact_commit_binding)
+fi
 
 if [[ "$GATE_PREFIX" = "$PRODUCTION_VOLUME" ]]; then
     echo "Recovery gate refuses the production Atlas data volume" >&2
     exit 1
 fi
+passed_checks+=(production_volume_protection)
 
 create_gate_volume() {
     local volume="$1"
@@ -28,13 +70,52 @@ create_gate_volume() {
     created_volumes+=("$volume")
 }
 
-cleanup() {
+finish() {
+    local original_status="$?"
+    local cleanup_ok=true
     for volume in "${created_volumes[@]}"; do
-        docker volume rm "$volume" >/dev/null 2>&1 || true
+        if ! docker volume rm "$volume" >/dev/null 2>&1; then
+            cleanup_ok=false
+        fi
     done
-    rm -rf -- "$GATE_DIRECTORY"
+    if ! rm -rf -- "$GATE_DIRECTORY" || [[ -e "$GATE_DIRECTORY" ]]; then
+        cleanup_ok=false
+    fi
+    staging_volumes_after="$(docker volume ls --format '{{.Name}}' | grep '^atlas-restore-staging-' | sort || true)"
+    if [[ "$staging_volumes_after" != "$staging_volumes_before" ]]; then
+        cleanup_ok=false
+    fi
+    for volume in "${created_volumes[@]}"; do
+        if docker volume inspect "$volume" >/dev/null 2>&1; then
+            cleanup_ok=false
+        fi
+    done
+    if [[ "$cleanup_ok" = true ]]; then
+        passed_checks+=(disposable_cleanup)
+    fi
+    if [[ "$gate_completed" = true ]]; then
+        passed_checks+=(recovery_gate)
+    fi
+    if [[ -n "$evidence_output" ]]; then
+        evidence_arguments=(
+            --output "$evidence_output"
+            --tested-commit "$tested_sha"
+        )
+        for check in "${passed_checks[@]}"; do
+            evidence_arguments+=(--passed-check "$check")
+        done
+        if ! python3 "$SCRIPT_DIRECTORY/atlas_data_recovery_evidence.py" \
+            "${evidence_arguments[@]}"; then
+            original_status=1
+        fi
+    fi
+    if [[ "$cleanup_ok" != true ]]; then
+        original_status=1
+    fi
+    trap - EXIT
+    exit "$original_status"
 }
-trap cleanup EXIT
+trap finish EXIT
 
 for audit in false true; do
     branch="without-audit"
@@ -67,8 +148,10 @@ for audit in false true; do
     )"
     test -n "$backup_directory"
     python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$backup_directory"
+    passed_checks+=(v3_completeness)
     test "$(stat -c '%a' "$backup_directory")" = 700
     test "$(find "$backup_directory" -type f ! -perm 0600 -print -quit)" = ""
+    passed_checks+=(permission_ownership)
 
     docker run \
         --rm \
@@ -114,6 +197,9 @@ for audit in false true; do
                     docker run --rm --mount "type=volume,src=$volume,dst=/data,readonly" \
                         "$PYTHON_IMAGE" sh -c 'test -e /data/.atlas-restore && echo present || true'
                 )"
+                passed_checks+=(handled_rollback)
+            else
+                passed_checks+=(interrupted_recovery)
             fi
         done
         ATLAS_DATA_VOLUME="$volume" \
@@ -131,6 +217,47 @@ for audit in false true; do
         --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_recovery_gate_fixture.py,dst=/fixture.py,readonly" \
         "$PYTHON_IMAGE" \
         python /fixture.py verify /data "$audit"
+    if [[ "$audit" = true ]]; then
+        passed_checks+=(audit_present)
+    else
+        passed_checks+=(audit_absent)
+        docker run \
+            --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --user 10001:10001 \
+            --env PYTHONPATH=/evidence-app \
+            --mount "type=volume,src=$volume,dst=/data" \
+            --mount "type=bind,src=$SCRIPT_DIRECTORY/../services/atlas-core/app,dst=/evidence-app/app,readonly" \
+            --mount "type=bind,src=$SCRIPT_DIRECTORY/../config,dst=/opt/atlas/config,readonly" \
+            --mount "type=bind,src=$SCRIPT_DIRECTORY/../inventory,dst=/opt/atlas/inventory,readonly" \
+            --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_recovery_runtime_evidence.py,dst=/runtime-evidence.py,readonly" \
+            "$CORE_IMAGE" \
+            python /runtime-evidence.py /data
+        passed_checks+=(operational_ledger_no_replay startup_interlock)
+    fi
 done
 
-echo "Atlas data recovery gate passed: ${created_volumes[*]}"
+passed_checks+=(
+    operator_intent_preservation
+    session_invalidation
+    provider_intent_pre_activation_cleanup
+    runtime_config_secret_restoration
+    unmanaged_state_preservation
+)
+
+python3 "$SCRIPT_DIRECTORY/atlas_data_legacy_recovery_evidence.py" \
+    "$SCRIPT_DIRECTORY/atlas-data-tool.py"
+passed_checks+=(
+    legacy_v1_compatibility
+    legacy_v2_compatibility
+    legacy_partial_restore_guard
+)
+
+"$SCRIPT_DIRECTORY/operational-capability-parity"
+passed_checks+=(execution_boundary_parity)
+
+gate_completed=true
+echo "Atlas data recovery gate passed: disposable_volume_count=${#created_volumes[@]}"

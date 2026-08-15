@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -10,6 +11,111 @@ from pathlib import Path
 
 UID = 10001
 GID = 10001
+
+
+def _digest(prefix: str, payload: dict[str, object]) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"{prefix}:{hashlib.sha256(encoded.encode()).hexdigest()}"
+
+
+def dispatching_request() -> dict[str, object]:
+    generated_at = "2026-01-01T00:00:00+00:00"
+    expires_at = "2026-01-02T00:00:00+00:00"
+    verification = {
+        "pre_state": "running",
+        "expected_post_state": "running-and-healthy",
+        "identity_fingerprint": "target-fingerprint-v1:bounded",
+        "health_requirement": "healthy",
+        "unknown_outcome_policy": "stop-and-reconcile",
+    }
+    verification_digest = _digest(
+        "operational-verification-digest-v1",
+        {
+            **verification,
+            "version": "operational-verification-digest-v1",
+        },
+    )
+    values: dict[str, object] = {
+        "schema_version": 1,
+        "request_id": "dispatching-request",
+        "request_digest": "pending",
+        "idempotency_key": "pending",
+        "workflow_session_id": "workflow",
+        "candidate_planning_session_id": "planning",
+        "candidate_id": "candidate",
+        "candidate_fingerprint": "candidate-fingerprint-v1:bounded",
+        "candidate_plan_id": "plan",
+        "candidate_plan_fingerprint": "plan-fingerprint-v1:bounded",
+        "effect_kind": "operational_action",
+        "execution_intent": "restart-service",
+        "provider_id": "proxmox",
+        "resource_id": "qemu/101",
+        "resource_type": "qemu",
+        "provider_action_id": "proxmox-qemu-graceful-restart-v1",
+        "target_fingerprint": "target-fingerprint-v1:bounded",
+        "target_version": "uid-v1",
+        "expected_pre_state": "running",
+        "disruption_scope": "one service interruption",
+        "evidence_ids": ["evidence"],
+        "verification": verification,
+        "generated_at": generated_at,
+        "expires_at": expires_at,
+        "translator_version": "operational-action-translator-v1",
+    }
+    request_payload = {
+        "candidate_fingerprint": values["candidate_fingerprint"],
+        "candidate_id": values["candidate_id"],
+        "candidate_plan_fingerprint": values["candidate_plan_fingerprint"],
+        "candidate_plan_id": values["candidate_plan_id"],
+        "candidate_planning_session_id": values["candidate_planning_session_id"],
+        "disruption_scope": values["disruption_scope"],
+        "effect_kind": values["effect_kind"],
+        "evidence_ids": sorted(values["evidence_ids"]),
+        "execution_intent": values["execution_intent"],
+        "expected_pre_state": values["expected_pre_state"],
+        "expires_at": expires_at,
+        "generated_at": generated_at,
+        "provider_action_id": values["provider_action_id"],
+        "provider_id": values["provider_id"],
+        "request_id": values["request_id"],
+        "resource_id": values["resource_id"],
+        "resource_type": values["resource_type"],
+        "target_fingerprint": values["target_fingerprint"],
+        "target_version": values["target_version"],
+        "translator_version": values["translator_version"],
+        "verification_digest": verification_digest,
+        "version": "operational-action-request-digest-v1",
+        "workflow_session_id": values["workflow_session_id"],
+    }
+    request_digest = _digest("operational-action-request-digest-v1", request_payload)
+    values["request_digest"] = request_digest
+    values["idempotency_key"] = _digest(
+        "operational-action-execution-key-v1",
+        {
+            "request_digest": request_digest,
+            "request_id": values["request_id"],
+            "version": "operational-action-execution-key-v1",
+        },
+    )
+    values["approval"] = {
+        "approval_request_id": "approval",
+        "action_request_id": values["request_id"],
+        "action_request_digest": request_digest,
+        "candidate_id": values["candidate_id"],
+        "candidate_fingerprint": values["candidate_fingerprint"],
+        "operational_plan_fingerprint": values["candidate_plan_fingerprint"],
+        "provider_id": values["provider_id"],
+        "resource_id": values["resource_id"],
+        "resource_type": values["resource_type"],
+        "target_fingerprint": values["target_fingerprint"],
+        "target_version": values["target_version"],
+        "operation_intent": values["execution_intent"],
+        "disruption_scope": values["disruption_scope"],
+        "verification_digest": verification_digest,
+        "generated_at": generated_at,
+        "expires_at": expires_at,
+    }
+    return values
 
 SCHEMAS = {
     "action_history.db": """
@@ -140,6 +246,38 @@ def seed(root: Path, audit: bool) -> None:
                         ),
                     ),
                 )
+                dispatching = dispatching_request()
+                connection.execute(
+                    "INSERT INTO operational_dispatch VALUES (?,?,?,?,?,?,?,?,?)",
+                    (
+                        "dispatching-request",
+                        dispatching["request_digest"],
+                        "dispatching",
+                        json.dumps(dispatching),
+                        "2026-01-01",
+                        "2026-01-01",
+                        "2026-01-01",
+                        None,
+                        None,
+                    ),
+                )
+                for previous, state in (
+                    (None, "claimed"),
+                    ("claimed", "revalidated"),
+                    ("revalidated", "dispatching"),
+                ):
+                    connection.execute(
+                        "INSERT INTO operational_dispatch_transitions "
+                        "(request_id, request_digest, previous_state, state, occurred_at) "
+                        "VALUES (?,?,?,?,?)",
+                        (
+                            "dispatching-request",
+                            dispatching["request_digest"],
+                            previous,
+                            state,
+                            "2026-01-01",
+                        ),
+                    )
             elif name == "operator_intents.db":
                 record = {
                     "record_id": "intent", "request_digest": "intent-digest",
@@ -246,7 +384,7 @@ def verify(root: Path, audit: bool) -> None:
         ).fetchone()[:3] == ("dispatch-request", "dispatch-digest", "verified")
         assert connection.execute(
             "SELECT count(*) FROM operational_dispatch_transitions"
-        ).fetchone()[0] == 6
+        ).fetchone()[0] == 9
         assert connection.execute(
             "SELECT count(*) FROM operational_dispatch_events"
         ).fetchone()[0] == 1

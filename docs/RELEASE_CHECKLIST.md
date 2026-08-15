@@ -310,7 +310,11 @@ and compatibility/lineage guidance (`b5390ba`).
   histories are mutually exclusive and are not automatically merged.
 - [x] V0.11-P2b-4 — Legacy-partial guard, recovery compatibility guidance, and
   release-acceptance closure.
-- [ ] V0.11-P2b-5 — Not started.
+- [x] V0.11-P2b-5 — `atlas-core-recovery-evidence-v1` derives bounded,
+  redacted readiness from the disposable recovery, legacy compatibility,
+  startup/no-replay, cleanup, and exact execution-parity checks; an artifact is
+  accepted only for its exact clean candidate SHA and must be supplied
+  explicitly to release evidence.
 - [ ] V0.11-P2b-6 — Not started.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15

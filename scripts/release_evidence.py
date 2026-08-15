@@ -12,6 +12,21 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
 
+try:
+    from atlas_data_recovery_evidence import (
+        EvidenceStatus as RecoveryStatus,
+    )
+    from atlas_data_recovery_evidence import (
+        load_recovery_evidence,
+    )
+except ModuleNotFoundError:
+    from scripts.atlas_data_recovery_evidence import (
+        EvidenceStatus as RecoveryStatus,
+    )
+    from scripts.atlas_data_recovery_evidence import (
+        load_recovery_evidence,
+    )
+
 SCHEMA_VERSION = "atlas-release-evidence-v1"
 ALLOWED_UNTRACKED = ("compose.execution-smoke.override.yaml",)
 EXPECTED_TUPLES = ("restart-service/proxmox/qemu",)
@@ -183,6 +198,14 @@ class ValidationEvidence:
 
 
 @dataclass(frozen=True, slots=True)
+class RecoveryAcceptanceEvidence:
+    status: CheckState
+    schema_version: str | None
+    tested_commit_sha: str | None
+    controlled_reason: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class EvidenceSummary:
     status: SummaryState
     reasons: tuple[str, ...]
@@ -199,6 +222,7 @@ class ReleaseEvidence:
     images: ImageEvidence
     security: SecurityEvidence
     validation: ValidationEvidence
+    recovery: RecoveryAcceptanceEvidence
     summary: EvidenceSummary
 
 
@@ -210,6 +234,7 @@ class Options:
     require_main: bool
     require_tag: bool
     check_running_images: bool
+    recovery_evidence: Path | None = None
 
 
 def collect_evidence(root: Path, options: Options, runner: ReadOnlyRunner) -> ReleaseEvidence:
@@ -223,6 +248,7 @@ def collect_evidence(root: Path, options: Options, runner: ReadOnlyRunner) -> Re
     )
     security = _security(root, runner)
     validation = _validation(root, runner)
+    recovery = _recovery(options.recovery_evidence, identity.head_sha)
     blocked: list[str] = list(identity_states)
     incomplete: list[str] = []
     if not worktree.tracked_clean:
@@ -248,6 +274,8 @@ def collect_evidence(root: Path, options: Options, runner: ReadOnlyRunner) -> Re
         blocked.append("tracked_private_material_found")
     if validation.diff_check is CheckState.FAILED or validation.shell_syntax is CheckState.FAILED:
         blocked.append("local_validation_failed")
+    if recovery.status is CheckState.FAILED:
+        blocked.append("recovery_evidence_failed")
     if blocked:
         summary = EvidenceSummary(SummaryState.BLOCKED, tuple(sorted(set(blocked))))
     elif incomplete:
@@ -256,7 +284,35 @@ def collect_evidence(root: Path, options: Options, runner: ReadOnlyRunner) -> Re
         summary = EvidenceSummary(SummaryState.READY, ())
     return ReleaseEvidence(
         SCHEMA_VERSION, identity, worktree, capability, ci, compose, images,
-        security, validation, summary,
+        security, validation, recovery, summary,
+    )
+
+
+def _recovery(
+    path: Path | None,
+    head_sha: str | None,
+) -> RecoveryAcceptanceEvidence:
+    if path is None:
+        return RecoveryAcceptanceEvidence(
+            CheckState.NOT_EVALUATED, None, None, "not_requested"
+        )
+    if head_sha is None:
+        return RecoveryAcceptanceEvidence(
+            CheckState.FAILED, None, None, "candidate_sha_unavailable"
+        )
+    try:
+        evidence = load_recovery_evidence(path, expected_commit_sha=head_sha)
+    except (TypeError, ValueError):
+        return RecoveryAcceptanceEvidence(
+            CheckState.FAILED, None, None, "invalid_or_mismatched_evidence"
+        )
+    return RecoveryAcceptanceEvidence(
+        CheckState.PASSED
+        if evidence.status is RecoveryStatus.READY
+        else CheckState.FAILED,
+        evidence.schema_version,
+        evidence.tested_commit_sha,
+        None if evidence.status is RecoveryStatus.READY else "not_ready",
     )
 
 
@@ -532,6 +588,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--require-main", action="store_true")
     parser.add_argument("--require-tag", action="store_true")
     parser.add_argument("--check-running-images", action="store_true")
+    parser.add_argument("--recovery-evidence", type=Path)
     parser.add_argument("--json", action="store_true")
     return parser
 
@@ -545,6 +602,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             Options(
                 args.expected_base, args.candidate_tag, args.expected_sha,
                 args.require_main, args.require_tag, args.check_running_images,
+                args.recovery_evidence,
             ),
             ReadOnlyRunner(),
         )
@@ -559,6 +617,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"HEAD: {evidence.release_identity.head_sha or 'unavailable'}")
         print(f"origin/main: {evidence.release_identity.origin_main_sha or 'unavailable'}")
         print(f"capability: {evidence.capability.status}")
+        print(f"recovery: {evidence.recovery.status}")
         for run in evidence.ci:
             print(f"CI {run.workflow}: {run.status} run={run.run_id or 'unavailable'}")
         for reason in evidence.summary.reasons:

@@ -11,6 +11,7 @@ ROOT = Path(
     os.environ.get("ATLAS_CAPABILITY_PARITY_ROOT", Path(__file__).resolve().parent.parent)
 )
 EXPECTED = {("restart-service", "proxmox", "qemu")}
+EXPECTED_REPOSITORY_INTENTS = {"update-compose-stack"}
 
 
 def tree(path: str) -> ast.Module:
@@ -36,6 +37,9 @@ def literal_assignment(module: ast.Module, name: str):
 
 
 agent_models = tree("services/atlas-agent/app/candidate_planning/models.py")
+repository_intents = set(
+    literal_assignment(agent_models, "SUPPORTED_EXECUTION_INTENTS")
+)
 planning = set(literal_assignment(agent_models, "OPERATIONAL_PLANNING_INTENTS"))
 agent_execution = set(
     literal_assignment(agent_models, "OPERATIONAL_EXECUTION_INTENTS")
@@ -99,5 +103,12 @@ boundaries = {
 for label, actual in boundaries.items():
     if actual != EXPECTED:
         raise SystemExit(f"Operational capability mismatch: {label}={sorted(actual)!r}")
+if repository_intents != EXPECTED_REPOSITORY_INTENTS:
+    raise SystemExit(
+        f"Repository capability mismatch: {sorted(repository_intents)!r}"
+    )
 
-print("Operational capability parity passed: restart-service/proxmox/qemu")
+print(
+    "Execution capability parity passed: operational="
+    "restart-service/proxmox/qemu repository=update-compose-stack"
+)

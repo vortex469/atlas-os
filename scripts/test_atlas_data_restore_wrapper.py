@@ -109,6 +109,10 @@ def test_wrapper_ignores_unrelated_containers_and_reaches_private_copy(
     assert "src=" in log and "dst=/source,readonly" in log
     assert "--network none" in log
     assert "--cap-add DAC_READ_SEARCH" in log
+    preflight = next(
+        line for line in log.splitlines() if "check-restore-target" in line
+    )
+    assert "--cap-add DAC_READ_SEARCH" in preflight
     assert "Atlas data volume restored" not in result.stdout
 
 

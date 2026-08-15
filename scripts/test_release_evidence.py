@@ -8,6 +8,11 @@ from pathlib import Path
 
 import pytest
 
+from scripts.atlas_data_recovery_evidence import (
+    REQUIRED_CHECKS,
+    build_recovery_evidence,
+    write_recovery_evidence,
+)
 from scripts.release_evidence import (
     MAX_PATHS,
     CheckState,
@@ -120,6 +125,7 @@ def _options(**overrides) -> Options:
         "require_main": True,
         "require_tag": True,
         "check_running_images": False,
+        "recovery_evidence": None,
     }
     values.update(overrides)
     return Options(**values)
@@ -139,6 +145,36 @@ def test_exact_sha_annotated_tag_main_and_allowed_override_are_ready() -> None:
     assert evidence.worktree.allowed_untracked_paths == (
         "compose.execution-smoke.override.yaml",
     )
+    assert evidence.recovery.status is CheckState.NOT_EVALUATED
+
+
+def test_matching_ready_recovery_evidence_is_consumed(tmp_path: Path) -> None:
+    path = tmp_path / "recovery.json"
+    write_recovery_evidence(
+        path,
+        build_recovery_evidence(HEAD, set(REQUIRED_CHECKS)),
+    )
+    evidence = _collect(FakeRunner(), recovery_evidence=path)
+    assert evidence.recovery.status is CheckState.PASSED
+    assert evidence.recovery.tested_commit_sha == HEAD
+    assert evidence.summary.status is SummaryState.READY
+
+
+def test_mismatched_or_not_ready_recovery_evidence_blocks(tmp_path: Path) -> None:
+    mismatched = tmp_path / "mismatched.json"
+    write_recovery_evidence(
+        mismatched,
+        build_recovery_evidence("b" * 40, set(REQUIRED_CHECKS)),
+    )
+    incomplete = tmp_path / "incomplete.json"
+    write_recovery_evidence(
+        incomplete,
+        build_recovery_evidence(HEAD, set(REQUIRED_CHECKS) - {"audit_present"}),
+    )
+    for path in (mismatched, incomplete):
+        evidence = _collect(FakeRunner(), recovery_evidence=path)
+        assert evidence.recovery.status is CheckState.FAILED
+        assert evidence.summary.status is SummaryState.BLOCKED
 
 
 def test_lightweight_tag_has_no_annotated_tag_object_and_still_peels() -> None:

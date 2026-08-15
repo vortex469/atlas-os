@@ -1477,6 +1477,37 @@ YAML expectations must not automatically regain authority, and legacy shadow
 import remains separate from restore mechanics. Provider Intent is not
 activated in the current release.
 
+### Generate bounded recovery release evidence
+
+The disposable recovery gate can write an `atlas-core-recovery-evidence-v1`
+JSON result for an exact, clean candidate commit. It creates no provider
+mutation and explicitly refuses production `atlas_atlas-data` as a disposable
+target:
+
+```bash
+candidate_sha="$(git rev-parse HEAD)"
+core_image="$(docker inspect --format '{{.Config.Image}}' \
+  "$(docker compose -f compose.production.yaml ps -q atlas-core)")"
+ATLAS_CORE_VALIDATION_IMAGE="$core_image" \
+  ./scripts/data-recovery-gate \
+  --expected-sha "$candidate_sha" \
+  --evidence-output /path/to/recovery-evidence.json
+```
+
+The gate fails closed if the tracked tree differs from that commit, any required
+branch is incomplete, disposable cleanup fails, or the production-volume guard
+does not hold. Supply the artifact explicitly during v0.11 release selection;
+generic release evidence does not rerun the heavyweight recovery gate or claim
+recovery readiness by default:
+
+```bash
+./scripts/release-evidence \
+  --expected-base atlas-v0.10.0 \
+  --expected-sha "$candidate_sha" \
+  --recovery-evidence /path/to/recovery-evidence.json \
+  --json
+```
+
 ### Schedule backups
 
 Atlas includes an optional systemd timer that runs an online backup every
