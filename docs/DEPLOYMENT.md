@@ -145,8 +145,10 @@ external firewall restricts access.
 
 ### Authenticated HTTPS
 
-The HTTPS overlay keeps the direct HTTP listener on loopback and
-publishes a TLS listener on port `443`. It requires:
+The HTTPS overlay removes Mission Control's inherited host HTTP publication and
+publishes Atlas Edge as the only browser ingress on port `443`. Mission Control
+port `8080` remains available only on the Compose network so Atlas Edge can
+serve the SPA and proxy Agent/Core APIs. It requires:
 
 - a certificate whose subject names include the Atlas hostname;
 - the matching private key;
@@ -267,8 +269,35 @@ docker compose \
 
 The verifier must be a regular, non-symlink file owned by Core's runtime UID
 10001 with mode `0400`. Core stores only opaque-session and CSRF digests in the
-private `atlas-data` volume. Secure operator cookies are unusable over the
-direct HTTP listener, which remains available for existing read-only operation.
+private `atlas-data` volume. In this three-file deployment the browser path is
+always `browser -> Atlas Edge HTTPS -> Mission Control -> Agent/Core`; there is
+no direct Mission Control host listener. Base production without the HTTPS
+overlay retains loopback HTTP for local compatibility.
+
+Expired sessions, failed CSRF rotation, missing permission, and Core
+unavailability fail closed in Mission Control. Reauthentication returns the
+operator to the originally requested maintenance or history page. Atlas does
+not store passwords, cookies, CSRF values, or bearer tokens in browser storage,
+and it never automatically retries a maintenance mutation.
+
+### Read-only operational support evidence
+
+Collect only the evidence needed to correlate an incident, and retain it under
+the site's existing restricted support-data policy:
+
+1. Record the exact release tag/SHA and running service/image identities.
+2. Record health status plus the workflow and immutable action-request IDs.
+3. Export or transcribe the sanitized lifecycle projection, ledger state and
+   ordered transitions, approval state, target fingerprint, and relevant audit
+   event IDs.
+4. Confirm barrier/provider-operation counts and whether the lifecycle is
+   terminal. Evidence collection is read-only and must not resume, retry, or
+   reconcile a mutation through an execution endpoint.
+
+Never include credentials, Authorization headers, cookies, CSRF or bearer
+tokens, TLS private keys, operator-verifier hashes, provider-native secrets,
+raw `vmgenid` values, or identity tokens. Atlas defines no automatic upload
+destination; transfer and retention remain an operator-controlled process.
 
 ## Operate Atlas
 

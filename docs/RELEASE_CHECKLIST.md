@@ -2,6 +2,30 @@
 
 Use this checklist before creating a Foundry release tag.
 
+## Atlas v0.8 deployment and security ergonomics
+
+- [ ] Render base production Compose and confirm Mission Control publishes only
+  the default loopback HTTP binding.
+- [ ] Render the HTTPS plus operator-auth deployment and confirm Atlas Edge is
+  the only host-published browser ingress while internal Mission Control routing
+  remains healthy.
+- [ ] Confirm unauthenticated HTTPS receives the Edge authentication challenge
+  and authenticated HTTPS reaches the SPA, Core API, and Agent API.
+- [ ] Confirm expired/unavailable sessions clear authenticated UI state;
+  permission failures remain distinct; missing CSRF rotation fails closed; and
+  reauthentication returns to the intended safe page.
+- [ ] Run `./scripts/operational-capability-parity` and require exact parity
+  across Agent planning, translation and execution, plus Core execution,
+  registry, and descriptor projection.
+- [ ] Confirm lifecycle response-model redaction tests reject credentials,
+  authorization headers, cookies, CSRF, bearer tokens, raw identity,
+  provider-native payloads, commands, environment data, arbitrary exceptions,
+  and worker/sandbox internals.
+- [ ] Confirm operational history and lifecycle views remain read-only and
+  expose no retry or run-again control, including ambiguous outcomes.
+- [ ] Confirm the production registry contains exactly one tuple:
+  `restart-service / proxmox / qemu`.
+
 ## Automated gates
 
 - [x] Atlas Core installs from `requirements-dev.txt`.

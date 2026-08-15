@@ -9,6 +9,7 @@ from app.core_client.models import (
     CoreOperationalLifecycleRead,
     CoreOperationalLifecycleTransition,
 )
+from app.routes.workflow import WorkflowOperationalLifecycleResponse
 from app.workflow.models import OperationalExecutionReference, OperationalExecutionStage
 from tests.routes.test_workflow import (
     candidate_workflow_session,
@@ -16,6 +17,32 @@ from tests.routes.test_workflow import (
     save_candidate_workflow,
 )
 from tests.test_operational_execution import _approval, _session
+
+
+def test_agent_lifecycle_contract_contains_only_sanitized_fields() -> None:
+    fields = set(WorkflowOperationalLifecycleResponse.model_fields)
+    forbidden_fragments = {
+        "authorization",
+        "cookie",
+        "csrf",
+        "credential",
+        "bearer_token",
+        "vmgenid",
+        "identity_token",
+        "native_payload",
+        "command",
+        "environment",
+        "exception",
+        "traceback",
+        "worker",
+        "sandbox",
+    }
+
+    assert not {
+        field
+        for field in fields
+        if any(fragment in field for fragment in forbidden_fragments)
+    }
 
 
 def test_repository_workflow_lifecycle_is_not_applicable(tmp_path, monkeypatch) -> None:

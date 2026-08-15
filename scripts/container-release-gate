@@ -242,6 +242,7 @@ compose=(
 )
 
 echo "Validating HTTP and HTTPS Compose configuration"
+"$ATLAS_ROOT/scripts/operational-capability-parity"
 docker compose \
     --project-name "$GATE_PROJECT" \
     --file "$COMPOSE_FILE" \
@@ -339,16 +340,17 @@ client = create_docker_client(context)
 assert client.ping() is True
 PY
 
-published_address="$("${compose[@]}" port mission-control 8080)"
-published_port="${published_address##*:}"
-base_url="http://127.0.0.1:$published_port"
 https_published_address="$("${compose[@]}" port atlas-edge 8443)"
 https_published_port="${https_published_address##*:}"
 https_base_url="https://127.0.0.1:$https_published_port"
+base_url="$https_base_url"
+curl=(curl --cacert "$GATE_CERT_FILE" --user 'atlas:release-gate')
 
-test "$(docker inspect \
-    --format '{{(index .HostConfig.PortBindings "8080/tcp" 0).HostIp}}' \
-    "$mission_container")" = "127.0.0.1"
+docker inspect --format '{{json .HostConfig.PortBindings}}' "$mission_container" \
+    | python3 -c 'import json,sys; bindings=json.load(sys.stdin) or {}; assert not any(bindings.values()), bindings'
+docker exec "$edge_container" wget --quiet --output-document=- \
+    http://mission-control:8080/ \
+    | grep -q '<title>mission-control</title>'
 
 echo "Checking Atlas Core runtime policy storage"
 test "$(docker inspect \
@@ -362,19 +364,19 @@ test "$(docker inspect \
     "$core_container")" = "volume"
 docker exec "$core_container" python -c "import os; assert os.environ['ATLAS_POLICY_FILE'] == '/opt/atlas/data/config/policies.yaml'; assert os.environ['ATLAS_POLICY_TEMPLATE_FILE'] == '/opt/atlas/config/policies.yaml'"
 docker exec "$core_container" python -c "from pathlib import Path; import os; assert not os.access('/opt/atlas/config/policies.yaml', os.W_OK); assert os.access('/opt/atlas/data', os.W_OK); Path('/opt/atlas/data/config').mkdir(parents=True, exist_ok=True); probe = Path('/opt/atlas/data/config/.release-gate-write-test'); probe.write_text('ok'); probe.unlink()"
-curl --fail --silent --show-error "$base_url/api/v1/policies/status" \
+"${curl[@]}" --fail --silent --show-error "$base_url/api/v1/policies/status" \
     | grep -q '"status":"healthy"'
 docker exec "$core_container" test -f /opt/atlas/data/config/policies.yaml
 docker exec "$core_container" cmp -s \
     /opt/atlas/config/policies.yaml \
     /opt/atlas/data/config/policies.yaml
-curl --fail --silent --show-error \
+"${curl[@]}" --fail --silent --show-error \
     --request PUT \
     --header 'Content-Type: application/json' \
     --data '{"expectation":"stopped","confirmed":true}' \
     "$base_url/api/v1/providers/proxmox/resources/109/expectation" \
     | grep -q '"resource_id":"109"'
-curl --fail --silent --show-error "$base_url/api/v1/policies" \
+"${curl[@]}" --fail --silent --show-error "$base_url/api/v1/policies" \
     | grep -q '"109":{"expected":"stopped"}'
 docker exec -i "$core_container" python - <<'PY'
 from app.providers.proxmox import ProxmoxProvider
@@ -441,9 +443,9 @@ probe.write_text("ok", encoding="utf-8")
 probe.unlink()
 PY
 ! docker exec "$agent_container" test -e /opt/atlas/data/secrets/provider-connections.yaml
-curl --fail --silent --show-error "$base_url/api/v1/providers/proxmox/connection" \
+"${curl[@]}" --fail --silent --show-error "$base_url/api/v1/providers/proxmox/connection" \
     | python3 -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "proxmox"; assert fields["host"]["current_value"]; assert fields["user"]["secret"] is True; assert fields["user"]["current_value"] is None; assert fields["token_value"]["current_value"] is None'
-curl --fail --silent --show-error "$base_url/api/v1/providers/docker/connection" \
+"${curl[@]}" --fail --silent --show-error "$base_url/api/v1/providers/docker/connection" \
     | python3 -c 'import json,sys; data=json.load(sys.stdin); fields={field["key"]: field for field in data["fields"]}; assert data["provider_id"] == "docker"; assert data["editable"] is False; assert data["metadata"]["update_supported"] is False; assert data["metadata"]["privileged_local_runtime"] is True; assert fields["path"]["editable"] is False'
 docker exec -i "$core_container" python - <<'PY'
 import asyncio
@@ -500,17 +502,17 @@ test "$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')" = \
     "$policy_template_checksum_before"
 
 echo "Checking Mission Control, API proxy, and SPA fallback"
-curl --fail --silent --show-error "$base_url/" \
+"${curl[@]}" --fail --silent --show-error "$base_url/" \
     | grep -q '<title>mission-control</title>'
-curl --fail --silent --show-error "$base_url/operations/actions/gate" \
+"${curl[@]}" --fail --silent --show-error "$base_url/operations/actions/gate" \
     | grep -q '<title>mission-control</title>'
-curl --fail --silent --show-error "$base_url/api/v1" \
+"${curl[@]}" --fail --silent --show-error "$base_url/api/v1" \
     | grep -q '"release":"Foundry"'
-curl --fail --silent --show-error --head "$base_url/" \
+"${curl[@]}" --fail --silent --show-error --head "$base_url/" \
     | grep -qi '^X-Content-Type-Options: nosniff'
-curl --fail --silent --show-error "$base_url/agent-api/health" \
+"${curl[@]}" --fail --silent --show-error "$base_url/agent-api/health" \
     | grep -q '"service":"atlas-agent"'
-curl --fail --silent --show-error "$base_url/agent-api/api/v1/agent/repository" \
+"${curl[@]}" --fail --silent --show-error "$base_url/agent-api/api/v1/agent/repository" \
     | grep -q '"root":"/workspace/repository"'
 
 echo "Checking authenticated HTTPS ingress"

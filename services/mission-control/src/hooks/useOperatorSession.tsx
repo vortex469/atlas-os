@@ -10,6 +10,7 @@ import { isAxiosError } from "axios";
 import {
     loginOperator,
     logoutOperator,
+    OperatorSessionProtectionError,
     restoreOperatorSession,
 } from "../api/operatorAuth";
 import type { OperatorPrincipal } from "../types/operatorAuth";
@@ -41,8 +42,12 @@ export function OperatorSessionProvider({ children }: { children: ReactNode }) {
             .catch((requestError: unknown) => {
                 if (!active) return;
                 invalidate();
-                if (!isAxiosError(requestError) || requestError.response?.status !== 401) {
-                    setError("Operator maintenance is currently unavailable.");
+                if (isAxiosError(requestError) && requestError.response?.status === 401) {
+                    setError("Operator session expired or is unavailable. Sign in again.");
+                } else if (requestError instanceof OperatorSessionProtectionError) {
+                    setError("Operator session protection could not be established. Sign in again.");
+                } else {
+                    setError("Atlas Core is unavailable. Operator maintenance is disabled.");
                 }
             })
             .finally(() => {
@@ -60,9 +65,15 @@ export function OperatorSessionProvider({ children }: { children: ReactNode }) {
             setPrincipal(result.session.principal);
             setCsrfToken(result.csrfToken);
             return true;
-        } catch {
+        } catch (requestError: unknown) {
             invalidate();
-            setError("Operator authentication failed.");
+            if (requestError instanceof OperatorSessionProtectionError) {
+                setError("Operator session protection could not be established. Sign in again.");
+            } else if (isAxiosError(requestError) && requestError.response === undefined) {
+                setError("Atlas Core is unavailable. Operator maintenance is disabled.");
+            } else {
+                setError("Operator credentials were rejected.");
+            }
             return false;
         }
     }, [invalidate]);

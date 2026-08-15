@@ -14,11 +14,38 @@ from app.operational_dispatch.models import (
     OperationalDispatchAuditStatus,
     OperationalDispatchResult,
     OperationalDispatchStatus,
+    OperationalLifecycleRead,
     OperationalVerificationResult,
     OperationalVerificationStatus,
 )
 from app.operational_dispatch.read_model import project_operational_lifecycle
 from app.operational_dispatch.test_support import make_request
+
+
+def test_core_lifecycle_contract_contains_only_sanitized_fields() -> None:
+    fields = set(OperationalLifecycleRead.model_fields)
+    forbidden_fragments = {
+        "authorization",
+        "cookie",
+        "csrf",
+        "credential",
+        "bearer_token",
+        "vmgenid",
+        "identity_token",
+        "native_payload",
+        "command",
+        "environment",
+        "exception",
+        "traceback",
+        "worker",
+        "sandbox",
+    }
+
+    assert not {
+        field
+        for field in fields
+        if any(fragment in field for fragment in forbidden_fragments)
+    }
 
 
 def _verifying_ledger(tmp_path):
