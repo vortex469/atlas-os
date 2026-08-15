@@ -24,6 +24,7 @@ from .models import (
     CoreOperationalApprovalBinding,
     CoreOperationalDispatchRequest,
     CoreOperationalDispatchResult,
+    CoreOperationalLifecycleRead,
     CoreOperationalLifecycleStatus,
     CoreOperationalVerificationSpecification,
 )
@@ -368,6 +369,54 @@ class AtlasCoreClient:
         except (json.JSONDecodeError, ValidationError) as error:
             raise AtlasCorePayloadError(
                 "Operational status returned an invalid response."
+            ) from error
+
+    async def get_operational_lifecycle_read(
+        self, request_id: str
+    ) -> CoreOperationalLifecycleRead | None:
+        """Read sanitized durable lifecycle facts without provider reconciliation."""
+
+        if (
+            not request_id
+            or request_id != request_id.strip()
+            or any(character in request_id for character in "/?#")
+        ):
+            raise AtlasCorePayloadError("Operational request ID is invalid.")
+        url = f"{self._base_url}/api/v1/internal/operational-actions/lifecycle/{request_id}"
+        try:
+            token = self.settings.operational_dispatch_auth_file.read_text(
+                encoding="ascii"
+            ).strip()
+            if not token:
+                raise AtlasCoreConnectionError(
+                    "Operational dispatch authentication is unavailable."
+                )
+            response = await self._get_client().get(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self._timeout,
+            )
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            return CoreOperationalLifecycleRead.model_validate(response.json())
+        except (OSError, UnicodeError) as error:
+            raise AtlasCoreConnectionError(
+                "Operational dispatch authentication is unavailable."
+            ) from error
+        except httpx.TimeoutException as error:
+            raise AtlasCoreTimeoutError("Operational lifecycle read timed out.") from error
+        except httpx.HTTPStatusError as error:
+            raise AtlasCoreResponseError(
+                f"Operational lifecycle read was rejected with HTTP {error.response.status_code}."
+            ) from error
+        except httpx.RequestError as error:
+            raise AtlasCoreConnectionError(
+                "Operational lifecycle read boundary is unavailable."
+            ) from error
+        except (json.JSONDecodeError, ValidationError) as error:
+            raise AtlasCorePayloadError(
+                "Operational lifecycle read returned an invalid response."
             ) from error
 
     async def close(self) -> None:

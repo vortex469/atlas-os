@@ -518,6 +518,30 @@ class OperationalDispatchLedger:
                 "stored operational dispatch event is invalid"
             ) from error
 
+    def list_request_events(
+        self, request_id: str
+    ) -> tuple[OperationalDispatchAuditEvent, ...]:
+        """Return ordered audit facts for one immutable request only."""
+
+        if not request_id or request_id != request_id.strip():
+            raise ValueError("operational request ID must be exact and nonblank")
+        with self._lock, self._connect() as connection:
+            rows = connection.execute(
+                """SELECT event_json FROM operational_dispatch_events
+                   WHERE json_extract(event_json, '$.request_id')=?
+                   ORDER BY occurred_at, event_id""",
+                (request_id,),
+            ).fetchall()
+        try:
+            return tuple(
+                OperationalDispatchAuditEvent.model_validate_json(row["event_json"])
+                for row in rows
+            )
+        except (ValueError, json.JSONDecodeError) as error:
+            raise OperationalLedgerCorruptionError(
+                "stored operational dispatch event is invalid"
+            ) from error
+
     def _transition(
         self,
         request: OperationalDispatchRequest,

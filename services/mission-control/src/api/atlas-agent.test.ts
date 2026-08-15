@@ -17,6 +17,7 @@ import {
     getReviewReport,
     getSprintStatus,
     getVerificationReport,
+    getWorkflowOperationalLifecycle,
 } from "./atlas-agent";
 
 function axiosError(status: number): unknown {
@@ -100,6 +101,16 @@ describe("Atlas Agent optional summary endpoints", () => {
 
         await expect(getReviewReport()).rejects.toThrow(
             "Malformed review report payload.",
+        );
+    });
+
+    it("reads a workflow-scoped operational lifecycle contract", async () => {
+        const lifecycle = { applicable: true, workflow_id: "workflow/one" };
+        mockGet.mockResolvedValueOnce({ data: lifecycle });
+
+        await expect(getWorkflowOperationalLifecycle("workflow/one")).resolves.toBe(lifecycle);
+        expect(mockGet).toHaveBeenCalledWith(
+            "/api/v1/agent/workflows/workflow%2Fone/operational-lifecycle",
         );
     });
 });

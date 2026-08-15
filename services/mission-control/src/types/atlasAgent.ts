@@ -407,6 +407,69 @@ export interface WorkflowApprovalPresentation {
     reason: string;
 }
 
+export interface OperationalLifecycleApproval {
+    approval_id: string | null;
+    decision_status: string;
+    presentation_state: "actionable" | "historical" | "expired" | "superseded" | "resolved";
+    actionable: boolean;
+    expires_at: string | null;
+}
+
+export interface OperationalLifecycleTransition {
+    sequence: number;
+    state: string;
+    occurred_at: string;
+}
+
+export interface WorkflowOperationalLifecycle {
+    applicable: boolean;
+    availability: "not_applicable" | "agent_only" | "complete" | "unavailable";
+    consistency_status: "not_applicable" | "agent_only" | "consistent" | "core_unavailable" | "mismatch";
+    controlled_reason: string | null;
+    workflow_id: string;
+    workflow_state: string;
+    agent_execution_stage: string | null;
+    candidate_id: string | null;
+    planning_session_id: string | null;
+    effect_kind: "repository_change" | "operational_action";
+    execution_intent: string | null;
+    provider_id: string | null;
+    resource_id: string | null;
+    resource_type: string | null;
+    target_label: string | null;
+    operator_intent_record_id: string | null;
+    candidate_source_subsystem: string | null;
+    candidate_fingerprint: string | null;
+    plan_fingerprint: string | null;
+    preparation_approval: OperationalLifecycleApproval | null;
+    action_approval: OperationalLifecycleApproval | null;
+    action_request_id: string | null;
+    request_digest: string | null;
+    target_fingerprint: string | null;
+    target_version: string | null;
+    disruption_scope: string | null;
+    request_created_at: string | null;
+    request_expires_at: string | null;
+    core_record_state: string | null;
+    transitions: OperationalLifecycleTransition[];
+    barrier_crossed: boolean;
+    barrier_crossing_count: number;
+    provider_operation_captured: boolean;
+    provider_operation_capture_count: number;
+    dispatch_status: string | null;
+    provider_operation_reference: string | null;
+    dispatch_started_at: string | null;
+    dispatch_completed_at: string | null;
+    verification_status: string | null;
+    observed_target_fingerprint: string | null;
+    observed_state: string | null;
+    observed_health: string | null;
+    verification_started_at: string | null;
+    verification_completed_at: string | null;
+    verification_deadline: string | null;
+    terminal: boolean;
+}
+
 export type WorkflowPageResponse = WorkflowDetailResponse;
 
 export type WorkflowState =

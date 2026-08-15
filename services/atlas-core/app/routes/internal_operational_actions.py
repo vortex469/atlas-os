@@ -14,8 +14,10 @@ from app.operational_dispatch.models import (
     OperationalDispatchAuditStatus,
     OperationalDispatchRequest,
     OperationalDispatchResult,
+    OperationalLifecycleRead,
     OperationalLifecycleStatus,
 )
+from app.operational_dispatch.read_model import project_operational_lifecycle
 
 MAX_OPERATIONAL_DISPATCH_BODY_BYTES = 65_536
 
@@ -30,6 +32,35 @@ def _record(request: Request, audit_status: OperationalDispatchAuditStatus) -> N
             occurred_at=datetime.now(UTC),
         )
     )
+
+
+@router.get(
+    "/lifecycle/{request_id}",
+    response_model=OperationalLifecycleRead,
+    include_in_schema=False,
+)
+async def operational_action_lifecycle(
+    request_id: str, request: Request
+) -> OperationalLifecycleRead:
+    """Return durable sanitized facts without reconciliation or provider access."""
+
+    if not request.app.state.operational_dispatch_authenticator.authenticate(
+        request.headers.get("Authorization")
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Operational dispatch authentication failed.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    lifecycle = project_operational_lifecycle(
+        request.app.state.operational_dispatch_ledger, request_id
+    )
+    if lifecycle is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Operational dispatch request was not found.",
+        )
+    return lifecycle
 
 
 @router.post(
