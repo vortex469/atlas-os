@@ -54,18 +54,19 @@ synthetic identity was accepted, and no LXC candidate, selector, translation,
 gate, handler, ACL, or mutation is enabled. The revised P1–P5 milestones are
 read-only recovery, evidence, UX, and release work.
 
-P0 through P5 implementation and local release acceptance are complete. RC
-selection, exact-candidate CI, immutable RC deployment/soak, and final release
-publication remain pending.
+P0 through P5 implementation and release acceptance are complete. The
+immutable RC was selected and passed exact-candidate CI, release-evidence
+validation, exact-RC deployment, and restart soak. Only final release
+publication remains pending.
 
 ## Atlas v0.9 RC selection and sign-off
 
-- [ ] Record the exact reviewed RC candidate SHA after the documentation commit.
-- [ ] Require Quality gates to pass on that exact SHA and record the run ID and
+- [x] Record the exact reviewed RC candidate SHA after the documentation commit.
+- [x] Require Quality gates to pass on that exact SHA and record the run ID and
   Core, Agent, and Mission Control conclusions.
-- [ ] Require Container release gate to pass on that exact SHA and record its
+- [x] Require Container release gate to pass on that exact SHA and record its
   run ID.
-- [ ] Run `./scripts/release-evidence` against the exact SHA and annotated RC
+- [x] Run `./scripts/release-evidence` against the exact SHA and annotated RC
   tag; require `atlas-release-evidence-v1` status `ready` without fabricated
   private or CI evidence.
 - [x] Run `./scripts/operational-capability-parity` and require exactly
@@ -87,10 +88,53 @@ publication remain pending.
   was added.
 - [x] Review the documented v0.8.0 to v0.9 upgrade and v0.9 to v0.8.0
   fail-safe rollback procedure, including in-flight barrier handling.
-- [ ] Create the immutable annotated `atlas-v0.9-rc1` tag.
-- [ ] Complete and record exact-RC production deployment and service-restart
+- [x] Create the immutable annotated `atlas-v0.9-rc1` tag.
+- [x] Complete and record exact-RC production deployment and service-restart
   soak without performing a provider mutation merely for soak validation.
 - [ ] Create the final immutable `atlas-v0.9.0` tag.
+
+### Atlas v0.9 RC1 promotion evidence — 2026-08-15
+
+- [x] The immutable annotated tag `atlas-v0.9-rc1` (tag object
+  `5ea956e3439f0b5d2fdf088962144d9b37925964`) peels to exact RC SHA
+  `bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3`; HEAD and `origin/main`
+  matched that SHA.
+- [x] Quality gates run `31860606490` succeeded, and Container release gate
+  run `31860606478` succeeded on the exact RC SHA.
+- [x] `atlas-release-evidence-v1` reported `summary.status=ready`: hardened
+  Compose rendering, Edge-present/Mission-Control-absent host publication,
+  capability parity, secret hygiene, annotated-tag peeling, and tracked
+  worktree cleanliness passed. The only allowed untracked path was
+  `compose.execution-smoke.override.yaml`.
+- [x] Production was rebuilt without cache from the exact RC checkout and
+  deployed using only `compose.production.yaml`, `compose.https.yaml`, and
+  `compose.operator-auth.yaml`. Core and Agent checkout/container checksums
+  matched, the running Mission Control image matched the newly built RC image,
+  and all production services remained healthy.
+- [x] Recovery diagnostics for the accepted workflow were applicable, healthy,
+  consistent, transition-valid, request-correlated, and fingerprint-stable,
+  with `safe_next_action=none`.
+- [x] The acceptance `atlas-operational-support-bundle-v1` sample was bounded,
+  canonically digest-verified, untruncated, and sanitized. It contained no raw
+  provider identity, environment, commands, logs, files, or upload destination.
+- [x] Mission Control operational history, recovery summary, and local-only
+  support-evidence preview/download passed. No retry, run-again, reconciliation,
+  upload, or repository/operational-boundary bypass control was exposed.
+- [x] Sequential Atlas Agent, Atlas Core, Mission Control, and Atlas Edge
+  restarts passed without redispatch or provider mutation. The accepted
+  workflow remained completed, verified, consistent, and terminal.
+- [x] Exactly-once evidence remained unchanged before and after soak: one
+  dispatch record, six ledger transitions, one barrier crossing, one provider
+  operation, one dispatch result, one verification success, no new operational
+  request ID, and VM 110 `qmreboot` count 3. Target fingerprint remained
+  `operational-target-fingerprint-v1:1d7fdec6d423cd4936de130860d0171bed424bf695a07e82e22f734d24b6854e`.
+- [x] The production mutation boundary remained exactly
+  `restart-service/proxmox/qemu`. `restart-service/proxmox/lxc` remains
+  unsupported: no authoritative LXC identity, selector requestability,
+  translation, execution-gate entry, handler, ACL, or synthetic identity was
+  added.
+- [x] RC1 is selected, immutable, deployed, soaked, and accepted for final
+  promotion. Creation and publication of `atlas-v0.9.0` remain pending.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

@@ -6,9 +6,12 @@ release boundaries.
 
 ## Unreleased
 
-Atlas v0.9 is in RC preparation with the theme Operational Recovery and
-Evidence Automation. P0 through P5 are complete; RC and final tags remain
-pending.
+Atlas v0.9 has the theme Operational Recovery and Evidence Automation. P0
+through P5 are complete. The immutable `atlas-v0.9-rc1` candidate at
+`bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed required CI,
+`atlas-release-evidence-v1`, exact-SHA no-cache production deployment, and
+sequential restart soak and is accepted for final promotion. The final
+`atlas-v0.9.0` release remains pending.
 
 ### Added
 

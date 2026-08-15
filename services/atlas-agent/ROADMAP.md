@@ -485,7 +485,11 @@ not proceed for LXC.
 V0.9-P0 through V0.9-P5 are complete: release-state/LXC feasibility closure,
 read-only recovery diagnostics, a bounded sanitized local support bundle,
 check-only release-evidence automation, recovery/history UX, and release
-acceptance/documentation. RC and final tags remain pending.
+acceptance/documentation. The immutable `atlas-v0.9-rc1` candidate at
+`bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed exact-SHA CI,
+release-evidence validation, exact-RC deployment, and sequential production
+restart soak without redispatch or provider mutation. RC1 is accepted for
+final promotion; `atlas-v0.9.0` publication remains pending.
 The implementation derives controlled evidence from existing Agent lifecycle
 and Core durable-ledger projections. It performs no provider call or
 reconciliation write, exposes no mutation endpoint, registers no handler,

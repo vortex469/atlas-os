@@ -376,4 +376,10 @@ bounded sanitized local support bundle, check-only release-evidence automation,
 and Mission Control recovery/history UX. None adds a provider call,
 reconciliation write, mutation endpoint, handler, gate change, upload
 destination, or synthetic LXC identity. V0.9-P5 release acceptance and
-documentation is complete; RC and final tags remain pending.
+documentation is complete. The immutable `atlas-v0.9-rc1` candidate at
+`bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed required CI,
+`atlas-release-evidence-v1`, exact-SHA no-cache production deployment,
+source/image parity, and sequential Agent/Core/Mission Control/Edge restart
+soak. The accepted workflow and exactly-once ledger evidence remained
+unchanged. RC1 is accepted for promotion; the final `atlas-v0.9.0` tag remains
+pending.

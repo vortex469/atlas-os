@@ -37,13 +37,17 @@ not replace Core authentication. See the
 [restart contract](docs/architecture/proxmox-qemu-operational-restart.md), and
 [verification/recovery contract](docs/architecture/operational-verification-recovery.md).
 
-## Atlas v0.9 RC preparation
+## Atlas v0.9 RC1 accepted for promotion
 
 Atlas v0.9 has the theme **Operational Recovery and Evidence Automation**. It
 adds read-only recovery diagnostics, bounded sanitized support bundles,
 check-only release-evidence automation, and Mission Control recovery/history
 UX without adding a provider mutation capability. V0.9-P0 through V0.9-P5 are
-complete; RC selection and final tag publication remain pending. The existing
+complete. The immutable `atlas-v0.9-rc1` candidate at
+`bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed exact-SHA CI,
+release-evidence validation, no-cache production deployment, source/image
+parity, and sequential service-restart soak. It is accepted for final
+promotion; publication of `atlas-v0.9.0` remains pending. The existing
 `restart-service / proxmox / qemu` path remains the only operational production
 tuple.
 

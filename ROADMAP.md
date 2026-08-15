@@ -379,9 +379,12 @@ handler, or gate change and exposes only controlled reasons.
 
 ### V0.9-P5 — Release acceptance and documentation
 
-**Status: complete.** P0 through P5 are implemented and locally accepted. RC
-selection, exact-candidate CI, immutable RC deployment/soak, and final tags
-remain pending.
+**Status: complete.** P0 through P5 are implemented and accepted. The immutable
+`atlas-v0.9-rc1` candidate at
+`bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed exact-candidate CI,
+release-evidence validation, exact-RC production deployment, and sequential
+restart soak. RC1 is accepted for final promotion; `atlas-v0.9.0` publication
+remains pending.
 
 - Goal: validate the read-only recovery/evidence toolchain under production
   service-restart soak and finalize release documentation.
