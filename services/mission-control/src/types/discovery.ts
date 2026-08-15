@@ -233,7 +233,10 @@ export type DiscoveryProposalNavigation = {
     proposal_id: string;
     destination_kind: DiscoveryProposalDestination;
     catalog_item_id: string;
+    catalog_source_type: CatalogProvenance["source_type"];
     compatibility_status: DiscoveryCompatibilityStatus;
+    finding_reference_count: number;
+    evidence_reference_count: number;
     status: DiscoveryProposalStatus;
     reason: DiscoveryProposalReason;
     intent_hint?: "restart-service" | null;

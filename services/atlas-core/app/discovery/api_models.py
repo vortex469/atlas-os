@@ -249,7 +249,10 @@ class DiscoveryProposalNavigationResponse(DiscoveryCenterModel):
     proposal_id: str
     destination_kind: DiscoveryProposalDestinationKind
     catalog_item_id: str
+    catalog_source_type: CatalogSourceType
     compatibility_status: CompatibilityStatus
+    finding_reference_count: int = Field(ge=0)
+    evidence_reference_count: int = Field(ge=0)
     status: DiscoveryProposalStatus
     reason: DiscoveryProposalReason
     intent_hint: DiscoveryProposalIntentHint | None = None

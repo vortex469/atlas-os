@@ -1,7 +1,9 @@
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
+import { getDiscoveryProposal } from "../api/discovery";
 import {
     getCapabilityResources,
     getOperationalCapabilities,
@@ -9,6 +11,8 @@ import {
 } from "../api/operatorIntent";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
 import { OPERATIONAL_INTENT_CREATE } from "../types/operatorAuth";
+import type { DiscoveryProposalNavigation } from "../types/discovery";
+import { DiscoveryProposalCard } from "../features/discovery/DiscoveryProposalCard";
 import type {
     OperatorIntentCreationResponse,
     OperationalCapabilityDescriptor,
@@ -31,6 +35,7 @@ function descriptorLabel(value: string | undefined): string {
 
 export function MaintenanceRequestPage() {
     const session = useOperatorSession();
+    const location = useLocation();
     const [resources, setResources] = useState<OperatorIntentResource[]>([]);
     const [capability, setCapability] = useState<OperationalCapabilityDescriptor | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -39,6 +44,10 @@ export function MaintenanceRequestPage() {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<OperatorIntentCreationResponse | null>(null);
     const [resultExpired, setResultExpired] = useState(false);
+    const [proposal, setProposal] = useState<DiscoveryProposalNavigation | null>(null);
+    const [proposalLoading, setProposalLoading] = useState(false);
+    const [proposalError, setProposalError] = useState<string | null>(null);
+    const proposalId = proposalIdFromState(location.state);
 
     const loadResources = useCallback(async () => {
         setLoading(true);
@@ -71,6 +80,29 @@ export function MaintenanceRequestPage() {
             queueMicrotask(() => void loadResources());
         }
     }, [session.authenticated, loadResources]);
+
+    useEffect(() => {
+        let cancelled = false;
+        if (!session.authenticated || proposalId === null) return () => { cancelled = true; };
+        queueMicrotask(() => {
+            if (!cancelled) {
+                setProposal(null);
+                setProposalError(null);
+                setProposalLoading(true);
+            }
+        });
+        getDiscoveryProposal(proposalId)
+            .then((value) => { if (!cancelled) setProposal(value); })
+            .catch((requestError: unknown) => {
+                if (cancelled) return;
+                const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
+                setProposalError(status === 404
+                    ? "The advisory proposal was not found. Select only from the current authoritative resource list."
+                    : "Advisory proposal context is temporarily unavailable. The authoritative selector remains independent.");
+            })
+            .finally(() => { if (!cancelled) setProposalLoading(false); });
+        return () => { cancelled = true; };
+    }, [proposalId, session.authenticated]);
 
     if (session.loading) return <main className="p-8 text-slate-400">Restoring operator session…</main>;
     if (!session.authenticated) {
@@ -117,6 +149,15 @@ export function MaintenanceRequestPage() {
                 <h1 className="mt-2 text-3xl font-bold text-white">Request service restart</h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. This creates a candidate only; it does not restart anything.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
             </header>
+            {(proposalId !== null || proposalLoading || proposalError || proposal) && (
+                <section aria-label="Advisory proposal context" className="space-y-3">
+                    <h2 className="text-xl font-semibold text-white">Advisory proposal context</h2>
+                    <p className="text-sm text-slate-400">This context cannot select a resource or alter the authoritative maintenance request.</p>
+                    {proposalLoading && <p className="text-sm text-slate-400">Refreshing proposal status…</p>}
+                    {proposalError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">{proposalError}</p>}
+                    {proposal && <DiscoveryProposalCard proposal={proposal} showNavigation={false} />}
+                </section>
+            )}
             <section className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 sm:grid-cols-3">
                 <FixedField label="Action" value={capability?.label ?? "Loading capability"} />
                 <FixedField label="Provider" value={descriptorLabel(capability?.provider_id)} />
@@ -142,6 +183,14 @@ export function MaintenanceRequestPage() {
             {result && <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5"><h2 className="text-lg font-semibold text-emerald-200">Maintenance candidate ready</h2><p className="mt-2 break-all text-sm text-slate-200">Candidate ID: {result.candidate_id}</p><p className="mt-1 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p><p className="mt-1 text-sm text-slate-300">Status: {result.candidate.status}</p><p className="mt-1 text-sm text-slate-300">Expires: {result.candidate.expires_at ?? "Not reported"}</p><p className="mt-1 text-sm text-amber-200">Expected disruption: brief service interruption</p>{resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This candidate has expired. Request a new maintenance candidate.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Continue to candidate planning</Link>}</section>}
         </main>
     );
+}
+
+function proposalIdFromState(state: unknown): string | null {
+    if (typeof state !== "object" || state === null || !("proposalId" in state)) return null;
+    const value = (state as { proposalId?: unknown }).proposalId;
+    return typeof value === "string" && /^discovery-operator-proposal-[a-f0-9]{64}$/.test(value)
+        ? value
+        : null;
 }
 
 function FixedField({ label, value }: { label: string; value: string }) {

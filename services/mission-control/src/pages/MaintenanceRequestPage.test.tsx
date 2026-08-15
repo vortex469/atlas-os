@@ -8,6 +8,7 @@ import {
     getOperationalCapabilities,
     requestRestartServiceIntent,
 } from "../api/operatorIntent";
+import { getDiscoveryProposal } from "../api/discovery";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
 import type { OperatorIntentResource } from "../types/operatorIntent";
 import { MaintenanceRequestPage } from "./MaintenanceRequestPage";
@@ -17,6 +18,7 @@ vi.mock("../api/operatorIntent", () => ({
     getOperationalCapabilities: vi.fn(),
     requestRestartServiceIntent: vi.fn(),
 }));
+vi.mock("../api/discovery", () => ({ getDiscoveryProposal: vi.fn() }));
 vi.mock("../hooks/operatorSessionContext", () => ({ useOperatorSession: vi.fn() }));
 
 const requestable: OperatorIntentResource = {
@@ -62,8 +64,8 @@ function authenticated(invalidate = vi.fn()) {
     });
 }
 
-function renderPage() {
-    render(<MemoryRouter initialEntries={["/operations/request"]}><Routes><Route path="/operations/request" element={<MaintenanceRequestPage />} /><Route path="/operator/login" element={<p>Login destination</p>} /><Route path="/execution-candidates/:candidateId" element={<p>Candidate destination</p>} /></Routes></MemoryRouter>);
+function renderPage(state?: unknown) {
+    render(<MemoryRouter initialEntries={[{ pathname: "/operations/request", state }]}><Routes><Route path="/operations/request" element={<MaintenanceRequestPage />} /><Route path="/operator/login" element={<p>Login destination</p>} /><Route path="/execution-candidates/:candidateId" element={<p>Candidate destination</p>} /></Routes></MemoryRouter>);
 }
 
 describe("MaintenanceRequestPage", () => {
@@ -148,6 +150,69 @@ describe("MaintenanceRequestPage", () => {
             "href",
             "/execution-candidates/candidate-operator-intent-110",
         );
+    });
+
+    it("shows advisory context without selecting or submitting from proposal hints", async () => {
+        const proposalId = `discovery-operator-proposal-${"a".repeat(64)}`;
+        vi.mocked(getDiscoveryProposal).mockResolvedValue({
+            proposal_id: proposalId,
+            destination_kind: "operator_maintenance_selection",
+            catalog_item_id: "frigate",
+            catalog_source_type: "curated",
+            compatibility_status: "compatible",
+            finding_reference_count: 1,
+            evidence_reference_count: 2,
+            status: "current",
+            reason: "compatible",
+            intent_hint: "restart-service",
+            target_hints: [{ catalog_target_id: "999", provider_hint: "attacker", resource_type_hint: "lxc" }],
+            generated_at: "2026-08-15T00:00:00Z",
+            expires_at: "2026-08-15T00:30:00Z",
+            actionable_navigation: true,
+        });
+
+        renderPage({ proposalId, provider: "attacker", fingerprint: "tampered" });
+
+        expect(await screen.findByRole("heading", { name: "Advisory proposal context" })).toBeInTheDocument();
+        expect(await screen.findByText("999 / attacker / lxc")).toBeInTheDocument();
+        expect(screen.getByRole("radio", { name: /Frigate/i })).not.toBeChecked();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
+        expect(getOperationalCapabilities).toHaveBeenCalledTimes(1);
+        expect(getCapabilityResources).toHaveBeenCalledWith("restart-service--proxmox--qemu");
+    });
+
+    it("ignores malformed proposal route state and never posts automatically", async () => {
+        renderPage({ proposalId: "../../tampered", targetHint: "111" });
+        await screen.findByText("Frigate");
+        expect(getDiscoveryProposal).not.toHaveBeenCalled();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
+    });
+
+    it("shows proposal-not-found separately without weakening the selector", async () => {
+        const proposalId = `discovery-operator-proposal-${"d".repeat(64)}`;
+        vi.mocked(getDiscoveryProposal).mockRejectedValue({ isAxiosError: true, response: { status: 404 } });
+        renderPage({ proposalId });
+        expect(await screen.findByRole("alert")).toHaveTextContent("advisory proposal was not found");
+        expect(await screen.findByText("Frigate")).toBeInTheDocument();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
+    });
+
+    it("requires login before loading proposal or maintenance authority", async () => {
+        vi.mocked(useOperatorSession).mockReturnValue({
+            authenticated: false,
+            principal: null,
+            csrfToken: null,
+            loading: false,
+            error: null,
+            login: vi.fn(),
+            logout: vi.fn(),
+            invalidate: vi.fn(),
+        });
+        renderPage({ proposalId: `discovery-operator-proposal-${"e".repeat(64)}` });
+        expect(await screen.findByText("Login destination")).toBeInTheDocument();
+        expect(getDiscoveryProposal).not.toHaveBeenCalled();
+        expect(getOperationalCapabilities).not.toHaveBeenCalled();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
     });
 
     it.each([
