@@ -1477,6 +1477,47 @@ YAML expectations must not automatically regain authority, and legacy shadow
 import remains separate from restore mechanics. Provider Intent is not
 activated in the current release.
 
+### Import legacy Provider Intent shadow evidence
+
+V0.11-P2b-6 provides an explicit, offline shadow import for validated Proxmox
+guest expectations. It imports only `proxmox.guests.<VMID>.expected` from an
+operator-selected `policies.yaml` and persists each value as
+`legacy_unbound`/`legacy_policy_import` monitoring evidence. Imported records
+have no resource type or incarnation fingerprint. They are not active intent,
+do not resolve QEMU versus LXC, grant no permission or execution authority, and
+do not change the runtime policy source of truth or current monitoring.
+
+Run the tool explicitly with both paths in an Atlas Core Python environment:
+
+```bash
+.venv/bin/python scripts/atlas-provider-intent-shadow-import \
+  --source-policy /opt/atlas/data/config/policies.yaml \
+  --store /path/to/isolated/provider_intents.db
+```
+
+While Provider Intent remains `not_activated`, do not place this shadow store
+at `/opt/atlas/data/provider_intents.db`: backup v3 correctly requires that
+managed production path to remain absent. The shadow evidence is
+reconstructable from a retained validated policy source and is not imported
+during restore. Explicit creation of a store by this command does not activate
+Provider Intent or make the database authoritative. Any future authority
+cutover belongs to P2c and requires its own accepted contracts.
+
+The tool rejects symlinks, special files, malformed or duplicate policy keys,
+non-canonical VMIDs, unsupported expectations, and corrupt or unsupported
+stores. It writes all records, audit rows, and a bounded completion marker in
+one transaction. Record-series identity is the existing provider/coordinate/
+kind identity with no resource type or fingerprint. Each source reference is a
+versioned SHA-256 digest of the canonical imported-subset digest, provider ID,
+VMID, intent kind, and value. The subset contains only the sorted Proxmox guest
+VMIDs and expectations, so YAML formatting and unrelated validated policy
+sections do not create false import lineages. Expectation changes and removals
+do change it. The import identity and request digest cover that subset digest
+and the deterministically sorted entry set. Reimporting the same source is a
+replay; a changed source appends a new legacy version while preserving history.
+A removed VMID creates no deletion or replacement intent; the newer
+zero-or-more-entry batch marker records only what completed.
+
 ### Generate bounded recovery release evidence
 
 The disposable recovery gate can write an `atlas-core-recovery-evidence-v1`

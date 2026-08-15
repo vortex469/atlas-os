@@ -315,7 +315,10 @@ and compatibility/lineage guidance (`b5390ba`).
   startup/no-replay, cleanup, and exact execution-parity checks; an artifact is
   accepted only for its exact clean candidate SHA and must be supplied
   explicitly to release evidence.
-- [ ] V0.11-P2b-6 — Not started.
+- [x] V0.11-P2b-6 — Deterministic, atomic legacy Proxmox expectation shadow
+  import persists only `legacy_unbound` evidence with no resource type,
+  incarnation fingerprint, activation, source-of-truth cutover, or runtime
+  authority. P2c remains incomplete.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

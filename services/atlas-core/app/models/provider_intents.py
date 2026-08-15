@@ -23,6 +23,11 @@ PROVIDER_INTENT_SCHEMA_VERSION = 1
 PROVIDER_INTENT_ID_VERSION = "provider-intent-series-v1"
 PROVIDER_INTENT_REQUEST_DIGEST_VERSION = "provider-intent-request-v1"
 PROVIDER_INTENT_SUPERSEDE_DIGEST_VERSION = "provider-intent-supersede-v1"
+LEGACY_POLICY_IMPORT_VERSION = "provider-intent-legacy-policy-import-v1"
+LEGACY_POLICY_SOURCE_REFERENCE_VERSION = (
+    "provider-intent-legacy-policy-source-reference-v1"
+)
+LEGACY_POLICY_SOURCE_VERSION = "atlas-policy-source-v1"
 MAX_RECORD_VERSION = 2**63 - 1
 
 
@@ -49,6 +54,34 @@ class ProviderIntentAuditEventKind(StrEnum):
     CREATED = "created"
     UPDATED = "updated"
     SUPERSEDED = "superseded"
+
+
+def build_legacy_policy_source_digest(payload: dict[str, object]) -> str:
+    return _canonical_digest(
+        LEGACY_POLICY_SOURCE_VERSION,
+        {"policy": payload, "version": LEGACY_POLICY_SOURCE_VERSION},
+    )
+
+
+def build_legacy_policy_source_reference(
+    *,
+    source_policy_digest: str,
+    provider_id: str,
+    resource_id: str,
+    intent_kind: ProviderIntentKind,
+    intent_value: ProviderIntentValue,
+) -> str:
+    return _canonical_digest(
+        LEGACY_POLICY_SOURCE_REFERENCE_VERSION,
+        {
+            "intent_kind": intent_kind.value,
+            "intent_value": intent_value.value,
+            "provider_id": provider_id,
+            "resource_id": resource_id,
+            "source_policy_digest": source_policy_digest,
+            "version": LEGACY_POLICY_SOURCE_REFERENCE_VERSION,
+        },
+    )
 
 
 ProviderIntentValue = ProviderMonitoringExpectation

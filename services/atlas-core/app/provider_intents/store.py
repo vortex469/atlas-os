@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
+from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
@@ -17,9 +19,17 @@ from app.models.provider_intents import (
     ProviderIntentLifecycle,
     ProviderIntentMutationCommand,
     ProviderIntentMutationResult,
+    ProviderIntentProvenance,
     ProviderIntentRecord,
     ProviderIntentSupersedeCommand,
+    build_provider_intent_id,
 )
+
+if TYPE_CHECKING:
+    from app.provider_intents.legacy_import import (
+        LegacyPolicyImportCommand,
+        LegacyPolicyImportResult,
+    )
 
 _TABLE_COLUMNS = {
     "provider_intent_store_meta": ("singleton", "schema_version"),
@@ -433,6 +443,157 @@ class ProviderIntentStore:
                 raise ProviderIntentStoreCorruptionError(
                     "provider intent supersession encountered invalid stored state"
                 ) from error
+
+    def import_legacy_policy(
+        self,
+        command: LegacyPolicyImportCommand,
+        *,
+        now: datetime | None = None,
+    ) -> LegacyPolicyImportResult:
+        """Atomically persist a complete legacy shadow-import evidence batch."""
+
+        from app.provider_intents.legacy_import import LegacyPolicyImportResult
+
+        occurred_at = self._canonical_now(now)
+        with self._lock, self._connect() as connection:
+            try:
+                connection.execute("BEGIN IMMEDIATE")
+                marker = connection.execute(
+                    "SELECT request_digest, result_json FROM provider_intent_requests "
+                    "WHERE request_id=?",
+                    (command.import_id,),
+                ).fetchone()
+                if marker is not None:
+                    if marker["request_digest"] != command.import_digest:
+                        raise ProviderIntentStoreConflictError(
+                            "legacy import ID has a different digest"
+                        )
+                    stored = LegacyPolicyImportResult.model_validate_json(
+                        marker["result_json"]
+                    )
+                    self._validate_legacy_import_replay(connection, command, stored)
+                    connection.commit()
+                    return stored
+
+                source_references: list[str] = []
+                for entry in command.entries:
+                    intent_id = build_provider_intent_id(
+                        provider_id=entry.provider_id,
+                        resource_type=None,
+                        resource_id=entry.resource_id,
+                        incarnation_fingerprint=None,
+                        intent_kind=entry.intent_kind,
+                    )
+                    history = self._validated_history(connection, intent_id)
+                    previous = history[-1] if history else None
+                    record = ProviderIntentRecord(
+                        intent_id=intent_id,
+                        record_version=1 if previous is None else previous.record_version + 1,
+                        provider_id=entry.provider_id,
+                        resource_type=None,
+                        resource_id=entry.resource_id,
+                        incarnation_fingerprint=None,
+                        intent_kind=entry.intent_kind,
+                        intent_value=entry.intent_value,
+                        lifecycle=ProviderIntentLifecycle.LEGACY_UNBOUND,
+                        provenance=ProviderIntentProvenance.LEGACY_POLICY_IMPORT,
+                        source_reference=entry.source_reference,
+                        created_at=occurred_at if previous is None else previous.created_at,
+                        updated_at=occurred_at,
+                        previous_record_version=(
+                            None if previous is None else previous.record_version
+                        ),
+                    )
+                    event = (
+                        ProviderIntentAuditEventKind.CREATED
+                        if previous is None
+                        else ProviderIntentAuditEventKind.UPDATED
+                    )
+                    result = ProviderIntentMutationResult(
+                        outcome=event.value,
+                        record=record,
+                    )
+                    self._persist_mutation(
+                        connection,
+                        record=record,
+                        result=result,
+                        request_id=entry.source_reference,
+                        request_digest=entry.source_reference,
+                        event=event,
+                        occurred_at=occurred_at,
+                    )
+                    source_references.append(entry.source_reference)
+
+                records_digest = self._legacy_records_digest(source_references)
+                completed = LegacyPolicyImportResult(
+                    outcome="imported",
+                    import_id=command.import_id,
+                    source_policy_digest=command.source_policy_digest,
+                    record_count=len(source_references),
+                    records_digest=records_digest,
+                )
+                connection.execute(
+                    "INSERT INTO provider_intent_requests VALUES (?, ?, ?, ?)",
+                    (
+                        command.import_id,
+                        command.import_digest,
+                        completed.model_dump_json(),
+                        occurred_at.isoformat(),
+                    ),
+                )
+                connection.commit()
+                return completed
+            except ProviderIntentStoreError:
+                connection.rollback()
+                raise
+            except (sqlite3.DatabaseError, ValidationError, ValueError, json.JSONDecodeError) as error:
+                connection.rollback()
+                raise ProviderIntentStoreCorruptionError(
+                    "legacy provider intent import encountered invalid stored state"
+                ) from error
+
+    @staticmethod
+    def _legacy_records_digest(source_references: list[str]) -> str:
+        encoded = json.dumps(
+            sorted(source_references), separators=(",", ":")
+        ).encode()
+        return (
+            "provider-intent-legacy-policy-records-v1:"
+            f"{hashlib.sha256(encoded).hexdigest()}"
+        )
+
+    @classmethod
+    def _validate_legacy_import_replay(
+        cls,
+        connection: sqlite3.Connection,
+        command: LegacyPolicyImportCommand,
+        stored: LegacyPolicyImportResult,
+    ) -> None:
+        if (
+            stored.outcome != "imported"
+            or stored.import_id != command.import_id
+            or stored.source_policy_digest != command.source_policy_digest
+            or stored.record_count != len(command.entries)
+        ):
+            raise ProviderIntentStoreCorruptionError(
+                "legacy import completion evidence is inconsistent"
+            )
+        source_references: list[str] = []
+        for entry in command.entries:
+            result = cls._replay(
+                connection,
+                entry.source_reference,
+                entry.source_reference,
+            )
+            if result is None or result.record.source_reference != entry.source_reference:
+                raise ProviderIntentStoreCorruptionError(
+                    "legacy import record evidence is incomplete"
+                )
+            source_references.append(entry.source_reference)
+        if stored.records_digest != cls._legacy_records_digest(source_references):
+            raise ProviderIntentStoreCorruptionError(
+                "legacy import record digest is inconsistent"
+            )
 
     def get_current(self, intent_id: str) -> ProviderIntentRecord | None:
         with self._connect() as connection:
