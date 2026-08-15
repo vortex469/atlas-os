@@ -18,6 +18,7 @@ import {
     getSprintStatus,
     getVerificationReport,
     getWorkflowOperationalLifecycle,
+    getWorkflowRecoveryDiagnostic,
 } from "./atlas-agent";
 
 function axiosError(status: number): unknown {
@@ -111,6 +112,16 @@ describe("Atlas Agent optional summary endpoints", () => {
         await expect(getWorkflowOperationalLifecycle("workflow/one")).resolves.toBe(lifecycle);
         expect(mockGet).toHaveBeenCalledWith(
             "/api/v1/agent/workflows/workflow%2Fone/operational-lifecycle",
+        );
+    });
+
+    it("reads a workflow-scoped recovery diagnostic contract", async () => {
+        const diagnostic = { applicable: true, diagnostic_status: "healthy" };
+        mockGet.mockResolvedValueOnce({ data: diagnostic });
+
+        await expect(getWorkflowRecoveryDiagnostic("workflow/one")).resolves.toBe(diagnostic);
+        expect(mockGet).toHaveBeenCalledWith(
+            "/api/v1/agent/workflows/workflow%2Fone/recovery-diagnostic",
         );
     });
 });

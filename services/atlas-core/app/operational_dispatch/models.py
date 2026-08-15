@@ -223,6 +223,7 @@ class OperationalLifecycleRead(OperationalDispatchModel):
     request_digest: str
     ledger_state: str
     transitions: tuple[OperationalLifecycleTransitionRead, ...]
+    transition_sequence_valid: bool
     barrier_crossed: bool
     barrier_crossing_count: int
     provider_operation_captured: bool

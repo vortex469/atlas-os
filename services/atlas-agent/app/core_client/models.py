@@ -255,6 +255,7 @@ class CoreOperationalLifecycleRead(CoreOperationalModel):
     request_digest: str
     ledger_state: str
     transitions: tuple[CoreOperationalLifecycleTransition, ...]
+    transition_sequence_valid: bool | None = None
     barrier_crossed: bool
     barrier_crossing_count: int
     provider_operation_captured: bool

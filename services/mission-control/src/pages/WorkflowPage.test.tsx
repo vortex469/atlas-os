@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     getWorkflowDetail,
     getWorkflowOperationalLifecycle,
+    getWorkflowRecoveryDiagnostic,
     resumeWorkflow,
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
@@ -18,6 +19,7 @@ vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowDetail: vi.fn(),
     getWorkflowOperationalLifecycle: vi.fn(),
+    getWorkflowRecoveryDiagnostic: vi.fn(),
     resumeWorkflow: vi.fn(),
     submitWorkflowCommitApproval: vi.fn(),
     submitWorkflowImplementationApproval: vi.fn(),
@@ -26,6 +28,7 @@ vi.mock("../api/atlas-agent", () => ({
 
 const mockedGetWorkflowDetail = vi.mocked(getWorkflowDetail);
 const mockedGetWorkflowOperationalLifecycle = vi.mocked(getWorkflowOperationalLifecycle);
+const mockedGetWorkflowRecoveryDiagnostic = vi.mocked(getWorkflowRecoveryDiagnostic);
 const mockedResumeWorkflow = vi.mocked(resumeWorkflow);
 const mockedSubmitWorkflowCommitApproval = vi.mocked(submitWorkflowCommitApproval);
 const mockedSubmitWorkflowImplementationApproval = vi.mocked(submitWorkflowImplementationApproval);
@@ -172,6 +175,7 @@ describe("WorkflowPage", () => {
         vi.clearAllMocks();
         mockedGetWorkflowDetail.mockResolvedValue(workflow());
         mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle());
+        mockedGetWorkflowRecoveryDiagnostic.mockResolvedValue(null);
         mockedResumeWorkflow.mockResolvedValue(undefined);
     });
 

@@ -49,6 +49,34 @@ FINAL_STATES = frozenset(
     }
 )
 
+# This is the authoritative graph already enforced by the ledger write methods.
+# Read projections use the same graph to report corruption without repairing it.
+ALLOWED_LEDGER_TRANSITIONS = frozenset(
+    {
+        (None, OperationalLedgerState.CLAIMED),
+        (OperationalLedgerState.CLAIMED, OperationalLedgerState.REVALIDATED),
+        (OperationalLedgerState.REVALIDATED, OperationalLedgerState.DISPATCHING),
+        (OperationalLedgerState.CLAIMED, OperationalLedgerState.SUCCEEDED),
+        (OperationalLedgerState.CLAIMED, OperationalLedgerState.FAILED),
+        (OperationalLedgerState.CLAIMED, OperationalLedgerState.OUTCOME_UNKNOWN),
+        (OperationalLedgerState.CLAIMED, OperationalLedgerState.TARGET_REPLACED),
+        (OperationalLedgerState.REVALIDATED, OperationalLedgerState.SUCCEEDED),
+        (OperationalLedgerState.REVALIDATED, OperationalLedgerState.FAILED),
+        (OperationalLedgerState.REVALIDATED, OperationalLedgerState.OUTCOME_UNKNOWN),
+        (OperationalLedgerState.REVALIDATED, OperationalLedgerState.TARGET_REPLACED),
+        (OperationalLedgerState.DISPATCHING, OperationalLedgerState.SUCCEEDED),
+        (OperationalLedgerState.DISPATCHING, OperationalLedgerState.FAILED),
+        (OperationalLedgerState.DISPATCHING, OperationalLedgerState.OUTCOME_UNKNOWN),
+        (OperationalLedgerState.DISPATCHING, OperationalLedgerState.TARGET_REPLACED),
+        (OperationalLedgerState.SUCCEEDED, OperationalLedgerState.VERIFYING),
+        (OperationalLedgerState.OUTCOME_UNKNOWN, OperationalLedgerState.VERIFYING),
+        (OperationalLedgerState.VERIFYING, OperationalLedgerState.VERIFIED),
+        (OperationalLedgerState.VERIFYING, OperationalLedgerState.VERIFICATION_FAILED),
+        (OperationalLedgerState.VERIFYING, OperationalLedgerState.OUTCOME_UNKNOWN),
+        (OperationalLedgerState.VERIFYING, OperationalLedgerState.TARGET_REPLACED),
+    }
+)
+
 
 class OperationalLedgerError(RuntimeError):
     """Base durable operational ledger error."""
@@ -83,6 +111,37 @@ class OperationalLedgerTransition:
     previous_state: OperationalLedgerState | None
     state: OperationalLedgerState
     occurred_at: datetime
+
+
+def validate_ledger_transition_sequence(
+    transitions: tuple[OperationalLedgerTransition, ...],
+    *,
+    request_id: str,
+    request_digest: str,
+    current_state: OperationalLedgerState,
+) -> bool:
+    """Validate durable transition facts without changing ledger state."""
+
+    if not transitions:
+        return False
+    previous_sequence: int | None = None
+    previous_state: OperationalLedgerState | None = None
+    for transition in transitions:
+        if (
+            transition.request_id != request_id
+            or transition.request_digest != request_digest
+            or transition.previous_state is not previous_state
+            or (transition.previous_state, transition.state)
+            not in ALLOWED_LEDGER_TRANSITIONS
+            or (
+                previous_sequence is not None
+                and transition.sequence <= previous_sequence
+            )
+        ):
+            return False
+        previous_sequence = transition.sequence
+        previous_state = transition.state
+    return previous_state is current_state
 
 
 class OperationalDispatchLedger:
@@ -607,6 +666,8 @@ class OperationalDispatchLedger:
         state: OperationalLedgerState,
         occurred_at: str,
     ) -> None:
+        if (previous_state, state) not in ALLOWED_LEDGER_TRANSITIONS:
+            raise OperationalLedgerError("invalid operational ledger transition")
         connection.execute(
             """INSERT INTO operational_dispatch_transitions
                (request_id, request_digest, previous_state, state, occurred_at)

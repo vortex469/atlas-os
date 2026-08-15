@@ -50,6 +50,10 @@ from app.workflow.models import (
     WorkflowSessionState,
 )
 from app.workflow.orchestrator import WorkflowOrchestrator
+from app.workflow.recovery_diagnostic import (
+    WorkflowRecoveryDiagnostic,
+    project_recovery_diagnostic,
+)
 
 _AUDIT_STAGE_ORDER = [
     "candidate",
@@ -483,6 +487,10 @@ class WorkflowOperationalLifecycleResponse(BaseModel):
     controlled_reason: str | None
     workflow_id: str
     workflow_state: str
+    agent_execution_record_present: bool = False
+    core_record_present: bool = False
+    request_digest_match: bool | None = None
+    agent_terminal: bool = False
     agent_execution_stage: str | None
     candidate_id: str | None
     planning_session_id: str | None
@@ -507,6 +515,7 @@ class WorkflowOperationalLifecycleResponse(BaseModel):
     request_expires_at: datetime | None
     core_record_state: str | None
     transitions: tuple[OperationalLifecycleTransitionResponse, ...] = ()
+    transition_sequence_valid: bool | None = None
     barrier_crossed: bool = False
     barrier_crossing_count: int = 0
     provider_operation_captured: bool = False
@@ -1482,6 +1491,8 @@ async def get_workflow_operational_lifecycle(
             verification_completed_at=None,
             verification_deadline=None,
             terminal=reference.terminal,
+            agent_execution_record_present=True,
+            agent_terminal=reference.terminal,
         )
     if (
         reference.request_id != action.request_id
@@ -1505,6 +1516,7 @@ async def get_workflow_operational_lifecycle(
             )
             for item in core.transitions
         ),
+        transition_sequence_valid=core.transition_sequence_valid,
         barrier_crossed=core.barrier_crossed,
         barrier_crossing_count=core.barrier_crossing_count,
         provider_operation_captured=core.provider_operation_captured,
@@ -1521,7 +1533,28 @@ async def get_workflow_operational_lifecycle(
         verification_completed_at=core.verification_completed_at,
         verification_deadline=core.verification_deadline,
         terminal=core.terminal,
+        agent_execution_record_present=True,
+        core_record_present=True,
+        request_digest_match=(
+            reference.request_digest == action.request_digest == core.request_digest
+        ),
+        agent_terminal=reference.terminal,
     )
+
+
+@router.get(
+    "/{workflow_id}/recovery-diagnostic",
+    response_model=WorkflowRecoveryDiagnostic,
+    responses=_ERROR_RESPONSES,
+)
+async def get_workflow_recovery_diagnostic(
+    request: Request,
+    workflow_id: str,
+) -> WorkflowRecoveryDiagnostic:
+    """Explain existing recovery evidence without writes or provider access."""
+
+    lifecycle = await get_workflow_operational_lifecycle(request, workflow_id)
+    return project_recovery_diagnostic(lifecycle)
 
 
 def _stage_status(workflow, stage: str, approval_status: str) -> str:

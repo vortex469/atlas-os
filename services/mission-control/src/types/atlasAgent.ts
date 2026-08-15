@@ -470,6 +470,34 @@ export interface WorkflowOperationalLifecycle {
     terminal: boolean;
 }
 
+export interface WorkflowRecoveryDiagnostic {
+    applicable: boolean;
+    diagnostic_status: "healthy" | "pending" | "attention_required" | "recovery_in_progress" | "outcome_uncertain" | "unavailable";
+    consistency: "consistent" | "agent_only" | "core_unavailable" | "immutable_mismatch" | "transition_mismatch" | "terminal_mismatch";
+    correlation: {
+        workflow_id: string;
+        request_id: string | null;
+        request_digest_match: boolean | null;
+        agent_record_present: boolean;
+        core_record_present: boolean;
+    };
+    dispatch_evidence: {
+        barrier_crossed: boolean;
+        provider_operation_captured: boolean;
+        dispatch_result_known: boolean;
+        transition_sequence_valid: boolean | null;
+    };
+    verification_evidence: {
+        status: string | null;
+        target_fingerprint_state: "unchanged" | "replaced" | "unavailable" | "not_applicable";
+        observed_state: string | null;
+        observed_health: string | null;
+        terminal_evidence: boolean;
+    };
+    controlled_reason: "not_applicable" | "core_unavailable" | "missing_core_record" | "immutable_request_mismatch" | "invalid_transition_sequence" | "dispatch_outcome_unknown" | "dispatch_failed" | "verification_pending" | "verification_failed" | "target_replaced" | "terminal_state_disagreement" | null;
+    safe_next_action: "none" | "wait_for_verification" | "restore_core_availability" | "inspect_target_read_only" | "preserve_evidence" | "operator_review_required" | "new_request_only_after_terminal";
+}
+
 export type WorkflowPageResponse = WorkflowDetailResponse;
 
 export type WorkflowState =

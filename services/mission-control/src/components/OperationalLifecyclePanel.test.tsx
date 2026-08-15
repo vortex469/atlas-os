@@ -19,6 +19,31 @@ describe("OperationalLifecyclePanel", () => {
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
+    it("renders read-only recovery diagnostics without mutation controls", () => {
+        render(<OperationalLifecyclePanel
+            lifecycle={operationalLifecycle()}
+            diagnostic={{
+                applicable: true,
+                diagnostic_status: "outcome_uncertain",
+                consistency: "consistent",
+                correlation: { workflow_id: "workflow-1", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true },
+                dispatch_evidence: { barrier_crossed: true, provider_operation_captured: true, dispatch_result_known: false, transition_sequence_valid: true },
+                verification_evidence: { status: null, target_fingerprint_state: "unchanged", observed_state: "running", observed_health: "running", terminal_evidence: false },
+                controlled_reason: "dispatch_outcome_unknown",
+                safe_next_action: "preserve_evidence",
+            }}
+            isLoading={false}
+            isRefreshing={false}
+            error={null}
+            onRefresh={vi.fn()}
+        />);
+
+        expect(screen.getByRole("heading", { name: "Recovery diagnostic" })).toBeInTheDocument();
+        expect(screen.getByText("outcome uncertain")).toBeInTheDocument();
+        expect(screen.getByText("preserve evidence")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /retry|run again|reconcile/i })).not.toBeInTheDocument();
+    });
+
     it.each([
         [{ agent_execution_stage: "verification_pending", core_record_state: "verifying", verification_status: null, terminal: false }, "Verification pending"],
         [{ controlled_reason: "verification_failed", verification_status: "verification_failed" }, "Verification failed"],

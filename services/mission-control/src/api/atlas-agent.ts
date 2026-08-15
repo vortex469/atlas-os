@@ -21,6 +21,7 @@ import type {
     WorkflowListQuery,
     WorkflowListResponse,
     WorkflowOperationalLifecycle,
+    WorkflowRecoveryDiagnostic,
     WorkflowVerificationApprovalResponse,
 } from "../types/atlasAgent";
 
@@ -314,6 +315,20 @@ export async function getWorkflowOperationalLifecycle(
         if (isAxiosError(error) && error.response?.status === 404) {
             return null;
         }
+        throw error;
+    }
+}
+
+export async function getWorkflowRecoveryDiagnostic(
+    workflowId: string,
+): Promise<WorkflowRecoveryDiagnostic | null> {
+    try {
+        const response = await atlasAgent.get<WorkflowRecoveryDiagnostic>(
+            `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/recovery-diagnostic`,
+        );
+        return response.data;
+    } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 404) return null;
         throw error;
     }
 }

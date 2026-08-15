@@ -58,6 +58,23 @@ def test_repository_workflow_lifecycle_is_not_applicable(tmp_path, monkeypatch) 
     assert response.json()["availability"] == "not_applicable"
 
 
+def test_repository_recovery_diagnostic_is_typed_not_applicable(
+    tmp_path, monkeypatch
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    save_candidate_workflow(container, candidate_workflow_session(tmp_path))
+    container.core_client.get_operational_lifecycle_read = AsyncMock()
+
+    response = client.get(
+        "/api/v1/agent/workflows/workflow-123/recovery-diagnostic"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["applicable"] is False
+    assert response.json()["controlled_reason"] == "not_applicable"
+    container.core_client.get_operational_lifecycle_read.assert_not_called()
+
+
 def test_workflow_history_filter_returns_only_operational_effect(tmp_path, monkeypatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     save_candidate_workflow(container, candidate_workflow_session(tmp_path))
@@ -117,6 +134,7 @@ def test_completed_operational_lifecycle_preserves_owner_states(tmp_path, monkey
                     sequence=3, state="verified", occurred_at=now
                 ),
             ),
+            transition_sequence_valid=True,
             barrier_crossed=True,
             barrier_crossing_count=1,
             provider_operation_captured=True,
@@ -148,6 +166,7 @@ def test_completed_operational_lifecycle_preserves_owner_states(tmp_path, monkey
     assert body["core_record_state"] == "verified"
     assert body["barrier_crossing_count"] == 1
     assert body["provider_operation_capture_count"] == 1
+    assert body["transition_sequence_valid"] is True
     assert [item["state"] for item in body["transitions"]] == [
         "claimed",
         "dispatching",
@@ -250,3 +269,41 @@ def test_submission_outcome_unknown_with_no_core_record_remains_distinct(
     assert body["agent_execution_stage"] == "submission_outcome_unknown"
     assert body["controlled_reason"] == "submission_outcome_unknown"
     assert body["terminal"] is False
+
+
+def test_recovery_diagnostic_missing_core_is_read_only(tmp_path, monkeypatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    session = _session()
+    action = session.operational_action_request
+    assert action is not None
+    now = datetime.now(UTC)
+    session = replace(
+        session,
+        operational_execution_reference=OperationalExecutionReference(
+            request_id=action.request_id,
+            request_digest=action.request_digest,
+            stage=OperationalExecutionStage.DISPATCH_PENDING,
+            dispatch_status=None,
+            ledger_state=None,
+            provider_operation_id=None,
+            verification_status=None,
+            submitted_at=now,
+            last_observed_at=now,
+            terminal=False,
+        ),
+    )
+    container.workflow_state.create_session(session)
+    before = container.workflow_state.get_session(session.identifier)
+    container.core_client.get_operational_lifecycle_read = AsyncMock(return_value=None)
+
+    response = client.get(
+        f"/api/v1/agent/workflows/{session.identifier}/recovery-diagnostic"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["diagnostic_status"] == "attention_required"
+    assert response.json()["controlled_reason"] == "missing_core_record"
+    assert container.workflow_state.get_session(session.identifier) == before
+    container.core_client.get_operational_lifecycle_read.assert_awaited_once_with(
+        action.request_id
+    )

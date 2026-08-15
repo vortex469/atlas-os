@@ -5,6 +5,7 @@ import {
     getAtlasAgentErrorMessage,
     getWorkflowDetail,
     getWorkflowOperationalLifecycle,
+    getWorkflowRecoveryDiagnostic,
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
     submitWorkflowVerificationApproval,
@@ -20,6 +21,7 @@ import type {
     WorkflowImplementationDecision,
     WorkflowVerificationApprovalResponse,
     WorkflowOperationalLifecycle,
+    WorkflowRecoveryDiagnostic,
 } from "../types/atlasAgent";
 import { fallbackWorkflowRailStages, workflowRailStages } from "../utils/workflowState";
 
@@ -43,6 +45,7 @@ export function WorkflowPage() {
     const [isResuming, setIsResuming] = useState(false);
     const [resumeError, setResumeError] = useState<string | null>(null);
     const [operationalLifecycle, setOperationalLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
+    const [recoveryDiagnostic, setRecoveryDiagnostic] = useState<WorkflowRecoveryDiagnostic | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
 
     const loadWorkflow = useCallback(async (mode: LoadMode = "initial") => {
@@ -57,15 +60,18 @@ export function WorkflowPage() {
                 try {
                     const lifecycle = await getWorkflowOperationalLifecycle(workflowId);
                     setOperationalLifecycle(lifecycle);
+                    setRecoveryDiagnostic(await getWorkflowRecoveryDiagnostic(workflowId));
                     if (lifecycle === null) {
                         setLifecycleError("The operational lifecycle is no longer available for this workflow.");
                     }
                 } catch {
                     setOperationalLifecycle(null);
+                    setRecoveryDiagnostic(null);
                     setLifecycleError("Mission Control could not read the operational lifecycle.");
                 }
             } else {
                 setOperationalLifecycle(null);
+                setRecoveryDiagnostic(null);
             }
         } catch (error) {
             setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
@@ -270,6 +276,7 @@ export function WorkflowPage() {
             {isOperational && (
                 <OperationalLifecyclePanel
                     lifecycle={operationalLifecycle}
+                    diagnostic={recoveryDiagnostic}
                     isLoading={operationalLifecycle === null && lifecycleError === null}
                     isRefreshing={isRefreshing}
                     error={lifecycleError}

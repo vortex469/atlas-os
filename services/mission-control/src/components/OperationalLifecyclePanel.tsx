@@ -1,8 +1,9 @@
-import type { WorkflowOperationalLifecycle } from "../types/atlasAgent";
+import type { WorkflowOperationalLifecycle, WorkflowRecoveryDiagnostic } from "../types/atlasAgent";
 import { operationalOutcome } from "../utils/operationalOutcome";
 
 interface OperationalLifecyclePanelProps {
     lifecycle: WorkflowOperationalLifecycle | null;
+    diagnostic?: WorkflowRecoveryDiagnostic | null;
     isLoading: boolean;
     isRefreshing: boolean;
     error: string | null;
@@ -19,7 +20,7 @@ function timestamp(value: string | null): string {
     return Number.isNaN(parsed.getTime()) ? "Unknown time" : parsed.toLocaleString();
 }
 
-export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, error, onRefresh }: OperationalLifecyclePanelProps) {
+export function OperationalLifecyclePanel({ lifecycle, diagnostic, isLoading, isRefreshing, error, onRefresh }: OperationalLifecyclePanelProps) {
     if (isLoading) {
         return <section aria-label="Operational lifecycle"><p role="status" className="text-slate-300">Loading operational lifecycle...</p></section>;
     }
@@ -41,6 +42,19 @@ export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, 
                 <p className="mt-1 text-sm text-cyan-200"><strong>Safe next step:</strong> {outcome.guidance}</p>
                 {outcome.retryProhibited && <p className="mt-2 text-sm font-semibold text-amber-200">Mutation retry is prohibited. This view provides no retry or run-again control.</p>}
             </section>
+            {diagnostic?.applicable && (
+                <section aria-labelledby="recovery-diagnostic-heading" className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-4">
+                    <h3 id="recovery-diagnostic-heading" className="font-semibold text-white">Recovery diagnostic</h3>
+                    <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                        <div><dt className="text-slate-400">Status</dt><dd className="text-slate-100">{label(diagnostic.diagnostic_status)}</dd></div>
+                        <div><dt className="text-slate-400">Consistency</dt><dd className="text-slate-100">{label(diagnostic.consistency)}</dd></div>
+                        <div><dt className="text-slate-400">Controlled reason</dt><dd className="text-slate-100">{label(diagnostic.controlled_reason)}</dd></div>
+                        <div><dt className="text-slate-400">Safe next action</dt><dd className="text-cyan-200">{label(diagnostic.safe_next_action)}</dd></div>
+                    </dl>
+                    <p className="mt-3 text-sm text-slate-300">Evidence: barrier {diagnostic.dispatch_evidence.barrier_crossed ? "crossed" : "not crossed"}; provider operation {diagnostic.dispatch_evidence.provider_operation_captured ? "captured" : "not captured"}; transition sequence {diagnostic.dispatch_evidence.transition_sequence_valid === true ? "valid" : diagnostic.dispatch_evidence.transition_sequence_valid === false ? "invalid" : "unavailable"}; target fingerprint {label(diagnostic.verification_evidence.target_fingerprint_state)}.</p>
+                    <p className="mt-2 text-sm text-amber-200">This diagnostic is read-only and provides no retry, run-again, or reconciliation control.</p>
+                </section>
+            )}
             <LifecycleGroup title="Identity" values={[
                 ["Workflow ID", lifecycle.workflow_id], ["Candidate ID", lifecycle.candidate_id], ["Planning Session ID", lifecycle.planning_session_id], ["Operation Intent", lifecycle.execution_intent], ["Provider / Resource", lifecycle.target_label],
             ]} />

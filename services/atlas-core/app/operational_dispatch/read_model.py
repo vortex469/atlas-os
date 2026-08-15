@@ -4,6 +4,7 @@ from app.operational_dispatch.ledger import (
     FINAL_STATES,
     OperationalDispatchLedger,
     OperationalLedgerState,
+    validate_ledger_transition_sequence,
 )
 from app.operational_dispatch.models import (
     OperationalDispatchAuditStatus,
@@ -44,6 +45,12 @@ def project_operational_lifecycle(
                 occurred_at=item.occurred_at,
             )
             for item in transitions
+        ),
+        transition_sequence_valid=validate_ledger_transition_sequence(
+            transitions,
+            request_id=entry.request_id,
+            request_digest=entry.request_digest,
+            current_state=entry.state,
         ),
         barrier_crossed=barrier_count > 0,
         barrier_crossing_count=barrier_count,
