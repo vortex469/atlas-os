@@ -12,6 +12,7 @@ from app.models.provider_management import (
     ProviderManagementSectionAvailability,
     ProviderManagementSectionDescriptor,
 )
+from app.providers.management import provider_resource_management_registry
 from app.testing import ASGITestClient
 
 client = ASGITestClient(app)
@@ -28,6 +29,9 @@ def management_descriptor() -> ProviderManagementDescriptor:
                 availability=ProviderManagementSectionAvailability.AVAILABLE,
             )
             for section in ProviderManagementSection
+        ),
+        resource_types=provider_resource_management_registry.for_provider(
+            "proxmox"
         ),
         resources=(
             ManagedResourceProjection(
@@ -71,14 +75,27 @@ def test_management_route_is_read_only_sanitized_and_has_no_action_side_effect(
     monkeypatch.setattr(route, "get_provider_management_descriptor", collect)
     before = isolated_action_history.list(limit=100)
     response = client.get("/api/v1/providers/proxmox/management")
+    repeated = client.get("/api/v1/providers/proxmox/management")
     after = isolated_action_history.list(limit=100)
 
     assert response.status_code == 200
-    assert called == 1
+    assert repeated.status_code == 200
+    assert response.json() == repeated.json()
+    assert called == 2
     assert before == after == []
     body = response.json()
     assert body["grants_permission"] is False
     assert body["grants_execution"] is False
+    assert [item["resource_type"] for item in body["resource_types"]] == [
+        "lxc",
+        "qemu",
+    ]
+    assert body["resource_types"][1][
+        "provider_intent_capability_supported"
+    ] is True
+    assert body["resource_types"][1][
+        "provider_intent_mutation_available"
+    ] is False
     assert body["resources"][0]["operationally_requestable"] is False
     assert body["resources"][1]["identity_assurance"] == "unavailable"
     serialized = response.text.casefold()

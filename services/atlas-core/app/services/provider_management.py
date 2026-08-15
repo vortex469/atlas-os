@@ -13,9 +13,15 @@ from app.models.provider_management import (
     ProviderManagementSection,
     ProviderManagementSectionAvailability,
     ProviderManagementSectionDescriptor,
+    ProviderResourceManagementSupport,
 )
 from app.models.resources import ProviderResource
 from app.providers.capabilities import ProviderCapability
+from app.providers.management import (
+    ProviderResourceManagementNotRegisteredError,
+    ProviderResourceManagementRegistry,
+    provider_resource_management_registry,
+)
 from app.providers.proxmox_identity import PROXMOX_QEMU_IDENTITY_VERSION
 from app.providers.resources import ProviderResourceAdapter
 from app.services.provider_resources import get_provider, list_provider_resources
@@ -35,8 +41,13 @@ _SECTION_CAPABILITIES = {
 }
 
 
-def _management_fingerprint(resource: ProviderResource) -> str | None:
+def _management_fingerprint(
+    resource: ProviderResource,
+    support: ProviderResourceManagementSupport | None,
+) -> str | None:
     identity = resource.identity
+    if support is None or not support.authoritative_identity_supported:
+        return None
     if resource.provider_id != "proxmox" or resource.resource_type != "qemu":
         return None
     if identity is None or not _has_authoritative_qemu_identity(resource):
@@ -54,13 +65,12 @@ def _management_fingerprint(resource: ProviderResource) -> str | None:
 
 def _identity_assurance(
     resource: ProviderResource,
+    support: ProviderResourceManagementSupport | None,
 ) -> ManagedResourceIdentityAssurance:
-    if resource.provider_id != "proxmox":
+    if support is None:
         return ManagedResourceIdentityAssurance.UNSUPPORTED
-    if resource.resource_type == "lxc":
+    if not support.authoritative_identity_supported:
         return ManagedResourceIdentityAssurance.UNAVAILABLE
-    if resource.resource_type != "qemu":
-        return ManagedResourceIdentityAssurance.UNSUPPORTED
     if not _has_authoritative_qemu_identity(resource):
         return ManagedResourceIdentityAssurance.UNAVAILABLE
     return ManagedResourceIdentityAssurance.AUTHORITATIVE
@@ -79,8 +89,17 @@ def _has_authoritative_qemu_identity(resource: ProviderResource) -> bool:
 
 def project_managed_resource(
     resource: ProviderResource,
+    *,
+    registry: ProviderResourceManagementRegistry = (
+        provider_resource_management_registry
+    ),
 ) -> ManagedResourceProjection:
     """Allow-list management fields and keep native identity opaque."""
+
+    try:
+        support = registry.get(resource.provider_id, resource.resource_type)
+    except ProviderResourceManagementNotRegisteredError:
+        support = None
 
     return ManagedResourceProjection(
         provider_id=resource.provider_id,
@@ -89,13 +108,17 @@ def project_managed_resource(
         display_name=resource.display_name,
         current_state=resource.current_state,
         missing=resource.missing,
-        identity_assurance=_identity_assurance(resource),
-        management_fingerprint=_management_fingerprint(resource),
+        identity_assurance=_identity_assurance(resource, support),
+        management_fingerprint=_management_fingerprint(resource, support),
     )
 
 
 async def get_provider_management_descriptor(
     provider_id: str,
+    *,
+    registry: ProviderResourceManagementRegistry = (
+        provider_resource_management_registry
+    ),
 ) -> ProviderManagementDescriptor:
     """Describe management surfaces without granting mutation or execution."""
 
@@ -105,8 +128,17 @@ async def get_provider_management_descriptor(
     if isinstance(provider, ProviderResourceAdapter):
         collection = await list_provider_resources(provider_id)
         resources = tuple(
-            project_managed_resource(resource)
-            for resource in collection.resources
+            sorted(
+                (
+                    project_managed_resource(resource, registry=registry)
+                    for resource in collection.resources
+                ),
+                key=lambda resource: (
+                    resource.provider_id,
+                    resource.resource_type,
+                    resource.resource_id,
+                ),
+            )
         )
 
     return ProviderManagementDescriptor(
@@ -123,5 +155,6 @@ async def get_provider_management_descriptor(
             )
             for section in _SECTIONS
         ),
+        resource_types=registry.for_provider(provider_id),
         resources=resources,
     )

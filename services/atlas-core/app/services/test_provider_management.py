@@ -12,12 +12,14 @@ from app.models.provider_management import (
     ProviderManagementSection,
     ProviderManagementSectionAvailability,
     ProviderManagementSectionDescriptor,
+    ProviderResourceManagementSupport,
 )
 from app.models.resources import (
     ProviderResource,
     ProviderResourceExpectation,
     ProviderResourceIdentity,
 )
+from app.providers.management import provider_resource_management_registry
 from app.providers.proxmox_identity import build_proxmox_qemu_identity
 from app.services.provider_management import project_managed_resource
 
@@ -204,6 +206,9 @@ def test_descriptor_presence_grants_no_permission_or_execution() -> None:
             )
             for section in ProviderManagementSection
         ),
+        resource_types=provider_resource_management_registry.for_provider(
+            "proxmox"
+        ),
         resources=(project_managed_resource(_resource()),),
     )
 
@@ -212,6 +217,49 @@ def test_descriptor_presence_grants_no_permission_or_execution() -> None:
     assert all(section.grants_permission is False for section in descriptor.sections)
     assert all(section.grants_execution is False for section in descriptor.sections)
     assert all(resource.operationally_requestable is False for resource in descriptor.resources)
+
+
+def test_qemu_and_lxc_support_semantics_are_explicit_and_non_authoritative() -> None:
+    qemu = provider_resource_management_registry.get("proxmox", "qemu")
+    lxc = provider_resource_management_registry.get("proxmox", "lxc")
+
+    assert qemu.resource_readable is True
+    assert qemu.authoritative_identity_supported is True
+    assert qemu.provider_intent_capability_supported is True
+    assert qemu.provider_intent_mutation_available is False
+    assert tuple(choice.value for choice in qemu.supported_expectations) == (
+        "running",
+        "stopped",
+        "ignored",
+    )
+    assert lxc.resource_readable is True
+    assert lxc.authoritative_identity_supported is False
+    assert lxc.provider_intent_capability_supported is False
+    assert lxc.provider_intent_mutation_available is False
+    for support in (qemu, lxc):
+        assert support.operationally_requestable is False
+        assert support.grants_permission is False
+        assert support.grants_execution is False
+
+
+def test_public_support_contract_has_no_arbitrary_or_execution_fields() -> None:
+    assert set(ProviderResourceManagementSupport.model_fields).isdisjoint(
+        {
+            "metadata",
+            "identity",
+            "vmgenid",
+            "token",
+            "credentials",
+            "command",
+            "environment",
+            "url",
+            "provider_action_id",
+            "parameters",
+            "permission",
+            "handler",
+            "selector",
+        }
+    )
 
 
 def test_management_projection_has_no_mutation_or_execution_dependencies() -> None:
@@ -226,5 +274,6 @@ def test_management_projection_has_no_mutation_or_execution_dependencies() -> No
         "update_provider_resource_expectation",
         "refresh_provider_resources",
         "Provider Intent Store",
+        "providers.actions",
     ):
         assert forbidden not in source
