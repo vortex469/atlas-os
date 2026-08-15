@@ -27,7 +27,32 @@ Handoff without expanding execution authority.
   capability descriptors, selector resources, state, requestability, and target
   fingerprint. Proposal hints are presentation-only.
 - Production mutation remains exactly `restart-service/proxmox/qemu`; LXC and
-  all other mutation tuples remain unsupported. RC and final tags are pending.
+  all other mutation tuples remain unsupported. The immutable
+  `atlas-v0.10-rc1` candidate is accepted for final promotion; the final tag is
+  pending.
+
+### RC1 validation
+
+- `atlas-v0.10-rc1` (tag object
+  `1c8798472ce46b2aa1fc822c1613a720c62113c4`) peels to
+  `95d98a4d5e0e9767dd6cb5df06c7ffdb693bf162`. Quality gates run
+  `31863884438` and Container release gate run `31863884456` succeeded, and
+  `atlas-release-evidence-v1` reported `ready`.
+- Production was rebuilt without cache from the exact RC checkout using only
+  the production, HTTPS, and operator-auth Compose files. Core and Agent source
+  checksums and the Mission Control image matched the RC build; all required
+  services remained healthy.
+- Live proposal list/detail reads returned four deterministic, sanitized
+  proposals, known detail returned 200, unknown detail returned controlled 404,
+  and IDs remained stable through Core, Mission Control, Agent, and Edge
+  restarts.
+- Proposal reads and navigation changed no candidate, planning, approval,
+  action-request, dispatch, barrier, provider-operation, result, verification,
+  or VM reboot count. Review-only, stale, expired, missing-source/evidence,
+  unsupported, transport-failure, and tampered states remained fail-closed.
+- Mission Control remained advisory with no target preselection, automatic
+  submission, execution, approval, dispatch, retry, or replay control. Atlas
+  Edge remained the sole browser ingress.
 
 ## atlas-v0.9.0 — Atlas v0.9.0 (2026-08-15)
 

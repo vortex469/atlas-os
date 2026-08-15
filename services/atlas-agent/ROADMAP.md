@@ -498,7 +498,7 @@ changes no execution gate, and persists no support bundle.
 
 ## Atlas v0.10 — Discovery-to-Operator Proposal Handoff
 
-D9 P0 through P5 implementation and local acceptance are complete, and remain
+D9 P0 through P5 implementation and acceptance are complete, and remain
 proposal/navigation-only. Atlas Core owns
 derived advisory proposals; Atlas Agent accepts no proposal as target,
 candidate, action-request, approval, or dispatch authority. Any eventual
@@ -508,7 +508,13 @@ permission. Agent planning and execution remain closed to
 `restart-service / proxmox / qemu`; repository execution remains separately
 gated as `update-compose-stack`. Proposal contracts, stale-aware read APIs,
 closed navigation, and Mission Control advisory UX add no Agent proposal input
-or authority. RC selection and exact-candidate validation remain pending.
+or authority. The immutable `atlas-v0.10-rc1` candidate at
+`95d98a4d5e0e9767dd6cb5df06c7ffdb693bf162` passed exact-SHA CI,
+release-evidence validation, exact-RC production deployment, proposal
+non-authority checks, and sequential restart soak. Agent state counts and the
+existing terminal verified workflow remained unchanged; no redispatch or
+provider mutation occurred. RC1 is accepted for final promotion, while the
+final `atlas-v0.10.0` tag remains pending.
 
 ### Planned Phase 5
 

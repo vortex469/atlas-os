@@ -282,8 +282,13 @@ The shipped D9 surface consists of immutable proposal/provenance contracts,
 stale-aware read-only derivation, bounded GET-only proposal APIs, closed
 navigation, and Mission Control advisory presentation. Observed proposals are
 retained only in a bounded process-local cache so stale/expired context remains
-inspectable; there is no proposal database. RC selection, exact-candidate CI,
-deployment soak, and final publication remain pending.
+inspectable; there is no proposal database. The immutable `atlas-v0.10-rc1`
+candidate passed exact-SHA CI, live bounded proposal API acceptance, redaction,
+staleness and tampering tests, candidate-projector/non-authority regression,
+no-cache production deployment, and restart soak. Proposal IDs remained stable
+and no candidate, approval, action request, dispatch, provider operation, or VM
+reboot was created. D9 is accepted for final promotion; only publication of
+`atlas-v0.10.0` remains pending.
 
 ## D10 — Dynamic Source Adapters
 

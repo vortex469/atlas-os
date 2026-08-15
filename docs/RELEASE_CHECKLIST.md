@@ -146,7 +146,7 @@ publication remains pending.
 - [x] V0.10-P2 — Derivation, compatibility, and staleness.
 - [x] V0.10-P3 — Authoritative navigation contract.
 - [x] V0.10-P4 — Mission Control proposal UX.
-- [x] V0.10-P5 — Local boundary integration, validation, and documentation.
+- [x] V0.10-P5 — Boundary integration, validation, and release acceptance.
 
 P0 establishes that Discovery proposals are derived, advisory, and
 non-authoritative. They cannot create candidates, action requests, approvals,
@@ -157,25 +157,90 @@ tuple `restart-service/proxmox/qemu`; LXC remains unsupported.
 
 ## Atlas v0.10 RC selection and sign-off
 
-- [ ] Record the exact reviewed RC candidate SHA.
-- [ ] Require successful Quality gates on that exact SHA.
-- [ ] Require successful Container release gate on that exact SHA.
-- [ ] Require `atlas-release-evidence-v1` status `ready` for the exact SHA/tag.
-- [ ] Reconfirm operational capability parity is exactly
+- [x] Record the exact reviewed RC candidate SHA.
+- [x] Require successful Quality gates on that exact SHA.
+- [x] Require successful Container release gate on that exact SHA.
+- [x] Require `atlas-release-evidence-v1` status `ready` for the exact SHA/tag.
+- [x] Reconfirm operational capability parity is exactly
   `restart-service/proxmox/qemu`.
-- [ ] Reconfirm proposal reads/navigation create no candidate, planning session,
+- [x] Reconfirm proposal reads/navigation create no candidate, planning session,
   approval, action request, dispatch record, or provider operation.
-- [ ] Reconfirm executable-candidate projection rejects compatible,
+- [x] Reconfirm executable-candidate projection rejects compatible,
   incompatible, stale, expired, hinted, and tampered proposal context.
-- [ ] Reconfirm stale/tampered proposals are review-only and public/UI proposal
+- [x] Reconfirm stale/tampered proposals are review-only and public/UI proposal
   projections pass redaction checks.
-- [ ] Reconfirm Mission Control advisory UX performs no automatic selection or
+- [x] Reconfirm Mission Control advisory UX performs no automatic selection or
   submission and reloads current destination authority.
-- [ ] Reconfirm exactly one production mutation tuple and no LXC capability.
+- [x] Reconfirm exactly one production mutation tuple and no LXC capability.
 - [x] Review v0.9.0-to-v0.10 upgrade, persistence, and rollback guidance.
-- [ ] Create the immutable v0.10 RC tag.
-- [ ] Complete exact-RC production deployment and restart soak.
+- [x] Create the immutable v0.10 RC tag.
+- [x] Complete exact-RC production deployment and restart soak.
 - [ ] Create and publish the final immutable `atlas-v0.10.0` tag.
+
+### Atlas v0.10 RC1 promotion evidence — 2026-08-15
+
+- [x] Immutable RC tag `atlas-v0.10-rc1` (tag object
+  `1c8798472ce46b2aa1fc822c1613a720c62113c4`) peels to exact RC SHA
+  `95d98a4d5e0e9767dd6cb5df06c7ffdb693bf162`; HEAD, `origin/main`,
+  and the tag matched exactly.
+- [x] Quality gates run `31863884438` and Container release gate run
+  `31863884456` succeeded on the exact RC SHA.
+- [x] `atlas-release-evidence-v1` returned `summary.status=ready`: hardened
+  Compose render, capability parity, and secret hygiene passed; security
+  findings were empty; the tracked worktree was clean; only the intentional
+  untracked `compose.execution-smoke.override.yaml` was allowed.
+- [x] Production was rebuilt with `--no-cache` from the exact RC checkout and
+  deployed using only `compose.production.yaml`, `compose.https.yaml`, and
+  `compose.operator-auth.yaml`. The smoke override was not used.
+- [x] Core
+  `services/atlas-core/app/services/discovery_proposals.py` and Agent
+  `candidate_planning/models.py` checkout/container SHA-256 values matched;
+  the running Mission Control image matched the newly built RC1 image; all
+  required services remained healthy.
+- [x] Live proposal list and known detail returned HTTP 200, unknown detail
+  returned controlled HTTP 404, and four deterministic proposal IDs remained
+  stable through restart soak. Current production proposals evaluated as
+  `current / insufficient_information / compatibility_review` with
+  `actionable_navigation=false`.
+- [x] Proposal output exposed no authoritative target fingerprint, `vmgenid`,
+  raw/provider-native identity, provider action ID, arbitrary route/URL,
+  command/environment, or credential/token/cookie/CSRF material.
+- [x] Incompatible, insufficient-information, warning/review, stale, expired,
+  missing-source, missing-evidence, unsupported-resource, and transport-failure
+  states remained inspectable and review-only without prohibited maintenance
+  navigation.
+- [x] Proposal context selected only a fixed destination. The maintenance
+  destination independently reloaded operator session and permission,
+  capability descriptors, the server-issued selector, current resources,
+  requestability/state, and authoritative fingerprint. Tampered proposal,
+  destination, provider, resource, target, and intent hints changed no server
+  authority and triggered no submission.
+- [x] Mission Control rendered bounded proposal status/reason and compatibility
+  review context with an advisory authority warning. It exposed no target
+  preselection, automatic submission, Execute, Run, Restart now, Approve,
+  Dispatch, retry, or replay control.
+- [x] Non-authority counts remained unchanged: candidates `6 → 6`, planning
+  sessions `34 → 34`, approvals `55 → 55`, operational action requests
+  `1 → 1`, dispatch records `1 → 1`, transitions `6 → 6`, barrier crossings
+  `1 → 1`, provider operations `1 → 1`, dispatch results `1 → 1`, and
+  verification successes `1 → 1`. No automatic POST occurred.
+- [x] Existing request
+  `operational-action-f20b14392a0a75dcfb41ec83d230845a6b0a610a29c7d142e5842c7fd827aa4b`
+  remained the only operational request. Its workflow remained completed and
+  terminal, the Core ledger remained verified, and verification remained
+  succeeded.
+- [x] VM 110 remained running; `qmreboot` count stayed `3 → 3`; authoritative
+  fingerprint remained
+  `operational-target-fingerprint-v1:1d7fdec6d423cd4936de130860d0171bed424bf695a07e82e22f734d24b6854e`.
+- [x] Sequential Atlas Core, Mission Control, Atlas Agent, and Atlas Edge
+  restarts passed. Proposal IDs/evaluations stayed stable and no redispatch or
+  provider mutation occurred.
+- [x] Mission Control had no host publication, Atlas Edge was the sole browser
+  ingress, and production capability remained exactly one tuple:
+  `restart-service/proxmox/qemu`. No LXC tuple, new intent, handler, ACL
+  expansion, or proposal-derived execution authority was introduced.
+- [x] RC1 is selected, immutable, exactly deployed, soaked, and accepted for
+  final promotion. Creation and publication of `atlas-v0.10.0` remain pending.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

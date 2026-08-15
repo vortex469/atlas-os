@@ -388,7 +388,7 @@ unchanged. The final `atlas-v0.9.0` release was published at
 ## Atlas v0.10 scope
 
 Atlas v0.10 has the theme **Discovery-to-Operator Proposal Handoff**. Atlas
-Core's Discovery/intelligence layer will derive, not persist, sanitized and
+Core's Discovery/intelligence layer derives, rather than persists, sanitized and
 stale-aware advisory proposals from trusted catalog, provenance, finding, and
 compatibility evidence. D9 is navigation-only: proposals cannot create a
 candidate or action request, approve, dispatch, select an authoritative target,
@@ -405,12 +405,19 @@ permission. V0.10 adds no execution intent or handler; production remains
 exactly `restart-service / proxmox / qemu`, repository execution remains
 `update-compose-stack`, and LXC remains unsupported.
 
-V0.10-P0 through V0.10-P5 implementation and local acceptance are complete.
+V0.10-P0 through V0.10-P5 implementation and acceptance are complete.
 Core exposes bounded GET-only proposal reads; Mission Control presents
 sanitized proposal, provenance, compatibility, and stale-state context while
 using closed navigation only. Maintenance selection independently reloads the
 operator session and permission, production capability descriptor,
 authoritative selector, current state/requestability, and target fingerprint.
 Proposal observations are bounded and process-local; no durable schema or
-Agent state changed. RC selection, exact-SHA CI/deployment soak, and final tags
-remain pending.
+Agent state changed. The immutable `atlas-v0.10-rc1` tag (tag object
+`1c8798472ce46b2aa1fc822c1613a720c62113c4`) peels to exact RC SHA
+`95d98a4d5e0e9767dd6cb5df06c7ffdb693bf162`. Exact-SHA CI,
+`atlas-release-evidence-v1`, hardened no-cache production deployment,
+source/image parity, proposal non-authority acceptance, and sequential service
+restart soak passed. The existing workflow remained terminal and verified,
+exactly-once and VM reboot counts were unchanged, and production capability
+remained exactly `restart-service/proxmox/qemu`. RC1 is accepted for final
+promotion; `atlas-v0.10.0` remains pending.

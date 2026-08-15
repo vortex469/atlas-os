@@ -509,7 +509,7 @@ fail closed.
 
 ### V0.10-P5 — Boundary integration and release acceptance
 
-**Status: local acceptance and documentation complete; exact-RC evidence pending.**
+**Status: complete; immutable RC1 accepted for final promotion.**
 
 - Goal: validate D9 end to end without widening execution.
 - Deliverables: Core/UI boundary tests, Agent regressions, redaction and release
@@ -519,10 +519,15 @@ fail closed.
 - Exit criteria: proposals create no candidate, approval, action request, or
   dispatch record, and capability parity remains QEMU restart only.
 
-P0 through P5 implementation is complete. Local boundary, redaction,
-staleness, tampering, capability-parity, and release validation are complete.
-RC selection, exact-candidate CI, immutable tagging, production deployment and
-soak, and final publication remain separate pending release steps.
+P0 through P5 implementation is complete. The immutable `atlas-v0.10-rc1`
+candidate at `95d98a4d5e0e9767dd6cb5df06c7ffdb693bf162` passed exact-SHA
+Quality gates and Container release gate, `atlas-release-evidence-v1`, no-cache
+production deployment with source/image parity, proposal redaction and
+non-authority acceptance, and sequential Core, Mission Control, Agent, and Edge
+restart soak. Capability parity remained exactly
+`restart-service/proxmox/qemu`; the existing verified workflow and exactly-once
+counts were unchanged. RC1 is accepted for final promotion. Only creation and
+publication of `atlas-v0.10.0` remain pending.
 
 ### V0.10 non-goals
 
