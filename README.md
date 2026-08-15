@@ -37,18 +37,22 @@ not replace Core authentication. See the
 [restart contract](docs/architecture/proxmox-qemu-operational-restart.md), and
 [verification/recovery contract](docs/architecture/operational-verification-recovery.md).
 
-## Atlas v0.9 development
+## Atlas v0.9 RC preparation
 
 Atlas v0.9 has the theme **Operational Recovery and Evidence Automation**. It
-will make the existing durable lifecycle easier to diagnose, recover, support,
-and validate for release without adding a provider mutation capability. The
-existing `restart-service / proxmox / qemu` path remains the only operational
-production tuple.
+adds read-only recovery diagnostics, bounded sanitized support bundles,
+check-only release-evidence automation, and Mission Control recovery/history
+UX without adding a provider mutation capability. V0.9-P0 through V0.9-P5 are
+complete; RC selection and final tag publication remain pending. The existing
+`restart-service / proxmox / qemu` path remains the only operational production
+tuple.
 
 A read-only feasibility audit found no provider-authoritative,
 configuration-independent LXC incarnation identity. Atlas therefore rejected
 `restart-service / proxmox / lxc` fail-closed rather than synthesizing identity
 from reusable or mutable fields. LXC remains unsupported and non-requestable.
+
+- [Atlas v0.8.0 to v0.9 upgrade and rollback](docs/DEPLOYMENT.md#atlas-v080-to-v09-upgrade-and-rollback)
 
 - [Atlas v0.7.0 to v0.8 upgrade](docs/DEPLOYMENT.md#atlas-v070-to-v08-upgrade-and-rollback)
 - [Atlas v0.8 to v0.7.0 rollback](docs/DEPLOYMENT.md#rollback-to-atlas-v070)

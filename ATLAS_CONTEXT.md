@@ -238,12 +238,12 @@ Atlas v0.9 — Operational Recovery and Evidence Automation
 
 Active major milestone
 
-- Reconcile the final v0.8.0 release state and establish the v0.9 roadmap.
-- Record the successful fail-closed LXC identity NO-GO.
-- Preserve Provider Management Framework and Discovery Center ownership
-  boundaries.
-- Keep the existing QEMU tuple unchanged while read-only diagnostics, support
-  evidence, release checks, and operator UX are developed in order.
+- Prepare the completed V0.9-P0 through V0.9-P5 scope for RC selection.
+- Preserve the successful fail-closed LXC identity NO-GO and Provider
+  Management Framework/Discovery Center ownership boundaries.
+- Keep the existing QEMU tuple unchanged while validating read-only recovery
+  diagnostics, support evidence, release checks, and operator UX for RC
+  preparation.
 
 Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the tracked template and then treats runtime state as authoritative. Mission Control changes must not dirty the Git checkout.
 
@@ -370,7 +370,10 @@ non-requestable, and the former tuple-expansion P2–P5 do not proceed for LXC.
 It may be reconsidered only if a provider-authoritative identity source is
 independently demonstrated.
 
-The next code slice is a strictly read-only recovery diagnostic model derived
-from existing Agent lifecycle and Core durable-ledger projections. It adds no
-provider call, reconciliation write, mutation endpoint, handler, or gate change
-and exposes only controlled, sanitized reasons.
+V0.9-P0 through V0.9-P5 are complete. The implemented scope is a strictly
+read-only recovery diagnostic derived from existing lifecycle/ledger facts, a
+bounded sanitized local support bundle, check-only release-evidence automation,
+and Mission Control recovery/history UX. None adds a provider call,
+reconciliation write, mutation endpoint, handler, gate change, upload
+destination, or synthetic LXC identity. V0.9-P5 release acceptance and
+documentation is complete; RC and final tags remain pending.

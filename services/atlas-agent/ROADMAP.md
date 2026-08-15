@@ -482,12 +482,14 @@ rootfs naming, MAC values, or task history. `restart-service / proxmox / lxc`
 remains unsupported and non-requestable; the former tuple-expansion P2–P5 do
 not proceed for LXC.
 
-V0.9 now proceeds through read-only recovery diagnostics, a sanitized local
-support bundle, check-only release evidence automation, recovery/history UX,
-and release acceptance. The first code-bearing slice derives a controlled
-diagnostic model from existing Agent lifecycle and Core durable-ledger
-projections. It performs no provider call or reconciliation write, exposes no
-mutation endpoint, registers no handler, and changes no execution gate.
+V0.9-P0 through V0.9-P5 are complete: release-state/LXC feasibility closure,
+read-only recovery diagnostics, a bounded sanitized local support bundle,
+check-only release-evidence automation, recovery/history UX, and release
+acceptance/documentation. RC and final tags remain pending.
+The implementation derives controlled evidence from existing Agent lifecycle
+and Core durable-ledger projections. It performs no provider call or
+reconciliation write, exposes no mutation endpoint, registers no handler,
+changes no execution gate, and persists no support bundle.
 
 ### Planned Phase 5
 

@@ -299,6 +299,8 @@ architecture decision, not an implementation failure.
 
 ### V0.9-P0 — Release-state reconciliation and LXC feasibility closure
 
+**Status: complete.**
+
 - Goal: establish the final v0.8 baseline and revised v0.9 scope.
 - Deliverables: final release identity, LXC identity NO-GO record, revised
   recovery/evidence milestones, dependencies, and non-goals.
@@ -309,6 +311,8 @@ architecture decision, not an implementation failure.
   feasibility is closed NO-GO.
 
 ### V0.9-P1 — Read-only recovery diagnostics
+
+**Status: complete.**
 
 - Goal: provide one operator-facing diagnostic projection for ambiguous and
   recovery states.
@@ -328,6 +332,8 @@ handler, or gate change and exposes only controlled reasons.
 
 ### V0.9-P2 — Sanitized operational support bundle
 
+**Status: complete.**
+
 - Goal: generate a bounded local evidence package from already-safe
   projections.
 - Deliverables: release and image identity, service health, workflow/candidate/
@@ -344,6 +350,8 @@ handler, or gate change and exposes only controlled reasons.
 
 ### V0.9-P3 — Release evidence automation
 
+**Status: complete.**
+
 - Goal: automate collection and validation of release evidence currently
   gathered manually.
 - Deliverables: exact SHA/tag, required CI, container-gate, image/source parity,
@@ -357,6 +365,8 @@ handler, or gate change and exposes only controlled reasons.
 
 ### V0.9-P4 — Recovery/history operator UX
 
+**Status: complete.**
+
 - Goal: surface recovery diagnostics and evidence availability in Mission
   Control.
 - Deliverables: diagnostic state, correlation IDs, evidence availability,
@@ -368,6 +378,10 @@ handler, or gate change and exposes only controlled reasons.
   without any execution affordance.
 
 ### V0.9-P5 — Release acceptance and documentation
+
+**Status: complete.** P0 through P5 are implemented and locally accepted. RC
+selection, exact-candidate CI, immutable RC deployment/soak, and final tags
+remain pending.
 
 - Goal: validate the read-only recovery/evidence toolchain under production
   service-restart soak and finalize release documentation.

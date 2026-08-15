@@ -42,17 +42,55 @@ exact-SHA production deployment, and production soak. The final
 
 - [x] V0.9-P0 — Release-state reconciliation and LXC feasibility closure.
 - [x] LXC feasibility investigation — complete / NO-GO.
-- [ ] V0.9-P1 — Read-only recovery diagnostics.
-- [ ] V0.9-P2 — Sanitized operational support bundle.
-- [ ] V0.9-P3 — Release evidence automation.
-- [ ] V0.9-P4 — Recovery/history operator UX.
-- [ ] V0.9-P5 — Release acceptance and documentation.
+- [x] V0.9-P1 — Read-only recovery diagnostics.
+- [x] V0.9-P2 — Sanitized operational support bundle.
+- [x] V0.9-P3 — Release evidence automation.
+- [x] V0.9-P4 — Recovery/history operator UX.
+- [x] V0.9-P5 — Release acceptance and documentation.
 
 The dependency order is P0 → P1 → P2 → P3 → P4 → P5. The LXC identity gate
 closed fail-safe: no authoritative incarnation identity was proven, no
 synthetic identity was accepted, and no LXC candidate, selector, translation,
 gate, handler, ACL, or mutation is enabled. The revised P1–P5 milestones are
 read-only recovery, evidence, UX, and release work.
+
+P0 through P5 implementation and local release acceptance are complete. RC
+selection, exact-candidate CI, immutable RC deployment/soak, and final release
+publication remain pending.
+
+## Atlas v0.9 RC selection and sign-off
+
+- [ ] Record the exact reviewed RC candidate SHA after the documentation commit.
+- [ ] Require Quality gates to pass on that exact SHA and record the run ID and
+  Core, Agent, and Mission Control conclusions.
+- [ ] Require Container release gate to pass on that exact SHA and record its
+  run ID.
+- [ ] Run `./scripts/release-evidence` against the exact SHA and annotated RC
+  tag; require `atlas-release-evidence-v1` status `ready` without fabricated
+  private or CI evidence.
+- [x] Run `./scripts/operational-capability-parity` and require exactly
+  `restart-service/proxmox/qemu`.
+- [x] Confirm recovery diagnostics are deterministic and read-only for healthy,
+  pending/recovery, Core-unavailable, immutable-mismatch,
+  transition-mismatch, target-replaced, outcome-uncertain, and
+  terminal-mismatch states.
+- [x] Confirm `atlas-operational-support-bundle-v1` remains bounded,
+  deterministic, redacted, explicitly partial/truncated where applicable, and
+  local-only with no upload destination.
+- [x] Confirm Mission Control recovery/history UX separates network failure
+  from operational failure and exposes no retry, run-again, replay,
+  reconciliation-write, upload, or share control.
+- [x] Confirm the production mutation boundary contains exactly one tuple and
+  v0.9 adds no intent or handler.
+- [x] Confirm `restart-service/proxmox/lxc` remains unsupported: no synthetic
+  identity, candidate, selector, translation, gate, handler, ACL, or mutation
+  was added.
+- [x] Review the documented v0.8.0 to v0.9 upgrade and v0.9 to v0.8.0
+  fail-safe rollback procedure, including in-flight barrier handling.
+- [ ] Create the immutable annotated `atlas-v0.9-rc1` tag.
+- [ ] Complete and record exact-RC production deployment and service-restart
+  soak without performing a provider mutation merely for soak validation.
+- [ ] Create the final immutable `atlas-v0.9.0` tag.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
