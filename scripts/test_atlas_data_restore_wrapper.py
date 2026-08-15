@@ -59,10 +59,16 @@ def _run_wrapper(
     attached: str = "",
     run_exit: str = "23",
     fail_run_number: str = "1",
+    legacy_acknowledgement: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], str]:
     executable_directory, log = _fake_docker(tmp_path)
     result = subprocess.run(
-        [str(WRAPPER), str(backup), "--confirm"],
+        [
+            str(WRAPPER),
+            str(backup),
+            "--confirm",
+            *(["--allow-legacy-partial-new-lineage"] if legacy_acknowledgement else []),
+        ],
         check=False,
         capture_output=True,
         text=True,
@@ -94,7 +100,9 @@ def test_wrapper_rejects_any_attached_container(
 def test_wrapper_ignores_unrelated_containers_and_reaches_private_copy(
     tmp_path: Path,
 ) -> None:
-    result, log = _run_wrapper(tmp_path, _backup(tmp_path))
+    result, log = _run_wrapper(
+        tmp_path, _backup(tmp_path), fail_run_number="2"
+    )
     assert result.returncode == 23
     assert "ps -a --filter volume=disposable-test-volume" in log
     assert "volume create atlas-restore-staging-" in log
@@ -108,10 +116,10 @@ def test_wrapper_reports_no_success_when_target_preparation_fails(
     tmp_path: Path,
 ) -> None:
     result, log = _run_wrapper(
-        tmp_path, _backup(tmp_path), fail_run_number="2"
+        tmp_path, _backup(tmp_path), fail_run_number="3"
     )
     assert result.returncode == 23
-    assert log.count("run --rm") == 2
+    assert log.count("run --rm") == 3
     assert "Atlas data volume restored" not in result.stdout
 
 
@@ -122,7 +130,7 @@ def test_wrapper_reports_success_only_after_restore_helper_completes(
         tmp_path, _backup(tmp_path), fail_run_number="never"
     )
     assert result.returncode == 0
-    assert log.count("run --rm") == 3
+    assert log.count("run --rm") == 4
     assert "Atlas data volume restored: disposable-test-volume" in result.stdout
 
 
@@ -203,3 +211,47 @@ def test_wrapper_rejects_unsafe_volume_name_before_docker_use(tmp_path: Path) ->
     assert result.returncode == 2
     assert "valid Docker volume name" in result.stderr
     assert not log.exists()
+
+
+def test_wrapper_forwards_explicit_legacy_acknowledgement_only(
+    tmp_path: Path,
+) -> None:
+    result, log = _run_wrapper(
+        tmp_path,
+        _backup(tmp_path),
+        fail_run_number="never",
+        legacy_acknowledgement=True,
+    )
+    assert result.returncode == 0
+    assert log.count("--allow-legacy-partial-new-lineage") == 2
+    assert "check-restore-target /backup /target --allow-legacy" in log
+    assert "restore /staging/backup /target --allow-legacy" in log
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        (),
+        ("backup",),
+        ("backup", "--allow-legacy-partial-new-lineage"),
+        ("backup", "--allow-legacy-partial-new-lineage", "--confirm"),
+        ("backup", "--confirm", "--unknown"),
+        (
+            "backup",
+            "--confirm",
+            "--allow-legacy-partial-new-lineage",
+            "--allow-legacy-partial-new-lineage",
+        ),
+        ("backup", "--confirm", "--allow-legacy-partial-new-lineage", "extra"),
+    ),
+)
+def test_wrapper_rejects_malformed_option_combinations(
+    tmp_path: Path, arguments: tuple[str, ...]
+) -> None:
+    result = subprocess.run(
+        [str(WRAPPER), *arguments],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2

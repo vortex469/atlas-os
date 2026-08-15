@@ -7,8 +7,10 @@ import itertools
 import json
 import os
 import runpy
+import socket
 import sqlite3
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -20,7 +22,9 @@ from scripts.atlas_data_backup_models import (
 
 TOOL = runpy.run_path(str(Path(__file__).with_name("atlas-data-tool.py")))
 create_backup = TOOL["create_backup"]
+legacy_restore_conflicts = TOOL["legacy_restore_conflicts"]
 restore_backup = TOOL["restore_backup"]
+validate_restore_target = TOOL["validate_restore_target"]
 verify_backup = TOOL["verify_backup"]
 DISPATCH_RESULT = json.dumps(
     {
@@ -92,6 +96,15 @@ SCHEMAS = {
             reason TEXT NOT NULL);
     """,
 }
+MANAGED_CONFLICTS = tuple(
+    conflict
+    for path in MANAGED_PATH_ORDER
+    for conflict in (
+        (path.value, f"{path.value}-wal", f"{path.value}-shm")
+        if path.value.endswith(".db")
+        else (path.value,)
+    )
+)
 
 
 def _database(root: Path, name: str) -> sqlite3.Connection:
@@ -179,6 +192,49 @@ def _source(root: Path, *, audit: bool = False) -> dict[str, sqlite3.Connection]
 def _close(connections: dict[str, sqlite3.Connection]) -> None:
     for connection in connections.values():
         connection.close()
+
+
+def _legacy_backup(
+    tmp_path: Path,
+    version: int,
+    runtime_files: tuple[str, ...] = (),
+) -> Path:
+    source = tmp_path / "source"
+    connections = _source(source)
+    _close(connections)
+    backup = tmp_path / "legacy"
+    backup.mkdir()
+    database_records = []
+    for name in ("action_history.db", "provider_intelligence.db"):
+        destination = backup / name
+        destination.write_bytes((source / name).read_bytes())
+        database_records.append({
+            "filename": name,
+            "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+            "size": destination.stat().st_size,
+        })
+    manifest: dict[str, object] = {
+        "format_version": version,
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "databases": database_records,
+    }
+    if version == 2:
+        file_records = []
+        for name in runtime_files:
+            destination = backup / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes((source / name).read_bytes())
+            mode = 0o600 if name.startswith("secrets/") else 0o644
+            destination.chmod(mode)
+            file_records.append({
+                "path": name,
+                "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+                "size": destination.stat().st_size,
+                "mode": mode,
+            })
+        manifest["files"] = file_records
+    (backup / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return backup
 
 
 @pytest.mark.parametrize("audit", (False, True))
@@ -392,6 +448,244 @@ def test_v3_restore_adopts_populated_target_transactionally(tmp_path: Path) -> N
     assert not (target / "provider_intents.db").exists()
 
 
+def test_legacy_v1_requires_acknowledgement_and_restores_managed_empty_target(
+    tmp_path: Path,
+) -> None:
+    backup = _legacy_backup(tmp_path, 1)
+    target = tmp_path / "target"
+    sentinels = tuple(
+        target / relative_path
+        for relative_path in (
+            "unrelated-root-file",
+            "cache/sentinel",
+            "history/sentinel",
+            "knowledge/sentinel",
+            "providers/sentinel",
+        )
+    )
+    for sentinel in sentinels:
+        sentinel.parent.mkdir(parents=True, exist_ok=True)
+        sentinel.write_text("unchanged", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="requires --allow-legacy"):
+        restore_backup(backup, target)
+    assert all(
+        sentinel.read_text(encoding="utf-8") == "unchanged"
+        for sentinel in sentinels
+    )
+    restore_backup(
+        backup,
+        target,
+        allow_legacy_partial_new_lineage=True,
+    )
+    assert (target / "action_history.db").is_file()
+    assert (target / "provider_intelligence.db").is_file()
+    assert all(
+        sentinel.read_text(encoding="utf-8") == "unchanged"
+        for sentinel in sentinels
+    )
+    assert not (target / "config").exists()
+    assert {
+        path.value
+        for path in MANAGED_PATH_ORDER
+        if os.path.lexists(target / path.value)
+    } == {"action_history.db", "provider_intelligence.db"}
+    assert not (target / ".atlas-restore").exists()
+
+
+@pytest.mark.parametrize(
+    "conflict",
+    MANAGED_CONFLICTS,
+)
+def test_each_managed_path_and_database_sidecar_blocks_legacy_restore(
+    tmp_path: Path, conflict: str
+) -> None:
+    relative_path = conflict
+    backup = _legacy_backup(tmp_path, 1)
+    target = tmp_path / "target"
+    path = target / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"existing")
+    before = path.read_bytes()
+    with pytest.raises(RuntimeError, match=relative_path.replace("-", "\\-")):
+        restore_backup(
+            backup,
+            target,
+            allow_legacy_partial_new_lineage=True,
+        )
+    assert path.read_bytes() == before
+    assert not (target / ".action_history.db.restore").exists()
+
+
+@pytest.mark.parametrize("kind", ("symlink", "directory", "fifo", "socket"))
+def test_special_object_at_managed_path_blocks_without_traversal(
+    tmp_path: Path, kind: str
+) -> None:
+    backup = _legacy_backup(tmp_path, 1)
+    target = tmp_path / "target"
+    target.mkdir()
+    path = target / "provider_intents.db"
+    if kind == "symlink":
+        path.symlink_to(tmp_path / "missing-outside")
+    elif kind == "directory":
+        path.mkdir()
+    elif kind == "fifo":
+        os.mkfifo(path)
+    else:
+        sock = socket.socket(socket.AF_UNIX)
+        sock.bind(str(path))
+        sock.close()
+    assert legacy_restore_conflicts(target) == ("provider_intents.db",)
+    with pytest.raises(RuntimeError, match="provider_intents.db"):
+        restore_backup(
+            backup,
+            target,
+            allow_legacy_partial_new_lineage=True,
+        )
+
+
+@pytest.mark.parametrize("ancestor", ("config", "secrets"))
+def test_symlinked_managed_ancestor_blocks_without_inspecting_outside(
+    tmp_path: Path, ancestor: str
+) -> None:
+    backup = _legacy_backup(tmp_path, 1)
+    target = tmp_path / "target"
+    target.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    sentinel = outside / "sentinel"
+    sentinel.write_bytes(b"outside-unchanged")
+    (target / ancestor).symlink_to(outside, target_is_directory=True)
+    conflicts = legacy_restore_conflicts(target)
+    expected = tuple(
+        path.value
+        for path in MANAGED_PATH_ORDER
+        if path.value.startswith(f"{ancestor}/")
+    )
+    assert conflicts == expected
+    with pytest.raises(RuntimeError, match="managed-empty"):
+        restore_backup(
+            backup,
+            target,
+            allow_legacy_partial_new_lineage=True,
+        )
+    assert sentinel.read_bytes() == b"outside-unchanged"
+
+
+@pytest.mark.parametrize("root_kind", ("symlink", "file", "fifo"))
+def test_unsafe_legacy_target_root_fails_closed(
+    tmp_path: Path, root_kind: str
+) -> None:
+    backup = _legacy_backup(tmp_path, 1)
+    target = tmp_path / "target"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    sentinel = outside / "sentinel"
+    sentinel.write_bytes(b"outside-unchanged")
+    if root_kind == "symlink":
+        target.symlink_to(outside, target_is_directory=True)
+    elif root_kind == "file":
+        target.write_bytes(b"target-unchanged")
+    else:
+        os.mkfifo(target)
+    with pytest.raises(RuntimeError, match="target root must be a real directory"):
+        restore_backup(
+            backup,
+            target,
+            allow_legacy_partial_new_lineage=True,
+        )
+    assert sentinel.read_bytes() == b"outside-unchanged"
+
+
+def test_second_legacy_check_catches_file_created_after_preflight(
+    tmp_path: Path,
+) -> None:
+    backup = _legacy_backup(tmp_path, 1)
+    target = tmp_path / "target"
+    target.mkdir()
+    validate_restore_target(
+        backup,
+        target,
+        allow_legacy_partial_new_lineage=True,
+    )
+    raced_path = target / "operational_dispatch.db"
+    raced_path.write_bytes(b"created-after-preflight")
+    before_stat = raced_path.lstat()
+    with pytest.raises(RuntimeError, match="operational_dispatch.db"):
+        restore_backup(
+            backup,
+            target,
+            allow_legacy_partial_new_lineage=True,
+        )
+    after_stat = raced_path.lstat()
+    assert raced_path.read_bytes() == b"created-after-preflight"
+    assert (
+        after_stat.st_mode,
+        after_stat.st_size,
+        after_stat.st_mtime_ns,
+    ) == (
+        before_stat.st_mode,
+        before_stat.st_size,
+        before_stat.st_mtime_ns,
+    )
+
+
+def test_legacy_conflict_reporting_follows_managed_inventory_order(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    for relative_path in (
+        "provider_intents.db-shm",
+        "action_history.db-wal",
+        "config/policies.yaml",
+        "action_history.db",
+    ):
+        path = target / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    assert legacy_restore_conflicts(target) == (
+        "action_history.db",
+        "action_history.db-wal",
+        "config/policies.yaml",
+        "provider_intents.db-shm",
+    )
+
+
+def test_legacy_acknowledgement_is_rejected_for_v3(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    connections = _source(source)
+    backup = tmp_path / "backup"
+    create_backup(source, backup, operator_auth_initialized=False)
+    _close(connections)
+    target = tmp_path / "target"
+    target.mkdir()
+    with pytest.raises(RuntimeError, match="valid only for legacy"):
+        restore_backup(
+            backup,
+            target,
+            allow_legacy_partial_new_lineage=True,
+        )
+
+
+def test_tool_rejects_duplicate_legacy_acknowledgement(tmp_path: Path) -> None:
+    result = subprocess.run(
+        (
+            sys.executable,
+            str(Path(__file__).with_name("atlas-data-tool.py")),
+            "restore",
+            str(tmp_path / "backup"),
+            str(tmp_path / "target"),
+            "--allow-legacy-partial-new-lineage",
+            "--allow-legacy-partial-new-lineage",
+        ),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert "may be specified only once" in result.stderr
+
+
 def test_malformed_v3_fails_verification_without_touching_target(tmp_path: Path) -> None:
     source = tmp_path / "source"
     connections = _source(source)
@@ -469,41 +763,31 @@ def test_historical_backup_verification_is_unchanged(tmp_path: Path, version: in
 def test_all_historical_v2_runtime_file_subsets_remain_valid(
     tmp_path: Path, runtime_files: tuple[str, ...]
 ) -> None:
-    source = tmp_path / "source"
-    connections = _source(source)
-    _close(connections)
-    backup = tmp_path / "legacy"
-    backup.mkdir()
-    database_records = []
-    for name in ("action_history.db", "provider_intelligence.db"):
-        destination = backup / name
-        destination.write_bytes((source / name).read_bytes())
-        database_records.append({
-            "filename": name,
-            "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
-            "size": destination.stat().st_size,
-        })
-    file_records = []
-    for name in runtime_files:
-        destination = backup / name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes((source / name).read_bytes())
-        mode = 0o600 if name.startswith("secrets/") else 0o644
-        destination.chmod(mode)
-        file_records.append({
-            "path": name,
-            "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
-            "size": destination.stat().st_size,
-            "mode": mode,
-        })
-    manifest = {
-        "format_version": 2,
-        "created_at": "2026-01-01T00:00:00+00:00",
-        "databases": database_records,
-        "files": file_records,
-    }
-    (backup / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    backup = _legacy_backup(tmp_path, 2, runtime_files)
     assert verify_backup(backup)["format_version"] == 2
+    target = tmp_path / "target"
+    with pytest.raises(RuntimeError, match="requires --allow-legacy"):
+        restore_backup(backup, target)
+    restore_backup(
+        backup,
+        target,
+        allow_legacy_partial_new_lineage=True,
+    )
+    assert all((target / name).is_file() for name in runtime_files)
+    assert {
+        path.relative_to(target).as_posix()
+        for path in target.rglob("*.yaml")
+    } == set(runtime_files)
+    assert {
+        path.value
+        for path in MANAGED_PATH_ORDER
+        if os.path.lexists(target / path.value)
+    } == {
+        "action_history.db",
+        "provider_intelligence.db",
+        *runtime_files,
+    }
+    assert not (target / ".atlas-restore").exists()
 
 
 def test_backup_wrapper_keeps_incomplete_publication_private() -> None:

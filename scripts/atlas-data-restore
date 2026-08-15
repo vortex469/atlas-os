@@ -17,9 +17,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if [[ $# -ne 2 || "$2" != "--confirm" ]]; then
-    echo "Usage: $0 BACKUP_DIRECTORY --confirm" >&2
+if [[ $# -lt 2 || $# -gt 3 || "$2" != "--confirm" ]]; then
+    echo "Usage: $0 BACKUP_DIRECTORY --confirm [--allow-legacy-partial-new-lineage]" >&2
     exit 2
+fi
+legacy_restore_option=()
+if [[ $# -eq 3 ]]; then
+    if [[ "$3" != "--allow-legacy-partial-new-lineage" ]]; then
+        echo "Unknown restore option: $3" >&2
+        exit 2
+    fi
+    legacy_restore_option=("--allow-legacy-partial-new-lineage")
 fi
 
 for executable in docker realpath python3; do
@@ -63,6 +71,23 @@ if [[ -n "$attached_containers" ]]; then
     echo "$attached_containers" >&2
     exit 1
 fi
+
+# Refuse unsafe legacy partial restores before target preparation changes modes
+# or creates managed parent directories. The restore command repeats this check.
+docker run \
+    --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges:true \
+    --user 0:0 \
+    --mount "type=bind,src=$BACKUP_DIRECTORY,dst=/backup,readonly" \
+    --mount "type=volume,src=$DATA_VOLUME,dst=/target,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/atlas-data-tool.py,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_restore_transaction.py,dst=/atlas_data_restore_transaction.py,readonly" \
+    "$PYTHON_IMAGE" \
+    python /atlas-data-tool.py check-restore-target /backup /target "${legacy_restore_option[@]}"
 
 if docker volume inspect "$STAGING_VOLUME" >/dev/null 2>&1; then
     echo "Refusing to reuse restore staging volume: $STAGING_VOLUME" >&2
@@ -116,6 +141,6 @@ docker run \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_restore_transaction.py,dst=/atlas_data_restore_transaction.py,readonly" \
     "$PYTHON_IMAGE" \
-    python /atlas-data-tool.py restore /staging/backup /target
+    python /atlas-data-tool.py restore /staging/backup /target "${legacy_restore_option[@]}"
 
 echo "Atlas data volume restored: $DATA_VOLUME"

@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import sqlite3
+import stat
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 
@@ -644,8 +645,82 @@ def atomic_restore_file(source: Path, target: Path, mode: int = 0o600) -> None:
     os.replace(temporary_path, target)
 
 
-def restore_backup(backup: Path, target: Path) -> None:
+def _legacy_path_is_populated(target: Path, relative_path: str) -> bool:
+    current = target
+    parts = Path(relative_path).parts
+    for index, part in enumerate(parts):
+        current /= part
+        try:
+            current_stat = current.lstat()
+        except FileNotFoundError:
+            return False
+        if index == len(parts) - 1:
+            return True
+        if not stat.S_ISDIR(current_stat.st_mode):
+            return True
+    return False
+
+
+def legacy_restore_conflicts(target: Path) -> tuple[str, ...]:
+    try:
+        target_stat = target.lstat()
+    except FileNotFoundError:
+        return ()
+    if not stat.S_ISDIR(target_stat.st_mode):
+        raise RuntimeError("legacy restore target root must be a real directory")
+
+    conflicts: list[str] = []
+    for managed_path in MANAGED_PATH_ORDER:
+        relative_path = managed_path.value
+        if _legacy_path_is_populated(target, relative_path):
+            conflicts.append(relative_path)
+        if relative_path not in RUNTIME_FILES:
+            for suffix in ("-wal", "-shm"):
+                sidecar = f"{relative_path}{suffix}"
+                if _legacy_path_is_populated(target, sidecar):
+                    conflicts.append(sidecar)
+    return tuple(conflicts)
+
+
+def validate_restore_target(
+    backup: Path,
+    target: Path,
+    *,
+    allow_legacy_partial_new_lineage: bool,
+) -> dict[str, object]:
     manifest = verify_backup(backup)
+    if manifest.get("format_version") == V3_FORMAT_VERSION:
+        if allow_legacy_partial_new_lineage:
+            raise RuntimeError(
+                "--allow-legacy-partial-new-lineage is valid only for "
+                "legacy v1/v2 backups"
+            )
+        return manifest
+    if not allow_legacy_partial_new_lineage:
+        raise RuntimeError(
+            "legacy v1/v2 partial restore requires "
+            "--allow-legacy-partial-new-lineage"
+        )
+    conflicts = legacy_restore_conflicts(target)
+    if conflicts:
+        raise RuntimeError(
+            "legacy v1/v2 partial restore requires a managed-empty target; "
+            f"conflicting managed paths: {', '.join(conflicts)}"
+        )
+    return manifest
+
+
+def restore_backup(
+    backup: Path,
+    target: Path,
+    *,
+    allow_legacy_partial_new_lineage: bool = False,
+) -> None:
+    manifest = validate_restore_target(
+        backup,
+        target,
+        allow_legacy_partial_new_lineage=allow_legacy_partial_new_lineage,
+    )
     if manifest.get("format_version") == V3_FORMAT_VERSION:
         try:
             from atlas_data_restore_transaction import (
@@ -959,6 +1034,20 @@ def parse_args() -> argparse.Namespace:
     restore_parser = subparsers.add_parser("restore")
     restore_parser.add_argument("backup", type=Path)
     restore_parser.add_argument("target", type=Path)
+    restore_parser.add_argument(
+        "--allow-legacy-partial-new-lineage",
+        action="count",
+        default=0,
+    )
+
+    check_restore_parser = subparsers.add_parser("check-restore-target")
+    check_restore_parser.add_argument("backup", type=Path)
+    check_restore_parser.add_argument("target", type=Path)
+    check_restore_parser.add_argument(
+        "--allow-legacy-partial-new-lineage",
+        action="count",
+        default=0,
+    )
 
     prune_parser = subparsers.add_parser("prune")
     prune_parser.add_argument("backup_root", type=Path)
@@ -974,7 +1063,10 @@ def parse_args() -> argparse.Namespace:
     )
     prune_parser.add_argument("--dry-run", action="store_true")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if getattr(args, "allow_legacy_partial_new_lineage", 0) > 1:
+        parser.error("--allow-legacy-partial-new-lineage may be specified only once")
+    return args
 
 
 def main() -> None:
@@ -1016,8 +1108,23 @@ def main() -> None:
     elif args.command == "chown":
         apply_owner(args.path, args.uid, args.gid)
     elif args.command == "restore":
-        restore_backup(args.backup, args.target)
+        restore_backup(
+            args.backup,
+            args.target,
+            allow_legacy_partial_new_lineage=(
+                args.allow_legacy_partial_new_lineage == 1
+            ),
+        )
         print("Backup restored and verified")
+    elif args.command == "check-restore-target":
+        validate_restore_target(
+            args.backup,
+            args.target,
+            allow_legacy_partial_new_lineage=(
+                args.allow_legacy_partial_new_lineage == 1
+            ),
+        )
+        print("Restore target preflight passed")
     else:
         prune_backups(
             args.backup_root,
