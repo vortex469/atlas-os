@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     getWorkflowDetail,
+    getWorkflowOperationalLifecycle,
     resumeWorkflow,
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
@@ -11,10 +12,12 @@ import {
 } from "../api/atlas-agent";
 import { WorkflowPage } from "./WorkflowPage";
 import type { WorkflowDetailResponse } from "../types/atlasAgent";
+import { operationalLifecycle } from "../test/operationalLifecycle";
 
 vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowDetail: vi.fn(),
+    getWorkflowOperationalLifecycle: vi.fn(),
     resumeWorkflow: vi.fn(),
     submitWorkflowCommitApproval: vi.fn(),
     submitWorkflowImplementationApproval: vi.fn(),
@@ -22,6 +25,7 @@ vi.mock("../api/atlas-agent", () => ({
 }));
 
 const mockedGetWorkflowDetail = vi.mocked(getWorkflowDetail);
+const mockedGetWorkflowOperationalLifecycle = vi.mocked(getWorkflowOperationalLifecycle);
 const mockedResumeWorkflow = vi.mocked(resumeWorkflow);
 const mockedSubmitWorkflowCommitApproval = vi.mocked(submitWorkflowCommitApproval);
 const mockedSubmitWorkflowImplementationApproval = vi.mocked(submitWorkflowImplementationApproval);
@@ -167,6 +171,7 @@ describe("WorkflowPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetWorkflowDetail.mockResolvedValue(workflow());
+        mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle());
         mockedResumeWorkflow.mockResolvedValue(undefined);
     });
 
@@ -471,6 +476,26 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("heading", { name: "Verification Plan" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Commit Request" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Operational lifecycle" })).toBeInTheDocument();
+        expect(screen.getAllByText("resolved (approved)")).toHaveLength(2);
+    });
+
+    it("never loads operational lifecycle for a repository workflow", async () => {
+        renderPage();
+
+        await screen.findByRole("heading", { name: "Implementation approval" });
+        expect(mockedGetWorkflowOperationalLifecycle).not.toHaveBeenCalled();
+        expect(screen.queryByRole("heading", { name: "Operational lifecycle" })).not.toBeInTheDocument();
+    });
+
+    it("deterministically refreshes workflow and operational lifecycle together", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Refresh lifecycle" }));
+
+        await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
+        expect(mockedGetWorkflowOperationalLifecycle).toHaveBeenCalledTimes(2);
     });
 
     it("shows workflow not found", async () => {

@@ -4,12 +4,14 @@ import { Link, useParams } from "react-router-dom";
 import {
     getAtlasAgentErrorMessage,
     getWorkflowDetail,
+    getWorkflowOperationalLifecycle,
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
     submitWorkflowVerificationApproval,
     resumeWorkflow,
 } from "../api/atlas-agent";
 import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
+import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePanel";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import type {
     WorkflowDetailResponse,
@@ -17,6 +19,7 @@ import type {
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
     WorkflowVerificationApprovalResponse,
+    WorkflowOperationalLifecycle,
 } from "../types/atlasAgent";
 import { fallbackWorkflowRailStages, workflowRailStages } from "../utils/workflowState";
 
@@ -39,6 +42,8 @@ export function WorkflowPage() {
     const [commitApprovalResult, setCommitApprovalResult] = useState<WorkflowCommitApprovalResponse | null>(null);
     const [isResuming, setIsResuming] = useState(false);
     const [resumeError, setResumeError] = useState<string | null>(null);
+    const [operationalLifecycle, setOperationalLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
+    const [lifecycleError, setLifecycleError] = useState<string | null>(null);
 
     const loadWorkflow = useCallback(async (mode: LoadMode = "initial") => {
         if (mode === "initial") setIsLoading(true);
@@ -47,6 +52,21 @@ export function WorkflowPage() {
         try {
             const detail = await getWorkflowDetail(workflowId);
             setWorkflow(detail);
+            setLifecycleError(null);
+            if (detail?.effect_kind === "operational_action") {
+                try {
+                    const lifecycle = await getWorkflowOperationalLifecycle(workflowId);
+                    setOperationalLifecycle(lifecycle);
+                    if (lifecycle === null) {
+                        setLifecycleError("The operational lifecycle is no longer available for this workflow.");
+                    }
+                } catch {
+                    setOperationalLifecycle(null);
+                    setLifecycleError("Mission Control could not read the operational lifecycle.");
+                }
+            } else {
+                setOperationalLifecycle(null);
+            }
         } catch (error) {
             setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
         } finally {
@@ -60,12 +80,12 @@ export function WorkflowPage() {
     }, [loadWorkflow]);
 
     useEffect(() => {
-        if (workflow?.workflow_state !== "executing") return undefined;
+        if (workflow?.workflow_state !== "executing" && operationalLifecycle?.terminal !== false) return undefined;
         const interval = window.setInterval(() => {
             void loadWorkflow("refresh");
         }, 5_000);
         return () => window.clearInterval(interval);
-    }, [loadWorkflow, workflow?.workflow_state]);
+    }, [loadWorkflow, operationalLifecycle?.terminal, workflow?.workflow_state]);
 
     function refreshWorkflow() {
         if (isRefreshing) return;
@@ -246,6 +266,16 @@ export function WorkflowPage() {
             </section>
 
             {isRepository && <ImplementationRequestSection workflow={workflow} />}
+
+            {isOperational && (
+                <OperationalLifecyclePanel
+                    lifecycle={operationalLifecycle}
+                    isLoading={operationalLifecycle === null && lifecycleError === null}
+                    isRefreshing={isRefreshing}
+                    error={lifecycleError}
+                    onRefresh={refreshWorkflow}
+                />
+            )}
 
             <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} onRefresh={refreshWorkflow} />
 

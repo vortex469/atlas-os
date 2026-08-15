@@ -31,6 +31,23 @@ def test_repository_workflow_lifecycle_is_not_applicable(tmp_path, monkeypatch) 
     assert response.json()["availability"] == "not_applicable"
 
 
+def test_workflow_history_filter_returns_only_operational_effect(tmp_path, monkeypatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    save_candidate_workflow(container, candidate_workflow_session(tmp_path))
+    operational = _session()
+    container.workflow_state.create_session(operational)
+
+    response = client.get(
+        "/api/v1/agent/workflows",
+        params={"effect_kind": "operational_action", "limit": 10},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["workflow_id"] == operational.identifier
+    assert response.json()["items"][0]["effect_kind"] == "operational_action"
+
+
 def test_completed_operational_lifecycle_preserves_owner_states(tmp_path, monkeypatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     session = _session()

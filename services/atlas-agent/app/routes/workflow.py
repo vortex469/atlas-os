@@ -562,6 +562,8 @@ class WorkflowSummaryResponse(BaseModel):
     workflow_id: str
     workflow_source: str
     workflow_state: str
+    effect_kind: str
+    execution_intent: str | None
     candidate_id: str | None
     planning_session_id: str | None
     repository: str | None
@@ -1610,6 +1612,8 @@ def _workflow_summary(request: Request, workflow) -> WorkflowSummaryResponse:
         workflow_id=workflow.identifier,
         workflow_source=workflow.source.value,
         workflow_state=workflow.state.value,
+        effect_kind=workflow.effect_kind.value,
+        execution_intent=metadata.execution_intent if metadata else None,
         candidate_id=metadata.candidate_id if metadata else None,
         planning_session_id=(
             metadata.candidate_planning_session_id if metadata else None
@@ -1628,10 +1632,13 @@ def _workflow_summary_matches(
     source: str | None,
     candidate_id: str | None,
     workflow_id: str | None,
+    effect_kind: str | None,
 ) -> bool:
     if state and item.workflow_state != state:
         return False
     if source and item.workflow_source != source:
+        return False
+    if effect_kind and item.effect_kind != effect_kind:
         return False
     if candidate_id and candidate_id.lower() not in (item.candidate_id or "").lower():
         return False
@@ -1769,6 +1776,7 @@ async def list_workflows(
     source: str | None = None,
     candidate_id: str | None = None,
     workflow_id: str | None = None,
+    effect_kind: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> WorkflowListResponse:
@@ -1790,6 +1798,7 @@ async def list_workflows(
             source=source,
             candidate_id=candidate_id,
             workflow_id=workflow_id,
+            effect_kind=effect_kind,
         )
     ]
     filtered.sort(key=lambda item: item.workflow_id)

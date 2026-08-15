@@ -10,6 +10,7 @@ import { ActionHistoryDetailPage } from "../pages/ActionHistoryDetailPage";
 import { MissionControlPage } from "../pages/MissionControlPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OperationsPage } from "../pages/OperationsPage";
+import { OperationalHistoryPage } from "../pages/OperationalHistoryPage";
 import { MaintenanceRequestPage } from "../pages/MaintenanceRequestPage";
 import { OperatorLoginPage } from "../pages/OperatorLoginPage";
 import { PlanningSessionPage } from "../pages/PlanningSessionPage";
@@ -34,6 +35,10 @@ export const router = createBrowserRouter([
             {
                 path: "operations/request",
                 element: <MaintenanceRequestPage />,
+            },
+            {
+                path: "operations/history",
+                element: <OperationalHistoryPage />,
             },
             {
                 path: "operations/actions/:auditId",

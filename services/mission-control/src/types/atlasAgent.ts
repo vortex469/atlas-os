@@ -490,6 +490,8 @@ export interface WorkflowSummary {
     workflow_id: string;
     workflow_source: WorkflowSource;
     workflow_state: WorkflowState;
+    effect_kind: "repository_change" | "operational_action";
+    execution_intent: string | null;
     candidate_id: string | null;
     planning_session_id: string | null;
     repository: string | null;
@@ -510,6 +512,7 @@ export interface WorkflowListQuery {
     source?: string;
     candidate_id?: string;
     workflow_id?: string;
+    effect_kind?: "repository_change" | "operational_action";
     limit?: number;
     offset?: number;
 }
