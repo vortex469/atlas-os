@@ -371,6 +371,13 @@ connection overrides, and provider connection secrets. The tracked
 `config/policies.yaml`, `config/atlas.yaml`, and `inventory/services.yaml`
 files remain immutable defaults or legacy fallback sources.
 
+> **Historical procedure boundary:** The v0.6 through v0.10 upgrade sections
+> below record the tooling and data contracts available to those releases.
+> Their format-v1/v2 “Atlas data backup” artifacts are legacy-partial, not
+> complete Core generations, and current v0.11 tooling will not overlay them on
+> populated managed state. Do not reuse those procedures for a v0.11 downgrade;
+> follow [Atlas v0.10.0 to v0.11 rollback and re-upgrade lineage](#atlas-v0100-to-v011-rollback-and-re-upgrade-lineage).
+
 ## Atlas v0.6.0 upgrade and manual rollback
 
 Atlas v0.6 operations are upgraded and rolled back manually. V0.6 does not
@@ -1233,6 +1240,110 @@ docker compose \
 Existing TLS, Edge `htpasswd`, and operator-verifier files remain private and
 may stay in place; v0.9.0 uses the same hardened three-file deployment.
 
+## Atlas v0.10.0 to v0.11 rollback and re-upgrade lineage
+
+The supported v0.10 starting point is immutable release `atlas-v0.10.0` at
+`b19ded149f65dfb4043a1b80833e5ff64d83e55d`. A safe downgrade from v0.11 is a
+paired code-and-data rollback to a preserved v0.10 generation. It is **not** a
+Git checkout against current v0.11 state, a format-v2 restore treated as
+complete, or a format-v3 restore followed by a v0.10 start.
+
+Before upgrading, retain all of the following as one externally recorded
+downgrade anchor:
+
+- a verified offline snapshot of the complete v0.10 `atlas-data` volume;
+- a coordinated offline snapshot of `atlas-agent-state`;
+- the exact v0.10 release SHA or immutable image identity;
+- snapshot identifiers, timestamps, and checksums;
+- a pre-upgrade format-v2 backup as supplemental legacy-partial evidence, not
+  as the complete Core recovery point; and
+- operational-ledger review evidence proving that restoring the snapshots will
+  not forget safety-critical request identity or dispatch history.
+
+Core backup format v3 does not contain `atlas-agent-state`. Every fail-safe
+downgrade or re-upgrade therefore requires a compatible paired Agent snapshot;
+a Core backup alone is not a whole-stack rollback.
+
+### Roll back v0.11 to the preserved v0.10 generation
+
+1. Stop new operator and automated mutation activity.
+2. Stop and detach every Core and Agent container that uses either persistent
+   volume. Stopped attached containers also block the restore wrapper.
+3. Preserve complete offline snapshots of the current v0.11 Core and Agent
+   state before changing either lineage.
+4. Compare operational activity since the v0.10 rollback snapshot with the
+   retained ledger evidence. Block ordinary rollback if the old generation
+   would forget a crossed dispatch barrier, an ambiguous result, a request
+   identity, or other evidence needed to prevent replay.
+5. Restore the paired pre-upgrade v0.10 `atlas-data` and `atlas-agent-state`
+   snapshots using the approved offline volume-snapshot mechanism. Do not use a
+   legacy-partial backup as a replacement for the complete Core snapshot.
+6. While services remain stopped, invalidate sessions by removing
+   `operator_sessions.db`, `operator_sessions.db-wal`, and
+   `operator_sessions.db-shm`, unless the Core snapshot was explicitly captured
+   after session invalidation. Never resurrect sessions from either lineage.
+7. Start only the exact accepted v0.10 release or immutable images recorded
+   with the downgrade anchor.
+8. Retain the preserved v0.11 Core and Agent state until an explicit re-upgrade
+   lineage decision is recorded.
+
+Never restore an Atlas Core format-v3 backup and then start Atlas v0.10 against
+that volume. V0.10 does not understand v3 completeness and restore semantics,
+lacks the v0.11 startup restore interlock, cannot interpret future Provider
+Intent authority, and may interpret operational evidence under incompatible
+assumptions. Restore the preserved pre-upgrade v0.10 snapshots instead.
+
+### Operational rollback review
+
+Request state alone is not sufficient: the selected rollback generation must
+retain request identity and no-replay evidence wherever losing it could make an
+old request appear fresh.
+
+- `claimed` or `revalidated`: no provider mutation barrier is known to have
+  been crossed, but rollback remains unsafe if the request identity disappears
+  and could later be accepted as new.
+- `dispatching`: ordinary rollback is blocked. Current recovery semantics
+  reconcile it to `outcome_unknown` without replay.
+- `outcome_unknown`: require explicit operator review and read-only provider
+  verification. Never retry automatically.
+- `succeeded` or `verifying`: preserve the evidence and finish read-only
+  verification before ordinary rollback.
+- terminal states: the rollback generation must still retain identity and
+  no-replay evidence when losing it could permit replay.
+
+Monitoring intent, historical records, or restored state never creates new
+approval or execution authority.
+
+### Choose one re-upgrade lineage
+
+The two safe choices are mutually exclusive. Atlas does not merge lineages
+automatically.
+
+**Resume the preserved v0.11 lineage:** restore the preserved v0.11 Core state
+or accepted v3 backup, restore its matching Agent snapshot, and run a compatible
+v0.11 release. Abandon activity performed on the temporary rolled-back v0.10
+lineage.
+
+**Continue the rolled-back v0.10 lineage:** treat the restored v0.10 state and
+all subsequent v0.10 activity as authoritative. Before upgrading, take a new
+complete Core volume snapshot and matching Agent snapshot, upgrade forward
+normally, and establish a new accepted v3 recovery point. Do not overlay or
+merge the old preserved v0.11 state.
+
+Record lineage externally rather than adding a runtime marker. Evidence must
+include immutable snapshot IDs, backup IDs and checksums, timestamps, release
+SHA or image digest, the paired Core/Agent relationship, and the operational
+ledger review.
+
+Pin these anchors for the supported downgrade window so generic retention does
+not prune them:
+
+- the pre-upgrade v0.10 full Core volume snapshot and matching Agent snapshot;
+- the pre-upgrade v2 export as supplemental evidence;
+- the first accepted v0.11 v3 backup and its matching Agent snapshot;
+- complete v0.11 Core and Agent snapshots captured before any rollback; and
+- normal rolling verified v3 backups.
+
 ## Back up and restore data
 
 Create a consistent online backup while Atlas remains available:
@@ -1249,14 +1360,44 @@ separate media:
 ./scripts/atlas-data-backup /mnt/atlas-backups
 ```
 
-Format-v3 backups are complete Atlas Core recovery sets. They contain action
-history, provider intelligence, the operational dispatch safety ledger,
-operator intents, the conditional operator security audit, runtime policies,
-provider connection configuration, and provider secrets. The manifest records
-required, conditionally absent, invalidated, and pre-activation stores with
-sizes and SHA-256 checksums. Operator sessions are excluded and invalidated
-during restore. The pre-activation Provider Intent Store is also required
-absent and is not created by restore or normal Core startup.
+Backup compatibility is determined by the manifest schema, format version,
+completeness semantics, Provider Intent activation semantics, and the restore
+tool's declared supported-format set. Do not infer compatibility from a backup
+directory name or assume an arbitrary future release can restore a current
+format.
+
+| Restoring Atlas release | Format v1 | Format v2 | Format v3 |
+| --- | --- | --- | --- |
+| v0.6.0 through v0.10.0 | supported, `legacy_partial` | supported, `legacy_partial` | unsupported |
+| v0.11 | supported, `legacy_partial` | supported, `legacy_partial` | supported, Core `complete` |
+
+Format v1 contains only `action_history.db` and
+`provider_intelligence.db`. Format v2 contains those databases plus only the
+runtime YAML files represented in that backup. Neither format is a complete
+Core recovery point.
+
+Format v3 is complete for the declared Atlas Core managed durable-state
+boundary. Its required state is:
+
+- `action_history.db`;
+- `provider_intelligence.db`;
+- `operational_dispatch.db`;
+- `operator_intents.db`;
+- `config/policies.yaml`;
+- `config/provider-connections.yaml`; and
+- `secrets/provider-connections.yaml`.
+
+`operator_security_audit.db` is conditional on operator-auth initialization.
+`operator_sessions.db` is deliberately excluded and invalidated on restore.
+While `provider_intent_activation=not_activated`, `provider_intents.db` is
+required absent and is not created by restore or normal Core startup. The
+manifest records required, conditionally absent, invalidated, and
+pre-activation stores with sizes and SHA-256 checksums.
+
+Core `complete` does not mean a whole-system backup. Format v3 excludes
+`atlas-agent-state`, external provider and infrastructure state, the repository
+and worktree, container images, host state outside managed Core paths, remote
+deployments, caches, and other disposable state.
 
 The command uses SQLite's online backup API, so WAL-mode writes can continue
 without producing an inconsistent database copy. Runtime files are checked by
@@ -1309,10 +1450,32 @@ journal manually. Restored files are `10001:10001` mode `0600`, and managed
 private directories are mode `0700`. Unmanaged cache, history, knowledge,
 provider, and root files are not recursively changed or removed.
 
-Version-1 and version-2 backups remain valid legacy-partial restores. Missing
+Version-1 and version-2 restore is allowed only onto a managed-empty Core target
+and requires both normal confirmation and explicit acknowledgement:
+
+```bash
+./scripts/atlas-data-restore \
+  /mnt/atlas-backups/atlas-data-YYYYMMDDTHHMMSSZ \
+  --confirm \
+  --allow-legacy-partial-new-lineage
+```
+
+Verification and container-attachment checks still apply. Restore refuses if
+any managed Core path or any managed SQLite `-wal` or `-shm` sidecar exists;
+the acknowledgement cannot override populated state. A successful restore
+creates a new partial lineage, restores only the two v1 databases and, for v2,
+only represented runtime YAML, and is not complete disaster recovery. Missing
 runtime policy or provider connection files may still be initialized from
 immutable templates or empty validated stores on later startup. Set
 `ATLAS_DATA_VOLUME` only for a non-default Compose volume name.
+
+When Provider Intent becomes authoritative, an activated v3 backup must include
+`provider_intents.db` and a missing store must fail closed. Downgrade to a
+release without Provider Intent support will require a preserved pre-activation
+lineage; do not delete `provider_intents.db` to manufacture compatibility. Old
+YAML expectations must not automatically regain authority, and legacy shadow
+import remains separate from restore mechanics. Provider Intent is not
+activated in the current release.
 
 ### Schedule backups
 
