@@ -60,7 +60,7 @@ from reusable or mutable fields. LXC remains unsupported and non-requestable.
 
 - [Atlas v0.8.0 to v0.9 upgrade and rollback](docs/DEPLOYMENT.md#atlas-v080-to-v09-upgrade-and-rollback)
 
-## Atlas v0.10 RC1 promotion
+## Atlas v0.10.0
 
 Atlas v0.10 has the theme **Discovery-to-Operator Proposal Handoff**. P0 through
 P5 are complete. Atlas turns trusted Discovery and Orion advisory
@@ -78,8 +78,13 @@ capability, selector, resource, and fingerprint authority. The immutable
 `atlas-v0.10-rc1` tag at
 `95d98a4d5e0e9767dd6cb5df06c7ffdb693bf162` passed exact-SHA CI,
 release-evidence validation, no-cache production deployment, proposal-boundary
-acceptance, and sequential restart soak. RC1 is accepted for final promotion;
-the final `atlas-v0.10.0` tag remains pending.
+acceptance, and sequential restart soak. The immutable `atlas-v0.10.0` release
+was published at `b19ded149f65dfb4043a1b80833e5ff64d83e55d`.
+
+Atlas v0.11 has the theme **Provider Management Framework — Identity-Bound
+Runtime Intent**. Its initial write direction is limited to Proxmox QEMU
+monitoring intent; it does not widen provider-action, operational, or
+repository execution authority. See the [v0.11 roadmap](ROADMAP.md#atlas-v011-roadmap).
 
 - [Atlas v0.9.0 to v0.10 upgrade and rollback](docs/DEPLOYMENT.md#atlas-v090-to-v010-upgrade-and-rollback)
 

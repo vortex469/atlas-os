@@ -6,6 +6,11 @@ release boundaries.
 
 ## Unreleased
 
+Atlas v0.11 is a documentation-only architecture milestone defining the
+Provider Management Framework boundary for identity-bound runtime intent.
+
+## atlas-v0.10.0 — Atlas v0.10.0 (2026-08-15)
+
 Atlas v0.10 implements a sanitized, stale-aware Discovery-to-Operator Proposal
 Handoff without expanding execution authority.
 
@@ -28,8 +33,8 @@ Handoff without expanding execution authority.
   fingerprint. Proposal hints are presentation-only.
 - Production mutation remains exactly `restart-service/proxmox/qemu`; LXC and
   all other mutation tuples remain unsupported. The immutable
-  `atlas-v0.10-rc1` candidate is accepted for final promotion; the final tag is
-  pending.
+  `atlas-v0.10.0` release was published at
+  `b19ded149f65dfb4043a1b80833e5ff64d83e55d`.
 
 ### RC1 validation
 

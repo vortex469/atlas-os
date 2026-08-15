@@ -234,16 +234,15 @@ Current
 
 # Current Sprint
 
-Atlas v0.9 — Operational Recovery and Evidence Automation
+Atlas v0.11 — Provider Management Framework — Identity-Bound Runtime Intent
 
 Active major milestone
 
-- Prepare the completed V0.9-P0 through V0.9-P5 scope for RC selection.
-- Preserve the successful fail-closed LXC identity NO-GO and Provider
-  Management Framework/Discovery Center ownership boundaries.
-- Keep the existing QEMU tuple unchanged while validating read-only recovery
-  diagnostics, support evidence, release checks, and operator UX for RC
-  preparation.
+- Complete V0.11-P0 as a documentation/architecture milestone.
+- Separate provider intent from legacy/generic provider actions and hardened
+  operational dispatch.
+- Limit the initial future write direction to identity-bound Proxmox QEMU
+  monitoring intent without widening any execution boundary.
 
 Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the tracked template and then treats runtime state as authoritative. Mission Control changes must not dirty the Git checkout.
 
@@ -419,5 +418,23 @@ Agent state changed. The immutable `atlas-v0.10-rc1` tag (tag object
 source/image parity, proposal non-authority acceptance, and sequential service
 restart soak passed. The existing workflow remained terminal and verified,
 exactly-once and VM reboot counts were unchanged, and production capability
-remained exactly `restart-service/proxmox/qemu`. RC1 is accepted for final
-promotion; `atlas-v0.10.0` remains pending.
+remained exactly `restart-service/proxmox/qemu`. The immutable
+`atlas-v0.10.0` release was published at
+`b19ded149f65dfb4043a1b80833e5ff64d83e55d`.
+
+## Atlas v0.11 scope
+
+Provider intent is durable control-plane monitoring/policy state, not
+infrastructure execution. Provider actions remain the existing legacy/generic
+subsystem and are not equivalent to hardened operational dispatch; v0.11 does
+not expand them. Operational production execution remains exactly
+`restart-service / proxmox / qemu`; repository execution remains
+`update-compose-stack`.
+
+For identity-capable resources, intent must bind to provider-authoritative
+incarnation identity rather than reusable coordinates. A reused Proxmox QEMU
+VMID must not inherit intent when its authoritative identity changes. LXC has
+no accepted authoritative incarnation identity, remains unsupported for
+operational execution, and receives no synthetic identity. Discovery proposals
+remain sanitized, advisory, non-authoritative, and incapable of directly
+creating policy or execution authority.

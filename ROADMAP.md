@@ -526,8 +526,8 @@ production deployment with source/image parity, proposal redaction and
 non-authority acceptance, and sequential Core, Mission Control, Agent, and Edge
 restart soak. Capability parity remained exactly
 `restart-service/proxmox/qemu`; the existing verified workflow and exactly-once
-counts were unchanged. RC1 is accepted for final promotion. Only creation and
-publication of `atlas-v0.10.0` remain pending.
+counts were unchanged. The immutable `atlas-v0.10.0` release was published at
+`b19ded149f65dfb4043a1b80833e5ff64d83e55d`.
 
 ### V0.10 non-goals
 
@@ -548,3 +548,123 @@ controlled status/reason enums, canonical fingerprinting, time/bounds
 validation, and deterministic identity/staleness/security tests. It adds no API,
 persistence, UI, candidate, operator-intent or Agent integration, provider call,
 or mutation.
+
+## Atlas v0.11 roadmap
+
+**Theme: Provider Management Framework — Identity-Bound Runtime Intent**
+
+Objective: establish a provider-management control plane in which durable user
+intent is bound to the provider-authoritative incarnation of a managed
+resource. The initial supported write direction is narrowly limited to Proxmox
+QEMU monitoring intent until the identity and authenticated mutation contracts
+prove safe; no other provider or resource type supports provider-intent writes.
+The dependency order is
+`V0.11-P0 → V0.11-P1 → V0.11-P2 → V0.11-P3 → V0.11-P4 → V0.11-P5`.
+
+### Mutation and control boundaries
+
+Provider intent is control-plane monitoring and policy state. It records what
+Atlas should monitor or expect and is not infrastructure execution. Provider
+actions are the existing legacy/generic provider-action subsystem; they are not
+equivalent to hardened operational dispatch, and v0.11 does not expand them.
+Operational production execution remains exactly `restart-service / proxmox /
+qemu`, while repository execution remains the separate
+`update-compose-stack` workflow.
+
+For identity-capable managed resources, persisted intent must eventually bind
+to provider-authoritative incarnation identity rather than reusable provider
+coordinates alone. For Proxmox QEMU, a reused VMID must not silently inherit
+intent after the authoritative incarnation identity changes. LXC has no
+accepted authoritative incarnation identity, remains unsupported for
+operational execution, and receives no synthetic identity.
+
+Discovery proposals remain advisory, sanitized, non-authoritative, and unable
+to directly create policy or execution authority. Proposal navigation or
+content cannot authorize a provider-intent write or couple Discovery to
+dispatch.
+
+### V0.11-P0 — Release-state and provider-management boundary
+
+**Status: complete when this documentation milestone is accepted.**
+
+- Goal: reconcile final v0.10 state and define the authoritative v0.11 control,
+  identity, ownership, milestone, and scope boundaries.
+- Deliverables: final v0.10 release identity; provider-intent, provider-action,
+  operational, repository, identity, Discovery, dependency, and non-goal
+  contracts across authoritative documentation.
+- Non-goals: runtime code, tests, provider state, configuration, permissions,
+  gates, handlers, ACLs, or production execution changes.
+- Exit criteria: documentation agrees on final v0.10 state and the complete
+  v0.11 boundary without implying a new writable or executable capability.
+
+### V0.11-P1 — Provider-management descriptors and identity contracts
+
+- Goal: define provider-neutral management descriptors and explicit resource
+  incarnation identity contracts.
+- Deliverables: typed provider/resource capability descriptors, identity
+  support status, canonical identity binding inputs, and fail-closed QEMU
+  replacement semantics.
+- Non-goals: persistence, mutation routes, UI writes, provider actions, or
+  operational execution changes.
+- Exit criteria: contracts distinguish reusable coordinates from authoritative
+  incarnation identity and reject unsupported identity/write combinations.
+
+### V0.11-P2 — Durable identity-bound Provider Intent Store
+
+- Goal: persist provider intent as auditable runtime state bound to authoritative
+  resource incarnation identity.
+- Deliverables: versioned Provider Intent Store, atomic persistence, validation,
+  migration/backup behavior, and QEMU VMID-reuse protection.
+- Non-goals: mutation API, Mission Control editing, remediation, provider calls,
+  or LXC intent synthesis.
+- Exit criteria: intent survives restart, cannot transfer across a changed QEMU
+  incarnation, and fails closed for missing or unsupported identity.
+
+### V0.11-P3 — Authenticated provider-intent mutation boundary
+
+- Goal: permit explicit authorized changes to supported provider intent without
+  granting infrastructure execution authority.
+- Deliverables: authenticated and permission-checked mutation contract, exact
+  current-resource/identity revalidation, concurrency controls, audit evidence,
+  and narrow Proxmox QEMU monitoring-intent writes.
+- Non-goals: provider-action handlers, operational intents, execution gates,
+  automatic approval/application, arbitrary parameters, or Discovery authority.
+- Exit criteria: only an authenticated operator can mutate supported intent,
+  stale/replaced identities fail closed, and no provider operation is invoked.
+
+### V0.11-P4 — Coherent Mission Control provider experience
+
+- Goal: present provider resources, identity status, monitoring intent, actions,
+  and diagnostics without conflating their authority.
+- Deliverables: consistent Proxmox QEMU resource and monitoring-intent UX,
+  Needs Review and unsupported-identity states, explicit approval/review, and
+  clear separation from legacy actions and operational dispatch.
+- Non-goals: writes for other providers/resource types, bulk mutation,
+  execution controls, or conversational execution.
+- Exit criteria: UI tests prove only supported QEMU monitoring intent is
+  editable and no UI path implies automatic remediation or execution.
+
+### V0.11-P5 — Advisory policy suggestions and release acceptance
+
+- Goal: add reviewable suggestions and validate the complete identity-bound
+  provider-intent boundary for release.
+- Deliverables: advisory suggestion contracts and UX, explicit operator
+  application flow, boundary/security regressions, documentation, and release
+  acceptance evidence.
+- Non-goals: automatic approval, automatic policy application or remediation,
+  proposal-derived authority, rollback automation, or execution expansion.
+- Exit criteria: suggestions cannot mutate policy without explicit authenticated
+  operator action, replacement identity remains fail-closed, and execution,
+  permissions, gates, handlers, and ACLs retain pre-v0.11 parity.
+
+### V0.11 non-goals
+
+V0.11 excludes backup execution, restore execution, install-provider execution,
+update-image execution, new `restart-service` tuples, LXC operational execution,
+synthetic LXC identity, new provider mutation handlers, new operational intents,
+new execution-gate entries, Proxmox ACL expansion, arbitrary provider
+actions/parameters, monitoring intent automatically causing remediation,
+automatic approval, automatic policy application, proposal-derived authority,
+Discovery-to-dispatch coupling, automatic rollback, remote deployment,
+distributed orchestration, conversational execution, dynamic/community/private
+Discovery catalogs, semantic catalog search, and bulk policy mutation.

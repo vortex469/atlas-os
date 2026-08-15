@@ -81,3 +81,10 @@ The long-term direction is that users discover resources, set intent, review fin
 The Provider Management Framework is the planned product layer that applies these principles across Atlas providers. Its goal is to move provider management from file-first configuration to discoverable, reviewable, user-approved intent management in Mission Control. It sits on Atlas Runtime Foundation, which separates immutable defaults from mutable runtime state so normal Mission Control changes do not dirty the Git checkout.
 
 Initial work should distinguish clearly between current behavior and planned behavior. Atlas already has provider discovery, findings, policy loading, and Mission Control visibility in several areas. Atlas Runtime Foundation is the active architecture milestone that defines where user-owned state lives; the Provider Management Framework remains the subsystem that makes provider capabilities consistent, editable, and understandable for normal users.
+
+Provider intent is control-plane monitoring and policy state, not provider or
+infrastructure execution. For resources with authoritative incarnation
+identity, durable intent must bind to that identity rather than reusable
+provider coordinates alone. In particular, a reused Proxmox QEMU VMID must not
+silently inherit intent after `vmgenid`-backed authoritative identity changes.
+Atlas has no accepted equivalent for LXC and must not invent a synthetic one.

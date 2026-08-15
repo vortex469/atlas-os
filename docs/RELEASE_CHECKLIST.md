@@ -175,7 +175,8 @@ tuple `restart-service/proxmox/qemu`; LXC remains unsupported.
 - [x] Review v0.9.0-to-v0.10 upgrade, persistence, and rollback guidance.
 - [x] Create the immutable v0.10 RC tag.
 - [x] Complete exact-RC production deployment and restart soak.
-- [ ] Create and publish the final immutable `atlas-v0.10.0` tag.
+- [x] Create and publish the final immutable `atlas-v0.10.0` tag at
+  `b19ded149f65dfb4043a1b80833e5ff64d83e55d`.
 
 ### Atlas v0.10 RC1 promotion evidence — 2026-08-15
 
@@ -240,7 +241,23 @@ tuple `restart-service/proxmox/qemu`; LXC remains unsupported.
   `restart-service/proxmox/qemu`. No LXC tuple, new intent, handler, ACL
   expansion, or proposal-derived execution authority was introduced.
 - [x] RC1 is selected, immutable, exactly deployed, soaked, and accepted for
-  final promotion. Creation and publication of `atlas-v0.10.0` remain pending.
+  final promotion. The immutable `atlas-v0.10.0` release was published at
+  `b19ded149f65dfb4043a1b80833e5ff64d83e55d`.
+
+## Atlas v0.11 P0 architecture sign-off
+
+- [x] Record final `atlas-v0.10.0` release identity.
+- [x] Define the Provider Management Framework — Identity-Bound Runtime Intent
+  theme and P0 through P5 dependency order.
+- [x] Separate provider intent, legacy/generic provider actions, operational
+  dispatch, and repository execution authority.
+- [x] Limit the initial provider-intent direction to Proxmox QEMU monitoring
+  intent and require provider-authoritative incarnation identity binding.
+- [x] Preserve QEMU VMID-reuse protection, the LXC identity NO-GO, and the
+  advisory/non-authoritative Discovery proposal boundary.
+- [x] Record the complete v0.11 non-goal set without changing runtime code,
+  provider state, configuration, permissions, gates, handlers, ACLs, or
+  production execution.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

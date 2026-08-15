@@ -2,7 +2,7 @@
 
 Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. This roadmap describes direction and progress.
 
-## Current implementation status (as of Atlas v0.9.0)
+## Current implementation status (as of Atlas v0.10.0)
 
 Implemented:
 
@@ -15,7 +15,7 @@ Implemented:
 - D7 — Compatibility Engine
 - D8 — Orion Integration through deterministic intelligence findings consumed by the recommendation pipeline
 
-Active v0.10 objective:
+Completed in v0.10:
 
 - D9 — Atlas Agent Proposal and Navigation Handoff
 
@@ -287,8 +287,10 @@ candidate passed exact-SHA CI, live bounded proposal API acceptance, redaction,
 staleness and tampering tests, candidate-projector/non-authority regression,
 no-cache production deployment, and restart soak. Proposal IDs remained stable
 and no candidate, approval, action request, dispatch, provider operation, or VM
-reboot was created. D9 is accepted for final promotion; only publication of
-`atlas-v0.10.0` remains pending.
+reboot was created. D9 was released in immutable `atlas-v0.10.0` at
+`b19ded149f65dfb4043a1b80833e5ff64d83e55d`. Its proposals remain sanitized,
+advisory, non-authoritative, and incapable of directly creating provider
+policy or execution authority.
 
 ## D10 — Dynamic Source Adapters
 

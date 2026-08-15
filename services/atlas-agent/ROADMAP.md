@@ -513,8 +513,8 @@ or authority. The immutable `atlas-v0.10-rc1` candidate at
 release-evidence validation, exact-RC production deployment, proposal
 non-authority checks, and sequential restart soak. Agent state counts and the
 existing terminal verified workflow remained unchanged; no redispatch or
-provider mutation occurred. RC1 is accepted for final promotion, while the
-final `atlas-v0.10.0` tag remains pending.
+provider mutation occurred. The immutable `atlas-v0.10.0` release was
+published at `b19ded149f65dfb4043a1b80833e5ff64d83e55d`.
 
 ### Planned Phase 5
 

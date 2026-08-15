@@ -177,13 +177,21 @@ Atlas Runtime Foundation should support future stores without changing the immut
 Planned stores:
 
 - Provider Connection Store
-- Intent Store
+- Provider Intent Store
 - Discovery Store
 - Notification Store
 - User Settings Store
 - AI preference and learned-intent storage
 
 These stores may be files, SQLite databases, or another local durable backend. Regardless of storage engine, they belong under runtime state and must be covered by backup, restore, validation, and migration rules.
+
+The Provider Intent Store owns control-plane monitoring and policy intent; it
+does not own provider actions or infrastructure execution. For
+identity-capable managed resources, stored intent must bind to
+provider-authoritative incarnation identity, not reusable provider coordinates
+alone. Proxmox QEMU intent must fail closed when a reused VMID resolves to a
+different authoritative incarnation identity. LXC has no accepted identity for
+this purpose, and Atlas must not synthesize one.
 
 ## 11. Product rule
 
