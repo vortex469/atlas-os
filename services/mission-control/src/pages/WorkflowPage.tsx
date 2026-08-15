@@ -14,6 +14,7 @@ import {
 } from "../api/atlas-agent";
 import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
 import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePanel";
+import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import type {
     WorkflowDetailResponse,
@@ -49,6 +50,7 @@ export function WorkflowPage() {
     const [operationalLifecycle, setOperationalLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
     const [recoveryDiagnostic, setRecoveryDiagnostic] = useState<WorkflowRecoveryDiagnostic | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+    const [diagnosticError, setDiagnosticError] = useState<string | null>(null);
     const [supportBundle, setSupportBundle] = useState<OperationalSupportBundle | null>(null);
     const [isDownloadingSupport, setIsDownloadingSupport] = useState(false);
     const [supportBundleError, setSupportBundleError] = useState<string | null>(null);
@@ -61,18 +63,23 @@ export function WorkflowPage() {
             const detail = await getWorkflowDetail(workflowId);
             setWorkflow(detail);
             setLifecycleError(null);
+            setDiagnosticError(null);
             if (detail?.effect_kind === "operational_action") {
                 try {
                     const lifecycle = await getWorkflowOperationalLifecycle(workflowId);
                     setOperationalLifecycle(lifecycle);
-                    setRecoveryDiagnostic(await getWorkflowRecoveryDiagnostic(workflowId));
                     if (lifecycle === null) {
                         setLifecycleError("The operational lifecycle is no longer available for this workflow.");
                     }
                 } catch {
                     setOperationalLifecycle(null);
-                    setRecoveryDiagnostic(null);
                     setLifecycleError("Mission Control could not read the operational lifecycle.");
+                }
+                try {
+                    setRecoveryDiagnostic(await getWorkflowRecoveryDiagnostic(workflowId));
+                } catch {
+                    setRecoveryDiagnostic(null);
+                    setDiagnosticError("Mission Control could not read the recovery diagnostic.");
                 }
             } else {
                 setOperationalLifecycle(null);
@@ -103,7 +110,7 @@ export function WorkflowPage() {
         void loadWorkflow("refresh");
     }
 
-    async function downloadSupportEvidence() {
+    async function prepareSupportEvidence() {
         if (!workflow || workflow.effect_kind !== "operational_action" || isDownloadingSupport) return;
         setIsDownloadingSupport(true);
         setSupportBundleError(null);
@@ -114,6 +121,17 @@ export function WorkflowPage() {
                 return;
             }
             setSupportBundle(bundle);
+        } catch {
+            setSupportBundleError("Mission Control could not prepare sanitized support evidence.");
+        } finally {
+            setIsDownloadingSupport(false);
+        }
+    }
+
+    function downloadSupportEvidence() {
+        if (!supportBundle?.applicable) return;
+        try {
+            const bundle = supportBundle;
             const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
             const downloadUrl = URL.createObjectURL(blob);
             const anchor = document.createElement("a");
@@ -124,9 +142,7 @@ export function WorkflowPage() {
             anchor.remove();
             URL.revokeObjectURL(downloadUrl);
         } catch {
-            setSupportBundleError("Mission Control could not download sanitized support evidence.");
-        } finally {
-            setIsDownloadingSupport(false);
+            setSupportBundleError("Mission Control could not create the local evidence download.");
         }
     }
 
@@ -309,19 +325,24 @@ export function WorkflowPage() {
                 <>
                     <OperationalLifecyclePanel
                         lifecycle={operationalLifecycle}
-                        diagnostic={recoveryDiagnostic}
                         isLoading={operationalLifecycle === null && lifecycleError === null}
                         isRefreshing={isRefreshing}
                         error={lifecycleError}
                         onRefresh={refreshWorkflow}
                     />
+                    <OperationalRecoverySummary
+                        diagnostic={recoveryDiagnostic}
+                        isLoading={recoveryDiagnostic === null && diagnosticError === null}
+                        error={diagnosticError}
+                        supportEvidenceAvailable={operationalLifecycle !== null}
+                    />
                     <section aria-labelledby="support-evidence-heading" className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
                         <h2 id="support-evidence-heading" className="text-lg font-semibold text-white">Support evidence</h2>
                         <p className="mt-2 text-sm text-slate-300">Download one bounded, sanitized JSON projection. Nothing is uploaded or persisted by Mission Control.</p>
-                        <button type="button" onClick={() => void downloadSupportEvidence()} disabled={isDownloadingSupport} className="mt-4 rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">
-                            {isDownloadingSupport ? "Preparing support evidence..." : "Download support evidence"}
+                        <button type="button" onClick={() => void prepareSupportEvidence()} disabled={isDownloadingSupport} className="mt-4 rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">
+                            {isDownloadingSupport ? "Preparing support evidence..." : "Prepare support evidence"}
                         </button>
-                        {supportBundle && <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3"><div><dt className="text-slate-400">Schema</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div><div><dt className="text-slate-400">Generated</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div><div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div></dl>}
+                        {supportBundle && <><dl className="mt-4 grid gap-3 text-sm md:grid-cols-3"><div><dt className="text-slate-400">Schema</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div><div><dt className="text-slate-400">Generated</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div><div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div><div><dt className="text-slate-400">Partial or truncated</dt><dd className="text-slate-100">{supportBundle.lifecycle.availability !== "complete" || supportBundle.truncation.transitions_truncated || supportBundle.truncation.audit_references_truncated || supportBundle.truncation.text_fields_truncated.length > 0 ? "Yes" : "No"}</dd></div></dl><p className="mt-3 text-sm text-slate-300">The digest supports integrity and correlation only; it is not a signature. The bundle is sanitized and no upload occurs automatically.</p><button type="button" onClick={downloadSupportEvidence} className="mt-3 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950">Download support evidence</button></>}
                         {supportBundleError && <p role="alert" className="mt-3 text-sm text-red-100">{supportBundleError}</p>}
                     </section>
                 </>

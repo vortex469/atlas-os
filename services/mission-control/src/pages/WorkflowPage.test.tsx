@@ -500,7 +500,7 @@ describe("WorkflowPage", () => {
             service_health: [],
             capability_boundary: { production_tuples: ["restart-service/proxmox/qemu"], agent_execution_intents: ["restart-service"], parity_status: "not_evaluated" },
             audit_refs: [],
-            truncation: { transitions_truncated: false, audit_references_truncated: false, text_fields_truncated: [] },
+            truncation: { transitions_truncated: true, audit_references_truncated: false, text_fields_truncated: [] },
             integrity: { digest: "operational-support-bundle-digest-v1:abc", purpose: "integrity_and_correlation_only" },
         });
         const createObjectURL = vi.fn(() => "blob:support-evidence");
@@ -510,10 +510,16 @@ describe("WorkflowPage", () => {
         const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Download support evidence" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Prepare support evidence" }));
 
         await screen.findByText("atlas-operational-support-bundle-v1");
         expect(mockedGetWorkflowSupportBundle).toHaveBeenCalledWith("workflow-123");
+        expect(screen.getByText(/integrity and correlation only/i)).toBeInTheDocument();
+        expect(screen.getByText("Partial or truncated").nextElementSibling).toHaveTextContent("Yes");
+        expect(createObjectURL).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", { name: "Download support evidence" }));
+
         expect(createObjectURL).toHaveBeenCalledOnce();
         expect(click).toHaveBeenCalledOnce();
         expect(revokeObjectURL).toHaveBeenCalledWith("blob:support-evidence");
@@ -525,7 +531,11 @@ describe("WorkflowPage", () => {
 
         await screen.findByRole("heading", { name: "Implementation approval" });
         expect(mockedGetWorkflowOperationalLifecycle).not.toHaveBeenCalled();
+        expect(mockedGetWorkflowRecoveryDiagnostic).not.toHaveBeenCalled();
+        expect(mockedGetWorkflowSupportBundle).not.toHaveBeenCalled();
         expect(screen.queryByRole("heading", { name: "Operational lifecycle" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Support evidence" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Recovery summary")).not.toBeInTheDocument();
     });
 
     it("deterministically refreshes workflow and operational lifecycle together", async () => {
