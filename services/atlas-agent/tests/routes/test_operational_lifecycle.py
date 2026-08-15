@@ -74,6 +74,14 @@ def test_repository_recovery_diagnostic_is_typed_not_applicable(
     assert response.json()["controlled_reason"] == "not_applicable"
     container.core_client.get_operational_lifecycle_read.assert_not_called()
 
+    bundle = client.get(
+        "/api/v1/agent/workflows/workflow-123/support-bundle"
+    )
+    assert bundle.status_code == 200
+    assert bundle.json()["applicable"] is False
+    assert bundle.json()["diagnostic"]["controlled_reason"] == "not_applicable"
+    container.core_client.get_operational_lifecycle_read.assert_not_called()
+
 
 def test_workflow_history_filter_returns_only_operational_effect(tmp_path, monkeypatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
@@ -303,6 +311,56 @@ def test_recovery_diagnostic_missing_core_is_read_only(tmp_path, monkeypatch) ->
     assert response.status_code == 200
     assert response.json()["diagnostic_status"] == "attention_required"
     assert response.json()["controlled_reason"] == "missing_core_record"
+    assert container.workflow_state.get_session(session.identifier) == before
+    container.core_client.get_operational_lifecycle_read.assert_awaited_once_with(
+        action.request_id
+    )
+
+
+def test_support_bundle_core_unavailable_is_sanitized_and_read_only(
+    tmp_path, monkeypatch
+) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    session = _session()
+    action = session.operational_action_request
+    assert action is not None
+    now = datetime.now(UTC)
+    session = replace(
+        session,
+        operational_execution_reference=OperationalExecutionReference(
+            request_id=action.request_id,
+            request_digest=action.request_digest,
+            stage=OperationalExecutionStage.VERIFICATION_PENDING,
+            dispatch_status="succeeded",
+            ledger_state="verifying",
+            provider_operation_id="UPID:sanitized",
+            verification_status=None,
+            submitted_at=now,
+            last_observed_at=now,
+            terminal=False,
+            audit_events=("authenticated_dispatch_submitted", "unsafe exception text"),
+        ),
+    )
+    container.workflow_state.create_session(session)
+    before = container.workflow_state.get_session(session.identifier)
+    container.core_client.get_operational_lifecycle_read = AsyncMock(
+        side_effect=AtlasCoreConnectionError("secret native exception")
+    )
+
+    response = client.get(
+        f"/api/v1/agent/workflows/{session.identifier}/support-bundle"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["metadata"]["schema_version"] == "atlas-operational-support-bundle-v1"
+    assert body["diagnostic"]["diagnostic_status"] == "unavailable"
+    assert body["lifecycle"]["availability"] == "unavailable"
+    assert body["audit_refs"] == [
+        {"event_type": "authenticated_dispatch_submitted"}
+    ]
+    assert "secret native exception" not in response.text
+    assert "unsafe exception text" not in response.text
     assert container.workflow_state.get_session(session.identifier) == before
     container.core_client.get_operational_lifecycle_read.assert_awaited_once_with(
         action.request_id

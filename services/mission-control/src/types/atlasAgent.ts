@@ -498,6 +498,64 @@ export interface WorkflowRecoveryDiagnostic {
     safe_next_action: "none" | "wait_for_verification" | "restore_core_availability" | "inspect_target_read_only" | "preserve_evidence" | "operator_review_required" | "new_request_only_after_terminal";
 }
 
+export interface OperationalSupportBundle {
+    applicable: boolean;
+    metadata: {
+        schema_version: "atlas-operational-support-bundle-v1";
+        generated_at: string;
+        agent_version: string;
+        workflow_id: string;
+    };
+    workflow: {
+        candidate_id: string | null;
+        planning_session_id: string | null;
+        effect_kind: string;
+        execution_intent: string | null;
+        target_label: string | null;
+    };
+    approvals: {
+        preparation: OperationalLifecycleApproval | null;
+        operational_action: OperationalLifecycleApproval | null;
+    };
+    lifecycle: {
+        availability: string;
+        request_id: string | null;
+        request_digest: string | null;
+        agent_execution_stage: string | null;
+        core_ledger_state: string | null;
+        transitions: OperationalLifecycleTransition[];
+        transition_sequence_valid: boolean | null;
+        barrier_crossed: boolean;
+        barrier_crossing_count: number;
+        provider_operation_captured: boolean;
+        provider_operation_capture_count: number;
+        dispatch_status: string | null;
+        dispatch_result_known: boolean;
+        provider_operation_reference: string | null;
+        verification_status: string | null;
+        observed_state: string | null;
+        observed_health: string | null;
+        terminal: boolean;
+    };
+    diagnostic: WorkflowRecoveryDiagnostic;
+    service_health: Array<{ service_name: "atlas-agent"; status: "available"; version: string }>;
+    capability_boundary: {
+        production_tuples: string[];
+        agent_execution_intents: string[];
+        parity_status: "not_evaluated";
+    };
+    audit_refs: Array<{ event_type: string }>;
+    truncation: {
+        transitions_truncated: boolean;
+        audit_references_truncated: boolean;
+        text_fields_truncated: string[];
+    };
+    integrity: {
+        digest: string;
+        purpose: "integrity_and_correlation_only";
+    };
+}
+
 export type WorkflowPageResponse = WorkflowDetailResponse;
 
 export type WorkflowState =

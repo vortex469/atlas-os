@@ -6,6 +6,7 @@ import {
     getWorkflowDetail,
     getWorkflowOperationalLifecycle,
     getWorkflowRecoveryDiagnostic,
+    getWorkflowSupportBundle,
     submitWorkflowCommitApproval,
     submitWorkflowImplementationApproval,
     submitWorkflowVerificationApproval,
@@ -22,6 +23,7 @@ import type {
     WorkflowVerificationApprovalResponse,
     WorkflowOperationalLifecycle,
     WorkflowRecoveryDiagnostic,
+    OperationalSupportBundle,
 } from "../types/atlasAgent";
 import { fallbackWorkflowRailStages, workflowRailStages } from "../utils/workflowState";
 
@@ -47,6 +49,9 @@ export function WorkflowPage() {
     const [operationalLifecycle, setOperationalLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
     const [recoveryDiagnostic, setRecoveryDiagnostic] = useState<WorkflowRecoveryDiagnostic | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+    const [supportBundle, setSupportBundle] = useState<OperationalSupportBundle | null>(null);
+    const [isDownloadingSupport, setIsDownloadingSupport] = useState(false);
+    const [supportBundleError, setSupportBundleError] = useState<string | null>(null);
 
     const loadWorkflow = useCallback(async (mode: LoadMode = "initial") => {
         if (mode === "initial") setIsLoading(true);
@@ -96,6 +101,33 @@ export function WorkflowPage() {
     function refreshWorkflow() {
         if (isRefreshing) return;
         void loadWorkflow("refresh");
+    }
+
+    async function downloadSupportEvidence() {
+        if (!workflow || workflow.effect_kind !== "operational_action" || isDownloadingSupport) return;
+        setIsDownloadingSupport(true);
+        setSupportBundleError(null);
+        try {
+            const bundle = await getWorkflowSupportBundle(workflow.workflow_id);
+            if (!bundle?.applicable) {
+                setSupportBundleError("Support evidence is not available for this workflow.");
+                return;
+            }
+            setSupportBundle(bundle);
+            const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+            const downloadUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = downloadUrl;
+            anchor.download = "atlas-operational-support-evidence.json";
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(downloadUrl);
+        } catch {
+            setSupportBundleError("Mission Control could not download sanitized support evidence.");
+        } finally {
+            setIsDownloadingSupport(false);
+        }
     }
 
     async function submitDecision(decision: WorkflowImplementationDecision) {
@@ -274,14 +306,25 @@ export function WorkflowPage() {
             {isRepository && <ImplementationRequestSection workflow={workflow} />}
 
             {isOperational && (
-                <OperationalLifecyclePanel
-                    lifecycle={operationalLifecycle}
-                    diagnostic={recoveryDiagnostic}
-                    isLoading={operationalLifecycle === null && lifecycleError === null}
-                    isRefreshing={isRefreshing}
-                    error={lifecycleError}
-                    onRefresh={refreshWorkflow}
-                />
+                <>
+                    <OperationalLifecyclePanel
+                        lifecycle={operationalLifecycle}
+                        diagnostic={recoveryDiagnostic}
+                        isLoading={operationalLifecycle === null && lifecycleError === null}
+                        isRefreshing={isRefreshing}
+                        error={lifecycleError}
+                        onRefresh={refreshWorkflow}
+                    />
+                    <section aria-labelledby="support-evidence-heading" className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
+                        <h2 id="support-evidence-heading" className="text-lg font-semibold text-white">Support evidence</h2>
+                        <p className="mt-2 text-sm text-slate-300">Download one bounded, sanitized JSON projection. Nothing is uploaded or persisted by Mission Control.</p>
+                        <button type="button" onClick={() => void downloadSupportEvidence()} disabled={isDownloadingSupport} className="mt-4 rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">
+                            {isDownloadingSupport ? "Preparing support evidence..." : "Download support evidence"}
+                        </button>
+                        {supportBundle && <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3"><div><dt className="text-slate-400">Schema</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div><div><dt className="text-slate-400">Generated</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div><div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div></dl>}
+                        {supportBundleError && <p role="alert" className="mt-3 text-sm text-red-100">{supportBundleError}</p>}
+                    </section>
+                </>
             )}
 
             <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} onRefresh={refreshWorkflow} />

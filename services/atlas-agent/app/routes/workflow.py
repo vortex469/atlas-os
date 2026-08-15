@@ -24,7 +24,10 @@ from app.candidate_planning.audit import (
 )
 from app.candidate_planning.commit import CandidateCommitFailureCode
 from app.candidate_planning.execution import CandidateExecutionFailureCode
-from app.candidate_planning.models import CandidateImplementationTranslationRequest
+from app.candidate_planning.models import (
+    OPERATIONAL_EXECUTION_INTENTS,
+    CandidateImplementationTranslationRequest,
+)
 from app.candidate_planning.verification import CandidateVerificationFailureCode
 from app.context.models import AgentContext
 from app.core_client.exceptions import AtlasCoreClientError
@@ -42,6 +45,7 @@ from app.verification.models import (
     VerificationCheck,
     VerificationReport,
 )
+from app.version import AGENT_VERSION
 from app.workflow.models import (
     SprintStatus,
     WorkflowEffectKind,
@@ -53,6 +57,10 @@ from app.workflow.orchestrator import WorkflowOrchestrator
 from app.workflow.recovery_diagnostic import (
     WorkflowRecoveryDiagnostic,
     project_recovery_diagnostic,
+)
+from app.workflow.support_bundle import (
+    OperationalSupportBundle,
+    build_operational_support_bundle,
 )
 
 _AUDIT_STAGE_ORDER = [
@@ -1555,6 +1563,36 @@ async def get_workflow_recovery_diagnostic(
 
     lifecycle = await get_workflow_operational_lifecycle(request, workflow_id)
     return project_recovery_diagnostic(lifecycle)
+
+
+@router.get(
+    "/{workflow_id}/support-bundle",
+    response_model=OperationalSupportBundle,
+    responses=_ERROR_RESPONSES,
+)
+async def get_workflow_support_bundle(
+    request: Request,
+    workflow_id: str,
+) -> OperationalSupportBundle:
+    """Build bounded support evidence in memory without collecting new facts."""
+
+    lifecycle = await get_workflow_operational_lifecycle(request, workflow_id)
+    diagnostic = project_recovery_diagnostic(lifecycle)
+    workflow = request.app.state.container.workflow_state.get_session(workflow_id)
+    audit_events = (
+        workflow.operational_execution_reference.audit_events
+        if workflow is not None and workflow.operational_execution_reference is not None
+        else ()
+    )
+    return build_operational_support_bundle(
+        lifecycle=lifecycle,
+        diagnostic=diagnostic,
+        generated_at=datetime.now(UTC),
+        agent_version=AGENT_VERSION,
+        operational_execution_intents=OPERATIONAL_EXECUTION_INTENTS,
+        production_tuples=("restart-service/proxmox/qemu",),
+        audit_event_types=audit_events,
+    )
 
 
 def _stage_status(workflow, stage: str, approval_status: str) -> str:
