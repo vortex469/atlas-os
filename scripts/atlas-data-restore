@@ -6,36 +6,102 @@ SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_IMAGE="python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
 DATA_VOLUME="${ATLAS_DATA_VOLUME:-atlas_atlas-data}"
 DATA_UID="${ATLAS_DATA_UID:-10001}"
+DATA_GID="${ATLAS_DATA_GID:-10001}"
+STAGING_VOLUME=""
+staging_created=false
+
+cleanup() {
+    if [[ "$staging_created" = true ]]; then
+        docker volume rm "$STAGING_VOLUME" >/dev/null 2>&1 || true
+    fi
+}
+trap cleanup EXIT
 
 if [[ $# -ne 2 || "$2" != "--confirm" ]]; then
     echo "Usage: $0 BACKUP_DIRECTORY --confirm" >&2
     exit 2
 fi
 
-for executable in docker realpath; do
+for executable in docker realpath python3; do
     if ! command -v "$executable" >/dev/null 2>&1; then
         echo "Required executable not found: $executable" >&2
         exit 127
     fi
 done
 
+STAGING_VOLUME="atlas-restore-staging-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+
 BACKUP_DIRECTORY="$(realpath "$1")"
+if [[ "$BACKUP_DIRECTORY" == *','* || "$BACKUP_DIRECTORY" == *$'\n'* ]]; then
+    echo "Backup path contains characters unsafe for a Docker mount" >&2
+    exit 2
+fi
+if [[ ! "$DATA_VOLUME" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then
+    echo "ATLAS_DATA_VOLUME is not a valid Docker volume name" >&2
+    exit 2
+fi
+if [[ ! "$DATA_UID" =~ ^[0-9]+$ || ! "$DATA_GID" =~ ^[0-9]+$ ]]; then
+    echo "ATLAS_DATA_UID and ATLAS_DATA_GID must be non-negative integers" >&2
+    exit 2
+fi
 if [[ ! -f "$BACKUP_DIRECTORY/manifest.json" ]]; then
     echo "Backup manifest not found: $BACKUP_DIRECTORY/manifest.json" >&2
     exit 1
 fi
 
+# Verification occurs on the host before the target volume is mounted writable.
+python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$BACKUP_DIRECTORY"
+
 docker volume inspect "$DATA_VOLUME" >/dev/null
-running_containers="$(
-    docker ps \
+attached_containers="$(
+    docker ps -a \
         --filter "volume=$DATA_VOLUME" \
         --format '{{.Names}}'
 )"
-if [[ -n "$running_containers" ]]; then
-    echo "Refusing restore while containers use $DATA_VOLUME:" >&2
-    echo "$running_containers" >&2
+if [[ -n "$attached_containers" ]]; then
+    echo "Refusing restore while containers are attached to $DATA_VOLUME:" >&2
+    echo "$attached_containers" >&2
     exit 1
 fi
+
+if docker volume inspect "$STAGING_VOLUME" >/dev/null 2>&1; then
+    echo "Refusing to reuse restore staging volume: $STAGING_VOLUME" >&2
+    exit 1
+fi
+docker volume create "$STAGING_VOLUME" >/dev/null
+staging_created=true
+
+# This helper alone can bypass host backup DAC permissions. It has no network or
+# Docker socket, mounts the source read-only, and writes only the disposable stage.
+docker run \
+    --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --cap-add CHOWN \
+    --cap-add DAC_READ_SEARCH \
+    --security-opt no-new-privileges:true \
+    --user 0:0 \
+    --mount "type=bind,src=$BACKUP_DIRECTORY,dst=/source,readonly" \
+    --mount "type=volume,src=$STAGING_VOLUME,dst=/staging" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_restore_copy.py,dst=/copy.py,readonly" \
+    "$PYTHON_IMAGE" \
+    python /copy.py /source /staging/backup "$DATA_UID" "$DATA_GID"
+
+# Prepare only the volume root and the two managed private parent directories.
+docker run \
+    --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --cap-add CHOWN \
+    --cap-add FOWNER \
+    --security-opt no-new-privileges:true \
+    --user 0:0 \
+    --mount "type=volume,src=$DATA_VOLUME,dst=/target" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_restore_prepare.py,dst=/prepare.py,readonly" \
+    "$PYTHON_IMAGE" \
+    python /prepare.py /target "$DATA_UID" "$DATA_GID"
 
 docker run \
     --rm \
@@ -43,12 +109,13 @@ docker run \
     --read-only \
     --cap-drop ALL \
     --security-opt no-new-privileges:true \
-    --user "$DATA_UID:$DATA_UID" \
+    --user "$DATA_UID:$DATA_GID" \
     --mount "type=volume,src=$DATA_VOLUME,dst=/target" \
-    --mount "type=bind,src=$BACKUP_DIRECTORY,dst=/backup,readonly" \
-    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+    --mount "type=volume,src=$STAGING_VOLUME,dst=/staging,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/atlas-data-tool.py,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_restore_transaction.py,dst=/atlas_data_restore_transaction.py,readonly" \
     "$PYTHON_IMAGE" \
-    python /tool.py restore /backup /target
+    python /atlas-data-tool.py restore /staging/backup /target
 
 echo "Atlas data volume restored: $DATA_VOLUME"

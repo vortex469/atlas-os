@@ -1249,17 +1249,20 @@ separate media:
 ./scripts/atlas-data-backup /mnt/atlas-backups
 ```
 
-Each backup contains both SQLite databases, runtime policy files such as
-`config/policies.yaml`, provider connection overrides such as
-`config/provider-connections.yaml`, provider connection secrets such as
-`secrets/provider-connections.yaml`, and a versioned `manifest.json` with
-separate database and runtime file entries, sizes, modes, and SHA-256
-checksums. The command uses SQLite's online backup API for databases, so
-WAL-mode writes can continue without producing an inconsistent database
-copy. Runtime file entries are verified by safe relative path, checksum,
-expected file set, and store-specific structure. Existing version-1
-database-only backups, and backups created before provider connection
-stores existed, remain restorable.
+Format-v3 backups are complete Atlas Core recovery sets. They contain action
+history, provider intelligence, the operational dispatch safety ledger,
+operator intents, the conditional operator security audit, runtime policies,
+provider connection configuration, and provider secrets. The manifest records
+required, conditionally absent, invalidated, and pre-activation stores with
+sizes and SHA-256 checksums. Operator sessions are excluded and invalidated
+during restore. The pre-activation Provider Intent Store is also required
+absent and is not created by restore or normal Core startup.
+
+The command uses SQLite's online backup API, so WAL-mode writes can continue
+without producing an inconsistent database copy. Runtime files are checked by
+safe relative path, checksum, exact inventory, and store-specific structure.
+Version-1 and version-2 backups retain their historical legacy-partial restore
+semantics; they do not gain format-v3 invalidation or complete-set behavior.
 
 Runtime policy files are owned by the Atlas container user and may be
 mode `0600`. The backup command therefore reads the Atlas data volume
@@ -1270,15 +1273,16 @@ read-only, and only the incomplete backup destination mounted writable.
 Before the incomplete backup is renamed into place, a second disposable
 ownership helper mounts only that incomplete backup directory and uses
 only the `CHOWN` capability to set the backup directory and files back to
-the invoking host UID/GID and keeps them readable by the Atlas restore
-UID. Operators can then read, move, and remove the artifacts normally
-without weakening live runtime permissions. Backup directories that
+the invoking host UID/GID. Published directories remain mode `0700` and
+artifacts remain mode `0600`. Operators can read, move, and remove their
+artifacts without weakening live runtime permissions. Backup directories that
 include `secrets/provider-connections.yaml` contain provider credentials
 and must be protected like any other secret-bearing backup artifact.
 
-Restore replaces both databases, restores included runtime files
-atomically under the Atlas data root, and removes stale WAL and shared
-memory sidecars. Stop every container using the volume first:
+Format-v3 restore transactionally adopts the complete managed generation and
+removes stale WAL/SHM sidecars, operator sessions, and pre-activation Provider
+Intent state. Stop and remove every running or stopped container attached to
+the target volume first:
 
 ```bash
 docker compose -f compose.production.yaml down
@@ -1288,19 +1292,27 @@ docker compose -f compose.production.yaml down
 docker compose -f compose.production.yaml up -d
 ```
 
-Include `-f compose.https.yaml` in the `down` and `up` commands for an
-HTTPS deployment. The restore command refuses to run while a container
-uses the target volume, validates the manifest, checks every checksum,
-rejects unsafe runtime file paths, and runs SQLite integrity checks before
-replacing live database files. Version-1 database-only backups remain
-valid; they simply do not restore runtime policy or provider connection
-files, allowing Atlas to initialize missing runtime policy from the
-read-only template and missing provider connection stores from immutable
-templates or empty validated stores on next startup. Set
-`ATLAS_DATA_VOLUME` only when the Compose project uses a non-default
-volume name. Restore runs as the Atlas data UID, default `10001`, so
-restored runtime files remain Atlas-owned. Runtime policy and provider
-secret files keep mode `0600`.
+Include `-f compose.https.yaml` in the `down` and `up` commands for an HTTPS
+deployment. Restore refuses while any container—even a stopped one—is attached
+to the volume. It verifies the host backup before mounting the target writable,
+then uses a networkless, Docker-socket-free helper with a read-only source mount
+to copy the private `0700`/`0600` backup into a disposable private staging
+volume owned by `10001:10001`. Source permissions and contents are unchanged.
+
+The unprivileged restore process recovers or finalizes any prior transaction,
+stages and validates every artifact, quarantines the prior managed generation,
+installs and independently verifies the new generation, then durably commits
+before deleting `.atlas-restore` evidence. Core refuses startup while any
+non-empty restore transaction namespace remains and directs the operator back
+to the restore command; Core never performs recovery itself. Do not delete the
+journal manually. Restored files are `10001:10001` mode `0600`, and managed
+private directories are mode `0700`. Unmanaged cache, history, knowledge,
+provider, and root files are not recursively changed or removed.
+
+Version-1 and version-2 backups remain valid legacy-partial restores. Missing
+runtime policy or provider connection files may still be initialized from
+immutable templates or empty validated stores on later startup. Set
+`ATLAS_DATA_VOLUME` only for a non-default Compose volume name.
 
 ### Schedule backups
 

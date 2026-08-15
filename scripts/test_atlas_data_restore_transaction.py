@@ -637,8 +637,10 @@ def test_interrupted_rollback_recovery_can_be_retried(
     assert recover_v3_restore(target) == "no_transaction"
 
 
-def test_production_restore_still_refuses_v3(tmp_path: Path) -> None:
+def test_production_restore_adopts_v3_transactionally(tmp_path: Path) -> None:
     backup, target, _ = _fixture(tmp_path)
     restore_backup = TOOL["restore_backup"]
-    with pytest.raises(RuntimeError, match="backup v3 restore requires P2b-3"):
-        restore_backup(backup, target)
+    restore_backup(backup, target)
+    assert not (target / TRANSACTION_NAMESPACE).exists()
+    assert not (target / "operator_sessions.db").exists()
+    assert not (target / "provider_intents.db").exists()

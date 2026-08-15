@@ -363,18 +363,18 @@ def test_runtime_yaml_structure_failure_is_rejected(tmp_path: Path) -> None:
         create_backup(source, tmp_path / "backup", operator_auth_initialized=False)
 
 
-def test_restore_refuses_v3_before_creating_target(tmp_path: Path) -> None:
+def test_v3_restore_requires_prepared_target(tmp_path: Path) -> None:
     source = tmp_path / "source"
     connections = _source(source)
     create_backup(source, tmp_path / "backup", operator_auth_initialized=False)
     _close(connections)
     target = tmp_path / "target"
-    with pytest.raises(RuntimeError, match="requires P2b-3"):
+    with pytest.raises(RuntimeError, match="real directory"):
         restore_backup(tmp_path / "backup", target)
     assert not target.exists()
 
 
-def test_restore_refusal_leaves_populated_target_unchanged(tmp_path: Path) -> None:
+def test_v3_restore_adopts_populated_target_transactionally(tmp_path: Path) -> None:
     source = tmp_path / "source"
     connections = _source(source)
     backup = tmp_path / "backup"
@@ -385,11 +385,11 @@ def test_restore_refusal_leaves_populated_target_unchanged(tmp_path: Path) -> No
     existing = target / "operational_dispatch.db"
     existing.write_bytes(b"production-state")
     existing.chmod(0o640)
-    before = (existing.read_bytes(), existing.stat().st_mode & 0o777)
-    with pytest.raises(RuntimeError, match="requires P2b-3"):
-        restore_backup(backup, target)
-    assert (existing.read_bytes(), existing.stat().st_mode & 0o777) == before
-    assert tuple(target.iterdir()) == (existing,)
+    restore_backup(backup, target)
+    assert existing.read_bytes() != b"production-state"
+    assert existing.stat().st_mode & 0o777 == 0o600
+    assert not (target / "operator_sessions.db").exists()
+    assert not (target / "provider_intents.db").exists()
 
 
 def test_malformed_v3_fails_verification_without_touching_target(tmp_path: Path) -> None:

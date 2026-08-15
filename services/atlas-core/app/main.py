@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -13,6 +14,7 @@ from app.core.exceptions import (
 )
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware
+from app.core.restore_interlock import assert_restore_state_clean
 from app.execution_candidates.operator_intents import OperatorIntentStore
 from app.intelligence.development_fixture import (
     development_fixture_enabled_and_validated,
@@ -56,6 +58,9 @@ logger = get_logger("atlas")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Atlas Core starting")
+    assert_restore_state_clean(
+        Path(settings.operational_dispatch.database).parent
+    )
     validate_configuration()
     logger.info("Atlas configuration validated")
     development_fixture_enabled_and_validated()

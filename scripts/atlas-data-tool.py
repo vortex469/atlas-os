@@ -647,7 +647,34 @@ def atomic_restore_file(source: Path, target: Path, mode: int = 0o600) -> None:
 def restore_backup(backup: Path, target: Path) -> None:
     manifest = verify_backup(backup)
     if manifest.get("format_version") == V3_FORMAT_VERSION:
-        raise RuntimeError("backup v3 restore requires P2b-3")
+        try:
+            from atlas_data_restore_transaction import (
+                execute_v3_restore,
+                recover_v3_restore,
+                verify_v3_target,
+            )
+        except ModuleNotFoundError:
+            from scripts.atlas_data_restore_transaction import (
+                execute_v3_restore,
+                recover_v3_restore,
+                verify_v3_target,
+            )
+
+        recovery = recover_v3_restore(target)
+        print(f"Prior restore recovery: {recovery}")
+        execute_v3_restore(
+            backup,
+            target,
+            runtime_uid=os.getuid(),
+            runtime_gid=os.getgid(),
+        )
+        verify_v3_target(
+            target,
+            AtlasCoreBackupV3Manifest.from_dict(manifest),
+            runtime_uid=os.getuid(),
+            runtime_gid=os.getgid(),
+        )
+        return
     target.mkdir(parents=True, exist_ok=True)
 
     for filename in DATABASES:
