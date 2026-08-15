@@ -473,27 +473,21 @@ translation, and execution remain closed to the existing
 `atlas-v0.8.0` release was published at
 `f83cd90982d4682ce49e60308e93dc9840984211`.
 
-## Atlas v0.9 — Safe Operational Tuple Expansion
+## Atlas v0.9 — Operational Recovery and Evidence Automation
 
-The contingent second tuple is `restart-service / proxmox / lxc`, but it is not
-enabled. Work proceeds in order through P0 release reconciliation, P1 read-only
-authoritative LXC identity, P2 multi-tuple capability and permission contracts,
-P3 dormant planning and dispatch contracts, P4 handler/verification/recovery
-validation, and P5 controlled enablement and acceptance.
+The read-only LXC feasibility audit completed with a NO-GO. No
+provider-authoritative, configuration-independent LXC incarnation identity was
+proven, and Atlas will not synthesize one from node/VMID, configuration digest,
+rootfs naming, MAC values, or task history. `restart-service / proxmox / lxc`
+remains unsupported and non-requestable; the former tuple-expansion P2–P5 do
+not proceed for LXC.
 
-P1 is a hard stop: VMID plus node is insufficient, and Atlas must prove stable
-same-incarnation fingerprints and replacement, stale, missing, duplicate,
-ambiguous, and uncertain identity rejection. The first code slice changes only
-read-only, versioned LXC identity and fingerprint contracts and tests. It does
-not change planning, translation, Agent or Core execution gates, capability
-advertisement, selector requestability, handler registration, ACLs, or provider
-state.
-
-P2 must prevent the existing broad `operational_intent:create` permission from
-silently authorizing future tuples. Every tuple must also match across Agent
-planning, translation, and execution plus Core execution, semantic action,
-handler, descriptor, and selector sources; mismatches fail closed without
-auto-repair.
+V0.9 now proceeds through read-only recovery diagnostics, a sanitized local
+support bundle, check-only release evidence automation, recovery/history UX,
+and release acceptance. The first code-bearing slice derives a controlled
+diagnostic model from existing Agent lifecycle and Core durable-ledger
+projections. It performs no provider call or reconciliation write, exposes no
+mutation endpoint, registers no handler, and changes no execution gate.
 
 ### Planned Phase 5
 

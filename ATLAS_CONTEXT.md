@@ -234,17 +234,16 @@ Current
 
 # Current Sprint
 
-Atlas v0.9 — Safe Operational Tuple Expansion
+Atlas v0.9 — Operational Recovery and Evidence Automation
 
 Active major milestone
 
 - Reconcile the final v0.8.0 release state and establish the v0.9 roadmap.
-- Prove authoritative LXC incarnation identity read-only before any execution
-  expansion.
+- Record the successful fail-closed LXC identity NO-GO.
 - Preserve Provider Management Framework and Discovery Center ownership
   boundaries.
-- Keep the existing QEMU tuple unchanged while multi-tuple permissions, parity,
-  planning, dispatch, recovery, and enablement are reviewed in order.
+- Keep the existing QEMU tuple unchanged while read-only diagnostics, support
+  evidence, release checks, and operator UX are developed in order.
 
 Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the tracked template and then treats runtime state as authoritative. Mission Control changes must not dirty the Git checkout.
 
@@ -356,21 +355,22 @@ allowed by the Agent and Core and backed by exactly one production handler.
 
 ## Atlas v0.9 scope
 
-Atlas v0.9 has the theme **Safe Operational Tuple Expansion**. Its objective is
-to prove that Atlas can add one second closed tuple without weakening identity
-binding, approval isolation, exactly-once dispatch, recovery, or the existing
-QEMU path. The contingent target is `restart-service / proxmox / lxc`.
+Atlas v0.9 has the theme **Operational Recovery and Evidence Automation**. Its
+objective is to make the existing durable operational lifecycle easier to
+diagnose, recover, support, and release safely without adding provider mutation
+capability. Production remains exactly `restart-service / proxmox / qemu`.
 
-LXC work has a hard read-only identity gate: VMID plus node is insufficient.
-Atlas must prove a stable same-incarnation fingerprint, replacement detection,
-and fail-closed stale, missing, duplicate, ambiguous, and uncertain identity
-handling. If it cannot, LXC execution work stops. No LXC candidate,
-translation, execution gate, descriptor advertisement, requestable selector,
-handler, ACL, or restart is enabled by P0 or the first P1 identity slice.
+The read-only LXC feasibility investigation completed successfully with a
+NO-GO: Atlas-visible Proxmox APIs expose no provider-authoritative,
+configuration-independent LXC incarnation identity comparable to QEMU
+`vmgenid`. Node/VMID, configuration digest, rootfs naming, MAC values, and task
+history are mutable, reusable, or not bound to the current incarnation. Atlas
+will not synthesize an identity from them. LXC remains unsupported and
+non-requestable, and the former tuple-expansion P2–P5 do not proceed for LXC.
+It may be reconsidered only if a provider-authoritative identity source is
+independently demonstrated.
 
-Before LXC becomes requestable, P2 must provide backward-compatible,
-tuple-aware operator authorization. The existing `operational_intent:create`
-permission must not silently authorize every future tuple. Multi-tuple parity
-must compare Agent planning, translation, and execution with Core execution,
-semantic action mapping, handler registration, capability description, and
-selector registration; mismatches fail closed without auto-repair.
+The next code slice is a strictly read-only recovery diagnostic model derived
+from existing Agent lifecycle and Core durable-ledger projections. It adds no
+provider call, reconciliation write, mutation endpoint, handler, or gate change
+and exposes only controlled, sanitized reasons.

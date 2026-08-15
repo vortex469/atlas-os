@@ -260,8 +260,8 @@ Exit criteria:
 - Any later executable work remains routed through authoritative candidate
   creation and Atlas Agent approval-controlled planning and execution.
 
-D9 is future work and is not part of the Atlas v0.9 Safe Operational Tuple
-Expansion release scope.
+D9 remains separate proposal/navigation-only future work and is not part of the
+Atlas v0.9 Operational Recovery and Evidence Automation release scope.
 
 ## D10 — Dynamic Source Adapters
 

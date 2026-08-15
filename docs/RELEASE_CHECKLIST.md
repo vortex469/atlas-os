@@ -40,16 +40,19 @@ exact-SHA production deployment, and production soak. The final
 
 ## Atlas v0.9 implementation status
 
-- [x] V0.9-P0 — Release-state and tuple-readiness reconciliation.
-- [ ] V0.9-P1 — Authoritative LXC identity and read-only eligibility.
-- [ ] V0.9-P2 — Multi-tuple capability and permission contracts.
-- [ ] V0.9-P3 — Dormant LXC planning and dispatch contracts.
-- [ ] V0.9-P4 — Handler, verification, and recovery validation.
-- [ ] V0.9-P5 — Controlled enablement and release acceptance.
+- [x] V0.9-P0 — Release-state reconciliation and LXC feasibility closure.
+- [x] LXC feasibility investigation — complete / NO-GO.
+- [ ] V0.9-P1 — Read-only recovery diagnostics.
+- [ ] V0.9-P2 — Sanitized operational support bundle.
+- [ ] V0.9-P3 — Release evidence automation.
+- [ ] V0.9-P4 — Recovery/history operator UX.
+- [ ] V0.9-P5 — Release acceptance and documentation.
 
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 changes only
-documentation. No LXC candidate, translation, gate, handler, ACL, or mutation
-is enabled by completing it.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. The LXC identity gate
+closed fail-safe: no authoritative incarnation identity was proven, no
+synthetic identity was accepted, and no LXC candidate, selector, translation,
+gate, handler, ACL, or mutation is enabled. The revised P1–P5 milestones are
+read-only recovery, evidence, UX, and release work.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

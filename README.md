@@ -39,12 +39,16 @@ not replace Core authentication. See the
 
 ## Atlas v0.9 development
 
-Atlas v0.9 has the theme **Safe Operational Tuple Expansion**. Its contingent
-target is `restart-service / proxmox / lxc`, but LXC execution work must stop
-unless Atlas can prove an authoritative container-incarnation identity. The
+Atlas v0.9 has the theme **Operational Recovery and Evidence Automation**. It
+will make the existing durable lifecycle easier to diagnose, recover, support,
+and validate for release without adding a provider mutation capability. The
 existing `restart-service / proxmox / qemu` path remains the only operational
-production tuple while that read-only identity gate and later approval,
-permission, parity, recovery, and validation milestones are completed.
+production tuple.
+
+A read-only feasibility audit found no provider-authoritative,
+configuration-independent LXC incarnation identity. Atlas therefore rejected
+`restart-service / proxmox / lxc` fail-closed rather than synthesizing identity
+from reusable or mutable fields. LXC remains unsupported and non-requestable.
 
 - [Atlas v0.7.0 to v0.8 upgrade](docs/DEPLOYMENT.md#atlas-v070-to-v08-upgrade-and-rollback)
 - [Atlas v0.8 to v0.7.0 rollback](docs/DEPLOYMENT.md#rollback-to-atlas-v070)
@@ -257,7 +261,7 @@ Current capabilities:
 
 Planned direction:
 
-- Atlas v0.9 Safe Operational Tuple Expansion as the current bounded release theme
+- Atlas v0.9 Operational Recovery and Evidence Automation as the current bounded release theme
 - Atlas Runtime Foundation as a continuing cross-release track for separating immutable defaults from mutable runtime state
 - Provider Management Framework as a Runtime Foundation subsystem for provider connection, discovery, resources, monitoring, actions, and diagnostics
 - Discovery Center runtime status:

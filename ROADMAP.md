@@ -262,15 +262,11 @@ only `restart-service`, and the production registry contains exactly the one
 
 ## Atlas v0.9 roadmap
 
-**Theme: Safe Operational Tuple Expansion**
+**Theme: Operational Recovery and Evidence Automation**
 
-Objective: prove that Atlas can add one second closed operational tuple without
-weakening identity binding, approval isolation, exactly-once dispatch,
-recovery, or the existing QEMU restart path.
-
-The contingent target is `restart-service / proxmox / lxc`. LXC execution is
-conditional on authoritative resource-incarnation identity feasibility. The
-dependency order is
+Objective: make Atlas easier to diagnose, recover, support, and release safely
+using the existing durable operational lifecycle, without adding any new
+provider mutation capability. The dependency order is
 `V0.9-P0 → V0.9-P1 → V0.9-P2 → V0.9-P3 → V0.9-P4 → V0.9-P5`.
 
 ### Current v0.8 production boundary
@@ -283,104 +279,111 @@ dependency order is
 - Agent translation and Core semantic action mapping contain exactly the QEMU
   graceful-restart action.
 - The production handler registry contains exactly one QEMU restart handler.
-- No LXC execution is enabled.
+- `restart-service / proxmox / lxc` remains unsupported and non-requestable.
 
-### V0.9-P0 — Release-state and tuple-readiness reconciliation
+### LXC feasibility decision
 
-- Goal: record the final v0.8 release and establish authoritative v0.9 scope.
-- Deliverables: consistent release identity, current production boundary,
-  milestones, hard gates, parity contract, dependencies, and non-goals.
-- Dependencies: final `atlas-v0.8.0` release.
-- Non-goals: runtime code, candidates, gates, handlers, ACLs, or mutation.
-- Exit criteria: all current-state documentation agrees and no document implies
-  LXC execution exists.
+The read-only LXC identity feasibility investigation completed with a NO-GO.
+Current Atlas-visible Proxmox APIs expose no provider-authoritative,
+configuration-independent LXC incarnation identifier comparable to QEMU
+`vmgenid`. Node and VMID are reusable; configuration digest is mutable and
+reproducible; rootfs naming is reusable; MAC values are mutable; task history
+is not authoritatively bound to the current incarnation; and no UUID, GUID, or
+instance-generation token was found.
 
-### V0.9-P1 — Authoritative LXC identity and read-only eligibility
+Atlas will not synthesize identity from those fields merely to enable
+execution. The former tuple-expansion P2–P5 do not proceed for LXC. LXC may be
+reconsidered only if an independently demonstrated provider-authoritative
+incarnation identity becomes available. This is a successful fail-closed
+architecture decision, not an implementation failure.
 
-- Goal: prove one exact Proxmox LXC incarnation can be identified and
-  fingerprinted authoritatively.
-- Deliverables: a versioned identity contract, stable same-incarnation
-  fingerprint, replacement/delete-recreate detection, and stale, missing,
-  duplicate, ambiguous, and uncertain identity rejection.
-- Dependencies: P0.
-- Non-goals: candidate creation, translation, gate widening, handler
-  registration, ACL changes, or restart.
-- Exit criteria: every identity uncertainty fails closed. VMID plus node alone
-  is explicitly insufficient. If replacement identity cannot be proven, all
-  LXC execution work stops.
+### V0.9-P0 — Release-state reconciliation and LXC feasibility closure
 
-The first P1 code slice is read-only, versioned Proxmox LXC authoritative
-identity and fingerprint contracts with replacement and staleness tests. It
-must leave planning, translation, both execution gates, capability
-advertisement, selector requestability, and handler registration unchanged.
-Identity code alone must not make LXC requestable.
+- Goal: establish the final v0.8 baseline and revised v0.9 scope.
+- Deliverables: final release identity, LXC identity NO-GO record, revised
+  recovery/evidence milestones, dependencies, and non-goals.
+- Dependencies: final `atlas-v0.8.0` release and completed read-only LXC audit.
+- Non-goals: runtime code, identity synthesis, gates, handlers, ACLs, or
+  mutation.
+- Exit criteria: current-state documentation agrees, P0 is complete, and LXC
+  feasibility is closed NO-GO.
 
-### V0.9-P2 — Multi-tuple capability and permission contracts
+### V0.9-P1 — Read-only recovery diagnostics
 
-- Goal: make capability projection, selectors, parity, and operator authority
-  safe for more than one tuple.
-- Deliverables: immutable multi-tuple descriptor/selector registration,
-  fail-closed parity, and backward-compatible tuple-scoped permission
-  semantics.
-- Dependencies: P1 identity feasibility passes.
-- Non-goals: a final permission string chosen without design evidence,
-  execution enablement, handler registration, or provider mutation.
-- Exit criteria: the existing broad `operational_intent:create` permission
-  cannot silently authorize every future tuple, and dormant LXC metadata grants
-  no request or execution authority.
+- Goal: provide one operator-facing diagnostic projection for ambiguous and
+  recovery states.
+- Deliverables: lifecycle consistency, Core/Agent availability,
+  request-to-ledger correlation, target-fingerprint state, controlled recovery
+  reason, and recommended safe next action.
+- Dependencies: P0 and existing Agent/Core lifecycle projections.
+- Non-goals: provider calls, reconciliation writes, mutation endpoints,
+  retries, handlers, or gate changes.
+- Exit criteria: diagnostics are deterministic, controlled, sanitized, and
+  strictly read-only.
 
-### V0.9-P3 — Dormant LXC planning and dispatch contracts
+The first code-bearing slice is a strictly read-only operational recovery
+diagnostic model derived from existing Agent lifecycle and Core durable-ledger
+projections. It adds no provider call, reconciliation write, mutation endpoint,
+handler, or gate change and exposes only controlled reasons.
 
-- Goal: prepare immutable LXC restart contracts while production execution
-  remains disabled for LXC.
-- Deliverables: intent-keyed planning, closed translation, exact request and
-  approval binding, persistence compatibility, and recovery-state fixtures.
-- Dependencies: P2.
-- Non-goals: gate widening, production handler registration, ACL changes, or
-  restart.
-- Exit criteria: exact LXC artifacts can be planned and approved, but no
-  production dispatch path exists.
+### V0.9-P2 — Sanitized operational support bundle
 
-### V0.9-P4 — Handler, verification, and recovery validation
+- Goal: generate a bounded local evidence package from already-safe
+  projections.
+- Deliverables: release and image identity, service health, workflow/candidate/
+  planning/request IDs, approval presentation, sanitized lifecycle,
+  transitions and verification state, target fingerprint, capability parity,
+  and selected audit IDs.
+- Dependencies: P1 diagnostic contract.
+- Non-goals: credentials, cookies, CSRF or bearer tokens, TLS keys, edge
+  `htpasswd` or operator-verifier material, provider-native payloads,
+  `vmgenid` or raw identity tokens, commands, environment, arbitrary exception
+  text, or any automatic upload destination.
+- Exit criteria: output is bounded, deterministic, local, sanitized, and
+  independently testable for forbidden fields.
 
-- Goal: validate one graceful LXC handler and its failure lifecycle outside
-  production enablement.
-- Deliverables: pre-dispatch identity revalidation, provider-operation capture,
-  bounded verification, ambiguity handling, crash recovery, verifier-only
-  recovery, and exactly-once sandbox evidence.
-- Dependencies: P3.
-- Non-goals: production registration, global enablement, automatic retry, or
-  QEMU behavior changes.
-- Exit criteria: every failure window is covered, mutation count is bounded to
-  one, and recovery constructs no mutation path.
+### V0.9-P3 — Release evidence automation
 
-### V0.9-P5 — Controlled enablement and release acceptance
+- Goal: automate collection and validation of release evidence currently
+  gathered manually.
+- Deliverables: exact SHA/tag, required CI, container-gate, image/source parity,
+  capability parity, ingress policy, worktree provenance, secret hygiene, and
+  immutable-tag checks.
+- Dependencies: P2 evidence contracts where shared.
+- Non-goals: automatic tagging, production deployment mutation, or release
+  publication.
+- Exit criteria: check-only tooling reproduces the required release evidence
+  and fails closed on inconsistency.
 
-- Goal: enable the second tuple only after reviewed identity, permissions,
-  contracts, handler, verification, recovery, and sandbox evidence.
-- Deliverables: least-privilege ACL procedure, explicit Agent/Core gate and
-  registry changes, multi-tuple release parity, controlled acceptance, and
-  upgrade/rollback guidance.
-- Dependencies: P4 plus explicit operator authorization.
-- Non-goals: any additional tuple, intent, provider, or broad ACL.
-- Exit criteria: production exposes exactly the reviewed QEMU and LXC tuples;
-  QEMU regressions remain green and one controlled LXC acceptance proves no
-  replay.
+### V0.9-P4 — Recovery/history operator UX
 
-### V0.9 capability parity contract
+- Goal: surface recovery diagnostics and evidence availability in Mission
+  Control.
+- Deliverables: diagnostic state, correlation IDs, evidence availability,
+  safe support-bundle generation/download, and clear guidance for
+  `outcome_unknown`, `target_replaced`, and `verification_failed`.
+- Dependencies: P1 and P2.
+- Non-goals: retry, run-again, reconciliation writes, or mutation controls.
+- Exit criteria: operators can understand and export controlled evidence
+  without any execution affordance.
 
-Every operational tuple must match across Agent planning registration,
-translation table, and execution gate, plus Core execution gate, semantic
-action mapping, handler registry, capability descriptor, and selector
-registration. Any missing or extra tuple fails closed. Atlas does not
-auto-repair parity mismatches.
+### V0.9-P5 — Release acceptance and documentation
+
+- Goal: validate the read-only recovery/evidence toolchain under production
+  service-restart soak and finalize release documentation.
+- Deliverables: focused/full test evidence, production restart-soak evidence,
+  redaction/security review, upgrade/rollback guidance, and release checklist.
+- Dependencies: P3 and P4.
+- Non-goals: a new operational intent, provider handler, automatic tag, or
+  deployment mutation.
+- Exit criteria: the toolchain remains read-only and accurate across service
+  restarts, and the existing QEMU mutation boundary is unchanged.
 
 ### V0.9 non-goals
 
-V0.9 does not add backup execution, restore execution, a new operational
-intent, a new provider, QEMU reset/stop/start/forced restart, automatic mutation
-retry, automatic rollback, arbitrary provider action IDs or parameters,
-Discovery-to-dispatch coupling, remote deployment, distributed execution, new
-Docker socket authority, automatic approval, broad Proxmox ACL expansion, a
-major Mission Control redesign, or backup artifact retention/storage
-architecture.
+V0.9 does not add LXC execution, backup execution, restore execution, a new
+operational intent, a new provider, a new mutation handler, automatic provider
+retry, automatic rollback, automatic approval, automatic tag publishing,
+automatic production deployment, Discovery-to-dispatch coupling, remote or
+distributed execution, new Docker socket authority, broader Proxmox ACLs, or
+synthetic LXC incarnation identity.

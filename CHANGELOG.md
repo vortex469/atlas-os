@@ -6,11 +6,12 @@ release boundaries.
 
 ## Unreleased
 
-Atlas v0.9 is scoped to Safe Operational Tuple Expansion. No v0.9 runtime
-implementation exists yet. The contingent target is
-`restart-service / proxmox / lxc`, and work must stop before candidate,
-translation, gate, handler, ACL, or mutation changes unless authoritative LXC
-incarnation identity is proven read-only.
+Atlas v0.9 is scoped to Operational Recovery and Evidence Automation. No v0.9
+runtime implementation exists yet. A read-only feasibility audit rejected
+`restart-service / proxmox / lxc` because no provider-authoritative,
+configuration-independent incarnation identifier was available. Atlas did not
+synthesize identity from mutable or reusable fields. The operational production
+boundary remains exactly `restart-service / proxmox / qemu`.
 
 ## atlas-v0.8.0 — Atlas v0.8.0 (2026-08-15)
 
