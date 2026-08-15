@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.candidate_planning.models import (
+    OPERATIONAL_EXECUTION_INTENTS,
+    OPERATIONAL_PLANNING_INTENTS,
     CandidateImplementationTranslationRequest,
     CandidateImplementationTranslationResponse,
     CandidatePlan,
@@ -22,6 +24,9 @@ from app.candidate_planning.models import (
     CoreCandidatePlanningIntakeStatus,
     OperationalCandidatePlan,
 )
+from app.candidate_planning.operational_translation import (
+    is_operational_translation_supported,
+)
 from app.candidate_planning.service import (
     CandidatePlanningPredecessorNotFoundError,
     CandidatePlanningServiceError,
@@ -31,6 +36,50 @@ from app.workflow.state import WorkflowStateStore
 
 router = APIRouter(prefix="/candidate-planning", tags=["candidate-planning"])
 logger = logging.getLogger(__name__)
+
+
+class AgentOperationalCapabilityConsistency(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    execution_intent: str
+    provider_id: str
+    resource_type: str
+    planning_supported: bool
+    translation_supported: bool
+    execution_gate_enabled: bool
+    consistency: str
+
+
+@router.get(
+    "/operational-capabilities",
+    response_model=tuple[AgentOperationalCapabilityConsistency, ...],
+)
+async def operational_capability_consistency() -> tuple[
+    AgentOperationalCapabilityConsistency, ...
+]:
+    """Describe Agent-owned gates without changing any capability source."""
+
+    intent, provider, resource_type = "restart-service", "proxmox", "qemu"
+    planning = intent in OPERATIONAL_PLANNING_INTENTS
+    translation = is_operational_translation_supported(
+        execution_intent=intent,
+        provider_id=provider,
+        resource_type=resource_type,
+    )
+    execution = intent in OPERATIONAL_EXECUTION_INTENTS
+    return (
+        AgentOperationalCapabilityConsistency(
+            execution_intent=intent,
+            provider_id=provider,
+            resource_type=resource_type,
+            planning_supported=planning,
+            translation_supported=translation,
+            execution_gate_enabled=execution,
+            consistency=(
+                "consistent" if planning and translation and execution else "mismatch"
+            ),
+        ),
+    )
 
 
 def _candidate_workflows_for_session(

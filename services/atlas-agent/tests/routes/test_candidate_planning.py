@@ -644,3 +644,25 @@ def test_successor_route_returns_404_when_predecessor_missing(monkeypatch, tmp_p
     )
 
     assert response.status_code == 404
+
+
+def test_agent_operational_capability_projection_is_consistent_and_sanitized(
+    monkeypatch, tmp_path: Path
+) -> None:
+    client = make_client(monkeypatch, tmp_path, FakeCandidatePlanningService())
+
+    response = client.get("/candidate-planning/operational-capabilities")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "execution_intent": "restart-service",
+            "provider_id": "proxmox",
+            "resource_type": "qemu",
+            "planning_supported": True,
+            "translation_supported": True,
+            "execution_gate_enabled": True,
+            "consistency": "consistent",
+        }
+    ]
+    assert "provider_action_id" not in response.text

@@ -4,7 +4,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-    getOperatorIntentResources,
+    getCapabilityResources,
+    getOperationalCapabilities,
     requestRestartServiceIntent,
 } from "../api/operatorIntent";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
@@ -12,7 +13,8 @@ import type { OperatorIntentResource } from "../types/operatorIntent";
 import { MaintenanceRequestPage } from "./MaintenanceRequestPage";
 
 vi.mock("../api/operatorIntent", () => ({
-    getOperatorIntentResources: vi.fn(),
+    getCapabilityResources: vi.fn(),
+    getOperationalCapabilities: vi.fn(),
     requestRestartServiceIntent: vi.fn(),
 }));
 vi.mock("../hooks/operatorSessionContext", () => ({ useOperatorSession: vi.fn() }));
@@ -68,7 +70,26 @@ describe("MaintenanceRequestPage", () => {
     beforeEach(() => {
         vi.resetAllMocks();
         authenticated();
-        vi.mocked(getOperatorIntentResources).mockResolvedValue({
+        vi.mocked(getOperationalCapabilities).mockResolvedValue({ capabilities: [{
+            capability_id: "restart-service--proxmox--qemu",
+            execution_intent: "restart-service",
+            provider_id: "proxmox",
+            resource_type: "qemu",
+            effect_kind: "operational_action",
+            required_approval_level: "standard",
+            selector_available: true,
+            selector_kind: "authoritative_resource",
+            selector_id: "restart-service--proxmox--qemu",
+            disruption_kind: "brief_service_interruption",
+            verification_kind: "authoritative_state_and_health",
+            core_gate_enabled: true,
+            handler_registered: true,
+            production_enabled: true,
+            consistency: "consistent",
+            label: "Restart service",
+            description: "Graceful restart.",
+        }] });
+        vi.mocked(getCapabilityResources).mockResolvedValue({
             execution_intent: "restart-service",
             provider_id: "proxmox",
             resource_type: "qemu",
@@ -151,7 +172,7 @@ describe("MaintenanceRequestPage", () => {
         await user.click(radio);
         await user.click(screen.getByRole("button", { name: "Request restart candidate" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("resource changed");
-        expect(getOperatorIntentResources).toHaveBeenCalledTimes(2);
+        expect(getCapabilityResources).toHaveBeenCalledTimes(2);
         expect(radio).not.toBeChecked();
     });
 
@@ -189,7 +210,7 @@ describe("MaintenanceRequestPage", () => {
     it("returns to login on 401", async () => {
         const invalidate = vi.fn();
         authenticated(invalidate);
-        vi.mocked(getOperatorIntentResources).mockRejectedValue({ isAxiosError: true, response: { status: 401 } });
+        vi.mocked(getOperationalCapabilities).mockRejectedValue({ isAxiosError: true, response: { status: 401 } });
         renderPage();
         await waitFor(() => expect(invalidate).toHaveBeenCalled());
     });

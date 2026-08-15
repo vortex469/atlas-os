@@ -17,6 +17,14 @@ _TRANSLATION_ACTIONS = {
 }
 
 
+def is_operational_translation_supported(
+    *, execution_intent: str, provider_id: str, resource_type: str
+) -> bool:
+    """Describe closed translation support without returning native action IDs."""
+
+    return (execution_intent, provider_id, resource_type) in _TRANSLATION_ACTIONS
+
+
 def resolve_provider_action_id(
     *, execution_intent: str, provider_id: str, resource_type: str
 ) -> str:

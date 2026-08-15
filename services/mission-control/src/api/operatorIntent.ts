@@ -1,8 +1,27 @@
 import { atlas } from "./atlas";
 import type {
     OperatorIntentCreationResponse,
+    OperationalCapabilityCollection,
     OperatorIntentResourceCollection,
 } from "../types/operatorIntent";
+
+export async function getOperationalCapabilities(): Promise<OperationalCapabilityCollection> {
+    const response = await atlas.get<OperationalCapabilityCollection>(
+        "/execution-candidates/operator-intents/capabilities",
+        { withCredentials: true },
+    );
+    return response.data;
+}
+
+export async function getCapabilityResources(
+    selectorId: string,
+): Promise<OperatorIntentResourceCollection> {
+    const response = await atlas.get<OperatorIntentResourceCollection>(
+        `/execution-candidates/operator-intents/capabilities/${encodeURIComponent(selectorId)}/resources`,
+        { withCredentials: true },
+    );
+    return response.data;
+}
 
 const INTENT_LIFETIME_MS = 15 * 60 * 1000;
 

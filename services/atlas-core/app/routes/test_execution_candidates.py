@@ -379,12 +379,23 @@ def test_execution_candidate_openapi_exposes_only_reviewed_methods() -> None:
         "/api/v1/execution-candidates/{candidate_id}",
         "/api/v1/execution-candidates/{candidate_id}/planning-intake",
         "/api/v1/execution-candidates/operator-intents",
+        "/api/v1/execution-candidates/operator-intents/capabilities",
+        "/api/v1/execution-candidates/operator-intents/capabilities/{selector_id}/resources",
         "/api/v1/execution-candidates/operator-intents/resources",
     }
     assert set(paths["/api/v1/execution-candidates"]) == {"get"}
     assert set(paths["/api/v1/execution-candidates/{candidate_id}"]) == {"get"}
     assert set(paths["/api/v1/execution-candidates/{candidate_id}/planning-intake"]) == {"post"}
     assert set(paths["/api/v1/execution-candidates/operator-intents"]) == {"post"}
+    assert set(
+        paths["/api/v1/execution-candidates/operator-intents/capabilities"]
+    ) == {"get"}
+    assert set(
+        paths[
+            "/api/v1/execution-candidates/operator-intents/capabilities/"
+            "{selector_id}/resources"
+        ]
+    ) == {"get"}
     assert set(paths["/api/v1/execution-candidates/operator-intents/resources"]) == {
         "get"
     }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
@@ -283,6 +284,9 @@ def route_client(tmp_path: Path, *, permissions=(OPERATIONAL_INTENT_CREATE,)):
     app.state.operator_session_store = OperatorSessionStore(tmp_path / "sessions.db", 300)
     app.state.operator_security_audit = OperatorSecurityAuditStore(tmp_path / "audit.db")
     app.state.operator_mutation_rate_limiter = OperatorRateLimiter(10, 60)
+    app.state.operational_dispatch_service = SimpleNamespace(
+        capability_boundary=lambda _intent, _provider, _resource_type: (True, True)
+    )
     created = app.state.operator_session_store.create(
         OperatorCredential(
             operator_id="kenny",
@@ -327,6 +331,28 @@ def test_selector_route_requires_operator_permission_but_not_csrf(
     assert forbidden.get(
         "/api/v1/execution-candidates/operator-intents/resources"
     ).status_code == 403
+
+
+def test_capability_route_is_authenticated_and_unknown_selector_is_closed(
+    tmp_path: Path,
+) -> None:
+    client = route_client(tmp_path / "capability")
+    response = client.get(
+        "/api/v1/execution-candidates/operator-intents/capabilities"
+    )
+    assert response.status_code == 200
+    descriptor = response.json()["capabilities"][0]
+    assert descriptor["production_enabled"] is True
+    assert descriptor["capability_id"] == "restart-service--proxmox--qemu"
+
+    unknown = client.get(
+        "/api/v1/execution-candidates/operator-intents/capabilities/https:%2F%2Fevil.invalid/resources"
+    )
+    assert unknown.status_code == 404
+    client.cookies.clear()
+    assert client.get(
+        "/api/v1/execution-candidates/operator-intents/capabilities"
+    ).status_code == 401
 
 
 def test_selector_source_has_no_mutation_or_execution_dependencies() -> None:
