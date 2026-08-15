@@ -19,6 +19,13 @@ from app.discovery.models import (
     DiscoveryItemType,
     DiscoveryRelationshipType,
 )
+from app.discovery.proposals import (
+    DiscoveryProposalDestinationKind,
+    DiscoveryProposalIntentHint,
+    DiscoveryProposalReason,
+    DiscoveryProposalStatus,
+    DiscoveryProposalTargetHint,
+)
 from app.discovery.repository import DiscoveryRelationshipReference
 from app.discovery.search import DiscoverySearchEvidence, DiscoverySearchResult
 
@@ -234,6 +241,28 @@ class DiscoveryCompatibilityAssessmentResponse(DiscoveryCenterModel):
     findings: tuple[DiscoveryCompatibilityFindingResponse, ...] = ()
     evidence: tuple[DiscoveryCompatibilityEvidenceResponse, ...] = ()
     unknown_facts: tuple[str, ...] = ()
+
+
+class DiscoveryProposalNavigationResponse(DiscoveryCenterModel):
+    """Sanitized advisory navigation; it carries no execution authority."""
+
+    proposal_id: str
+    destination_kind: DiscoveryProposalDestinationKind
+    catalog_item_id: str
+    compatibility_status: CompatibilityStatus
+    status: DiscoveryProposalStatus
+    reason: DiscoveryProposalReason
+    intent_hint: DiscoveryProposalIntentHint | None = None
+    target_hints: tuple[DiscoveryProposalTargetHint, ...] = ()
+    generated_at: str
+    expires_at: str
+    actionable_navigation: bool = False
+
+
+class DiscoveryProposalPageResponse(DiscoveryCenterModel):
+    proposals: tuple[DiscoveryProposalNavigationResponse, ...]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
 
 
 def requirements_to_response(requirements) -> DiscoveryRequirementsResponse:

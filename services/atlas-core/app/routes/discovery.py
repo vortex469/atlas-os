@@ -10,6 +10,8 @@ from app.discovery.api_models import (
     DiscoveryCatalogPageResponse,
     DiscoveryCompatibilityAssessmentResponse,
     DiscoveryMetadataResponse,
+    DiscoveryProposalNavigationResponse,
+    DiscoveryProposalPageResponse,
     DiscoveryRelationshipCollectionResponse,
     DiscoverySearchPageResponse,
     compatibility_assessment_to_response,
@@ -23,6 +25,10 @@ from app.discovery.models import (
     DiscoveryItemType,
     DiscoveryRelationshipType,
 )
+from app.discovery.proposals import (
+    DiscoveryProposalDestinationKind,
+    DiscoveryProposalStatus,
+)
 from app.models.contracts import APIError
 from app.services.discovery import (
     DiscoveryCatalogUnavailableError,
@@ -32,7 +38,13 @@ from app.services.discovery import (
 )
 from app.services.discovery_compatibility import (
     DiscoveryCompatibilityContextUnavailableError,
+    DiscoveryCompatibilityServiceError,
     get_discovery_compatibility_service,
+)
+from app.services.discovery_proposals import (
+    DiscoveryProposalEvaluation,
+    DiscoveryProposalNotFoundError,
+    get_discovery_proposal_service,
 )
 
 router = APIRouter(prefix="/discovery", tags=["Discovery"])
@@ -68,6 +80,90 @@ def _compatibility_unavailable(
         status_code=503,
         detail="Discovery compatibility context is unavailable.",
     )
+
+
+def _proposal_response(
+    evaluation: DiscoveryProposalEvaluation,
+) -> DiscoveryProposalNavigationResponse:
+    proposal = evaluation.proposal
+    destination = DiscoveryProposalDestinationKind.DISCOVERY_DETAIL
+    if (
+        evaluation.status is DiscoveryProposalStatus.CURRENT
+        and evaluation.effective_destination is not None
+    ):
+        destination = evaluation.effective_destination.kind
+    if (
+        destination is DiscoveryProposalDestinationKind.OPERATOR_MAINTENANCE_SELECTION
+        and not evaluation.actionable_navigation
+    ):
+        destination = DiscoveryProposalDestinationKind.DISCOVERY_DETAIL
+    return DiscoveryProposalNavigationResponse(
+        proposal_id=proposal.proposal_id,
+        destination_kind=destination,
+        catalog_item_id=proposal.provenance.catalog_item_id,
+        compatibility_status=proposal.compatibility.status,
+        status=evaluation.status,
+        reason=evaluation.reason,
+        intent_hint=proposal.intent_hint,
+        target_hints=proposal.target_hints,
+        generated_at=proposal.generated_at.isoformat(),
+        expires_at=proposal.expires_at.isoformat(),
+        actionable_navigation=evaluation.actionable_navigation,
+    )
+
+
+@router.get(
+    "/proposals",
+    response_model=DiscoveryProposalPageResponse,
+    responses={503: {"model": APIError}},
+    summary="List evaluated advisory Discovery proposals",
+)
+def list_discovery_proposals(
+    target: Annotated[str, Query(min_length=1, max_length=120)] = "atlas",
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> DiscoveryProposalPageResponse:
+    try:
+        evaluations = get_discovery_proposal_service().list_evaluations(
+            target=target,
+            limit=limit,
+        )
+    except (DiscoveryCatalogUnavailableError, DiscoveryCompatibilityServiceError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Discovery proposals are unavailable.",
+        ) from error
+    except (ValidationError, ValueError) as error:
+        raise _validation_error(error) from error
+    return DiscoveryProposalPageResponse(
+        proposals=tuple(_proposal_response(value) for value in evaluations),
+        total=len(evaluations),
+        limit=limit,
+    )
+
+
+@router.get(
+    "/proposals/{proposal_id}",
+    response_model=DiscoveryProposalNavigationResponse,
+    responses={404: {"model": APIError}, 503: {"model": APIError}},
+    summary="Read one evaluated advisory Discovery proposal",
+)
+def get_discovery_proposal(
+    proposal_id: str,
+    target: Annotated[str, Query(min_length=1, max_length=120)] = "atlas",
+) -> DiscoveryProposalNavigationResponse:
+    try:
+        evaluation = get_discovery_proposal_service().get_evaluation(
+            proposal_id,
+            target=target,
+        )
+    except DiscoveryProposalNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Discovery proposal was not found.") from error
+    except (DiscoveryCatalogUnavailableError, DiscoveryCompatibilityServiceError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Discovery proposals are unavailable.",
+        ) from error
+    return _proposal_response(evaluation)
 
 
 @router.get(

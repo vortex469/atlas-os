@@ -5,6 +5,8 @@ import type {
     DiscoveryCompatibilityAssessment,
     DiscoveryListQuery,
     DiscoveryMetadata,
+    DiscoveryProposalNavigation,
+    DiscoveryProposalPage,
     DiscoveryRelationshipCollection,
     DiscoveryRelationshipType,
     DiscoverySearchPage,
@@ -16,6 +18,22 @@ const DEFAULT_LIMIT = 25;
 export async function getDiscoveryMetadata(): Promise<DiscoveryMetadata> {
     const response = await atlas.get<DiscoveryMetadata>("/discovery");
 
+    return response.data;
+}
+
+export async function listDiscoveryProposals(limit = 50): Promise<DiscoveryProposalPage> {
+    const response = await atlas.get<DiscoveryProposalPage>("/discovery/proposals", {
+        params: { limit },
+    });
+    return response.data;
+}
+
+export async function getDiscoveryProposal(
+    proposalId: string,
+): Promise<DiscoveryProposalNavigation> {
+    const response = await atlas.get<DiscoveryProposalNavigation>(
+        `/discovery/proposals/${encodeURIComponent(proposalId)}`,
+    );
     return response.data;
 }
 

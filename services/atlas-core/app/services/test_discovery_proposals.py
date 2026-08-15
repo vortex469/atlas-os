@@ -33,6 +33,7 @@ from app.intelligence.findings import Finding, Severity
 from app.services.discovery import DiscoveryItemNotFoundError
 from app.services.discovery_proposals import (
     MAX_PROPOSAL_RESULTS,
+    DiscoveryProposalNotFoundError,
     DiscoveryProposalService,
 )
 
@@ -354,6 +355,47 @@ def test_results_are_bounded_and_deterministically_ordered() -> None:
     assert len(derivation.derive(limit=1)) == 1
     with pytest.raises(ValueError):
         derivation.derive(limit=MAX_PROPOSAL_RESULTS + 1)
+
+
+def test_evaluated_list_and_detail_use_current_read_only_snapshot() -> None:
+    derivation = service(assessment(CompatibilityStatus.COMPATIBLE))[0]
+
+    evaluations = derivation.list_evaluations(limit=1)
+    detail = derivation.get_evaluation(evaluations[0].proposal.proposal_id)
+
+    assert len(evaluations) == 1
+    assert detail.status is DiscoveryProposalStatus.CURRENT
+    assert detail.proposal.proposal_id == evaluations[0].proposal.proposal_id
+
+
+def test_unknown_proposal_detail_fails_with_controlled_domain_error() -> None:
+    derivation = service(assessment(CompatibilityStatus.COMPATIBLE))[0]
+    with pytest.raises(DiscoveryProposalNotFoundError, match="was not found"):
+        derivation.get_evaluation("discovery-operator-proposal-missing")
+
+
+def test_observed_proposal_remains_inspectable_after_source_changes() -> None:
+    derivation, catalog, _ = service(assessment(CompatibilityStatus.COMPATIBLE))
+    observed = derivation.list_evaluations(limit=1)[0].proposal
+    catalog.entries = ()
+
+    detail = derivation.get_evaluation(observed.proposal_id)
+
+    assert detail.status is DiscoveryProposalStatus.STALE
+    assert detail.reason is DiscoveryProposalReason.SOURCE_MISSING
+    assert detail.effective_destination is None
+
+
+def test_observed_proposal_remains_inspectable_after_expiry() -> None:
+    derivation = service(assessment(CompatibilityStatus.COMPATIBLE))[0]
+    observed = derivation.list_evaluations(limit=1)[0].proposal
+    derivation._clock = lambda: observed.expires_at
+
+    detail = derivation.get_evaluation(observed.proposal_id)
+
+    assert detail.status is DiscoveryProposalStatus.EXPIRED
+    assert detail.reason is DiscoveryProposalReason.EXPIRED
+    assert detail.effective_destination is None
 
 
 def test_derivation_is_read_only_and_schema_is_redacted() -> None:

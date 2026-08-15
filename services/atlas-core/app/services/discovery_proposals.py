@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
+from threading import RLock
 from typing import Protocol
 
 from app.discovery.compatibility import CompatibilityAssessment, CompatibilityStatus
@@ -67,6 +68,10 @@ class DiscoveryProposalEvaluation(DiscoveryCenterModel):
     actionable_navigation: bool
 
 
+class DiscoveryProposalNotFoundError(LookupError):
+    """Raised when a bounded current proposal snapshot has no requested id."""
+
+
 FindingCollector = Callable[[], Iterable[Finding]]
 Clock = Callable[[], datetime]
 
@@ -90,6 +95,8 @@ class DiscoveryProposalService:
         self._finding_collector = finding_collector
         self._clock = clock or (lambda: datetime.now(UTC))
         self._lifetime = lifetime
+        self._observed: dict[str, DiscoveryOperatorProposal] = {}
+        self._observed_lock = RLock()
 
     def derive(self, *, target: str = "atlas", limit: int = 50) -> tuple[DiscoveryOperatorProposal, ...]:
         if limit < 1 or limit > MAX_PROPOSAL_RESULTS:
@@ -100,6 +107,61 @@ class DiscoveryProposalService:
             self._derive_entry(entry, target=target, findings=findings) for entry in entries
         )
         return tuple(sorted(proposals, key=lambda value: value.proposal_id))[:limit]
+
+    def list_evaluations(
+        self,
+        *,
+        target: str = "atlas",
+        limit: int = 50,
+    ) -> tuple[DiscoveryProposalEvaluation, ...]:
+        """Return a bounded deterministic snapshot evaluated against current state."""
+
+        current = self.derive(target=target, limit=MAX_PROPOSAL_RESULTS)
+        self._remember(current)
+        with self._observed_lock:
+            observed = tuple(
+                proposal
+                for proposal in self._observed.values()
+                if proposal.compatibility.target_id == target
+            )
+        evaluations = tuple(self.evaluate(proposal) for proposal in observed)
+        return tuple(
+            sorted(evaluations, key=lambda value: value.proposal.proposal_id)
+        )[:limit]
+
+    def get_evaluation(
+        self,
+        proposal_id: str,
+        *,
+        target: str = "atlas",
+    ) -> DiscoveryProposalEvaluation:
+        """Read one proposal from the bounded current derived snapshot."""
+
+        with self._observed_lock:
+            observed = self._observed.get(proposal_id)
+        if observed is not None and observed.compatibility.target_id == target:
+            return self.evaluate(observed)
+
+        current = self.derive(target=target, limit=MAX_PROPOSAL_RESULTS)
+        self._remember(current)
+        for proposal in current:
+            if proposal.proposal_id == proposal_id:
+                return self.evaluate(proposal)
+        raise DiscoveryProposalNotFoundError("Discovery proposal was not found.")
+
+    def _remember(self, proposals: tuple[DiscoveryOperatorProposal, ...]) -> None:
+        """Retain a bounded process-local read snapshot; this is not persistence."""
+
+        with self._observed_lock:
+            for proposal in proposals:
+                self._observed.setdefault(proposal.proposal_id, proposal)
+            if len(self._observed) > MAX_PROPOSAL_RESULTS:
+                retained = sorted(
+                    self._observed.values(),
+                    key=lambda value: (value.generated_at, value.proposal_id),
+                    reverse=True,
+                )[:MAX_PROPOSAL_RESULTS]
+                self._observed = {value.proposal_id: value for value in retained}
 
     def evaluate(
         self,
