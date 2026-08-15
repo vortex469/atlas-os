@@ -6,12 +6,20 @@ release boundaries.
 
 ## Unreleased
 
-Atlas v0.9 has the theme Operational Recovery and Evidence Automation. P0
-through P5 are complete. The immutable `atlas-v0.9-rc1` candidate at
+Atlas v0.10 development begins with documentation and contract design for a
+sanitized, stale-aware Discovery-to-Operator Proposal Handoff. No v0.10 runtime
+change or execution-boundary expansion exists yet.
+
+## atlas-v0.9.0 — Atlas v0.9.0 (2026-08-15)
+
+Atlas v0.9 completed Operational Recovery and Evidence Automation. The final
+release was published at
+`7a5beac58e1677cd97b9bcc2f160dc30573582aa`, promoting the immutable
+`atlas-v0.9-rc1` candidate at
 `bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed required CI,
 `atlas-release-evidence-v1`, exact-SHA no-cache production deployment, and
-sequential restart soak and is accepted for final promotion. The final
-`atlas-v0.9.0` release remains pending.
+sequential restart soak. Final Quality gates run `31861408265` and Container
+release gate run `31861408264` passed.
 
 ### Added
 

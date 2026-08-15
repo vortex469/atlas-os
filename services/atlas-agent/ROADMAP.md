@@ -489,11 +489,24 @@ acceptance/documentation. The immutable `atlas-v0.9-rc1` candidate at
 `bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed exact-SHA CI,
 release-evidence validation, exact-RC deployment, and sequential production
 restart soak without redispatch or provider mutation. RC1 is accepted for
-final promotion; `atlas-v0.9.0` publication remains pending.
+final promotion. The final `atlas-v0.9.0` release was published at
+`7a5beac58e1677cd97b9bcc2f160dc30573582aa` after final required CI passed.
 The implementation derives controlled evidence from existing Agent lifecycle
 and Core durable-ledger projections. It performs no provider call or
 reconciliation write, exposes no mutation endpoint, registers no handler,
 changes no execution gate, and persists no support bundle.
+
+## Atlas v0.10 — Discovery-to-Operator Proposal Handoff
+
+D9 is active v0.10 work, but remains proposal/navigation-only. Atlas Core owns
+derived advisory proposals; Atlas Agent accepts no proposal as target,
+candidate, action-request, approval, or dispatch authority. Any eventual
+workflow begins only after existing Core boundaries freshly resolve the current
+capability, authoritative selector, target state/fingerprint, and operator
+permission. Agent planning and execution remain closed to
+`restart-service / proxmox / qemu`; repository execution remains separately
+gated as `update-compose-stack`. P1 begins with internal proposal contracts and
+tests only, with no Agent integration.
 
 ### Planned Phase 5
 

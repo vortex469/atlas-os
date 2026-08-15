@@ -37,17 +37,19 @@ not replace Core authentication. See the
 [restart contract](docs/architecture/proxmox-qemu-operational-restart.md), and
 [verification/recovery contract](docs/architecture/operational-verification-recovery.md).
 
-## Atlas v0.9 RC1 accepted for promotion
+## Atlas v0.9.0
 
 Atlas v0.9 has the theme **Operational Recovery and Evidence Automation**. It
 adds read-only recovery diagnostics, bounded sanitized support bundles,
 check-only release-evidence automation, and Mission Control recovery/history
 UX without adding a provider mutation capability. V0.9-P0 through V0.9-P5 are
-complete. The immutable `atlas-v0.9-rc1` candidate at
+complete. The immutable `atlas-v0.9.0` release was published at
+`7a5beac58e1677cd97b9bcc2f160dc30573582aa`, promoting the immutable
+`atlas-v0.9-rc1` candidate at
 `bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed exact-SHA CI,
 release-evidence validation, no-cache production deployment, source/image
-parity, and sequential service-restart soak. It is accepted for final
-promotion; publication of `atlas-v0.9.0` remains pending. The existing
+parity, and sequential service-restart soak. Final Quality gates run
+`31861408265` and Container release gate run `31861408264` passed. The existing
 `restart-service / proxmox / qemu` path remains the only operational production
 tuple.
 
@@ -57,6 +59,17 @@ configuration-independent LXC incarnation identity. Atlas therefore rejected
 from reusable or mutable fields. LXC remains unsupported and non-requestable.
 
 - [Atlas v0.8.0 to v0.9 upgrade and rollback](docs/DEPLOYMENT.md#atlas-v080-to-v09-upgrade-and-rollback)
+
+## Atlas v0.10 development
+
+Atlas v0.10 has the theme **Discovery-to-Operator Proposal Handoff**. It will
+turn trusted Discovery and Orion advisory evidence into sanitized, stale-aware
+operator proposals that navigate to existing authoritative review or
+operator-intent surfaces without granting Discovery execution authority.
+Proposals cannot create candidates, action requests, approvals, or dispatches;
+the destination must freshly resolve capability, resource, target fingerprint,
+and operator authority. V0.10 does not widen the existing repository or
+operational execution boundaries.
 
 - [Atlas v0.7.0 to v0.8 upgrade](docs/DEPLOYMENT.md#atlas-v070-to-v08-upgrade-and-rollback)
 - [Atlas v0.8 to v0.7.0 rollback](docs/DEPLOYMENT.md#rollback-to-atlas-v070)

@@ -381,5 +381,26 @@ documentation is complete. The immutable `atlas-v0.9-rc1` candidate at
 `atlas-release-evidence-v1`, exact-SHA no-cache production deployment,
 source/image parity, and sequential Agent/Core/Mission Control/Edge restart
 soak. The accepted workflow and exactly-once ledger evidence remained
-unchanged. RC1 is accepted for promotion; the final `atlas-v0.9.0` tag remains
-pending.
+unchanged. The final `atlas-v0.9.0` release was published at
+`7a5beac58e1677cd97b9bcc2f160dc30573582aa`; final Quality gates run
+`31861408265` and Container release gate run `31861408264` passed.
+
+## Atlas v0.10 scope
+
+Atlas v0.10 has the theme **Discovery-to-Operator Proposal Handoff**. Atlas
+Core's Discovery/intelligence layer will derive, not persist, sanitized and
+stale-aware advisory proposals from trusted catalog, provenance, finding, and
+compatibility evidence. D9 is navigation-only: proposals cannot create a
+candidate or action request, approve, dispatch, select an authoritative target,
+assert its fingerprint, supply provider actions or arbitrary parameters, or
+bypass operator authentication and existing capability/selector boundaries.
+
+At any authoritative destination, Atlas freshly reloads current capability
+descriptors, the authoritative resource selector, target state and fingerprint,
+and operator permission. Proposal identity binds versioned catalog provenance,
+source finding and compatibility evidence, closed hints, and destination while
+excluding display and timestamp/UI state. Expired or source-mismatched proposals
+remain inspectable but non-actionable. Compatibility is evidence, not execution
+permission. V0.10 adds no execution intent or handler; production remains
+exactly `restart-service / proxmox / qemu`, repository execution remains
+`update-compose-stack`, and LXC remains unsupported.

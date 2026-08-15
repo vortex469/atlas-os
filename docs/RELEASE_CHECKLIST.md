@@ -91,7 +91,9 @@ publication remains pending.
 - [x] Create the immutable annotated `atlas-v0.9-rc1` tag.
 - [x] Complete and record exact-RC production deployment and service-restart
   soak without performing a provider mutation merely for soak validation.
-- [ ] Create the final immutable `atlas-v0.9.0` tag.
+- [x] Create the final immutable `atlas-v0.9.0` tag at
+  `7a5beac58e1677cd97b9bcc2f160dc30573582aa`; Quality gates run
+  `31861408265` and Container release gate run `31861408264` passed.
 
 ### Atlas v0.9 RC1 promotion evidence — 2026-08-15
 
@@ -134,7 +136,24 @@ publication remains pending.
   translation, execution-gate entry, handler, ACL, or synthetic identity was
   added.
 - [x] RC1 is selected, immutable, deployed, soaked, and accepted for final
-  promotion. Creation and publication of `atlas-v0.9.0` remain pending.
+  promotion. The final `atlas-v0.9.0` release was subsequently published at
+  `7a5beac58e1677cd97b9bcc2f160dc30573582aa`.
+
+## Atlas v0.10 implementation status
+
+- [x] V0.10-P0 — Release-state and D9 boundary reconciliation.
+- [ ] V0.10-P1 — Sanitized proposal contracts and provenance.
+- [ ] V0.10-P2 — Derivation, compatibility, and staleness.
+- [ ] V0.10-P3 — Authoritative navigation contract.
+- [ ] V0.10-P4 — Mission Control proposal UX.
+- [ ] V0.10-P5 — Boundary integration and release acceptance.
+
+P0 establishes that Discovery proposals are derived, advisory, and
+non-authoritative. They cannot create candidates, action requests, approvals,
+or dispatches. Any destination must freshly resolve capability, selector,
+target state/fingerprint, and operator authority. V0.10 does not widen
+`update-compose-stack` repository execution or the sole production operational
+tuple `restart-service/proxmox/qemu`; LXC remains unsupported.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
