@@ -440,7 +440,7 @@ A12 scope. The roadmap does not define a sub-checkpoint ordering between those
 unfinished tracks, so the next implementation checkpoint is pending human
 selection.
 
-## v0.6 completion and future phases
+## v0.6 and v0.7 completion and future phases
 
 ### Completed
 
@@ -452,7 +452,16 @@ selection.
 
 ### Planned Phase 4
 
-Add additional execution intents only after separate design, public contracts, immutable requests, exact approvals, recovery behavior, security tests, and end-to-end coverage. Candidate examples include `restart-service`, `backup`, `restore`, `install-provider`, and `update-image`.
+V0.7 completed the first closed Phase 4 slice:
+`restart-service / proxmox / qemu`, with typed operational planning, immutable
+requests, exact approvals, authenticated Core dispatch, durable exactly-once
+barrier, bounded verification, and recovery.
+
+Additional execution intents or provider/resource tuples may be added only
+after separate design, public contracts, immutable requests, exact approvals,
+recovery behavior, security tests, and end-to-end coverage. `backup`, `restore`,
+`install-provider`, and `update-image` remain examples of unsupported future
+intents; v0.8 deliberately adds none of them.
 
 ### Planned Phase 5
 

@@ -199,9 +199,9 @@ through a separate reviewed cleanup decision.
 - [x] Review those v0.7 upgrade and rollback instructions and record
   release-lead sign-off.
 - [x] Create an immutable RC tag only after the exact pushed SHA is green.
-- [ ] Create and publish the final immutable `atlas-v0.7.0` tag only after the
-  documentation provenance fix is committed and required CI passes on that new
-  final SHA.
+- [x] The final immutable `atlas-v0.7.0` tag was published at
+  `8dbc43de73dda300b50c121f19324cb5174df2a9` after the documentation provenance
+  fix and required CI passed on that exact final SHA.
 
 ### Final RC1 provenance and production soak — 2026-08-14
 

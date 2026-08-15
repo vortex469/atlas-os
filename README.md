@@ -1,6 +1,10 @@
-## Atlas v0.7 development
+## Atlas v0.7.0
 
-Atlas v0.7 adds the first approval-gated operational-action workflow:
+The immutable `atlas-v0.7.0` release was published at
+`8dbc43de73dda300b50c121f19324cb5174df2a9` from the immutable
+`atlas-v0.7-rc1` candidate at
+`5b1321091af0fc191844cdf71e9e0d919e4ea415`. It adds the first
+approval-gated operational-action workflow:
 
 - `restart-service / proxmox / qemu`
 
@@ -19,6 +23,14 @@ not replace Core authentication. See the
 [deployment guide](docs/DEPLOYMENT.md#core-owned-operator-authentication),
 [restart contract](docs/architecture/proxmox-qemu-operational-restart.md), and
 [verification/recovery contract](docs/architecture/operational-verification-recovery.md).
+
+## Atlas v0.8 development
+
+Atlas v0.8 focuses on **Operational Control Plane Clarity and Observability**:
+effect-aware workflow and approval presentation, a unified read-only
+operational lifecycle model, Mission Control history and recovery UX,
+provider-neutral read-only capability descriptors, and deployment/security
+ergonomics. It does not widen the v0.7 operational mutation boundary.
 
 ## Atlas v0.6.0
 
@@ -228,7 +240,8 @@ Current capabilities:
 
 Planned direction:
 
-- Atlas Runtime Foundation as the active major milestone for separating immutable defaults from mutable runtime state
+- Atlas v0.8 Operational Control Plane Clarity and Observability as the current bounded release theme
+- Atlas Runtime Foundation as a continuing cross-release track for separating immutable defaults from mutable runtime state
 - Provider Management Framework as a Runtime Foundation subsystem for provider connection, discovery, resources, monitoring, actions, and diagnostics
 - Discovery Center runtime status:
   - ✅ Implemented: provider-neutral catalog models, YAML loader, deterministic repository/search, read-only API, and compatibility engine.

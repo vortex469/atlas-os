@@ -6,7 +6,17 @@ release boundaries.
 
 ## Unreleased
 
-### Added for Atlas v0.7
+Atlas v0.8 is scoped to Operational Control Plane Clarity and Observability.
+No v0.8 runtime changes have been implemented yet.
+
+## atlas-v0.7.0 — Atlas v0.7.0 (2026-08-14)
+
+Atlas v0.7.0 was published at
+`8dbc43de73dda300b50c121f19324cb5174df2a9`, promoting the immutable
+`atlas-v0.7-rc1` candidate at
+`5b1321091af0fc191844cdf71e9e0d919e4ea415`.
+
+### Added
 
 - Added the approval-gated `restart-service / proxmox / qemu` operational
   workflow, including authoritative QEMU identity, deterministic candidate
@@ -24,7 +34,7 @@ release boundaries.
 - Added one-shot sandbox and verifier-only recovery harnesses used to validate
   the operational contracts without enabling a generic execution path.
 
-### Changed for Atlas v0.7
+### Changed
 
 - Provider health and intelligence collection are bounded concurrently so one
   slow provider cannot serially multiply the dashboard startup timeout.
@@ -32,7 +42,7 @@ release boundaries.
   Agent-to-Core dispatch credential while retaining existing container
   hardening.
 
-### Validated for Atlas v0.7
+### Validated
 
 - On 2026-08-14, the normal production workflow performed exactly one approved
   graceful restart of Proxmox QEMU VM 110 (`Frigate`). The workflow completed,

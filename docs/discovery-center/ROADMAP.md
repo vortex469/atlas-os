@@ -2,7 +2,7 @@
 
 Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. This roadmap describes direction and progress.
 
-## Current implementation status (as of RC1)
+## Current implementation status (as of Atlas v0.7.0)
 
 Implemented:
 
@@ -15,9 +15,9 @@ Implemented:
 - D7 — Compatibility Engine
 - D8 — Orion Integration through deterministic intelligence findings consumed by the recommendation pipeline
 
-Future:
+Future beyond the shipped D1–D8 baseline:
 
-- D9 — Atlas Agent Handoff
+- D9 — Atlas Agent Proposal and Navigation Handoff
 - D10 — Dynamic Source Adapters
 - D11 — Semantic Discovery
 - D12 — Community and Private Catalogs
@@ -233,25 +233,32 @@ Exit criteria:
 - Orion owns recommendation wording, priority, and urgency.
 - Discovery Center remains the source of compatibility evidence.
 
-## D9 — Atlas Agent Handoff
+## D9 — Atlas Agent Proposal and Navigation Handoff
 
-Goal: define the future execution boundary from Discovery Center and Orion into Atlas Agent.
+Goal: define a safe proposal and navigation boundary from Discovery Center and
+Orion into Atlas Agent-owned candidate pathways.
 
 Deliverables:
 
-- Handoff context shape
-- Approved-change preconditions
-- Verification expectations
-- Review and commit boundary documentation
+- Sanitized proposal context shape
+- Links into existing authoritative candidate or operator-intent entry points
+- Provenance and compatibility evidence references
+- Closed intent and exact-target preconditions
 
 Non-goals:
 
 - Direct Discovery Center execution
 - Bypassing approval
+- Creating an `OperationalActionRequest`
+- Dispatching a mutation
+- Supplying provider action ids or arbitrary action parameters
 
 Exit criteria:
 
-- All future executable work is routed through Atlas Agent approval-controlled planning, execution, verification, review, and commit workflow.
+- V0.8 integration, if implemented, is proposal/navigation-only and cannot
+  create an action request or dispatch a mutation.
+- Any later executable work remains routed through authoritative candidate
+  creation and Atlas Agent approval-controlled planning and execution.
 
 ## D10 — Dynamic Source Adapters
 
