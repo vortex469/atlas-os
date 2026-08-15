@@ -6,7 +6,10 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 OPERATIONAL_INTENT_CREATE = "operational_intent:create"
-SUPPORTED_OPERATOR_PERMISSIONS = frozenset({OPERATIONAL_INTENT_CREATE})
+PROVIDER_INTENT_UPDATE = "provider_intent:update"
+SUPPORTED_OPERATOR_PERMISSIONS = frozenset(
+    {OPERATIONAL_INTENT_CREATE, PROVIDER_INTENT_UPDATE}
+)
 
 
 class OperatorAuthModel(BaseModel):

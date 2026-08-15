@@ -535,17 +535,17 @@ def _validate_provider_intent_application(
         if core_root.is_dir() and str(core_root) not in sys.path:
             sys.path.insert(0, str(core_root))
     try:
-        from app.provider_intents.legacy_import import (
-            load_legacy_policy_import,
-            validate_activated_provider_intent_store,
+        from app.provider_intents.backup_validation import (
+            validate_activated_provider_intent_backup_store,
         )
+        from app.provider_intents.legacy_import import load_legacy_policy_import
 
         expected_legacy_import_id = (
             expected_legacy_import_id
             or load_legacy_policy_import(policy_path).import_id
         )
 
-        validate_activated_provider_intent_store(
+        validate_activated_provider_intent_backup_store(
             path,
             policy_path,
             expected_legacy_import_id,

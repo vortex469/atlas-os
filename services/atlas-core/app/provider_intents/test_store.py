@@ -36,12 +36,13 @@ def command(
     fingerprint: str = FINGERPRINT_A,
     value: ProviderIntentValue = ProviderIntentValue.RUNNING,
     expected_version: int = 0,
+    resource_id: str = "110",
 ) -> ProviderIntentMutationCommand:
     digest = build_provider_intent_request_digest(
         request_id=request_id,
         provider_id="proxmox",
         resource_type="qemu",
-        resource_id="110",
+        resource_id=resource_id,
         incarnation_fingerprint=fingerprint,
         intent_kind=ProviderIntentKind.MONITORING_EXPECTATION,
         desired_value=value,
@@ -52,7 +53,7 @@ def command(
         request_digest=digest,
         provider_id="proxmox",
         resource_type="qemu",
-        resource_id="110",
+        resource_id=resource_id,
         incarnation_fingerprint=fingerprint,
         intent_kind=ProviderIntentKind.MONITORING_EXPECTATION,
         desired_value=value,
@@ -88,7 +89,7 @@ def test_read_snapshot_is_immutable_and_fresh_per_call(tmp_path: Path) -> None:
 
     original_snapshot = store.read_snapshot()
     store.put(
-        command("create-b", fingerprint=FINGERPRINT_B),
+        command("create-b", fingerprint=FINGERPRINT_B, resource_id="111"),
         now=NOW + timedelta(seconds=1),
     )
     refreshed_snapshot = store.read_snapshot()
@@ -119,7 +120,7 @@ def test_read_snapshot_does_not_mix_a_concurrent_writer_generation(
     def write_next_generation() -> None:
         assert records_read.wait(timeout=5)
         ProviderIntentStore(database).put(
-            command("create-b", fingerprint=FINGERPRINT_B),
+            command("create-b", fingerprint=FINGERPRINT_B, resource_id="111"),
             now=NOW + timedelta(seconds=1),
         )
         writer_done.set()
@@ -162,7 +163,7 @@ def test_schema_initialization_file_mode_and_restart_durability(
     with sqlite3.connect(path) as connection:
         assert connection.execute(
             "SELECT schema_version FROM provider_intent_store_meta"
-        ).fetchone()[0] == 1
+        ).fetchone()[0] == 2
         assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
         assert connection.execute("PRAGMA synchronous").fetchone()[0] == 2
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 0
@@ -334,32 +335,30 @@ def test_explicit_supersession_is_cas_idempotent_and_terminal(tmp_path: Path) ->
         )
 
 
-def test_same_coordinate_different_incarnations_are_independent(tmp_path: Path) -> None:
+def test_low_level_put_cannot_create_multiple_active_incarnations(tmp_path: Path) -> None:
     store = ProviderIntentStore(tmp_path / "provider_intents.db")
     first = store.put(command("create-a", fingerprint=FINGERPRINT_A), now=NOW)
-    second = store.put(
-        command(
-            "create-b",
-            fingerprint=FINGERPRINT_B,
-            value=ProviderIntentValue.IGNORED,
-        ),
-        now=NOW + timedelta(seconds=1),
-    )
-
-    assert first.record.intent_id != second.record.intent_id
+    with pytest.raises(ProviderIntentStoreConflictError, match="active incarnation"):
+        store.put(
+            command(
+                "create-b",
+                fingerprint=FINGERPRINT_B,
+                value=ProviderIntentValue.IGNORED,
+            ),
+            now=NOW + timedelta(seconds=1),
+        )
     assert first.record.lifecycle is ProviderIntentLifecycle.ACTIVE
-    assert second.record.lifecycle is ProviderIntentLifecycle.ACTIVE
     assert first.record.intent_value is ProviderIntentValue.RUNNING
-    assert second.record.intent_value is ProviderIntentValue.IGNORED
     assert store.history(first.record.intent_id) == (first.record,)
-    assert store.history(second.record.intent_id) == (second.record,)
 
 
 def test_validated_read_apis_are_deterministic_and_coordinate_bound(
     tmp_path: Path,
 ) -> None:
     store = ProviderIntentStore(tmp_path / "provider_intents.db")
-    second = store.put(command("create-b", fingerprint=FINGERPRINT_B), now=NOW)
+    second = store.put(
+        command("create-b", fingerprint=FINGERPRINT_B, resource_id="111"), now=NOW
+    )
     first = store.put(
         command("create-a", fingerprint=FINGERPRINT_A),
         now=NOW + timedelta(seconds=1),
@@ -372,7 +371,7 @@ def test_validated_read_apis_are_deterministic_and_coordinate_bound(
         provider_id="proxmox",
         resource_type="qemu",
         resource_id="110",
-    ) == (first.record, second.record)
+    ) == (first.record,)
     assert store.get_identity_bound_current(
         provider_id="proxmox",
         resource_type="qemu",
@@ -394,14 +393,14 @@ def test_unsupported_schema_and_malformed_records_fail_closed(tmp_path: Path) ->
     created = store.put(command("create-1"), now=NOW)
     with sqlite3.connect(path) as connection:
         connection.execute(
-            "UPDATE provider_intent_store_meta SET schema_version=2"
+            "UPDATE provider_intent_store_meta SET schema_version=99"
         )
     with pytest.raises(ProviderIntentStoreSchemaError):
         ProviderIntentStore(path)
 
     with sqlite3.connect(path) as connection:
         connection.execute(
-            "UPDATE provider_intent_store_meta SET schema_version=1"
+            "UPDATE provider_intent_store_meta SET schema_version=2"
         )
         connection.execute(
             "UPDATE provider_intent_records SET record_json='{}' "

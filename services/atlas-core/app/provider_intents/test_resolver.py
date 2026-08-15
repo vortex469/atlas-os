@@ -22,7 +22,8 @@ from app.provider_intents.store import (
     ProviderIntentStore,
     ProviderIntentStoreCorruptionError,
 )
-from app.provider_intents.test_store import command
+from app.provider_intents.test_coordinate_mutation import command as coordinate_command
+from app.provider_intents.test_store import command, supersede_command
 
 NOW = datetime(2026, 8, 15, tzinfo=UTC)
 FINGERPRINT_A = "provider-management-fingerprint-v1:" + "a" * 64
@@ -70,13 +71,20 @@ def test_matching_and_ignored_active_qemu_are_configured(tmp_path: Path) -> None
             "create-ignored",
             fingerprint=FINGERPRINT_B,
             value=ProviderIntentValue.IGNORED,
+            resource_id="111",
         ),
         now=NOW,
     )
     resolver = ProviderMonitoringIntentResolver(activated(Path(store.database_path)), store)
 
     first = resolver.resolve((snapshot(fingerprint=FINGERPRINT_A),)).resources[0]
-    second = resolver.resolve((snapshot(fingerprint=FINGERPRINT_B),)).resources[0]
+    second = next(
+        item
+        for item in resolver.resolve(
+            (snapshot("111", fingerprint=FINGERPRINT_B),)
+        ).resources
+        if item.resource_id == "111"
+    )
     assert first.status is ProviderIntentResolutionStatus.CONFIGURED
     assert first.reason is ProviderIntentResolutionReason.MATCHING_ACTIVE_INTENT
     assert first.expectation is ProviderIntentValue.RUNNING
@@ -113,7 +121,11 @@ def test_no_active_legacy_only_and_identity_unavailable(tmp_path: Path) -> None:
 
 def test_replacement_multiple_incarnations_and_exact_match_wins(tmp_path: Path) -> None:
     store = ProviderIntentStore(tmp_path / "provider_intents.db")
-    store.put(command("create-a", fingerprint=FINGERPRINT_A), now=NOW)
+    old = store.put(command("create-a", fingerprint=FINGERPRINT_A), now=NOW)
+    store.supersede(
+        supersede_command("supersede-a", old.record.intent_id, 1),
+        now=NOW + timedelta(microseconds=1),
+    )
     store.put(
         command(
             "create-b",
@@ -133,6 +145,29 @@ def test_replacement_multiple_incarnations_and_exact_match_wins(tmp_path: Path) 
     matching = resolver.resolve((snapshot(fingerprint=FINGERPRINT_B),)).resources[0]
     assert matching.status is ProviderIntentResolutionStatus.CONFIGURED
     assert matching.expectation is ProviderIntentValue.STOPPED
+
+
+def test_coordinate_mutation_create_update_and_rebind_feed_resolver(tmp_path: Path) -> None:
+    store = ProviderIntentStore(tmp_path / "provider_intents.db")
+    store.mutate_coordinate(coordinate_command("a"), now=NOW)
+    store.mutate_coordinate(
+        coordinate_command("b", value=ProviderIntentValue.STOPPED, version=1),
+        now=NOW + timedelta(seconds=1),
+    )
+    store.mutate_coordinate(
+        coordinate_command(
+            "c", fingerprint=FINGERPRINT_B, value=ProviderIntentValue.IGNORED
+        ),
+        now=NOW + timedelta(seconds=2),
+    )
+    resolver = ProviderMonitoringIntentResolver(activated(Path(store.database_path)), store)
+
+    old = resolver.resolve((snapshot(fingerprint=FINGERPRINT_A),)).resources[0]
+    current = resolver.resolve((snapshot(fingerprint=FINGERPRINT_B),)).resources[0]
+    assert old.reason is ProviderIntentResolutionReason.INCARNATION_MISMATCH
+    assert current.status is ProviderIntentResolutionStatus.CONFIGURED
+    assert current.expectation is ProviderIntentValue.IGNORED
+    assert current.record_version == 1
 
 
 def test_lxc_is_unsupported_and_legacy_evidence_is_only_review_context(

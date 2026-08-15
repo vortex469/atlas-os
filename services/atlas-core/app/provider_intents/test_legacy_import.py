@@ -327,7 +327,7 @@ def test_cli_output_is_bounded_and_contains_no_policy_values(tmp_path: Path) -> 
     assert (spaced / "store file.db").is_file()
 
 
-@pytest.mark.parametrize("schema_version", (2, 999))
+@pytest.mark.parametrize("schema_version", (3, 999))
 def test_unsupported_or_corrupt_store_fails_before_import(
     tmp_path: Path, schema_version: int
 ) -> None:

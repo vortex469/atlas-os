@@ -19,6 +19,7 @@ from app.operator_auth.credentials import (
 )
 from app.operator_auth.models import (
     OPERATIONAL_INTENT_CREATE,
+    PROVIDER_INTENT_UPDATE,
     OperatorCredential,
     OperatorCredentialFile,
 )
@@ -28,6 +29,21 @@ from app.routes.operator_auth import router
 
 ORIGIN = "https://atlas.test"
 PASSWORD = "test-only-operator-password"
+
+
+def test_provider_intent_permission_is_closed_and_not_implied_or_defaulted() -> None:
+    provider_operator = OperatorCredential(
+        operator_id="provider-operator",
+        password_hash="hash",
+        permissions=(PROVIDER_INTENT_UPDATE,),
+    )
+    operational_operator = OperatorCredential(
+        operator_id="operational-operator",
+        password_hash="hash",
+        permissions=(OPERATIONAL_INTENT_CREATE,),
+    )
+    assert provider_operator.permissions == (PROVIDER_INTENT_UPDATE,)
+    assert PROVIDER_INTENT_UPDATE not in operational_operator.permissions
 
 
 def credential_file(

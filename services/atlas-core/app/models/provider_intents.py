@@ -20,9 +20,14 @@ from app.providers.management import (
 )
 
 PROVIDER_INTENT_SCHEMA_VERSION = 1
+PROVIDER_INTENT_STORE_P2C_SCHEMA_VERSION = 1
+PROVIDER_INTENT_STORE_SCHEMA_VERSION = 2
 PROVIDER_INTENT_ID_VERSION = "provider-intent-series-v1"
 PROVIDER_INTENT_REQUEST_DIGEST_VERSION = "provider-intent-request-v1"
 PROVIDER_INTENT_SUPERSEDE_DIGEST_VERSION = "provider-intent-supersede-v1"
+PROVIDER_INTENT_COORDINATE_MUTATION_DIGEST_VERSION = (
+    "provider-intent-coordinate-mutation-v1"
+)
 LEGACY_POLICY_IMPORT_VERSION = "provider-intent-legacy-policy-import-v1"
 LEGACY_POLICY_SOURCE_REFERENCE_VERSION = (
     "provider-intent-legacy-policy-source-reference-v1"
@@ -54,6 +59,7 @@ class ProviderIntentAuditEventKind(StrEnum):
     CREATED = "created"
     UPDATED = "updated"
     SUPERSEDED = "superseded"
+    REBOUND = "rebound"
 
 
 def build_legacy_policy_source_digest(payload: dict[str, object]) -> str:
@@ -344,3 +350,161 @@ class ProviderIntentAuditEvent(ProviderIntentModel):
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("provider intent audit timestamp must be timezone-aware")
         return value.astimezone(UTC)
+
+
+def build_provider_intent_coordinate_mutation_digest(
+    *,
+    operator_id: str,
+    request_id: str,
+    provider_id: str,
+    resource_type: str,
+    resource_id: str,
+    management_fingerprint: str,
+    intent_kind: ProviderIntentKind,
+    desired_value: ProviderIntentValue,
+    expected_record_version: int,
+    acknowledge_monitoring_suppression: bool,
+) -> str:
+    """Bind every caller-controlled P3 mutation input canonically."""
+
+    return _canonical_digest(
+        PROVIDER_INTENT_COORDINATE_MUTATION_DIGEST_VERSION,
+        {
+            "acknowledge_monitoring_suppression": (
+                acknowledge_monitoring_suppression
+            ),
+            "desired_value": desired_value.value,
+            "expected_record_version": expected_record_version,
+            "intent_kind": intent_kind.value,
+            "management_fingerprint": management_fingerprint,
+            "operator_id": operator_id,
+            "provider_id": provider_id,
+            "request_id": request_id,
+            "resource_id": resource_id,
+            "resource_type": resource_type,
+            "version": PROVIDER_INTENT_COORDINATE_MUTATION_DIGEST_VERSION,
+        },
+    )
+
+
+class ProviderIntentCoordinateMutationCommand(ProviderIntentModel):
+    """Actor-bound P3 command with no provider or execution authority."""
+
+    operator_id: str = Field(
+        min_length=1,
+        max_length=200,
+        pattern=r"^[a-zA-Z0-9._@-]+$",
+    )
+    request_id: str = Field(
+        min_length=57,
+        max_length=90,
+        pattern=r"^provider-intent-mutation-[a-f0-9]{32,64}$",
+    )
+    provider_id: Literal["proxmox"]
+    resource_type: Literal["qemu"]
+    resource_id: str = Field(pattern=r"^[0-9]+$", max_length=20)
+    management_fingerprint: str = Field(
+        pattern=PROVIDER_MANAGEMENT_FINGERPRINT_PATTERN
+    )
+    intent_kind: Literal[ProviderIntentKind.MONITORING_EXPECTATION] = (
+        ProviderIntentKind.MONITORING_EXPECTATION
+    )
+    desired_value: ProviderIntentValue
+    expected_record_version: int = Field(ge=0, le=MAX_RECORD_VERSION)
+    acknowledge_monitoring_suppression: bool = False
+
+    @model_validator(mode="after")
+    def validate_suppression_acknowledgement(
+        self,
+    ) -> ProviderIntentCoordinateMutationCommand:
+        ignored = self.desired_value is ProviderIntentValue.IGNORED
+        if ignored != self.acknowledge_monitoring_suppression:
+            raise ValueError(
+                "monitoring suppression acknowledgement contradicts expectation"
+            )
+        return self
+
+    @property
+    def request_digest(self) -> str:
+        return build_provider_intent_coordinate_mutation_digest(
+            operator_id=self.operator_id,
+            request_id=self.request_id,
+            provider_id=self.provider_id,
+            resource_type=self.resource_type,
+            resource_id=self.resource_id,
+            management_fingerprint=self.management_fingerprint,
+            intent_kind=self.intent_kind,
+            desired_value=self.desired_value,
+            expected_record_version=self.expected_record_version,
+            acknowledge_monitoring_suppression=(
+                self.acknowledge_monitoring_suppression
+            ),
+        )
+
+    @property
+    def intent_id(self) -> str:
+        return build_provider_intent_id(
+            provider_id=self.provider_id,
+            resource_type=self.resource_type,
+            resource_id=self.resource_id,
+            incarnation_fingerprint=self.management_fingerprint,
+            intent_kind=self.intent_kind,
+        )
+
+
+class ProviderIntentCoordinateMutationResult(ProviderIntentModel):
+    outcome: Literal["created", "updated", "rebound"]
+    request_id: str = Field(
+        min_length=57,
+        max_length=90,
+        pattern=r"^provider-intent-mutation-[a-f0-9]{32,64}$",
+    )
+    provider_id: Literal["proxmox"]
+    resource_type: Literal["qemu"]
+    resource_id: str = Field(pattern=r"^[0-9]+$", max_length=20)
+    management_fingerprint: str = Field(
+        pattern=PROVIDER_MANAGEMENT_FINGERPRINT_PATTERN
+    )
+    expectation: ProviderIntentValue
+    record_version: int = Field(ge=1, le=MAX_RECORD_VERSION)
+    superseded_previous_incarnation: bool
+
+    @model_validator(mode="after")
+    def validate_outcome(self) -> ProviderIntentCoordinateMutationResult:
+        if self.superseded_previous_incarnation != (self.outcome == "rebound"):
+            raise ValueError("mutation outcome and supersession flag contradict")
+        if self.outcome in {"created", "rebound"} and self.record_version != 1:
+            raise ValueError("new incarnation mutation must create version one")
+        return self
+
+
+class ProviderIntentDomainAuditEvent(ProviderIntentModel):
+    sequence: int = Field(ge=1)
+    event_id: str = Field(pattern=r"^provider-intent-audit-v1:[a-f0-9]{64}$")
+    occurred_at: datetime
+    operation_id: str = Field(min_length=1, max_length=200)
+    request_id: str = Field(min_length=1, max_length=200)
+    operator_id: str = Field(
+        min_length=1,
+        max_length=200,
+        pattern=r"^[a-zA-Z0-9._@-]+$",
+    )
+    intent_id: str = Field(pattern=r"^provider-intent-series-v1:[a-f0-9]{64}$")
+    record_version: int = Field(ge=1, le=MAX_RECORD_VERSION)
+    event: ProviderIntentAuditEventKind
+    lifecycle: ProviderIntentLifecycle
+    resulting_value: ProviderIntentValue
+
+    @field_validator("occurred_at")
+    @classmethod
+    def canonical_audit_time(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("provider intent audit timestamp must be timezone-aware")
+        return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def validate_event_lifecycle(self) -> ProviderIntentDomainAuditEvent:
+        superseded = self.event is ProviderIntentAuditEventKind.SUPERSEDED
+        if superseded != (self.lifecycle is ProviderIntentLifecycle.SUPERSEDED):
+            raise ValueError("provider intent audit event and lifecycle contradict")
+        return self

@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import sqlite3
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
@@ -14,9 +15,12 @@ from typing import TYPE_CHECKING, NamedTuple
 from pydantic import ValidationError
 
 from app.models.provider_intents import (
-    PROVIDER_INTENT_SCHEMA_VERSION,
+    PROVIDER_INTENT_STORE_SCHEMA_VERSION,
     ProviderIntentAuditEvent,
     ProviderIntentAuditEventKind,
+    ProviderIntentCoordinateMutationCommand,
+    ProviderIntentCoordinateMutationResult,
+    ProviderIntentDomainAuditEvent,
     ProviderIntentKind,
     ProviderIntentLifecycle,
     ProviderIntentMutationCommand,
@@ -24,6 +28,7 @@ from app.models.provider_intents import (
     ProviderIntentProvenance,
     ProviderIntentRecord,
     ProviderIntentSupersedeCommand,
+    ProviderIntentValue,
     build_provider_intent_id,
 )
 
@@ -59,9 +64,42 @@ _TABLE_COLUMNS = {
         "request_digest",
         "event",
     ),
+    "provider_intent_active_coordinates": (
+        "coordinate_key",
+        "provider_id",
+        "resource_type",
+        "resource_id",
+        "intent_kind",
+        "intent_id",
+        "management_fingerprint",
+        "record_version",
+    ),
+    "provider_intent_operations": (
+        "request_id",
+        "request_digest",
+        "operator_id",
+        "result_json",
+        "created_at",
+    ),
+    "provider_intent_operation_audit": (
+        "sequence",
+        "event_id",
+        "occurred_at",
+        "operation_id",
+        "request_id",
+        "operator_id",
+        "intent_id",
+        "record_version",
+        "event",
+        "lifecycle",
+        "resulting_value",
+    ),
 }
 _LEGACY_IMPORT_REQUEST_DIGEST = re.compile(
     r"^provider-intent-legacy-policy-import-request-v1:[a-f0-9]{64}$"
+)
+_COORDINATE_MUTATION_DIGEST = re.compile(
+    r"^provider-intent-coordinate-mutation-v1:[a-f0-9]{64}$"
 )
 
 
@@ -234,7 +272,7 @@ class ProviderIntentStore:
             )
             connection.execute(
                 "INSERT INTO provider_intent_store_meta VALUES (1, ?)",
-                (PROVIDER_INTENT_SCHEMA_VERSION,),
+                (PROVIDER_INTENT_STORE_SCHEMA_VERSION,),
             )
             connection.execute(
                 """
@@ -277,6 +315,56 @@ class ProviderIntentStore:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE provider_intent_active_coordinates (
+                    coordinate_key TEXT PRIMARY KEY,
+                    provider_id TEXT NOT NULL,
+                    resource_type TEXT NOT NULL,
+                    resource_id TEXT NOT NULL,
+                    intent_kind TEXT NOT NULL,
+                    intent_id TEXT NOT NULL UNIQUE,
+                    management_fingerprint TEXT NOT NULL,
+                    record_version INTEGER NOT NULL,
+                    UNIQUE (provider_id, resource_type, resource_id, intent_kind),
+                    FOREIGN KEY (intent_id, record_version)
+                        REFERENCES provider_intent_records
+                            (intent_id, record_version)
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE provider_intent_operations (
+                    request_id TEXT PRIMARY KEY,
+                    request_digest TEXT NOT NULL,
+                    operator_id TEXT NOT NULL,
+                    result_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE provider_intent_operation_audit (
+                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_id TEXT NOT NULL UNIQUE,
+                    occurred_at TEXT NOT NULL,
+                    operation_id TEXT NOT NULL,
+                    request_id TEXT NOT NULL,
+                    operator_id TEXT NOT NULL,
+                    intent_id TEXT NOT NULL,
+                    record_version INTEGER NOT NULL,
+                    event TEXT NOT NULL,
+                    lifecycle TEXT NOT NULL,
+                    resulting_value TEXT NOT NULL,
+                    UNIQUE (intent_id, record_version),
+                    FOREIGN KEY (intent_id, record_version)
+                        REFERENCES provider_intent_records
+                            (intent_id, record_version)
+                )
+                """
+            )
             connection.commit()
         except Exception:
             connection.rollback()
@@ -287,7 +375,7 @@ class ProviderIntentStore:
         connection: sqlite3.Connection,
         tables: set[str],
     ) -> None:
-        if tables != set(_TABLE_COLUMNS):
+        if "provider_intent_store_meta" not in tables:
             raise ProviderIntentStoreSchemaError(
                 "provider intent database table set is invalid"
             )
@@ -298,9 +386,17 @@ class ProviderIntentStore:
             raise ProviderIntentStoreSchemaError(
                 "provider intent store metadata is invalid"
             )
-        if rows[0]["schema_version"] != PROVIDER_INTENT_SCHEMA_VERSION:
+        if rows[0]["schema_version"] != PROVIDER_INTENT_STORE_SCHEMA_VERSION:
+            if rows[0]["schema_version"] == 1:
+                raise ProviderIntentStoreSchemaError(
+                    "provider intent store schema migration is required"
+                )
             raise ProviderIntentStoreSchemaError(
                 "provider intent store schema version is unsupported"
+            )
+        if tables != set(_TABLE_COLUMNS):
+            raise ProviderIntentStoreSchemaError(
+                "provider intent database table set is invalid"
             )
         for table, expected_columns in _TABLE_COLUMNS.items():
             columns = tuple(
@@ -318,6 +414,16 @@ class ProviderIntentStore:
             "provider_intent_audit": {
                 ("intent_id", "record_version"),
                 ("request_id",),
+            },
+            "provider_intent_active_coordinates": {
+                ("coordinate_key",),
+                ("intent_id",),
+                ("provider_id", "resource_type", "resource_id", "intent_kind"),
+            },
+            "provider_intent_operations": {("request_id",)},
+            "provider_intent_operation_audit": {
+                ("event_id",),
+                ("intent_id", "record_version"),
             },
         }
         for table, expected in expected_unique_columns.items():
@@ -337,22 +443,7 @@ class ProviderIntentStore:
                 raise ProviderIntentStoreSchemaError(
                     f"provider intent store table '{table}' uniqueness is invalid"
                 )
-        foreign_keys = connection.execute(
-            "PRAGMA foreign_key_list(provider_intent_audit)"
-        ).fetchall()
-        if tuple(
-            (
-                row["id"],
-                row["seq"],
-                row["table"],
-                row["from"],
-                row["to"],
-                row["on_update"],
-                row["on_delete"],
-                row["match"],
-            )
-            for row in foreign_keys
-        ) != (
+        expected_record_foreign_key = (
             (
                 0,
                 0,
@@ -373,10 +464,349 @@ class ProviderIntentStore:
                 "NO ACTION",
                 "NONE",
             ),
+        )
+        for table in (
+            "provider_intent_audit",
+            "provider_intent_active_coordinates",
+            "provider_intent_operation_audit",
         ):
-            raise ProviderIntentStoreSchemaError(
-                "provider intent audit foreign keys are invalid"
+            foreign_keys = tuple(
+                (
+                    row["id"], row["seq"], row["table"], row["from"],
+                    row["to"], row["on_update"], row["on_delete"], row["match"],
+                )
+                for row in connection.execute(
+                    f"PRAGMA foreign_key_list({table})"
+                ).fetchall()
             )
+            if foreign_keys != expected_record_foreign_key:
+                raise ProviderIntentStoreSchemaError(
+                    f"provider intent table '{table}' foreign keys are invalid"
+                )
+
+    @staticmethod
+    def _coordinate_key(
+        provider_id: str,
+        resource_type: str,
+        resource_id: str,
+        intent_kind: ProviderIntentKind,
+    ) -> str:
+        encoded = json.dumps(
+            {
+                "intent_kind": intent_kind.value,
+                "provider_id": provider_id,
+                "resource_id": resource_id,
+                "resource_type": resource_type,
+                "version": "provider-intent-coordinate-v1",
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+        return f"provider-intent-coordinate-v1:{hashlib.sha256(encoded).hexdigest()}"
+
+    @classmethod
+    def _insert_active_coordinate(
+        cls,
+        connection: sqlite3.Connection,
+        record: ProviderIntentRecord,
+    ) -> None:
+        assert record.resource_type is not None
+        assert record.incarnation_fingerprint is not None
+        try:
+            connection.execute(
+                "INSERT INTO provider_intent_active_coordinates "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    cls._coordinate_key(
+                        record.provider_id,
+                        record.resource_type,
+                        record.resource_id,
+                        record.intent_kind,
+                    ),
+                    record.provider_id,
+                    record.resource_type,
+                    record.resource_id,
+                    record.intent_kind.value,
+                    record.intent_id,
+                    record.incarnation_fingerprint,
+                    record.record_version,
+                ),
+            )
+        except sqlite3.IntegrityError as error:
+            raise ProviderIntentStoreConflictError(
+                "provider intent coordinate already has an active incarnation"
+            ) from error
+
+    @staticmethod
+    def _update_active_coordinate(
+        connection: sqlite3.Connection,
+        record: ProviderIntentRecord,
+    ) -> None:
+        cursor = connection.execute(
+            "UPDATE provider_intent_active_coordinates "
+            "SET record_version=? WHERE intent_id=?",
+            (record.record_version, record.intent_id),
+        )
+        if cursor.rowcount != 1:
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent active coordinate evidence is missing"
+            )
+
+    @staticmethod
+    def _delete_active_coordinate(
+        connection: sqlite3.Connection,
+        intent_id: str,
+    ) -> None:
+        cursor = connection.execute(
+            "DELETE FROM provider_intent_active_coordinates WHERE intent_id=?",
+            (intent_id,),
+        )
+        if cursor.rowcount != 1:
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent active coordinate evidence is missing"
+            )
+
+    @staticmethod
+    def _failure(
+        injector: Callable[[str], None] | None,
+        stage: str,
+    ) -> None:
+        if injector is not None:
+            injector(stage)
+
+    def mutate_coordinate(
+        self,
+        command: ProviderIntentCoordinateMutationCommand,
+        *,
+        now: datetime | None = None,
+        failure_injector: Callable[[str], None] | None = None,
+    ) -> ProviderIntentCoordinateMutationResult:
+        """Atomically create, update, or rebind one supported coordinate."""
+
+        occurred_at = self._canonical_now(now)
+        with self._lock, self._connect() as connection:
+            try:
+                observed_active = connection.execute(
+                    "SELECT intent_id, record_version FROM "
+                    "provider_intent_active_coordinates WHERE coordinate_key=?",
+                    (
+                        self._coordinate_key(
+                            command.provider_id,
+                            command.resource_type,
+                            command.resource_id,
+                            command.intent_kind,
+                        ),
+                    ),
+                ).fetchone()
+                observed_generation = (
+                    None
+                    if observed_active is None
+                    else (observed_active["intent_id"], observed_active["record_version"])
+                )
+                self._failure(failure_injector, "after_active_state_observation")
+                connection.execute("BEGIN IMMEDIATE")
+                replay = self._replay_coordinate_operation(connection, command)
+                if replay is not None:
+                    connection.commit()
+                    return replay
+
+                histories = self._validated_store_records(connection)
+                active = tuple(
+                    history[-1]
+                    for history in histories
+                    if history
+                    and history[-1].lifecycle is ProviderIntentLifecycle.ACTIVE
+                    and history[-1].provider_id == command.provider_id
+                    and history[-1].resource_type == command.resource_type
+                    and history[-1].resource_id == command.resource_id
+                    and history[-1].intent_kind is command.intent_kind
+                )
+                if len(active) > 1:
+                    raise ProviderIntentStoreCorruptionError(
+                        "provider intent coordinate has multiple active incarnations"
+                    )
+                current_generation = (
+                    None
+                    if not active
+                    else (active[0].intent_id, active[0].record_version)
+                )
+                if current_generation != observed_generation:
+                    raise ProviderIntentStoreConflictError(
+                        "provider intent coordinate changed concurrently"
+                    )
+                self._failure(failure_injector, "after_active_state_validation")
+
+                previous = active[0] if active else None
+                target_history = self._validated_history(
+                    connection,
+                    command.intent_id,
+                )
+                audit_records: list[
+                    tuple[ProviderIntentRecord, ProviderIntentAuditEventKind]
+                ] = []
+
+                if previous is None:
+                    if command.expected_record_version != 0:
+                        raise ProviderIntentStoreConflictError(
+                            "provider intent expected version does not exist"
+                        )
+                    if target_history:
+                        raise ProviderIntentStoreConflictError(
+                            "superseded provider intent incarnation cannot be reactivated"
+                        )
+                    record = self._new_coordinate_record(command, occurred_at)
+                    self._persist_internal_record(
+                        connection,
+                        record,
+                        request_id=command.request_id,
+                        request_digest=command.request_digest,
+                        event=ProviderIntentAuditEventKind.CREATED,
+                        occurred_at=occurred_at,
+                    )
+                    self._insert_active_coordinate(connection, record)
+                    self._failure(failure_injector, "after_new_record_append")
+                    audit_records.append((record, ProviderIntentAuditEventKind.CREATED))
+                    outcome = "created"
+                elif previous.intent_id == command.intent_id:
+                    if previous.record_version != command.expected_record_version:
+                        raise ProviderIntentStoreConflictError(
+                            "provider intent expected version is stale"
+                        )
+                    record = previous.model_copy(
+                        update={
+                            "record_version": previous.record_version + 1,
+                            "intent_value": command.desired_value,
+                            "updated_at": occurred_at,
+                            "previous_record_version": previous.record_version,
+                        }
+                    )
+                    record = ProviderIntentRecord.model_validate(record.model_dump())
+                    self._persist_internal_record(
+                        connection,
+                        record,
+                        request_id=command.request_id,
+                        request_digest=command.request_digest,
+                        event=ProviderIntentAuditEventKind.UPDATED,
+                        occurred_at=occurred_at,
+                    )
+                    self._update_active_coordinate(connection, record)
+                    self._failure(failure_injector, "after_new_record_append")
+                    audit_records.append((record, ProviderIntentAuditEventKind.UPDATED))
+                    outcome = "updated"
+                else:
+                    if command.expected_record_version != 0:
+                        raise ProviderIntentStoreConflictError(
+                            "replacement binding requires expected version zero"
+                        )
+                    if target_history:
+                        raise ProviderIntentStoreConflictError(
+                            "replacement incarnation already has stored history"
+                        )
+                    superseded = previous.model_copy(
+                        update={
+                            "record_version": previous.record_version + 1,
+                            "lifecycle": ProviderIntentLifecycle.SUPERSEDED,
+                            "updated_at": occurred_at,
+                            "previous_record_version": previous.record_version,
+                        }
+                    )
+                    superseded = ProviderIntentRecord.model_validate(
+                        superseded.model_dump()
+                    )
+                    self._persist_internal_record(
+                        connection,
+                        superseded,
+                        request_id=f"{command.request_id}-supersede",
+                        request_digest=command.request_digest,
+                        event=ProviderIntentAuditEventKind.SUPERSEDED,
+                        occurred_at=occurred_at,
+                    )
+                    self._failure(failure_injector, "after_old_superseded_record_append")
+                    record = self._new_coordinate_record(command, occurred_at)
+                    self._persist_internal_record(
+                        connection,
+                        record,
+                        request_id=f"{command.request_id}-activate",
+                        request_digest=command.request_digest,
+                        event=ProviderIntentAuditEventKind.CREATED,
+                        occurred_at=occurred_at,
+                    )
+                    self._delete_active_coordinate(connection, previous.intent_id)
+                    self._insert_active_coordinate(connection, record)
+                    self._failure(failure_injector, "after_new_record_append")
+                    audit_records.extend(
+                        (
+                            (superseded, ProviderIntentAuditEventKind.SUPERSEDED),
+                            (record, ProviderIntentAuditEventKind.REBOUND),
+                        )
+                    )
+                    outcome = "rebound"
+
+                result = ProviderIntentCoordinateMutationResult(
+                    outcome=outcome,
+                    request_id=command.request_id,
+                    provider_id=command.provider_id,
+                    resource_type=command.resource_type,
+                    resource_id=command.resource_id,
+                    management_fingerprint=command.management_fingerprint,
+                    expectation=command.desired_value,
+                    record_version=record.record_version,
+                    superseded_previous_incarnation=outcome == "rebound",
+                )
+                for index, (audit_record, event) in enumerate(audit_records, 1):
+                    self._persist_domain_audit(
+                        connection,
+                        command=command,
+                        record=audit_record,
+                        event=event,
+                        occurred_at=occurred_at,
+                    )
+                    self._failure(failure_injector, f"after_audit_event_{index}")
+                self._failure(failure_injector, "before_idempotency_result")
+                connection.execute(
+                    "INSERT INTO provider_intent_operations VALUES (?, ?, ?, ?, ?)",
+                    (
+                        command.request_id,
+                        command.request_digest,
+                        command.operator_id,
+                        result.model_dump_json(),
+                        occurred_at.isoformat(),
+                    ),
+                )
+                self._failure(
+                    failure_injector,
+                    "after_idempotency_result_before_commit",
+                )
+                connection.commit()
+                return result
+            except ProviderIntentStoreError:
+                connection.rollback()
+                raise
+            except (sqlite3.DatabaseError, ValidationError, ValueError) as error:
+                connection.rollback()
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent coordinate mutation failed closed"
+                ) from error
+
+    @staticmethod
+    def _new_coordinate_record(
+        command: ProviderIntentCoordinateMutationCommand,
+        occurred_at: datetime,
+    ) -> ProviderIntentRecord:
+        return ProviderIntentRecord(
+            intent_id=command.intent_id,
+            record_version=1,
+            provider_id=command.provider_id,
+            resource_type=command.resource_type,
+            resource_id=command.resource_id,
+            incarnation_fingerprint=command.management_fingerprint,
+            intent_kind=command.intent_kind,
+            intent_value=command.desired_value,
+            lifecycle=ProviderIntentLifecycle.ACTIVE,
+            provenance=ProviderIntentProvenance.OPERATOR,
+            created_at=occurred_at,
+            updated_at=occurred_at,
+        )
 
     def put(
         self,
@@ -449,6 +879,10 @@ class ProviderIntentStore:
                     event=event,
                     occurred_at=occurred_at,
                 )
+                if outcome == "created":
+                    self._insert_active_coordinate(connection, record)
+                else:
+                    self._update_active_coordinate(connection, record)
                 connection.commit()
                 return result
             except ProviderIntentStoreError:
@@ -514,6 +948,7 @@ class ProviderIntentStore:
                     event=ProviderIntentAuditEventKind.SUPERSEDED,
                     occurred_at=occurred_at,
                 )
+                self._delete_active_coordinate(connection, record.intent_id)
                 connection.commit()
                 return result
             except ProviderIntentStoreError:
@@ -917,7 +1352,186 @@ class ProviderIntentStore:
                 raise ProviderIntentStoreCorruptionError(
                     "provider intent request evidence is orphaned"
                 )
+        cls._validate_p3_evidence(connection, histories)
         return histories
+
+    @classmethod
+    def _validate_p3_evidence(
+        cls,
+        connection: sqlite3.Connection,
+        histories: tuple[tuple[ProviderIntentRecord, ...], ...],
+    ) -> None:
+        active = tuple(
+            history[-1]
+            for history in histories
+            if history
+            and history[-1].lifecycle is ProviderIntentLifecycle.ACTIVE
+            and history[-1].resource_type is not None
+            and history[-1].incarnation_fingerprint is not None
+        )
+        coordinates = [
+            (
+                record.provider_id,
+                record.resource_type,
+                record.resource_id,
+                record.intent_kind.value,
+            )
+            for record in active
+        ]
+        if len(coordinates) != len(set(coordinates)):
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent coordinate has multiple active incarnations"
+            )
+        expected_active = {
+            (
+                cls._coordinate_key(
+                    record.provider_id,
+                    record.resource_type or "",
+                    record.resource_id,
+                    record.intent_kind,
+                ),
+                record.provider_id,
+                record.resource_type,
+                record.resource_id,
+                record.intent_kind.value,
+                record.intent_id,
+                record.incarnation_fingerprint,
+                record.record_version,
+            )
+            for record in active
+        }
+        stored_active = {
+            tuple(row)
+            for row in connection.execute(
+                "SELECT * FROM provider_intent_active_coordinates"
+            ).fetchall()
+        }
+        if stored_active != expected_active:
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent active coordinate evidence is inconsistent"
+            )
+
+        operation_ids = {
+            row["request_id"]
+            for row in connection.execute(
+                "SELECT request_id FROM provider_intent_operations"
+            ).fetchall()
+        }
+        audit_operation_ids = {
+            row["request_id"]
+            for row in connection.execute(
+                "SELECT DISTINCT request_id "
+                "FROM provider_intent_operation_audit"
+            ).fetchall()
+        }
+        if operation_ids != audit_operation_ids:
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent operation audit set is inconsistent"
+            )
+        for operation in connection.execute(
+            "SELECT * FROM provider_intent_operations ORDER BY request_id"
+        ).fetchall():
+            result = ProviderIntentCoordinateMutationResult.model_validate_json(
+                operation["result_json"]
+            )
+            if (
+                result.request_id != operation["request_id"]
+                or _COORDINATE_MUTATION_DIGEST.fullmatch(
+                    operation["request_digest"]
+                )
+                is None
+            ):
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent operation result identity is inconsistent"
+                )
+            rows = connection.execute(
+                "SELECT * FROM provider_intent_operation_audit "
+                "WHERE request_id=? ORDER BY sequence",
+                (operation["request_id"],),
+            ).fetchall()
+            expected_events = (
+                (
+                    ProviderIntentAuditEventKind.SUPERSEDED,
+                    ProviderIntentAuditEventKind.REBOUND,
+                )
+                if result.outcome == "rebound"
+                else (
+                    ProviderIntentAuditEventKind.CREATED
+                    if result.outcome == "created"
+                    else ProviderIntentAuditEventKind.UPDATED,
+                )
+            )
+            if len(rows) != len(expected_events):
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent operation audit count is inconsistent"
+                )
+            for row, expected_event in zip(rows, expected_events, strict=True):
+                event = ProviderIntentDomainAuditEvent(
+                    sequence=row["sequence"],
+                    event_id=row["event_id"],
+                    occurred_at=datetime.fromisoformat(row["occurred_at"]),
+                    operation_id=row["operation_id"],
+                    request_id=row["request_id"],
+                    operator_id=row["operator_id"],
+                    intent_id=row["intent_id"],
+                    record_version=row["record_version"],
+                    event=ProviderIntentAuditEventKind(row["event"]),
+                    lifecycle=ProviderIntentLifecycle(row["lifecycle"]),
+                    resulting_value=ProviderIntentValue(row["resulting_value"]),
+                )
+                record_row = connection.execute(
+                    "SELECT * FROM provider_intent_records "
+                    "WHERE intent_id=? AND record_version=?",
+                    (event.intent_id, event.record_version),
+                ).fetchone()
+                if (
+                    event.event is not expected_event
+                    or event.event_id
+                    != cls._audit_event_id(
+                        event.request_id,
+                        event.intent_id,
+                        event.record_version,
+                        event.event,
+                    )
+                    or event.operation_id != operation["request_id"]
+                    or event.request_id != operation["request_id"]
+                    or event.operator_id != operation["operator_id"]
+                    or record_row is None
+                ):
+                    raise ProviderIntentStoreCorruptionError(
+                        "provider intent operation audit evidence is invalid"
+                    )
+                record = cls._decode_record(record_row)
+                if (
+                    event.lifecycle is not record.lifecycle
+                    or event.resulting_value is not record.intent_value
+                ):
+                    raise ProviderIntentStoreCorruptionError(
+                        "provider intent operation audit result is inconsistent"
+                    )
+            result_record_row = connection.execute(
+                    "SELECT * FROM provider_intent_records WHERE intent_id=? "
+                    "AND record_version=?",
+                    (
+                        build_provider_intent_id(
+                            provider_id=result.provider_id,
+                            resource_type=result.resource_type,
+                            resource_id=result.resource_id,
+                            incarnation_fingerprint=result.management_fingerprint,
+                            intent_kind=ProviderIntentKind.MONITORING_EXPECTATION,
+                        ),
+                        result.record_version,
+                    ),
+                ).fetchone()
+            if result_record_row is None:
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent operation result record is missing"
+                )
+            result_record = cls._decode_record(result_record_row)
+            if result_record.intent_value is not result.expectation:
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent operation result record is inconsistent"
+                )
 
     @staticmethod
     def _record_order(record: ProviderIntentRecord) -> tuple[str, ...]:
@@ -984,6 +1598,41 @@ class ProviderIntentStore:
             except (sqlite3.DatabaseError, ValidationError, ValueError) as error:
                 raise ProviderIntentStoreCorruptionError(
                     "provider intent audit history is invalid"
+                ) from error
+
+    def operation_audit(
+        self,
+        request_id: str | None = None,
+    ) -> tuple[ProviderIntentDomainAuditEvent, ...]:
+        with self._connect_readonly() as connection:
+            try:
+                self._validated_store_records(connection)
+                query = "SELECT * FROM provider_intent_operation_audit"
+                values: tuple[str, ...] = ()
+                if request_id is not None:
+                    query += " WHERE request_id=?"
+                    values = (request_id,)
+                query += " ORDER BY sequence"
+                rows = connection.execute(query, values).fetchall()
+                return tuple(
+                    ProviderIntentDomainAuditEvent(
+                        sequence=row["sequence"],
+                        event_id=row["event_id"],
+                        occurred_at=datetime.fromisoformat(row["occurred_at"]),
+                        operation_id=row["operation_id"],
+                        request_id=row["request_id"],
+                        operator_id=row["operator_id"],
+                        intent_id=row["intent_id"],
+                        record_version=row["record_version"],
+                        event=ProviderIntentAuditEventKind(row["event"]),
+                        lifecycle=ProviderIntentLifecycle(row["lifecycle"]),
+                        resulting_value=ProviderIntentValue(row["resulting_value"]),
+                    )
+                    for row in rows
+                )
+            except (sqlite3.DatabaseError, ValidationError, ValueError) as error:
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent operation audit history is invalid"
                 ) from error
 
     @classmethod
@@ -1114,6 +1763,131 @@ class ProviderIntentStore:
                 "provider intent replay evidence is inconsistent"
             )
         return result
+
+    @staticmethod
+    def _replay_coordinate_operation(
+        connection: sqlite3.Connection,
+        command: ProviderIntentCoordinateMutationCommand,
+    ) -> ProviderIntentCoordinateMutationResult | None:
+        row = connection.execute(
+            "SELECT request_digest, operator_id, result_json "
+            "FROM provider_intent_operations WHERE request_id=?",
+            (command.request_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        if (
+            row["request_digest"] != command.request_digest
+            or row["operator_id"] != command.operator_id
+        ):
+            raise ProviderIntentStoreConflictError(
+                "provider intent mutation request ID has different input"
+            )
+        result = ProviderIntentCoordinateMutationResult.model_validate_json(
+            row["result_json"]
+        )
+        audits = connection.execute(
+            "SELECT * FROM provider_intent_operation_audit "
+            "WHERE request_id=? ORDER BY sequence",
+            (command.request_id,),
+        ).fetchall()
+        expected_count = 2 if result.outcome == "rebound" else 1
+        if len(audits) != expected_count or any(
+            audit["operator_id"] != command.operator_id for audit in audits
+        ):
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent operation replay evidence is inconsistent"
+            )
+        return result
+
+    @staticmethod
+    def _audit_event_id(
+        request_id: str,
+        intent_id: str,
+        record_version: int,
+        event: ProviderIntentAuditEventKind,
+    ) -> str:
+        encoded = json.dumps(
+            {
+                "event": event.value,
+                "intent_id": intent_id,
+                "record_version": record_version,
+                "request_id": request_id,
+                "version": "provider-intent-audit-v1",
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+        return f"provider-intent-audit-v1:{hashlib.sha256(encoded).hexdigest()}"
+
+    @classmethod
+    def _persist_domain_audit(
+        cls,
+        connection: sqlite3.Connection,
+        *,
+        command: ProviderIntentCoordinateMutationCommand,
+        record: ProviderIntentRecord,
+        event: ProviderIntentAuditEventKind,
+        occurred_at: datetime,
+    ) -> None:
+        connection.execute(
+            "INSERT INTO provider_intent_operation_audit "
+            "(event_id, occurred_at, operation_id, request_id, operator_id, "
+            "intent_id, record_version, event, lifecycle, resulting_value) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                cls._audit_event_id(
+                    command.request_id,
+                    record.intent_id,
+                    record.record_version,
+                    event,
+                ),
+                occurred_at.isoformat(),
+                command.request_id,
+                command.request_id,
+                command.operator_id,
+                record.intent_id,
+                record.record_version,
+                event.value,
+                record.lifecycle.value,
+                record.intent_value.value,
+            ),
+        )
+
+    @classmethod
+    def _persist_internal_record(
+        cls,
+        connection: sqlite3.Connection,
+        record: ProviderIntentRecord,
+        *,
+        request_id: str,
+        request_digest: str,
+        event: ProviderIntentAuditEventKind,
+        occurred_at: datetime,
+    ) -> None:
+        result = ProviderIntentMutationResult(
+            outcome=(
+                "superseded"
+                if event is ProviderIntentAuditEventKind.SUPERSEDED
+                else "updated"
+                if event is ProviderIntentAuditEventKind.UPDATED
+                else "created"
+            ),
+            record=record,
+        )
+        cls._persist_mutation(
+            connection,
+            record=record,
+            result=result,
+            request_id=request_id,
+            request_digest=request_digest,
+            event=(
+                ProviderIntentAuditEventKind.CREATED
+                if event is ProviderIntentAuditEventKind.REBOUND
+                else event
+            ),
+            occurred_at=occurred_at,
+        )
 
     @staticmethod
     def _persist_mutation(
