@@ -383,6 +383,10 @@ export interface WorkflowDetailResponse {
     translator_version: string | null;
     affected_files: string[];
     implementation_request: WorkflowImplementationRequestSummary | null;
+    effect_kind: "repository_change" | "operational_action";
+    operational_action_request: Record<string, unknown> | null;
+    operational_execution: Record<string, unknown> | null;
+    approval_presentations: WorkflowApprovalPresentation[];
     timeline: WorkflowTimelineStage[];
     execution: WorkflowExecutionSummary;
     verification_plan: WorkflowVerificationPlanSummary;
@@ -392,6 +396,15 @@ export interface WorkflowDetailResponse {
     commit_request: WorkflowCommitRequestSummary | null;
     commit_result: WorkflowCommitResultSummary;
     commit_approval_status: string;
+}
+
+export interface WorkflowApprovalPresentation {
+    approval_id: string;
+    purpose: "implementation" | "candidate_workflow_shell" | "verification" | "commit" | "operational_action";
+    decision_status: "pending" | "approved" | "rejected";
+    presentation_state: "actionable" | "historical" | "expired" | "superseded" | "resolved";
+    actionable: boolean;
+    reason: string;
 }
 
 export type WorkflowPageResponse = WorkflowDetailResponse;

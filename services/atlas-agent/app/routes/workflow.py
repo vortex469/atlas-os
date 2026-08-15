@@ -16,6 +16,7 @@ from app.approval.models import (
     ApprovalRequest,
     ApprovalStatus,
 )
+from app.approval.presentation import classify_approval
 from app.candidate_planning.audit import (
     CandidateAuditApprovals,
     CandidateAuditChainValidator,
@@ -233,6 +234,15 @@ class WorkflowOperationalActionRequestSummary(BaseModel):
     generated_at: str
     expires_at: str
     execution_enabled: bool = False
+
+
+class WorkflowApprovalPresentationResponse(BaseModel):
+    approval_id: str
+    purpose: str
+    decision_status: str
+    presentation_state: str
+    actionable: bool
+    reason: str
 
 
 class WorkflowTimelineStageResponse(BaseModel):
@@ -468,6 +478,7 @@ class WorkflowDetailResponse(BaseModel):
     effect_kind: str
     operational_action_request: WorkflowOperationalActionRequestSummary | None
     operational_execution: WorkflowOperationalExecutionResponse | None
+    approval_presentations: list[WorkflowApprovalPresentationResponse]
     timeline: list[WorkflowTimelineStageResponse]
     execution: WorkflowExecutionSummaryResponse
     verification_plan: WorkflowVerificationPlanResponse
@@ -1387,6 +1398,33 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
     )
     verification_approval = _verification_approval_status(request, workflow)
     commit_approval = _commit_approval_status(request, workflow)
+    planning = (
+        request.app.state.container.candidate_planning_state.get_session(
+            metadata.candidate_planning_session_id
+        )
+        if metadata is not None
+        else None
+    )
+    approval_presentations = []
+    for result in request.app.state.container.approval_repository.export_snapshot().values():
+        if result.decision.request.workflow_id != workflow.identifier:
+            continue
+        presentation = classify_approval(
+            result,
+            workflow,
+            successor_exists=planning is not None and planning.successor_session_id is not None,
+        )
+        approval_presentations.append(
+            WorkflowApprovalPresentationResponse(
+                approval_id=result.decision.request.identifier,
+                purpose=result.decision.request.purpose.value,
+                decision_status=result.decision.status.value,
+                presentation_state=presentation.state.value,
+                actionable=presentation.actionable,
+                reason=presentation.reason,
+            )
+        )
+    approval_presentations.sort(key=lambda item: item.approval_id)
     return WorkflowDetailResponse(
         workflow_id=workflow.identifier,
         workflow_source=workflow.source.value,
@@ -1419,6 +1457,7 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
             if workflow.operational_execution_reference is not None
             else None
         ),
+        approval_presentations=approval_presentations,
         timeline=_workflow_timeline(workflow, approval_status),
         execution=_workflow_execution_summary(workflow),
         verification_plan=_workflow_verification_plan(workflow),

@@ -31,6 +31,7 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
     return {
         workflow_id: "workflow-123",
         workflow_source: "candidate",
+        effect_kind: "repository_change",
         workflow_state: "awaiting_implementation_approval",
         planning_session_id: "candidate-plan-123",
         candidate_id: "candidate-123",
@@ -49,6 +50,9 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
             repository: "/opt/atlas",
             translator_version: "candidate-translator-v1",
         },
+        operational_action_request: null,
+        operational_execution: null,
+        approval_presentations: [],
         timeline: [
             { name: "Execution Candidate", status: "completed" },
             { name: "Planning Session", status: "completed" },
@@ -421,6 +425,9 @@ describe("WorkflowPage", () => {
     });
 
     it("hides implementation approval controls after an approve response without state transition", async () => {
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(workflow())
+            .mockResolvedValueOnce(workflow({ implementation_approval_status: "approved" }));
         mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_implementation_approval",
@@ -449,6 +456,21 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: /verify/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    });
+
+    it("presents operational action approval without repository-only controls", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            effect_kind: "operational_action",
+            operational_action_request: { request_id: "action-request-123" },
+        }));
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Operational action approval" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Approve Exact Action" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Implementation Request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Verification Plan" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Commit Request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
     });
 
     it("shows workflow not found", async () => {
@@ -494,7 +516,12 @@ describe("WorkflowPage", () => {
     });
 
     it("hides verification controls after a verification approve response without state transition", async () => {
-        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_verification_approval" }));
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(workflow({ workflow_state: "awaiting_verification_approval" }))
+            .mockResolvedValueOnce(workflow({
+                workflow_state: "awaiting_verification_approval",
+                verification_approval_status: "approved",
+            }));
         mockedSubmitWorkflowVerificationApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_verification_approval",
@@ -568,7 +595,9 @@ describe("WorkflowPage", () => {
     });
 
     it("hides commit controls after a commit approve response without state transition", async () => {
-        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(workflowAwaitingCommit())
+            .mockResolvedValueOnce(workflowAwaitingCommit({ commit_approval_status: "approved" }));
         mockedSubmitWorkflowCommitApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_commit_approval",

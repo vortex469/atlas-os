@@ -1,58 +1,12 @@
-import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import type { ApprovalResult } from "../types/approval";
-import { submitApprovalDecision } from "../api/approval/index";
 
 interface ApprovalCardProps {
   approval: ApprovalResult;
 }
 
 export function ApprovalCard({ approval }: ApprovalCardProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const handleApprove = async () => {
-    setIsSubmitting(true);
-    setSubmitError(null);
-    
-    try {
-      await submitApprovalDecision(approval.identifier, {
-        request: approval.request,
-        status: "approved",
-        reviewer: "current-user", // This would be replaced with actual user info
-      });
-      
-      // In a real app, we would update the UI to show the approval was processed
-      // For now, we'll just show a success message briefly
-    } catch (error) {
-      setSubmitError("Failed to submit approval. Please try again.");
-      console.error("Approval submission error:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReject = async () => {
-    setIsSubmitting(true);
-    setSubmitError(null);
-    
-    try {
-      await submitApprovalDecision(approval.identifier, {
-        request: approval.request,
-        status: "rejected",
-        reviewer: "current-user", // This would be replaced with actual user info
-      });
-      
-      // In a real app, we would update the UI to show the approval was processed
-      // For now, we'll just show a success message briefly
-    } catch (error) {
-      setSubmitError("Failed to submit rejection. Please try again.");
-      console.error("Rejection submission error:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
       <div className="flex justify-between items-start">
@@ -65,26 +19,16 @@ export function ApprovalCard({ approval }: ApprovalCardProps) {
             </span>
           </div>
         </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleReject}
-            disabled={isSubmitting}
-            className="rounded-md bg-red-900/30 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-900/50 disabled:opacity-50"
+        {approval.actionable && approval.request.workflow_id && (
+          <Link
+            to={`/workflows/${approval.request.workflow_id}`}
+            className="rounded-md bg-blue-500 px-3 py-1.5 text-sm font-medium text-blue-950 hover:bg-blue-400"
           >
-            Reject
-          </button>
-          <button
-            onClick={handleApprove}
-            disabled={isSubmitting}
-            className="rounded-md bg-emerald-900/30 px-3 py-1.5 text-sm font-medium text-emerald-300 hover:bg-emerald-900/50 disabled:opacity-50"
-          >
-            Approve
-          </button>
-        </div>
+            Review workflow
+          </Link>
+        )}
       </div>
-      {submitError && (
-        <p className="mt-2 text-sm text-red-400">{submitError}</p>
-      )}
+      <p className="mt-2 text-xs text-slate-500">{approval.presentation_reason}</p>
     </div>
   );
 }

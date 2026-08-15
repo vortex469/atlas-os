@@ -79,11 +79,7 @@ export function WorkflowPage() {
         try {
             const result = await submitWorkflowImplementationApproval(workflow.workflow_id, decision);
             setApprovalResult(result);
-            setWorkflow({
-                ...workflow,
-                workflow_state: result.workflow_state,
-                implementation_approval_status: result.implementation_approval_status,
-            });
+            await loadWorkflow("refresh");
         } catch (error) {
             setApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Approval failed." : "Rejection failed."));
         } finally {
@@ -98,11 +94,7 @@ export function WorkflowPage() {
         try {
             const result = await submitWorkflowVerificationApproval(workflow.workflow_id, decision);
             setVerificationApprovalResult(result);
-            setWorkflow({
-                ...workflow,
-                workflow_state: result.workflow_state,
-                verification_approval_status: result.verification_approval_status,
-            });
+            await loadWorkflow("refresh");
         } catch (error) {
             setVerificationApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Verification approval failed." : "Verification rejection failed."));
         } finally {
@@ -117,14 +109,7 @@ export function WorkflowPage() {
         try {
             const result = await submitWorkflowCommitApproval(workflow.workflow_id, decision);
             setCommitApprovalResult(result);
-            setWorkflow({
-                ...workflow,
-                workflow_state: result.workflow_state,
-                commit_approval_status: result.commit_approval_status,
-                commit_request: workflow.commit_request
-                    ? { ...workflow.commit_request, commit_approval_status: result.commit_approval_status }
-                    : null,
-            });
+            await loadWorkflow("refresh");
         } catch (error) {
             setCommitApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Commit approval failed." : "Commit rejection failed."));
         } finally {
@@ -163,13 +148,19 @@ export function WorkflowPage() {
         );
     }
 
+    const isOperational = workflow.effect_kind === "operational_action";
+    const isRepository = !isOperational;
     const canDecide =
         workflow.workflow_state === "awaiting_implementation_approval"
         && workflow.implementation_approval_status === "pending";
     const canDecideVerification =
+        isRepository
+        &&
         workflow.workflow_state === "awaiting_verification_approval"
         && workflow.verification_approval_status === "pending";
     const canDecideCommit =
+        isRepository
+        &&
         workflow.workflow_state === "awaiting_commit_approval"
         && workflow.commit_approval_status === "pending";
 
@@ -177,9 +168,13 @@ export function WorkflowPage() {
         workflow.workflow_state === "awaiting_implementation_approval"
         && workflow.implementation_approval_status === "approved";
     const canResumeVerification =
+        isRepository
+        &&
         workflow.workflow_state === "awaiting_verification_approval"
         && workflow.verification_approval_status === "approved";
     const canResumeCommit =
+        isRepository
+        &&
         workflow.workflow_state === "awaiting_commit_approval"
         && workflow.commit_approval_status === "approved";
     const canResume =
@@ -250,37 +245,43 @@ export function WorkflowPage() {
                 </dl>
             </section>
 
-            <ImplementationRequestSection workflow={workflow} />
+            {isRepository && <ImplementationRequestSection workflow={workflow} />}
 
             <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} onRefresh={refreshWorkflow} />
 
-            <VerificationReviewSection
-                workflow={workflow}
-                canDecideVerification={canDecideVerification}
-                isSubmittingVerification={isSubmittingVerification}
-                verificationApprovalResult={verificationApprovalResult}
-                verificationApprovalError={verificationApprovalError}
-                onVerificationDecision={submitVerificationDecision}
-            />
+            {isRepository && (
+                <>
+                    <VerificationReviewSection
+                        workflow={workflow}
+                        canDecideVerification={canDecideVerification}
+                        isSubmittingVerification={isSubmittingVerification}
+                        verificationApprovalResult={verificationApprovalResult}
+                        verificationApprovalError={verificationApprovalError}
+                        onVerificationDecision={submitVerificationDecision}
+                    />
 
-            <CommitSection
-                workflow={workflow}
-                canDecideCommit={canDecideCommit}
-                isSubmittingCommit={isSubmittingCommit}
-                commitApprovalResult={commitApprovalResult}
-                commitApprovalError={commitApprovalError}
-                onCommitDecision={submitCommitDecision}
-            />
+                    <CommitSection
+                        workflow={workflow}
+                        canDecideCommit={canDecideCommit}
+                        isSubmittingCommit={isSubmittingCommit}
+                        commitApprovalResult={commitApprovalResult}
+                        commitApprovalError={commitApprovalError}
+                        onCommitDecision={submitCommitDecision}
+                    />
+                </>
+            )}
 
             <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 id="approval-controls-heading" className="text-lg font-semibold text-white">Implementation approval</h2>
+                <h2 id="approval-controls-heading" className="text-lg font-semibold text-white">
+                    {workflow.effect_kind === "operational_action" ? "Operational action approval" : "Implementation approval"}
+                </h2>
                 <p className="mt-2 text-sm text-slate-400">
                     These controls submit only the workflow ID and approval decision to Atlas Agent. They do not execute or mutate the implementation request.
                 </p>
                 {canDecide ? (
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button type="button" onClick={() => void submitDecision("approve")} disabled={isSubmitting} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">
-                            Approve Implementation
+                            {workflow.effect_kind === "operational_action" ? "Approve Exact Action" : "Approve Implementation"}
                         </button>
                         <button type="button" onClick={() => void submitDecision("reject")} disabled={isSubmitting} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">
                             Reject
