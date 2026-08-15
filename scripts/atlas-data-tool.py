@@ -10,8 +10,42 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 
+try:
+    from atlas_data_backup_models import (
+        BACKUP_DIRECTORY_MODE,
+        LEGACY_V1_REQUIRED_DATABASES,
+        MANAGED_PATH_ORDER,
+        PRIVATE_FILE_MODE,
+        V3_FORMAT_VERSION,
+        ArtifactMetadata,
+        AtlasCoreBackupV3Manifest,
+        ContentKind,
+        InventoryDisposition,
+        ManagedPath,
+        ProviderIntentActivation,
+        build_v3_manifest,
+        classify_backup_format,
+        classify_legacy_inventory,
+    )
+except ModuleNotFoundError:  # Imported as scripts.atlas_data_tool in tests.
+    from scripts.atlas_data_backup_models import (
+        BACKUP_DIRECTORY_MODE,
+        LEGACY_V1_REQUIRED_DATABASES,
+        MANAGED_PATH_ORDER,
+        PRIVATE_FILE_MODE,
+        V3_FORMAT_VERSION,
+        ArtifactMetadata,
+        AtlasCoreBackupV3Manifest,
+        ContentKind,
+        InventoryDisposition,
+        ManagedPath,
+        ProviderIntentActivation,
+        build_v3_manifest,
+        classify_backup_format,
+        classify_legacy_inventory,
+    )
 
-DATABASES = ("action_history.db", "provider_intelligence.db")
+DATABASES = tuple(sorted(LEGACY_V1_REQUIRED_DATABASES))
 RUNTIME_FILES = (
     "config/policies.yaml",
     "config/provider-connections.yaml",
@@ -19,8 +53,9 @@ RUNTIME_FILES = (
 )
 SECRET_RUNTIME_FILES = {"secrets/provider-connections.yaml"}
 MANIFEST_NAME = "manifest.json"
-FORMAT_VERSION = 2
-SUPPORTED_FORMAT_VERSIONS = {1, FORMAT_VERSION}
+FORMAT_VERSION = V3_FORMAT_VERSION
+SUPPORTED_FORMAT_VERSIONS = {1, 2, FORMAT_VERSION}
+PROVIDER_INTENT_ACTIVATION = ProviderIntentActivation.NOT_ACTIVATED
 BACKUP_NAME_PATTERN = re.compile(
     r"^atlas-data-(?P<timestamp>\d{8}T\d{6}Z)$"
 )
@@ -72,62 +107,71 @@ def sqlite_backup(source: Path, destination: Path) -> None:
         source_connection.close()
 
 
-def create_backup(source: Path, destination: Path) -> None:
+def create_backup(
+    source: Path,
+    destination: Path,
+    *,
+    operator_auth_initialized: bool,
+) -> None:
     destination.mkdir(parents=True, exist_ok=True)
+    os.chmod(destination, BACKUP_DIRECTORY_MODE)
     if any(destination.iterdir()):
         raise RuntimeError(f"backup destination is not empty: {destination}")
-    database_records: list[dict[str, object]] = []
-    runtime_file_records: list[dict[str, object]] = []
+    if not isinstance(operator_auth_initialized, bool):
+        raise TypeError("operator auth initialization must be explicit")
+    audit_source = source / ManagedPath.OPERATOR_SECURITY_AUDIT.value
+    provider_intent_source = source / ManagedPath.PROVIDER_INTENTS.value
+    if not operator_auth_initialized and audit_source.exists():
+        raise RuntimeError("unexpected operator security audit database")
+    if (
+        PROVIDER_INTENT_ACTIVATION is ProviderIntentActivation.NOT_ACTIVATED
+        and provider_intent_source.exists()
+    ):
+        raise RuntimeError("unexpected inactive provider intent database")
 
-    for filename in DATABASES:
-        source_path = source / filename
+    present_paths = list(MANAGED_PATH_ORDER[:7])
+    if operator_auth_initialized:
+        present_paths.append(ManagedPath.OPERATOR_SECURITY_AUDIT)
+    artifacts: dict[ManagedPath, ArtifactMetadata] = {}
+    for managed_path in present_paths:
+        source_path = source / managed_path.value
         if not source_path.is_file():
-            raise RuntimeError(f"required database not found: {source_path}")
-
-        destination_path = destination / filename
-        sqlite_backup(source_path, destination_path)
-        result = integrity(destination_path)
-        if result != "ok":
-            raise RuntimeError(
-                f"backup integrity check failed for {filename}: {result}"
-            )
-        database_records.append(
-            {
-                "filename": filename,
-                "sha256": sha256(destination_path),
-                "size": destination_path.stat().st_size,
-            }
-        )
-
-    for filename in RUNTIME_FILES:
-        source_path = source / safe_relative_path(filename)
-        if not source_path.is_file():
-            continue
-
-        destination_path = destination / safe_relative_path(filename)
+            raise RuntimeError(f"required store not found: {source_path}")
+        destination_path = destination / managed_path.value
         destination_path.parent.mkdir(parents=True, exist_ok=True)
-        validate_runtime_file(source_path, filename, source_path.stat().st_mode & 0o777)
-        shutil.copyfile(source_path, destination_path)
-        runtime_file_records.append(
-            {
-                "path": filename,
-                "sha256": sha256(destination_path),
-                "size": destination_path.stat().st_size,
-                "mode": source_path.stat().st_mode & 0o777,
-            }
+        if managed_path.value.endswith(".db"):
+            validate_sqlite_application(source_path, managed_path)
+            sqlite_backup(source_path, destination_path)
+            if integrity(destination_path) != "ok":
+                raise RuntimeError(f"backup integrity check failed for {managed_path.value}")
+            validate_sqlite_application(destination_path, managed_path)
+        else:
+            validate_runtime_file(
+                source_path,
+                managed_path.value,
+                source_path.stat().st_mode & 0o777,
+            )
+            shutil.copyfile(source_path, destination_path)
+            validate_runtime_file(destination_path, managed_path.value, PRIVATE_FILE_MODE)
+        os.chmod(destination_path, PRIVATE_FILE_MODE)
+        artifacts[managed_path] = ArtifactMetadata(
+            sha256=sha256(destination_path),
+            size=destination_path.stat().st_size,
         )
 
-    manifest = {
-        "format_version": FORMAT_VERSION,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "databases": database_records,
-        "files": runtime_file_records,
-    }
+    manifest = build_v3_manifest(
+        created_at=datetime.now(timezone.utc),
+        artifacts=artifacts,
+        operator_security_audit_present=operator_auth_initialized,
+        provider_intent_activation=PROVIDER_INTENT_ACTIVATION,
+    ).to_dict()
     manifest_path = destination / MANIFEST_NAME
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    os.chmod(manifest_path, PRIVATE_FILE_MODE)
+    verify_backup(destination)
 
 
 def apply_owner(path: Path, uid: int, gid: int) -> None:
@@ -146,13 +190,32 @@ def apply_owner(path: Path, uid: int, gid: int) -> None:
 def verify_backup(backup: Path) -> dict[str, object]:
     manifest_path = backup / MANIFEST_NAME
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise RuntimeError("backup manifest must be an object")  # noqa: TRY004
     format_version = manifest.get("format_version")
     if format_version not in SUPPORTED_FORMAT_VERSIONS:
         raise RuntimeError("unsupported backup format version")
 
+    if format_version == V3_FORMAT_VERSION:
+        return verify_v3_backup(backup, manifest)
+
+    classify_legacy_inventory(
+        format_version=format_version,
+        databases=frozenset(
+            record.get("filename")
+            for record in manifest.get("databases", [])
+            if isinstance(record, dict) and isinstance(record.get("filename"), str)
+        ),
+        runtime_files=frozenset(
+            record.get("path")
+            for record in manifest.get("files", [])
+            if isinstance(record, dict) and isinstance(record.get("path"), str)
+        ),
+    )
+
     records = manifest.get("databases")
     if not isinstance(records, list):
-        raise RuntimeError("backup manifest has no database records")
+        raise RuntimeError("backup manifest has no database records")  # noqa: TRY004
 
     filenames = {
         record.get("filename")
@@ -168,7 +231,7 @@ def verify_backup(backup: Path) -> dict[str, object]:
     if format_version == 1 and "files" not in manifest:
         file_records = []
     if not isinstance(file_records, list):
-        raise RuntimeError("backup manifest file records are invalid")
+        raise RuntimeError("backup manifest file records are invalid")  # noqa: TRY004
 
     expected_paths = {Path(filename) for filename in DATABASES}
     expected_paths.add(Path(MANIFEST_NAME))
@@ -176,7 +239,7 @@ def verify_backup(backup: Path) -> dict[str, object]:
 
     for record in file_records:
         if not isinstance(record, dict):
-            raise RuntimeError("backup manifest file record is invalid")
+            raise RuntimeError("backup manifest file record is invalid")  # noqa: TRY004
         relative_path = safe_relative_path(record.get("path"))
         if relative_path.as_posix() not in RUNTIME_FILES:
             raise RuntimeError(f"unexpected runtime file path: {relative_path}")
@@ -201,7 +264,7 @@ def verify_backup(backup: Path) -> dict[str, object]:
 
     for record in records:
         if not isinstance(record, dict):
-            raise RuntimeError("backup manifest record is invalid")
+            raise RuntimeError("backup manifest record is invalid")  # noqa: TRY004
         filename = record["filename"]
         if filename not in DATABASES:
             raise RuntimeError(f"unexpected database filename: {filename}")
@@ -239,6 +302,338 @@ def verify_backup(backup: Path) -> dict[str, object]:
     return manifest
 
 
+def verify_v3_backup(
+    backup: Path,
+    manifest_data: dict[str, object],
+) -> dict[str, object]:
+    try:
+        manifest = AtlasCoreBackupV3Manifest.from_dict(manifest_data)
+    except (TypeError, ValueError) as error:
+        raise RuntimeError("backup v3 manifest is invalid") from error
+    if (
+        not backup.is_dir()
+        or backup.is_symlink()
+        or backup.stat().st_mode & 0o777 != BACKUP_DIRECTORY_MODE
+    ):
+        raise RuntimeError("backup v3 directory mode is invalid")
+    manifest_path = backup / MANIFEST_NAME
+    if (
+        not manifest_path.is_file()
+        or manifest_path.is_symlink()
+        or manifest_path.stat().st_mode & 0o777 != PRIVATE_FILE_MODE
+    ):
+        raise RuntimeError("backup v3 manifest mode is invalid")
+
+    expected_files = {Path(MANIFEST_NAME)}
+    for entry in manifest.inventory:
+        if entry.disposition is InventoryDisposition.REQUIRED_PRESENT:
+            expected_files.add(Path(entry.path.value))
+    expected_directories = {
+        path.parent for path in expected_files if path.parent != Path(".")
+    }
+    physical_entries = tuple(backup.rglob("*"))
+    if any(path.is_symlink() for path in physical_entries):
+        raise RuntimeError("backup v3 cannot contain symbolic links")
+    actual_files = {
+        path.relative_to(backup) for path in physical_entries if path.is_file()
+    }
+    actual_directories = {
+        path.relative_to(backup) for path in physical_entries if path.is_dir()
+    }
+    if actual_files != expected_files:
+        raise RuntimeError("backup v3 physical file set is invalid")
+    if actual_directories != expected_directories:
+        raise RuntimeError("backup v3 directory set is invalid")
+
+    for entry in manifest.inventory:
+        path = backup / entry.path.value
+        if entry.disposition is not InventoryDisposition.REQUIRED_PRESENT:
+            if path.exists():
+                raise RuntimeError(f"excluded backup artifact exists: {entry.path.value}")
+            continue
+        assert entry.artifact is not None
+        if (
+            not path.is_file()
+            or path.is_symlink()
+            or path.stat().st_mode & 0o777 != entry.mode
+        ):
+            raise RuntimeError(f"backup artifact mode or type is invalid: {entry.path.value}")
+        if path.stat().st_size != entry.artifact.size:
+            raise RuntimeError(f"backup size mismatch: {entry.path.value}")
+        if sha256(path) != entry.artifact.sha256:
+            raise RuntimeError(f"backup checksum mismatch: {entry.path.value}")
+        if entry.content_kind is ContentKind.SQLITE:
+            if integrity(path) != "ok":
+                raise RuntimeError(f"backup integrity check failed: {entry.path.value}")
+            validate_sqlite_application(path, entry.path)
+        else:
+            validate_runtime_file(path, entry.path.value, entry.mode)
+    classify_backup_format(V3_FORMAT_VERSION)
+    return manifest_data
+
+
+_SQLITE_SCHEMAS: dict[
+    ManagedPath,
+    tuple[dict[str, tuple[str, ...]], dict[str, tuple[str, ...]]],
+] = {
+    ManagedPath.ACTION_HISTORY: (
+        {
+            "provider_action_history": (
+                "id", "provider_id", "provider_name", "action_id", "action_label",
+                "status", "success", "message", "confirmed", "destructive",
+                "parameter_names", "request_id", "started_at", "completed_at",
+                "duration_ms",
+            )
+        },
+        {
+            "idx_provider_action_history_completed_at": ("completed_at",),
+            "idx_provider_action_history_provider_status": (
+                "provider_id", "status", "completed_at",
+            ),
+        },
+    ),
+    ManagedPath.PROVIDER_INTELLIGENCE: (
+        {"intelligence_telemetry": ("id", "collected_at", "telemetry")},
+        {"idx_intelligence_telemetry_collected_at": ("collected_at",)},
+    ),
+    ManagedPath.OPERATIONAL_DISPATCH: (
+        {
+            "operational_dispatch": (
+                "request_id", "request_digest", "state", "request_json", "created_at",
+                "updated_at", "dispatch_started_at", "dispatch_result_json",
+                "verification_result_json",
+            ),
+            "operational_dispatch_events": (
+                "event_id", "status", "occurred_at", "event_json",
+            ),
+            "operational_dispatch_transitions": (
+                "sequence", "request_id", "request_digest", "previous_state", "state",
+                "occurred_at",
+            ),
+        },
+        {
+            "idx_operational_dispatch_events_time": ("occurred_at",),
+            "idx_operational_dispatch_transitions_request": ("request_id", "sequence"),
+        },
+    ),
+    ManagedPath.OPERATOR_INTENTS: (
+        {
+            "operator_intents": (
+                "record_id", "request_digest", "record_json", "created_at", "expires_at",
+                "schema_version",
+            ),
+            "operator_intent_audit": (
+                "sequence", "occurred_at", "record_id", "candidate_id", "operator_id",
+                "event", "reason",
+            ),
+        },
+        {},
+    ),
+    ManagedPath.OPERATOR_SECURITY_AUDIT: (
+        {
+            "operator_security_audit": (
+                "event_id", "occurred_at", "request_id", "operator_id", "auth_method",
+                "action", "outcome", "reason",
+            )
+        },
+        {},
+    ),
+}
+
+_SQLITE_PRIMARY_KEYS: dict[ManagedPath, dict[str, tuple[str, ...]]] = {
+    ManagedPath.ACTION_HISTORY: {"provider_action_history": ("id",)},
+    ManagedPath.PROVIDER_INTELLIGENCE: {"intelligence_telemetry": ("id",)},
+    ManagedPath.OPERATIONAL_DISPATCH: {
+        "operational_dispatch": ("request_id",),
+        "operational_dispatch_events": ("event_id",),
+        "operational_dispatch_transitions": ("sequence",),
+    },
+    ManagedPath.OPERATOR_INTENTS: {
+        "operator_intents": ("record_id",),
+        "operator_intent_audit": ("sequence",),
+    },
+    ManagedPath.OPERATOR_SECURITY_AUDIT: {
+        "operator_security_audit": ("event_id",),
+    },
+}
+
+
+def validate_sqlite_application(path: Path, managed_path: ManagedPath) -> None:
+    if managed_path not in _SQLITE_SCHEMAS:
+        raise RuntimeError(f"no application validator for {managed_path.value}")
+    tables, indexes = _SQLITE_SCHEMAS[managed_path]
+    connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    connection.row_factory = sqlite3.Row
+    try:
+        actual_tables = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        }
+        if actual_tables != set(tables):
+            raise RuntimeError(f"application table set is invalid: {managed_path.value}")
+        for table, expected_columns in tables.items():
+            table_info = connection.execute(f"PRAGMA table_info({table})").fetchall()
+            columns = tuple(row["name"] for row in table_info)
+            if columns != expected_columns:
+                raise RuntimeError(f"application columns are invalid: {managed_path.value}")
+            primary_key = tuple(
+                row["name"]
+                for row in sorted(table_info, key=lambda item: item["pk"])
+                if row["pk"]
+            )
+            if primary_key != _SQLITE_PRIMARY_KEYS[managed_path][table]:
+                raise RuntimeError(
+                    f"application primary key is invalid: {managed_path.value}"
+                )
+        for index, expected_columns in indexes.items():
+            columns = tuple(
+                row["name"]
+                for row in connection.execute(f"PRAGMA index_info({index})")
+            )
+            if columns != expected_columns:
+                raise RuntimeError(f"application index is invalid: {managed_path.value}")
+        _validate_sqlite_rows(connection, managed_path)
+    except sqlite3.DatabaseError as error:
+        raise RuntimeError(f"application database is invalid: {managed_path.value}") from error
+    finally:
+        connection.close()
+
+
+_LEDGER_TRANSITIONS = {
+    (None, "claimed"), ("claimed", "revalidated"),
+    ("revalidated", "dispatching"),
+    *( (start, end) for start in ("claimed", "revalidated", "dispatching") for end in ("succeeded", "failed", "outcome_unknown", "target_replaced") ),
+    ("succeeded", "verifying"), ("outcome_unknown", "verifying"),
+    *( ("verifying", end) for end in ("verified", "verification_failed", "outcome_unknown", "target_replaced") ),
+}
+
+
+def _validate_sqlite_rows(connection: sqlite3.Connection, managed_path: ManagedPath) -> None:
+    if managed_path is ManagedPath.ACTION_HISTORY:
+        for row in connection.execute("SELECT parameter_names FROM provider_action_history"):
+            if not isinstance(json.loads(row[0]), list):
+                raise RuntimeError("action history parameters are invalid")  # noqa: TRY004
+    elif managed_path is ManagedPath.PROVIDER_INTELLIGENCE:
+        for row in connection.execute("SELECT telemetry FROM intelligence_telemetry"):
+            if not isinstance(json.loads(row[0]), dict):
+                raise RuntimeError(  # noqa: TRY004
+                    "provider intelligence telemetry is invalid"
+                )
+    elif managed_path is ManagedPath.OPERATOR_INTENTS:
+        for row in connection.execute("SELECT * FROM operator_intents"):
+            record = json.loads(row["record_json"])
+            if (
+                not isinstance(record, dict)
+                or record.get("record_id") != row["record_id"]
+                or record.get("request_digest") != row["request_digest"]
+                or record.get("schema_version") != row["schema_version"]
+                or row["schema_version"] != 1
+            ):
+                raise RuntimeError("operator intent record is inconsistent")
+    elif managed_path is ManagedPath.OPERATIONAL_DISPATCH:
+        _validate_operational_rows(connection)
+
+
+def _validate_operational_rows(connection: sqlite3.Connection) -> None:
+    orphan_count = connection.execute(
+        "SELECT count(*) FROM operational_dispatch_transitions AS transitions "
+        "LEFT JOIN operational_dispatch AS requests "
+        "ON requests.request_id = transitions.request_id "
+        "WHERE requests.request_id IS NULL"
+    ).fetchone()[0]
+    if orphan_count:
+        raise RuntimeError("operational transition history contains an orphan")
+    for event_row in connection.execute("SELECT * FROM operational_dispatch_events"):
+        event = json.loads(event_row["event_json"])
+        if (
+            not isinstance(event, dict)
+            or event.get("event_id") != event_row["event_id"]
+            or event.get("status") != event_row["status"]
+            or event.get("occurred_at") != event_row["occurred_at"]
+        ):
+            raise RuntimeError("operational event evidence is inconsistent")
+    for row in connection.execute("SELECT * FROM operational_dispatch"):
+        request = json.loads(row["request_json"])
+        if (
+            not isinstance(request, dict)
+            or request.get("request_id") != row["request_id"]
+            or request.get("request_digest") != row["request_digest"]
+            or not {
+                "schema_version", "idempotency_key", "effect_kind",
+                "execution_intent", "provider_id", "resource_id", "resource_type",
+                "provider_action_id", "target_fingerprint", "verification", "approval",
+            }.issubset(request)
+        ):
+            raise RuntimeError("operational request identity is inconsistent")
+        for field in ("dispatch_result_json", "verification_result_json"):
+            if row[field] is not None and not isinstance(json.loads(row[field]), dict):
+                raise RuntimeError("operational result evidence is invalid")
+        dispatch_result = (
+            json.loads(row["dispatch_result_json"])
+            if row["dispatch_result_json"] is not None
+            else None
+        )
+        verification_result = (
+            json.loads(row["verification_result_json"])
+            if row["verification_result_json"] is not None
+            else None
+        )
+        if dispatch_result is not None and (
+            dispatch_result.get("request_id") != row["request_id"]
+            or dispatch_result.get("request_digest") != row["request_digest"]
+            or dispatch_result.get("status")
+            not in {"succeeded", "failed", "outcome_unknown"}
+            or not {"target_fingerprint", "started_at"}.issubset(dispatch_result)
+        ):
+            raise RuntimeError("operational dispatch result identity is inconsistent")
+        if (
+            verification_result is not None
+            and (
+                verification_result.get("request_id") != row["request_id"]
+                or verification_result.get("status")
+                not in {
+                    "succeeded", "verification_failed", "outcome_unknown",
+                    "target_replaced",
+                }
+                or not {"started_at", "completed_at", "deadline"}.issubset(
+                    verification_result
+                )
+            )
+        ):
+            raise RuntimeError("operational verification identity is inconsistent")
+        state = row["state"]
+        dispatch_result_states = {
+            "succeeded", "failed", "outcome_unknown", "target_replaced",
+        }
+        final_states = {"verified", "verification_failed", "target_replaced"}
+        verification_result_states = {
+            "verified", "verification_failed", "target_replaced", "outcome_unknown",
+        }
+        if state in dispatch_result_states and dispatch_result is None:
+            raise RuntimeError("operational dispatch result is missing")
+        if state in final_states - {"target_replaced"} and verification_result is None:
+            raise RuntimeError("operational verification result is missing")
+        if verification_result is not None and state not in verification_result_states:
+            raise RuntimeError("operational verification state is inconsistent")
+        transitions = connection.execute(
+            "SELECT * FROM operational_dispatch_transitions WHERE request_id=? ORDER BY sequence",
+            (row["request_id"],),
+        ).fetchall()
+        previous = None
+        for transition in transitions:
+            if (
+                transition["request_digest"] != row["request_digest"]
+                or transition["previous_state"] != previous
+                or (previous, transition["state"]) not in _LEDGER_TRANSITIONS
+            ):
+                raise RuntimeError("operational transition history is invalid")
+            previous = transition["state"]
+        if not transitions or previous != row["state"]:
+            raise RuntimeError("operational current state is inconsistent")
+
+
 def atomic_restore_file(source: Path, target: Path, mode: int = 0o600) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = target.with_name(f".{target.name}.restore")
@@ -251,6 +646,8 @@ def atomic_restore_file(source: Path, target: Path, mode: int = 0o600) -> None:
 
 def restore_backup(backup: Path, target: Path) -> None:
     manifest = verify_backup(backup)
+    if manifest.get("format_version") == V3_FORMAT_VERSION:
+        raise RuntimeError("backup v3 restore requires P2b-3")
     target.mkdir(parents=True, exist_ok=True)
 
     for filename in DATABASES:
@@ -272,8 +669,7 @@ def restore_backup(backup: Path, target: Path) -> None:
 
     for record in manifest.get("files", []):
         relative_path = safe_relative_path(record.get("path"))
-        restore_mode = 0o600 if relative_path.as_posix() in SECRET_RUNTIME_FILES else 0o600
-        atomic_restore_file(backup / relative_path, target / relative_path, restore_mode)
+        atomic_restore_file(backup / relative_path, target / relative_path, 0o600)
 
 
 def validate_runtime_manifest_record(relative_path: str, record: dict[str, object]) -> None:
@@ -285,7 +681,9 @@ def validate_runtime_manifest_record(relative_path: str, record: dict[str, objec
 
 
 def validate_runtime_file(path: Path, relative_path: str, mode: int) -> None:
-    if relative_path == "config/provider-connections.yaml":
+    if relative_path == "config/policies.yaml":
+        validate_policy_file(path)
+    elif relative_path == "config/provider-connections.yaml":
         document = load_provider_store_document(path, relative_path)
         if document.get("version") != 1:
             raise RuntimeError("provider connection store version is invalid")
@@ -294,7 +692,9 @@ def validate_runtime_file(path: Path, relative_path: str, mode: int) -> None:
         for provider_id, entry in document.get("providers", {}).items():
             validate_identifier(provider_id, "provider id")
             if not isinstance(entry, dict) or not isinstance(entry.get("connection", {}), dict):
-                raise RuntimeError("provider connection store entry is invalid")
+                raise RuntimeError(  # noqa: TRY004
+                    "provider connection store entry is invalid"
+                )
     elif relative_path == "secrets/provider-connections.yaml":
         if mode != 0o600:
             raise RuntimeError("provider secret store mode is invalid")
@@ -306,11 +706,73 @@ def validate_runtime_file(path: Path, relative_path: str, mode: int) -> None:
         for provider_id, entry in document.get("providers", {}).items():
             validate_identifier(provider_id, "provider id")
             if not isinstance(entry, dict) or not isinstance(entry.get("secrets", {}), dict):
-                raise RuntimeError("provider secret store entry is invalid")
+                raise RuntimeError(  # noqa: TRY004
+                    "provider secret store entry is invalid"
+                )
             for secret_name, secret_value in entry.get("secrets", {}).items():
                 validate_identifier(secret_name, "secret name")
-                if not isinstance(secret_value, str) or secret_value == "":
-                    raise RuntimeError("provider secret store value is invalid")
+                if not isinstance(secret_value, str):
+                    raise RuntimeError(  # noqa: TRY004
+                        "provider secret store value is invalid"
+                    )
+
+
+def validate_policy_file(path: Path) -> None:
+    """Validate the deterministic YAML subset accepted in Atlas policy files."""
+
+    scopes: dict[int, tuple[str, ...]] = {-2: ()}
+    keys_by_scope: dict[tuple[str, ...], set[str]] = {}
+    for line_number, raw_line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if "\t" in raw_line:
+            raise RuntimeError(f"policy YAML contains a tab on line {line_number}")
+        indent = len(raw_line) - len(raw_line.lstrip(" "))
+        if indent % 2 or indent < 0:
+            raise RuntimeError(f"policy YAML indentation is invalid on line {line_number}")
+        text = raw_line.strip()
+        if indent == 0 and text == "{}":
+            continue
+        if text.startswith("- "):
+            if indent == 0 or not text[2:].strip():
+                raise RuntimeError(f"policy YAML list item is invalid on line {line_number}")
+            continue
+        if ":" not in text:
+            raise RuntimeError(f"policy YAML mapping is invalid on line {line_number}")
+        raw_key, raw_value = text.split(":", 1)
+        key = raw_key.strip().strip('"')
+        if not key or any(character in key for character in "[]{}"):
+            raise RuntimeError(f"policy YAML key is invalid on line {line_number}")
+        parent = scopes.get(indent - 2)
+        if parent is None:
+            raise RuntimeError(f"policy YAML nesting is invalid on line {line_number}")
+        seen = keys_by_scope.setdefault(parent, set())
+        if key in seen:
+            raise RuntimeError(f"policy YAML key is duplicated on line {line_number}")
+        seen.add(key)
+        current = (*parent, key)
+        scopes[indent] = current
+        for deeper in tuple(level for level in scopes if level > indent):
+            del scopes[deeper]
+        value = raw_value.strip()
+        if key == "expected":
+            allowed = (
+                {"running", "stopped", "ignored"}
+                if current[0] == "proxmox"
+                else {"running", "stopped"}
+                if current[0] == "docker"
+                else {"active", "inactive"}
+                if current[0] == "frigate"
+                else None
+            )
+            if allowed is not None and value not in allowed:
+                raise RuntimeError(f"policy expectation is invalid on line {line_number}")
+        if value.startswith("[") and not value.endswith("]"):
+            raise RuntimeError(f"policy YAML list is malformed on line {line_number}")
+    # The runtime Policies model accepts an empty document and ignores unknown
+    # top-level keys, so absence of a recognized section is not corruption.
 
 
 def load_provider_store_document(path: Path, relative_path: str) -> dict[str, object]:
@@ -321,7 +783,7 @@ def load_provider_store_document(path: Path, relative_path: str) -> dict[str, ob
     a narrow shape, so verification accepts only that explicit subset.
     """
 
-    document: dict[str, object] = {"version": None, "providers": {}}
+    document: dict[str, object] = {"version": 1, "providers": {}}
     current_provider: str | None = None
     current_section: str | None = None
 
@@ -385,7 +847,13 @@ def parse_scalar(value: str) -> object:
 
 
 def validate_identifier(value: object, label: str) -> None:
-    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", value):
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or value.strip() in {".", ".."}
+        or "/" in value
+        or "\\" in value
+    ):
         raise RuntimeError(f"provider connection {label} is invalid")
 
 
@@ -447,6 +915,11 @@ def parse_args() -> argparse.Namespace:
     backup_parser.add_argument("destination", type=Path)
     backup_parser.add_argument("--output-owner-uid", type=int)
     backup_parser.add_argument("--output-owner-gid", type=int)
+    backup_parser.add_argument(
+        "--operator-auth-initialized",
+        choices=("true", "false"),
+        required=True,
+    )
 
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("backup", type=Path)
@@ -480,7 +953,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     if args.command == "backup":
-        create_backup(args.source, args.destination)
+        create_backup(
+            args.source,
+            args.destination,
+            operator_auth_initialized=args.operator_auth_initialized == "true",
+        )
         if args.output_owner_uid is not None or args.output_owner_gid is not None:
             if args.output_owner_uid is None or args.output_owner_gid is None:
                 raise RuntimeError(
@@ -489,9 +966,23 @@ def main() -> None:
             apply_owner(args.destination, args.output_owner_uid, args.output_owner_gid)
     elif args.command == "verify":
         manifest = verify_backup(args.backup)
-        file_count = len(manifest.get("files", []))
+        if manifest.get("format_version") == V3_FORMAT_VERSION:
+            parsed = AtlasCoreBackupV3Manifest.from_dict(manifest)
+            database_count = sum(
+                entry.content_kind is ContentKind.SQLITE
+                and entry.disposition is InventoryDisposition.REQUIRED_PRESENT
+                for entry in parsed.inventory
+            )
+            file_count = sum(
+                entry.content_kind is ContentKind.YAML
+                and entry.disposition is InventoryDisposition.REQUIRED_PRESENT
+                for entry in parsed.inventory
+            )
+        else:
+            database_count = len(manifest["databases"])
+            file_count = len(manifest.get("files", []))
         print(
-            f"Backup verified: {len(manifest['databases'])} databases, "
+            f"Backup verified: {database_count} databases, "
             f"{file_count} runtime files, "
             f"created {manifest['created_at']}"
         )

@@ -47,6 +47,7 @@ docker run \
     --mount "type=volume,src=$DATA_VOLUME,dst=/target" \
     --mount "type=bind,src=$BACKUP_DIRECTORY,dst=/backup,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     "$PYTHON_IMAGE" \
     python /tool.py restore /backup /target
 

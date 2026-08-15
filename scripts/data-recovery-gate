@@ -229,6 +229,7 @@ docker run \
     --user "$(id -u):$(id -g)" \
     --mount "type=bind,src=$GATE_DIRECTORY,dst=/backups" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     "$PYTHON_IMAGE" \
     python /tool.py prune \
     /backups \

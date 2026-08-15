@@ -247,6 +247,35 @@ class AtlasCoreBackupV3Manifest:
             "inventory": [entry.to_dict() for entry in self.inventory],
         }
 
+    @classmethod
+    def from_dict(cls, value: object) -> AtlasCoreBackupV3Manifest:
+        if not isinstance(value, dict) or set(value) != {
+            "schema",
+            "format_version",
+            "created_at",
+            "backup_directory_mode",
+            "provider_intent_activation",
+            "inventory",
+        }:
+            raise ValueError("v3 manifest fields are invalid")
+        if value["schema"] != V3_SCHEMA or value["format_version"] != V3_FORMAT_VERSION:
+            raise ValueError("v3 manifest identity is invalid")
+        if value["backup_directory_mode"] != BACKUP_DIRECTORY_MODE:
+            raise ValueError("v3 backup directory mode contract is invalid")
+        raw_inventory = value["inventory"]
+        if not isinstance(raw_inventory, list):
+            raise TypeError("v3 manifest inventory is invalid")
+        try:
+            activation = ProviderIntentActivation(value["provider_intent_activation"])
+            entries = tuple(_entry_from_dict(item) for item in raw_inventory)
+        except (TypeError, ValueError) as error:
+            raise ValueError("v3 manifest inventory values are invalid") from error
+        return cls(
+            created_at=value["created_at"],  # type: ignore[arg-type]
+            provider_intent_activation=activation,
+            inventory=entries,
+        )
+
 
 def build_v3_manifest(
     *,
@@ -371,6 +400,35 @@ def _validate_created_at(value: str) -> None:
         raise ValueError("backup timestamp is invalid") from error
     if parsed.tzinfo is None or parsed.utcoffset() is None or value != parsed.astimezone(UTC).isoformat():
         raise ValueError("backup timestamp must be canonical UTC")
+
+
+def _entry_from_dict(value: object) -> ManagedInventoryEntry:
+    if not isinstance(value, dict):
+        raise TypeError("managed inventory entry must be an object")
+    common = {"path", "role", "content_kind", "disposition", "mode"}
+    present = common | {"sha256", "size"}
+    absent = common | {"absence_reason"}
+    keys = set(value)
+    if keys == present:
+        artifact = ArtifactMetadata(value["sha256"], value["size"])  # type: ignore[arg-type]
+        reason = None
+    elif keys == absent:
+        artifact = None
+        reason = AbsenceReason(value["absence_reason"])
+    elif keys == common:
+        artifact = None
+        reason = None
+    else:
+        raise ValueError("managed inventory entry fields are invalid")
+    return ManagedInventoryEntry(
+        path=ManagedPath(value["path"]),
+        role=InventoryRole(value["role"]),
+        content_kind=ContentKind(value["content_kind"]),
+        disposition=InventoryDisposition(value["disposition"]),
+        mode=value["mode"],  # type: ignore[arg-type]
+        absence_reason=reason,
+        artifact=artifact,
+    )
 
 
 LEGACY_V1_REQUIRED_DATABASES = frozenset(

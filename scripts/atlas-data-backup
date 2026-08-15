@@ -8,6 +8,15 @@ PYTHON_IMAGE="python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804
 DATA_VOLUME="${ATLAS_DATA_VOLUME:-atlas_atlas-data}"
 BACKUP_ROOT="${1:-$ATLAS_ROOT/backups}"
 BACKUP_NAME="atlas-data-$(date -u +%Y%m%dT%H%M%SZ)"
+operator_auth_initialized="${ATLAS_OPERATOR_AUTH_ENABLED:-false}"
+
+case "$operator_auth_initialized" in
+    true|false) ;;
+    *)
+        echo "ATLAS_OPERATOR_AUTH_ENABLED must be true or false" >&2
+        exit 2
+        ;;
+esac
 
 for executable in docker realpath; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -27,7 +36,7 @@ if [[ -e "$INCOMPLETE_DIRECTORY" || -e "$BACKUP_DIRECTORY" ]]; then
     exit 1
 fi
 mkdir -- "$INCOMPLETE_DIRECTORY"
-chmod 0777 "$INCOMPLETE_DIRECTORY"
+chmod 0700 "$INCOMPLETE_DIRECTORY"
 
 cleanup() {
     if [[ -d "$INCOMPLETE_DIRECTORY" ]]; then
@@ -41,15 +50,29 @@ docker run \
     --network none \
     --read-only \
     --cap-drop ALL \
+    --cap-add CHOWN \
+    --security-opt no-new-privileges:true \
+    --user 0:0 \
+    --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \
+    "$PYTHON_IMAGE" \
+    chown 10001:10001 /backup
+
+docker run \
+    --rm \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
     --security-opt no-new-privileges:true \
     --user 10001:10001 \
     --mount "type=volume,src=$DATA_VOLUME,dst=/source,readonly" \
     --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     "$PYTHON_IMAGE" \
     python /tool.py backup \
     /source \
-    /backup
+    /backup \
+    --operator-auth-initialized "$operator_auth_initialized"
 
 docker run \
     --rm \
@@ -61,9 +84,10 @@ docker run \
     --user 0:0 \
     --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     "$PYTHON_IMAGE" \
     python /tool.py chown /backup "$(id -u)" "$(id -g)"
-chmod -R u+rwX,go+rX "$INCOMPLETE_DIRECTORY"
+chmod 0700 "$INCOMPLETE_DIRECTORY"
 
 mv -- "$INCOMPLETE_DIRECTORY" "$BACKUP_DIRECTORY"
 trap - EXIT

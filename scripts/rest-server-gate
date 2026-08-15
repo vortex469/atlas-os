@@ -40,16 +40,53 @@ import sys
 from pathlib import Path
 
 directory = Path(sys.argv[1])
-for filename in ("action_history.db", "provider_intelligence.db"):
+schemas = {
+    "action_history.db": """CREATE TABLE provider_action_history
+        (id TEXT PRIMARY KEY, provider_id TEXT NOT NULL, provider_name TEXT NOT NULL,
+        action_id TEXT NOT NULL, action_label TEXT NOT NULL, status TEXT NOT NULL,
+        success INTEGER NOT NULL, message TEXT NOT NULL, confirmed INTEGER NOT NULL,
+        destructive INTEGER NOT NULL, parameter_names TEXT NOT NULL, request_id TEXT,
+        started_at TEXT NOT NULL, completed_at TEXT NOT NULL, duration_ms REAL NOT NULL);
+        CREATE INDEX idx_provider_action_history_completed_at ON provider_action_history(completed_at DESC);
+        CREATE INDEX idx_provider_action_history_provider_status ON provider_action_history(provider_id,status,completed_at DESC);""",
+    "provider_intelligence.db": """CREATE TABLE intelligence_telemetry
+        (id TEXT PRIMARY KEY, collected_at TEXT NOT NULL, telemetry TEXT NOT NULL);
+        CREATE INDEX idx_intelligence_telemetry_collected_at ON intelligence_telemetry(collected_at DESC);""",
+    "operational_dispatch.db": """CREATE TABLE operational_dispatch
+        (request_id TEXT PRIMARY KEY, request_digest TEXT NOT NULL, state TEXT NOT NULL,
+        request_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+        dispatch_started_at TEXT, dispatch_result_json TEXT, verification_result_json TEXT);
+        CREATE TABLE operational_dispatch_events
+        (event_id TEXT PRIMARY KEY, status TEXT NOT NULL, occurred_at TEXT NOT NULL, event_json TEXT NOT NULL);
+        CREATE INDEX idx_operational_dispatch_events_time ON operational_dispatch_events(occurred_at DESC);
+        CREATE TABLE operational_dispatch_transitions
+        (sequence INTEGER PRIMARY KEY AUTOINCREMENT, request_id TEXT NOT NULL,
+        request_digest TEXT NOT NULL, previous_state TEXT, state TEXT NOT NULL, occurred_at TEXT NOT NULL);
+        CREATE INDEX idx_operational_dispatch_transitions_request ON operational_dispatch_transitions(request_id,sequence);""",
+    "operator_intents.db": """CREATE TABLE operator_intents
+        (record_id TEXT PRIMARY KEY, request_digest TEXT NOT NULL, record_json TEXT NOT NULL,
+        created_at TEXT NOT NULL, expires_at TEXT NOT NULL, schema_version INTEGER NOT NULL);
+        CREATE TABLE operator_intent_audit
+        (sequence INTEGER PRIMARY KEY AUTOINCREMENT, occurred_at TEXT NOT NULL, record_id TEXT,
+        candidate_id TEXT, operator_id TEXT, event TEXT NOT NULL, reason TEXT NOT NULL);""",
+}
+for filename, schema in schemas.items():
     connection = sqlite3.connect(directory / filename)
-    connection.execute("CREATE TABLE records (value TEXT NOT NULL)")
-    connection.execute("INSERT INTO records VALUES ('remote recovery gate')")
+    connection.executescript(schema)
     connection.commit()
     connection.close()
+(directory / "config").mkdir()
+(directory / "secrets").mkdir()
+(directory / "config/policies.yaml").write_text("proxmox:\n  guests: {}\n", encoding="utf-8")
+(directory / "config/provider-connections.yaml").write_text("version: 1\nproviders: {}\n", encoding="utf-8")
+secret = directory / "secrets/provider-connections.yaml"
+secret.write_text("version: 1\nproviders: {}\n", encoding="utf-8")
+secret.chmod(0o600)
 PY
 python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" backup \
     "$GATE_DIRECTORY/source" \
-    "$GATE_DIRECTORY/backups/atlas-data-20000101T000000Z"
+    "$GATE_DIRECTORY/backups/atlas-data-20000101T000000Z" \
+    --operator-auth-initialized false
 
 openssl req \
     -x509 \

@@ -302,10 +302,10 @@ def test_v1_is_database_only_and_v2_accepts_zero_to_three_runtime_files() -> Non
         )
 
 
-def test_current_v2_tool_contract_remains_unchanged() -> None:
+def test_production_tool_writes_v3_and_retains_legacy_verification() -> None:
     tool = run_path(str(Path(__file__).with_name("atlas-data-tool.py")))
-    assert tool["FORMAT_VERSION"] == 2
-    assert tool["SUPPORTED_FORMAT_VERSIONS"] == {1, 2}
+    assert tool["FORMAT_VERSION"] == 3
+    assert tool["SUPPORTED_FORMAT_VERSIONS"] == {1, 2, 3}
     assert frozenset(tool["DATABASES"]) == LEGACY_V2_REQUIRED_DATABASES
     assert frozenset(tool["RUNTIME_FILES"]) == LEGACY_V2_RUNTIME_FILES
 
