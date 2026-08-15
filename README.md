@@ -60,19 +60,24 @@ from reusable or mutable fields. LXC remains unsupported and non-requestable.
 
 - [Atlas v0.8.0 to v0.9 upgrade and rollback](docs/DEPLOYMENT.md#atlas-v080-to-v09-upgrade-and-rollback)
 
-## Atlas v0.10 development
+## Atlas v0.10 RC preparation
 
-Atlas v0.10 has the theme **Discovery-to-Operator Proposal Handoff**. It will
-turn trusted Discovery and Orion advisory evidence into sanitized, stale-aware
-operator proposals that navigate to existing authoritative review or
-operator-intent surfaces without granting Discovery execution authority.
+Atlas v0.10 has the theme **Discovery-to-Operator Proposal Handoff**. P0 through
+P5 are locally complete. Atlas turns trusted Discovery and Orion advisory
+evidence into sanitized, stale-aware operator proposals that navigate to
+existing authoritative review or operator-intent surfaces without granting
+Discovery execution authority.
 Proposals cannot create candidates, action requests, approvals, or dispatches;
 the destination must freshly resolve capability, resource, target fingerprint,
 and operator authority. V0.10 does not widen the existing repository or
 operational execution boundaries.
 
-- [Atlas v0.7.0 to v0.8 upgrade](docs/DEPLOYMENT.md#atlas-v070-to-v08-upgrade-and-rollback)
-- [Atlas v0.8 to v0.7.0 rollback](docs/DEPLOYMENT.md#rollback-to-atlas-v070)
+The proposal API is GET-only, Mission Control presents proposal context as
+advisory, and every maintenance destination reloads current operator,
+capability, selector, resource, and fingerprint authority. RC selection,
+exact-candidate CI, deployment soak, and final publication remain pending.
+
+- [Atlas v0.9.0 to v0.10 upgrade and rollback](docs/DEPLOYMENT.md#atlas-v090-to-v010-upgrade-and-rollback)
 
 ## Atlas v0.6.0
 

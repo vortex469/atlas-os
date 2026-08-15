@@ -263,10 +263,11 @@ Exit criteria:
 - Any later executable work remains routed through authoritative candidate
   creation and Atlas Agent approval-controlled planning and execution.
 
-D9 is the active Atlas v0.10 objective. Atlas Core's Discovery/intelligence
-layer owns proposals initially, and proposals are derived rather than
-persisted. They are sanitized, provenance-bound, stale-aware, and advisory.
-They may navigate only through closed destinations and intent hints.
+D9 P0 through P5 implementation and local acceptance are complete. Atlas
+Core's Discovery/intelligence layer owns proposals initially, and proposals are
+derived rather than persisted. They are sanitized, provenance-bound,
+stale-aware, and advisory. They may navigate only through closed destinations
+and intent hints.
 
 A proposal cannot create an `ExecutionCandidate` or
 `OperationalActionRequest`, approve, dispatch, select an authoritative provider
@@ -276,6 +277,13 @@ destination must freshly resolve current capability descriptors, authoritative
 resources, target state/fingerprint, and operator authority. Expired or
 source-mismatched proposals remain inspectable but non-actionable;
 compatibility evidence never grants execution permission.
+
+The shipped D9 surface consists of immutable proposal/provenance contracts,
+stale-aware read-only derivation, bounded GET-only proposal APIs, closed
+navigation, and Mission Control advisory presentation. Observed proposals are
+retained only in a bounded process-local cache so stale/expired context remains
+inspectable; there is no proposal database. RC selection, exact-candidate CI,
+deployment soak, and final publication remain pending.
 
 ## D10 — Dynamic Source Adapters
 

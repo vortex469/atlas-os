@@ -464,6 +464,8 @@ fail closed.
 
 ### V0.10-P1 — Sanitized proposal contracts and provenance
 
+**Status: complete.**
+
 - Goal: define immutable internal proposal contracts.
 - Deliverables: frozen extra-forbid models, controlled enums, bounded fields,
   provenance, deterministic identity, expiry, and security tests.
@@ -472,6 +474,8 @@ fail closed.
 - Exit criteria: contracts deterministically reject malformed or unsafe content.
 
 ### V0.10-P2 — Derivation, compatibility, and staleness
+
+**Status: complete.**
 
 - Goal: derive proposals from current catalog, compatibility, and D8 evidence.
 - Deliverables: read-only derivation, source-state validation, closed hints,
@@ -483,6 +487,8 @@ fail closed.
 
 ### V0.10-P3 — Authoritative navigation contract
 
+**Status: complete.**
+
 - Goal: navigate without transferring proposal authority.
 - Deliverables: closed destination descriptors and fresh server-side reload of
   capability, selector, target, fingerprint, and operator authority.
@@ -491,6 +497,8 @@ fail closed.
 - Exit criteria: stale or tampered navigation state cannot influence a request.
 
 ### V0.10-P4 — Mission Control proposal UX
+
+**Status: complete.**
 
 - Goal: present proposals, provenance, compatibility, and safe next steps.
 - Deliverables: proposal list/detail, stale presentation, controlled navigation,
@@ -501,6 +509,8 @@ fail closed.
 
 ### V0.10-P5 — Boundary integration and release acceptance
 
+**Status: local acceptance and documentation complete; exact-RC evidence pending.**
+
 - Goal: validate D9 end to end without widening execution.
 - Deliverables: Core/UI boundary tests, Agent regressions, redaction and release
   gates, upgrade/rollback documentation, and acceptance evidence.
@@ -508,6 +518,11 @@ fail closed.
 - Non-goals: provider mutation acceptance or new execution capability.
 - Exit criteria: proposals create no candidate, approval, action request, or
   dispatch record, and capability parity remains QEMU restart only.
+
+P0 through P5 implementation is complete. Local boundary, redaction,
+staleness, tampering, capability-parity, and release validation are complete.
+RC selection, exact-candidate CI, immutable tagging, production deployment and
+soak, and final publication remain separate pending release steps.
 
 ### V0.10 non-goals
 

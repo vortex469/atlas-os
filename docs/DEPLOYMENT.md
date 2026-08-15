@@ -1103,6 +1103,136 @@ Existing TLS, edge `htpasswd`, and operator-verifier files may remain in their
 private ignored locations. They are still used by the v0.8 three-file hardened
 deployment and need not be deleted for rollback.
 
+## Atlas v0.9.0 to v0.10 upgrade and rollback
+
+The supported starting point is immutable release `atlas-v0.9.0` at
+`7a5beac58e1677cd97b9bcc2f160dc30573582aa`. Before upgrading, require a clean
+tracked worktree, a current Atlas data backup, a current `atlas-agent-state`
+snapshot, preserved operator-auth and TLS private material outside Git, healthy
+services, a reachable configured provider, and the exact production Compose
+environment.
+
+### Upgrade to v0.10
+
+1. Confirm no operational request is in flight and preserve terminal lifecycle
+   and audit evidence required for support or release review.
+2. Create an Atlas data backup and snapshot `atlas-agent-state` using the
+   approved host mechanism:
+
+```bash
+./scripts/atlas-data-backup /path/to/protected-atlas-backups
+```
+
+3. Fetch the reviewed release, compare it with the independently recorded
+   release SHA, and check out that exact commit:
+
+```bash
+ATLAS_V010_REF=atlas-v0.10.0
+ATLAS_V010_EXPECTED_SHA='<independently-recorded-release-sha>'
+git fetch origin tag "$ATLAS_V010_REF"
+test "$(git rev-parse "$ATLAS_V010_REF^{}")" = "$ATLAS_V010_EXPECTED_SHA"
+git switch --detach "$ATLAS_V010_REF^{}"
+```
+
+4. Export the existing private paths and trusted HTTPS origin. Render and
+   deploy the same hardened three-file stack:
+
+```bash
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  config --quiet
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  up --build --detach
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  ps
+```
+
+5. Require all services healthy. Run
+   `./scripts/operational-capability-parity` and require exactly
+   `restart-service/proxmox/qemu`. Through authenticated Edge HTTPS, verify the
+   operator session, read-only Discovery proposal list/detail, Discovery item
+   proposal presentation, and authoritative maintenance selector reload. Do
+   not submit an operator intent or perform a provider mutation merely to
+   validate an ordinary upgrade.
+
+V0.10 adds immutable advisory proposal contracts, read-only stale-aware
+derivation, GET-only proposal APIs, closed navigation, and Mission Control
+proposal presentation. Proposal context cannot create candidates, action
+requests, approvals, dispatch records, or provider operations.
+
+### Persistence and compatibility
+
+V0.10 does not change Atlas Agent snapshot schema v3 or its v1/v2/v3 readers.
+It does not change the Core operational dispatch, event, or transition schema,
+and adds no durable proposal database. Previously observed proposals use only a
+bounded process-local cache and disappear on Core restart. Mission Control
+proposal state is UI-only. No forward data migration is required.
+
+End-to-end downgrade compatibility is still not explicitly guaranteed. A
+fail-safe rollback must preserve complete v0.10 data and Agent state first,
+then restore both the pre-upgrade Atlas data backup and pre-upgrade
+`atlas-agent-state` snapshot.
+
+### In-flight action handling
+
+Normal rollback requires no in-flight operational request. If a request has
+reached `dispatching` or crossed the durable barrier, do not retry or recreate
+the mutation. Preserve its ledger, request digest, transitions, provider
+operation reference, diagnostic, and sanitized support evidence. Reconcile it
+read-only to a terminal `verified`, `verification_failed`, `target_replaced`,
+or `outcome_unknown` state and require operator review before rollback. An
+unresolved barrier-crossed request blocks ordinary rollback.
+
+### Rollback to atlas-v0.9.0
+
+1. Confirm no operational request is in flight under the rule above.
+2. Record the v0.10 SHA and preserve offline copies of complete v0.10 Atlas
+   data and Agent-state volumes.
+3. Stop the v0.10 deployment using the same three Compose files.
+4. Restore the pre-upgrade `atlas-agent-state` snapshot and Atlas data backup
+   while services are stopped:
+
+```bash
+./scripts/atlas-data-restore \
+  /path/to/protected-atlas-backups/atlas-data-YYYYMMDDTHHMMSSZ \
+  --confirm
+```
+
+5. Check out and verify the immutable v0.9.0 release, then render and recreate
+   its hardened three-file deployment:
+
+```bash
+git switch --detach 'atlas-v0.9.0^{}'
+test "$(git rev-parse HEAD)" = \
+  "7a5beac58e1677cd97b9bcc2f160dc30573582aa"
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  config --quiet
+docker compose \
+  -f compose.production.yaml \
+  -f compose.https.yaml \
+  -f compose.operator-auth.yaml \
+  up --build --detach
+```
+
+6. Require all services healthy, confirm v0.10 proposal API/UI surfaces are
+   absent, and reconfirm the sole operational tuple remains
+   `restart-service/proxmox/qemu`. Do not use a live provider mutation as a
+   rollback test.
+
+Existing TLS, Edge `htpasswd`, and operator-verifier files remain private and
+may stay in place; v0.9.0 uses the same hardened three-file deployment.
+
 ## Back up and restore data
 
 Create a consistent online backup while Atlas remains available:

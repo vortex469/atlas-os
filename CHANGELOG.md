@@ -6,9 +6,28 @@ release boundaries.
 
 ## Unreleased
 
-Atlas v0.10 development begins with documentation and contract design for a
-sanitized, stale-aware Discovery-to-Operator Proposal Handoff. No v0.10 runtime
-change or execution-boundary expansion exists yet.
+Atlas v0.10 implements a sanitized, stale-aware Discovery-to-Operator Proposal
+Handoff without expanding execution authority.
+
+### Added
+
+- Immutable, extra-forbid proposal, provenance, compatibility, destination,
+  target-hint, identity, expiry, and source-state contracts.
+- Read-only derivation and evaluation with bounded process-local observation of
+  stale or expired proposals and no durable proposal persistence.
+- Bounded GET-only proposal list/detail APIs with sanitized, closed navigation.
+- Mission Control proposal cards, review-only stale/incompatible presentation,
+  compatibility navigation, and separate advisory maintenance context.
+
+### Security boundary
+
+- Proposal existence or navigation cannot create a candidate, planning session,
+  approval, action request, dispatch record, or provider operation.
+- Maintenance selection reloads current operator permission, production
+  capability descriptors, selector resources, state, requestability, and target
+  fingerprint. Proposal hints are presentation-only.
+- Production mutation remains exactly `restart-service/proxmox/qemu`; LXC and
+  all other mutation tuples remain unsupported. RC and final tags are pending.
 
 ## atlas-v0.9.0 — Atlas v0.9.0 (2026-08-15)
 

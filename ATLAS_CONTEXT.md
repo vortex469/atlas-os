@@ -404,3 +404,13 @@ remain inspectable but non-actionable. Compatibility is evidence, not execution
 permission. V0.10 adds no execution intent or handler; production remains
 exactly `restart-service / proxmox / qemu`, repository execution remains
 `update-compose-stack`, and LXC remains unsupported.
+
+V0.10-P0 through V0.10-P5 implementation and local acceptance are complete.
+Core exposes bounded GET-only proposal reads; Mission Control presents
+sanitized proposal, provenance, compatibility, and stale-state context while
+using closed navigation only. Maintenance selection independently reloads the
+operator session and permission, production capability descriptor,
+authoritative selector, current state/requestability, and target fingerprint.
+Proposal observations are bounded and process-local; no durable schema or
+Agent state changed. RC selection, exact-SHA CI/deployment soak, and final tags
+remain pending.

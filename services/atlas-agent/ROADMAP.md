@@ -498,15 +498,17 @@ changes no execution gate, and persists no support bundle.
 
 ## Atlas v0.10 — Discovery-to-Operator Proposal Handoff
 
-D9 is active v0.10 work, but remains proposal/navigation-only. Atlas Core owns
+D9 P0 through P5 implementation and local acceptance are complete, and remain
+proposal/navigation-only. Atlas Core owns
 derived advisory proposals; Atlas Agent accepts no proposal as target,
 candidate, action-request, approval, or dispatch authority. Any eventual
 workflow begins only after existing Core boundaries freshly resolve the current
 capability, authoritative selector, target state/fingerprint, and operator
 permission. Agent planning and execution remain closed to
 `restart-service / proxmox / qemu`; repository execution remains separately
-gated as `update-compose-stack`. P1 begins with internal proposal contracts and
-tests only, with no Agent integration.
+gated as `update-compose-stack`. Proposal contracts, stale-aware read APIs,
+closed navigation, and Mission Control advisory UX add no Agent proposal input
+or authority. RC selection and exact-candidate validation remain pending.
 
 ### Planned Phase 5
 
