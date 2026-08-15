@@ -5,6 +5,7 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from threading import Event, Thread
 
 import pytest
 
@@ -79,6 +80,58 @@ def supersede_command(
 def test_store_requires_a_durable_filesystem_path() -> None:
     with pytest.raises(ValueError, match="durable filesystem path"):
         ProviderIntentStore(":memory:")
+
+
+def test_read_snapshot_is_immutable_and_fresh_per_call(tmp_path: Path) -> None:
+    store = ProviderIntentStore(tmp_path / "provider_intents.db")
+    first = store.put(command("create-a", fingerprint=FINGERPRINT_A), now=NOW)
+
+    original_snapshot = store.read_snapshot()
+    store.put(
+        command("create-b", fingerprint=FINGERPRINT_B),
+        now=NOW + timedelta(seconds=1),
+    )
+    refreshed_snapshot = store.read_snapshot()
+
+    assert original_snapshot.active_identity_bound_records == (first.record,)
+    assert len(refreshed_snapshot.active_identity_bound_records) == 2
+
+
+def test_read_snapshot_does_not_mix_a_concurrent_writer_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "provider_intents.db"
+    store = ProviderIntentStore(database)
+    first = store.put(command("create-a", fingerprint=FINGERPRINT_A), now=NOW)
+    records_read = Event()
+    writer_done = Event()
+    original_validation = store._validated_store_records
+
+    def paused_validation(connection: sqlite3.Connection):
+        histories = original_validation(connection)
+        records_read.set()
+        assert writer_done.wait(timeout=5)
+        return histories
+
+    monkeypatch.setattr(store, "_validated_store_records", paused_validation)
+
+    def write_next_generation() -> None:
+        assert records_read.wait(timeout=5)
+        ProviderIntentStore(database).put(
+            command("create-b", fingerprint=FINGERPRINT_B),
+            now=NOW + timedelta(seconds=1),
+        )
+        writer_done.set()
+
+    writer = Thread(target=write_next_generation)
+    writer.start()
+    original_snapshot = store.read_snapshot()
+    writer.join(timeout=5)
+
+    assert not writer.is_alive()
+    assert original_snapshot.active_identity_bound_records == (first.record,)
+    assert len(ProviderIntentStore.open_existing(database).read_snapshot().active_identity_bound_records) == 2
 
 
 def test_store_rejects_symbolic_link_path(tmp_path: Path) -> None:
@@ -302,6 +355,39 @@ def test_same_coordinate_different_incarnations_are_independent(tmp_path: Path) 
     assert store.history(second.record.intent_id) == (second.record,)
 
 
+def test_validated_read_apis_are_deterministic_and_coordinate_bound(
+    tmp_path: Path,
+) -> None:
+    store = ProviderIntentStore(tmp_path / "provider_intents.db")
+    second = store.put(command("create-b", fingerprint=FINGERPRINT_B), now=NOW)
+    first = store.put(
+        command("create-a", fingerprint=FINGERPRINT_A),
+        now=NOW + timedelta(seconds=1),
+    )
+    assert store.active_identity_bound_records() == (
+        first.record,
+        second.record,
+    )
+    assert store.identity_bound_records_for_coordinate(
+        provider_id="proxmox",
+        resource_type="qemu",
+        resource_id="110",
+    ) == (first.record, second.record)
+    assert store.get_identity_bound_current(
+        provider_id="proxmox",
+        resource_type="qemu",
+        resource_id="110",
+        incarnation_fingerprint=FINGERPRINT_A,
+        intent_kind=ProviderIntentKind.MONITORING_EXPECTATION,
+    ) == first.record
+
+    reopened = ProviderIntentStore.open_existing(store.database_path)
+    assert reopened.active_identity_bound_records() == (
+        first.record,
+        second.record,
+    )
+
+
 def test_unsupported_schema_and_malformed_records_fail_closed(tmp_path: Path) -> None:
     path = tmp_path / "provider_intents.db"
     store = ProviderIntentStore(path)
@@ -403,6 +489,20 @@ def test_corrupt_database_file_fails_closed(tmp_path: Path) -> None:
     path.write_bytes(b"not a sqlite database")
     with pytest.raises(ProviderIntentStoreCorruptionError):
         ProviderIntentStore(path)
+
+
+def test_open_existing_performs_full_history_validation(tmp_path: Path) -> None:
+    path = tmp_path / "provider_intents.db"
+    store = ProviderIntentStore(path)
+    request = command("create-1")
+    store.put(request, now=NOW)
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "UPDATE provider_intent_audit SET event='updated' WHERE request_id=?",
+            (request.request_id,),
+        )
+    with pytest.raises(ProviderIntentStoreCorruptionError):
+        ProviderIntentStore.open_existing(path)
 
 
 def test_store_has_no_forbidden_runtime_dependencies() -> None:

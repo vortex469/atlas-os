@@ -1,11 +1,18 @@
 import os
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+
+
+class ProviderIntentActivation(StrEnum):
+    NOT_ACTIVATED = "not_activated"
+    ACTIVATED = "activated"
+
 
 ATLAS_ROOT = Path("/opt/atlas")
 CONFIG_FILE = ATLAS_ROOT / "config" / "atlas.yaml"
@@ -69,6 +76,38 @@ class OperationalDispatchSettings(BaseModel):
     agent_auth_file: str = "/run/atlas-core-agent-auth/token"
 
 
+class ProviderIntentSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    activation: ProviderIntentActivation = ProviderIntentActivation.NOT_ACTIVATED
+    database: str = "/opt/atlas/data/provider_intents.db"
+    expected_legacy_import_id: str | None = Field(
+        default=None,
+        pattern=r"^provider-intent-legacy-policy-import-v1:[a-f0-9]{64}$",
+    )
+
+    @model_validator(mode="after")
+    def validate_activation_contract(self) -> "ProviderIntentSettings":
+        database = Path(self.database)
+        if (
+            not self.database
+            or self.database != self.database.strip()
+            or not database.is_absolute()
+            or self.database == ":memory:"
+        ):
+            raise ValueError("provider intent database must be an absolute path")
+        if self.activation is ProviderIntentActivation.NOT_ACTIVATED:
+            if self.expected_legacy_import_id is not None:
+                raise ValueError(
+                    "inactive Provider Intent cannot expect a legacy import"
+                )
+        elif self.expected_legacy_import_id is None:
+            raise ValueError(
+                "activated Provider Intent requires an expected legacy import ID"
+            )
+        return self
+
+
 class OperatorAuthSettings(BaseModel):
     enabled: bool = False
     verifier_file: str = "/run/atlas-operator-auth/operators.json"
@@ -125,6 +164,9 @@ class Settings(BaseModel):
     operational_dispatch: OperationalDispatchSettings = Field(
         default_factory=OperationalDispatchSettings,
     )
+    provider_intents: ProviderIntentSettings = Field(
+        default_factory=ProviderIntentSettings,
+    )
     operator_auth: OperatorAuthSettings = Field(default_factory=OperatorAuthSettings)
 
 
@@ -167,6 +209,20 @@ def load_settings() -> Settings:
             else:
                 operator_raw[key] = value
         raw["operator_auth"] = operator_raw
+        provider_intent_raw = dict(raw.get("provider_intents") or {})
+        provider_intent_overrides = {
+            "activation": os.getenv("ATLAS_PROVIDER_INTENT_ACTIVATION"),
+            "database": os.getenv("ATLAS_PROVIDER_INTENT_DATABASE"),
+            "expected_legacy_import_id": os.getenv(
+                "ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID"
+            ),
+        }
+        provider_intent_raw.update(
+            (key, value)
+            for key, value in provider_intent_overrides.items()
+            if value is not None
+        )
+        raw["provider_intents"] = provider_intent_raw
         loaded = Settings.model_validate(raw)
         auth_file = os.getenv("ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE")
         if auth_file:

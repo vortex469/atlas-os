@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from pydantic import ValidationError
 
@@ -16,6 +17,7 @@ from app.models.provider_intents import (
     PROVIDER_INTENT_SCHEMA_VERSION,
     ProviderIntentAuditEvent,
     ProviderIntentAuditEventKind,
+    ProviderIntentKind,
     ProviderIntentLifecycle,
     ProviderIntentMutationCommand,
     ProviderIntentMutationResult,
@@ -58,6 +60,9 @@ _TABLE_COLUMNS = {
         "event",
     ),
 }
+_LEGACY_IMPORT_REQUEST_DIGEST = re.compile(
+    r"^provider-intent-legacy-policy-import-request-v1:[a-f0-9]{64}$"
+)
 
 
 class ProviderIntentStoreError(RuntimeError):
@@ -76,23 +81,53 @@ class ProviderIntentStoreCorruptionError(ProviderIntentStoreError):
     """Stored provider-intent state is invalid or inconsistent."""
 
 
+class ProviderIntentReadSnapshot(NamedTuple):
+    """One coherent, immutable, fully validated store generation."""
+
+    current_identity_bound_records: tuple[ProviderIntentRecord, ...]
+    active_identity_bound_records: tuple[ProviderIntentRecord, ...]
+    legacy_unbound_records: tuple[ProviderIntentRecord, ...]
+
+
 class ProviderIntentStore:
     """Durable store with no provider-resolution or execution authority."""
 
-    def __init__(self, database_path: str | Path) -> None:
+    def __init__(
+        self,
+        database_path: str | Path,
+        *,
+        create_if_missing: bool = True,
+    ) -> None:
         self.database_path = str(database_path)
         if self.database_path == ":memory:":
             raise ValueError("provider intent store requires a durable filesystem path")
         path = Path(self.database_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        if create_if_missing:
+            path.parent.mkdir(parents=True, exist_ok=True)
         if path.is_symlink():
             raise ValueError("provider intent store path cannot be a symbolic link")
+        if not create_if_missing and not path.exists():
+            raise ProviderIntentStoreSchemaError(
+                "activated provider intent database does not exist"
+            )
         if path.exists() and not path.is_file():
             raise ValueError("provider intent store path must be a regular file")
-        path.touch(mode=0o600, exist_ok=True)
-        path.chmod(0o600)
+        if create_if_missing:
+            path.touch(mode=0o600, exist_ok=True)
+            path.chmod(0o600)
         self._lock = Lock()
-        self._initialize_or_validate()
+        if create_if_missing:
+            self._initialize_or_validate()
+        else:
+            self._validate_existing_readonly()
+
+    @classmethod
+    def open_existing(cls, database_path: str | Path) -> ProviderIntentStore:
+        """Open and validate an existing store without creating or chmodding it."""
+
+        store = cls(database_path, create_if_missing=False)
+        store.validate_all()
+        return store
 
     def _connect(self) -> sqlite3.Connection:
         try:
@@ -111,6 +146,25 @@ class ProviderIntentStore:
         except sqlite3.DatabaseError as error:
             raise ProviderIntentStoreCorruptionError(
                 "provider intent database cannot be opened"
+            ) from error
+
+    def _connect_readonly(self) -> sqlite3.Connection:
+        try:
+            connection = sqlite3.connect(
+                f"file:{Path(self.database_path).resolve()}?mode=ro",
+                uri=True,
+                timeout=5,
+                isolation_level=None,
+                check_same_thread=False,
+            )
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA busy_timeout=5000")
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute("PRAGMA query_only=ON")
+            return connection
+        except sqlite3.DatabaseError as error:
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent database cannot be opened for reading"
             ) from error
 
     def _initialize_or_validate(self) -> None:
@@ -132,6 +186,33 @@ class ProviderIntentStore:
                     self._create_schema(connection)
                 else:
                     self._validate_schema(connection, tables)
+            except ProviderIntentStoreError:
+                raise
+            except sqlite3.DatabaseError as error:
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent database validation failed"
+                ) from error
+
+    def _validate_existing_readonly(self) -> None:
+        with self._connect_readonly() as connection:
+            try:
+                integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
+                if integrity != "ok":
+                    raise ProviderIntentStoreCorruptionError(
+                        "provider intent database integrity check failed"
+                    )
+                tables = {
+                    row["name"]
+                    for row in connection.execute(
+                        "SELECT name FROM sqlite_master "
+                        "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                    ).fetchall()
+                }
+                if not tables:
+                    raise ProviderIntentStoreSchemaError(
+                        "provider intent database schema is absent"
+                    )
+                self._validate_schema(connection, tables)
             except ProviderIntentStoreError:
                 raise
             except sqlite3.DatabaseError as error:
@@ -595,8 +676,269 @@ class ProviderIntentStore:
                 "legacy import record digest is inconsistent"
             )
 
+    def validate_all(self) -> None:
+        """Validate every durable series and all request evidence."""
+
+        with self._connect_readonly() as connection:
+            try:
+                connection.execute("BEGIN")
+                self._validated_store_records(connection)
+                connection.commit()
+            except ProviderIntentStoreError:
+                connection.rollback()
+                raise
+            except (sqlite3.DatabaseError, ValidationError, ValueError, json.JSONDecodeError) as error:
+                connection.rollback()
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent full-store validation failed"
+                ) from error
+
+    def read_snapshot(self) -> ProviderIntentReadSnapshot:
+        """Read one fresh coherent generation; no snapshot is retained or cached."""
+
+        with self._connect_readonly() as connection:
+            try:
+                connection.execute("BEGIN")
+                histories = self._validated_store_records(connection)
+                current = tuple(history[-1] for history in histories if history)
+                identity_bound = tuple(
+                    sorted(
+                        (
+                            record
+                            for record in current
+                            if record.resource_type is not None
+                            and record.incarnation_fingerprint is not None
+                        ),
+                        key=self._record_order,
+                    )
+                )
+                legacy = tuple(
+                    sorted(
+                        (
+                            record
+                            for history in histories
+                            for record in history
+                            if record.lifecycle
+                            is ProviderIntentLifecycle.LEGACY_UNBOUND
+                        ),
+                        key=self._history_record_order,
+                    )
+                )
+                snapshot = ProviderIntentReadSnapshot(
+                    current_identity_bound_records=identity_bound,
+                    active_identity_bound_records=tuple(
+                        record
+                        for record in identity_bound
+                        if record.lifecycle is ProviderIntentLifecycle.ACTIVE
+                    ),
+                    legacy_unbound_records=legacy,
+                )
+                connection.commit()
+                return snapshot
+            except ProviderIntentStoreError:
+                connection.rollback()
+                raise
+            except (sqlite3.DatabaseError, ValidationError, ValueError, json.JSONDecodeError) as error:
+                connection.rollback()
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent read snapshot validation failed"
+                ) from error
+
+    def current_identity_bound_records(self) -> tuple[ProviderIntentRecord, ...]:
+        return self.read_snapshot().current_identity_bound_records
+
+    def active_identity_bound_records(self) -> tuple[ProviderIntentRecord, ...]:
+        return self.read_snapshot().active_identity_bound_records
+
+    def get_identity_bound_current(
+        self,
+        *,
+        provider_id: str,
+        resource_type: str,
+        resource_id: str,
+        incarnation_fingerprint: str,
+        intent_kind: ProviderIntentKind,
+    ) -> ProviderIntentRecord | None:
+        return next(
+            (
+                record
+                for record in self.read_snapshot().current_identity_bound_records
+                if record.provider_id == provider_id
+                and record.resource_type == resource_type
+                and record.resource_id == resource_id
+                and record.incarnation_fingerprint == incarnation_fingerprint
+                and record.intent_kind is intent_kind
+            ),
+            None,
+        )
+
+    def identity_bound_records_for_coordinate(
+        self,
+        *,
+        provider_id: str,
+        resource_type: str,
+        resource_id: str,
+    ) -> tuple[ProviderIntentRecord, ...]:
+        return tuple(
+            record
+            for record in self.read_snapshot().current_identity_bound_records
+            if (
+                record.provider_id == provider_id
+                and record.resource_type == resource_type
+                and record.resource_id == resource_id
+            )
+        )
+
+    def legacy_unbound_history(
+        self,
+        *,
+        provider_id: str,
+        resource_id: str,
+    ) -> tuple[ProviderIntentRecord, ...]:
+        return tuple(
+            record
+            for record in self.read_snapshot().legacy_unbound_records
+            if record.provider_id == provider_id
+            and record.resource_id == resource_id
+            and record.intent_kind is ProviderIntentKind.MONITORING_EXPECTATION
+        )
+
+    def get_import_completion(
+        self,
+        command: LegacyPolicyImportCommand,
+    ) -> LegacyPolicyImportResult | None:
+        from app.provider_intents.legacy_import import LegacyPolicyImportResult
+
+        with self._connect_readonly() as connection:
+            try:
+                connection.execute("BEGIN")
+                self._validated_store_records(connection)
+                marker = connection.execute(
+                    "SELECT request_digest, result_json FROM provider_intent_requests "
+                    "WHERE request_id=?",
+                    (command.import_id,),
+                ).fetchone()
+                if marker is None:
+                    connection.commit()
+                    return None
+                if marker["request_digest"] != command.import_digest:
+                    raise ProviderIntentStoreConflictError(
+                        "legacy import ID has a different digest"
+                    )
+                result = LegacyPolicyImportResult.model_validate_json(
+                    marker["result_json"]
+                )
+                self._validate_legacy_import_replay(connection, command, result)
+                connection.commit()
+                return result
+            except ProviderIntentStoreError:
+                connection.rollback()
+                raise
+            except (sqlite3.DatabaseError, ValidationError, ValueError, json.JSONDecodeError) as error:
+                connection.rollback()
+                raise ProviderIntentStoreCorruptionError(
+                    "legacy import completion evidence is invalid"
+                ) from error
+
+    @classmethod
+    def _validated_store_records(
+        cls,
+        connection: sqlite3.Connection,
+    ) -> tuple[tuple[ProviderIntentRecord, ...], ...]:
+        """Validate all related evidence within the caller's read transaction."""
+
+        from app.provider_intents.legacy_import import LegacyPolicyImportResult
+
+        integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
+        if integrity != "ok":
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent database integrity check failed"
+            )
+        tables = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            ).fetchall()
+        }
+        cls._validate_schema(connection, tables)
+        intent_ids = tuple(
+            row["intent_id"]
+            for row in connection.execute(
+                "SELECT DISTINCT intent_id FROM provider_intent_records "
+                "ORDER BY intent_id"
+            ).fetchall()
+        )
+        histories = tuple(
+            cls._validated_history(connection, intent_id) for intent_id in intent_ids
+        )
+        if any(
+            record.lifecycle is ProviderIntentLifecycle.ACTIVE
+            and (
+                record.provider_id != "proxmox"
+                or record.resource_type != "qemu"
+                or record.intent_kind
+                is not ProviderIntentKind.MONITORING_EXPECTATION
+            )
+            for history in histories
+            for record in history
+        ):
+            raise ProviderIntentStoreCorruptionError(
+                "unsupported active provider intent is stored"
+            )
+        audit_request_ids = {
+            row["request_id"]
+            for row in connection.execute(
+                "SELECT request_id FROM provider_intent_audit"
+            ).fetchall()
+        }
+        audit_intent_ids = {
+            row["intent_id"]
+            for row in connection.execute(
+                "SELECT DISTINCT intent_id FROM provider_intent_audit"
+            ).fetchall()
+        }
+        if audit_intent_ids != set(intent_ids):
+            raise ProviderIntentStoreCorruptionError(
+                "provider intent audit series set is inconsistent"
+            )
+        for row in connection.execute(
+            "SELECT request_id, request_digest, result_json "
+            "FROM provider_intent_requests ORDER BY request_id"
+        ).fetchall():
+            if row["request_id"] in audit_request_ids:
+                continue
+            result = LegacyPolicyImportResult.model_validate_json(row["result_json"])
+            if (
+                result.import_id != row["request_id"]
+                or _LEGACY_IMPORT_REQUEST_DIGEST.fullmatch(row["request_digest"])
+                is None
+            ):
+                raise ProviderIntentStoreCorruptionError(
+                    "provider intent request evidence is orphaned"
+                )
+        return histories
+
+    @staticmethod
+    def _record_order(record: ProviderIntentRecord) -> tuple[str, ...]:
+        return (
+            record.provider_id,
+            record.resource_type or "",
+            record.resource_id,
+            record.incarnation_fingerprint or "",
+            record.intent_kind.value,
+            record.intent_id,
+        )
+
+    @staticmethod
+    def _history_record_order(record: ProviderIntentRecord) -> tuple[str, ...]:
+        return (
+            *ProviderIntentStore._record_order(record),
+            f"{record.record_version:020d}",
+        )
+
     def get_current(self, intent_id: str) -> ProviderIntentRecord | None:
-        with self._connect() as connection:
+        with self._connect_readonly() as connection:
             try:
                 records = self._validated_history(connection, intent_id)
                 return None if not records else records[-1]
@@ -608,7 +950,7 @@ class ProviderIntentStore:
                 ) from error
 
     def history(self, intent_id: str) -> tuple[ProviderIntentRecord, ...]:
-        with self._connect() as connection:
+        with self._connect_readonly() as connection:
             try:
                 return self._validated_history(connection, intent_id)
             except ProviderIntentStoreError:
@@ -619,7 +961,7 @@ class ProviderIntentStore:
                 ) from error
 
     def audit(self, intent_id: str) -> tuple[ProviderIntentAuditEvent, ...]:
-        with self._connect() as connection:
+        with self._connect_readonly() as connection:
             try:
                 self._validated_history(connection, intent_id)
                 rows = connection.execute(

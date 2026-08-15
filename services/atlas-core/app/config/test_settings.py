@@ -1,7 +1,16 @@
 import pytest
 from pydantic import ValidationError
 
-from app.config.settings import IntelligenceSettings, OperatorAuthSettings
+import app.config.settings as settings_module
+from app.config.settings import (
+    IntelligenceSettings,
+    OperatorAuthSettings,
+    ProviderIntentActivation,
+    ProviderIntentSettings,
+    load_settings,
+)
+
+IMPORT_ID = "provider-intent-legacy-policy-import-v1:" + "a" * 64
 
 
 def test_provider_intelligence_timeout_defaults_to_ten_seconds() -> None:
@@ -57,3 +66,52 @@ def test_enabled_operator_auth_requires_exact_https_origin() -> None:
         trusted_origins=("https://atlas.test/",),
     )
     assert configured.trusted_origins == ("https://atlas.test",)
+
+
+def test_provider_intent_activation_is_closed_and_inactive_by_default() -> None:
+    configured = ProviderIntentSettings()
+    assert configured.activation is ProviderIntentActivation.NOT_ACTIVATED
+    assert configured.database == "/opt/atlas/data/provider_intents.db"
+    assert configured.expected_legacy_import_id is None
+    with pytest.raises(ValidationError):
+        ProviderIntentSettings(activation="shadow")
+
+
+def test_provider_intent_activation_configuration_invariants() -> None:
+    with pytest.raises(ValidationError, match="cannot expect"):
+        ProviderIntentSettings(expected_legacy_import_id=IMPORT_ID)
+    with pytest.raises(ValidationError, match="requires"):
+        ProviderIntentSettings(activation=ProviderIntentActivation.ACTIVATED)
+    with pytest.raises(ValidationError, match="absolute"):
+        ProviderIntentSettings(database="relative/provider_intents.db")
+    activated = ProviderIntentSettings(
+        activation=ProviderIntentActivation.ACTIVATED,
+        database="/tmp/provider_intents.db",
+        expected_legacy_import_id=IMPORT_ID,
+    )
+    assert activated.activation is ProviderIntentActivation.ACTIVATED
+
+
+def test_empty_provider_intent_activation_environment_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        settings_module,
+        "load_yaml_config",
+        lambda: {
+            "atlas": {"release": "test"},
+            "infrastructure": {},
+            "proxmox": {"host": "test", "node": "test"},
+            "home_assistant": {"url": "http://test"},
+            "docker": {},
+            "inventory": {"file": "/tmp/inventory.yaml"},
+        },
+    )
+    monkeypatch.setenv("ATLAS_PROVIDER_INTENT_ACTIVATION", "")
+    monkeypatch.delenv("ATLAS_PROVIDER_INTENT_DATABASE", raising=False)
+    monkeypatch.delenv(
+        "ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID", raising=False
+    )
+
+    with pytest.raises(RuntimeError, match="configuration validation failed"):
+        load_settings()
