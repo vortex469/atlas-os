@@ -275,10 +275,10 @@ and compatibility/lineage guidance (`b5390ba`).
   operator authority.
 - [x] `operator_sessions.db` is excluded and invalidated on v3 restore; raw
   snapshot rollback guidance also requires session invalidation while stopped.
-- [x] Current manifests require
-  `provider_intent_activation=not_activated` and explicitly require
-  `provider_intents.db` absent; no Provider Intent activation or public write
-  authority is claimed.
+- [x] V3 manifests bind the explicit Provider Intent generation: inactive
+  backups require `provider_intents.db` absent, while activated backups require
+  the validated authority store and exact legacy-import receipt. Production
+  configuration remains `not_activated`; no public write authority is claimed.
 - [x] Backup directories and artifacts enforce private `0700`/`0600`
   permissions, including secret-bearing provider connection state.
 - [x] Transactional v3 restore preserves set-wide managed-state coherence,
@@ -319,6 +319,11 @@ and compatibility/lineage guidance (`b5390ba`).
   import persists only `legacy_unbound` evidence with no resource type,
   incarnation fingerprint, activation, source-of-truth cutover, or runtime
   authority. P2c remains incomplete.
+- [x] V0.11-P2c-3 — Activated v3 backup, verification, transactional restore,
+  startup compatibility, and recovery-evidence-v2 support preserve the exact
+  Provider Intent store generation and reject mixed activation lineages. The
+  disposable gate covers both activation branches; production remains
+  `not_activated` and P2c-4 remains incomplete.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

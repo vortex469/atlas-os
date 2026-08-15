@@ -28,6 +28,14 @@ from app.provider_intents.store import ProviderIntentStore
 _CANONICAL_VMID = re.compile(r"^[1-9][0-9]*$")
 
 
+class ActivatedProviderIntentImportMismatchError(ValueError):
+    """The configured import ID does not describe the retained policy."""
+
+
+class ActivatedProviderIntentImportCompletionError(ValueError):
+    """The exact configured legacy import did not complete in the store."""
+
+
 def _digest(prefix: str, payload: object) -> str:
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     return f"{prefix}:{hashlib.sha256(encoded).hexdigest()}"
@@ -211,3 +219,23 @@ def import_legacy_policy(
     command = load_legacy_policy_import(source_path)
     store = ProviderIntentStore(store_path)
     return store.import_legacy_policy(command, now=now)
+
+
+def validate_activated_provider_intent_store(
+    store_path: Path,
+    source_policy_path: Path,
+    expected_import_id: str,
+) -> ProviderIntentStore:
+    """Validate one activated store and its exact retained legacy lineage."""
+
+    store = ProviderIntentStore.open_existing(store_path)
+    expected_import = load_legacy_policy_import(source_policy_path)
+    if expected_import.import_id != expected_import_id:
+        raise ActivatedProviderIntentImportMismatchError(
+            "expected legacy import ID does not match validated policy"
+        )
+    if store.get_import_completion(expected_import) is None:
+        raise ActivatedProviderIntentImportCompletionError(
+            "expected legacy import completion evidence is missing"
+        )
+    return store

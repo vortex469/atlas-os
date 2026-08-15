@@ -10,6 +10,7 @@ from enum import StrEnum
 from pathlib import Path
 
 SCHEMA_VERSION = "atlas-core-recovery-evidence-v1"
+ACTIVATED_SCHEMA_VERSION = "atlas-core-recovery-evidence-v2"
 BACKUP_FORMAT_VERSION = 3
 PROVIDER_INTENT_ACTIVATION = "not_activated"
 EXPECTED_OPERATIONAL_BOUNDARY = ("restart-service/proxmox/qemu",)
@@ -37,6 +38,14 @@ REQUIRED_CHECKS = (
     "legacy_partial_restore_guard",
     "execution_boundary_parity",
     "disposable_cleanup",
+)
+ACTIVATED_REQUIRED_CHECKS = REQUIRED_CHECKS + (
+    "provider_intent_store_restoration",
+    "provider_intent_import_receipt_preservation",
+    "provider_intent_active_authority_preservation",
+    "provider_intent_legacy_evidence_preservation",
+    "provider_intent_yaml_non_authority",
+    "provider_intent_activation_compatibility",
 )
 _FORBIDDEN_FIELD_FRAGMENTS = (
     "credential",
@@ -85,10 +94,19 @@ class RecoveryEvidence:
 def build_recovery_evidence(
     tested_commit_sha: str,
     passed_checks: set[str] | frozenset[str],
+    *,
+    provider_intent_activation: str = PROVIDER_INTENT_ACTIVATION,
 ) -> RecoveryEvidence:
     if not SHA_PATTERN.fullmatch(tested_commit_sha):
         raise ValueError("tested commit SHA must be 40 lowercase hexadecimal characters")
-    unknown = set(passed_checks) - set(REQUIRED_CHECKS)
+    if provider_intent_activation not in {"not_activated", "activated"}:
+        raise ValueError("Provider Intent activation is invalid")
+    required_checks = (
+        REQUIRED_CHECKS
+        if provider_intent_activation == "not_activated"
+        else ACTIVATED_REQUIRED_CHECKS
+    )
+    unknown = set(passed_checks) - set(required_checks)
     if unknown:
         raise ValueError("recovery evidence contains unknown checks")
     checks = tuple(
@@ -96,7 +114,7 @@ def build_recovery_evidence(
             name,
             CheckStatus.PASSED if name in passed_checks else CheckStatus.FAILED,
         )
-        for name in REQUIRED_CHECKS
+        for name in required_checks
     )
     status = (
         EvidenceStatus.READY
@@ -104,11 +122,11 @@ def build_recovery_evidence(
         else EvidenceStatus.NOT_READY
     )
     return RecoveryEvidence(
-        SCHEMA_VERSION,
+        SCHEMA_VERSION if provider_intent_activation == "not_activated" else ACTIVATED_SCHEMA_VERSION,
         status,
         tested_commit_sha,
         BACKUP_FORMAT_VERSION,
-        PROVIDER_INTENT_ACTIVATION,
+        provider_intent_activation,
         EXPECTED_OPERATIONAL_BOUNDARY,
         EXPECTED_REPOSITORY_BOUNDARY,
         checks,
@@ -135,12 +153,17 @@ def parse_recovery_evidence(
     if set(value) != expected_fields:
         raise ValueError("recovery evidence fields are invalid")
     _reject_forbidden_fields(value)
-    if value["schema_version"] != SCHEMA_VERSION:
+    if value["schema_version"] not in {SCHEMA_VERSION, ACTIVATED_SCHEMA_VERSION}:
         raise ValueError("recovery evidence schema is unsupported")
     if value["backup_format_version"] != BACKUP_FORMAT_VERSION:
         raise ValueError("recovery evidence backup format is unsupported")
-    if value["provider_intent_activation"] != PROVIDER_INTENT_ACTIVATION:
-        raise ValueError("recovery evidence Provider Intent activation is unsafe")
+    activation = value["provider_intent_activation"]
+    if (value["schema_version"], activation) not in {
+        (SCHEMA_VERSION, "not_activated"),
+        (ACTIVATED_SCHEMA_VERSION, "activated"),
+    }:
+        raise ValueError("recovery evidence schema and activation disagree")
+    required_checks = REQUIRED_CHECKS if activation == "not_activated" else ACTIVATED_REQUIRED_CHECKS
     sha = value["tested_commit_sha"]
     if not isinstance(sha, str) or not SHA_PATTERN.fullmatch(sha):
         raise ValueError("recovery evidence commit SHA is invalid")
@@ -161,7 +184,7 @@ def parse_recovery_evidence(
             checks.append(RecoveryCheck(str(raw["name"]), CheckStatus(raw["status"])))
         except ValueError as error:
             raise ValueError("recovery evidence check status is invalid") from error
-    if tuple(check.name for check in checks) != REQUIRED_CHECKS:
+    if tuple(check.name for check in checks) != required_checks:
         raise ValueError("recovery evidence checks are incomplete or unordered")
     derived = (
         EvidenceStatus.READY
@@ -175,11 +198,11 @@ def parse_recovery_evidence(
     if declared is not derived:
         raise ValueError("recovery evidence summary is inconsistent")
     return RecoveryEvidence(
-        SCHEMA_VERSION,
+        value["schema_version"],
         derived,
         sha,
         BACKUP_FORMAT_VERSION,
-        PROVIDER_INTENT_ACTIVATION,
+        activation,
         EXPECTED_OPERATIONAL_BOUNDARY,
         EXPECTED_REPOSITORY_BOUNDARY,
         tuple(checks),
@@ -222,8 +245,17 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--tested-commit", required=True)
     parser.add_argument("--passed-check", action="append", default=[])
+    parser.add_argument(
+        "--provider-intent-activation",
+        choices=("not_activated", "activated"),
+        default="not_activated",
+    )
     args = parser.parse_args()
-    evidence = build_recovery_evidence(args.tested_commit, set(args.passed_check))
+    evidence = build_recovery_evidence(
+        args.tested_commit,
+        set(args.passed_check),
+        provider_intent_activation=args.provider_intent_activation,
+    )
     write_recovery_evidence(args.output, evidence)
     return 0 if evidence.status is EvidenceStatus.READY else 1
 

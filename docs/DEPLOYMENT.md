@@ -1391,6 +1391,15 @@ boundary. Its required state is:
 `operator_sessions.db` is deliberately excluded and invalidated on restore.
 While `provider_intent_activation=not_activated`, `provider_intents.db` is
 required absent and is not created by restore or normal Core startup. The
+explicit `activated` branch instead requires it as the authority artifact and
+requires `ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID` to match the exact
+completed import derived from the retained `policies.yaml`. Backup and restore
+also require `ATLAS_PROVIDER_INTENT_ACTIVATION=activated` and an Atlas Core
+recovery image via `ATLAS_CORE_RECOVERY_IMAGE`; neither database presence nor
+manifest contents implicitly activate a deployment. The default remains
+`not_activated`.
+
+The
 manifest records required, conditionally absent, invalidated, and
 pre-activation stores with sizes and SHA-256 checksums.
 
@@ -1421,8 +1430,10 @@ include `secrets/provider-connections.yaml` contain provider credentials
 and must be protected like any other secret-bearing backup artifact.
 
 Format-v3 restore transactionally adopts the complete managed generation and
-removes stale WAL/SHM sidecars, operator sessions, and pre-activation Provider
-Intent state. Stop and remove every running or stopped container attached to
+removes stale WAL/SHM sidecars and operator sessions. Inactive generations
+remove pre-activation Provider Intent state; activated generations stage,
+validate, install, and verify `provider_intents.db` while quarantining its old
+database and sidecars for exact rollback. Stop and remove every running or stopped container attached to
 the target volume first:
 
 ```bash
@@ -1469,13 +1480,16 @@ runtime policy or provider connection files may still be initialized from
 immutable templates or empty validated stores on later startup. Set
 `ATLAS_DATA_VOLUME` only for a non-default Compose volume name.
 
-When Provider Intent becomes authoritative, an activated v3 backup must include
-`provider_intents.db` and a missing store must fail closed. Downgrade to a
+An activated v3 backup includes `provider_intents.db`; a missing or invalid
+store or mismatched import receipt fails closed. It may only restore under an
+explicit activated target expectation. A not-activated v3 backup likewise may
+only restore under a not-activated expectation. Downgrade to a
 release without Provider Intent support will require a preserved pre-activation
 lineage; do not delete `provider_intents.db` to manufacture compatibility. Old
 YAML expectations must not automatically regain authority, and legacy shadow
-import remains separate from restore mechanics. Provider Intent is not
-activated in the current release.
+import remains separate from restore mechanics. Switching configuration alone
+is not rollback: the required rollback anchor is a retained pre-cutover,
+not-activated v3 generation. Production configuration remains not activated.
 
 ### Import legacy Provider Intent shadow evidence
 
@@ -1520,8 +1534,12 @@ zero-or-more-entry batch marker records only what completed.
 
 ### Generate bounded recovery release evidence
 
-The disposable recovery gate can write an `atlas-core-recovery-evidence-v1`
-JSON result for an exact, clean candidate commit. It creates no provider
+The disposable recovery gate preserves parsing of historical
+`atlas-core-recovery-evidence-v1` pre-activation artifacts and writes
+`atlas-core-recovery-evidence-v2` after exercising both inactive and activated
+v3 lineages for an exact, clean candidate commit. Activated evidence includes
+store/import/active-QEMU/legacy preservation, YAML non-authority, and mixed-
+generation refusal checks. It creates no provider
 mutation and explicitly refuses production `atlas_atlas-data` as a disposable
 target:
 

@@ -15,12 +15,18 @@ from pathlib import Path
 
 import pytest
 
+CORE_ROOT = Path(__file__).resolve().parents[1] / "services" / "atlas-core"
+sys.path.insert(0, str(CORE_ROOT))
+
+from app.provider_intents.legacy_import import import_legacy_policy
+
 from scripts.atlas_data_backup_models import (
     MANAGED_PATH_ORDER,
     InventoryDisposition,
 )
 
 TOOL = runpy.run_path(str(Path(__file__).with_name("atlas-data-tool.py")))
+ProviderIntentActivation = TOOL["ProviderIntentActivation"]
 create_backup = TOOL["create_backup"]
 legacy_restore_conflicts = TOOL["legacy_restore_conflicts"]
 restore_backup = TOOL["restore_backup"]
@@ -194,6 +200,14 @@ def _close(connections: dict[str, sqlite3.Connection]) -> None:
         connection.close()
 
 
+def _activate_provider_intents(source: Path) -> str:
+    result = import_legacy_policy(
+        source / "config/policies.yaml",
+        source / "provider_intents.db",
+    )
+    return result.import_id
+
+
 def _legacy_backup(
     tmp_path: Path,
     version: int,
@@ -290,7 +304,231 @@ def test_v3_writer_snapshot_inventory_permissions_and_evidence(
         name: hashlib.sha256((source / name).read_bytes()).hexdigest()
         for name in source_database_hashes
     }
+
+
+def test_v3_writer_and_verifier_support_activated_provider_intent_store(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    connections = _source(source)
+    import_id = _activate_provider_intents(source)
+    with sqlite3.connect(source / "provider_intents.db") as connection:
+        connection.execute("PRAGMA journal_mode=WAL")
+    backup = tmp_path / "backup"
+    create_backup(
+        source,
+        backup,
+        operator_auth_initialized=False,
+        provider_intent_activation=ProviderIntentActivation.ACTIVATED,
+        expected_legacy_import_id=import_id,
+    )
+    manifest = verify_backup(backup, expected_legacy_import_id=import_id)
+    entry = next(
+        item for item in manifest["inventory"] if item["path"] == "provider_intents.db"
+    )
+    assert manifest["provider_intent_activation"] == "activated"
+    assert entry["role"] == "authority"
+    assert entry["disposition"] == "required_present"
+    assert not (backup / "provider_intents.db-wal").exists()
+    assert not (backup / "provider_intents.db-shm").exists()
     _close(connections)
+
+
+def test_activated_backup_requires_exact_receipt_and_matching_restore_expectation(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    connections = _source(source)
+    import_id = _activate_provider_intents(source)
+    backup = tmp_path / "backup"
+    create_backup(
+        source,
+        backup,
+        operator_auth_initialized=False,
+        provider_intent_activation=ProviderIntentActivation.ACTIVATED,
+        expected_legacy_import_id=import_id,
+    )
+    with pytest.raises(RuntimeError, match="expected import ID"):
+        verify_backup(backup)
+    with pytest.raises(RuntimeError, match="expected import ID"):
+        validate_restore_target(
+            backup,
+            tmp_path / "target",
+            allow_legacy_partial_new_lineage=False,
+            expected_legacy_import_id=None,
+        )
+    _close(connections)
+
+
+def test_activated_backup_rejects_wrong_valid_import_id(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    connections = _source(source)
+    _activate_provider_intents(source)
+    with pytest.raises(RuntimeError, match="application validation failed"):
+        create_backup(
+            source,
+            tmp_path / "backup",
+            operator_auth_initialized=False,
+            provider_intent_activation=ProviderIntentActivation.ACTIVATED,
+            expected_legacy_import_id=(
+                "provider-intent-legacy-policy-import-v1:" + "a" * 64
+            ),
+        )
+    _close(connections)
+
+
+def test_activated_backup_accepts_exact_zero_entry_import_receipt(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    connections = _source(source)
+    (source / "config/policies.yaml").write_text(
+        "proxmox:\n  guests: {}\n", encoding="utf-8"
+    )
+    import_id = _activate_provider_intents(source)
+    backup = tmp_path / "backup"
+    create_backup(
+        source,
+        backup,
+        operator_auth_initialized=False,
+        provider_intent_activation=ProviderIntentActivation.ACTIVATED,
+        expected_legacy_import_id=import_id,
+    )
+    assert verify_backup(backup, expected_legacy_import_id=import_id)
+    _close(connections)
+
+
+def test_activated_backup_validates_the_captured_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source"
+    connections = _source(source)
+    import_id = _activate_provider_intents(source)
+    original_backup = create_backup.__globals__["sqlite_backup"]
+
+    def snapshot_then_mutate(source_path: Path, destination_path: Path) -> None:
+        original_backup(source_path, destination_path)
+        if source_path.name == "provider_intents.db":
+            with sqlite3.connect(source_path) as connection:
+                connection.execute(
+                    "DELETE FROM provider_intent_requests WHERE request_id LIKE ?",
+                    ("provider-intent-legacy-policy-import-v1:%",),
+                )
+
+    monkeypatch.setitem(create_backup.__globals__, "sqlite_backup", snapshot_then_mutate)
+    backup = tmp_path / "backup"
+    create_backup(
+        source,
+        backup,
+        operator_auth_initialized=False,
+        provider_intent_activation=ProviderIntentActivation.ACTIVATED,
+        expected_legacy_import_id=import_id,
+    )
+    assert verify_backup(backup, expected_legacy_import_id=import_id)
+    _close(connections)
+
+
+def test_activated_backup_rejects_captured_unsupported_active_authority(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    connections = _source(source)
+    import_id = _activate_provider_intents(source)
+    with sqlite3.connect(source / "provider_intents.db") as connection:
+        row = connection.execute(
+            "SELECT intent_id,record_version,record_json FROM provider_intent_records "
+            "WHERE lifecycle='active'"
+        ).fetchone()
+        assert row is None  # Legacy import is deliberately unbound, not active authority.
+        legacy = connection.execute(
+            "SELECT intent_id,record_version,record_json FROM provider_intent_records LIMIT 1"
+        ).fetchone()
+        record = json.loads(legacy[2])
+        record["lifecycle"] = "active"
+        record["resource_type"] = "lxc"
+        record["incarnation_fingerprint"] = "provider-management-fingerprint-v1:" + "b" * 64
+        connection.execute(
+            "UPDATE provider_intent_records SET lifecycle='active',record_json=? "
+            "WHERE intent_id=? AND record_version=?",
+            (json.dumps(record), legacy[0], legacy[1]),
+        )
+    with pytest.raises(RuntimeError, match="application validation failed"):
+        create_backup(
+            source,
+            tmp_path / "backup",
+            operator_auth_initialized=False,
+            provider_intent_activation=ProviderIntentActivation.ACTIVATED,
+            expected_legacy_import_id=import_id,
+        )
+    _close(connections)
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ("--provider-intent-activation", "activated", "--provider-intent-activation", "not_activated"),
+        ("--expected-legacy-import-id", "first", "--expected-legacy-import-id", "second"),
+    ),
+)
+def test_cli_rejects_duplicate_provider_intent_options(arguments: tuple[str, ...]) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).with_name("atlas-data-tool.py")),
+            "backup",
+            "/missing-source",
+            "/missing-destination",
+            "--operator-auth-initialized",
+            "false",
+            *arguments,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert "may be specified only once" in result.stderr
+
+
+@pytest.mark.parametrize("value", ("unknown", ""))
+def test_cli_rejects_unknown_or_empty_provider_intent_activation(value: str) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).with_name("atlas-data-tool.py")),
+            "backup",
+            "/missing-source",
+            "/missing-destination",
+            "--operator-auth-initialized",
+            "false",
+            "--provider-intent-activation",
+            value,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert "invalid choice" in result.stderr
+
+
+def test_activation_and_import_id_options_fail_closed_before_store_access(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(RuntimeError, match="requires an expected import ID"):
+        create_backup(
+            tmp_path / "missing",
+            tmp_path / "activated",
+            operator_auth_initialized=False,
+            provider_intent_activation=ProviderIntentActivation.ACTIVATED,
+        )
+    with pytest.raises(RuntimeError, match="cannot accept an expected import ID"):
+        create_backup(
+            tmp_path / "missing",
+            tmp_path / "inactive",
+            operator_auth_initialized=False,
+            expected_legacy_import_id=(
+                "provider-intent-legacy-policy-import-v1:" + "a" * 64
+            ),
+        )
 
 
 @pytest.mark.parametrize(

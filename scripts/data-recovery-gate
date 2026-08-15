@@ -100,6 +100,7 @@ finish() {
         evidence_arguments=(
             --output "$evidence_output"
             --tested-commit "$tested_sha"
+            --provider-intent-activation activated
         )
         for check in "${passed_checks[@]}"; do
             evidence_arguments+=(--passed-check "$check")
@@ -146,6 +147,9 @@ for audit in false true; do
         find "$backup_root" -mindepth 1 -maxdepth 1 -type d \
             -name 'atlas-data-*' -print -quit
     )"
+    if [[ "$audit" = false ]]; then
+        inactive_backup_directory="$backup_directory"
+    fi
     test -n "$backup_directory"
     python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$backup_directory"
     passed_checks+=(v3_completeness)
@@ -239,6 +243,83 @@ for audit in false true; do
         passed_checks+=(operational_ledger_no_replay startup_interlock)
     fi
 done
+
+# Exercise the distinct activated v3 lineage with the canonical Core validator.
+activated_volume="$GATE_PREFIX-activated"
+activated_backup_root="$GATE_DIRECTORY/activated"
+mkdir -p "$activated_backup_root"
+create_gate_volume "$activated_volume"
+docker run --rm --network none --read-only --cap-drop ALL --cap-add CHOWN \
+    --security-opt no-new-privileges:true --user 0:0 \
+    --mount "type=volume,src=$activated_volume,dst=/data" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_recovery_gate_fixture.py,dst=/fixture.py,readonly" \
+    "$PYTHON_IMAGE" python /fixture.py seed /data false
+activated_seed="$({
+    docker run --rm --network none --read-only --cap-drop ALL \
+        --security-opt no-new-privileges:true --user 10001:10001 \
+        --env PYTHONPATH=/opt/atlas/services/atlas-core \
+        --mount "type=volume,src=$activated_volume,dst=/data" \
+        --mount "type=bind,src=$SCRIPT_DIRECTORY/../config,dst=/opt/atlas/config,readonly" \
+        --mount "type=bind,src=$SCRIPT_DIRECTORY/../inventory,dst=/opt/atlas/inventory,readonly" \
+        --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_provider_intent_recovery_fixture.py,dst=/fixture.py,readonly" \
+        "$CORE_IMAGE" python /fixture.py seed /data
+} )"
+activated_import_id="$(printf '%s' "$activated_seed" | python3 -c 'import json,sys; print(json.load(sys.stdin)["import_id"])')"
+ATLAS_DATA_VOLUME="$activated_volume" \
+ATLAS_PROVIDER_INTENT_ACTIVATION=activated \
+ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID="$activated_import_id" \
+ATLAS_CORE_RECOVERY_IMAGE="$CORE_IMAGE" \
+    "$SCRIPT_DIRECTORY/atlas-data-backup" "$activated_backup_root"
+activated_backup_directory="$(
+    find "$activated_backup_root" -mindepth 1 -maxdepth 1 -type d \
+        -name 'atlas-data-*' -print -quit
+)"
+
+# No mixed activation generation is accepted in either direction.
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" check-restore-target \
+    "$activated_backup_directory" "$GATE_DIRECTORY" 2>/dev/null; then
+    echo "Activated backup was accepted under inactive expectation" >&2
+    exit 1
+fi
+if python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" check-restore-target \
+    "$inactive_backup_directory" "$GATE_DIRECTORY" \
+    --provider-intent-activation activated \
+    --expected-legacy-import-id "$activated_import_id" 2>/dev/null; then
+    echo "Inactive backup was accepted under activated expectation" >&2
+    exit 1
+fi
+
+docker run --rm --network none --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --user 10001:10001 \
+    --env PYTHONPATH=/opt/atlas/services/atlas-core \
+    --mount "type=volume,src=$activated_volume,dst=/data" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/../config,dst=/opt/atlas/config,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/../inventory,dst=/opt/atlas/inventory,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_provider_intent_recovery_fixture.py,dst=/fixture.py,readonly" \
+    "$CORE_IMAGE" python /fixture.py stale /data
+ATLAS_DATA_VOLUME="$activated_volume" \
+ATLAS_PROVIDER_INTENT_ACTIVATION=activated \
+ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID="$activated_import_id" \
+ATLAS_CORE_RECOVERY_IMAGE="$CORE_IMAGE" \
+    "$SCRIPT_DIRECTORY/atlas-data-restore" "$activated_backup_directory" --confirm
+docker run --rm --network none --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --user 10001:10001 \
+    --env PYTHONPATH=/opt/atlas/services/atlas-core \
+    --mount "type=volume,src=$activated_volume,dst=/data" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/../config,dst=/opt/atlas/config,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/../inventory,dst=/opt/atlas/inventory,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_provider_intent_recovery_fixture.py,dst=/fixture.py,readonly" \
+    "$CORE_IMAGE" python /fixture.py verify /data "$activated_import_id"
+test "$(docker run --rm --mount "type=volume,src=$activated_volume,dst=/data,readonly" \
+    "$PYTHON_IMAGE" cat /data/providers/activated-sentinel)" = preserve
+passed_checks+=(
+    provider_intent_store_restoration
+    provider_intent_import_receipt_preservation
+    provider_intent_active_authority_preservation
+    provider_intent_legacy_evidence_preservation
+    provider_intent_yaml_non_authority
+    provider_intent_activation_compatibility
+)
 
 passed_checks+=(
     operator_intent_preservation

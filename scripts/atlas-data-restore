@@ -3,12 +3,33 @@
 set -euo pipefail
 
 SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
 PYTHON_IMAGE="python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+CORE_RECOVERY_IMAGE="${ATLAS_CORE_RECOVERY_IMAGE:-atlas-atlas-core}"
 DATA_VOLUME="${ATLAS_DATA_VOLUME:-atlas_atlas-data}"
 DATA_UID="${ATLAS_DATA_UID:-10001}"
 DATA_GID="${ATLAS_DATA_GID:-10001}"
 STAGING_VOLUME=""
 staging_created=false
+provider_intent_activation="${ATLAS_PROVIDER_INTENT_ACTIVATION:-not_activated}"
+expected_import_id="${ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID:-}"
+case "$provider_intent_activation" in
+    not_activated)
+        [[ -z "$expected_import_id" ]] || { echo "Inactive Provider Intent cannot accept an expected import ID" >&2; exit 2; }
+        recovery_image="$PYTHON_IMAGE"
+        ;;
+    activated)
+        [[ -n "$expected_import_id" ]] || { echo "Activated Provider Intent requires an expected import ID" >&2; exit 2; }
+        recovery_image="$CORE_RECOVERY_IMAGE"
+        ;;
+    *) echo "ATLAS_PROVIDER_INTENT_ACTIVATION must be not_activated or activated" >&2; exit 2 ;;
+esac
+provider_intent_options=(--provider-intent-activation "$provider_intent_activation")
+verify_provider_intent_options=()
+if [[ -n "$expected_import_id" ]]; then
+    provider_intent_options+=(--expected-legacy-import-id "$expected_import_id")
+    verify_provider_intent_options+=(--expected-legacy-import-id "$expected_import_id")
+fi
 
 cleanup() {
     if [[ "$staging_created" = true ]]; then
@@ -57,8 +78,21 @@ if [[ ! -f "$BACKUP_DIRECTORY/manifest.json" ]]; then
     exit 1
 fi
 
-# Verification occurs on the host before the target volume is mounted writable.
-python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$BACKUP_DIRECTORY"
+# Verification occurs before the target volume is mounted writable. Activated
+# verification uses the Core image so the canonical store validator is present.
+if [[ "$provider_intent_activation" = activated ]]; then
+    docker run --rm --network none --read-only --cap-drop ALL \
+        --security-opt no-new-privileges:true \
+        --mount "type=bind,src=$BACKUP_DIRECTORY,dst=/backup,readonly" \
+        --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/atlas-data-tool.py,readonly" \
+        --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
+        --mount "type=bind,src=$ATLAS_ROOT/config,dst=/opt/atlas/config,readonly" \
+        --mount "type=bind,src=$ATLAS_ROOT/inventory,dst=/opt/atlas/inventory,readonly" \
+        "$recovery_image" python /atlas-data-tool.py verify /backup \
+        "${verify_provider_intent_options[@]}"
+else
+    python3 "$SCRIPT_DIRECTORY/atlas-data-tool.py" verify "$BACKUP_DIRECTORY"
+fi
 
 docker volume inspect "$DATA_VOLUME" >/dev/null
 attached_containers="$(
@@ -87,8 +121,11 @@ docker run \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/atlas-data-tool.py,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_restore_transaction.py,dst=/atlas_data_restore_transaction.py,readonly" \
-    "$PYTHON_IMAGE" \
-    python /atlas-data-tool.py check-restore-target /backup /target "${legacy_restore_option[@]}"
+    --mount "type=bind,src=$ATLAS_ROOT/config,dst=/opt/atlas/config,readonly" \
+    --mount "type=bind,src=$ATLAS_ROOT/inventory,dst=/opt/atlas/inventory,readonly" \
+    "$recovery_image" \
+    python /atlas-data-tool.py check-restore-target /backup /target \
+    "${legacy_restore_option[@]}" "${provider_intent_options[@]}"
 
 if docker volume inspect "$STAGING_VOLUME" >/dev/null 2>&1; then
     echo "Refusing to reuse restore staging volume: $STAGING_VOLUME" >&2
@@ -141,7 +178,10 @@ docker run \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/atlas-data-tool.py,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_restore_transaction.py,dst=/atlas_data_restore_transaction.py,readonly" \
-    "$PYTHON_IMAGE" \
-    python /atlas-data-tool.py restore /staging/backup /target "${legacy_restore_option[@]}"
+    --mount "type=bind,src=$ATLAS_ROOT/config,dst=/opt/atlas/config,readonly" \
+    --mount "type=bind,src=$ATLAS_ROOT/inventory,dst=/opt/atlas/inventory,readonly" \
+    "$recovery_image" \
+    python /atlas-data-tool.py restore /staging/backup /target \
+    "${legacy_restore_option[@]}" "${provider_intent_options[@]}"
 
 echo "Atlas data volume restored: $DATA_VOLUME"

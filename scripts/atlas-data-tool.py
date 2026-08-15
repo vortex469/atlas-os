@@ -8,6 +8,7 @@ import re
 import shutil
 import sqlite3
 import stat
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 
@@ -56,10 +57,26 @@ SECRET_RUNTIME_FILES = {"secrets/provider-connections.yaml"}
 MANIFEST_NAME = "manifest.json"
 FORMAT_VERSION = V3_FORMAT_VERSION
 SUPPORTED_FORMAT_VERSIONS = {1, 2, FORMAT_VERSION}
-PROVIDER_INTENT_ACTIVATION = ProviderIntentActivation.NOT_ACTIVATED
 BACKUP_NAME_PATTERN = re.compile(
     r"^atlas-data-(?P<timestamp>\d{8}T\d{6}Z)$"
 )
+
+
+class UniqueStoreAction(argparse.Action):
+    """Store one explicit option value and reject duplicate occurrences."""
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: object,
+        option_string: str | None = None,
+    ) -> None:
+        marker = f"_{self.dest}_explicit"
+        if getattr(namespace, marker, False):
+            parser.error(f"{option_string} may be specified only once")
+        setattr(namespace, marker, True)
+        setattr(namespace, self.dest, values)
 
 
 def sha256(path: Path) -> str:
@@ -113,6 +130,8 @@ def create_backup(
     destination: Path,
     *,
     operator_auth_initialized: bool,
+    provider_intent_activation: ProviderIntentActivation = ProviderIntentActivation.NOT_ACTIVATED,
+    expected_legacy_import_id: str | None = None,
 ) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     os.chmod(destination, BACKUP_DIRECTORY_MODE)
@@ -124,15 +143,18 @@ def create_backup(
     provider_intent_source = source / ManagedPath.PROVIDER_INTENTS.value
     if not operator_auth_initialized and audit_source.exists():
         raise RuntimeError("unexpected operator security audit database")
-    if (
-        PROVIDER_INTENT_ACTIVATION is ProviderIntentActivation.NOT_ACTIVATED
-        and provider_intent_source.exists()
-    ):
-        raise RuntimeError("unexpected inactive provider intent database")
+    _validate_activation_options(provider_intent_activation, expected_legacy_import_id)
+    if provider_intent_activation is ProviderIntentActivation.NOT_ACTIVATED:
+        if provider_intent_source.exists():
+            raise RuntimeError("unexpected inactive provider intent database")
+    elif not provider_intent_source.is_file() or provider_intent_source.is_symlink():
+        raise RuntimeError("required provider intent store not found")
 
     present_paths = list(MANAGED_PATH_ORDER[:7])
     if operator_auth_initialized:
         present_paths.append(ManagedPath.OPERATOR_SECURITY_AUDIT)
+    if provider_intent_activation is ProviderIntentActivation.ACTIVATED:
+        present_paths.append(ManagedPath.PROVIDER_INTENTS)
     artifacts: dict[ManagedPath, ArtifactMetadata] = {}
     for managed_path in present_paths:
         source_path = source / managed_path.value
@@ -141,11 +163,17 @@ def create_backup(
         destination_path = destination / managed_path.value
         destination_path.parent.mkdir(parents=True, exist_ok=True)
         if managed_path.value.endswith(".db"):
-            validate_sqlite_application(source_path, managed_path)
+            if managed_path is not ManagedPath.PROVIDER_INTENTS:
+                validate_sqlite_application(source_path, managed_path)
             sqlite_backup(source_path, destination_path)
             if integrity(destination_path) != "ok":
                 raise RuntimeError(f"backup integrity check failed for {managed_path.value}")
-            validate_sqlite_application(destination_path, managed_path)
+            validate_sqlite_application(
+                destination_path,
+                managed_path,
+                policy_path=source / ManagedPath.POLICIES.value,
+                expected_legacy_import_id=expected_legacy_import_id,
+            )
         else:
             validate_runtime_file(
                 source_path,
@@ -164,7 +192,7 @@ def create_backup(
         created_at=datetime.now(timezone.utc),
         artifacts=artifacts,
         operator_security_audit_present=operator_auth_initialized,
-        provider_intent_activation=PROVIDER_INTENT_ACTIVATION,
+        provider_intent_activation=provider_intent_activation,
     ).to_dict()
     manifest_path = destination / MANIFEST_NAME
     manifest_path.write_text(
@@ -172,7 +200,7 @@ def create_backup(
         encoding="utf-8",
     )
     os.chmod(manifest_path, PRIVATE_FILE_MODE)
-    verify_backup(destination)
+    verify_backup(destination, expected_legacy_import_id=expected_legacy_import_id)
 
 
 def apply_owner(path: Path, uid: int, gid: int) -> None:
@@ -188,7 +216,11 @@ def apply_owner(path: Path, uid: int, gid: int) -> None:
             os.chown(current_path / name, uid, gid)
 
 
-def verify_backup(backup: Path) -> dict[str, object]:
+def verify_backup(
+    backup: Path,
+    *,
+    expected_legacy_import_id: str | None = None,
+) -> dict[str, object]:
     manifest_path = backup / MANIFEST_NAME
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict):
@@ -198,7 +230,13 @@ def verify_backup(backup: Path) -> dict[str, object]:
         raise RuntimeError("unsupported backup format version")
 
     if format_version == V3_FORMAT_VERSION:
-        return verify_v3_backup(backup, manifest)
+        return verify_v3_backup(
+            backup,
+            manifest,
+            expected_legacy_import_id=expected_legacy_import_id,
+        )
+    if expected_legacy_import_id is not None:
+        raise RuntimeError("legacy backups cannot carry Provider Intent activation")
 
     classify_legacy_inventory(
         format_version=format_version,
@@ -306,11 +344,17 @@ def verify_backup(backup: Path) -> dict[str, object]:
 def verify_v3_backup(
     backup: Path,
     manifest_data: dict[str, object],
+    *,
+    expected_legacy_import_id: str | None = None,
 ) -> dict[str, object]:
     try:
         manifest = AtlasCoreBackupV3Manifest.from_dict(manifest_data)
     except (TypeError, ValueError) as error:
         raise RuntimeError("backup v3 manifest is invalid") from error
+    _validate_activation_options(
+        manifest.provider_intent_activation,
+        expected_legacy_import_id,
+    )
     if (
         not backup.is_dir()
         or backup.is_symlink()
@@ -366,7 +410,12 @@ def verify_v3_backup(
         if entry.content_kind is ContentKind.SQLITE:
             if integrity(path) != "ok":
                 raise RuntimeError(f"backup integrity check failed: {entry.path.value}")
-            validate_sqlite_application(path, entry.path)
+            validate_sqlite_application(
+                path,
+                entry.path,
+                policy_path=backup / ManagedPath.POLICIES.value,
+                expected_legacy_import_id=expected_legacy_import_id,
+            )
         else:
             validate_runtime_file(path, entry.path.value, entry.mode)
     classify_backup_format(V3_FORMAT_VERSION)
@@ -459,7 +508,68 @@ _SQLITE_PRIMARY_KEYS: dict[ManagedPath, dict[str, tuple[str, ...]]] = {
 }
 
 
-def validate_sqlite_application(path: Path, managed_path: ManagedPath) -> None:
+def _validate_activation_options(
+    activation: ProviderIntentActivation,
+    expected_legacy_import_id: str | None,
+) -> None:
+    if not isinstance(activation, ProviderIntentActivation):
+        raise TypeError("Provider Intent activation must use its closed enum")
+    if activation is ProviderIntentActivation.ACTIVATED:
+        if not expected_legacy_import_id:
+            raise RuntimeError("activated Provider Intent requires an expected import ID")
+    elif expected_legacy_import_id is not None:
+        raise RuntimeError("inactive Provider Intent cannot accept an expected import ID")
+
+
+def _validate_provider_intent_application(
+    path: Path,
+    policy_path: Path,
+    expected_legacy_import_id: str | None,
+) -> None:
+    resolved = Path(__file__).resolve()
+    installed_core_root = Path("/opt/atlas/services/atlas-core")
+    if installed_core_root.is_dir() and str(installed_core_root) not in sys.path:
+        sys.path.insert(0, str(installed_core_root))
+    if len(resolved.parents) > 1:
+        core_root = resolved.parents[1] / "services" / "atlas-core"
+        if core_root.is_dir() and str(core_root) not in sys.path:
+            sys.path.insert(0, str(core_root))
+    try:
+        from app.provider_intents.legacy_import import (
+            load_legacy_policy_import,
+            validate_activated_provider_intent_store,
+        )
+
+        expected_legacy_import_id = (
+            expected_legacy_import_id
+            or load_legacy_policy_import(policy_path).import_id
+        )
+
+        validate_activated_provider_intent_store(
+            path,
+            policy_path,
+            expected_legacy_import_id,
+        )
+    except (ImportError, OSError, TypeError, ValueError, RuntimeError) as error:
+        raise RuntimeError("provider intent application validation failed") from error
+
+
+def validate_sqlite_application(
+    path: Path,
+    managed_path: ManagedPath,
+    *,
+    policy_path: Path | None = None,
+    expected_legacy_import_id: str | None = None,
+) -> None:
+    if managed_path is ManagedPath.PROVIDER_INTENTS:
+        if policy_path is None:
+            raise RuntimeError("provider intent validation context is required")
+        _validate_provider_intent_application(
+            path,
+            policy_path,
+            expected_legacy_import_id,
+        )
+        return
     if managed_path not in _SQLITE_SCHEMAS:
         raise RuntimeError(f"no application validator for {managed_path.value}")
     tables, indexes = _SQLITE_SCHEMAS[managed_path]
@@ -687,14 +797,26 @@ def validate_restore_target(
     target: Path,
     *,
     allow_legacy_partial_new_lineage: bool,
+    expected_provider_intent_activation: ProviderIntentActivation = ProviderIntentActivation.NOT_ACTIVATED,
+    expected_legacy_import_id: str | None = None,
 ) -> dict[str, object]:
-    manifest = verify_backup(backup)
+    _validate_activation_options(
+        expected_provider_intent_activation,
+        expected_legacy_import_id,
+    )
+    manifest = verify_backup(
+        backup,
+        expected_legacy_import_id=expected_legacy_import_id,
+    )
     if manifest.get("format_version") == V3_FORMAT_VERSION:
         if allow_legacy_partial_new_lineage:
             raise RuntimeError(
                 "--allow-legacy-partial-new-lineage is valid only for "
                 "legacy v1/v2 backups"
             )
+        parsed = AtlasCoreBackupV3Manifest.from_dict(manifest)
+        if parsed.provider_intent_activation is not expected_provider_intent_activation:
+            raise RuntimeError("backup and target Provider Intent activation disagree")
         return manifest
     if not allow_legacy_partial_new_lineage:
         raise RuntimeError(
@@ -715,11 +837,15 @@ def restore_backup(
     target: Path,
     *,
     allow_legacy_partial_new_lineage: bool = False,
+    expected_provider_intent_activation: ProviderIntentActivation = ProviderIntentActivation.NOT_ACTIVATED,
+    expected_legacy_import_id: str | None = None,
 ) -> None:
     manifest = validate_restore_target(
         backup,
         target,
         allow_legacy_partial_new_lineage=allow_legacy_partial_new_lineage,
+        expected_provider_intent_activation=expected_provider_intent_activation,
+        expected_legacy_import_id=expected_legacy_import_id,
     )
     if manifest.get("format_version") == V3_FORMAT_VERSION:
         try:
@@ -735,19 +861,24 @@ def restore_backup(
                 verify_v3_target,
             )
 
-        recovery = recover_v3_restore(target)
+        recovery = recover_v3_restore(
+            target,
+            expected_legacy_import_id=expected_legacy_import_id,
+        )
         print(f"Prior restore recovery: {recovery}")
         execute_v3_restore(
             backup,
             target,
             runtime_uid=os.getuid(),
             runtime_gid=os.getgid(),
+            expected_legacy_import_id=expected_legacy_import_id,
         )
         verify_v3_target(
             target,
             AtlasCoreBackupV3Manifest.from_dict(manifest),
             runtime_uid=os.getuid(),
             runtime_gid=os.getgid(),
+            expected_legacy_import_id=expected_legacy_import_id,
         )
         return
     target.mkdir(parents=True, exist_ok=True)
@@ -1022,9 +1153,17 @@ def parse_args() -> argparse.Namespace:
         choices=("true", "false"),
         required=True,
     )
+    backup_parser.add_argument(
+        "--provider-intent-activation",
+        action=UniqueStoreAction,
+        choices=tuple(item.value for item in ProviderIntentActivation),
+        default=ProviderIntentActivation.NOT_ACTIVATED.value,
+    )
+    backup_parser.add_argument("--expected-legacy-import-id", action=UniqueStoreAction)
 
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("backup", type=Path)
+    verify_parser.add_argument("--expected-legacy-import-id", action=UniqueStoreAction)
 
     chown_parser = subparsers.add_parser("chown")
     chown_parser.add_argument("path", type=Path)
@@ -1039,6 +1178,13 @@ def parse_args() -> argparse.Namespace:
         action="count",
         default=0,
     )
+    restore_parser.add_argument(
+        "--provider-intent-activation",
+        action=UniqueStoreAction,
+        choices=tuple(item.value for item in ProviderIntentActivation),
+        default=ProviderIntentActivation.NOT_ACTIVATED.value,
+    )
+    restore_parser.add_argument("--expected-legacy-import-id", action=UniqueStoreAction)
 
     check_restore_parser = subparsers.add_parser("check-restore-target")
     check_restore_parser.add_argument("backup", type=Path)
@@ -1047,6 +1193,15 @@ def parse_args() -> argparse.Namespace:
         "--allow-legacy-partial-new-lineage",
         action="count",
         default=0,
+    )
+    check_restore_parser.add_argument(
+        "--provider-intent-activation",
+        action=UniqueStoreAction,
+        choices=tuple(item.value for item in ProviderIntentActivation),
+        default=ProviderIntentActivation.NOT_ACTIVATED.value,
+    )
+    check_restore_parser.add_argument(
+        "--expected-legacy-import-id", action=UniqueStoreAction
     )
 
     prune_parser = subparsers.add_parser("prune")
@@ -1076,6 +1231,10 @@ def main() -> None:
             args.source,
             args.destination,
             operator_auth_initialized=args.operator_auth_initialized == "true",
+            provider_intent_activation=ProviderIntentActivation(
+                args.provider_intent_activation
+            ),
+            expected_legacy_import_id=args.expected_legacy_import_id,
         )
         if args.output_owner_uid is not None or args.output_owner_gid is not None:
             if args.output_owner_uid is None or args.output_owner_gid is None:
@@ -1084,7 +1243,10 @@ def main() -> None:
                 )
             apply_owner(args.destination, args.output_owner_uid, args.output_owner_gid)
     elif args.command == "verify":
-        manifest = verify_backup(args.backup)
+        manifest = verify_backup(
+            args.backup,
+            expected_legacy_import_id=args.expected_legacy_import_id,
+        )
         if manifest.get("format_version") == V3_FORMAT_VERSION:
             parsed = AtlasCoreBackupV3Manifest.from_dict(manifest)
             database_count = sum(
@@ -1114,6 +1276,10 @@ def main() -> None:
             allow_legacy_partial_new_lineage=(
                 args.allow_legacy_partial_new_lineage == 1
             ),
+            expected_provider_intent_activation=ProviderIntentActivation(
+                args.provider_intent_activation
+            ),
+            expected_legacy_import_id=args.expected_legacy_import_id,
         )
         print("Backup restored and verified")
     elif args.command == "check-restore-target":
@@ -1123,6 +1289,10 @@ def main() -> None:
             allow_legacy_partial_new_lineage=(
                 args.allow_legacy_partial_new_lineage == 1
             ),
+            expected_provider_intent_activation=ProviderIntentActivation(
+                args.provider_intent_activation
+            ),
+            expected_legacy_import_id=args.expected_legacy_import_id,
         )
         print("Restore target preflight passed")
     else:

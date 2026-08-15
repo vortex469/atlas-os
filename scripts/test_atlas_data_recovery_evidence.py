@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 
 from scripts.atlas_data_recovery_evidence import (
+    ACTIVATED_REQUIRED_CHECKS,
+    ACTIVATED_SCHEMA_VERSION,
     REQUIRED_CHECKS,
     CheckStatus,
     EvidenceStatus,
@@ -35,6 +37,31 @@ def test_complete_actual_check_set_is_ready_and_deterministic(tmp_path: Path) ->
     assert evidence.status is EvidenceStatus.READY
     assert first.read_bytes() == second.read_bytes()
     assert load_recovery_evidence(first, expected_commit_sha=SHA) == evidence
+
+
+def test_activated_evidence_uses_explicit_v2_semantics() -> None:
+    evidence = build_recovery_evidence(
+        SHA,
+        set(ACTIVATED_REQUIRED_CHECKS),
+        provider_intent_activation="activated",
+    )
+    payload = json.loads(json.dumps(evidence.to_dict()))
+    assert evidence.schema_version == ACTIVATED_SCHEMA_VERSION
+    assert evidence.status is EvidenceStatus.READY
+    assert parse_recovery_evidence(payload) == evidence
+    payload["schema_version"] = "atlas-core-recovery-evidence-v1"
+    with pytest.raises(ValueError, match="schema and activation disagree"):
+        parse_recovery_evidence(payload)
+
+
+@pytest.mark.parametrize("missing", ACTIVATED_REQUIRED_CHECKS)
+def test_each_missing_activated_v2_check_is_not_ready(missing: str) -> None:
+    evidence = build_recovery_evidence(
+        SHA,
+        set(ACTIVATED_REQUIRED_CHECKS) - {missing},
+        provider_intent_activation="activated",
+    )
+    assert evidence.status is EvidenceStatus.NOT_READY
 
 
 def test_evidence_cli_exit_status_follows_required_checks(tmp_path: Path) -> None:

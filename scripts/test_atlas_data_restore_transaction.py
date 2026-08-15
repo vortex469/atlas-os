@@ -25,10 +25,16 @@ from scripts.atlas_data_restore_transaction import (
     recover_v3_restore,
     verify_v3_target,
 )
-from scripts.test_atlas_data_tool import TOOL, _close, _source
+from scripts.test_atlas_data_tool import (
+    TOOL,
+    _activate_provider_intents,
+    _close,
+    _source,
+)
 
 create_backup = TOOL["create_backup"]
 verify_backup = TOOL["verify_backup"]
+ProviderIntentActivation = TOOL["ProviderIntentActivation"]
 
 
 class SimulatedCrash(BaseException):
@@ -47,6 +53,29 @@ def _fixture(
     target = tmp_path / "target"
     target.mkdir()
     return backup, target, manifest
+
+
+def _activated_fixture(
+    tmp_path: Path,
+) -> tuple[Path, Path, AtlasCoreBackupV3Manifest, str]:
+    source = tmp_path / "source"
+    connections = _source(source)
+    import_id = _activate_provider_intents(source)
+    backup = tmp_path / "backup"
+    create_backup(
+        source,
+        backup,
+        operator_auth_initialized=False,
+        provider_intent_activation=ProviderIntentActivation.ACTIVATED,
+        expected_legacy_import_id=import_id,
+    )
+    _close(connections)
+    manifest = AtlasCoreBackupV3Manifest.from_dict(
+        verify_backup(backup, expected_legacy_import_id=import_id)
+    )
+    target = tmp_path / "target"
+    target.mkdir()
+    return backup, target, manifest, import_id
 
 
 def _populate_old_generation(target: Path) -> dict[str, tuple[bytes, int]]:
@@ -80,6 +109,146 @@ def _managed_snapshot(target: Path) -> dict[str, tuple[bytes, int]]:
                     path.read_bytes(), path.stat().st_mode & 0o777,
                 )
     return result
+
+
+def test_activated_restore_installs_authority_and_removes_sidecars(
+    tmp_path: Path,
+) -> None:
+    backup, target, manifest, import_id = _activated_fixture(tmp_path)
+    (target / "provider_intents.db").write_bytes(b"old")
+    (target / "provider_intents.db-wal").write_bytes(b"old-wal")
+    (target / "provider_intents.db-shm").write_bytes(b"old-shm")
+    execute_v3_restore(
+        backup,
+        target,
+        runtime_uid=os.getuid(),
+        runtime_gid=os.getgid(),
+        expected_legacy_import_id=import_id,
+    )
+    verify_v3_target(
+        target,
+        manifest,
+        runtime_uid=os.getuid(),
+        runtime_gid=os.getgid(),
+        expected_legacy_import_id=import_id,
+    )
+    assert (target / "provider_intents.db").read_bytes() == (
+        backup / "provider_intents.db"
+    ).read_bytes()
+    assert not (target / "provider_intents.db-wal").exists()
+    assert not (target / "provider_intents.db-shm").exists()
+    with pytest.raises(RuntimeError, match="application validation"):
+        verify_v3_target(
+            target,
+            manifest,
+            runtime_uid=os.getuid(),
+            runtime_gid=os.getgid(),
+            expected_legacy_import_id=(
+                "provider-intent-legacy-policy-import-v1:" + "f" * 64
+            ),
+        )
+
+
+def test_activated_restore_rolls_back_old_database_and_sidecars(
+    tmp_path: Path,
+) -> None:
+    backup, target, _, import_id = _activated_fixture(tmp_path)
+    old = _populate_old_generation(target)
+
+    def fail_after_install(event: str, _index: int | None) -> None:
+        if event == "installation_completed":
+            raise RuntimeError("injected")
+
+    with pytest.raises(RestoreTransactionError, match="rolled back"):
+        execute_v3_restore(
+            backup,
+            target,
+            runtime_uid=os.getuid(),
+            runtime_gid=os.getgid(),
+            expected_legacy_import_id=import_id,
+            failure_hook=fail_after_install,
+        )
+    assert _managed_snapshot(target) == old
+
+
+@pytest.mark.parametrize(
+    ("failure_event", "failure_index"),
+    (
+        ("quarantine_artifact", 9),
+        ("installation_artifact", 7),
+        ("target_verified_journal_fsynced", None),
+    ),
+)
+def test_activated_precommit_failures_restore_exact_old_generation(
+    tmp_path: Path,
+    failure_event: str,
+    failure_index: int | None,
+) -> None:
+    backup, target, _, import_id = _activated_fixture(tmp_path)
+    old = _populate_old_generation(target)
+
+    def fail(event: str, index: int | None) -> None:
+        if event == failure_event and index == failure_index:
+            raise RuntimeError("injected")
+
+    with pytest.raises(RestoreTransactionError, match="rolled back"):
+        execute_v3_restore(
+            backup,
+            target,
+            runtime_uid=os.getuid(),
+            runtime_gid=os.getgid(),
+            expected_legacy_import_id=import_id,
+            failure_hook=fail,
+        )
+    assert _managed_snapshot(target) == old
+
+
+@pytest.mark.parametrize(
+    ("crash_event", "recovery_result", "keeps_new_generation"),
+    (
+        ("quarantine_artifact", "rolled_back", False),
+        ("installation_artifact", "rolled_back", False),
+        ("target_verified_journal_fsynced", "rolled_back", False),
+        ("committed_journal_fsynced", "committed_finalized", True),
+    ),
+)
+def test_activated_crash_recovery_respects_commit_durability(
+    tmp_path: Path,
+    crash_event: str,
+    recovery_result: str,
+    keeps_new_generation: bool,
+) -> None:
+    backup, target, manifest, import_id = _activated_fixture(tmp_path)
+    old = _populate_old_generation(target)
+
+    def crash(event: str, index: int | None) -> None:
+        matches_loop_event = event == crash_event and index in {0, 9}
+        if ("artifact" not in crash_event and event == crash_event) or matches_loop_event:
+            raise SimulatedCrash
+
+    with pytest.raises(SimulatedCrash):
+        execute_v3_restore(
+            backup,
+            target,
+            runtime_uid=os.getuid(),
+            runtime_gid=os.getgid(),
+            expected_legacy_import_id=import_id,
+            failure_hook=crash,
+        )
+    assert recover_v3_restore(
+        target,
+        expected_legacy_import_id=import_id,
+    ) == recovery_result
+    if keeps_new_generation:
+        verify_v3_target(
+            target,
+            manifest,
+            runtime_uid=os.getuid(),
+            runtime_gid=os.getgid(),
+            expected_legacy_import_id=import_id,
+        )
+    else:
+        assert _managed_snapshot(target) == old
 
 
 @pytest.mark.parametrize("audit", (False, True))

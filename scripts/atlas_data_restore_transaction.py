@@ -30,7 +30,6 @@ try:
         ContentKind,
         InventoryDisposition,
         ManagedPath,
-        ProviderIntentActivation,
     )
 except ModuleNotFoundError:
     from scripts.atlas_data_backup_models import (
@@ -41,7 +40,6 @@ except ModuleNotFoundError:
         ContentKind,
         InventoryDisposition,
         ManagedPath,
-        ProviderIntentActivation,
     )
 
 JOURNAL_SCHEMA = "atlas-core-data-restore-journal-v1"
@@ -264,8 +262,6 @@ class RestoreJournal:
         _validate_runtime_identity(self.runtime_uid, self.runtime_gid)
         if not isinstance(self.phase, RestorePhase):
             raise RestoreJournalError("journal phase is invalid")
-        if self.manifest.provider_intent_activation is not ProviderIntentActivation.NOT_ACTIVATED:
-            raise RestoreJournalError("P2b-3a requires pre-activation Provider Intent state")
         if self.manifest_digest != _manifest_digest(self.manifest):
             raise RestoreJournalError("journal manifest digest is invalid")
         expected_paths = tuple(operation.path for operation in self.operations)
@@ -360,8 +356,6 @@ def build_restore_plan(
     manifest: AtlasCoreBackupV3Manifest,
 ) -> tuple[PlannedOperation, ...]:
     manifest = _normalize_manifest(manifest)
-    if manifest.provider_intent_activation is not ProviderIntentActivation.NOT_ACTIVATED:
-        raise RestoreTransactionError("P2b-3a cannot restore activated Provider Intent state")
     entries = {entry.path.value: entry for entry in manifest.inventory}
     plan: list[PlannedOperation] = []
     for relative_path in _MANAGED_TRANSACTION_PATHS:
@@ -388,9 +382,13 @@ def execute_v3_restore(
     runtime_gid: int,
     transaction_id: str | None = None,
     failure_hook: FailureHook | None = None,
+    expected_legacy_import_id: str | None = None,
 ) -> None:
     tool = _tool_functions()
-    manifest_data = tool["verify_backup"](backup)
+    manifest_data = tool["verify_backup"](
+        backup,
+        expected_legacy_import_id=expected_legacy_import_id,
+    )
     manifest = AtlasCoreBackupV3Manifest.from_dict(manifest_data)
     _validate_runtime_identity(runtime_uid, runtime_gid)
     target = _validate_target_root(target)
@@ -465,6 +463,7 @@ def execute_v3_restore(
         verify_v3_target(
             target, manifest, runtime_uid=runtime_uid, runtime_gid=runtime_gid,
             active_transaction_id=transaction_id,
+            expected_legacy_import_id=expected_legacy_import_id,
         )
         journal = _transition(namespace, journal, RestorePhase.TARGET_VERIFIED)
         _emit(failure_hook, "target_verified_journal_fsynced", None)
@@ -484,10 +483,19 @@ def execute_v3_restore(
         raise RestoreTransactionError("v3 restore transaction rolled back") from error
 
     _emit(failure_hook, "cleanup_begins", None)
-    _cleanup_committed(target, namespace, journal)
+    _cleanup_committed(
+        target,
+        namespace,
+        journal,
+        expected_legacy_import_id=expected_legacy_import_id,
+    )
 
 
-def recover_v3_restore(target: Path) -> str:
+def recover_v3_restore(
+    target: Path,
+    *,
+    expected_legacy_import_id: str | None = None,
+) -> str:
     target = _validate_target_root(target)
     namespace = _namespace(target)
     journal_path = namespace / JOURNAL_NAME
@@ -509,8 +517,14 @@ def recover_v3_restore(target: Path) -> str:
             runtime_uid=journal.runtime_uid,
             runtime_gid=journal.runtime_gid,
             active_transaction_id=journal.transaction_id,
+            expected_legacy_import_id=expected_legacy_import_id,
         )
-        _cleanup_committed(target, namespace, journal)
+        _cleanup_committed(
+            target,
+            namespace,
+            journal,
+            expected_legacy_import_id=expected_legacy_import_id,
+        )
         return "committed_finalized"
     try:
         _rollback(target, namespace, journal)
@@ -530,8 +544,16 @@ def verify_v3_target(
     runtime_uid: int,
     runtime_gid: int,
     active_transaction_id: str | None = None,
+    expected_legacy_import_id: str | None = None,
 ) -> None:
     manifest = _normalize_manifest(manifest)
+    if (
+        manifest.provider_intent_activation.value == "activated"
+        and expected_legacy_import_id is None
+    ):
+        raise RestoreTransactionError(
+            "activated target verification requires an expected import ID"
+        )
     target = _validate_target_root(target)
     _validate_runtime_identity(runtime_uid, runtime_gid)
     namespace = _namespace(target)
@@ -589,7 +611,12 @@ def verify_v3_target(
                 raise RestoreTransactionError(
                     f"managed target SQLite integrity failed: {operation.path}"
                 )
-            tool["validate_sqlite_application"](path, managed_path)
+            tool["validate_sqlite_application"](
+                path,
+                managed_path,
+                policy_path=target / ManagedPath.POLICIES.value,
+                expected_legacy_import_id=expected_legacy_import_id,
+            )
         else:
             tool["validate_runtime_file"](path, operation.path, PRIVATE_FILE_MODE)
 
@@ -637,7 +664,9 @@ def _stage(
                     f"staged SQLite integrity failed: {operation.path}"
                 )
             tool["validate_sqlite_application"](
-                destination, ManagedPath(operation.path)
+                destination,
+                ManagedPath(operation.path),
+                policy_path=stage / ManagedPath.POLICIES.value,
             )
         else:
             tool["validate_runtime_file"](
@@ -741,6 +770,8 @@ def _cleanup_committed(
     target: Path,
     namespace: Path,
     journal: RestoreJournal,
+    *,
+    expected_legacy_import_id: str | None = None,
 ) -> None:
     if journal.phase is not RestorePhase.COMMITTED:
         raise RestoreTransactionError("only committed restore state can be finalized")
@@ -750,6 +781,7 @@ def _cleanup_committed(
         runtime_uid=journal.runtime_uid,
         runtime_gid=journal.runtime_gid,
         active_transaction_id=journal.transaction_id,
+        expected_legacy_import_id=expected_legacy_import_id,
     )
     _remove_transaction_evidence(namespace, journal)
 

@@ -6,7 +6,11 @@ import os
 from pathlib import Path
 
 from app.config.settings import ProviderIntentActivation, ProviderIntentSettings
-from app.provider_intents.legacy_import import load_legacy_policy_import
+from app.provider_intents.legacy_import import (
+    ActivatedProviderIntentImportCompletionError,
+    ActivatedProviderIntentImportMismatchError,
+    validate_activated_provider_intent_store,
+)
 from app.provider_intents.store import (
     ProviderIntentStore,
 )
@@ -32,17 +36,20 @@ def validate_provider_intent_activation(
         return None
 
     try:
-        store = ProviderIntentStore.open_existing(database)
-        expected_import = load_legacy_policy_import(policy_path)
-        if expected_import.import_id != settings.expected_legacy_import_id:
-            raise ProviderIntentActivationError(
-                "configured legacy import ID does not match the validated policy"
-            )
-        if store.get_import_completion(expected_import) is None:
-            raise ProviderIntentActivationError(
-                "configured legacy import completion evidence is missing"
-            )
-        return store
+        assert settings.expected_legacy_import_id is not None
+        return validate_activated_provider_intent_store(
+            database,
+            policy_path,
+            settings.expected_legacy_import_id,
+        )
+    except ActivatedProviderIntentImportMismatchError as error:
+        raise ProviderIntentActivationError(
+            "configured legacy import ID does not match the validated policy"
+        ) from error
+    except ActivatedProviderIntentImportCompletionError as error:
+        raise ProviderIntentActivationError(
+            "configured legacy import completion evidence is missing"
+        ) from error
     except ProviderIntentActivationError:
         raise
     except (OSError, TypeError, ValueError, RuntimeError) as error:
