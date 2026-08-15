@@ -1489,7 +1489,7 @@ lineage; do not delete `provider_intents.db` to manufacture compatibility. Old
 YAML expectations must not automatically regain authority, and legacy shadow
 import remains separate from restore mechanics. Switching configuration alone
 is not rollback: the required rollback anchor is a retained pre-cutover,
-not-activated v3 generation. Production configuration remains not activated.
+not-activated v3 generation.
 
 ### Import legacy Provider Intent shadow evidence
 
@@ -1509,13 +1509,36 @@ Run the tool explicitly with both paths in an Atlas Core Python environment:
   --store /path/to/isolated/provider_intents.db
 ```
 
-While Provider Intent remains `not_activated`, do not place this shadow store
-at `/opt/atlas/data/provider_intents.db`: backup v3 correctly requires that
-managed production path to remain absent. The shadow evidence is
+Before an accepted Provider Intent authority cutover, do not place this shadow
+store at `/opt/atlas/data/provider_intents.db`: inactive backup v3 correctly
+requires that managed production path to remain absent. The shadow evidence is
 reconstructable from a retained validated policy source and is not imported
 during restore. Explicit creation of a store by this command does not activate
-Provider Intent or make the database authoritative. Any future authority
-cutover belongs to P2c and requires its own accepted contracts.
+Provider Intent or make the database authoritative. Authority changes only
+through the separately accepted P2c activation contract.
+
+### Provider Intent production authority activation
+
+V0.11-P2c-4 activated Provider Intent read authority in production on exact
+candidate `8ea7610d9f5ce4a33e09a3a12387ee8a23160a6b`. The managed store at
+`/opt/atlas/data/provider_intents.db` retains the exact validated import receipt
+and seven `legacy_unbound` records, with zero active identity-bound records.
+Both current QEMU resources are intentionally `needs_review` with reason
+`no_active_intent`; all 11 LXC resources remain unsupported and seven retain
+review-only legacy evidence. The retained `policies.yaml` is physical rollback
+evidence but is no longer authoritative for Proxmox monitoring.
+
+The first accepted activated v3 backup is
+`/opt/atlas-cutover/p2c4-8ea7610/activated-backups/atlas-data-20260815T223222Z`
+with manifest SHA-256
+`b599b1dbb510bf5b313b53417d8c36282be00f3d157796d3fab6741bf7825ad6`.
+Exact-SHA recovery evidence v2 is `ready` at
+`/opt/atlas-cutover/p2c4-8ea7610/production-activated-recovery-evidence-v2.json`
+with SHA-256
+`45aa69294ef1be4514824bd438e4f1aae2ea28a8d78056b500e3c7b8df873182`.
+The checksum-valid pre-activation Core/Agent rollback bundle remains retained.
+Provider Intent mutation remains unavailable, no legacy expectation was rebound,
+execution authority is unchanged, and P3 has not started.
 
 The tool rejects symlinks, special files, malformed or duplicate policy keys,
 non-canonical VMIDs, unsupported expectations, and corrupt or unsupported

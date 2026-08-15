@@ -277,8 +277,8 @@ and compatibility/lineage guidance (`b5390ba`).
   snapshot rollback guidance also requires session invalidation while stopped.
 - [x] V3 manifests bind the explicit Provider Intent generation: inactive
   backups require `provider_intents.db` absent, while activated backups require
-  the validated authority store and exact legacy-import receipt. Production
-  configuration remains `not_activated`; no public write authority is claimed.
+  the validated authority store and exact legacy-import receipt. No public
+  write authority is claimed.
 - [x] Backup directories and artifacts enforce private `0700`/`0600`
   permissions, including secret-bearing provider connection state.
 - [x] Transactional v3 restore preserves set-wide managed-state coherence,
@@ -318,12 +318,23 @@ and compatibility/lineage guidance (`b5390ba`).
 - [x] V0.11-P2b-6 — Deterministic, atomic legacy Proxmox expectation shadow
   import persists only `legacy_unbound` evidence with no resource type,
   incarnation fingerprint, activation, source-of-truth cutover, or runtime
-  authority. P2c remains incomplete.
+  authority.
 - [x] V0.11-P2c-3 — Activated v3 backup, verification, transactional restore,
   startup compatibility, and recovery-evidence-v2 support preserve the exact
   Provider Intent store generation and reject mixed activation lineages. The
-  disposable gate covers both activation branches; production remains
-  `not_activated` and P2c-4 remains incomplete.
+  disposable gate covers both activation branches.
+- [x] V0.11-P2c-4 — Exact candidate
+  `8ea7610d9f5ce4a33e09a3a12387ee8a23160a6b` is deployed and production
+  Provider Intent read authority is activated with the validated seven-record
+  `legacy_unbound` import receipt. Both identity-capable QEMU resources remain
+  `needs_review` with no active intent, all 11 LXC resources remain unsupported,
+  and retained `policies.yaml` is no longer Proxmox monitoring authority. The
+  activated v3 backup manifest is
+  `b599b1dbb510bf5b313b53417d8c36282be00f3d157796d3fab6741bf7825ad6`;
+  exact-SHA recovery evidence v2 is `ready` with SHA-256
+  `45aa69294ef1be4514824bd438e4f1aae2ea28a8d78056b500e3c7b8df873182`.
+  The pre-activation rollback bundle remains retained, mutation remains
+  unavailable, execution parity is unchanged, and P3 has not started.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
