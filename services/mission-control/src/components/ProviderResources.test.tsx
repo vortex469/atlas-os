@@ -1,398 +1,231 @@
-import {
-    render,
-    screen,
-    waitFor,
-    within,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-    getProviderResources,
-    refreshProviderResources,
-    updateProviderResourceExpectation,
-} from "../api/resources";
+    getAuthenticatedProviderManagement,
+    putProviderMonitoringIntent,
+} from "../api/providerManagement";
+import { getProviderResources, refreshProviderResources } from "../api/resources";
+import { useOperatorSession } from "../hooks/operatorSessionContext";
 import type { Provider } from "../types/provider";
-import type {
-    ProviderResource,
-    ProviderResourceCollection,
-    ProviderResourceExpectation,
-} from "../types/resources";
+import type { ProviderManagementV3 } from "../types/providerManagement";
+import type { ProviderResourceCollection } from "../types/resources";
 import { ProviderResources } from "./ProviderResources";
 
-vi.mock("../api/atlas", () => ({
-    getAtlasErrorMessage: (
-        error: unknown,
-        fallback: string,
-    ) => (error instanceof Error ? error.message : fallback),
+vi.mock("../api/providerManagement", () => ({
+    getAuthenticatedProviderManagement: vi.fn(),
+    putProviderMonitoringIntent: vi.fn(),
 }));
-
 vi.mock("../api/resources", () => ({
     getProviderResources: vi.fn(),
     refreshProviderResources: vi.fn(),
-    updateProviderResourceExpectation: vi.fn(),
+}));
+vi.mock("../hooks/operatorSessionContext", () => ({ useOperatorSession: vi.fn() }));
+vi.mock("../api/atlas", () => ({
+    getAtlasErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
-const mockedGetProviderResources = vi.mocked(getProviderResources);
-const mockedRefreshProviderResources = vi.mocked(
-    refreshProviderResources,
-);
-const mockedUpdateProviderResourceExpectation = vi.mocked(
-    updateProviderResourceExpectation,
-);
-
-const options = [
-    {
-        value: "running",
-        label: "Expected Running",
-        description: "Warn when not running.",
-        terminal: false,
-    },
-    {
-        value: "stopped",
-        label: "Expected Stopped",
-        description: "Accept stopped state.",
-        terminal: false,
-    },
-    {
-        value: "ignored",
-        label: "Ignore",
-        description: "Do not monitor state.",
-        terminal: true,
-    },
-];
-
-const proxmoxProvider: Provider = {
+const fingerprint = `provider-management-fingerprint-v1:${"a".repeat(64)}`;
+const invalidate = vi.fn();
+const provider: Provider = {
     id: "proxmox",
     name: "Proxmox",
     workspace: "operations",
     priority: "critical",
-    version: "1.0.0",
-    description: "Virtualization provider.",
+    version: "1",
+    description: "Virtualization",
     icon: "server",
-    capabilities: ["health", "resources", "monitoring"],
-    health: {
-        status: "online",
-        latency_ms: null,
-        http_status: null,
-        message: null,
-        details: {},
-    },
+    capabilities: ["resources"],
+    health: { status: "online", latency_ms: null, http_status: null, message: null, details: {} },
 };
-
-const hermesProvider: Provider = {
-    ...proxmoxProvider,
-    id: "hermes",
-    name: "Hermes",
-    capabilities: ["health", "actions"],
-};
-
-function expectation(
-    value: string | null,
-    label = value ?? "Needs Review",
-    state: ProviderResourceExpectation["state"] =
-        value === "ignored"
-            ? "ignored"
-            : value === null
-              ? "needs_review"
-              : "configured",
-): ProviderResourceExpectation {
-    return {
-        value,
-        label,
-        state,
-        allowed_values: options,
-    };
-}
-
-function resource(
-    overrides: Partial<ProviderResource>,
-): ProviderResource {
-    return {
+const inventory: ProviderResourceCollection = {
+    provider_id: "proxmox",
+    provider_name: "Proxmox",
+    refreshed_at: "2026-08-16T00:00:00Z",
+    resources: [{
         provider_id: "proxmox",
-        resource_id: "100",
-        display_name: "router",
-        resource_type: "vm",
+        resource_id: "110",
+        display_name: "Frigate",
+        resource_type: "qemu",
         current_state: "running",
-        expectation: expectation(null),
+        expectation: { value: null, label: "Needs Review", state: "needs_review", allowed_values: [] },
         configured: false,
         missing: false,
         needs_review: true,
-        metadata: {
-            vmid: 100,
-            node: "vorex469",
-        },
-        ...overrides,
-    };
-}
+        metadata: { vmid: 110, node: "vorex469" },
+    }],
+    summary: { total: 1, configured: 0, needs_review: 1, missing: 0, ignored: 0, by_type: { qemu: 1 }, by_state: { running: 1 } },
+    metadata: {},
+};
 
-function collection(
-    resources: ProviderResource[] = [
-        resource({}),
-        resource({
-            resource_id: "109",
-            display_name: "kenny",
-            resource_type: "lxc",
-            current_state: "stopped",
-            expectation: expectation("stopped", "Expected Stopped"),
-            configured: true,
-            needs_review: false,
-            metadata: {
-                vmid: 109,
-                node: "vorex469",
-            },
-        }),
-        resource({
-            resource_id: "200",
-            display_name: "old-vm",
-            resource_type: "unknown",
-            current_state: "missing",
-            expectation: expectation("running", "Expected Running"),
-            configured: true,
-            missing: true,
-            needs_review: false,
-            metadata: {
-                vmid: 200,
-                node: "vorex469",
-            },
-        }),
-        resource({
-            resource_id: "300",
-            display_name: "lab-vm",
-            expectation: expectation("ignored", "Ignore"),
-            configured: true,
-            needs_review: false,
-            metadata: {
-                vmid: 300,
-                node: "pve2",
-            },
-        }),
-    ],
-): ProviderResourceCollection {
+function management(overrides: Partial<ProviderManagementV3["resources"][number]> = {}): ProviderManagementV3 {
     return {
+        schema_version: "provider-management-v3",
         provider_id: "proxmox",
         provider_name: "Proxmox",
-        refreshed_at: "2026-08-01T16:00:00Z",
-        resources,
-        summary: {
-            total: resources.length,
-            configured: resources.filter((item) => item.configured).length,
-            needs_review: resources.filter((item) => item.needs_review).length,
-            missing: resources.filter((item) => item.missing).length,
-            ignored: resources.filter(
-                (item) => item.expectation.state === "ignored",
-            ).length,
-            by_type: {},
-            by_state: {},
-        },
-        metadata: {},
+        sections: [],
+        resource_types: [],
+        provider_intent_activation: "activated",
+        provider_intent_authority_status: "available",
+        caller_has_provider_intent_update: true,
+        grants_permission: false,
+        grants_execution: false,
+        resources: [{
+            provider_id: "proxmox",
+            resource_id: "110",
+            resource_type: "qemu",
+            display_name: "Frigate",
+            current_state: "running",
+            missing: false,
+            resource_live: true,
+            identity_assurance: "authoritative",
+            management_fingerprint: fingerprint,
+            intent_authority: "provider_intent",
+            intent_status: "needs_review",
+            intent_reason: "no_active_intent",
+            expectation: null,
+            record_version: null,
+            legacy_review_available: false,
+            legacy_expectation: null,
+            replacement_detected: false,
+            provider_intent_mutation_supported: true,
+            mutation_readiness: "ready",
+            editable_in_principle: true,
+            caller_can_mutate: true,
+            operationally_requestable: false,
+            grants_permission: false,
+            grants_execution: false,
+            ...overrides,
+        }],
     };
 }
 
-function deferred<T>() {
-    let resolve!: (value: T) => void;
-    let reject!: (reason?: unknown) => void;
-    const promise = new Promise<T>((promiseResolve, promiseReject) => {
-        resolve = promiseResolve;
-        reject = promiseReject;
+function httpError(status: number, detail: string): AxiosError {
+    return new AxiosError("failed", "ERR_BAD_RESPONSE", undefined, undefined, {
+        data: { detail }, status, statusText: "failed", headers: {}, config: { headers: new AxiosHeaders() },
     });
-
-    return { promise, resolve, reject };
 }
 
-async function renderResources(
-    provider: Provider = proxmoxProvider,
-) {
+async function renderResources() {
     render(<ProviderResources provider={provider} />);
-
-    if (provider.capabilities.includes("resources")) {
-        await screen.findByText("router");
-    }
+    await screen.findByText("Frigate");
+    await screen.findByLabelText(/monitoring expectation/i);
 }
 
-describe("ProviderResources", () => {
+describe("ProviderResources Provider Intent flow", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockedGetProviderResources.mockResolvedValue(collection());
-        mockedRefreshProviderResources.mockResolvedValue(collection());
-        mockedUpdateProviderResourceExpectation.mockResolvedValue({
-            provider_id: "proxmox",
-            resource_id: "100",
-            expectation: expectation("running", "Expected Running"),
-            updated_at: "2026-08-01T16:05:00Z",
+        vi.mocked(useOperatorSession).mockReturnValue({
+            authenticated: true,
+            principal: null,
+            csrfToken: "csrf",
+            loading: false,
+            error: null,
+            login: vi.fn(),
+            logout: vi.fn(),
+            invalidate,
         });
-        vi.spyOn(window, "confirm").mockReturnValue(true);
-    });
-
-    it("renders a generic resource collection", async () => {
-        await renderResources();
-
-        expect(screen.getByText("Resources")).toBeInTheDocument();
-        expect(screen.getByText("Last refreshed:", { exact: false })).toBeInTheDocument();
-        expect(screen.getByText("Total")).toBeInTheDocument();
-        expect(screen.getByText("Configured")).toBeInTheDocument();
-        expect(screen.getAllByText("Needs Review").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Missing").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Ignored").length).toBeGreaterThan(0);
-        expect(screen.getByText("router")).toBeInTheDocument();
-        expect(screen.getByText("Current State")).toBeInTheDocument();
-        expect(screen.getByText("Atlas Expectation")).toBeInTheDocument();
-    });
-
-    it("renders Proxmox VMID and node metadata", async () => {
-        await renderResources();
-
-        expect(screen.getByText("VMID")).toBeInTheDocument();
-        expect(screen.getByText("Node")).toBeInTheDocument();
-        expect(screen.getByText("100")).toBeInTheDocument();
-        expect(screen.getAllByText("vorex469").length).toBeGreaterThan(0);
-    });
-
-    it("highlights Needs Review rows", async () => {
-        await renderResources();
-
-        const row = screen.getByTestId("resource-row-100");
-        expect(row).toHaveClass("bg-amber-500/10");
-        expect(within(row).getAllByText("Needs Review").length).toBeGreaterThan(0);
-    });
-
-    it("marks missing resources", async () => {
-        await renderResources();
-
-        const row = screen.getByTestId("resource-row-200");
-        expect(row).toHaveClass("bg-red-500/10");
-        expect(within(row).getByText("Missing")).toBeInTheDocument();
-    });
-
-    it("renders ignored expectations", async () => {
-        await renderResources();
-
-        const row = screen.getByTestId("resource-row-300");
-        expect(within(row).getByText("Ignored")).toBeInTheDocument();
-        expect(
-            within(row).getByRole("combobox", {
-                name: /atlas expectation/i,
-            }),
-        ).toHaveValue("ignored");
-    });
-
-    it("refreshes inventory with POST and replaces displayed data", async () => {
-        const user = userEvent.setup();
-        mockedRefreshProviderResources.mockResolvedValue(
-            collection([
-                resource({
-                    resource_id: "400",
-                    display_name: "new-vm",
-                    metadata: {
-                        vmid: 400,
-                        node: "pve2",
-                    },
-                }),
-            ]),
-        );
-        await renderResources();
-
-        await user.click(screen.getByRole("button", { name: "Refresh Inventory" }));
-
-        await waitFor(() =>
-            expect(mockedRefreshProviderResources).toHaveBeenCalledWith("proxmox"),
-        );
-        expect(screen.getByText("new-vm")).toBeInTheDocument();
-        expect(screen.queryByText("router")).not.toBeInTheDocument();
-    });
-
-    it("preserves prior data when refresh fails", async () => {
-        const user = userEvent.setup();
-        mockedRefreshProviderResources.mockRejectedValue(
-            new Error("Refresh failed."),
-        );
-        await renderResources();
-
-        await user.click(screen.getByRole("button", { name: "Refresh Inventory" }));
-
-        expect(await screen.findByText("Refresh failed.")).toBeInTheDocument();
-        expect(screen.getByText("router")).toBeInTheDocument();
-    });
-
-    it("populates expectation controls from provider-advertised options", async () => {
-        await renderResources();
-
-        const select = screen.getByLabelText(/router/i);
-        expect(within(select).getByRole("option", { name: "Expected Running" })).toBeInTheDocument();
-        expect(within(select).getByRole("option", { name: "Expected Stopped" })).toBeInTheDocument();
-        expect(within(select).getByRole("option", { name: "Ignore" })).toBeInTheDocument();
-    });
-
-    it("confirms and sends expectation updates with PUT", async () => {
-        const user = userEvent.setup();
-        await renderResources();
-
-        await user.selectOptions(screen.getByLabelText(/router/i), "running");
-
-        expect(window.confirm).toHaveBeenCalledWith(
-            "Update Atlas expectation for router to Expected Running?",
-        );
-        await waitFor(() =>
-            expect(mockedUpdateProviderResourceExpectation).toHaveBeenCalledWith(
-                "proxmox",
-                "100",
-                "running",
-                true,
-            ),
-        );
-    });
-
-    it("updates the row after a successful expectation save", async () => {
-        const user = userEvent.setup();
-        await renderResources();
-
-        await user.selectOptions(screen.getByLabelText(/router/i), "running");
-
-        await waitFor(() =>
-            expect(screen.getByLabelText(/router/i)).toHaveValue("running"),
-        );
-    });
-
-    it("shows a recoverable error when expectation update fails", async () => {
-        const user = userEvent.setup();
-        mockedUpdateProviderResourceExpectation.mockRejectedValue(
-            new Error("Update failed."),
-        );
-        await renderResources();
-
-        await user.selectOptions(screen.getByLabelText(/router/i), "running");
-
-        expect(await screen.findByText("Update failed.")).toBeInTheDocument();
-        expect(screen.getByText("router")).toBeInTheDocument();
-    });
-
-    it("disables only the edited row while updating", async () => {
-        const user = userEvent.setup();
-        const update = deferred<Awaited<ReturnType<typeof updateProviderResourceExpectation>>>();
-        mockedUpdateProviderResourceExpectation.mockReturnValue(update.promise);
-        await renderResources();
-
-        await user.selectOptions(screen.getByLabelText(/router/i), "running");
-
-        expect(screen.getByLabelText(/router/i)).toBeDisabled();
-        expect(screen.getByLabelText(/kenny/i)).toBeEnabled();
-
-        update.resolve({
+        vi.mocked(getProviderResources).mockResolvedValue(inventory);
+        vi.mocked(refreshProviderResources).mockResolvedValue(inventory);
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management());
+        vi.mocked(putProviderMonitoringIntent).mockResolvedValue({
+            outcome: "created",
+            request_id: `provider-intent-mutation-${"b".repeat(32)}`,
             provider_id: "proxmox",
-            resource_id: "100",
-            expectation: expectation("running", "Expected Running"),
-            updated_at: "2026-08-01T16:05:00Z",
+            resource_type: "qemu",
+            resource_id: "110",
+            management_fingerprint: fingerprint,
+            expectation: "running",
+            record_version: 1,
+            superseded_previous_incarnation: false,
         });
-
-        await waitFor(() =>
-            expect(screen.getByLabelText(/router/i)).toBeEnabled(),
-        );
+        vi.stubGlobal("crypto", { randomUUID: () => "12345678-1234-1234-1234-123456789abc" });
     });
 
-    it("is hidden when a provider lacks resources capability", async () => {
-        await renderResources(hermesProvider);
+    it("saves through only the P3b API and reloads server projections", async () => {
+        const user = userEvent.setup();
+        await renderResources();
+        await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "running");
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1));
+        expect(putProviderMonitoringIntent).toHaveBeenCalledWith(
+            "proxmox", "qemu", "110",
+            {
+                request_id: "provider-intent-mutation-12345678123412341234123456789abc",
+                expected_management_fingerprint: fingerprint,
+                expectation: "running",
+                expected_record_version: 0,
+                acknowledge_monitoring_suppression: false,
+            },
+            "csrf",
+        );
+        await waitFor(() => expect(getProviderResources).toHaveBeenCalledTimes(2));
+        expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(2);
+    });
 
-        expect(screen.queryByText("Resources")).not.toBeInTheDocument();
-        expect(mockedGetProviderResources).not.toHaveBeenCalled();
+    it.each([
+        [409, "cas_conflict", "intent changed"],
+        [409, "fingerprint_mismatch", "identity changed"],
+        [409, "request_conflict", "save request is stale"],
+        [403, "permission_missing", "does not permit"],
+        [422, "invalid_request", "request is invalid"],
+        [429, "rate_limited", "rate limited"],
+        [503, "store_migration_required", "awaiting migration"],
+    ] as const)("handles %s %s without retry", async (status, detail, message) => {
+        const user = userEvent.setup();
+        vi.mocked(putProviderMonitoringIntent).mockRejectedValue(httpError(status, detail));
+        await renderResources();
+        await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "running");
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByText(message, { exact: false })).toBeInTheDocument();
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+        if (detail === "cas_conflict" || detail === "fingerprint_mismatch") {
+            await waitFor(() => expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(2));
+            expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
+        }
+    });
+
+    it("invalidates a rejected operator session", async () => {
+        const user = userEvent.setup();
+        vi.mocked(putProviderMonitoringIntent).mockRejectedValue(httpError(401, "unauthorized"));
+        await renderResources();
+        await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "running");
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByText(/sign in again/i)).toBeInTheDocument();
+        expect(invalidate).toHaveBeenCalledOnce();
+    });
+
+    it("renders schema migration required as read-only without calling mutation", async () => {
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({
+            mutation_readiness: "store_migration_required",
+            editable_in_principle: false,
+            caller_can_mutate: false,
+        }));
+        render(<ProviderResources provider={provider} />);
+        expect(await screen.findByText(/awaiting a store migration/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("reports committed save separately when authoritative reload fails", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderResources)
+            .mockResolvedValueOnce(inventory)
+            .mockRejectedValueOnce(new Error("reload failed"));
+        await renderResources();
+        await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "running");
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByText(/was saved, but refreshed server state/i)).toBeInTheDocument();
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it("refreshes inventory and authenticated management together", async () => {
+        const user = userEvent.setup();
+        await renderResources();
+        await user.click(screen.getByRole("button", { name: "Refresh Inventory" }));
+        await waitFor(() => expect(refreshProviderResources).toHaveBeenCalledWith("proxmox"));
+        expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(2);
     });
 });

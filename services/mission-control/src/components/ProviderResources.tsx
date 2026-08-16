@@ -4,6 +4,7 @@ import {
     useMemo,
     useState,
 } from "react";
+import { isAxiosError } from "axios";
 
 import {
     getAtlasErrorMessage,
@@ -11,13 +12,23 @@ import {
 import {
     getProviderResources,
     refreshProviderResources,
-    updateProviderResourceExpectation,
 } from "../api/resources";
+import {
+    getAuthenticatedProviderManagement,
+    putProviderMonitoringIntent,
+} from "../api/providerManagement";
+import { useOperatorSession } from "../hooks/operatorSessionContext";
 import type { Provider } from "../types/provider";
 import type {
     ProviderResource,
     ProviderResourceCollection,
 } from "../types/resources";
+import type {
+    ManagedProviderResourceV3,
+    ProviderManagementV3,
+    ProviderMonitoringExpectation,
+} from "../types/providerManagement";
+import { ProviderIntentEditor } from "./ProviderIntentEditor";
 import { SectionHeader } from "./SectionHeader";
 
 type ProviderResourcesProps = {
@@ -46,31 +57,42 @@ const metadataColumnsByProvider: Record<string, MetadataColumn[]> = {
 };
 
 export function ProviderResources({ provider }: ProviderResourcesProps) {
+    const session = useOperatorSession();
     const hasResourceCapability = provider.capabilities.includes("resources");
     const [collection, setCollection] =
         useState<ProviderResourceCollection | null>(null);
+    const [management, setManagement] = useState<ProviderManagementV3 | null>(null);
     const [isLoading, setIsLoading] = useState(hasResourceCapability);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [updatingResourceId, setUpdatingResourceId] = useState<
         string | null
     >(null);
     const [error, setError] = useState<string | null>(null);
+    const [decisionRevision, setDecisionRevision] = useState(0);
     const metadataColumns = useMemo(
         () => metadataColumnsByProvider[provider.id] ?? [],
         [provider.id],
     );
 
-    const loadResources = useCallback(async () => {
+    const loadResources = useCallback(async (preserveError = false) => {
         if (!hasResourceCapability) {
             return;
         }
 
         setIsLoading(true);
-        setError(null);
+        if (!preserveError) setError(null);
 
         try {
             const resources = await getProviderResources(provider.id);
             setCollection(resources);
+            if (session.authenticated) {
+                setManagement(
+                    await getAuthenticatedProviderManagement(provider.id),
+                );
+            } else {
+                setManagement(null);
+            }
+            return true;
         } catch (requestError) {
             console.error(
                 `Unable to load resources for ${provider.id}:`,
@@ -82,10 +104,11 @@ export function ProviderResources({ provider }: ProviderResourcesProps) {
                     `Mission Control could not load resources for ${provider.name}.`,
                 ),
             );
+            return false;
         } finally {
             setIsLoading(false);
         }
-    }, [hasResourceCapability, provider.id, provider.name]);
+    }, [hasResourceCapability, provider.id, provider.name, session.authenticated]);
 
     useEffect(() => {
         if (!hasResourceCapability) {
@@ -127,6 +150,25 @@ export function ProviderResources({ provider }: ProviderResourcesProps) {
         };
     }, [hasResourceCapability, provider.id, provider.name]);
 
+    useEffect(() => {
+        if (!hasResourceCapability || !session.authenticated) {
+            return;
+        }
+        let cancelled = false;
+        getAuthenticatedProviderManagement(provider.id)
+            .then((descriptor) => {
+                if (!cancelled) setManagement(descriptor);
+            })
+            .catch((requestError: unknown) => {
+                if (cancelled) return;
+                if (isAxiosError(requestError) && requestError.response?.status === 401) {
+                    session.invalidate();
+                }
+                setManagement(null);
+            });
+        return () => { cancelled = true; };
+    }, [hasResourceCapability, provider.id, session]);
+
     if (!hasResourceCapability) {
         return null;
     }
@@ -138,6 +180,11 @@ export function ProviderResources({ provider }: ProviderResourcesProps) {
         try {
             const resources = await refreshProviderResources(provider.id);
             setCollection(resources);
+            if (session.authenticated) {
+                setManagement(
+                    await getAuthenticatedProviderManagement(provider.id),
+                );
+            }
         } catch (requestError) {
             console.error(
                 `Unable to refresh resources for ${provider.id}:`,
@@ -154,71 +201,70 @@ export function ProviderResources({ provider }: ProviderResourcesProps) {
         }
     }
 
-    async function updateExpectation(
-        resource: ProviderResource,
-        expectation: string,
+    async function saveProviderIntent(
+        resource: ManagedProviderResourceV3,
+        expectation: ProviderMonitoringExpectation,
+        acknowledgeSuppression: boolean,
     ): Promise<void> {
-        if (expectation === resource.expectation.value) {
+        if (!resource.management_fingerprint || !session.csrfToken) {
             return;
         }
-
-        const option = resource.expectation.allowed_values.find(
-            (candidate) => candidate.value === expectation,
-        );
-        const label = option?.label ?? expectation;
-        const confirmed = window.confirm(
-            `Update Atlas expectation for ${resource.display_name} to ${label}?`,
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
         setUpdatingResourceId(resource.resource_id);
         setError(null);
-
         try {
-            const result = await updateProviderResourceExpectation(
+            await putProviderMonitoringIntent(
                 provider.id,
+                resource.resource_type,
                 resource.resource_id,
-                expectation,
-                true,
+                {
+                    request_id: `provider-intent-mutation-${crypto.randomUUID().replaceAll("-", "")}`,
+                    expected_management_fingerprint: resource.management_fingerprint,
+                    expectation,
+                    expected_record_version: resource.replacement_detected
+                        ? 0
+                        : resource.record_version ?? 0,
+                    acknowledge_monitoring_suppression: acknowledgeSuppression,
+                },
+                session.csrfToken,
             );
-
-            setCollection((current) => {
-                if (current === null) {
-                    return current;
-                }
-
-                return {
-                    ...current,
-                    resources: current.resources.map((candidate) =>
-                        candidate.resource_id === resource.resource_id
-                            ? {
-                                  ...candidate,
-                                  expectation: result.expectation,
-                                  configured:
-                                      result.expectation.state !==
-                                      "needs_review",
-                                  needs_review:
-                                      result.expectation.state ===
-                                      "needs_review",
-                              }
-                            : candidate,
-                    ),
-                };
-            });
+            setDecisionRevision((value) => value + 1);
+            const reloaded = await loadResources();
+            if (!reloaded) {
+                setError(
+                    "Provider Intent was saved, but refreshed server state could not be loaded.",
+                );
+            }
         } catch (requestError) {
-            console.error(
-                `Unable to update resource ${resource.resource_id} for ${provider.id}:`,
-                requestError,
-            );
-            setError(
-                getAtlasErrorMessage(
-                    requestError,
-                    "Atlas Core could not update the resource expectation.",
-                ),
-            );
+            const status = isAxiosError(requestError)
+                ? requestError.response?.status
+                : undefined;
+            const detail = isAxiosError<{ detail?: string }>(requestError)
+                ? requestError.response?.data?.detail
+                : undefined;
+            if (status === 401) {
+                session.invalidate();
+                setError("Operator session expired. Sign in again.");
+            } else if (status === 403) {
+                setError("Your operator session does not permit Provider Intent updates.");
+            } else if (status === 409 && detail === "cas_conflict") {
+                setError("Provider Intent changed. Review the current state and make a fresh decision.");
+                setDecisionRevision((value) => value + 1);
+                await loadResources(true);
+            } else if (status === 409 && detail === "fingerprint_mismatch") {
+                setError("The resource identity changed. Review the replacement before saving.");
+                setDecisionRevision((value) => value + 1);
+                await loadResources(true);
+            } else if (status === 409 && detail === "request_conflict") {
+                setError("This save request is stale. Start a new Save action.");
+            } else if (status === 429) {
+                setError("Provider Intent saves are rate limited. Wait before trying again.");
+            } else if (status === 422) {
+                setError("The Provider Intent request is invalid. Review the current state and choose again.");
+            } else if (status === 503) {
+                setError("Provider Intent editing is temporarily unavailable or awaiting migration.");
+            } else {
+                setError("Atlas Core could not save the monitoring expectation.");
+            }
         } finally {
             setUpdatingResourceId(null);
         }
@@ -301,14 +347,20 @@ export function ProviderResources({ provider }: ProviderResourcesProps) {
                             <tbody className="divide-y divide-slate-900">
                                 {collection.resources.map((resource) => (
                                     <ResourceRow
-                                        key={resource.resource_id}
+                                        key={`${resource.resource_type}:${resource.resource_id}`}
                                         resource={resource}
+                                        managementResource={(session.authenticated ? management : null)?.resources.find(
+                                            (candidate) =>
+                                                candidate.resource_type === resource.resource_type
+                                                && candidate.resource_id === resource.resource_id,
+                                        ) ?? null}
                                         metadataColumns={metadataColumns}
                                         isUpdating={
                                             updatingResourceId ===
                                             resource.resource_id
                                         }
-                                        onUpdate={updateExpectation}
+                                        decisionRevision={decisionRevision}
+                                        onSave={saveProviderIntent}
                                     />
                                 ))}
                             </tbody>
@@ -354,16 +406,21 @@ function ResourceSummary({
 
 function ResourceRow({
     resource,
+    managementResource,
     metadataColumns,
     isUpdating,
-    onUpdate,
+    decisionRevision,
+    onSave,
 }: {
     resource: ProviderResource;
+    managementResource: ManagedProviderResourceV3 | null;
     metadataColumns: MetadataColumn[];
     isUpdating: boolean;
-    onUpdate: (
-        resource: ProviderResource,
-        expectation: string,
+    decisionRevision: number;
+    onSave: (
+        resource: ManagedProviderResourceV3,
+        expectation: ProviderMonitoringExpectation,
+        acknowledgeSuppression: boolean,
     ) => Promise<void>;
 }) {
     const rowClassName = resource.needs_review
@@ -411,27 +468,24 @@ function ResourceRow({
                 {resource.current_state}
             </td>
             <td className="px-3 py-4">
-                <label className="sr-only" htmlFor={`expectation-${resource.resource_id}`}>
-                    Atlas Expectation for {resource.display_name}
-                </label>
-                <select
-                    id={`expectation-${resource.resource_id}`}
-                    value={resource.expectation.value ?? ""}
-                    disabled={isUpdating}
-                    onChange={(event) =>
-                        void onUpdate(resource, event.target.value)
-                    }
-                    className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    {resource.expectation.value === null && (
-                        <option value="">Needs Review</option>
-                    )}
-                    {resource.expectation.allowed_values.map((option) => (
-                        <option key={option.value} value={option.value}>
-                            {option.label}
-                        </option>
-                    ))}
-                </select>
+                {managementResource ? (
+                    <ProviderIntentEditor
+                        key={`${managementResource.management_fingerprint}:${managementResource.record_version}:${decisionRevision}`}
+                        resource={managementResource}
+                        saving={isUpdating}
+                        onSave={(expectation, acknowledgeSuppression) =>
+                            onSave(
+                                managementResource,
+                                expectation,
+                                acknowledgeSuppression,
+                            )
+                        }
+                    />
+                ) : (
+                    <p className="text-xs text-slate-500">
+                        {resource.expectation.label} — sign in to view Provider Intent edit readiness.
+                    </p>
+                )}
             </td>
         </tr>
     );

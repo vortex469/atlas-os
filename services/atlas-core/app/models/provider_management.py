@@ -68,6 +68,17 @@ class ProviderIntentReadReason(StrEnum):
     AUTHORITY_STORE_UNAVAILABLE = "authority_store_unavailable"
 
 
+class ProviderIntentMutationReadiness(StrEnum):
+    READY = "ready"
+    NOT_ACTIVATED = "not_activated"
+    AUTHORITY_UNAVAILABLE = "authority_unavailable"
+    STORE_MIGRATION_REQUIRED = "store_migration_required"
+    STORE_UNAVAILABLE = "store_unavailable"
+    RESOURCE_MISSING = "resource_missing"
+    IDENTITY_UNAVAILABLE = "identity_unavailable"
+    RESOURCE_TYPE_UNSUPPORTED = "resource_type_unsupported"
+
+
 class ProviderManagementSectionDescriptor(ProviderManagementModel):
     section: ProviderManagementSection
     availability: ProviderManagementSectionAvailability
@@ -281,4 +292,171 @@ class ProviderManagementDescriptor(ProviderManagementModel):
             raise ValueError(
                 "provider resource management support must be deterministically ordered."
             )
+        return self
+
+
+class ProviderResourceManagementSupportV3(ProviderManagementModel):
+    provider_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    resource_type: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    resource_readable: bool
+    authoritative_identity_supported: bool
+    provider_intent_capability_supported: bool
+    provider_intent_mutation_supported: bool
+    supported_expectations: tuple[ProviderMonitoringExpectation, ...] = ()
+    operationally_requestable: Literal[False] = False
+    grants_permission: Literal[False] = False
+    grants_execution: Literal[False] = False
+
+    @model_validator(mode="after")
+    def validate_support_combination(
+        self,
+    ) -> "ProviderResourceManagementSupportV3":
+        ProviderResourceManagementSupport(
+            **self.model_dump(exclude={"provider_intent_mutation_supported"})
+        )
+        if self.provider_intent_mutation_supported and not (
+            self.resource_readable
+            and self.authoritative_identity_supported
+            and self.provider_intent_capability_supported
+            and self.supported_expectations
+        ):
+            raise ValueError("mutation support requires complete intent support.")
+        if self.provider_intent_mutation_supported and (
+            self.provider_id != "proxmox" or self.resource_type != "qemu"
+        ):
+            raise ValueError("Provider Intent mutation supports only Proxmox QEMU.")
+        return self
+
+
+class ManagedResourceProjectionV3(ProviderManagementModel):
+    provider_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    resource_id: str = Field(min_length=1)
+    resource_type: str = Field(min_length=1)
+    display_name: str = Field(min_length=1)
+    current_state: str = Field(min_length=1)
+    missing: bool
+    resource_live: bool
+    identity_assurance: ManagedResourceIdentityAssurance
+    management_fingerprint: str | None = Field(
+        default=None,
+        pattern=PROVIDER_MANAGEMENT_FINGERPRINT_PATTERN,
+    )
+    intent_authority: ProviderIntentReadAuthority
+    intent_status: ProviderIntentReadStatus
+    intent_reason: ProviderIntentReadReason
+    expectation: ProviderMonitoringExpectation | None = None
+    record_version: int | None = Field(default=None, ge=1)
+    legacy_review_available: bool
+    legacy_expectation: ProviderMonitoringExpectation | None = None
+    replacement_detected: bool
+    provider_intent_mutation_supported: bool
+    mutation_readiness: ProviderIntentMutationReadiness
+    editable_in_principle: bool
+    caller_can_mutate: bool
+    operationally_requestable: Literal[False] = False
+    grants_permission: Literal[False] = False
+    grants_execution: Literal[False] = False
+
+    @model_validator(mode="after")
+    def validate_mutation_state(self) -> "ManagedResourceProjectionV3":
+        ManagedResourceProjection(
+            **self.model_dump(
+                include=set(ManagedResourceProjection.model_fields)
+            )
+        )
+        if self.resource_live == self.missing:
+            raise ValueError("resource live and missing state must be opposites.")
+        authoritative = (
+            self.identity_assurance
+            is ManagedResourceIdentityAssurance.AUTHORITATIVE
+        )
+        if authoritative != (self.management_fingerprint is not None):
+            raise ValueError(
+                "only authoritative identity may have a management fingerprint."
+            )
+        if not self.provider_intent_mutation_supported and (
+            self.mutation_readiness
+            is not ProviderIntentMutationReadiness.RESOURCE_TYPE_UNSUPPORTED
+        ):
+            raise ValueError("unsupported mutation must fail closed.")
+        ready = self.mutation_readiness is ProviderIntentMutationReadiness.READY
+        if self.editable_in_principle != ready:
+            raise ValueError("editability in principle and readiness must agree.")
+        if ready and not (
+            self.provider_id == "proxmox"
+            and self.resource_type == "qemu"
+            and self.provider_intent_mutation_supported
+            and self.resource_live
+            and not self.missing
+            and authoritative
+        ):
+            raise ValueError(
+                "ready Provider Intent mutation requires a live authoritative "
+                "supported Proxmox QEMU."
+            )
+        if self.caller_can_mutate and not self.editable_in_principle:
+            raise ValueError("caller mutation requires a ready resource.")
+        configured = self.intent_status in {
+            ProviderIntentReadStatus.CONFIGURED,
+            ProviderIntentReadStatus.MISSING,
+        }
+        if configured != (self.record_version is not None):
+            raise ValueError("configured state requires a record version.")
+        if self.legacy_review_available != (self.legacy_expectation is not None):
+            raise ValueError("legacy review availability and value must agree.")
+        if self.replacement_detected != (
+            self.intent_reason is ProviderIntentReadReason.INCARNATION_MISMATCH
+        ):
+            raise ValueError("replacement detection and reason must agree.")
+        return self
+
+
+class ProviderManagementDescriptorV3(ProviderManagementModel):
+    schema_version: Literal["provider-management-v3"] = "provider-management-v3"
+    provider_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    provider_name: str = Field(min_length=1)
+    sections: tuple[ProviderManagementSectionDescriptor, ...]
+    resource_types: tuple[ProviderResourceManagementSupportV3, ...]
+    resources: tuple[ManagedResourceProjectionV3, ...]
+    provider_intent_activation: Literal["not_activated", "activated"]
+    provider_intent_authority_status: Literal["available", "unavailable"]
+    caller_has_provider_intent_update: bool
+    grants_permission: Literal[False] = False
+    grants_execution: Literal[False] = False
+
+    @model_validator(mode="after")
+    def validate_descriptor(self) -> "ProviderManagementDescriptorV3":
+        sections = tuple(item.section for item in self.sections)
+        if len(sections) != len(set(sections)) or set(sections) != set(
+            ProviderManagementSection
+        ):
+            raise ValueError("provider management sections must be complete and unique.")
+        support_keys = tuple(
+            (item.provider_id, item.resource_type) for item in self.resource_types
+        )
+        if support_keys != tuple(sorted(set(support_keys))):
+            raise ValueError("provider resource support must be unique and ordered.")
+        if any(
+            item.provider_id != self.provider_id
+            for item in (*self.resource_types, *self.resources)
+        ):
+            raise ValueError("provider management projections must match provider.")
+        resource_keys = tuple(
+            (item.provider_id, item.resource_type, item.resource_id)
+            for item in self.resources
+        )
+        if resource_keys != tuple(sorted(set(resource_keys))):
+            raise ValueError("managed resources must be unique and ordered.")
+        if any(
+            item.mutation_readiness is ProviderIntentMutationReadiness.READY
+            for item in self.resources
+        ) and (
+            self.provider_intent_activation != "activated"
+            or self.provider_intent_authority_status != "available"
+        ):
+            raise ValueError("ready mutation requires activated available authority.")
+        if any(item.caller_can_mutate for item in self.resources) and not (
+            self.caller_has_provider_intent_update
+        ):
+            raise ValueError("caller mutation requires session-derived capability.")
         return self
