@@ -333,8 +333,73 @@ and compatibility/lineage guidance (`b5390ba`).
   `b599b1dbb510bf5b313b53417d8c36282be00f3d157796d3fab6741bf7825ad6`;
   exact-SHA recovery evidence v2 is `ready` with SHA-256
   `45aa69294ef1be4514824bd438e4f1aae2ea28a8d78056b500e3c7b8df873182`.
-  The pre-activation rollback bundle remains retained, mutation remains
-  unavailable, execution parity is unchanged, and P3 has not started.
+  The pre-activation rollback bundle remains retained. This historical P2c
+  read-authority checkpoint was superseded by the accepted P3 production state
+  below.
+
+## Atlas v0.11 P3 Provider Intent mutation acceptance
+
+- [x] V0.11-P3a — Complete.
+- [x] V0.11-P3b — Complete.
+- [x] V0.11-P3c — Complete.
+- [x] V0.11-P3d — Exact-candidate production acceptance complete.
+- [x] V0.11-P3 — P3a through P3d complete. No later milestone is started or
+  marked complete by this closure.
+- [x] Accepted exact candidate:
+  `2169fa2683ed336e1eec7e3f4febff26895fa395`.
+- [x] Production Provider Intent authority remains activated on schema v2 with
+  seven preserved `legacy_unbound` records and exactly two active,
+  identity-bound QEMU monitoring intents. No legacy record was automatically
+  rebound.
+- [x] The operator explicitly selected `running` for QEMU 110 / Frigate and
+  QEMU 200 / pbs; neither value was inferred from live state or legacy
+  evidence. Both were bound to current provider-authoritative identities and
+  confirmed `configured` by server-authoritative read-after-write at record
+  version 1.
+- [x] Each first binding used the dedicated P3 Provider Intent endpoint with
+  `expected_record_version=0`, explicit expectation `running`,
+  `acknowledge_monitoring_suppression=false`, and a unique request ID. Exact
+  replay returned the original result without duplicate history.
+- [x] Only intended operator `kenny` received `provider_intent:update`.
+  Existing sessions were invalidated, `kenny` reauthenticated after the
+  verifier change, and authenticated provider-management-v3 confirmed mutation
+  capability.
+- [x] Provider Intent mutation remains an authenticated monitoring-policy
+  operation and grants no infrastructure execution authority. No provider
+  action, operational request, execution candidate/planning/approval, or
+  provider-handler invocation was created, and execution authority did not
+  expand.
+- [x] `policies.yaml` remains physically retained but non-authoritative for
+  Proxmox monitoring. Legacy expectation PUT remains rejected while Provider
+  Intent is activated, and the seven legacy records remain review/history
+  evidence only.
+- [x] Execution parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`.
+- [x] The accepted post-mutation activated v3 backup is
+  `/opt/atlas-cutover/p3d-2169fa2/post-mutation-backups/atlas-data-20260816T032919Z`
+  with manifest SHA-256
+  `cf90e15831bdbcf898ddda1892938d914f6bcadcddc4bffdf2ede2b155b9a397`.
+- [x] `atlas-core-recovery-evidence-v3` is `ready` at
+  `/opt/atlas-cutover/p3d-2169fa2/recovery-evidence/post-p3d-activated-recovery-evidence-v3.json`
+  with SHA-256
+  `998956ccbb56428c04f0a9ea3be0a2668ddd55f66012a925f4ba3ae4f40e04b0`.
+  Disposable recovery preserved schema-v2 Provider Intent state, both active
+  intent identities and versions, actor-bound audit/request/idempotency
+  evidence, all seven legacy records, the import receipt, session invalidation
+  and reauthentication, operational no-replay, and execution isolation.
+- [x] The pre-P3 rollback anchor remains retained at
+  `/opt/atlas-cutover/p3d-2169fa2/pre-p3-backups/atlas-data-20260816T030050Z`
+  with paired Agent snapshot
+  `/opt/atlas-cutover/p3d-2169fa2/agent-snapshots/atlas-agent-state-20260816T0301Z.tar`.
+- [x] Accepted image identities: Core
+  `sha256:9cd0fadf99abb4209679aa6efcb7397bfeb0e41d486a3ddac499ee382d8a9a72`,
+  Agent
+  `sha256:83242fbe090f45d458f6fe7d9a24c8830cebe55df0e8bea59738696a839f2f98`,
+  Execution Worker
+  `sha256:24b69749831dfddfdf154b819c5cf3621d494df55887a03a1c19c2cd238d0c46`,
+  and Mission Control
+  `sha256:feea963cc1dda442c344d626e5a97868004d75c2b6e5f5f94130869adb132605`.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

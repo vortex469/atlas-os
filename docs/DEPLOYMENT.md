@@ -1521,12 +1521,11 @@ through the separately accepted P2c activation contract.
 
 V0.11-P2c-4 activated Provider Intent read authority in production on exact
 candidate `8ea7610d9f5ce4a33e09a3a12387ee8a23160a6b`. The managed store at
-`/opt/atlas/data/provider_intents.db` retains the exact validated import receipt
-and seven `legacy_unbound` records, with zero active identity-bound records.
-Both current QEMU resources are intentionally `needs_review` with reason
-`no_active_intent`; all 11 LXC resources remain unsupported and seven retain
-review-only legacy evidence. The retained `policies.yaml` is physical rollback
-evidence but is no longer authoritative for Proxmox monitoring.
+`/opt/atlas/data/provider_intents.db` retained the exact validated import receipt
+and seven `legacy_unbound` records. That read-authority checkpoint preceded the
+P3 write-authority acceptance described below. The retained `policies.yaml` is
+physical rollback evidence but is no longer authoritative for Proxmox
+monitoring.
 
 The first accepted activated v3 backup is
 `/opt/atlas-cutover/p2c4-8ea7610/activated-backups/atlas-data-20260815T223222Z`
@@ -1537,8 +1536,81 @@ Exact-SHA recovery evidence v2 is `ready` at
 with SHA-256
 `45aa69294ef1be4514824bd438e4f1aae2ea28a8d78056b500e3c7b8df873182`.
 The checksum-valid pre-activation Core/Agent rollback bundle remains retained.
-Provider Intent mutation remains unavailable, no legacy expectation was rebound,
-execution authority is unchanged, and P3 has not started.
+
+### Provider Intent P3 production acceptance
+
+V0.11-P3 and its final P3d production acceptance are complete on exact
+candidate `2169fa2683ed336e1eec7e3f4febff26895fa395`. Production Provider Intent
+authority remains activated. The store was explicitly migrated from schema v1
+to schema v2 and now contains seven preserved `legacy_unbound` records and two
+active, identity-bound QEMU monitoring intents. No legacy record was
+automatically rebound.
+
+The operator explicitly selected `running` for QEMU 110 / Frigate and QEMU 200
+/ pbs. Neither expectation was inferred from live state or legacy evidence.
+Each binding used the current provider-authoritative resource identity, the
+dedicated P3 endpoint
+`PUT /api/v1/providers/proxmox/management/resources/qemu/<VMID>/monitoring-intent`,
+`expected_record_version=0`, `acknowledge_monitoring_suppression=false`, and a
+unique request ID:
+
+- QEMU 110:
+  `provider-intent-mutation-634fb218e33b4596ad4c102e2a1a3696`, fingerprint
+  `provider-management-fingerprint-v1:bdb3bb28516f8aad5284d1c7d0877b85a50cc6e7b8b6250d2c6384dda07c5424`.
+- QEMU 200:
+  `provider-intent-mutation-30f96fa88cd04f27903b4cb7c0789f34`, fingerprint
+  `provider-management-fingerprint-v1:1153daf86be80e8983932d54e347b962ecbcf0e05947feaf98a6aed3f48e0839`.
+
+Both server-authoritative read-after-write projections reported `configured`,
+expectation `running`, and record version 1. Exact request replay returned the
+original results without duplicate domain history. The seven
+`legacy_unbound` records remain historical/review evidence, `policies.yaml`
+remains physically retained and non-authoritative for Proxmox monitoring, and
+the legacy expectation PUT remains rejected while Provider Intent is
+activated.
+
+Only the intended operator, `kenny`, received `provider_intent:update`, in
+addition to the existing `operational_intent:create` permission. Existing
+sessions were invalidated, the operator reauthenticated after the permission
+change, and authenticated provider-management-v3 confirmed mutation
+capability. This is an authenticated monitoring-policy operation only: it
+grants no infrastructure execution authority.
+
+The production isolation comparison confirmed that no provider action,
+operational request, execution candidate/planning/approval, or provider-handler
+invocation was created. Execution authority did not expand, and parity remains
+exactly `operational=restart-service/proxmox/qemu` and
+`repository=update-compose-stack`.
+
+The accepted post-mutation activated v3 backup is
+`/opt/atlas-cutover/p3d-2169fa2/post-mutation-backups/atlas-data-20260816T032919Z`;
+its manifest SHA-256 is
+`cf90e15831bdbcf898ddda1892938d914f6bcadcddc4bffdf2ede2b155b9a397`.
+Accepted recovery evidence v3 is
+`/opt/atlas-cutover/p3d-2169fa2/recovery-evidence/post-p3d-activated-recovery-evidence-v3.json`
+with SHA-256
+`998956ccbb56428c04f0a9ea3be0a2668ddd55f66012a925f4ba3ae4f40e04b0`.
+The disposable recovery proved preservation of the schema-v2 store, both
+active intents and identities, actor-bound audit and request/idempotency
+evidence, all seven legacy records, the exact import receipt, session
+invalidation and reauthentication, operational no-replay, and execution
+isolation. Disposable resources were cleaned and production data was not used
+as the restore target.
+
+The pre-P3 rollback anchor remains retained at
+`/opt/atlas-cutover/p3d-2169fa2/pre-p3-backups/atlas-data-20260816T030050Z`,
+paired with Agent snapshot
+`/opt/atlas-cutover/p3d-2169fa2/agent-snapshots/atlas-agent-state-20260816T0301Z.tar`.
+The accepted image identities are:
+
+- Core:
+  `sha256:9cd0fadf99abb4209679aa6efcb7397bfeb0e41d486a3ddac499ee382d8a9a72`.
+- Agent:
+  `sha256:83242fbe090f45d458f6fe7d9a24c8830cebe55df0e8bea59738696a839f2f98`.
+- Execution Worker:
+  `sha256:24b69749831dfddfdf154b819c5cf3621d494df55887a03a1c19c2cd238d0c46`.
+- Mission Control:
+  `sha256:feea963cc1dda442c344d626e5a97868004d75c2b6e5f5f94130869adb132605`.
 
 The tool rejects symlinks, special files, malformed or duplicate policy keys,
 non-canonical VMIDs, unsupported expectations, and corrupt or unsupported
