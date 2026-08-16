@@ -70,6 +70,8 @@ jobs:
 
       - name: Test Atlas Core
         working-directory: services/atlas-core
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/services/atlas-core
         run: pytest -q
 
   mission-control:

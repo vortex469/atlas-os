@@ -1189,3 +1189,15 @@ def test_failure_after_staging_manifest_does_not_publish_or_leak(
     )
     assert result.returncode == 23
     assert list(backup_root.iterdir()) == []
+
+
+def test_backup_cleanup_reclaims_only_disposable_incomplete_directory() -> None:
+    wrapper = Path(__file__).with_name("atlas-data-backup").read_text(encoding="utf-8")
+    cleanup = wrapper[wrapper.index("cleanup() {") : wrapper.index("trap cleanup EXIT")]
+
+    assert '--mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup"' in cleanup
+    assert 'python /tool.py chown /backup "$BACKUP_OWNER_UID" "$BACKUP_OWNER_GID"' in cleanup
+    assert 'rm -rf -- "$INCOMPLETE_DIRECTORY"' in cleanup
+    assert "atlas_atlas-data" not in cleanup
+    assert "sudo" not in cleanup
+    assert "chmod -R" not in cleanup

@@ -59,6 +59,8 @@ mkdir -p "$BACKUP_ROOT"
 BACKUP_ROOT="$(realpath "$BACKUP_ROOT")"
 INCOMPLETE_DIRECTORY="$BACKUP_ROOT/.$BACKUP_NAME.incomplete"
 BACKUP_DIRECTORY="$BACKUP_ROOT/$BACKUP_NAME"
+BACKUP_OWNER_UID="$(id -u)"
+BACKUP_OWNER_GID="$(id -g)"
 
 if [[ -e "$INCOMPLETE_DIRECTORY" || -e "$BACKUP_DIRECTORY" ]]; then
     echo "Backup destination already exists: $BACKUP_DIRECTORY" >&2
@@ -68,9 +70,32 @@ mkdir -- "$INCOMPLETE_DIRECTORY"
 chmod 0700 "$INCOMPLETE_DIRECTORY"
 
 cleanup() {
+    original_status=$?
     if [[ -d "$INCOMPLETE_DIRECTORY" ]]; then
-        rm -rf -- "$INCOMPLETE_DIRECTORY"
+        if ! rm -rf -- "$INCOMPLETE_DIRECTORY"; then
+            if ! docker run \
+                --rm \
+                --network none \
+                --read-only \
+                --cap-drop ALL \
+                --cap-add CHOWN \
+                --security-opt no-new-privileges:true \
+                --user 0:0 \
+                --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \
+                --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
+                --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
+                "$PYTHON_IMAGE" \
+                python /tool.py chown /backup "$BACKUP_OWNER_UID" "$BACKUP_OWNER_GID"; then
+                echo "Unable to restore disposable backup ownership for cleanup" >&2
+                return 1
+            fi
+            if ! rm -rf -- "$INCOMPLETE_DIRECTORY"; then
+                echo "Unable to remove disposable incomplete backup" >&2
+                return 1
+            fi
+        fi
     fi
+    return "$original_status"
 }
 trap cleanup EXIT
 
@@ -118,7 +143,7 @@ docker run \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     "$PYTHON_IMAGE" \
-    python /tool.py chown /backup "$(id -u)" "$(id -g)"
+    python /tool.py chown /backup "$BACKUP_OWNER_UID" "$BACKUP_OWNER_GID"
 chmod 0700 "$INCOMPLETE_DIRECTORY"
 
 mv -- "$INCOMPLETE_DIRECTORY" "$BACKUP_DIRECTORY"
