@@ -57,7 +57,8 @@ done
 docker volume inspect "$DATA_VOLUME" >/dev/null
 mkdir -p "$BACKUP_ROOT"
 BACKUP_ROOT="$(realpath "$BACKUP_ROOT")"
-INCOMPLETE_DIRECTORY="$BACKUP_ROOT/.$BACKUP_NAME.incomplete"
+INCOMPLETE_BASENAME=".$BACKUP_NAME.incomplete"
+INCOMPLETE_DIRECTORY="$BACKUP_ROOT/$INCOMPLETE_BASENAME"
 BACKUP_DIRECTORY="$BACKUP_ROOT/$BACKUP_NAME"
 BACKUP_OWNER_UID="$(id -u)"
 BACKUP_OWNER_GID="$(id -g)"
@@ -69,10 +70,24 @@ fi
 mkdir -- "$INCOMPLETE_DIRECTORY"
 chmod 0700 "$INCOMPLETE_DIRECTORY"
 
+validate_incomplete_directory() {
+    [[ "$INCOMPLETE_BASENAME" != */* ]]
+    [[ "$INCOMPLETE_BASENAME" =~ ^\.atlas-data-[0-9]{8}T[0-9]{6}Z\.incomplete$ ]]
+    [[ -d "$BACKUP_ROOT" && ! -L "$BACKUP_ROOT" ]]
+    [[ -d "$INCOMPLETE_DIRECTORY" && ! -L "$INCOMPLETE_DIRECTORY" ]]
+    [[ "$(dirname -- "$INCOMPLETE_DIRECTORY")" = "$BACKUP_ROOT" ]]
+    [[ "$(basename -- "$INCOMPLETE_DIRECTORY")" = "$INCOMPLETE_BASENAME" ]]
+    [[ "$(realpath -e -- "$INCOMPLETE_DIRECTORY")" = "$BACKUP_ROOT/$INCOMPLETE_BASENAME" ]]
+}
+
 cleanup() {
     original_status=$?
     if [[ -d "$INCOMPLETE_DIRECTORY" ]]; then
         if ! rm -rf -- "$INCOMPLETE_DIRECTORY"; then
+            if ! validate_incomplete_directory; then
+                echo "Disposable incomplete backup path failed confinement validation" >&2
+                return 1
+            fi
             if ! docker run \
                 --rm \
                 --network none \
@@ -82,11 +97,15 @@ cleanup() {
                 --cap-add DAC_READ_SEARCH \
                 --security-opt no-new-privileges:true \
                 --user 0:0 \
-                --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \
+                --mount "type=bind,src=$BACKUP_ROOT,dst=/backup-parent" \
                 --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
                 --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
                 "$PYTHON_IMAGE" \
-                python /tool.py chown /backup "$BACKUP_OWNER_UID" "$BACKUP_OWNER_GID"; then
+                python /tool.py chown-child \
+                /backup-parent \
+                "$INCOMPLETE_BASENAME" \
+                "$BACKUP_OWNER_UID" \
+                "$BACKUP_OWNER_GID"; then
                 echo "Unable to restore disposable backup ownership for cleanup" >&2
                 return 1
             fi
@@ -132,19 +151,25 @@ docker run \
     --operator-auth-initialized "$operator_auth_initialized" \
     "${provider_intent_options[@]}"
 
+validate_incomplete_directory
 docker run \
     --rm \
     --network none \
     --read-only \
     --cap-drop ALL \
     --cap-add CHOWN \
+    --cap-add DAC_READ_SEARCH \
     --security-opt no-new-privileges:true \
     --user 0:0 \
-    --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \
+    --mount "type=bind,src=$BACKUP_ROOT,dst=/backup-parent" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/tool.py,readonly" \
     --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \
     "$PYTHON_IMAGE" \
-    python /tool.py chown /backup "$BACKUP_OWNER_UID" "$BACKUP_OWNER_GID"
+    python /tool.py chown-child \
+    /backup-parent \
+    "$INCOMPLETE_BASENAME" \
+    "$BACKUP_OWNER_UID" \
+    "$BACKUP_OWNER_GID"
 chmod 0700 "$INCOMPLETE_DIRECTORY"
 
 mv -- "$INCOMPLETE_DIRECTORY" "$BACKUP_DIRECTORY"

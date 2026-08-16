@@ -82,7 +82,9 @@ fi
 # verification uses the Core image so the canonical store validator is present.
 if [[ "$provider_intent_activation" = activated ]]; then
     docker run --rm --network none --read-only --cap-drop ALL \
+        --cap-add DAC_READ_SEARCH \
         --security-opt no-new-privileges:true \
+        --user 0:0 \
         --mount "type=bind,src=$BACKUP_DIRECTORY,dst=/backup,readonly" \
         --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas-data-tool.py,dst=/atlas-data-tool.py,readonly" \
         --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly" \

@@ -31,6 +31,7 @@ ProviderIntentActivation = TOOL["ProviderIntentActivation"]
 _validate_operational_rows = TOOL["_validate_operational_rows"]
 create_backup = TOOL["create_backup"]
 apply_owner = TOOL["apply_owner"]
+apply_child_owner = TOOL["apply_child_owner"]
 legacy_restore_conflicts = TOOL["legacy_restore_conflicts"]
 restore_backup = TOOL["restore_backup"]
 validate_restore_target = TOOL["validate_restore_target"]
@@ -1199,14 +1200,67 @@ def test_backup_cleanup_reclaims_only_disposable_incomplete_directory() -> None:
     cleanup = wrapper[wrapper.index("cleanup() {") : wrapper.index("trap cleanup EXIT")]
 
     assert 'BACKUP_ROOT="$(realpath "$BACKUP_ROOT")"' in wrapper
-    assert 'INCOMPLETE_DIRECTORY="$BACKUP_ROOT/.$BACKUP_NAME.incomplete"' in wrapper
-    assert '--mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup"' in cleanup
-    assert 'python /tool.py chown /backup "$BACKUP_OWNER_UID" "$BACKUP_OWNER_GID"' in cleanup
+    assert 'INCOMPLETE_BASENAME=".$BACKUP_NAME.incomplete"' in wrapper
+    assert 'INCOMPLETE_DIRECTORY="$BACKUP_ROOT/$INCOMPLETE_BASENAME"' in wrapper
+    assert '--mount "type=bind,src=$BACKUP_ROOT,dst=/backup-parent"' in cleanup
+    assert '--mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup"' not in cleanup
+    assert "python /tool.py chown-child" in cleanup
+    assert '"$INCOMPLETE_BASENAME"' in cleanup
     assert "--cap-add DAC_READ_SEARCH" in cleanup
+    assert "--cap-add CHOWN" in cleanup
+    assert "--cap-add DAC_OVERRIDE" not in cleanup
+    assert "--cap-add FOWNER" not in cleanup
+    assert "--cap-add SYS_ADMIN" not in cleanup
+    assert "--privileged" not in cleanup
+    assert "type=volume" not in cleanup
     assert 'rm -rf -- "$INCOMPLETE_DIRECTORY"' in cleanup
     assert "atlas_atlas-data" not in cleanup
     assert "sudo" not in cleanup
     assert "chmod -R" not in cleanup
+    assert '[[ -d "$BACKUP_ROOT" && ! -L "$BACKUP_ROOT" ]]' in wrapper
+    assert '[[ -d "$INCOMPLETE_DIRECTORY" && ! -L "$INCOMPLETE_DIRECTORY" ]]' in wrapper
+    assert '[[ "$(dirname -- "$INCOMPLETE_DIRECTORY")" = "$BACKUP_ROOT" ]]' in wrapper
+    assert '[[ "$(basename -- "$INCOMPLETE_DIRECTORY")" = "$INCOMPLETE_BASENAME" ]]' in wrapper
+    assert '[[ "$(realpath -e -- "$INCOMPLETE_DIRECTORY")" = "$BACKUP_ROOT/$INCOMPLETE_BASENAME" ]]' in wrapper
+
+
+def test_activated_restore_can_verify_private_host_owned_backup() -> None:
+    wrapper = Path(__file__).with_name("atlas-data-restore").read_text(encoding="utf-8")
+    activated_verify = wrapper[
+        wrapper.index('if [[ "$provider_intent_activation" = activated ]]') :
+        wrapper.index("else\n    python3", wrapper.index('if [[ "$provider_intent_activation" = activated ]]'))
+    ]
+
+    assert "--network none" in activated_verify
+    assert "--read-only" in activated_verify
+    assert "--cap-drop ALL" in activated_verify
+    assert "--cap-add DAC_READ_SEARCH" in activated_verify
+    assert "--user 0:0" in activated_verify
+    assert "--cap-add DAC_OVERRIDE" not in activated_verify
+    assert "--cap-add CHOWN" not in activated_verify
+    assert "--privileged" not in activated_verify
+    assert 'dst=/backup,readonly"' in activated_verify
+
+
+@pytest.mark.parametrize(
+    "basename",
+    ("", ".", "..", "../escape", "child/name", "/absolute", "backup"),
+)
+def test_child_owner_rejects_unconfined_basename(
+    tmp_path: Path, basename: str
+) -> None:
+    with pytest.raises(RuntimeError, match="basename is invalid"):
+        apply_child_owner(tmp_path, basename, os.getuid(), os.getgid())
+
+
+def test_child_owner_rejects_symlink_child(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    child = tmp_path / ".atlas-data-20000101T000000Z.incomplete"
+    child.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(RuntimeError, match="real directory"):
+        apply_child_owner(tmp_path, child.name, os.getuid(), os.getgid())
 
 
 @pytest.mark.skipif(os.getuid() != 0, reason="requires disposable ownership fixture")
@@ -1238,15 +1292,21 @@ def test_owner_repair_does_not_follow_symlinks(tmp_path: Path) -> None:
 )
 def test_dac_read_search_is_minimal_for_unprivileged_cleanup() -> None:
     root = Path(tempfile.mkdtemp(prefix="atlas-unprivileged-cleanup-", dir="/tmp"))
-    incomplete = root / ".atlas-data-proof.incomplete"
+    incomplete = root / ".atlas-data-20000101T000000Z.incomplete"
     docker_gid = Path("/var/run/docker.sock").stat().st_gid
     os.chown(root, 1000, 1000)
     incomplete.mkdir(mode=0o700)
     (incomplete / "root-owned").write_text("fixture", encoding="utf-8")
+    outside = root / "outside"
+    outside.write_text("preserve", encoding="utf-8")
+    os.chown(outside, 12345, 12345)
+    link = incomplete / "outside-link"
+    link.symlink_to(outside)
     for path in (incomplete / "root-owned", incomplete):
         os.chown(path, 10001, 10001)
+    os.chown(link, 10001, 10001, follow_symlinks=False)
 
-    base = [
+    bind_root = [
         "docker", "run", "--rm", "--network", "none", "--read-only",
         "--cap-drop", "ALL", "--cap-add", "CHOWN",
         "--security-opt", "no-new-privileges:true", "--user", "0:0",
@@ -1258,20 +1318,40 @@ def test_dac_read_search_is_minimal_for_unprivileged_cleanup() -> None:
         "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
         "python", "/tool.py", "chown", "/backup", "1000", "1000",
     ]
+    parent_mount = [
+        "docker", "run", "--rm", "--network", "none", "--read-only",
+        "--cap-drop", "ALL", "--cap-add", "CHOWN",
+        "--cap-add", "DAC_READ_SEARCH",
+        "--security-opt", "no-new-privileges:true", "--user", "0:0",
+        "--mount", f"type=bind,src={root},dst=/backup-parent",
+        "--mount",
+        "type=bind,src=/opt/atlas/scripts/atlas-data-tool.py,dst=/tool.py,readonly",
+        "--mount",
+        "type=bind,src=/opt/atlas/scripts/atlas_data_backup_models.py,dst=/atlas_data_backup_models.py,readonly",
+        "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+        "python", "/tool.py", "chown-child", "/backup-parent",
+        incomplete.name, "1000", "1000",
+    ]
 
     try:
-        chown_only = subprocess.run(base, check=False, capture_output=True, text=True)
-        assert chown_only.returncode == 0
+        chown_only = subprocess.run(
+            bind_root, check=False, capture_output=True, text=True
+        )
+        assert chown_only.returncode != 0
         assert incomplete.stat().st_uid == 10001
 
         repaired = subprocess.run(
-            [*base[:10], "--cap-add", "DAC_READ_SEARCH", *base[10:]],
+            parent_mount,
             check=False,
             capture_output=True,
             text=True,
         )
         assert repaired.returncode == 0, repaired.stderr
         assert incomplete.stat().st_uid == 1000
+        assert (incomplete / "root-owned").stat().st_uid == 1000
+        assert link.lstat().st_uid == 1000
+        assert outside.stat().st_uid == 12345
+        assert outside.read_text(encoding="utf-8") == "preserve"
         assert incomplete.stat().st_mode & 0o777 == 0o700
 
         removed = subprocess.run(
@@ -1288,6 +1368,7 @@ def test_dac_read_search_is_minimal_for_unprivileged_cleanup() -> None:
         assert removed.returncode == 0, removed.stderr
         assert not incomplete.exists()
     finally:
+        os.chown(outside, os.getuid(), os.getgid())
         if incomplete.exists():
             for path in incomplete.rglob("*"):
                 os.chown(path, os.getuid(), os.getgid(), follow_symlinks=False)
@@ -1297,4 +1378,5 @@ def test_dac_read_search_is_minimal_for_unprivileged_cleanup() -> None:
             for path in sorted(incomplete.rglob("*"), reverse=True):
                 path.unlink()
             incomplete.rmdir()
+        outside.unlink()
         root.rmdir()

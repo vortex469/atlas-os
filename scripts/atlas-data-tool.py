@@ -207,13 +207,43 @@ def apply_owner(path: Path, uid: int, gid: int) -> None:
     if uid < 0 or gid < 0:
         raise RuntimeError("output owner uid and gid must be non-negative")
 
-    for current, directories, filenames in os.walk(path):
+    def raise_walk_error(error: OSError) -> None:
+        raise error
+
+    for current, directories, filenames in os.walk(path, onerror=raise_walk_error):
         current_path = Path(current)
         os.chown(current_path, uid, gid, follow_symlinks=False)
         for name in directories:
             os.chown(current_path / name, uid, gid, follow_symlinks=False)
         for name in filenames:
             os.chown(current_path / name, uid, gid, follow_symlinks=False)
+
+
+def apply_child_owner(parent: Path, basename: str, uid: int, gid: int) -> None:
+    if (
+        not basename
+        or basename in {".", ".."}
+        or Path(basename).name != basename
+        or "/" in basename
+        or "\\" in basename
+        or re.fullmatch(
+            r"\.atlas-data-[0-9]{8}T[0-9]{6}Z\.incomplete", basename
+        )
+        is None
+    ):
+        raise RuntimeError("incomplete backup basename is invalid")
+    if parent.is_symlink() or not parent.is_dir():
+        raise RuntimeError("backup parent must be a real directory")
+
+    resolved_parent = parent.resolve(strict=True)
+    child = parent / basename
+    if child.is_symlink() or not child.is_dir():
+        raise RuntimeError("incomplete backup child must be a real directory")
+    resolved_child = child.resolve(strict=True)
+    if resolved_child.parent != resolved_parent:
+        raise RuntimeError("incomplete backup child escaped its parent")
+
+    apply_owner(resolved_child, uid, gid)
 
 
 def verify_backup(
@@ -1185,6 +1215,12 @@ def parse_args() -> argparse.Namespace:
     chown_parser.add_argument("uid", type=int)
     chown_parser.add_argument("gid", type=int)
 
+    chown_child_parser = subparsers.add_parser("chown-child")
+    chown_child_parser.add_argument("parent", type=Path)
+    chown_child_parser.add_argument("basename")
+    chown_child_parser.add_argument("uid", type=int)
+    chown_child_parser.add_argument("gid", type=int)
+
     restore_parser = subparsers.add_parser("restore")
     restore_parser.add_argument("backup", type=Path)
     restore_parser.add_argument("target", type=Path)
@@ -1284,6 +1320,8 @@ def main() -> None:
         )
     elif args.command == "chown":
         apply_owner(args.path, args.uid, args.gid)
+    elif args.command == "chown-child":
+        apply_child_owner(args.parent, args.basename, args.uid, args.gid)
     elif args.command == "restore":
         restore_backup(
             args.backup,
