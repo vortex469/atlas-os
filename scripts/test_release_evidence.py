@@ -9,7 +9,10 @@ from pathlib import Path
 import pytest
 
 from scripts.atlas_data_recovery_evidence import (
+    ACTIVATED_REQUIRED_CHECKS,
     REQUIRED_CHECKS,
+    V3_REQUIRED_CHECKS,
+    V3_SCHEMA_VERSION,
     build_recovery_evidence,
     write_recovery_evidence,
 )
@@ -126,6 +129,7 @@ def _options(**overrides) -> Options:
         "require_tag": True,
         "check_running_images": False,
         "recovery_evidence": None,
+        "require_recovery_v3": False,
     }
     values.update(overrides)
     return Options(**values)
@@ -158,6 +162,41 @@ def test_matching_ready_recovery_evidence_is_consumed(tmp_path: Path) -> None:
     assert evidence.recovery.status is CheckState.PASSED
     assert evidence.recovery.tested_commit_sha == HEAD
     assert evidence.summary.status is SummaryState.READY
+
+
+def test_final_acceptance_requires_ready_exact_sha_v3_evidence(tmp_path: Path) -> None:
+    v2 = tmp_path / "v2.json"
+    write_recovery_evidence(
+        v2,
+        build_recovery_evidence(
+            HEAD,
+            set(ACTIVATED_REQUIRED_CHECKS),
+            provider_intent_activation="activated",
+        ),
+    )
+    rejected = _collect(
+        FakeRunner(), recovery_evidence=v2, require_recovery_v3=True
+    )
+    assert rejected.recovery.status is CheckState.FAILED
+    assert rejected.recovery.controlled_reason == "recovery_evidence_v3_required"
+    assert rejected.summary.status is SummaryState.BLOCKED
+
+    v3 = tmp_path / "v3.json"
+    write_recovery_evidence(
+        v3,
+        build_recovery_evidence(
+            HEAD,
+            set(V3_REQUIRED_CHECKS),
+            provider_intent_activation="activated",
+            schema_version=V3_SCHEMA_VERSION,
+        ),
+    )
+    accepted = _collect(
+        FakeRunner(), recovery_evidence=v3, require_recovery_v3=True
+    )
+    assert accepted.recovery.status is CheckState.PASSED
+    assert accepted.recovery.schema_version == V3_SCHEMA_VERSION
+    assert accepted.summary.status is SummaryState.READY
 
 
 def test_mismatched_or_not_ready_recovery_evidence_blocks(tmp_path: Path) -> None:

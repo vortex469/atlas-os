@@ -6,6 +6,50 @@ release boundaries.
 
 ## Unreleased
 
+### Atlas v0.11-P5c — Recovery-evidence-v3 and release acceptance (in progress)
+
+Atlas v0.11-P5c implements the final release acceptance evidence and completes
+the identity-bound Provider Intent boundary formalization.
+
+#### Added
+
+- `atlas-core-recovery-evidence-v3` schema with 12 additional v3-specific checks
+  beyond v2, binding exact-SHA mutation-state proof to identity-bound Provider
+  Intent incarnation boundaries.
+- V3 evidence validation enforces that only exact-SHA evidence with schema/activation
+  pairing (v3+activated) satisfies final release acceptance for identity-bound
+  provider-intent mutation.
+- V3 regression test suite covering Provider Intent idempotency, replacement
+  isolation, Discovery/ACE/suggestion isolation, and legacy-YAML non-authority.
+- Recovery gate v3 verification branch with seeded fixture demonstrating active
+  identity-bound records, legacy evidence preservation, mutation receipt,
+  and audit operator-binding.
+
+#### Validation
+
+- Provider Intent Store mutation idempotency: exact request replay returns
+  identical outcome without duplicate audit records.
+- Incarnation rebinding: new fingerprint creates new v1 record; old incarnation
+  retained in history but superseded in active coordinates.
+- Isolation boundaries: Discovery/ACE/suggestion reads, UI rendering, and
+  legacy-YAML authority never create or mutate Provider Intent records.
+- LXC unsupported: record creation fails closed; no active coordinate entry.
+- Canonical Atlas Core regression suite: 1188/1188 passed. The separately
+  reported 1184/1186 root invocation was traced to two pre-existing
+  working-directory-sensitive tests that pass from the canonical Core
+  directory on both the P5c tree and clean baseline.
+
+#### Exit criteria
+
+- [x] `atlas-core-recovery-evidence-v3` recognized and enforced
+- [x] Exact-SHA candidate validation with schema/activation pairing
+- [x] V3 idempotency and replacement-isolation proven
+- [x] Isolation boundaries validated
+- [x] Full regression suite clean
+- [ ] Documentation and release evidence package (in progress)
+
+## Unreleased — v0.11 release series
+
 Atlas v0.11 is a documentation-only architecture milestone defining the
 Provider Management Framework boundary for identity-bound runtime intent.
 

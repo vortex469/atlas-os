@@ -11,6 +11,8 @@ from scripts.atlas_data_recovery_evidence import (
     ACTIVATED_REQUIRED_CHECKS,
     ACTIVATED_SCHEMA_VERSION,
     REQUIRED_CHECKS,
+    V3_REQUIRED_CHECKS,
+    V3_SCHEMA_VERSION,
     CheckStatus,
     EvidenceStatus,
     build_recovery_evidence,
@@ -51,6 +53,60 @@ def test_activated_evidence_uses_explicit_v2_semantics() -> None:
     assert parse_recovery_evidence(payload) == evidence
     payload["schema_version"] = "atlas-core-recovery-evidence-v1"
     with pytest.raises(ValueError, match="schema and activation disagree"):
+        parse_recovery_evidence(payload)
+
+
+def test_complete_v3_evidence_is_explicit_ready_and_deterministic() -> None:
+    evidence = build_recovery_evidence(
+        SHA,
+        set(V3_REQUIRED_CHECKS),
+        provider_intent_activation="activated",
+        schema_version=V3_SCHEMA_VERSION,
+    )
+    assert evidence.schema_version == V3_SCHEMA_VERSION
+    assert evidence.status is EvidenceStatus.READY
+    assert tuple(check.name for check in evidence.checks) == V3_REQUIRED_CHECKS
+    assert parse_recovery_evidence(json.loads(json.dumps(evidence.to_dict()))) == evidence
+
+
+@pytest.mark.parametrize("missing", V3_REQUIRED_CHECKS)
+def test_each_missing_v3_check_is_not_ready(missing: str) -> None:
+    evidence = build_recovery_evidence(
+        SHA,
+        set(V3_REQUIRED_CHECKS) - {missing},
+        provider_intent_activation="activated",
+        schema_version=V3_SCHEMA_VERSION,
+    )
+    assert evidence.status is EvidenceStatus.NOT_READY
+
+
+def test_v3_rejects_wrong_activation_unknown_duplicate_and_unordered_checks() -> None:
+    with pytest.raises(ValueError, match="schema and activation disagree"):
+        build_recovery_evidence(
+            SHA, set(V3_REQUIRED_CHECKS), schema_version=V3_SCHEMA_VERSION
+        )
+    with pytest.raises(ValueError, match="unknown checks"):
+        build_recovery_evidence(
+            SHA,
+            set(V3_REQUIRED_CHECKS) | {"unknown"},
+            provider_intent_activation="activated",
+            schema_version=V3_SCHEMA_VERSION,
+        )
+    payload = json.loads(json.dumps(build_recovery_evidence(
+        SHA, set(V3_REQUIRED_CHECKS),
+        provider_intent_activation="activated",
+        schema_version=V3_SCHEMA_VERSION,
+    ).to_dict()))
+    payload["checks"] = [payload["checks"][0], *payload["checks"]]
+    with pytest.raises(ValueError, match="incomplete or unordered"):
+        parse_recovery_evidence(payload)
+    payload = json.loads(json.dumps(build_recovery_evidence(
+        SHA, set(V3_REQUIRED_CHECKS),
+        provider_intent_activation="activated",
+        schema_version=V3_SCHEMA_VERSION,
+    ).to_dict()))
+    payload["checks"][0], payload["checks"][1] = payload["checks"][1], payload["checks"][0]
+    with pytest.raises(ValueError, match="incomplete or unordered"):
         parse_recovery_evidence(payload)
 
 

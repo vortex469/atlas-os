@@ -660,6 +660,44 @@ authority-separation exit criteria. P5 remains next and unstarted.
   operator action, replacement identity remains fail-closed, and execution,
   permissions, gates, handlers, and ACLs retain pre-v0.11 parity.
 
+#### V0.11-P5c — Recovery-evidence-v3 and release acceptance (in progress)
+
+- `atlas-core-recovery-evidence-v3` schema formalized with 12 additional
+  v3-specific checks beyond v2:
+  - Provider Intent idempotency: exact request replay returns identical outcome
+  - Replacement isolation: new fingerprint creates new v1 record
+  - Discovery/ACE/suggestion isolation: reads never mutate Provider Intent
+  - Legacy-YAML non-authority: YAML never overrides activated store
+  - LXC unsupported: record creation fails closed
+  - Schema-v2 preservation: mutation-state uses schema v2
+  - Active/legacy record preservation: exact counts and versions
+  - Import receipt preservation: legacy shadow import receipt intact
+  - Operator-bound audit: all mutations audited to operator
+
+- V3 evidence validation enforces schema/activation pairing:
+  - Only `atlas-core-recovery-evidence-v3+activated` satisfies final
+    exact-SHA release acceptance
+  - v1/v2 evidence rejected after v3 gates
+  - Exact commit SHA binding required
+
+- Regression test coverage:
+  - Idempotency: exact request replay, no duplicate records
+  - Replacement isolation: concurrent create/update/rebind
+  - Boundary isolation: read-only operations never mutate
+  - LXC enforcement: record creation fails closed
+  - Canonical full Core suite: 1188 passed; 191 provider-intent tests; 10 v3
+    tests. Two failures from a repository-root invocation are pre-existing
+    working-directory-sensitive tests and pass canonically on both P5c and the
+    clean baseline.
+
+- Exit criteria:
+  - [x] V3 schema recognized and enforced
+  - [x] Exact-SHA validation in place
+  - [x] Idempotency and isolation proven
+  - [x] Boundaries validated
+  - [x] Regression suite clean
+  - [ ] Documentation and release evidence (in progress)
+
 ### V0.11 non-goals
 
 V0.11 excludes backup execution, restore execution, install-provider execution,

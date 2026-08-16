@@ -441,6 +441,48 @@ and compatibility/lineage guidance (`b5390ba`).
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`.
 
+## Atlas v0.11 P5c Recovery-evidence-v3 and release acceptance
+
+- [ ] V0.11-P5c — Recovery-evidence-v3 schema formalization, exact-SHA release
+  validation, idempotency and isolation regression tests, and release
+  acceptance documentation (in progress).
+
+### Atlas v0.11-P5c implementation
+
+- [x] `atlas-core-recovery-evidence-v3` schema defined with 12 additional v3-specific
+  checks beyond v2: idempotency, replacement isolation, suggestion/Discovery/ACE
+  isolation, legacy-YAML non-authority, LXC unsupported, schema-v2 preservation,
+  active-record preservation, legacy-record preservation, import-receipt
+  preservation, and operator-bound audit.
+- [x] V3 evidence validation enforces schema/activation pairing: only
+  `atlas-core-recovery-evidence-v3+activated` satisfies final exact-SHA release
+  acceptance; v1/v2 evidence rejected after v3 gates.
+- [x] Provider Intent Store idempotency proven: exact request replay returns
+  identical outcome; no duplicate audit records, request receipts, or versions.
+- [x] Incarnation rebinding isolation proven: new fingerprint creates new v1
+  record; old incarnation retained in history; active coordinates atomically
+  switch.
+- [x] Isolation boundaries validated: Discovery/ACE/suggestion reads, UI
+  rendering, and legacy-YAML authority never create or mutate Provider Intent
+  records.
+- [x] LXC unsupported validated: record creation fails closed; no active
+  coordinate index entry.
+- [x] Canonical full Atlas Core suite: 1188/1188 passed; 191 Provider Intent
+  tests passed; v3 regression suite 10/10 passed. The two failures reported by
+  a repository-root invocation are pre-existing working-directory-sensitive
+  tests and pass canonically on both P5c and the clean baseline.
+- [x] Python syntax, bash syntax, and code quality checks passed.
+
+### Atlas v0.11-P5c exit criteria
+
+- [x] `atlas-core-recovery-evidence-v3` recognized and enforced in release gate
+- [x] Exact-SHA candidate validation with schema/activation pairing in place
+- [x] V3 idempotency and replacement-isolation regression tests passing
+- [x] Isolation boundaries (Discovery/ACE/suggestion/legacy-YAML) validated
+- [x] Full canonical regression suite clean (1188 passed)
+- [ ] Documentation, CHANGELOG, and ROADMAP updates (in progress)
+- [ ] Final release acceptance evidence package (pending)
+
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
 - [x] Production was rebuilt with no-cache images from the exact RC1 checkout.

@@ -1630,11 +1630,13 @@ zero-or-more-entry batch marker records only what completed.
 ### Generate bounded recovery release evidence
 
 The disposable recovery gate preserves parsing of historical
-`atlas-core-recovery-evidence-v1` pre-activation artifacts and writes
-`atlas-core-recovery-evidence-v2` after exercising both inactive and activated
-v3 lineages for an exact, clean candidate commit. Activated evidence includes
-store/import/active-QEMU/legacy preservation, YAML non-authority, and mixed-
-generation refusal checks. It creates no provider
+`atlas-core-recovery-evidence-v1` pre-activation and
+`atlas-core-recovery-evidence-v2` activated artifacts, and writes
+`atlas-core-recovery-evidence-v3` after exercising both inactive and activated
+lineages plus the final mutation-preservation checks for an exact, clean
+candidate commit. Activated evidence includes store/import/active-QEMU/legacy
+preservation, idempotent replay, replacement isolation, YAML non-authority,
+and mixed-generation refusal checks. It creates no provider
 mutation and explicitly refuses production `atlas_atlas-data` as a disposable
 target:
 
@@ -1659,8 +1661,13 @@ recovery readiness by default:
   --expected-base atlas-v0.10.0 \
   --expected-sha "$candidate_sha" \
   --recovery-evidence /path/to/recovery-evidence.json \
+  --require-recovery-v3 \
   --json
 ```
+
+Final v0.11 acceptance requires `--require-recovery-v3`; historical v1/v2
+artifacts remain parseable for their original recovery lineages but cannot
+satisfy the final mutation-preservation acceptance boundary.
 
 ### Schedule backups
 

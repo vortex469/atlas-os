@@ -14,17 +14,19 @@ from pathlib import Path
 
 try:
     from atlas_data_recovery_evidence import (
-        EvidenceStatus as RecoveryStatus,
+        V3_SCHEMA_VERSION,
+        load_recovery_evidence,
     )
     from atlas_data_recovery_evidence import (
-        load_recovery_evidence,
+        EvidenceStatus as RecoveryStatus,
     )
 except ModuleNotFoundError:
     from scripts.atlas_data_recovery_evidence import (
-        EvidenceStatus as RecoveryStatus,
+        V3_SCHEMA_VERSION,
+        load_recovery_evidence,
     )
     from scripts.atlas_data_recovery_evidence import (
-        load_recovery_evidence,
+        EvidenceStatus as RecoveryStatus,
     )
 
 SCHEMA_VERSION = "atlas-release-evidence-v1"
@@ -235,6 +237,7 @@ class Options:
     require_tag: bool
     check_running_images: bool
     recovery_evidence: Path | None = None
+    require_recovery_v3: bool = False
 
 
 def collect_evidence(root: Path, options: Options, runner: ReadOnlyRunner) -> ReleaseEvidence:
@@ -248,7 +251,11 @@ def collect_evidence(root: Path, options: Options, runner: ReadOnlyRunner) -> Re
     )
     security = _security(root, runner)
     validation = _validation(root, runner)
-    recovery = _recovery(options.recovery_evidence, identity.head_sha)
+    recovery = _recovery(
+        options.recovery_evidence,
+        identity.head_sha,
+        require_v3=options.require_recovery_v3,
+    )
     blocked: list[str] = list(identity_states)
     incomplete: list[str] = []
     if not worktree.tracked_clean:
@@ -291,6 +298,8 @@ def collect_evidence(root: Path, options: Options, runner: ReadOnlyRunner) -> Re
 def _recovery(
     path: Path | None,
     head_sha: str | None,
+    *,
+    require_v3: bool = False,
 ) -> RecoveryAcceptanceEvidence:
     if path is None:
         return RecoveryAcceptanceEvidence(
@@ -305,6 +314,13 @@ def _recovery(
     except (TypeError, ValueError):
         return RecoveryAcceptanceEvidence(
             CheckState.FAILED, None, None, "invalid_or_mismatched_evidence"
+        )
+    if require_v3 and evidence.schema_version != V3_SCHEMA_VERSION:
+        return RecoveryAcceptanceEvidence(
+            CheckState.FAILED,
+            evidence.schema_version,
+            evidence.tested_commit_sha,
+            "recovery_evidence_v3_required",
         )
     return RecoveryAcceptanceEvidence(
         CheckState.PASSED
@@ -589,6 +605,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--require-tag", action="store_true")
     parser.add_argument("--check-running-images", action="store_true")
     parser.add_argument("--recovery-evidence", type=Path)
+    parser.add_argument("--require-recovery-v3", action="store_true")
     parser.add_argument("--json", action="store_true")
     return parser
 
@@ -603,6 +620,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.expected_base, args.candidate_tag, args.expected_sha,
                 args.require_main, args.require_tag, args.check_running_images,
                 args.recovery_evidence,
+                args.require_recovery_v3,
             ),
             ReadOnlyRunner(),
         )

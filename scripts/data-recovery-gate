@@ -101,9 +101,14 @@ finish() {
             --output "$evidence_output"
             --tested-commit "$tested_sha"
             --provider-intent-activation activated
+            --schema-version atlas-core-recovery-evidence-v3
         )
+        declare -A emitted_checks=()
         for check in "${passed_checks[@]}"; do
-            evidence_arguments+=(--passed-check "$check")
+            if [[ -z "${emitted_checks[$check]+present}" ]]; then
+                evidence_arguments+=(--passed-check "$check")
+                emitted_checks["$check"]=true
+            fi
         done
         if ! python3 "$SCRIPT_DIRECTORY/atlas_data_recovery_evidence.py" \
             "${evidence_arguments[@]}"; then
@@ -319,6 +324,30 @@ passed_checks+=(
     provider_intent_legacy_evidence_preservation
     provider_intent_yaml_non_authority
     provider_intent_activation_compatibility
+)
+
+docker run --rm --network none --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --user 10001:10001 \
+    --env PYTHONPATH=/opt/atlas/services/atlas-core \
+    --mount "type=volume,src=$activated_volume,dst=/data" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/../config,dst=/opt/atlas/config,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/../inventory,dst=/opt/atlas/inventory,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/../services/atlas-core,dst=/opt/atlas/services/atlas-core,readonly" \
+    --mount "type=bind,src=$SCRIPT_DIRECTORY/atlas_data_provider_intent_recovery_fixture.py,dst=/fixture.py,readonly" \
+    "$CORE_IMAGE" python /fixture.py verify-v3 /data "$activated_import_id"
+passed_checks+=(
+    provider_intent_v3_idempotency
+    provider_intent_v3_replacement_isolation
+    provider_intent_v3_suggestion_isolation
+    provider_intent_v3_discovery_isolation
+    provider_intent_v3_ace_isolation
+    provider_intent_v3_legacy_yaml_isolation
+    provider_intent_v3_lxc_unsupported
+    provider_intent_v3_schema_v2_preserved
+    provider_intent_v3_active_records_preserved
+    provider_intent_v3_legacy_records_preserved
+    provider_intent_v3_import_receipt_preserved
+    provider_intent_v3_audit_operator_bound
 )
 
 passed_checks+=(

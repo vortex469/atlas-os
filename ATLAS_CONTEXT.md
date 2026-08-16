@@ -244,7 +244,24 @@ complete and production Provider Intent mutation is active on schema v2. QEMU
 for monitoring and identity presentation; authenticated v3 supplies only
 caller-specific edit readiness. Monitoring, advisory diagnostics,
 compatibility actions, and operational maintenance remain distinct authority
-surfaces without widening execution. V0.11-P5 is next and has not started.
+surfaces without widening execution.
+
+V0.11-P5c (Recovery-evidence-v3 and release acceptance) is in progress:
+- `atlas-core-recovery-evidence-v3` schema formalized with 12 additional v3-specific
+  checks binding exact-SHA mutation-state proof to identity-bound Provider Intent
+  incarnation boundaries.
+- V3 evidence validation enforces schema/activation pairing: only v3+activated
+  satisfies final release acceptance; v1/v2 evidence rejected.
+- Provider Intent Store idempotency proven: exact request replay returns identical
+  outcome without duplicate audit records.
+- Incarnation rebinding isolation proven: new fingerprint creates new v1 record;
+  old incarnation retained in history.
+- Isolation boundaries validated: Discovery/ACE/suggestion reads and legacy-YAML
+  authority never create or mutate Provider Intent records.
+- Canonical Atlas Core regression suite: 1188 passed; v3 regression suite
+  10/10 passed. The separately reported 1184/1186 root invocation was traced
+  to two pre-existing working-directory-sensitive tests, both of which pass
+  from the canonical Atlas Core directory on the P5c tree and clean baseline.
 
 Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the
 tracked template. Runtime YAML remains authoritative for policy domains that

@@ -562,4 +562,25 @@ ATLAS_CORE_VALIDATION_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$cor
     "$SCRIPT_DIRECTORY/data-recovery-gate" \
     --expected-sha "$(git -C "$ATLAS_ROOT" rev-parse HEAD)" \
     --evidence-output "$GATE_DIRECTORY/recovery-evidence.json"
+PYTHONPATH="$ATLAS_ROOT" python3 - \
+    "$GATE_DIRECTORY/recovery-evidence.json" \
+    "$(git -C "$ATLAS_ROOT" rev-parse HEAD)" <<'PY'
+import sys
+from pathlib import Path
+
+from scripts.atlas_data_recovery_evidence import (
+    EvidenceStatus,
+    V3_REQUIRED_CHECKS,
+    V3_SCHEMA_VERSION,
+    load_recovery_evidence,
+)
+
+evidence = load_recovery_evidence(
+    Path(sys.argv[1]), expected_commit_sha=sys.argv[2]
+)
+assert evidence.schema_version == V3_SCHEMA_VERSION
+assert evidence.status is EvidenceStatus.READY
+assert evidence.provider_intent_activation == "activated"
+assert tuple(check.name for check in evidence.checks) == V3_REQUIRED_CHECKS
+PY
 "$SCRIPT_DIRECTORY/rest-server-gate"
