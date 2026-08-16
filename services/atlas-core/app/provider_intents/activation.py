@@ -9,10 +9,10 @@ from app.config.settings import ProviderIntentActivation, ProviderIntentSettings
 from app.provider_intents.legacy_import import (
     ActivatedProviderIntentImportCompletionError,
     ActivatedProviderIntentImportMismatchError,
-    validate_activated_provider_intent_store,
 )
-from app.provider_intents.store import (
-    ProviderIntentStore,
+from app.provider_intents.read_compatibility import (
+    ProviderIntentReadStore,
+    open_activated_provider_intent_read_store,
 )
 
 
@@ -24,7 +24,7 @@ def validate_provider_intent_activation(
     settings: ProviderIntentSettings,
     *,
     policy_path: Path = Path("/opt/atlas/data/config/policies.yaml"),
-) -> ProviderIntentStore | None:
+) -> ProviderIntentReadStore | None:
     """Validate the configured startup authority without mutating durable state."""
 
     database = Path(settings.database)
@@ -37,7 +37,7 @@ def validate_provider_intent_activation(
 
     try:
         assert settings.expected_legacy_import_id is not None
-        return validate_activated_provider_intent_store(
+        return open_activated_provider_intent_read_store(
             database,
             policy_path,
             settings.expected_legacy_import_id,

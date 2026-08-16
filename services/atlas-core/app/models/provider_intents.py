@@ -478,6 +478,44 @@ class ProviderIntentCoordinateMutationResult(ProviderIntentModel):
         return self
 
 
+class ProviderIntentMutationRequest(ProviderIntentModel):
+    """Bounded HTTP body; path and authenticated actor are server-owned."""
+
+    request_id: str = Field(
+        min_length=57,
+        max_length=90,
+        pattern=r"^provider-intent-mutation-[a-f0-9]{32,64}$",
+    )
+    expected_management_fingerprint: str = Field(
+        pattern=PROVIDER_MANAGEMENT_FINGERPRINT_PATTERN
+    )
+    expectation: ProviderIntentValue
+    expected_record_version: int = Field(ge=0, le=MAX_RECORD_VERSION)
+    acknowledge_monitoring_suppression: bool = False
+
+    @model_validator(mode="after")
+    def validate_suppression_acknowledgement(
+        self,
+    ) -> ProviderIntentMutationRequest:
+        ignored = self.expectation is ProviderIntentValue.IGNORED
+        if ignored != self.acknowledge_monitoring_suppression:
+            raise ValueError(
+                "monitoring suppression acknowledgement contradicts expectation"
+            )
+        return self
+
+
+class VerifiedProviderIntentMutationTarget(ProviderIntentModel):
+    """Sanitized live target proof with no provider-native identity."""
+
+    provider_id: Literal["proxmox"]
+    resource_type: Literal["qemu"]
+    resource_id: str = Field(pattern=r"^[0-9]+$", max_length=20)
+    management_fingerprint: str = Field(
+        pattern=PROVIDER_MANAGEMENT_FINGERPRINT_PATTERN
+    )
+
+
 class ProviderIntentDomainAuditEvent(ProviderIntentModel):
     sequence: int = Field(ge=1)
     event_id: str = Field(pattern=r"^provider-intent-audit-v1:[a-f0-9]{64}$")

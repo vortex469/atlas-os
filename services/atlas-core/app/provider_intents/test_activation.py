@@ -15,6 +15,7 @@ from app.provider_intents.legacy_import import (
     import_legacy_policy,
     load_legacy_policy_import,
 )
+from app.provider_intents.read_compatibility import P2cProviderIntentReadStore
 
 
 def _activated(database: Path, import_id: str) -> ProviderIntentSettings:
@@ -96,6 +97,77 @@ def test_activated_validation_requires_exact_completed_import_and_accepts_empty(
             ),
             policy_path=policy,
         )
+
+
+def test_activated_p2c_store_remains_readable_without_migration(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "provider_intents.db"
+    policy = tmp_path / "policies.yaml"
+    policy.write_text(
+        'proxmox:\n  guests:\n    "110":\n      expected: running\n',
+        encoding="utf-8",
+    )
+    completed = import_legacy_policy(policy, database)
+    with sqlite3.connect(database) as connection:
+        connection.execute("DROP TABLE provider_intent_operation_audit")
+        connection.execute("DROP TABLE provider_intent_operations")
+        connection.execute("DROP TABLE provider_intent_active_coordinates")
+        connection.execute(
+            "UPDATE provider_intent_store_meta SET schema_version=1"
+        )
+
+    store = validate_provider_intent_activation(
+        _activated(database, completed.import_id),
+        policy_path=policy,
+    )
+
+    assert store is not None
+    assert len(store.read_snapshot().legacy_unbound_records) == 1
+    assert not hasattr(store, "mutate_coordinate")
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT schema_version FROM provider_intent_store_meta"
+        ).fetchone()[0] == 1
+
+
+def test_activated_p2c_store_checks_integrity_on_open_and_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "provider_intents.db"
+    policy = tmp_path / "policies.yaml"
+    policy.write_text("{}\n", encoding="utf-8")
+    completed = import_legacy_policy(policy, database)
+    with sqlite3.connect(database) as connection:
+        connection.execute("DROP TABLE provider_intent_operation_audit")
+        connection.execute("DROP TABLE provider_intent_operations")
+        connection.execute("DROP TABLE provider_intent_active_coordinates")
+        connection.execute(
+            "UPDATE provider_intent_store_meta SET schema_version=1"
+        )
+
+    integrity_checks = 0
+    validate_integrity = P2cProviderIntentReadStore._validate_integrity
+
+    def count_integrity_checks(connection: sqlite3.Connection) -> None:
+        nonlocal integrity_checks
+        integrity_checks += 1
+        validate_integrity(connection)
+
+    monkeypatch.setattr(
+        P2cProviderIntentReadStore,
+        "_validate_integrity",
+        staticmethod(count_integrity_checks),
+    )
+    store = validate_provider_intent_activation(
+        _activated(database, completed.import_id),
+        policy_path=policy,
+    )
+    assert store is not None
+    assert integrity_checks == 1
+
+    store.read_snapshot()
+    assert integrity_checks == 2
 
 
 def test_activated_validation_rejects_corrupt_receipt(tmp_path: Path) -> None:

@@ -25,13 +25,13 @@ from app.models.resources import (
     ResourceIntentAuthority,
     ResourceIntentReason,
 )
+from app.provider_intents.read_compatibility import ProviderIntentReadStore
 from app.provider_intents.resolver import (
     ProviderIntentResolution,
     ProviderIntentResolutionSet,
     ProviderIntentResolutionStatus,
     ProviderMonitoringIntentResolver,
 )
-from app.provider_intents.store import ProviderIntentStore
 
 
 class ProviderIntentMutationUnavailableError(RuntimeError):
@@ -60,7 +60,7 @@ class ProxmoxMonitoringIntentAuthority:
     def __init__(
         self,
         settings: ProviderIntentSettings,
-        store: ProviderIntentStore | None = None,
+        store: ProviderIntentReadStore | None = None,
     ) -> None:
         self.settings = settings
         self._resolver = ProviderMonitoringIntentResolver(settings, store)
@@ -317,7 +317,7 @@ _authority: ProxmoxMonitoringIntentAuthority | None = None
 
 def configure_monitoring_intent_authority(
     settings: ProviderIntentSettings,
-    store: ProviderIntentStore | None,
+    store: ProviderIntentReadStore | None,
 ) -> ProxmoxMonitoringIntentAuthority:
     global _authority
     authority = ProxmoxMonitoringIntentAuthority(settings, store)

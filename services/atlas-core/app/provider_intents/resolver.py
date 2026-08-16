@@ -18,7 +18,8 @@ from app.models.provider_management import (
     ManagedResourceIdentityAssurance,
     ManagedResourceProjection,
 )
-from app.provider_intents.store import ProviderIntentStore, ProviderIntentStoreError
+from app.provider_intents.read_compatibility import ProviderIntentReadStore
+from app.provider_intents.store import ProviderIntentStoreError
 
 
 class ProviderIntentResolutionStatus(StrEnum):
@@ -137,7 +138,7 @@ class ProviderMonitoringIntentResolver:
     def __init__(
         self,
         settings: ProviderIntentSettings,
-        store: ProviderIntentStore | None,
+        store: ProviderIntentReadStore | None,
     ) -> None:
         self._settings = settings
         self._store = store

@@ -7,6 +7,7 @@ from app.models.provider_intents import (
     ProviderIntentKind,
     ProviderIntentLifecycle,
     ProviderIntentMutationCommand,
+    ProviderIntentMutationRequest,
     ProviderIntentProvenance,
     ProviderIntentRecord,
     ProviderIntentValue,
@@ -274,4 +275,27 @@ def test_noncanonical_management_fingerprints_are_rejected(
             intent_kind=ProviderIntentKind.MONITORING_EXPECTATION,
             desired_value=ProviderIntentValue.RUNNING,
             expected_record_version=0,
+        )
+
+
+def test_http_mutation_request_is_strict_and_acknowledgement_bound() -> None:
+    values = {
+        "request_id": "provider-intent-mutation-" + "a" * 32,
+        "expected_management_fingerprint": FINGERPRINT_A,
+        "expectation": ProviderIntentValue.RUNNING,
+        "expected_record_version": 0,
+        "acknowledge_monitoring_suppression": False,
+    }
+    ProviderIntentMutationRequest.model_validate(values)
+    with pytest.raises(ValidationError, match="Extra inputs"):
+        ProviderIntentMutationRequest.model_validate(
+            {**values, "operator_id": "forged"}
+        )
+    with pytest.raises(ValidationError, match="acknowledgement"):
+        ProviderIntentMutationRequest.model_validate(
+            {**values, "expectation": ProviderIntentValue.IGNORED}
+        )
+    with pytest.raises(ValidationError, match="acknowledgement"):
+        ProviderIntentMutationRequest.model_validate(
+            {**values, "acknowledge_monitoring_suppression": True}
         )
