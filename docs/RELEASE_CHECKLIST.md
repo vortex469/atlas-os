@@ -401,6 +401,46 @@ and compatibility/lineage guidance (`b5390ba`).
   and Mission Control
   `sha256:feea963cc1dda442c344d626e5a97868004d75c2b6e5f5f94130869adb132605`.
 
+## Atlas v0.11 P4 Mission Control provider experience acceptance
+
+- [x] V0.11-P4a — Canonical provider resource and monitoring presentation,
+  commit `432afe9ccf6101f7d14dd93cf90c30db7fb142eb`.
+- [x] V0.11-P4b — Provider-page authority-surface separation, commit
+  `5babaf105bd1530efc56a9512b093a47e37d17e3`.
+- [x] V0.11-P4c — Composed provider-page, accessibility, error-state, keyboard,
+  and structural-boundary acceptance complete in this closeout slice.
+- [x] V0.11-P4 — P4a through P4c complete. V0.11-P5 is next and remains
+  unstarted.
+- [x] Public provider-management-v2 is canonical for public resource identity,
+  monitoring expectation, status, reason, and legacy-review context.
+  Authenticated provider-management-v3 is only the caller-specific
+  mutation-readiness overlay.
+- [x] Only supported, live Proxmox QEMU with authoritative identity, activated
+  Provider Intent authority, write-ready schema-v2 storage, exact readiness,
+  and an authenticated authorized caller exposes monitoring Save controls.
+  LXC, missing resources, unavailable identity/authority/store,
+  migration-required state, and unauthorized callers remain read-only.
+- [x] Observed provider state and monitoring expectation are separately labeled;
+  configured match, mismatch, ignored, Needs Review, replacement, missing, and
+  unavailable states retain bounded textual semantics.
+- [x] Replacement and legacy-review paths require a fresh explicit operator
+  choice, use current identity and exact version rules, and never preselect or
+  copy historical expectations.
+- [x] Proxmox `policies.yaml` guest expectations remain physically retained but
+  appear only as non-authoritative compatibility/history evidence; they do not
+  replace current Provider Intent or automatically apply to current identities.
+- [x] Diagnostics and recommendations remain non-interactive advisory surfaces.
+  Compatibility actions retain only the existing provider-action API, and
+  operational maintenance remains separate navigation to the authenticated
+  request/candidate/planning/approval workflow.
+- [x] Composed and structural UI tests prove monitoring does not invoke provider
+  actions, operational requests/dispatch, candidates, planning, approval,
+  Discovery proposal application, legacy expectation PUT, YAML writers, or
+  automatic remediation/execution.
+- [x] Execution capability parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`.
+
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
 - [x] Production was rebuilt with no-cache images from the exact RC1 checkout.

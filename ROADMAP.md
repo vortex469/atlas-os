@@ -634,6 +634,9 @@ dispatch.
 
 ### V0.11-P4 — Coherent Mission Control provider experience
 
+**Status: complete.** P4a, P4b, and composed P4c acceptance satisfy the UI and
+authority-separation exit criteria. P5 remains next and unstarted.
+
 - Goal: present provider resources, identity status, monitoring intent, actions,
   and diagnostics without conflating their authority.
 - Deliverables: consistent Proxmox QEMU resource and monitoring-intent UX,

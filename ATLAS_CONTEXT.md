@@ -48,7 +48,7 @@ Implemented
 
 # Configuration
 
-Current behavior reads operational policy from runtime state in `data/config/policies.yaml` when available. Tracked `config/` files are treated as immutable bootstrap templates. The Atlas Runtime Foundation boundary is:
+Current behavior reads operational policy from runtime state in `data/config/policies.yaml` when available. For Proxmox monitoring, those YAML guest values are retained legacy evidence only; the activated schema-v2 Provider Intent Store is authoritative. Tracked `config/` files are treated as immutable bootstrap templates. The Atlas Runtime Foundation boundary is:
 
 Immutable defaults
 
@@ -84,7 +84,8 @@ ACE supports operational policy.
 
 Current
 
-- Expected Proxmox guest state
+- Identity-bound Proxmox QEMU monitoring expectations from Provider Intent;
+  retained YAML guest values are non-authoritative legacy evidence
 - Ignored Home Assistant entities
 - Expected Docker container state
 - OPNsense firmware posture
@@ -236,15 +237,20 @@ Current
 
 Atlas v0.11 — Provider Management Framework — Identity-Bound Runtime Intent
 
-Active major milestone
+V0.11-P4 closeout is complete after composed Mission Control acceptance. P3 is
+complete and production Provider Intent mutation is active on schema v2. QEMU
+110 / Frigate and QEMU 200 / pbs each have an explicit identity-bound
+`running` monitoring expectation. Public provider-management-v2 is canonical
+for monitoring and identity presentation; authenticated v3 supplies only
+caller-specific edit readiness. Monitoring, advisory diagnostics,
+compatibility actions, and operational maintenance remain distinct authority
+surfaces without widening execution. V0.11-P5 is next and has not started.
 
-- Complete V0.11-P0 as a documentation/architecture milestone.
-- Separate provider intent from legacy/generic provider actions and hardened
-  operational dispatch.
-- Limit the initial future write direction to identity-bound Proxmox QEMU
-  monitoring intent without widening any execution boundary.
-
-Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the tracked template and then treats runtime state as authoritative. Mission Control changes must not dirty the Git checkout.
+Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the
+tracked template. Runtime YAML remains authoritative for policy domains that
+still use it, but Proxmox guest YAML is compatibility/history evidence rather
+than current monitoring authority. Mission Control changes must not dirty the
+Git checkout.
 
 ---
 
