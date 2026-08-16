@@ -79,6 +79,7 @@ cleanup() {
                 --read-only \
                 --cap-drop ALL \
                 --cap-add CHOWN \
+                --cap-add DAC_READ_SEARCH \
                 --security-opt no-new-privileges:true \
                 --user 0:0 \
                 --mount "type=bind,src=$INCOMPLETE_DIRECTORY,dst=/backup" \

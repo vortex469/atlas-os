@@ -209,11 +209,11 @@ def apply_owner(path: Path, uid: int, gid: int) -> None:
 
     for current, directories, filenames in os.walk(path):
         current_path = Path(current)
-        os.chown(current_path, uid, gid)
+        os.chown(current_path, uid, gid, follow_symlinks=False)
         for name in directories:
-            os.chown(current_path / name, uid, gid)
+            os.chown(current_path / name, uid, gid, follow_symlinks=False)
         for name in filenames:
-            os.chown(current_path / name, uid, gid)
+            os.chown(current_path / name, uid, gid, follow_symlinks=False)
 
 
 def verify_backup(
