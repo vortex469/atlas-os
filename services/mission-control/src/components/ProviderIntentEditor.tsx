@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type {
+    ManagedProviderResourceV2,
     ManagedProviderResourceV3,
     ProviderMonitoringExpectation,
 } from "../types/providerManagement";
@@ -36,10 +37,14 @@ function parseExpectationSelection(
 
 export function ProviderIntentEditor({
     resource,
+    mutationResource,
+    operatorState,
     saving,
     onSave,
 }: {
-    resource: ManagedProviderResourceV3;
+    resource: ManagedProviderResourceV2;
+    mutationResource: ManagedProviderResourceV3 | null;
+    operatorState: "anonymous" | "available" | "unavailable";
     saving: boolean;
     onSave: (
         expectation: ProviderMonitoringExpectation,
@@ -52,40 +57,30 @@ export function ProviderIntentEditor({
     );
     const [acknowledged, setAcknowledged] = useState(false);
 
-    const canEdit = resource.caller_can_mutate
-        && resource.provider_intent_mutation_supported
-        && resource.editable_in_principle
-        && resource.resource_live
+    const canEdit = mutationResource !== null
+        && mutationResource.caller_can_mutate
+        && mutationResource.provider_intent_mutation_supported
+        && mutationResource.editable_in_principle
+        && mutationResource.resource_live
         && !resource.missing
         && resource.provider_id === "proxmox"
         && resource.resource_type === "qemu"
         && resource.identity_assurance === "authoritative"
-        && resource.management_fingerprint !== null;
+        && mutationResource.management_fingerprint !== null;
     const canSave = canEdit
         && selected !== ""
         && (selected !== "ignored" || acknowledged);
 
     return (
         <div className="min-w-64 space-y-2">
-            <div className="flex flex-wrap gap-2 text-xs">
-                <span className="font-medium text-slate-200">
-                    {resource.intent_status === "needs_review" ? "Needs Review" : resource.intent_status}
-                </span>
-                <span className="text-slate-500">Reason: {resource.intent_reason}</span>
-            </div>
-            {resource.management_fingerprint && (
-                <p className="font-mono text-[11px] text-slate-500">
-                    Identity {resource.management_fingerprint.slice(-12)}
-                </p>
-            )}
             {resource.replacement_detected && (
                 <p role="alert" className="text-xs text-amber-300">
-                    This resource was replaced. The old intent does not apply; choose a new value explicitly.
+                    This resource incarnation changed. The previous expectation is historical only and does not apply to the current identity. Choose a new value explicitly.
                 </p>
             )}
             {resource.legacy_review_available && resource.legacy_expectation && (
                 <p className="text-xs text-slate-400">
-                    Previous legacy expectation: {labels[resource.legacy_expectation]}
+                    Historical legacy expectation: {labels[resource.legacy_expectation]} — review context only; it will not be selected automatically.
                 </p>
             )}
             {canEdit ? (
@@ -132,9 +127,13 @@ export function ProviderIntentEditor({
                 </>
             ) : (
                 <p className="text-xs text-slate-500">
-                    {resource.mutation_readiness === "ready"
-                        ? "Your operator session does not permit Provider Intent updates."
-                        : readOnlyReasons[resource.mutation_readiness]}
+                    {operatorState === "anonymous"
+                        ? "Sign in with Provider Intent permission to edit this public monitoring state."
+                        : operatorState === "unavailable"
+                          ? "Editing is unavailable because operator capability could not be loaded."
+                          : mutationResource?.mutation_readiness === "ready"
+                            ? "Your operator session does not permit Provider Intent updates."
+                            : readOnlyReasons[mutationResource?.mutation_readiness ?? "authority_unavailable"]}
                 </p>
             )}
         </div>

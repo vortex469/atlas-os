@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { atlas } from "./atlas";
 import {
     getAuthenticatedProviderManagement,
+    getProviderManagement,
+    parseProviderManagementV2,
     putProviderMonitoringIntent,
 } from "./providerManagement";
 
@@ -45,3 +47,69 @@ describe("provider management API", () => {
         expect(request).not.toHaveProperty("digest");
     });
 });
+    const publicDescriptor = {
+        schema_version: "provider-management-v2",
+        provider_id: "proxmox",
+        provider_name: "Proxmox",
+        sections: ["connection", "discovery", "resources", "monitoring", "diagnostics", "actions"].map((section) => ({
+            section,
+            availability: "available",
+            read_only_descriptor: true,
+            grants_permission: false,
+            grants_execution: false,
+        })),
+        resource_types: [],
+        resources: [],
+        provider_intent_activation: "activated",
+        provider_intent_authority_status: "available",
+        grants_permission: false,
+        grants_execution: false,
+    };
+
+    it("loads and validates public v2 management without authentication options", async () => {
+        vi.mocked(atlas.get).mockResolvedValue({ data: publicDescriptor });
+        await expect(getProviderManagement("proxmox")).resolves.toEqual(publicDescriptor);
+        expect(atlas.get).toHaveBeenCalledWith("/providers/proxmox/management");
+    });
+
+    it.each([
+        [{ ...publicDescriptor, schema_version: "provider-management-v3" }],
+        [{ ...publicDescriptor, grants_permission: true }],
+        [{ ...publicDescriptor, caller_has_provider_intent_update: true }],
+        [{ ...publicDescriptor, provider_intent_authority_status: "unknown" }],
+    ])("rejects malformed or authority-expanding public responses", (value) => {
+        expect(() => parseProviderManagementV2(value)).toThrow();
+    });
+
+    it("rejects contradictory managed-resource semantics", () => {
+        const contradictory = {
+            ...publicDescriptor,
+            resources: [{
+                provider_id: "proxmox",
+                resource_id: "110",
+                resource_type: "qemu",
+                display_name: "Frigate",
+                current_state: "running",
+                missing: false,
+                identity_assurance: "authoritative",
+                management_fingerprint: `provider-management-fingerprint-v1:${"a".repeat(64)}`,
+                intent_authority: "provider_intent",
+                intent_status: "needs_review",
+                intent_reason: "matching_active_intent",
+                expectation: null,
+                record_version: null,
+                legacy_review_available: false,
+                legacy_expectation: null,
+                replacement_detected: false,
+                mutation_available: false,
+                operationally_requestable: false,
+                grants_execution: false,
+            }],
+        };
+        expect(() => parseProviderManagementV2(contradictory)).toThrow(/contradict/);
+    });
+
+    it("propagates public API errors", async () => {
+        vi.mocked(atlas.get).mockRejectedValue(new Error("offline"));
+        await expect(getProviderManagement("proxmox")).rejects.toThrow("offline");
+    });

@@ -29,6 +29,70 @@ export type ProviderIntentMutationReadiness =
     | "identity_unavailable"
     | "resource_type_unsupported";
 
+export type ProviderManagementSection =
+    | "connection"
+    | "discovery"
+    | "resources"
+    | "monitoring"
+    | "diagnostics"
+    | "actions";
+
+export type ProviderManagementSectionDescriptor = {
+    section: ProviderManagementSection;
+    availability: "available" | "unavailable";
+    read_only_descriptor: true;
+    grants_permission: false;
+    grants_execution: false;
+};
+
+export type ProviderResourceManagementSupportV2 = {
+    provider_id: string;
+    resource_type: string;
+    resource_readable: boolean;
+    authoritative_identity_supported: boolean;
+    provider_intent_capability_supported: boolean;
+    provider_intent_mutation_available: false;
+    supported_expectations: ProviderMonitoringExpectation[];
+    operationally_requestable: false;
+    grants_permission: false;
+    grants_execution: false;
+};
+
+export type ManagedProviderResourceV2 = {
+    provider_id: string;
+    resource_id: string;
+    resource_type: string;
+    display_name: string;
+    current_state: string;
+    missing: boolean;
+    identity_assurance: "authoritative" | "unavailable" | "unsupported";
+    management_fingerprint: string | null;
+    intent_authority: "legacy_policy" | "provider_intent";
+    intent_status: ProviderIntentStatus;
+    intent_reason: ProviderIntentReason;
+    expectation: ProviderMonitoringExpectation | null;
+    record_version: number | null;
+    legacy_review_available: boolean;
+    legacy_expectation: ProviderMonitoringExpectation | null;
+    replacement_detected: boolean;
+    mutation_available: false;
+    operationally_requestable: false;
+    grants_execution: false;
+};
+
+export type ProviderManagementV2 = {
+    schema_version: "provider-management-v2";
+    provider_id: string;
+    provider_name: string;
+    sections: ProviderManagementSectionDescriptor[];
+    resource_types: ProviderResourceManagementSupportV2[];
+    resources: ManagedProviderResourceV2[];
+    provider_intent_activation: "not_activated" | "activated";
+    provider_intent_authority_status: "available" | "unavailable";
+    grants_permission: false;
+    grants_execution: false;
+};
+
 export type ManagedProviderResourceV3 = {
     provider_id: string;
     resource_id: string;
@@ -60,13 +124,7 @@ export type ProviderManagementV3 = {
     schema_version: "provider-management-v3";
     provider_id: string;
     provider_name: string;
-    sections: Array<{
-        section: "connection" | "discovery" | "resources" | "monitoring" | "diagnostics" | "actions";
-        availability: "available" | "unavailable";
-        read_only_descriptor: true;
-        grants_permission: false;
-        grants_execution: false;
-    }>;
+    sections: ProviderManagementSectionDescriptor[];
     resource_types: Array<{
         provider_id: string;
         resource_type: string;
