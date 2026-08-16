@@ -25,6 +25,9 @@ from app.routes.provider_connections import router as provider_connections_route
 from app.routes.provider_intent_mutation import (
     router as provider_intent_mutation_router,
 )
+from app.routes.provider_intent_suggestions import (
+    router as provider_intent_suggestions_router,
+)
 from app.routes.provider_management import router as provider_management_router
 from app.routes.provider_resources import router as provider_resources_router
 from app.routes.providers import router as providers_router
@@ -68,6 +71,7 @@ router.include_router(health_router)
 router.include_router(providers_router)
 router.include_router(provider_connections_router)
 router.include_router(provider_management_router)
+router.include_router(provider_intent_suggestions_router)
 router.include_router(provider_intent_mutation_router)
 router.include_router(provider_resources_router)
 router.include_router(discovery_router)
