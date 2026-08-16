@@ -33,7 +33,7 @@ function policyDetails(
         );
         return [
             {
-                label: "Guest expectations",
+                label: "Legacy guest evidence",
                 value: names(guests),
             },
         ];
@@ -198,10 +198,11 @@ export function ProviderPolicyDetails({
     policies,
 }: ProviderPolicyDetailsProps) {
     const providerDetails = policyDetails(providerId, policies);
+    const isProxmox = providerId.replaceAll("_", "-") === "proxmox";
     const performance =
         policies.intelligence.providers[providerId];
     const details =
-        performance === undefined
+        isProxmox || performance === undefined
             ? providerDetails
             : [
                   ...(providerDetails ?? []),
@@ -220,8 +221,10 @@ export function ProviderPolicyDetails({
     return (
         <section>
             <SectionHeader
-                title="Operational Policy"
-                description="Live validated expectations currently enforced for this provider."
+                title={isProxmox ? "Legacy policy evidence" : "Operational Policy"}
+                description={isProxmox
+                    ? "Retained policies.yaml compatibility history. These guest values are non-authoritative review context, do not automatically apply to current resource identities, and do not replace Provider Intent."
+                    : "Live validated expectations currently enforced for this provider."}
             />
 
             {details === null ? (

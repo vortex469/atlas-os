@@ -115,6 +115,13 @@ describe("ProviderActions", () => {
         ).toBeInTheDocument();
     });
 
+    it("labels existing provider actions as compatibility mechanisms", async () => {
+        renderActions();
+        expect(await screen.findByRole("heading", { name: "Compatibility actions" })).toBeInTheDocument();
+        expect(screen.getByText(/Monitoring expectations do not invoke these actions/i)).toBeInTheDocument();
+        expect(screen.getByText(/operational maintenance is a separate workflow/i)).toBeInTheDocument();
+    });
+
     it("requires advertised parameters before execution", async () => {
         const user = userEvent.setup();
         mockedGetProviderActions.mockResolvedValue([

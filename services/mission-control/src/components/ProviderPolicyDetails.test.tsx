@@ -61,6 +61,25 @@ const policies: AtlasPolicies = {
 };
 
 describe("ProviderPolicyDetails", () => {
+    it("presents Proxmox YAML guest values only as non-authoritative legacy evidence", () => {
+        render(
+            <ProviderPolicyDetails
+                providerId="proxmox"
+                policies={{
+                    ...policies,
+                    proxmox: { guests: { "110": { expected: "stopped" } } },
+                }}
+            />,
+        );
+
+        expect(screen.getByRole("heading", { name: "Legacy policy evidence" })).toBeInTheDocument();
+        expect(screen.getByText("110: stopped")).toBeInTheDocument();
+        expect(screen.getByText(/non-authoritative review context/i)).toBeInTheDocument();
+        expect(screen.getByText(/do not automatically apply to current resource identities/i)).toBeInTheDocument();
+        expect(screen.queryByText(/currently enforced/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/current Atlas expectations/i)).not.toBeInTheDocument();
+    });
+
     it("shows complete Frigate camera policy details", () => {
         render(
             <ProviderPolicyDetails

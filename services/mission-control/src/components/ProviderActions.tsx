@@ -189,16 +189,16 @@ export function ProviderActions({
             {compact ? (
                 <div className="mb-3">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                        Operations
+                        Compatibility actions
                     </h3>
                     <p className="mt-1 text-xs text-slate-500">
-                        Safe actions advertised by this service provider.
+                        Existing provider-specific mechanisms, separate from monitoring policy and operational maintenance.
                     </p>
                 </div>
             ) : (
                 <SectionHeader
-                    title="Provider Actions"
-                    description="Safe operations advertised by this provider."
+                    title="Compatibility actions"
+                    description="Existing provider-specific action mechanisms. Monitoring expectations do not invoke these actions, and hardened operational maintenance is a separate workflow."
                 />
             )}
 

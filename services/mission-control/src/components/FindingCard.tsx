@@ -88,7 +88,7 @@ export function FindingCard({ finding }: FindingCardProps) {
                         />
 
                         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                            {formatLabel(finding.source)}
+                            Advisory finding · {formatLabel(finding.source)}
                         </p>
                     </div>
 

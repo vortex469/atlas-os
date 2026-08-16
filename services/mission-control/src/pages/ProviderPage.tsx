@@ -170,67 +170,20 @@ export function ProviderPage() {
             {provider && (
                 <>
                     <ProviderOverview provider={provider} />
-                    <ProviderActions
-                        provider={provider}
-                        onActionCompleted={refresh}
-                    />
-
-                    {provider.capabilities.includes("connection") && (
-                        <ProviderConnection provider={provider} />
-                    )}
 
                     {provider.capabilities.includes("resources") && (
-                        <ProviderResources provider={provider} />
+                        <section aria-label="Monitoring policy boundary">
+                            <p className="mb-4 rounded-lg border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-300">
+                                Monitoring expectations describe monitoring policy. They do not start, stop, restart, or remediate resources.
+                            </p>
+                            <ProviderResources provider={provider} />
+                        </section>
                     )}
-
-                    {policies && (
-                        <ProviderPolicyDetails
-                            providerId={provider.id}
-                            policies={policies}
-                        />
-                    )}
-
-                    <ProviderTelemetryTrend
-                        providerId={provider.id}
-                        snapshots={telemetryHistory}
-                        performancePolicy={
-                            policies?.intelligence.providers[
-                                provider.id
-                            ] ?? null
-                        }
-                    />
 
                     <section>
                         <SectionHeader
-                            title="Related Recommendations"
-                            description="Actions ACE recommends for this provider."
-                        />
-
-                        {relatedRecommendations.length > 0 ? (
-                            <div className="grid gap-4 lg:grid-cols-2">
-                                {relatedRecommendations.map(
-                                    (recommendation, index) => (
-                                        <RecommendationCard
-                                            key={`${recommendation.title}-${index}`}
-                                            recommendation={
-                                                recommendation
-                                            }
-                                        />
-                                    ),
-                                )}
-                            </div>
-                        ) : (
-                            <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                                ACE has no current recommendations for this
-                                provider.
-                            </div>
-                        )}
-                    </section>
-
-                    <section>
-                        <SectionHeader
-                            title="Related Findings"
-                            description="Evidence ACE has collected for this provider."
+                            title="Diagnostics"
+                            description="Read-only advisory findings from observed provider and monitoring evidence. Findings do not authorize policy mutation or execution."
                         />
 
                         {relatedFindings.length > 0 ? (
@@ -260,6 +213,58 @@ export function ProviderPage() {
                             </div>
                         )}
                     </section>
+
+                    <section>
+                        <SectionHeader
+                            title="Advisory recommendations"
+                            description="Suggested operator review only. Recommendations do not apply monitoring policy or authorize provider or operational execution."
+                        />
+
+                        {relatedRecommendations.length > 0 ? (
+                            <div className="grid gap-4 lg:grid-cols-2">
+                                {relatedRecommendations.map(
+                                    (recommendation, index) => (
+                                        <RecommendationCard
+                                            key={`${recommendation.title}-${index}`}
+                                            recommendation={recommendation}
+                                        />
+                                    ),
+                                )}
+                            </div>
+                        ) : (
+                            <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
+                                ACE has no current recommendations for this provider.
+                            </div>
+                        )}
+                    </section>
+
+                    <ProviderActions
+                        provider={provider}
+                        onActionCompleted={refresh}
+                    />
+
+                    {provider.id === "proxmox" && <section aria-labelledby="operational-maintenance-heading" className="rounded-lg border border-slate-800 bg-slate-900/70 p-6">
+                        <h2 id="operational-maintenance-heading" className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-200">Operational maintenance</h2>
+                        <p className="mt-2 text-sm leading-6 text-slate-400">Operational maintenance uses a distinct authenticated request, candidate, planning, and approval workflow. Monitoring changes and compatibility actions do not enter that workflow.</p>
+                        <Link to="/operations/request" className="mt-4 inline-flex rounded-lg border border-cyan-400/50 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300">Request operational maintenance</Link>
+                    </section>}
+
+                    {provider.capabilities.includes("connection") && (
+                        <ProviderConnection provider={provider} />
+                    )}
+
+                    <ProviderTelemetryTrend
+                        providerId={provider.id}
+                        snapshots={telemetryHistory}
+                        performancePolicy={policies?.intelligence.providers[provider.id] ?? null}
+                    />
+
+                    {policies && (
+                        <ProviderPolicyDetails
+                            providerId={provider.id}
+                            policies={policies}
+                        />
+                    )}
                 </>
             )}
         </main>

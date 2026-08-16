@@ -41,7 +41,7 @@ export function RecommendationCard({
             <div className="flex items-start justify-between gap-5">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                        Recommended Action
+                        Advisory recommendation
                     </p>
 
                     <h3 className="mt-2 text-base font-semibold leading-6 text-slate-100">
