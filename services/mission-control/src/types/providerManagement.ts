@@ -164,3 +164,20 @@ export type ProviderIntentMutationResult = {
     record_version: number;
     superseded_previous_incarnation: boolean;
 };
+
+export type ProviderMonitoringIntentSuggestionV1 = {
+    schema_version: "provider-monitoring-intent-suggestion-v1";
+    suggestion_id: `provider-monitoring-intent-suggestion-id-v1:${string}`;
+    provider_id: "proxmox";
+    resource_type: "qemu";
+    resource_id: string;
+    management_fingerprint: `provider-management-fingerprint-v1:${string}`;
+    suggested_expectation: "running";
+    base_record_version: 0;
+    source: "provider_intelligence_rule";
+    source_rule: "qemu-observed-running-no-active-intent-v1";
+    reason: "observed_running_without_active_intent";
+    advisory_only: true;
+    grants_permission: false;
+    grants_execution: false;
+};

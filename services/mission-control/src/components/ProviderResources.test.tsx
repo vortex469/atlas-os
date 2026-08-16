@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,10 +8,11 @@ import {
     getProviderManagement,
     putProviderMonitoringIntent,
 } from "../api/providerManagement";
+import { getProviderMonitoringIntentSuggestions } from "../api/providerIntentSuggestions";
 import { getProviderResources, refreshProviderResources } from "../api/resources";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
 import type { Provider } from "../types/provider";
-import type { ProviderManagementV2, ProviderManagementV3 } from "../types/providerManagement";
+import type { ProviderManagementV2, ProviderManagementV3, ProviderMonitoringIntentSuggestionV1 } from "../types/providerManagement";
 import type { ProviderResourceCollection } from "../types/resources";
 import { ProviderResources } from "./ProviderResources";
 import {
@@ -28,12 +29,16 @@ vi.mock("../api/resources", () => ({
     getProviderResources: vi.fn(),
     refreshProviderResources: vi.fn(),
 }));
+vi.mock("../api/providerIntentSuggestions", () => ({
+    getProviderMonitoringIntentSuggestions: vi.fn(),
+}));
 vi.mock("../hooks/operatorSessionContext", () => ({ useOperatorSession: vi.fn() }));
 vi.mock("../api/atlas", () => ({
     getAtlasErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
-const fingerprint = `provider-management-fingerprint-v1:${"a".repeat(64)}`;
+const fingerprint: ProviderMonitoringIntentSuggestionV1["management_fingerprint"] = `provider-management-fingerprint-v1:${"a".repeat(64)}`;
+const replacementFingerprint: ProviderMonitoringIntentSuggestionV1["management_fingerprint"] = `provider-management-fingerprint-v1:${"b".repeat(64)}`;
 const invalidate = vi.fn();
 const provider: Provider = {
     id: "proxmox",
@@ -65,6 +70,26 @@ const inventory: ProviderResourceCollection = {
     summary: { total: 1, configured: 0, needs_review: 1, missing: 0, ignored: 0, by_type: { qemu: 1 }, by_state: { running: 1 } },
     metadata: {},
 };
+
+function suggestion(overrides: Partial<ProviderMonitoringIntentSuggestionV1> = {}): ProviderMonitoringIntentSuggestionV1 {
+    return {
+        schema_version: "provider-monitoring-intent-suggestion-v1",
+        suggestion_id: `provider-monitoring-intent-suggestion-id-v1:${"c".repeat(64)}`,
+        provider_id: "proxmox",
+        resource_type: "qemu",
+        resource_id: "110",
+        management_fingerprint: fingerprint,
+        suggested_expectation: "running",
+        base_record_version: 0,
+        source: "provider_intelligence_rule",
+        source_rule: "qemu-observed-running-no-active-intent-v1",
+        reason: "observed_running_without_active_intent",
+        advisory_only: true,
+        grants_permission: false,
+        grants_execution: false,
+        ...overrides,
+    };
+}
 
 function management(overrides: Partial<ProviderManagementV3["resources"][number]> = {}): ProviderManagementV3 {
     return {
@@ -174,6 +199,7 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(refreshProviderResources).mockResolvedValue(inventory);
         vi.mocked(getProviderManagement).mockResolvedValue(publicManagement());
         vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management());
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([]);
         vi.mocked(putProviderMonitoringIntent).mockResolvedValue({
             outcome: "created",
             request_id: `provider-intent-mutation-${"b".repeat(32)}`,
@@ -208,6 +234,226 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(getProviderResources).toHaveBeenCalledTimes(1);
         expect(getProviderManagement).toHaveBeenCalledTimes(2);
         expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(2);
+    });
+
+    it("reviews advisory state locally and mutates only on explicit Save", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderMonitoringIntentSuggestions)
+            .mockResolvedValueOnce([suggestion()])
+            .mockResolvedValueOnce([]);
+        vi.mocked(getProviderManagement)
+            .mockResolvedValueOnce(publicManagement())
+            .mockResolvedValueOnce(publicManagement({
+                intent_status: "configured",
+                intent_reason: "matching_active_intent",
+                expectation: "running",
+                record_version: 1,
+            }));
+        await renderResources();
+        expect(screen.getByText("Not configured")).toBeInTheDocument();
+        expect(screen.getByText("Running", { selector: "dd" })).toBeInTheDocument();
+        expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole("button", { name: "Review suggestion" }));
+        expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("running");
+        expect(screen.getByText("Not configured")).toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText("Expected running")).toBeInTheDocument();
+        expect(screen.queryByText("Advisory suggestion")).not.toBeInTheDocument();
+    });
+
+    it("allows manual override after review", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
+        await renderResources();
+        await user.click(screen.getByRole("button", { name: "Review suggestion" }));
+        await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "stopped");
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1));
+        expect(putProviderMonitoringIntent).toHaveBeenCalledWith(
+            "proxmox", "qemu", "110",
+            expect.objectContaining({ expectation: "stopped" }),
+            "csrf",
+        );
+    });
+
+    it("shows a stale fingerprint without review or prefill", async () => {
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([
+            suggestion({ management_fingerprint: replacementFingerprint }),
+        ]);
+        await renderResources();
+        expect(screen.getByText(/different resource incarnation/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
+        expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("clears reviewed state when identity changes before Save", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderMonitoringIntentSuggestions)
+            .mockResolvedValueOnce([suggestion()])
+            .mockResolvedValueOnce([]);
+        vi.mocked(getProviderManagement)
+            .mockResolvedValueOnce(publicManagement())
+            .mockResolvedValueOnce(publicManagement({ management_fingerprint: replacementFingerprint }));
+        vi.mocked(getAuthenticatedProviderManagement)
+            .mockResolvedValueOnce(management())
+            .mockResolvedValueOnce(management({ management_fingerprint: replacementFingerprint }));
+        await renderResources();
+        await user.click(screen.getByRole("button", { name: "Review suggestion" }));
+        expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("running");
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        expect(await screen.findByText(/different resource incarnation/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("requires a renewed explicit choice when intent configures after review", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderMonitoringIntentSuggestions)
+            .mockResolvedValueOnce([suggestion()])
+            .mockResolvedValueOnce([]);
+        vi.mocked(getProviderManagement)
+            .mockResolvedValueOnce(publicManagement())
+            .mockResolvedValueOnce(publicManagement({
+                intent_status: "configured",
+                intent_reason: "matching_active_intent",
+                expectation: "running",
+                record_version: 1,
+            }));
+        vi.mocked(getAuthenticatedProviderManagement)
+            .mockResolvedValueOnce(management())
+            .mockResolvedValueOnce(management({
+                intent_status: "configured",
+                intent_reason: "matching_active_intent",
+                expectation: "running",
+                record_version: 1,
+            }));
+        await renderResources();
+        await user.click(screen.getByRole("button", { name: "Review suggestion" }));
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        expect(await screen.findByText("Expected running")).toBeInTheDocument();
+        expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("does not treat suggestion review as ignored acknowledgement", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
+        await renderResources();
+        await user.click(screen.getByRole("button", { name: "Review suggestion" }));
+        await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "ignored");
+        const acknowledgement = screen.getByRole("checkbox", { name: /I understand monitoring findings/i });
+        expect(acknowledgement).not.toBeChecked();
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        await user.click(acknowledgement);
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("keeps suggestions reviewable but mutation unavailable without permission", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({ caller_can_mutate: false }));
+        render(<ProviderResources provider={provider} />);
+        await user.click(await screen.findByRole("button", { name: "Review suggestion" }));
+        expect(screen.getByText(/selected for local review/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("keeps advisory review visible but editing unavailable when v3 fails", async () => {
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
+        vi.mocked(getAuthenticatedProviderManagement).mockRejectedValue(new Error("offline"));
+        render(<ProviderResources provider={provider} />);
+        expect(await screen.findByText("Advisory suggestion")).toBeInTheDocument();
+        expect(screen.getByText("Not configured")).toBeInTheDocument();
+        expect(screen.getByText(/operator capability could not be loaded/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("preserves authoritative monitoring when suggestion loading fails", async () => {
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockRejectedValue(new Error("offline"));
+        render(<ProviderResources provider={provider} />);
+        expect(await screen.findByText("Not configured")).toBeInTheDocument();
+        expect(screen.getByText(/suggestions could not be loaded/i)).toBeInTheDocument();
+        expect(screen.queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
+    });
+
+    it("reports suggestion refresh failure without reporting mutation failure", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderMonitoringIntentSuggestions)
+            .mockResolvedValueOnce([suggestion()])
+            .mockRejectedValueOnce(new Error("offline"));
+        vi.mocked(getProviderManagement)
+            .mockResolvedValueOnce(publicManagement())
+            .mockResolvedValueOnce(publicManagement({
+                intent_status: "configured",
+                intent_reason: "matching_active_intent",
+                expectation: "running",
+                record_version: 1,
+            }));
+        await renderResources();
+        await user.click(screen.getByRole("button", { name: "Review suggestion" }));
+        await user.click(screen.getByRole("button", { name: "Save" }));
+        expect(await screen.findByText(/saved and confirmed.*suggestions could not be refreshed/i)).toBeInTheDocument();
+        expect(screen.queryByText(/could not save the monitoring expectation/i)).not.toBeInTheDocument();
+        expect(await screen.findByText("Expected running")).toBeInTheDocument();
+        expect(screen.getByText(/different resource incarnation or monitoring state/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
+    });
+
+    it("associates a QEMU suggestion by exact type when LXC has the same ID", async () => {
+        const lxcInventory = { ...inventory.resources[0], resource_type: "lxc", display_name: "Container" };
+        const lxcManagement = {
+            ...publicManagement().resources[0],
+            resource_type: "lxc",
+            display_name: "Container",
+            identity_assurance: "unsupported" as const,
+            management_fingerprint: null,
+            intent_status: "unsupported" as const,
+            intent_reason: "resource_type_unsupported" as const,
+        };
+        vi.mocked(getProviderResources).mockResolvedValue({
+            ...inventory,
+            resources: [lxcInventory, inventory.resources[0]],
+        });
+        vi.mocked(getProviderManagement).mockResolvedValue({
+            ...publicManagement(),
+            resources: [lxcManagement, publicManagement().resources[0]],
+        });
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
+        render(<ProviderResources provider={provider} />);
+        const qemu = await screen.findByTestId("resource-row-qemu-110");
+        const lxc = screen.getByTestId("resource-row-lxc-110");
+        expect(within(qemu).getByText("Advisory suggestion")).toBeInTheDocument();
+        expect(within(lxc).queryByText("Advisory suggestion")).not.toBeInTheDocument();
+    });
+
+    it("keeps reviewed selection local to its exact QEMU coordinate", async () => {
+        const user = userEvent.setup();
+        const qemu200Inventory = { ...inventory.resources[0], resource_id: "200", display_name: "PBS", metadata: { vmid: 200, node: "vorex469" } };
+        const qemu200Public = { ...publicManagement().resources[0], resource_id: "200", display_name: "PBS" };
+        const qemu200Operator = { ...management().resources[0], resource_id: "200", display_name: "PBS" };
+        vi.mocked(getProviderResources).mockResolvedValue({ ...inventory, resources: [inventory.resources[0], qemu200Inventory] });
+        vi.mocked(getProviderManagement).mockResolvedValue({ ...publicManagement(), resources: [publicManagement().resources[0], qemu200Public] });
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue({ ...management(), resources: [management().resources[0], qemu200Operator] });
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
+        render(<ProviderResources provider={provider} />);
+        const qemu110 = await screen.findByTestId("resource-row-qemu-110");
+        const qemu200 = screen.getByTestId("resource-row-qemu-200");
+        await user.click(within(qemu110).getByRole("button", { name: "Review suggestion" }));
+        expect(within(qemu110).getByLabelText(/monitoring expectation/i)).toHaveValue("running");
+        expect(within(qemu200).getByLabelText(/monitoring expectation/i)).toHaveValue("");
+        expect(within(qemu200).queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -324,6 +570,7 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(screen.getByText(/Sign in with Provider Intent permission/)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(getAuthenticatedProviderManagement).not.toHaveBeenCalled();
+        expect(getProviderMonitoringIntentSuggestions).not.toHaveBeenCalled();
     });
 
     it("preserves public monitoring when authenticated v3 fails", async () => {

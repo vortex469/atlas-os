@@ -40,12 +40,16 @@ export function ProviderIntentEditor({
     mutationResource,
     operatorState,
     saving,
+    initialSelection,
+    requireExplicitSelection = false,
     onSave,
 }: {
     resource: ManagedProviderResourceV2;
     mutationResource: ManagedProviderResourceV3 | null;
     operatorState: "anonymous" | "available" | "unavailable";
     saving: boolean;
+    initialSelection?: ProviderMonitoringExpectation;
+    requireExplicitSelection?: boolean;
     onSave: (
         expectation: ProviderMonitoringExpectation,
         acknowledgeSuppression: boolean,
@@ -53,7 +57,9 @@ export function ProviderIntentEditor({
 }) {
     const configured = resource.intent_status === "configured";
     const [selected, setSelected] = useState<ProviderMonitoringExpectation | "">(
-        configured ? resource.expectation ?? "" : "",
+        requireExplicitSelection
+            ? ""
+            : configured ? resource.expectation ?? "" : initialSelection ?? "",
     );
     const [acknowledged, setAcknowledged] = useState(false);
 
@@ -99,7 +105,7 @@ export function ProviderIntentEditor({
                             }}
                             className="mt-1 block rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                         >
-                            {!configured && <option value="">Choose explicitly</option>}
+                            {(!configured || requireExplicitSelection) && <option value="">Choose explicitly</option>}
                             {Object.entries(labels).map(([value, label]) => (
                                 <option key={value} value={value}>{label}</option>
                             ))}
