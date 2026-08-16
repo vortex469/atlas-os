@@ -1,0 +1,6 @@
+services:
+  atlas-core:
+    environment:
+      ATLAS_PROVIDER_INTENT_ACTIVATION: activated
+      ATLAS_PROVIDER_INTENT_DATABASE: ${ATLAS_PROVIDER_INTENT_DATABASE:?set the activated Provider Intent database path}
+      ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID: ${ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID:?set the accepted legacy import ID}
