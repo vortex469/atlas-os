@@ -237,31 +237,21 @@ Current
 
 Atlas v0.11 — Provider Management Framework — Identity-Bound Runtime Intent
 
-V0.11-P4 closeout is complete after composed Mission Control acceptance. P3 is
-complete and production Provider Intent mutation is active on schema v2. QEMU
-110 / Frigate and QEMU 200 / pbs each have an explicit identity-bound
+V0.11 release acceptance is complete. The exact evidence-bound implementation
+SHA is `f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`; no V0.11 implementation
+milestone remains. Production Provider Intent authority is active on schema v2.
+QEMU 110 / Frigate and QEMU 200 / pbs each have an explicit identity-bound
 `running` monitoring expectation. Public provider-management-v2 is canonical
 for monitoring and identity presentation; authenticated v3 supplies only
-caller-specific edit readiness. Monitoring, advisory diagnostics,
-compatibility actions, and operational maintenance remain distinct authority
-surfaces without widening execution.
+caller-specific edit readiness.
 
-V0.11-P5c (Recovery-evidence-v3 and release acceptance) is in progress:
-- `atlas-core-recovery-evidence-v3` schema formalized with 12 additional v3-specific
-  checks binding exact-SHA mutation-state proof to identity-bound Provider Intent
-  incarnation boundaries.
-- V3 evidence validation enforces schema/activation pairing: only v3+activated
-  satisfies final release acceptance; v1/v2 evidence rejected.
-- Provider Intent Store idempotency proven: exact request replay returns identical
-  outcome without duplicate audit records.
-- Incarnation rebinding isolation proven: new fingerprint creates new v1 record;
-  old incarnation retained in history.
-- Isolation boundaries validated: Discovery/ACE/suggestion reads and legacy-YAML
-  authority never create or mutate Provider Intent records.
-- Canonical Atlas Core regression suite: 1188 passed; v3 regression suite
-  10/10 passed. The separately reported 1184/1186 root invocation was traced
-  to two pre-existing working-directory-sensitive tests, both of which pass
-  from the canonical Atlas Core directory on the P5c tree and clean baseline.
+P5 advisory suggestions remain non-authoritative and explicit-review only:
+Review and Save require a fresh authenticated operator decision, and no
+suggestion automatically mutates intent or causes remediation. Monitoring,
+advisory diagnostics, compatibility actions, and operational maintenance remain
+distinct authority surfaces. V0.11 added no execution capability: operational
+execution remains exactly `restart-service/proxmox/qemu`, and repository
+execution remains `update-compose-stack`.
 
 Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the
 tracked template. Runtime YAML remains authoritative for policy domains that

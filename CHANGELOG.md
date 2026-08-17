@@ -6,10 +6,10 @@ release boundaries.
 
 ## Unreleased
 
-### Atlas v0.11-P5c — Recovery-evidence-v3 and release acceptance (in progress)
+### Atlas v0.11 — Provider Management Framework release accepted
 
-Atlas v0.11-P5c implements the final release acceptance evidence and completes
-the identity-bound Provider Intent boundary formalization.
+Atlas v0.11 is release-accepted at the exact evidence-bound implementation SHA
+`f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`. No release tag is recorded yet.
 
 #### Added
 
@@ -24,6 +24,15 @@ the identity-bound Provider Intent boundary formalization.
 - Recovery gate v3 verification branch with seeded fixture demonstrating active
   identity-bound records, legacy evidence preservation, mutation receipt,
   and audit operator-binding.
+- Identity-bound Provider Intent authority for supported Proxmox QEMU resources,
+  with schema-v2 durable mutation, audit, and idempotency records.
+- Authenticated explicit mutation and a coherent Mission Control authority
+  presentation separating observed state, monitoring intent, diagnostics,
+  provider actions, and operational maintenance.
+- Advisory suggestions that require explicit Review and Save; suggestions never
+  apply automatically or cause remediation.
+- Backup/recovery-v3 preservation of active identity-bound intent, legacy
+  records, import receipts, mutation evidence, and audit evidence.
 
 #### Validation
 
@@ -34,6 +43,10 @@ the identity-bound Provider Intent boundary formalization.
 - Isolation boundaries: Discovery/ACE/suggestion reads, UI rendering, and
   legacy-YAML authority never create or mutate Provider Intent records.
 - LXC unsupported: record creation fails closed; no active coordinate entry.
+- LXC remains unsupported for identity-bound Provider Intent. V0.11 adds no
+  automatic remediation and no execution expansion; capability parity remains
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`.
 - Canonical Atlas Core regression suite: 1188/1188 passed. The separately
   reported 1184/1186 root invocation was traced to two pre-existing
   working-directory-sensitive tests that pass from the canonical Core
@@ -46,12 +59,7 @@ the identity-bound Provider Intent boundary formalization.
 - [x] V3 idempotency and replacement-isolation proven
 - [x] Isolation boundaries validated
 - [x] Full regression suite clean
-- [ ] Documentation and release evidence package (in progress)
-
-## Unreleased — v0.11 release series
-
-Atlas v0.11 is a documentation-only architecture milestone defining the
-Provider Management Framework boundary for identity-bound runtime intent.
+- [x] Documentation and release evidence package complete
 
 ## atlas-v0.10.0 — Atlas v0.10.0 (2026-08-15)
 

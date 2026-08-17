@@ -553,6 +553,10 @@ or mutation.
 
 **Theme: Provider Management Framework — Identity-Bound Runtime Intent**
 
+**Status: complete; release accepted.** V0.11-P0 through V0.11-P5 are complete.
+The exact evidence-bound implementation SHA is
+`f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`.
+
 Objective: establish a provider-management control plane in which durable user
 intent is bound to the provider-authoritative incarnation of a managed
 resource. The initial supported write direction is narrowly limited to Proxmox
@@ -635,7 +639,7 @@ dispatch.
 ### V0.11-P4 — Coherent Mission Control provider experience
 
 **Status: complete.** P4a, P4b, and composed P4c acceptance satisfy the UI and
-authority-separation exit criteria. P5 remains next and unstarted.
+authority-separation exit criteria.
 
 - Goal: present provider resources, identity status, monitoring intent, actions,
   and diagnostics without conflating their authority.
@@ -649,6 +653,9 @@ authority-separation exit criteria. P5 remains next and unstarted.
 
 ### V0.11-P5 — Advisory policy suggestions and release acceptance
 
+**Status: complete.** P5 advisory suggestions and final release acceptance are
+implemented and accepted.
+
 - Goal: add reviewable suggestions and validate the complete identity-bound
   provider-intent boundary for release.
 - Deliverables: advisory suggestion contracts and UX, explicit operator
@@ -660,7 +667,10 @@ authority-separation exit criteria. P5 remains next and unstarted.
   operator action, replacement identity remains fail-closed, and execution,
   permissions, gates, handlers, and ACLs retain pre-v0.11 parity.
 
-#### V0.11-P5c — Recovery-evidence-v3 and release acceptance (in progress)
+#### V0.11-P5c — Recovery-evidence-v3 and release acceptance
+
+**Status: complete.** Exact-SHA recovery and release evidence passed for
+`f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`.
 
 - `atlas-core-recovery-evidence-v3` schema formalized with 12 additional
   v3-specific checks beyond v2:
@@ -696,7 +706,7 @@ authority-separation exit criteria. P5 remains next and unstarted.
   - [x] Idempotency and isolation proven
   - [x] Boundaries validated
   - [x] Regression suite clean
-  - [ ] Documentation and release evidence (in progress)
+  - [x] Documentation and release evidence complete
 
 ### V0.11 non-goals
 

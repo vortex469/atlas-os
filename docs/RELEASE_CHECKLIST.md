@@ -409,8 +409,7 @@ and compatibility/lineage guidance (`b5390ba`).
   `5babaf105bd1530efc56a9512b093a47e37d17e3`.
 - [x] V0.11-P4c — Composed provider-page, accessibility, error-state, keyboard,
   and structural-boundary acceptance complete in this closeout slice.
-- [x] V0.11-P4 — P4a through P4c complete. V0.11-P5 is next and remains
-  unstarted.
+- [x] V0.11-P4 — P4a through P4c complete.
 - [x] Public provider-management-v2 is canonical for public resource identity,
   monitoring expectation, status, reason, and legacy-review context.
   Authenticated provider-management-v3 is only the caller-specific
@@ -443,9 +442,12 @@ and compatibility/lineage guidance (`b5390ba`).
 
 ## Atlas v0.11 P5c Recovery-evidence-v3 and release acceptance
 
-- [ ] V0.11-P5c — Recovery-evidence-v3 schema formalization, exact-SHA release
+- [x] V0.11-P5c — Recovery-evidence-v3 schema formalization, exact-SHA release
   validation, idempotency and isolation regression tests, and release
-  acceptance documentation (in progress).
+  acceptance documentation complete.
+- [x] V0.11-P5 — Advisory policy suggestions and release acceptance complete.
+- [x] V0.11 release acceptance complete for the exact evidence-bound
+  implementation SHA `f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`.
 
 ### Atlas v0.11-P5c implementation
 
@@ -480,8 +482,44 @@ and compatibility/lineage guidance (`b5390ba`).
 - [x] V3 idempotency and replacement-isolation regression tests passing
 - [x] Isolation boundaries (Discovery/ACE/suggestion/legacy-YAML) validated
 - [x] Full canonical regression suite clean (1188 passed)
-- [ ] Documentation, CHANGELOG, and ROADMAP updates (in progress)
-- [ ] Final release acceptance evidence package (pending)
+- [x] Documentation, CHANGELOG, and ROADMAP updates complete
+- [x] Final release acceptance evidence package complete
+
+### Atlas v0.11 final release acceptance evidence
+
+- [x] Candidate images are pinned exactly: Atlas Core
+  `sha256:e84fd994b6d83953b2dff72b97f59319dc05749e012914bf5c555b6082843bd1`,
+  Atlas Agent
+  `sha256:89a3b24c042528af7e6f536ecd74ea77279dfd0a666eb678191895fe255cc908`,
+  Execution Worker
+  `sha256:f064d56e9aec54bdc968c7a73fb966c106e99cb907084fe359c9b95bcd0cc727`,
+  and Mission Control
+  `sha256:e1f75f09884b634635734e9a739f85985150a9d5615fe40203a950a5ad9b73e1`.
+- [x] Recovery evidence uses schema `atlas-core-recovery-evidence-v3`, status
+  `ready`, and 39 ordered checks. Its SHA-256 is
+  `589fb0caa12c0a996cd777e79536be6411343645dd71e4f3c20dad2a4be1e536`.
+- [x] Final release evidence status is `ready`; its SHA-256 is
+  `a894f51f871fb8c5c6dc961d1d5c0efb8d2e56178c99964e44052e321050c989`.
+- [x] Remote Quality gates run `31980230307` completed successfully, and
+  Container release gate run `31980230301` completed successfully.
+- [x] Exact-SHA remote Compose validation passed: base and hardened renders
+  passed, Atlas Edge is published, and Mission Control is not directly
+  published.
+- [x] Production read-only acceptance confirms Provider Intent schema v2,
+  seven `legacy_unbound` records, two active identity-bound QEMU intents,
+  QEMU 110 and QEMU 200 each `running` at version 1, zero suggestions, zero
+  active LXC intents, no in-flight or outcome-unknown operational work, all
+  required services healthy, and a clean restore namespace. Provider Intent is
+  authoritative; `policies.yaml` is retained but non-authoritative; legacy PUT
+  authority is disabled; only the intended operator retains
+  `provider_intent:update`.
+- [x] Production Provider Intent Store checksum is
+  `285940362727efd38814d6e899d40638e0f5c8e883342aa2b622efcc25356e12`.
+- [x] Execution parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`.
+- [x] Bundle checksum-manifest SHA-256 is
+  `6515cbaa8abe8e4cc800b98549b4aa3a9ef94cd9b705bc8b689840fdfe3c4a64`.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
