@@ -52,8 +52,11 @@ def test_cache_module_is_not_wired_into_application_modules():
     for path in app_dir.rglob("*.py"):
         if path.name in {
             "dynamic_cache.py",
+            "dynamic_refresh.py",
             "test_dynamic_cache.py",
             "test_dynamic_evaluation_isolation.py",
+            "test_dynamic_refresh.py",
+            "test_dynamic_refresh_isolation.py",
             "test_dynamic_source_isolation.py",
             Path(__file__).name,
         }:

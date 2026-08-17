@@ -4,9 +4,10 @@ import ast
 from pathlib import Path
 
 
-def test_evaluation_has_no_io_network_cache_authority_or_application_coupling():
-    path = Path(__file__).with_name("dynamic_evaluation.py")
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+def test_refresh_has_no_direct_filesystem_clock_route_or_authority_coupling():
+    path = Path(__file__).with_name("dynamic_refresh.py")
+    source = path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
     imports: set[str] = set()
     calls: set[str] = set()
     for node in ast.walk(tree):
@@ -19,61 +20,60 @@ def test_evaluation_has_no_io_network_cache_authority_or_application_coupling():
                 calls.add(node.func.attr)
             elif isinstance(node.func, ast.Name):
                 calls.add(node.func.id)
-    forbidden = {
+    forbidden_imports = {
         "pathlib",
         "os",
-        "open",
-        "write",
-        "unlink",
-        "replace",
-        "rename",
-        "dynamic_cache",
-        "publish",
-        "fetch",
+        "socket",
         "httpx",
         "requests",
-        "socket",
         "routes",
         "startup",
-        "lifespan",
-        "provider_intents",
         "providers",
+        "provider_intents",
         "operational",
         "execution",
-        "candidates",
         "planning",
         "approvals",
-        "policies",
         "proposals",
-        "agent",
-        "migration",
         "backup",
         "restore",
         "recovery",
         "mission_control",
+    }
+    forbidden_calls = {
+        "open",
+        "read_text",
+        "write_text",
+        "unlink",
+        "replace",
+        "rename",
+        "chmod",
+        "chown",
+        "initialize",
+        "now",
         "utcnow",
     }
-    assert not any(any(part in name.lower() for part in forbidden) for name in imports)
-    assert not any(any(part in name.lower() for part in forbidden) for name in calls)
-    source = path.read_text(encoding="utf-8")
+    assert not any(
+        any(part in name.lower() for part in forbidden_imports) for name in imports
+    )
+    assert not (calls & forbidden_calls)
     assert "datetime.now" not in source
+    assert "/opt/atlas/data/cache/discovery" not in source
 
 
-def test_evaluation_module_is_not_wired_into_application_modules():
+def test_refresh_module_is_not_wired_into_application_modules():
     app_dir = Path(__file__).parents[1]
     references = []
     for path in app_dir.rglob("*.py"):
         if path.name in {
-            "dynamic_evaluation.py",
             "dynamic_refresh.py",
             "test_dynamic_cache_isolation.py",
-            "test_dynamic_evaluation.py",
+            "test_dynamic_evaluation_isolation.py",
             "test_dynamic_refresh.py",
-            "test_dynamic_refresh_isolation.py",
             "test_dynamic_source_isolation.py",
             Path(__file__).name,
         }:
             continue
-        if "dynamic_evaluation" in path.read_text(encoding="utf-8"):
+        if "dynamic_refresh" in path.read_text(encoding="utf-8"):
             references.append(path.relative_to(app_dir).as_posix())
     assert references == []

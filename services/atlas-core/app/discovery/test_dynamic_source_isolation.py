@@ -41,11 +41,14 @@ def test_dynamic_source_is_not_wired_into_application_modules():
         if path.name in {
             "dynamic_cache.py",
             "dynamic_evaluation.py",
+            "dynamic_refresh.py",
             "dynamic_sources.py",
             "test_dynamic_cache.py",
             "test_dynamic_cache_isolation.py",
             "test_dynamic_evaluation.py",
             "test_dynamic_evaluation_isolation.py",
+            "test_dynamic_refresh.py",
+            "test_dynamic_refresh_isolation.py",
             "test_dynamic_sources.py",
             Path(__file__).name,
         }:
