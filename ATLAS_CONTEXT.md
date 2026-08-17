@@ -264,7 +264,20 @@ still use it, but Proxmox guest YAML is compatibility/history evidence rather
 than current monitoring authority. Mission Control changes must not dirty the
 Git checkout.
 
-No V0.12 implementation scope or milestone has been accepted.
+Atlas v0.12 has the accepted theme **Dynamic Discovery Sources** and implements
+Discovery Center D10 only. V0.12-P0 is documentation and architecture planning;
+no D10 runtime implementation or production activation has begun. Dynamic facts
+will remain optional, read-only advisory evidence with explicit provenance,
+trust, freshness, health, and conflict state. The shipped curated catalog remains
+available offline and cannot be silently overwritten by dynamic or cached facts.
+
+The first adapter remains a human decision before P1. Initial source selection
+must be fixed and code-owned, use bounded read-only HTTPS retrieval without
+privileged credentials, and demonstrate provenance, freshness, conflict, cache,
+and offline behavior. Operator-managed source configuration, D11 semantic
+discovery, D12 community/private catalogs, notifications, user settings, learned
+AI intent, automatic remediation, bulk mutation, and execution expansion remain
+deferred.
 
 ---
 

@@ -719,3 +719,221 @@ automatic approval, automatic policy application, proposal-derived authority,
 Discovery-to-dispatch coupling, automatic rollback, remote deployment,
 distributed orchestration, conversational execution, dynamic/community/private
 Discovery catalogs, semantic catalog search, and bulk policy mutation.
+
+## Atlas v0.12 roadmap
+
+**Theme: Dynamic Discovery Sources**
+
+**Status: P0 planning accepted; implementation not started.** Atlas v0.12 is
+bounded to Discovery Center D10. D1 through D9 are released prerequisites; D11
+semantic discovery and D12 community/private catalogs do not enter this release.
+The dependency order is
+`V0.12-P0 → V0.12-P1 → V0.12-P2 → V0.12-P3 → V0.12-P4 → V0.12-P5`.
+
+### Release goal and authority boundary
+
+V0.12 supplements the always-available shipped curated catalog with optional,
+current external Discovery facts. Adapters normalize bounded external responses
+into typed facts carrying source provenance, trust, freshness, health, and
+conflict state. A deterministic merged read model exposes agreements and
+conflicts without silently replacing curated facts. Bounded rebuildable caching
+preserves useful, explicitly stale context while offline.
+
+Dynamic and cached facts are evidence, not authority. They grant no permission
+or execution; mutate neither Provider Intent nor `policies.yaml`; create no
+operational request, provider action, execution candidate, approval, or applied
+Discovery proposal; and cannot turn recommendations into authority or automatic
+remediation. Operational execution remains exactly
+`restart-service/proxmox/qemu`, and repository execution remains
+`update-compose-stack`.
+
+### Curated, dynamic, and cached fact contract
+
+- Shipped curated catalog entries remain immutable, deterministic, and available
+  without network access.
+- Dynamic facts supplement curated facts and never silently overwrite them.
+- Every projected dynamic fact identifies a closed source ID and type, a safe
+  source-origin classification, trust tier, retrieval time, freshness/expiry,
+  source health, provenance, and conflict state.
+- Source IDs are canonical bounded identifiers registered in code; source type
+  is an adapter-specific registered literal. The initial origin class is exactly
+  `public_https_allowlisted` and the trust tier is exactly `supplemental`.
+  Freshness is one of `fresh`, `stale`, or `expired`; health is one of `healthy`,
+  `degraded`, or `unavailable`; conflict is one of `none`, `agreement`,
+  `dynamic_conflict`, or `curated_conflict`. Public contracts reject unknown
+  values rather than accepting free-form authority-bearing metadata.
+- Cached dynamic facts retain the same provenance and retrieval identity. Cache
+  presence never promotes a fact to authoritative state.
+- The merged read order is deterministic and preserves all materially distinct
+  claims. Agreement may be summarized only while retaining provenance; conflict
+  is projected explicitly and no conflicting dynamic value is selected as
+  authority.
+- Arbitrary raw remote payloads are not stored or projected as authoritative
+  Discovery state.
+
+### Source, cache, offline, and egress boundary
+
+The initial adapter set is fixed and code-owned. Operator-managed arbitrary URLs
+and credentials are excluded until separately designed. Adapters use allowlisted
+HTTPS origins, bounded timeouts and response sizes, expected content types,
+strict typed normalization, and closed redirect behavior. Resolution and
+connection must reject loopback, link-local, private, reserved, metadata, and
+otherwise disallowed destinations so adapters cannot become SSRF primitives.
+Logs expose sanitized source IDs, health, timing, and controlled reasons, never
+credentials, query secrets, arbitrary bodies, or unsafe URLs.
+
+Normalized dynamic results are a rebuildable cache under
+`/opt/atlas/data/cache/discovery/`. Each source generation is bounded,
+checksummed, versioned, and atomically published with retrieval and expiry
+times. Fresh cache participates in normal merged reads. Stale cache may remain
+visible only with an explicit stale state and never satisfies a fresh-data
+claim; expired or invalid cache is excluded from fact projection. Corruption is
+isolated to the affected source and discarded. Cache invalidation is safe at any
+time. Startup and curated Discovery do not fail solely because cache is absent,
+corrupt, expired, or an optional source is offline.
+
+Purely rebuildable cache is excluded from `atlas-core-data-backup-v3`, restore
+transactions, and authoritative recovery inventory. V0.12 does not require
+backup v4. Durable operator-managed source configuration is not part of the
+initial boundary; if later accepted, it must be stored separately from cache and
+receive explicit authentication, backup, restore, migration, and recovery
+contracts.
+
+### V0.12-P0 — Dynamic Discovery architecture and trust contracts
+
+- Goal: bind D10 to the V0.12 release and define its closed read-only contracts.
+- Deliverables: release boundary; source/trust/provenance, adapter, cache,
+  conflict, offline, egress, persistence, recovery, UI, and test contracts;
+  milestone order; explicit deferrals and first-adapter decision.
+- Dependencies: released D1 through D9 and the post-v0.11 architecture baseline.
+- Non-goals: runtime code, adapter selection by assumption, source activation,
+  production mutation, or any D11/D12 behavior.
+- Authority boundary: documentation creates no permission, mutation, provider,
+  proposal-application, or execution authority.
+- Production and migration impact: none.
+- Tests: documentation links/anchors, scope and authority searches, V0.11 stale
+  guard, and execution-parity wording.
+- Exit criteria: authoritative documents agree on one bounded D10 release with
+  no implied dynamic-source authority or implementation.
+
+### V0.12-P1 — Adapter and normalized-source foundation
+
+- Goal: implement one accepted, fixed, read-only adapter and provider-neutral
+  normalization contracts without integrating dynamic facts into public reads.
+- Deliverables: closed adapter protocol; typed source identity, provenance,
+  trust, retrieval, health, and normalized-fact models; bounded failure reasons;
+  one human-approved adapter behind an inactive boundary.
+- Dependencies: P0 and explicit first-adapter selection.
+- Non-goals: cache, merged reads, public API/UI, operator source configuration,
+  credentials, or production activation.
+- Authority boundary: adapters retrieve and normalize only; they cannot import
+  mutation, Provider Intent, provider action, candidate, approval, or dispatch
+  services.
+- Production and migration impact: none; no persistent state.
+- Tests: strict models, canonical identity/order, response bounds, malformed
+  data, timeout/content-type/redirect/SSRF refusal, redaction, and structural
+  isolation from mutation and execution modules.
+- Exit criteria: deterministic fixtures produce bounded typed facts and every
+  failure is controlled, non-mutating, and safe offline.
+
+### V0.12-P2 — Cache, freshness, conflicts, and offline behavior
+
+- Goal: add deterministic source generations, rebuildable caching, freshness,
+  health, and conflict evaluation while preserving curated availability.
+- Deliverables: versioned atomic cache format, per-source bounds and checksum,
+  TTL states, invalidation/corruption rules, conflict evaluator, refresh
+  coordination, and offline fallback.
+- Dependencies: P1.
+- Non-goals: authoritative persistence, source configuration writes, backup
+  inventory changes, API/UI, or source-driven actions.
+- Authority boundary: cache and conflict outcomes remain evidence and grant no
+  permission, policy, Provider Intent, proposal, or execution authority.
+- Production and migration impact: no migration; only rebuildable data under the
+  existing cache runtime path, inactive until P5.
+- Tests: atomicity, bounds, deterministic ordering, concurrent refresh,
+  fresh/stale/expired behavior, malformed/corrupt isolation, restart/offline
+  behavior, and curated-only operation with an empty cache.
+- Exit criteria: deleting all cache loses no authoritative state, and every
+  agreement, conflict, stale, unavailable, and malformed case is deterministic.
+
+### V0.12-P3 — Dynamic and curated merged Discovery API
+
+- Goal: expose one coherent read-only projection without changing curated
+  authority or existing D1-D9 behavior.
+- Deliverables: merged fact/read contracts, provenance/freshness/health/conflict
+  fields, bounded source-health reads, compatibility with existing catalog and
+  proposal consumers, and controlled degraded responses.
+- Dependencies: P2.
+- Non-goals: mutation routes, arbitrary refresh URLs, Apply/Execute controls,
+  recommendation authority, candidate creation, or proposal application.
+- Authority boundary: GET-only projections; dynamic content cannot authorize or
+  parameterize downstream mutation or execution.
+- Production and migration impact: no migration; inactive source retrieval and
+  existing curated responses remain compatible.
+- Tests: API schemas, deterministic merge/order, legacy curated-only responses,
+  provenance completeness, conflict/stale/degraded cases, redaction, and
+  Discovery/ACE/proposal/Provider Intent/execution isolation.
+- Exit criteria: clients can distinguish curated, live dynamic, cached stale,
+  conflict, and unavailable evidence without losing curated results.
+
+### V0.12-P4 — Mission Control provenance and source-health UX
+
+- Goal: make dynamic evidence understandable without presenting it as action or
+  authority.
+- Deliverables: source/provenance labels, freshness and stale indicators,
+  source-health/degraded/offline states, explicit conflicts, accessible loading
+  and error behavior, and curated-only fallback presentation.
+- Dependencies: P3.
+- Non-goals: Apply, Execute, Fix, Remediate, connection/credential editing,
+  source configuration, or automatic refresh that bypasses Core bounds.
+- Authority boundary: presentation and navigation only; no dynamic fact grants
+  permission or invokes mutation, provider actions, proposals, or execution.
+- Production and migration impact: Mission Control image change only; no state
+  migration.
+- Tests: component and composed-page coverage, accessibility, conflict/stale/
+  offline/error states, provenance rendering, and structural absence of mutation
+  and execution controls.
+- Exit criteria: operators can identify source, trust, age, health, and conflict
+  for every dynamic fact while curated Discovery remains usable offline.
+
+### V0.12-P5 — Production activation and release acceptance
+
+- Goal: activate the accepted adapter safely and prove D10 end to end without
+  widening authority or execution.
+- Deliverables: fixed source allowlist and egress configuration, production
+  source-health and offline validation, cache lifecycle acceptance, full
+  regression/security gates, documentation, exact-SHA release evidence, and
+  execution-parity proof.
+- Dependencies: P1 through P4.
+- Non-goals: additional unreviewed adapters, operator-managed sources,
+  credentials, D11/D12, automatic remediation, or execution expansion.
+- Authority boundary: release acceptance proves dynamic reads create no Provider
+  Intent/policy mutation, provider action, operational request, candidate,
+  approval, dispatch, or proposal application.
+- Production and migration impact: bounded optional egress activation only; no
+  authoritative data migration, backup inventory change, or new service is
+  required.
+- Tests: full Core and Mission Control suites, adapter security/SSRF/redaction,
+  cache/offline/restart soak, deterministic API/UI, mutation-state checksum and
+  isolation, backup/recovery regressions, release evidence, and exact
+  operational/repository parity.
+- Exit criteria: dynamic facts are clearly marked, provenance-complete, bounded,
+  offline-safe, never silently replace curated facts, and preserve all released
+  V0.11 authority and execution boundaries.
+
+### V0.12 explicit deferrals and open decision
+
+V0.12 defers D11 semantic discovery, D12 community/private catalogs, Provider
+Connection Lifecycle hardening, notifications/event delivery, user settings,
+learned AI intent, operator-managed or arbitrary source URLs, privileged source
+credentials, automatic remediation, proposal application, execution expansion,
+bulk mutation, and backup v4.
+
+The sole required human decision before P1 is the first adapter. The D10 roadmap
+names no source. The recommended option is one fixed, unauthenticated,
+allowlisted HTTPS JSON release-metadata endpoint for a single curated catalog
+project, selected only after its terms, stability, response bounds, relevance,
+and private-network/redirect behavior are reviewed. This best exercises source
+identity, provenance, freshness, conflict, cache, degraded, and offline
+contracts without introducing credential or arbitrary-URL authority. Other
+adapters remain deferred until separately reviewed.

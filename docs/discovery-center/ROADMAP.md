@@ -19,11 +19,11 @@ Completed in v0.10:
 
 - D9 — Atlas Agent Proposal and Navigation Handoff
 
-Future beyond D9:
+Accepted next release and future work:
 
-- D10 — Dynamic Source Adapters
-- D11 — Semantic Discovery
-- D12 — Community and Private Catalogs
+- D10 — Dynamic Source Adapters: accepted as Atlas v0.12
+- D11 — Semantic Discovery: deferred beyond v0.12
+- D12 — Community and Private Catalogs: deferred beyond v0.12
 
 ## D0 — Documentation
 
@@ -296,6 +296,10 @@ policy or execution authority.
 
 Goal: supplement curated catalog data with optional dynamic sources.
 
+Release mapping: D10 is the complete accepted theme for Atlas v0.12, **Dynamic
+Discovery Sources**. D1 through D9 are prerequisites. D11 and D12 remain
+separate later work and are neither dependencies nor deliverables of D10.
+
 Deliverables:
 
 - Adapter interface
@@ -312,6 +316,95 @@ Non-goals:
 Exit criteria:
 
 - Dynamic facts are clearly marked and never silently replace curated facts.
+
+### D10 authority and source contract
+
+Dynamic facts are read-only advisory evidence. They grant no permission or
+execution and cannot mutate Provider Intent or `policies.yaml`, invoke provider
+actions, create operational requests or execution candidates, approve work,
+apply Discovery proposals, convert recommendations into authority, or cause
+automatic remediation.
+
+Each adapter has a closed, code-owned source ID and type. It retrieves from a
+fixed allowlisted source, normalizes only recognized fields into strict typed
+Discovery facts, attaches bounded provenance, and reports controlled healthy,
+degraded, or unavailable state. It cannot write Atlas runtime state, modify a
+provider, install software, or import mutation/execution services.
+
+Every projected dynamic fact includes its source ID/type, safe source-origin
+classification, supplemental trust tier, retrieval timestamp, freshness and
+expiry state, source health, exact normalized provenance, and conflict state.
+Raw remote payloads are not authoritative and are neither exposed nor retained
+as unbounded catalog state.
+
+These fields use closed values. Source IDs are canonical bounded identifiers
+registered in code, and source types are registered adapter literals. The
+initial origin class is `public_https_allowlisted`; trust is `supplemental`;
+freshness is `fresh`, `stale`, or `expired`; health is `healthy`, `degraded`, or
+`unavailable`; and conflict is `none`, `agreement`, `dynamic_conflict`, or
+`curated_conflict`. Unknown values fail validation rather than widening the
+contract.
+
+### D10 deterministic merge and conflict behavior
+
+- Curated and dynamic agreement retains both provenances and may present one
+  agreed claim.
+- Agreement among dynamic sources retains every contributing provenance.
+- Dynamic disagreement projects an explicit conflict and selects no dynamic
+  winner.
+- A dynamic/curated disagreement preserves the curated fact and projects the
+  supplemental claim as conflicting; it never overwrites curated data.
+- Stale cache is visibly stale and cannot satisfy a fresh-data claim.
+- Unavailable sources contribute health state and may contribute explicitly
+  stale cache, but do not remove curated results.
+- Malformed responses are rejected as controlled degraded/unavailable source
+  state and do not partially publish facts.
+- Canonical source/fact keys and stable sort rules make merged output independent
+  of adapter completion order.
+
+### D10 cache, offline, and recovery contract
+
+Normalized source generations use a bounded, versioned, checksummed, atomic,
+rebuildable cache under `/opt/atlas/data/cache/discovery/`. TTL is evaluated
+against recorded retrieval and expiry times. Fresh generations participate in
+normal reads; stale generations may be displayed only with explicit stale state;
+expired, malformed, or corrupt generations are excluded from facts. Failure is
+isolated per source, deletion is always safe, and cache absence never prevents
+startup or curated catalog use.
+
+The shipped curated catalog remains fully available without network access.
+Optional source failure cannot make Core startup fail or make local search and
+compatibility unusable. Pure cache is excluded from authoritative backup and
+restore inventory, so D10 requires neither a change to
+`atlas-core-data-backup-v3` nor backup v4. Operator-managed source configuration
+is deferred; any later durable configuration must be separate from cache and
+receive explicit authentication, migration, backup, restore, and recovery
+contracts.
+
+### D10 egress and user-interface contract
+
+Adapters are not arbitrary URL fetchers. Initial sources are fixed and
+code-owned, HTTPS-only, bounded by connect/read/total timeouts and response-size
+limits, require an expected machine-readable content type, and follow no
+redirect unless a separately bounded same-origin policy is accepted. DNS and
+connected destinations must reject loopback, link-local, private, reserved,
+metadata, and other disallowed networks. The initial adapter should require no
+credential; future credentials must never appear in URLs, logs, errors, cache,
+provenance, or public contracts. Logs contain only sanitized identifiers,
+controlled reasons, health, and bounded timing.
+
+Mission Control presents provenance, trust, freshness, stale/expired state,
+source health, conflicts, degraded/offline behavior, and curated-only fallback.
+Dynamic evidence creates no Apply, Execute, Fix, or Remediate control.
+
+### D10 first-adapter decision
+
+The existing roadmap selects no source, so adapter selection remains a required
+human decision before V0.12-P1. The recommended profile is one fixed,
+unauthenticated, allowlisted HTTPS JSON release-metadata endpoint for a single
+curated catalog project. The exact source must be accepted only after reviewing
+its terms, stability, bounds, relevance, redirects, and network destinations.
+This is a recommendation, not an accepted adapter or implementation commitment.
 
 ## D11 — Semantic Discovery
 
