@@ -53,6 +53,7 @@ def test_cache_module_is_not_wired_into_application_modules():
         if path.name in {
             "dynamic_cache.py",
             "test_dynamic_cache.py",
+            "test_dynamic_evaluation_isolation.py",
             "test_dynamic_source_isolation.py",
             Path(__file__).name,
         }:
