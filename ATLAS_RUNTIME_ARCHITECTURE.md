@@ -2,7 +2,11 @@
 
 Atlas Runtime Foundation defines the boundary between immutable shipped defaults and mutable user-owned runtime state. It is the storage and configuration foundation for the Provider Management Framework and future Mission Control features.
 
-This document describes the intended architecture. Current Foundry behavior now reads operational policy from runtime state in `data/config/policies.yaml`, with `config/policies.yaml` used only as the immutable bootstrap template.
+This document describes the intended architecture. Current released behavior
+reads policy domains that still use mutable runtime policy from
+`data/config/policies.yaml`, with `config/policies.yaml` used only as the
+immutable bootstrap template. Activated Proxmox QEMU monitoring intent uses the
+schema-v2 Provider Intent Store instead, as described below.
 
 ## 1. Immutable defaults
 
@@ -89,7 +93,13 @@ ATLAS_POLICY_FILE=/opt/atlas/data/config/policies.yaml
 ATLAS_POLICY_TEMPLATE_FILE=/opt/atlas/config/policies.yaml
 ```
 
-The runtime policy file is the authoritative policy source after initialization. Mission Control and API writes update only the runtime policy file.
+After initialization, the runtime policy file remains authoritative for policy
+domains that still use it. Activated Proxmox QEMU monitoring intent is an
+explicit exception: the schema-v2 Provider Intent Store is authoritative for
+that domain, while Proxmox guest values in `policies.yaml` are retained only as
+non-authoritative legacy and compatibility evidence. Mission Control and API
+writes target the authoritative runtime store for their domain and never update
+the tracked template.
 
 The template remains read-only and may be updated by future Atlas releases. Atlas must not silently replace the runtime policy file when the template changes.
 
@@ -170,14 +180,17 @@ Runtime paths should be explicitly configured through environment variables or s
 
 There must be no writable repository bind mount for normal Mission Control configuration.
 
-## 10. Future stores
+## 10. Current and future stores
 
 Atlas Runtime Foundation should support future stores without changing the immutable-defaults boundary.
 
-Planned stores:
+Implemented store:
+
+- Provider Intent Store
+
+Potential future stores:
 
 - Provider Connection Store
-- Provider Intent Store
 - Discovery Store
 - Notification Store
 - User Settings Store

@@ -6,10 +6,13 @@ release boundaries.
 
 ## Unreleased
 
-### Atlas v0.11 — Provider Management Framework release accepted
+## atlas-v0.11.0 — Atlas v0.11.0 (2026-08-17)
 
-Atlas v0.11 is release-accepted at the exact evidence-bound implementation SHA
-`f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`. No release tag is recorded yet.
+The annotated `atlas-v0.11.0` release tag points to the exact evidence-bound
+implementation SHA `f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`. The later
+documentation-only release-acceptance closure remains commit
+`375db0a883bd100de21d2deabaa118be48c1e057` and is not the tested binary or
+recovery-evidence SHA.
 
 #### Added
 

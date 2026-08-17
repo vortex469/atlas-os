@@ -233,31 +233,38 @@ Current
 
 ---
 
-# Current Sprint
+# Current Released Baseline
 
-Atlas v0.11 — Provider Management Framework — Identity-Bound Runtime Intent
+Atlas v0.11.0 — Provider Management Framework — Identity-Bound Runtime Intent
 
-V0.11 release acceptance is complete. The exact evidence-bound implementation
-SHA is `f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`; no V0.11 implementation
-milestone remains. Production Provider Intent authority is active on schema v2.
+V0.11 is complete and released as `atlas-v0.11.0`. The tag points to the exact
+evidence-bound implementation SHA
+`f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`; no V0.11 implementation
+milestone remains. Production Provider Intent authority is activated on schema
+v2.
 QEMU 110 / Frigate and QEMU 200 / pbs each have an explicit identity-bound
 `running` monitoring expectation. Public provider-management-v2 is canonical
 for monitoring and identity presentation; authenticated v3 supplies only
 caller-specific edit readiness.
 
 P5 advisory suggestions remain non-authoritative and explicit-review only:
-Review and Save require a fresh authenticated operator decision, and no
-suggestion automatically mutates intent or causes remediation. Monitoring,
-advisory diagnostics, compatibility actions, and operational maintenance remain
-distinct authority surfaces. V0.11 added no execution capability: operational
-execution remains exactly `restart-service/proxmox/qemu`, and repository
-execution remains `update-compose-stack`.
+Review changes only local presentation state and performs no mutation. Save is
+the separate explicit, authenticated Provider Intent mutation boundary, and no
+suggestion automatically mutates intent or causes remediation. LXC remains
+inventory-visible where available but unsupported for identity-bound Provider
+Intent and receives no synthetic identity. Monitoring, advisory diagnostics,
+compatibility actions, and operational maintenance remain distinct authority
+surfaces. V0.11 added no execution capability: operational execution remains
+exactly `restart-service/proxmox/qemu`, and repository execution remains
+`update-compose-stack`.
 
 Current behavior initializes `/opt/atlas/data/config/policies.yaml` from the
 tracked template. Runtime YAML remains authoritative for policy domains that
 still use it, but Proxmox guest YAML is compatibility/history evidence rather
 than current monitoring authority. Mission Control changes must not dirty the
 Git checkout.
+
+No V0.12 implementation scope or milestone has been accepted.
 
 ---
 

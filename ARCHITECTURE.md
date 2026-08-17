@@ -2,7 +2,10 @@
 
 Atlas is a local-first, provider-neutral infrastructure control plane. It helps operators understand infrastructure, convert deterministic findings into candidate work, and execute only the narrow changes that receive explicit human approval.
 
-Atlas v0.6 focuses on the Phase 3 candidate workflow. The only supported execution intent is `update-compose-stack`.
+The released Atlas v0.11 architecture has two separately gated execution
+boundaries: repository execution remains `update-compose-stack`, and hardened
+operational execution remains exactly `restart-service/proxmox/qemu`. Provider
+Intent is monitoring-policy state and is not infrastructure execution.
 
 Atlas does not push, tag, publish releases, deploy remotely, auto-approve, or auto-execute work.
 
@@ -10,9 +13,24 @@ Atlas does not push, tag, publish releases, deploy remotely, auto-approve, or au
 
 ### Atlas Core
 
-Atlas Core owns the authoritative system view and public platform API. It collects provider state, exposes Discovery Center catalog and compatibility evidence, prepares explainable intelligence findings for recommendations, projects execution candidates, and performs planning-intake revalidation.
+Atlas Core owns the authoritative system view and public platform API. It collects provider state, exposes Discovery Center catalog and compatibility evidence, prepares explainable intelligence findings for recommendations, projects execution candidates, performs planning-intake revalidation, owns Provider Intent authority, and owns hardened operational dispatch.
 
-Atlas Core does not execute candidate work. It does not grant approval for Agent side effects.
+Atlas Core does not execute repository candidate work or grant approval for
+Agent side effects. Operational dispatch is a separate, authenticated,
+approval-gated subsystem restricted to the accepted capability tuple.
+
+### Provider Intent
+
+The activated schema-v2 Provider Intent Store is production authority for
+supported Proxmox QEMU monitoring intent. Records bind to the
+provider-authoritative resource incarnation; a reused VMID with a different
+identity cannot inherit prior intent. Mutation is explicit and authenticated,
+uses exact live-identity and compare-and-swap validation, and preserves durable
+idempotency and operator-bound audit evidence.
+
+LXC may remain visible in observed inventory, but it has no accepted
+provider-authoritative incarnation identity and is unsupported for
+identity-bound Provider Intent. Atlas does not synthesize an LXC identity.
 
 ### Discovery Center
 
@@ -30,13 +48,22 @@ Agent state is local-first and file-backed under `ATLAS_AGENT_STATE_DIR`. Side-e
 
 ### Mission Control
 
-Mission Control is the operator UI. It displays Atlas Core, Discovery, and Agent state. It does not currently expose Phase 3 candidate execution controls and must not bypass Core or Agent approval boundaries.
+Mission Control is the operator UI. Public provider-management-v2 is canonical
+for provider identity and monitoring state; authenticated provider-management-v3
+adds only caller-specific mutation readiness. The Provider Intent editor keeps
+observed state, monitoring intent, compatibility actions, and operational
+maintenance distinct. Advisory suggestion Review changes local UI state only;
+Save is the separate explicit Provider Intent mutation boundary. Mission Control
+must not bypass Core or Agent authentication, permission, identity, approval, or
+execution boundaries.
 
 ## Ownership boundaries
 
 - Core owns candidate source authority and revalidation.
 - Agent owns local workflow orchestration and side-effect gating.
 - Mission Control owns presentation and user interaction.
+- Core owns Provider Intent authority, mutation validation, and operational
+  dispatch; neither advisory data nor UI state owns these authorities.
 - External tools own their own effects, such as Codex implementation, Docker Compose verification, and Git.
 - Operators own approval decisions.
 
@@ -47,6 +74,11 @@ Mission Control is the operator UI. It displays Atlas Core, Discovery, and Agent
 - Implementation, verification, and commit approvals bind to exact immutable requests.
 - Raw secrets, authorization headers, uncontrolled command output, and broad diffs must not be logged or persisted as public contract data.
 - Local Git commit is the final implemented Phase 3 side effect. Push, tag, release, rollback, and remote deployment are outside v0.6 scope.
+- Discovery proposals, ACE recommendations, and Provider Intent suggestions are
+  advisory. They grant neither permission nor execution and cannot authorize
+  mutation, approval, or dispatch.
+- Provider Intent mutation does not invoke provider actions or operational
+  dispatch. Monitoring intent causes no automatic remediation.
 
 ## Phase 3 pipeline
 
@@ -103,7 +135,21 @@ Candidate workflows preserve machine-readable links across:
 
 Audit validation uses identifiers and fingerprints, never rationale, titles, descriptions, or recommendation prose.
 
-## Supported and unsupported operations
+## Released v0.11 execution boundaries
+
+- Repository execution: `update-compose-stack` candidate workflows ending in a
+  local Git commit.
+- Operational execution: exactly `restart-service/proxmox/qemu` through the
+  hardened operational request, approval, dispatch, and verification path.
+
+Provider Intent updates are explicit authenticated control-plane mutations, not
+execution capabilities. Discovery, ACE, and suggestion reads do not expand the
+two execution boundaries. Automatic approval, automatic execution, automatic
+remediation, LXC operational execution, arbitrary provider operations, push,
+tag, release publication, remote deployment, and rollback automation remain
+unsupported production capabilities.
+
+## Historical v0.6 operation boundary
 
 Supported in v0.6:
 
