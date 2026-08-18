@@ -57,7 +57,7 @@ The merged projection model is `DiscoveryMergedItemProjection` with
 - `source_states[].health`: `healthy | degraded | unavailable | null`
   (`DynamicSourceHealth`, `app/discovery/dynamic_sources.py:99`).
 - `source_states[].cache_state`: `absent | available | corrupt`
-  (`DynamicCacheState`, `app/discovery/dynamic_cache.py`).
+  (`DynamicCacheState`, `app/discovery/dynamic_projection.py`).
 - `dynamic_claims[].freshness`: `fresh | stale | expired`. `stale` claims are
   kept; `expired` claims are dropped (`_reevaluate_snapshot`,
   `dynamic_projection.py:462`; `evaluate_freshness`,
@@ -171,7 +171,7 @@ Guardrails.
 
 Root cause. There is **no** first-class curated release-claim field in the
 catalog. `DiscoveryItem` does have a `version: str | None` field
-(`app/discovery/models.py:200`), but `catalog/applications/frigate.yaml` leaves
+(`app/discovery/models.py:200`), but `app/discovery/catalog/applications/frigate.yaml` leaves
 it unset (it is `None` in production) and, by contract, it must not be reused
 as a release claim. The evaluation layer already supports a curated claim
 (`ExplicitCuratedReleaseClaim`, `app/discovery/dynamic_evaluation.py:126`,
