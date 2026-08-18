@@ -84,7 +84,7 @@ The merged projection model is `DiscoveryMergedItemProjection` with
   `test_production_mapping_and_cache_root_remain_fixed`.
 - Cache root is fixed to
   `DISCOVERY_CACHE_ROOT = Path("/opt/atlas/data/cache/discovery")`
-  (`services/discovery_dynamic_projection.py:15`).
+  (`app/services/discovery_dynamic_projection.py:15`).
 - The single dynamic source adapter is
   `FRIGATE_ADAPTER_ID = "frigate-github-latest-release-v1"`
   (`app/discovery/dynamic_sources.py:26`), a `github_latest_release` source at
@@ -146,7 +146,7 @@ What to build.
      required; match the signature exactly.
 2. Wire it into the production constructor:
    `get_discovery_projection_service()` in
-   `services/discovery_dynamic_projection.py` should pass
+   `app/services/discovery_dynamic_projection.py` should pass
    `health_provider=<the provider>` as a keyword argument. Do **not** pass it
    through the route; pass it at the service-construction site only.
 3. Keep health independent of freshness: a source can be `healthy` with a
@@ -161,7 +161,7 @@ Guardrails.
 - Do not add `dynamic_sources` or `dynamic_refresh` imports to
   `app/routes/discovery.py`. If the provider object needs to live in a module
   that imports those, it must be imported only in
-  `services/discovery_dynamic_projection.py`, never in the route.
+  `app/services/discovery_dynamic_projection.py`, never in the route.
 - Add/extend tests mirroring `test_missing_or_failed_health_observation_is_null`
   and `test_health_is_independent_from_freshness` at the service level, plus one
   production-wiring test asserting the wired provider returns a non-`null`
@@ -207,7 +207,7 @@ What to build.
      `key.catalog_item_id` does not match the requested item.
 3. Wire it into the production constructor as
    `curated_claim_provider=<the provider>` in
-   `services/discovery_dynamic_projection.py`.
+   `app/services/discovery_dynamic_projection.py`.
 
 Guardrails.
 
