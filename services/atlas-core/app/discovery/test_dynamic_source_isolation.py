@@ -53,6 +53,8 @@ def test_dynamic_source_is_not_wired_into_application_modules():
             "test_dynamic_refresh.py",
             "test_dynamic_refresh_isolation.py",
             "test_dynamic_sources.py",
+            "test_discovery_evidence.py",
+            "test_discovery_evidence_isolation.py",
             Path(__file__).name,
         }:
             continue

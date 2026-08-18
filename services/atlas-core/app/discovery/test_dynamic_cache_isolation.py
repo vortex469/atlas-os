@@ -61,9 +61,11 @@ def test_cache_module_is_not_wired_into_application_modules():
             "test_dynamic_refresh.py",
             "test_dynamic_refresh_isolation.py",
             "test_dynamic_source_isolation.py",
+            "test_discovery_evidence.py",
+            "test_discovery_evidence_isolation.py",
             Path(__file__).name,
         }:
             continue
         if "dynamic_cache" in path.read_text(encoding="utf-8"):
             references.append(path.relative_to(app_dir).as_posix())
-    assert references == []
+    assert references == ["services/discovery_dynamic_projection.py"]

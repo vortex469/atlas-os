@@ -72,6 +72,8 @@ def test_refresh_module_is_not_wired_into_application_modules():
             "test_dynamic_projection_isolation.py",
             "test_dynamic_refresh.py",
             "test_dynamic_source_isolation.py",
+            "test_discovery_evidence.py",
+            "test_discovery_evidence_isolation.py",
             Path(__file__).name,
         }:
             continue

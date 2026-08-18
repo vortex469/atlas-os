@@ -71,7 +71,7 @@ def test_projection_has_no_direct_io_network_refresh_route_or_authority_coupling
     assert "/opt/atlas/data/cache/discovery" not in source
 
 
-def test_projection_module_is_not_wired_into_application_or_routes():
+def test_projection_module_is_wired_only_into_read_only_evidence_route():
     app_dir = Path(__file__).parents[1]
     references = []
     for path in app_dir.rglob("*.py"):
@@ -82,9 +82,14 @@ def test_projection_module_is_not_wired_into_application_or_routes():
             "test_dynamic_projection.py",
             "test_dynamic_refresh_isolation.py",
             "test_dynamic_source_isolation.py",
+            "test_discovery_evidence.py",
+            "test_discovery_evidence_isolation.py",
             Path(__file__).name,
         }:
             continue
         if "dynamic_projection" in path.read_text(encoding="utf-8"):
             references.append(path.relative_to(app_dir).as_posix())
-    assert references == []
+    assert sorted(references) == [
+        "routes/discovery.py",
+        "services/discovery_dynamic_projection.py",
+    ]

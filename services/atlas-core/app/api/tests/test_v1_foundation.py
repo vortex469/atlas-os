@@ -4,6 +4,7 @@ EXPECTED_DISCOVERY_PATHS = {
     "/api/v1/discovery",
     "/api/v1/discovery/items",
     "/api/v1/discovery/items/{item_id}",
+    "/api/v1/discovery/items/{item_id}/evidence",
     "/api/v1/discovery/items/{item_id}/relationships",
     "/api/v1/discovery/items/{item_id}/compatibility",
     "/api/v1/discovery/proposals",
@@ -48,8 +49,7 @@ def test_api_v1_foundation_routes_are_registered() -> None:
     assert "/api/v1/providers/{provider_id}/resources" in paths
     assert "/api/v1/providers/{provider_id}/discovery/refresh" in paths
     assert (
-        "/api/v1/providers/{provider_id}/resources/"
-        "{resource_id}/expectation"
+        "/api/v1/providers/{provider_id}/resources/{resource_id}/expectation"
     ) in paths
     assert EXPECTED_DISCOVERY_PATHS.issubset(paths)
     assert EXPECTED_EXECUTION_CANDIDATE_PATHS.issubset(paths)
@@ -79,7 +79,9 @@ def test_discovery_routes_are_read_only() -> None:
 
 def test_execution_candidate_endpoint_set_is_stable() -> None:
     candidate_paths = {
-        path for path in schema_paths() if path.startswith("/api/v1/execution-candidates")
+        path
+        for path in schema_paths()
+        if path.startswith("/api/v1/execution-candidates")
     }
 
     assert candidate_paths == EXPECTED_EXECUTION_CANDIDATE_PATHS
@@ -89,7 +91,9 @@ def test_execution_candidate_routes_expose_expected_methods() -> None:
     schema = app.openapi()
 
     assert set(schema["paths"]["/api/v1/execution-candidates"]) == {"get"}
-    assert set(schema["paths"]["/api/v1/execution-candidates/{candidate_id}"]) == {"get"}
+    assert set(schema["paths"]["/api/v1/execution-candidates/{candidate_id}"]) == {
+        "get"
+    }
     assert set(
         schema["paths"]["/api/v1/execution-candidates/{candidate_id}/planning-intake"]
     ) == {"post"}
@@ -97,9 +101,7 @@ def test_execution_candidate_routes_expose_expected_methods() -> None:
         "post"
     }
     assert set(
-        schema["paths"][
-            "/api/v1/execution-candidates/operator-intents/capabilities"
-        ]
+        schema["paths"]["/api/v1/execution-candidates/operator-intents/capabilities"]
     ) == {"get"}
     assert set(
         schema["paths"][

@@ -19,6 +19,7 @@ from app.discovery.api_models import (
     relationship_to_response,
     search_result_to_response,
 )
+from app.discovery.dynamic_projection import DiscoveryMergedItemProjection
 from app.discovery.models import (
     CATALOG_SCHEMA_VERSION,
     DiscoveryItemStatus,
@@ -40,6 +41,10 @@ from app.services.discovery_compatibility import (
     DiscoveryCompatibilityContextUnavailableError,
     DiscoveryCompatibilityServiceError,
     get_discovery_compatibility_service,
+)
+from app.services.discovery_dynamic_projection import (
+    get_discovery_projection_service,
+    get_discovery_request_time,
 )
 from app.services.discovery_proposals import (
     DiscoveryProposalEvaluation,
@@ -130,7 +135,10 @@ def list_discovery_proposals(
             target=target,
             limit=limit,
         )
-    except (DiscoveryCatalogUnavailableError, DiscoveryCompatibilityServiceError) as error:
+    except (
+        DiscoveryCatalogUnavailableError,
+        DiscoveryCompatibilityServiceError,
+    ) as error:
         raise HTTPException(
             status_code=503,
             detail="Discovery proposals are unavailable.",
@@ -160,8 +168,13 @@ def get_discovery_proposal(
             target=target,
         )
     except DiscoveryProposalNotFoundError as error:
-        raise HTTPException(status_code=404, detail="Discovery proposal was not found.") from error
-    except (DiscoveryCatalogUnavailableError, DiscoveryCompatibilityServiceError) as error:
+        raise HTTPException(
+            status_code=404, detail="Discovery proposal was not found."
+        ) from error
+    except (
+        DiscoveryCatalogUnavailableError,
+        DiscoveryCompatibilityServiceError,
+    ) as error:
         raise HTTPException(
             status_code=503,
             detail="Discovery proposals are unavailable.",
@@ -246,6 +259,24 @@ def get_discovery_item(item_id: str) -> DiscoveryCatalogEntryResponse:
 
 
 @router.get(
+    "/items/{item_id}/evidence",
+    response_model=DiscoveryMergedItemProjection,
+    responses={404: {"model": APIError}, 503: {"model": APIError}},
+    summary="Read curated and dynamic Discovery evidence",
+)
+def get_discovery_item_evidence(item_id: str) -> DiscoveryMergedItemProjection:
+    try:
+        return get_discovery_projection_service().get_item_projection(
+            item_id,
+            now=get_discovery_request_time(),
+        )
+    except DiscoveryItemNotFoundError as error:
+        raise _item_not_found(error) from error
+    except DiscoveryCatalogUnavailableError as error:
+        raise _catalog_unavailable(error) from error
+
+
+@router.get(
     "/items/{item_id}/relationships",
     response_model=DiscoveryRelationshipCollectionResponse,
     responses={404: {"model": APIError}, 503: {"model": APIError}},
@@ -253,7 +284,9 @@ def get_discovery_item(item_id: str) -> DiscoveryCatalogEntryResponse:
 )
 def get_discovery_item_relationships(
     item_id: str,
-    relationship_type: Annotated[DiscoveryRelationshipType | None, Query(alias="type")] = None,
+    relationship_type: Annotated[
+        DiscoveryRelationshipType | None, Query(alias="type")
+    ] = None,
 ) -> DiscoveryRelationshipCollectionResponse:
     try:
         incoming, outgoing = get_discovery_service().relationships(
