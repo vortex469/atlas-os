@@ -65,9 +65,12 @@ def test_evaluation_module_is_not_wired_into_application_modules():
     for path in app_dir.rglob("*.py"):
         if path.name in {
             "dynamic_evaluation.py",
+            "dynamic_projection.py",
             "dynamic_refresh.py",
             "test_dynamic_cache_isolation.py",
             "test_dynamic_evaluation.py",
+            "test_dynamic_projection.py",
+            "test_dynamic_projection_isolation.py",
             "test_dynamic_refresh.py",
             "test_dynamic_refresh_isolation.py",
             "test_dynamic_source_isolation.py",

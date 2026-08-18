@@ -4,8 +4,8 @@ import ast
 from pathlib import Path
 
 
-def test_refresh_has_no_direct_filesystem_clock_route_or_authority_coupling():
-    path = Path(__file__).with_name("dynamic_refresh.py")
+def test_projection_has_no_direct_io_network_refresh_route_or_authority_coupling():
+    path = Path(__file__).with_name("dynamic_projection.py")
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source)
     imports: set[str] = set()
@@ -26,15 +26,21 @@ def test_refresh_has_no_direct_filesystem_clock_route_or_authority_coupling():
         "socket",
         "httpx",
         "requests",
+        "dynamic_refresh",
         "routes",
         "startup",
         "providers",
         "provider_intents",
+        "intelligence",
+        "recommendations",
+        "proposals",
         "operational",
         "execution",
         "planning",
         "approvals",
-        "proposals",
+        "policies",
+        "agent",
+        "migration",
         "backup",
         "restore",
         "recovery",
@@ -50,6 +56,9 @@ def test_refresh_has_no_direct_filesystem_clock_route_or_authority_coupling():
         "chmod",
         "chown",
         "initialize",
+        "publish",
+        "fetch",
+        "refresh",
         "now",
         "utcnow",
     }
@@ -58,23 +67,24 @@ def test_refresh_has_no_direct_filesystem_clock_route_or_authority_coupling():
     )
     assert not (calls & forbidden_calls)
     assert "datetime.now" not in source
+    assert "time.time" not in source
     assert "/opt/atlas/data/cache/discovery" not in source
 
 
-def test_refresh_module_is_not_wired_into_application_modules():
+def test_projection_module_is_not_wired_into_application_or_routes():
     app_dir = Path(__file__).parents[1]
     references = []
     for path in app_dir.rglob("*.py"):
         if path.name in {
-            "dynamic_refresh.py",
+            "dynamic_projection.py",
             "test_dynamic_cache_isolation.py",
             "test_dynamic_evaluation_isolation.py",
-            "test_dynamic_projection_isolation.py",
-            "test_dynamic_refresh.py",
+            "test_dynamic_projection.py",
+            "test_dynamic_refresh_isolation.py",
             "test_dynamic_source_isolation.py",
             Path(__file__).name,
         }:
             continue
-        if "dynamic_refresh" in path.read_text(encoding="utf-8"):
+        if "dynamic_projection" in path.read_text(encoding="utf-8"):
             references.append(path.relative_to(app_dir).as_posix())
     assert references == []
