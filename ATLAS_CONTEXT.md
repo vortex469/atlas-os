@@ -265,16 +265,18 @@ than current monitoring authority. Mission Control changes must not dirty the
 Git checkout.
 
 Atlas v0.12 has the accepted theme **Dynamic Discovery Sources** and implements
-Discovery Center D10 only. V0.12-P0 is documentation and architecture planning;
-no D10 runtime implementation or production activation has begun. Dynamic facts
-will remain optional, read-only advisory evidence with explicit provenance,
-trust, freshness, health, and conflict state. The shipped curated catalog remains
-available offline and cannot be silently overwritten by dynamic or cached facts.
+Discovery Center D10 only. V0.12-P0 through P5 are implemented in the commit
+span `d268c7d` through `5075f1a`; publication, the release tag, release gates,
+image identity, and deployment evidence remain pending. Activation is opt-in
+and defaults off. Dynamic facts are read-only advisory evidence with explicit
+provenance, trust, freshness, health, and conflict state. The shipped curated
+catalog remains available offline and cannot be silently overwritten by dynamic
+or cached facts.
 
-The first adapter remains a human decision before P1. Initial source selection
-must be fixed and code-owned, use bounded read-only HTTPS retrieval without
-privileged credentials, and demonstrate provenance, freshness, conflict, cache,
-and offline behavior. Operator-managed source configuration, D11 semantic
+The accepted first adapter is the fixed, code-owned
+`frigate-github-latest-release-v1`, which performs bounded unauthenticated HTTPS
+retrieval of Frigate GitHub latest-release metadata. Operator-managed source
+configuration, additional adapters, D11 semantic
 discovery, D12 community/private catalogs, notifications, user settings, learned
 AI intent, automatic remediation, bulk mutation, and execution expansion remain
 deferred.

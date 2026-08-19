@@ -2,7 +2,7 @@
 
 Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. This roadmap describes direction and progress.
 
-## Current implementation status (as of Atlas v0.10.0)
+## Current implementation status (as of Atlas v0.12 implementation closure)
 
 Implemented:
 
@@ -19,9 +19,13 @@ Completed in v0.10:
 
 - D9 — Atlas Agent Proposal and Navigation Handoff
 
-Accepted next release and future work:
+Completed in v0.12 (publication and tag pending):
 
-- D10 — Dynamic Source Adapters: accepted as Atlas v0.12
+- D10 — Dynamic Source Adapters: one fixed Frigate GitHub latest-release
+  adapter, with bounded read-only retrieval and rebuildable caching
+
+Deferred future work:
+
 - D11 — Semantic Discovery: deferred beyond v0.12
 - D12 — Community and Private Catalogs: deferred beyond v0.12
 
@@ -399,12 +403,13 @@ Dynamic evidence creates no Apply, Execute, Fix, or Remediate control.
 
 ### D10 first-adapter decision
 
-The existing roadmap selects no source, so adapter selection remains a required
-human decision before V0.12-P1. The recommended profile is one fixed,
-unauthenticated, allowlisted HTTPS JSON release-metadata endpoint for a single
-curated catalog project. The exact source must be accepted only after reviewing
-its terms, stability, bounds, relevance, redirects, and network destinations.
-This is a recommendation, not an accepted adapter or implementation commitment.
+Accepted for v0.12: `frigate-github-latest-release-v1`, a fixed, code-owned,
+unauthenticated adapter for the Frigate GitHub latest-release JSON endpoint.
+It is HTTPS-only and allowlisted, uses `supplemental` trust and
+`public_https_allowlisted` origin classification, and supplies only bounded
+read-only evidence for the curated `frigate` item. It is not an operator-managed
+source and grants no authority. Additional adapters remain deferred until
+separately reviewed.
 
 ## D11 — Semantic Discovery
 

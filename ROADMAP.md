@@ -724,10 +724,11 @@ Discovery catalogs, semantic catalog search, and bulk policy mutation.
 
 **Theme: Dynamic Discovery Sources**
 
-**Status: P0 planning accepted; implementation not started.** Atlas v0.12 is
-bounded to Discovery Center D10. D1 through D9 are released prerequisites; D11
-semantic discovery and D12 community/private catalogs do not enter this release.
-The dependency order is
+**Status: P0–P5 implemented; publication and tag pending.** The evidence-bound
+implementation spans `d268c7d` through `5075f1a`. Atlas v0.12 is bounded to
+Discovery Center D10. D1 through D9 are released prerequisites; D11 semantic
+discovery and D12 community/private catalogs do not enter this release. The
+implemented dependency order is
 `V0.12-P0 → V0.12-P1 → V0.12-P2 → V0.12-P3 → V0.12-P4 → V0.12-P5`.
 
 ### Release goal and authority boundary
@@ -921,7 +922,7 @@ contracts.
   offline-safe, never silently replace curated facts, and preserve all released
   V0.11 authority and execution boundaries.
 
-### V0.12 explicit deferrals and open decision
+### V0.12 explicit deferrals and accepted adapter decision
 
 V0.12 defers D11 semantic discovery, D12 community/private catalogs, Provider
 Connection Lifecycle hardening, notifications/event delivery, user settings,
@@ -929,11 +930,11 @@ learned AI intent, operator-managed or arbitrary source URLs, privileged source
 credentials, automatic remediation, proposal application, execution expansion,
 bulk mutation, and backup v4.
 
-The sole required human decision before P1 is the first adapter. The D10 roadmap
-names no source. The recommended option is one fixed, unauthenticated,
-allowlisted HTTPS JSON release-metadata endpoint for a single curated catalog
-project, selected only after its terms, stability, response bounds, relevance,
-and private-network/redirect behavior are reviewed. This best exercises source
-identity, provenance, freshness, conflict, cache, degraded, and offline
-contracts without introducing credential or arbitrary-URL authority. Other
-adapters remain deferred until separately reviewed.
+The first adapter decision is accepted and implemented as
+`frigate-github-latest-release-v1`: one fixed, code-owned, unauthenticated,
+allowlisted HTTPS JSON latest-release endpoint for the curated Frigate catalog
+item. Its evidence is classified `supplemental` and
+`public_https_allowlisted`; it exercises source identity, provenance,
+freshness, conflict, cache, degraded, and offline contracts without credential
+or arbitrary-URL authority. Other adapters remain deferred until separately
+reviewed.

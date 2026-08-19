@@ -6,6 +6,33 @@ release boundaries.
 
 ## Unreleased
 
+## atlas-v0.12.0 — Atlas v0.12.0 (2026-08-19)
+
+Implementation is complete at `5075f1a`; the `atlas-v0.12.0` tag, publication,
+release-gate evidence, image digests, and deployment remain pending. This
+documentation-only closure is not the tested implementation SHA.
+
+#### Added
+
+- P1 fixed, code-owned `frigate-github-latest-release-v1` source foundation
+  with bounded unauthenticated allowlisted HTTPS retrieval.
+- P2 atomic rebuildable cache, freshness and offline evaluation, source health,
+  conflict handling, and bounded refresh coordination.
+- P3 deterministic merged Discovery evidence read API in which curated claims
+  remain authoritative and dynamic/cached facts remain supplemental evidence.
+- P4 Mission Control provenance, freshness, conflict, and source-health
+  presentation with curated-only fallback.
+- P5 opt-in, default-off bounded startup refresh via
+  `ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH`, with isolation tests preserving the
+  evidence-not-authority boundary.
+
+#### Security and authority boundary
+
+- Dynamic Discovery adds no Provider Intent, policy, proposal, approval, or
+  execution authority. Capability parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`.
+
 ## atlas-v0.11.0 — Atlas v0.11.0 (2026-08-17)
 
 The annotated `atlas-v0.11.0` release tag points to the exact evidence-bound

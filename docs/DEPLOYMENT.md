@@ -1344,6 +1344,48 @@ not prune them:
 - complete v0.11 Core and Agent snapshots captured before any rollback; and
 - normal rolling verified v3 backups.
 
+## Atlas v0.11 to v0.12 Dynamic Discovery activation
+
+V0.12 adds one opt-in Dynamic Discovery source. It is disabled by default, so
+upgrading without configuration changes preserves curated-only Discovery reads
+and adds no external Discovery egress. Release publication and production
+deployment remain pending; when a release is accepted, deploy it using the
+existing exact-SHA and immutable-image process.
+
+To enable the feature, set the following in the deployment `.env` before
+rendering and applying the production Compose configuration:
+
+```dotenv
+ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH=true
+```
+
+When enabled, Core performs one bounded startup refresh from the fixed,
+code-owned Frigate GitHub latest-release source. The resulting data under
+`/opt/atlas/data/cache/discovery` is read-only supplemental evidence. It does
+not replace curated claims or add Provider Intent, policy, proposal, approval,
+or execution authority. Operational execution remains exactly
+`restart-service/proxmox/qemu`, and repository execution remains
+`update-compose-stack`.
+
+The Dynamic Discovery cache is rebuildable and is excluded from the managed
+backup inventory. V0.12 therefore requires no authoritative-state migration
+and makes no backup-inventory change. Deleting the cache is always safe; Atlas
+rebuilds it only on a later enabled refresh.
+
+To roll back only Dynamic Discovery activation, set
+`ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH=false` (or remove the variable) and
+restart Core through the normal deployment procedure. This stops future
+startup refreshes and Discovery egress, but it does not disable reads from an
+existing warm Dynamic Discovery cache. Cached dynamic evidence may remain
+fresh for up to 24 hours after retrieval, then remain available as explicitly
+stale evidence until it expires 30 days after retrieval.
+
+For immediate curated-only reads, stop Core, remove
+`/opt/atlas/data/cache/discovery`, and then restart Core with dynamic refresh
+disabled. If immediate curated-only restoration is not required, leave the
+cache in place and allow it to expire passively. This feature rollback does not
+authorize an automatic code, image, data, or deployment rollback.
+
 ## Back up and restore data
 
 Create a consistent online backup while Atlas remains available:

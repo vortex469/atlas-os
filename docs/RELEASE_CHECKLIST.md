@@ -521,6 +521,54 @@ and compatibility/lineage guidance (`b5390ba`).
 - [x] Bundle checksum-manifest SHA-256 is
   `6515cbaa8abe8e4cc800b98549b4aa3a9ef94cd9b705bc8b689840fdfe3c4a64`.
 
+## Atlas v0.12 implementation closure and pending release acceptance
+
+Implementation closure is evidence-bound to the commit span `d268c7d` through
+`5075f1a`. Release identity and publication evidence are intentionally pending;
+unchecked items below must be completed against the selected exact release SHA.
+
+### Atlas v0.12 P0–P5 implementation
+
+- [x] P0 — D10 architecture, source, trust, freshness, cache, conflict,
+  isolation, and release boundaries defined (`d268c7d`).
+- [x] P1 — Fixed dynamic-source foundation implemented for the accepted
+  `frigate-github-latest-release-v1` adapter (`a00afcd`).
+- [x] P2 — Atomic rebuildable cache, freshness evaluation, and bounded refresh
+  coordination implemented (`2cc84cd` through `fb64243`).
+- [x] P3 — Deterministic merged evidence projection and read API implemented
+  (`6a744da` through `581ea50`).
+- [x] P4 — Provenance and source-health UX implemented (`ea0cf5b`).
+- [x] P5 — Opt-in bounded startup refresh and evidence-isolation boundary
+  implemented (`b6e25f3` through `5075f1a`).
+- [x] First adapter accepted as fixed, code-owned, unauthenticated,
+  allowlisted HTTPS Frigate latest-release evidence with `supplemental` trust
+  and `public_https_allowlisted` origin classification.
+
+### Atlas v0.12 implementation exit criteria
+
+- [x] Dynamic and cached facts remain read-only evidence, never authority.
+- [x] Curated catalog remains always available and wins conflicts.
+- [x] Refresh is opt-in and defaults false; disabled operation adds no egress.
+- [x] Cache is bounded, rebuildable, offline-safe, and disposable.
+- [x] Operator-managed sources, credentials, additional adapters, D11, and D12
+  remain deferred.
+- [x] Execution parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`.
+
+### Atlas v0.12 pending publication evidence
+
+- [ ] Select and record the exact release SHA and create the annotated
+  `atlas-v0.12.0` tag.
+- [ ] Record successful exact-SHA quality, test, Compose, recovery, and release
+  gate runs.
+- [ ] Record immutable candidate image digests and source/image parity.
+- [ ] Record final release-evidence artifact identity and checksums.
+- [ ] Record production deployment and read-only acceptance evidence.
+
+These publication items are pending. No v0.12 tag, gate run, image digest,
+release artifact, or deployment acceptance is asserted by this closure.
+
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 
 - [x] Production was rebuilt with no-cache images from the exact RC1 checkout.
