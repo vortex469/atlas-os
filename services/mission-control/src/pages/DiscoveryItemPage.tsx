@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
     getDiscoveryCompatibility,
+    getDiscoveryItemEvidence,
     getDiscoveryItem,
     listDiscoveryProposals,
     getDiscoveryRelationships,
@@ -11,11 +12,13 @@ import {
 import type {
     DiscoveryCatalogEntry,
     DiscoveryCompatibilityAssessment,
+    DiscoveryItemEvidence,
     DiscoveryRelationshipReference,
     DiscoveryRequirements,
     DiscoveryProposalNavigation,
 } from "../types/discovery";
 import { DiscoveryProposalCard } from "../features/discovery/DiscoveryProposalCard";
+import { DiscoveryEvidencePanel } from "../features/discovery/DiscoveryEvidencePanel";
 
 type DetailState = {
     entry: DiscoveryCatalogEntry | null;
@@ -37,6 +40,9 @@ export function DiscoveryItemPage() {
     const [error, setError] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
     const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
+    const [evidence, setEvidence] = useState<DiscoveryItemEvidence | null>(null);
+    const [evidenceLoading, setEvidenceLoading] = useState(true);
+    const [evidenceError, setEvidenceError] = useState<string | null>(null);
     const [proposals, setProposals] = useState<DiscoveryProposalNavigation[]>([]);
     const [proposalsLoading, setProposalsLoading] = useState(true);
     const [proposalsError, setProposalsError] = useState<string | null>(null);
@@ -114,6 +120,37 @@ export function DiscoveryItemPage() {
         return () => {
             cancelled = true;
         };
+    }, [itemId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) {
+                setEvidence(null);
+                setEvidenceLoading(true);
+                setEvidenceError(null);
+            }
+        });
+
+        getDiscoveryItemEvidence(itemId)
+            .then((nextEvidence) => {
+                if (!cancelled) setEvidence(nextEvidence);
+            })
+            .catch((requestError: unknown) => {
+                if (cancelled) return;
+                console.error(`Unable to load Discovery evidence for ${itemId}:`, requestError);
+                setEvidenceError(
+                    getAtlasErrorMessage(
+                        requestError,
+                        "Mission Control could not load dynamic source evidence.",
+                    ),
+                );
+            })
+            .finally(() => {
+                if (!cancelled) setEvidenceLoading(false);
+            });
+
+        return () => { cancelled = true; };
     }, [itemId]);
 
     useEffect(() => {
@@ -265,6 +302,12 @@ export function DiscoveryItemPage() {
                     <ChipList values={item.tags} empty="No tags listed." />
                 </InfoPanel>
             </section>
+
+            <DiscoveryEvidencePanel
+                evidence={evidence}
+                isLoading={evidenceLoading}
+                error={evidenceError}
+            />
 
             <CompatibilityPanel
                 compatibility={compatibility}

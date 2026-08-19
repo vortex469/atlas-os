@@ -127,6 +127,48 @@ export type DiscoveryCatalogEntry = {
     metadata: DiscoveryItemMetadata;
 };
 
+export type DiscoveryEvidenceFreshness = "fresh" | "stale";
+export type DiscoverySourceHealth = "healthy" | "degraded" | "unavailable";
+export type DiscoverySourceCacheState = "absent" | "available" | "corrupt";
+export type DiscoveryConflictState =
+    | "none"
+    | "agreement"
+    | "dynamic_conflict"
+    | "curated_conflict";
+
+export type DiscoveryDynamicProvenance = {
+    source_id: string;
+    source_type: "github_latest_release";
+    trust_tier: "supplemental";
+    repository: string;
+    upstream_release_id: number;
+    retrieved_at: string;
+    expires_at: string;
+};
+
+export type DiscoveryDynamicClaim = {
+    fact_kind: "latest_stable_release";
+    version: string;
+    published_at: string;
+    freshness: DiscoveryEvidenceFreshness;
+    provenance: DiscoveryDynamicProvenance;
+};
+
+export type DiscoverySourceState = {
+    source_id: string;
+    health: DiscoverySourceHealth | null;
+    cache_state: DiscoverySourceCacheState;
+};
+
+export type DiscoveryItemEvidence = {
+    schema_version: "discovery-merged-item-v1";
+    catalog_item_id: string;
+    curated: DiscoveryCatalogEntry;
+    dynamic_claims: DiscoveryDynamicClaim[];
+    source_states: DiscoverySourceState[];
+    conflict_state: DiscoveryConflictState;
+};
+
 export type DiscoveryCatalogPage = {
     entries: DiscoveryCatalogEntry[];
     total: number;

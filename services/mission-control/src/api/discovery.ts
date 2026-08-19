@@ -3,6 +3,7 @@ import type {
     DiscoveryCatalogEntry,
     DiscoveryCatalogPage,
     DiscoveryCompatibilityAssessment,
+    DiscoveryItemEvidence,
     DiscoveryListQuery,
     DiscoveryMetadata,
     DiscoveryProposalNavigation,
@@ -62,6 +63,16 @@ export async function getDiscoveryItem(
 ): Promise<DiscoveryCatalogEntry> {
     const response = await atlas.get<DiscoveryCatalogEntry>(
         `/discovery/items/${encodeURIComponent(itemId)}`,
+    );
+
+    return response.data;
+}
+
+export async function getDiscoveryItemEvidence(
+    itemId: string,
+): Promise<DiscoveryItemEvidence> {
+    const response = await atlas.get<DiscoveryItemEvidence>(
+        `/discovery/items/${encodeURIComponent(itemId)}/evidence`,
     );
 
     return response.data;

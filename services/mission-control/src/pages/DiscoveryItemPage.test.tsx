@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     getDiscoveryCompatibility,
+    getDiscoveryItemEvidence,
     getDiscoveryItem,
     getDiscoveryRelationships,
     listDiscoveryProposals,
@@ -11,6 +12,7 @@ import {
 import type {
     DiscoveryCatalogEntry,
     DiscoveryCompatibilityAssessment,
+    DiscoveryItemEvidence,
     DiscoveryRelationshipCollection,
     DiscoveryProposalNavigation,
 } from "../types/discovery";
@@ -25,12 +27,14 @@ vi.mock("../api/discovery", () => ({
     getDiscoveryItem: vi.fn(),
     getDiscoveryRelationships: vi.fn(),
     getDiscoveryCompatibility: vi.fn(),
+    getDiscoveryItemEvidence: vi.fn(),
     listDiscoveryProposals: vi.fn(),
 }));
 
 const mockedGetDiscoveryItem = vi.mocked(getDiscoveryItem);
 const mockedGetDiscoveryRelationships = vi.mocked(getDiscoveryRelationships);
 const mockedGetDiscoveryCompatibility = vi.mocked(getDiscoveryCompatibility);
+const mockedGetDiscoveryItemEvidence = vi.mocked(getDiscoveryItemEvidence);
 const mockedListDiscoveryProposals = vi.mocked(listDiscoveryProposals);
 
 const compatibilityAssessment = (
@@ -197,6 +201,21 @@ function proposal(): DiscoveryProposalNavigation {
     };
 }
 
+function itemEvidence(): DiscoveryItemEvidence {
+    return {
+        schema_version: "discovery-merged-item-v1",
+        catalog_item_id: "frigate",
+        curated: entry(),
+        dynamic_claims: [],
+        source_states: [{
+            source_id: "frigate-github-latest-release-v1",
+            health: null,
+            cache_state: "absent",
+        }],
+        conflict_state: "none",
+    };
+}
+
 function renderPage(path = "/discovery/items/frigate") {
     return render(
         <MemoryRouter initialEntries={[path]}>
@@ -213,6 +232,7 @@ describe("DiscoveryItemPage", () => {
         mockedGetDiscoveryItem.mockResolvedValue(entry());
         mockedGetDiscoveryRelationships.mockResolvedValue(relationships());
         mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment());
+        mockedGetDiscoveryItemEvidence.mockResolvedValue(itemEvidence());
         mockedListDiscoveryProposals.mockResolvedValue({ proposals: [], total: 0, limit: 25 });
     });
 
@@ -251,6 +271,51 @@ describe("DiscoveryItemPage", () => {
         expect(await screen.findByText("Advisory proposal")).toBeInTheDocument();
         expect(mockedListDiscoveryProposals).toHaveBeenCalledWith(25);
         expect(screen.queryByText("other")).not.toBeInTheDocument();
+    });
+
+    it("composes read-only evidence without granting mutation or execution controls", async () => {
+        mockedGetDiscoveryItemEvidence.mockResolvedValue({
+            ...itemEvidence(),
+            dynamic_claims: [{
+                fact_kind: "latest_stable_release",
+                version: "0.16.1",
+                published_at: "2026-08-17T09:00:00Z",
+                freshness: "fresh",
+                provenance: {
+                    source_id: "frigate-github-latest-release-v1",
+                    source_type: "github_latest_release",
+                    trust_tier: "supplemental",
+                    repository: "blakeblackshear/frigate",
+                    upstream_release_id: 123,
+                    retrieved_at: "2026-08-18T09:00:00Z",
+                    expires_at: "2026-08-19T09:00:00Z",
+                },
+            }],
+            source_states: [{
+                source_id: "frigate-github-latest-release-v1",
+                health: "healthy",
+                cache_state: "available",
+            }],
+            conflict_state: "agreement",
+        });
+
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Release evidence" })).toBeInTheDocument();
+        expect(await screen.findByText("Release 0.16.1")).toBeInTheDocument();
+        expect(mockedGetDiscoveryItemEvidence).toHaveBeenCalledWith("frigate");
+        expect(screen.queryByRole("button", { name: /apply|execute|fix|remediate|refresh/i })).not.toBeInTheDocument();
+    });
+
+    it("keeps curated item content usable when evidence is offline", async () => {
+        mockedGetDiscoveryItemEvidence.mockRejectedValue(new Error("Evidence service offline"));
+
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(await screen.findByText("Dynamic evidence unavailable")).toBeInTheDocument();
+        expect(screen.getByText(/Showing the curated catalog only/i)).toBeInTheDocument();
+        expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
     });
 
     it("distinguishes proposal transport failure from provider state", async () => {

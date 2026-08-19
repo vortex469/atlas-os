@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { atlas } from "./atlas";
-import { getDiscoveryProposal, listDiscoveryProposals } from "./discovery";
+import { getDiscoveryItemEvidence, getDiscoveryProposal, listDiscoveryProposals } from "./discovery";
 
 vi.mock("./atlas", () => ({ atlas: { get: vi.fn() } }));
 
@@ -21,6 +21,16 @@ describe("Discovery proposal API", () => {
         expect(atlas.get).toHaveBeenNthCalledWith(
             2,
             "/discovery/proposals/proposal%2Fwith%3Ftampering",
+        );
+    });
+
+    it("reads evidence with an encoded item identity and no write options", async () => {
+        vi.mocked(atlas.get).mockResolvedValueOnce({ data: { catalog_item_id: "item" } });
+
+        await getDiscoveryItemEvidence("item/with?tampering");
+
+        expect(atlas.get).toHaveBeenCalledWith(
+            "/discovery/items/item%2Fwith%3Ftampering/evidence",
         );
     });
 });
