@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -250,12 +251,27 @@ class CatalogProvenance(DiscoveryCenterModel):
     trust_level: CatalogTrustLevel = CatalogTrustLevel.CURATED
 
 
+class CuratedReleaseClaim(DiscoveryCenterModel):
+    """Explicit curated assertion used only for release-conflict evaluation."""
+
+    version: str = Field(min_length=1, max_length=64, pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
+    published_at: datetime
+
+    @field_validator("published_at")
+    @classmethod
+    def normalize_published_at(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("published_at must be timezone-aware")
+        return value.astimezone(UTC)
+
+
 class CatalogEntry(DiscoveryCenterModel):
     """Catalog record wrapper around a Discovery Center item."""
 
     schema_version: int = CATALOG_SCHEMA_VERSION
     item: DiscoveryItem
     provenance: CatalogProvenance
+    release_claim: CuratedReleaseClaim | None = None
     metadata: Mapping[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")

@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 import app.config.settings as settings_module
 from app.config.settings import (
+    DynamicDiscoverySettings,
     IntelligenceSettings,
     OperatorAuthSettings,
     ProviderIntentActivation,
@@ -48,6 +49,32 @@ def test_provider_intelligence_history_is_bounded(
 def test_operator_auth_is_disabled_safely_by_default() -> None:
     assert OperatorAuthSettings().enabled is False
     assert OperatorAuthSettings().trusted_origins == ()
+
+
+def test_dynamic_discovery_refresh_is_disabled_safely_by_default() -> None:
+    assert DynamicDiscoverySettings().enabled is False
+
+
+@pytest.mark.parametrize("value", ["1", "true", "yes", "on", "TRUE"])
+def test_dynamic_discovery_refresh_environment_is_explicitly_opt_in(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setattr(
+        settings_module,
+        "load_yaml_config",
+        lambda: {
+            "atlas": {"release": "test"},
+            "infrastructure": {},
+            "proxmox": {"host": "test", "node": "test"},
+            "home_assistant": {"url": "http://test"},
+            "docker": {},
+            "inventory": {"file": "/tmp/inventory.yaml"},
+        },
+    )
+    monkeypatch.setenv("ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH", value)
+
+    assert load_settings().dynamic_discovery.enabled is True
 
 
 def test_enabled_operator_auth_requires_exact_https_origin() -> None:

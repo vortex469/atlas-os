@@ -81,4 +81,4 @@ def test_evaluation_module_is_not_wired_into_application_modules():
             continue
         if "dynamic_evaluation" in path.read_text(encoding="utf-8"):
             references.append(path.relative_to(app_dir).as_posix())
-    assert references == []
+    assert references == ["discovery/dynamic_curation.py"]

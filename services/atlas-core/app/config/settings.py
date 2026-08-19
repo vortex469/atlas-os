@@ -76,6 +76,10 @@ class OperationalDispatchSettings(BaseModel):
     agent_auth_file: str = "/run/atlas-core-agent-auth/token"
 
 
+class DynamicDiscoverySettings(BaseModel):
+    enabled: bool = False
+
+
 class ProviderIntentSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -168,6 +172,9 @@ class Settings(BaseModel):
         default_factory=ProviderIntentSettings,
     )
     operator_auth: OperatorAuthSettings = Field(default_factory=OperatorAuthSettings)
+    dynamic_discovery: DynamicDiscoverySettings = Field(
+        default_factory=DynamicDiscoverySettings,
+    )
 
 
 def load_yaml_config() -> dict[str, Any]:
@@ -223,6 +230,16 @@ def load_settings() -> Settings:
             if value is not None
         )
         raw["provider_intents"] = provider_intent_raw
+        dynamic_discovery_raw = dict(raw.get("dynamic_discovery") or {})
+        dynamic_discovery_enabled = os.getenv("ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH")
+        if dynamic_discovery_enabled is not None:
+            dynamic_discovery_raw["enabled"] = dynamic_discovery_enabled.strip().lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }
+        raw["dynamic_discovery"] = dynamic_discovery_raw
         loaded = Settings.model_validate(raw)
         auth_file = os.getenv("ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE")
         if auth_file:

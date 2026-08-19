@@ -52,6 +52,7 @@ from app.routes.ops import router as ops_router
 from app.routes.policies import router as policies_router
 from app.routes.providers import router as providers_router
 from app.routes.proxmox import router as proxmox_router
+from app.services.discovery_dynamic_activation import DynamicDiscoveryActivation
 
 configure_logging()
 logger = get_logger("atlas")
@@ -73,6 +74,11 @@ async def lifespan(app: FastAPI):
         provider_intent_store,
     )
     development_fixture_enabled_and_validated()
+
+    discovery_activation = None
+    if settings.dynamic_discovery.enabled:
+        discovery_activation = await DynamicDiscoveryActivation.start()
+        logger.info("Dynamic Discovery initial refresh completed")
 
     operator_settings = settings.operator_auth
     app.state.operator_intent_store = OperatorIntentStore(
@@ -158,6 +164,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    if discovery_activation is not None:
+        await discovery_activation.aclose()
     await operational_lifecycle.close()
 
     logger.info("Atlas Core shutting down")

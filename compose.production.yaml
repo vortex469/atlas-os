@@ -21,6 +21,7 @@ services:
       ATLAS_PROVIDER_CONNECTION_TEMPLATE_FILE: /opt/atlas/config/provider-connections.yaml
       ATLAS_PROVIDER_SECRET_FILE: /opt/atlas/data/secrets/provider-connections.yaml
       ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE: /run/atlas-core-agent-auth/token
+      ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH: ${ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH:-false}
     volumes:
       - ./config/atlas.yaml:/opt/atlas/config/atlas.yaml:ro
       - ./config/policies.yaml:/opt/atlas/config/policies.yaml:ro

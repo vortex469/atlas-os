@@ -84,6 +84,8 @@ def test_projection_module_is_wired_only_into_read_only_evidence_route():
             "test_dynamic_source_isolation.py",
             "test_discovery_evidence.py",
             "test_discovery_evidence_isolation.py",
+            "test_discovery_dynamic_activation.py",
+            "test_discovery_dynamic_projection.py",
             Path(__file__).name,
         }:
             continue
@@ -91,5 +93,6 @@ def test_projection_module_is_wired_only_into_read_only_evidence_route():
             references.append(path.relative_to(app_dir).as_posix())
     assert sorted(references) == [
         "routes/discovery.py",
+        "services/discovery_dynamic_activation.py",
         "services/discovery_dynamic_projection.py",
     ]

@@ -158,6 +158,15 @@ class DiscoveryMergedItemProjection(ProjectionModel):
         if not self.dynamic_claims and self.conflict_state is not ConflictState.NONE:
             raise ValueError("empty dynamic evidence cannot conflict")
         curated_claim = context.get("curated_claim")
+        if (
+            "curated_claim" not in context
+            and self.conflict_state
+            in {ConflictState.AGREEMENT, ConflictState.CURATED_CONFLICT}
+        ):
+            # Response serialization revalidates the already-constructed model
+            # without the private curated assertion used by projection evaluation.
+            # The assertion is intentionally not part of the public response.
+            return self
         expected_conflict = _public_conflict_state(
             self.dynamic_claims,
             curated_claim=(

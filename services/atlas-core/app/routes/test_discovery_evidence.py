@@ -9,6 +9,7 @@ from threading import Event, Thread
 import httpx
 import pytest
 
+from app.discovery.dynamic_health import DynamicSourceHealthRegistry
 from app.discovery.dynamic_projection import (
     MERGED_ITEM_SCHEMA,
     DynamicCacheState,
@@ -16,7 +17,8 @@ from app.discovery.dynamic_projection import (
     DynamicDiscoveryProjectionService,
     DynamicSourceReadSnapshot,
 )
-from app.discovery.dynamic_sources import FRIGATE_ADAPTER_ID
+from app.discovery.dynamic_sources import FRIGATE_ADAPTER_ID, DynamicSourceHealth
+from app.discovery.models import CuratedReleaseClaim
 from app.discovery.test_dynamic_projection import (
     FakeReader,
     catalog,
@@ -119,6 +121,71 @@ def test_production_dependency_handles_missing_cache_without_creating_it(
     assert response.json()["source_states"][0]["cache_state"] == "absent"
     assert response.json()["dynamic_claims"] == []
     assert not cache_root.exists()
+
+
+def test_production_dependency_projects_injected_source_health_through_route(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registry = DynamicSourceHealthRegistry()
+    registry.record(FRIGATE_ADAPTER_ID, DynamicSourceHealth.DEGRADED)
+    cache_root = tmp_path / "missing" / "discovery"
+    monkeypatch.setattr(dependency_module, "DISCOVERY_CACHE_ROOT", cache_root)
+    monkeypatch.setattr(dependency_module, "dynamic_source_health_registry", registry)
+    monkeypatch.setattr(
+        dependency_module, "get_discovery_service", lambda: catalog(entry())
+    )
+    monkeypatch.setattr(route_module, "get_discovery_request_time", lambda: NOW)
+
+    def forbidden_refresh(*args, **kwargs):
+        raise AssertionError("evidence GET must not initiate dynamic refresh")
+
+    monkeypatch.setattr(
+        "app.discovery.dynamic_refresh.RefreshCoordinator.refresh",
+        forbidden_refresh,
+    )
+
+    response = client.get(PATH)
+
+    assert response.status_code == 200
+    assert response.json()["source_states"] == [
+        {
+            "source_id": FRIGATE_ADAPTER_ID,
+            "health": "degraded",
+            "cache_state": "absent",
+        }
+    ]
+    assert not cache_root.exists()
+
+
+def test_production_curated_claim_provider_reaches_route_with_test_catalog(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache_parent = tmp_path / "discovery"
+    store = initialized(cache_parent)
+    store.publish(FRIGATE_ADAPTER_ID, (p1_record(version="0.16.1"),))
+    curated_entry = entry().model_copy(
+        update={
+            "release_claim": CuratedReleaseClaim(
+                version="0.15.0",
+                published_at=NOW - timedelta(days=2),
+            )
+        }
+    )
+    monkeypatch.setattr(dependency_module, "DISCOVERY_CACHE_ROOT", cache_parent / "cache")
+    monkeypatch.setattr(
+        dependency_module,
+        "get_discovery_service",
+        lambda: catalog(curated_entry),
+    )
+    monkeypatch.setattr(route_module, "get_discovery_request_time", lambda: NOW)
+
+    response = client.get(PATH)
+
+    assert response.status_code == 200
+    assert response.json()["dynamic_claims"][0]["version"] == "0.16.1"
+    assert response.json()["conflict_state"] == "curated_conflict"
 
 
 @pytest.mark.parametrize(

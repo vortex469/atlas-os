@@ -100,13 +100,23 @@ Response fields:
 - `source_states`: bounded evidence state for each mapped dynamic source. Each state includes `source_id`, `health`, and `cache_state`.
 - `conflict_state`: `none`, `agreement`, `dynamic_conflict`, or `curated_conflict`.
 
-The curated catalog item remains authoritative; dynamic claims supplement it and do not override it. Claim `freshness` is `fresh` or `stale`. Stale claims remain visible, while expired claims are omitted. Source `health` may be `healthy`, `degraded`, `unavailable`, or `null`; it may be `null` in the current inactive P3 production projection. Source `cache_state` is `absent`, `available`, or `corrupt`.
+The curated catalog item remains authoritative; dynamic claims supplement it and do not override it. Claim `freshness` is `fresh` or `stale`. Stale claims remain visible, while expired claims are omitted. Source `health` may be `healthy`, `degraded`, `unavailable`, or `null`; it is `null` until the process has observed that source. Source `cache_state` is `absent`, `available`, or `corrupt`.
 
 The endpoint only reads existing state. A `GET` performs no network request or refresh and does not initialize, publish, or repair a cache. Cache absence does not prevent the curated response. A corrupt or unreadable cache is bounded as `corrupt` and degrades to curated-only evidence.
 
 An unknown or unmapped item returns a sanitized `404` without selecting or reading a dynamic source. An invalid request clock or unexpected internal projection failure returns a bounded, sanitized `500` response.
 
 This projection introduces no mutation or execution authority.
+
+Production refresh is an explicit startup boundary controlled by
+`ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH`, which defaults to `false`. When it is
+enabled, Core initializes only the rebuildable Discovery cache and performs one
+bounded refresh of the fixed Frigate GitHub release source. Source or network
+failure records degraded/unavailable health and preserves curated-only reads.
+Rejected cache initialization is likewise bounded at activation, records the
+fixed source as unavailable, and lets Core continue without repairing or
+rewriting the cache.
+The evidence `GET` never initiates that refresh.
 
 ## Search endpoint
 

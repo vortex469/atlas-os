@@ -79,4 +79,4 @@ def test_refresh_module_is_not_wired_into_application_modules():
             continue
         if "dynamic_refresh" in path.read_text(encoding="utf-8"):
             references.append(path.relative_to(app_dir).as_posix())
-    assert references == []
+    assert references == ["services/discovery_dynamic_activation.py"]
