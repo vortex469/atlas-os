@@ -6,9 +6,11 @@ import logging
 from datetime import UTC, datetime
 
 from app.discovery.dynamic_cache import REGISTERED_SOURCE_IDS, DiscoveryCacheStore
-from app.discovery.dynamic_health import dynamic_source_health_registry
+from app.discovery.dynamic_health import (
+    DynamicSourceHealth,
+    dynamic_source_health_registry,
+)
 from app.discovery.dynamic_refresh import RefreshCoordinator
-from app.discovery.dynamic_sources import DynamicSourceHealth
 from app.services.discovery_dynamic_projection import DISCOVERY_CACHE_ROOT
 
 logger = logging.getLogger(__name__)
