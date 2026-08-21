@@ -383,6 +383,293 @@ def test_installed_version_does_not_change_assessment() -> None:
     assert assessment_without_version == assessment_with_version
 
 
+def version_target(
+    *,
+    minimum_version: str | None = None,
+    maximum_version: str | None = None,
+    required: bool = True,
+    relationship_type: DiscoveryRelationshipType = DiscoveryRelationshipType.DEPENDS_ON,
+) -> CatalogEntry:
+    return entry(
+        "app",
+        relationships=(
+            DiscoveryRelationship(
+                type=relationship_type,
+                target="frigate",
+                required=required,
+                minimum_version=minimum_version,
+                maximum_version=maximum_version,
+            ),
+        ),
+    )
+
+
+def frigate_context(installed_version: str | None = None) -> CompatibilityContext:
+    if installed_version is None:
+        return CompatibilityContext(
+            installed_services=(
+                ObservedService(id="frigate", name="Frigate", source="test"),
+            ),
+        )
+    return CompatibilityContext(
+        installed_services=(
+            ObservedService(
+                id="frigate",
+                name="Frigate",
+                source="test",
+                installed_version=installed_version,
+            ),
+        ),
+    )
+
+
+def test_version_bounds_in_range_are_compatible() -> None:
+    target = version_target(minimum_version="1.0.0", maximum_version="2.0.0")
+
+    assessment = assess(target, frigate_context("1.9.9"), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.COMPATIBLE
+    assert not assessment.findings
+    assert [item.check_type for item in assessment.evidence] == [
+        CompatibilityCheckType.CATALOG,
+        CompatibilityCheckType.RELATIONSHIP,
+        CompatibilityCheckType.VERSION,
+    ]
+    version_evidence = assessment.evidence[-1]
+    assert version_evidence.id == "e0003"
+    assert version_evidence.subject == "relationships.depends_on.frigate.version"
+    assert version_evidence.requirement == ">=1.0.0 <=2.0.0"
+    assert version_evidence.observed == "1.9.9"
+    assert version_evidence.observed_fact_id == "installed_version:frigate"
+
+
+def test_version_below_minimum_is_incompatible_blocker() -> None:
+    target = version_target(minimum_version="1.0.0")
+
+    assessment = assess(target, frigate_context("0.9.0"), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.INCOMPATIBLE
+    finding = assessment.findings[0]
+    assert finding.id == "f0001"
+    assert finding.check_type is CompatibilityCheckType.VERSION
+    assert finding.severity is CompatibilityFindingSeverity.BLOCKER
+    assert finding.status is CompatibilityStatus.INCOMPATIBLE
+    assert finding.evidence_ids == ("e0003",)
+    evidence = assessment.evidence[-1]
+    assert evidence.check_type is CompatibilityCheckType.VERSION
+    assert evidence.status is CompatibilityStatus.INCOMPATIBLE
+    assert "below required minimum version '1.0.0'" in evidence.message
+
+
+def test_version_above_maximum_is_incompatible_blocker() -> None:
+    target = version_target(maximum_version="2.0.0")
+
+    assessment = assess(target, frigate_context("3.0.0"), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.INCOMPATIBLE
+    finding = assessment.findings[0]
+    assert finding.check_type is CompatibilityCheckType.VERSION
+    assert finding.severity is CompatibilityFindingSeverity.BLOCKER
+    assert finding.status is CompatibilityStatus.INCOMPATIBLE
+    evidence = assessment.evidence[-1]
+    assert evidence.check_type is CompatibilityCheckType.VERSION
+    assert evidence.status is CompatibilityStatus.INCOMPATIBLE
+    assert "above required maximum version '2.0.0'" in evidence.message
+
+
+def test_version_bound_inclusive_edges_are_compatible() -> None:
+    target = version_target(minimum_version="1.0.0", maximum_version="2.0.0")
+
+    lower = assess(target, frigate_context("1.0.0"), entry("frigate"))
+    upper = assess(target, frigate_context("2.0.0"), entry("frigate"))
+
+    assert lower.status == CompatibilityStatus.COMPATIBLE
+    assert upper.status == CompatibilityStatus.COMPATIBLE
+    assert not lower.findings
+    assert not upper.findings
+
+
+def test_missing_installed_version_fails_closed() -> None:
+    target = version_target(minimum_version="1.0.0")
+
+    assessment = assess(target, frigate_context(None), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.INSUFFICIENT_INFORMATION
+    assert assessment.unknown_facts == ("installed_version:frigate",)
+    finding = assessment.findings[0]
+    assert finding.check_type is CompatibilityCheckType.VERSION
+    assert finding.severity is CompatibilityFindingSeverity.UNKNOWN
+    assert finding.status is CompatibilityStatus.INSUFFICIENT_INFORMATION
+    evidence = assessment.evidence[-1]
+    assert evidence.check_type is CompatibilityCheckType.VERSION
+    assert evidence.status is CompatibilityStatus.INSUFFICIENT_INFORMATION
+    assert evidence.observed == "unknown"
+
+
+@pytest.mark.parametrize(
+    "version",
+    [
+        "v1.2.3",
+        "1.2",
+        "1.2.3.4",
+        "1.02.3",
+        "1.2.x",
+        "1.2.3-beta",
+    ],
+)
+def test_malformed_installed_version_fails_closed(version: str) -> None:
+    target = version_target(minimum_version="1.0.0", maximum_version="2.0.0")
+
+    assessment = assess(target, frigate_context(version), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.INSUFFICIENT_INFORMATION
+    assert assessment.unknown_facts == ("installed_version:frigate",)
+    assert assessment.findings[0].check_type is CompatibilityCheckType.VERSION
+    assert assessment.findings[0].severity is CompatibilityFindingSeverity.UNKNOWN
+
+
+def test_malformed_version_bound_fails_closed() -> None:
+    target = version_target(minimum_version="latest")
+
+    assessment = assess(target, frigate_context("1.9.9"), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.INSUFFICIENT_INFORMATION
+    assert assessment.findings[0].check_type is CompatibilityCheckType.VERSION
+    assert assessment.findings[0].severity is CompatibilityFindingSeverity.UNKNOWN
+
+
+def test_malformed_maximum_version_bound_fails_closed() -> None:
+    target = version_target(maximum_version="latest")
+
+    assessment = assess(target, frigate_context("1.9.9"), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.INSUFFICIENT_INFORMATION
+    version_findings = [
+        finding
+        for finding in assessment.findings
+        if finding.check_type is CompatibilityCheckType.VERSION
+    ]
+    assert len(version_findings) == 1
+    assert version_findings[0].severity is CompatibilityFindingSeverity.UNKNOWN
+
+
+def test_duplicate_observed_service_id_is_deterministic() -> None:
+    target = version_target(minimum_version="1.0.0", maximum_version="2.0.0")
+    in_range = ObservedService(
+        id="frigate",
+        name="Frigate",
+        source="test",
+        installed_version="1.5.0",
+    )
+    out_of_range = ObservedService(
+        id="frigate",
+        name="Frigate",
+        source="test",
+        installed_version="9.9.9",
+    )
+    context = CompatibilityContext(installed_services=(in_range, out_of_range))
+
+    first = assess(target, context, entry("frigate"))
+    second = assess(target, context, entry("frigate"))
+    only_first = assess(
+        target,
+        CompatibilityContext(installed_services=(in_range,)),
+        entry("frigate"),
+    )
+
+    assert first == second
+    assert first == only_first
+    assert first.status == CompatibilityStatus.COMPATIBLE
+
+    unknown_first = assess(
+        target,
+        CompatibilityContext(
+            installed_services=(
+                ObservedService(id="frigate", name="Frigate", source="test"),
+                in_range,
+            ),
+        ),
+        entry("frigate"),
+    )
+
+    assert unknown_first.status == CompatibilityStatus.INSUFFICIENT_INFORMATION
+    assert unknown_first.status is not CompatibilityStatus.COMPATIBLE
+
+
+def test_optional_relationship_skips_version_bounds() -> None:
+    target = version_target(minimum_version="1.0.0", required=False)
+
+    assessment = assess(target, frigate_context("0.1.0"), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.COMPATIBLE
+    assert not assessment.findings
+    assert all(
+        item.check_type is not CompatibilityCheckType.VERSION
+        for item in assessment.evidence
+    )
+
+
+def test_unobserved_target_does_not_evaluate_version_bounds() -> None:
+    target = version_target(minimum_version="1.0.0")
+    context = CompatibilityContext(
+        installed_services=(
+            ObservedService(id="other", name="Other", source="test"),
+        ),
+    )
+
+    assessment = assess(target, context, entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.INCOMPATIBLE
+    assert assessment.findings[0].check_type is CompatibilityCheckType.RELATIONSHIP
+    assert assessment.findings[0].subject == "relationships.depends_on.frigate"
+    assert all(
+        item.check_type is not CompatibilityCheckType.VERSION
+        for item in assessment.evidence
+    )
+
+
+def test_non_presence_relationship_type_skips_version_bounds() -> None:
+    target = version_target(
+        minimum_version="1.0.0",
+        relationship_type=DiscoveryRelationshipType.CONFLICTS_WITH,
+    )
+
+    assessment = assess(target, frigate_context("0.1.0"), entry("frigate"))
+
+    assert assessment.status == CompatibilityStatus.INCOMPATIBLE
+    assert all(
+        item.check_type is not CompatibilityCheckType.VERSION
+        for item in assessment.evidence
+    )
+
+
+def test_no_version_bounds_is_a_noop() -> None:
+    target = version_target()
+    with_version = assess(target, frigate_context("1.9.9"), entry("frigate"))
+    without_version = assess(target, frigate_context(None), entry("frigate"))
+
+    assert with_version.status == CompatibilityStatus.COMPATIBLE
+    assert all(
+        item.check_type is not CompatibilityCheckType.VERSION
+        for item in with_version.evidence
+    )
+    assert with_version == without_version
+
+
+def test_version_bound_assessment_ids_are_deterministic() -> None:
+    target = version_target(minimum_version="1.0.0", maximum_version="2.0.0")
+
+    passing = assess(target, frigate_context("1.9.9"), entry("frigate"))
+    failing = assess(target, frigate_context("0.9.0"), entry("frigate"))
+    repeat = assess(target, frigate_context("1.9.9"), entry("frigate"))
+
+    assert passing == repeat
+    assert [item.id for item in passing.evidence] == ["e0001", "e0002", "e0003"]
+    assert [item.id for item in failing.evidence] == ["e0001", "e0002", "e0003"]
+    assert [finding.id for finding in failing.findings] == ["f0001"]
+    assert failing.findings[0].evidence_ids == ("e0003",)
+
+
 def test_assessment_rejects_findings_with_missing_evidence() -> None:
     with pytest.raises(ValidationError):
         CompatibilityAssessment(

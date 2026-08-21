@@ -10,6 +10,7 @@ from pydantic import Field, field_validator, model_validator
 from app.discovery.models import (
     DiscoveryCenterModel,
     DiscoveryItem,
+    DiscoveryRelationship,
     DiscoveryRelationshipType,
 )
 from app.discovery.release_evaluation import parse_strict_numeric_version
@@ -43,6 +44,7 @@ class CompatibilityCheckType(StrEnum):
     NETWORK = "network"
     RELATIONSHIP = "relationship"
     CATALOG = "catalog"
+    VERSION = "version"
 
 
 class ObservedFact(DiscoveryCenterModel):
@@ -567,7 +569,8 @@ class _AssessmentBuilder:
                     )
                     continue
 
-                if _service_present(target.id, self.context.installed_services):
+                service = _service_named(target.id, self.context.installed_services)
+                if service is not None:
                     self._add_evidence(
                         check_type=CompatibilityCheckType.RELATIONSHIP,
                         subject=subject,
@@ -578,6 +581,7 @@ class _AssessmentBuilder:
                         observed=target.id,
                         observed_fact_id=_fact_id("service", target.id),
                     )
+                    self._evaluate_version_bounds(relationship, target, service)
                 else:
                     self._incompatible(
                         check_type=CompatibilityCheckType.RELATIONSHIP,
@@ -619,6 +623,84 @@ class _AssessmentBuilder:
                         observed="not observed",
                         observed_fact_id=_fact_id("service", target.id),
                     )
+
+    def _evaluate_version_bounds(
+        self,
+        relationship: DiscoveryRelationship,
+        target: DiscoveryItem,
+        service: ObservedService,
+    ) -> None:
+        minimum = relationship.minimum_version
+        maximum = relationship.maximum_version
+        if minimum is None and maximum is None:
+            return
+
+        subject = f"relationships.{relationship.type}.{relationship.target}.version"
+        fact_name = _fact_id("installed_version", target.id)
+        requirement = _version_bound_requirement(minimum, maximum)
+        version_key = installed_version_key(service)
+        minimum_key = (
+            parse_strict_numeric_version(minimum) if minimum is not None else None
+        )
+        maximum_key = (
+            parse_strict_numeric_version(maximum) if maximum is not None else None
+        )
+        if (
+            version_key is None
+            or (minimum is not None and minimum_key is None)
+            or (maximum is not None and maximum_key is None)
+        ):
+            self._unknown(
+                check_type=CompatibilityCheckType.VERSION,
+                subject=subject,
+                requirement=requirement,
+                fact_name=fact_name,
+                message=(
+                    f"Version bounds {requirement} for required relationship target "
+                    f"'{relationship.target}' cannot be evaluated because a version "
+                    "is missing or not a strict numeric X.Y.Z version."
+                ),
+            )
+            return
+
+        if minimum_key is not None and version_key < minimum_key:
+            self._incompatible(
+                check_type=CompatibilityCheckType.VERSION,
+                subject=subject,
+                requirement=requirement,
+                observed=service.installed_version,
+                message=(
+                    f"Observed installed version '{service.installed_version}' "
+                    f"is below required minimum version '{minimum}'."
+                ),
+                observed_fact_id=fact_name,
+            )
+        elif maximum_key is not None and version_key > maximum_key:
+            self._incompatible(
+                check_type=CompatibilityCheckType.VERSION,
+                subject=subject,
+                requirement=requirement,
+                observed=service.installed_version,
+                message=(
+                    f"Observed installed version '{service.installed_version}' "
+                    f"is above required maximum version '{maximum}'."
+                ),
+                observed_fact_id=fact_name,
+            )
+        else:
+            self._add_evidence(
+                check_type=CompatibilityCheckType.VERSION,
+                subject=subject,
+                status=CompatibilityStatus.COMPATIBLE,
+                message=(
+                    f"Observed installed version '{service.installed_version}' "
+                    f"satisfies version bounds {requirement}."
+                ),
+                source="compatibility_context",
+                requirement=requirement,
+                observed=service.installed_version,
+                observed_fact_id=fact_name,
+            )
 
     def _evaluate_minimum(
         self,
@@ -886,6 +968,25 @@ def _normalize_unique_strings(value: Any) -> tuple[str, ...]:
 
 def _fact_id(kind: str, value: str) -> str:
     return f"{kind}:{value}"
+
+
+def _version_bound_requirement(
+    minimum: str | None,
+    maximum: str | None,
+) -> str:
+    bounds = []
+    if minimum is not None:
+        bounds.append(f">={minimum}")
+    if maximum is not None:
+        bounds.append(f"<={maximum}")
+    return " ".join(bounds)
+
+
+def _service_named(
+    item_id: str,
+    services: tuple[ObservedService, ...],
+) -> ObservedService | None:
+    return next((service for service in services if service.id == item_id), None)
 
 
 def _service_present(

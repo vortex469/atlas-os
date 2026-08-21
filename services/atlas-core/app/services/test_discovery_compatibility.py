@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from app.discovery.compatibility import (
     CompatibilityContext,
     CompatibilityContextBuilder,
     CompatibilityStatus,
+    ObservedService,
 )
 from app.discovery.loader import LoadedCatalog
 from app.discovery.models import (
@@ -13,13 +16,24 @@ from app.discovery.models import (
     CatalogEntry,
     CatalogProvenance,
     DiscoveryItem,
+    DiscoveryRelationship,
+    DiscoveryRelationshipType,
     DiscoveryRequirements,
 )
+from app.discovery.proposals import (
+    DiscoveryProposalDestinationKind,
+    DiscoveryProposalReason,
+    DiscoveryProposalStatus,
+)
+from app.intelligence.discovery import collect_discovery_compatibility_findings
 from app.services.discovery import DiscoveryCatalogService, DiscoveryItemNotFoundError
 from app.services.discovery_compatibility import (
     DiscoveryCompatibilityContextUnavailableError,
     DiscoveryCompatibilityService,
 )
+from app.services.discovery_proposals import DiscoveryProposalService
+
+NOW = datetime(2026, 8, 15, 12, tzinfo=UTC)
 
 
 class StaticLoader:
@@ -97,3 +111,81 @@ def test_service_sanitizes_context_builder_failures() -> None:
 
     assert str(error.value) == "Discovery compatibility context is unavailable."
     assert "/secret" not in str(error.value)
+
+
+def app_with_version_bound() -> CatalogEntry:
+    return CatalogEntry(
+        item=DiscoveryItem(
+            id="app",
+            type="application",
+            name="App",
+            relationships=(
+                DiscoveryRelationship(
+                    type=DiscoveryRelationshipType.DEPENDS_ON,
+                    target="postgresql",
+                    required=True,
+                    minimum_version="15.0.0",
+                ),
+            ),
+        ),
+        provenance=CatalogProvenance(
+            source="test",
+            entry_id="app",
+            version="1.0.0",
+        ),
+    )
+
+
+def test_incompatible_version_flows_to_advisory_proposal() -> None:
+    postgresql = CatalogEntry(
+        item=DiscoveryItem(id="postgresql", type="service", name="PostgreSQL"),
+        provenance=CatalogProvenance(source="test"),
+    )
+    discovery_service = DiscoveryCatalogService(
+        StaticLoader((app_with_version_bound(), postgresql)),
+    )
+    compatibility_service = DiscoveryCompatibilityService(
+        discovery_service=discovery_service,
+        context_builder=StaticBuilder(
+            CompatibilityContext(
+                installed_services=(
+                    ObservedService(
+                        id="postgresql",
+                        name="PostgreSQL",
+                        source="test",
+                        installed_version="14.9.0",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    findings = collect_discovery_compatibility_findings(
+        discovery_service=discovery_service,
+        compatibility_service=compatibility_service,
+    )
+    assert len(findings) == 1
+    assert findings[0].details["compatibility_status"] == "incompatible"
+    assert findings[0].details["recommendation_class"] == "review_incompatibility"
+
+    proposal_service = DiscoveryProposalService(
+        discovery=discovery_service,
+        compatibility=compatibility_service,
+        finding_collector=lambda: findings,
+        clock=lambda: NOW,
+    )
+    (proposal,) = proposal_service.derive(target="atlas")
+
+    assert proposal.status is DiscoveryProposalStatus.CURRENT
+    assert proposal.reason is DiscoveryProposalReason.INCOMPATIBLE
+    assert (
+        proposal.destination.kind
+        is DiscoveryProposalDestinationKind.COMPATIBILITY_REVIEW
+    )
+    assert proposal.intent_hint is None
+    assert proposal.source_finding_id == findings[0].id
+    assert set(proposal.compatibility.evidence_ids) == {
+        "e0001",
+        "e0002",
+        "e0003",
+    }
