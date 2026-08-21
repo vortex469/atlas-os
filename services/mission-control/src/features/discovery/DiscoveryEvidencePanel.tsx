@@ -1,6 +1,8 @@
 import type {
     DiscoveryConflictState,
     DiscoveryItemEvidence,
+    DiscoveryReleaseEvaluation,
+    DiscoveryReleaseEvaluationStatus,
     DiscoverySourceHealth,
 } from "../../types/discovery";
 
@@ -36,6 +38,76 @@ const healthStyles: Record<DiscoverySourceHealth | "unknown", string> = {
     unknown: "border-slate-600 bg-slate-800 text-slate-300",
 };
 
+type ReleaseEvaluationTone = "positive" | "caution" | "conflict" | "neutral";
+
+const releaseEvaluationCopy: Record<
+    DiscoveryReleaseEvaluationStatus,
+    { title: string; detail: string; tone: ReleaseEvaluationTone }
+> = {
+    up_to_date: {
+        title: "Up to date",
+        detail:
+            "The freshest dynamic release evidence matches the authoritative baseline version. No change is recommended or implied.",
+        tone: "positive",
+    },
+    update_available: {
+        title: "Update available",
+        detail:
+            "A newer upstream release is observed than the authoritative baseline version. Informational only; nothing is scheduled, proposed, or applied.",
+        tone: "positive",
+    },
+    baseline_ahead: {
+        title: "Baseline ahead",
+        detail:
+            "The authoritative baseline version is ahead of the freshest observed upstream release. No change is recommended or implied.",
+        tone: "positive",
+    },
+    conflicted: {
+        title: "Conflicted release claims",
+        detail:
+            "Release evidence conflicts, so no latest version is selected. Curated catalog data remains authoritative. No change is recommended or implied.",
+        tone: "conflict",
+    },
+    stale_evidence: {
+        title: "Stale release evidence",
+        detail:
+            "The latest dynamic release evidence is stale and may not describe the current upstream release. No positive comparison is made.",
+        tone: "caution",
+    },
+    no_baseline: {
+        title: "No baseline version",
+        detail:
+            "No authoritative baseline version is available to compare against dynamic release evidence.",
+        tone: "neutral",
+    },
+    no_dynamic_evidence: {
+        title: "No dynamic release evidence",
+        detail:
+            "No dynamic release claims are available to compare against the authoritative baseline. Curated data remains available and authoritative.",
+        tone: "neutral",
+    },
+    insufficient_information: {
+        title: "Insufficient information",
+        detail:
+            "The available release versions cannot be compared as strict numeric versions. No positive comparison is made.",
+        tone: "caution",
+    },
+};
+
+const releaseEvaluationToneStyles: Record<ReleaseEvaluationTone, string> = {
+    positive: "rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-100",
+    caution: "rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-100",
+    conflict: "rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100",
+    neutral: "rounded-lg border border-slate-700 bg-slate-950 p-4 text-slate-100",
+};
+
+const releaseEvaluationBadgeStyles: Record<ReleaseEvaluationTone, string> = {
+    positive: "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-200",
+    caution: "rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200",
+    conflict: "rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-200",
+    neutral: "rounded-full border border-slate-600 bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300",
+};
+
 export function DiscoveryEvidencePanel({ evidence, isLoading, error }: Props) {
     return (
         <section
@@ -68,6 +140,11 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error }: Props) {
             {!isLoading && !error && evidence && (
                 <div className="mt-5 space-y-5">
                     <ConflictNotice state={evidence.conflict_state} />
+                    {evidence.release_evaluation && (
+                        <ReleaseEvaluationNotice
+                            evaluation={evidence.release_evaluation}
+                        />
+                    )}
                     <SourceSummary evidence={evidence} />
                     {evidence.dynamic_claims.length === 0 ? (
                         <div className="rounded-lg border border-slate-700 bg-slate-950 p-4">
@@ -129,6 +206,50 @@ function ConflictNotice({ state }: { state: DiscoveryConflictState }) {
         >
             <p className="font-semibold">{copy.title}</p>
             <p className="mt-1 text-sm opacity-90">{copy.detail}</p>
+        </div>
+    );
+}
+
+function ReleaseEvaluationNotice({
+    evaluation,
+}: {
+    evaluation: DiscoveryReleaseEvaluation;
+}) {
+    const copy = releaseEvaluationCopy[evaluation.status];
+    const baseline = evaluation.baseline ?? null;
+    const candidate = evaluation.latest_candidate ?? null;
+    const isConflict = evaluation.status === "conflicted";
+    return (
+        <div
+            role={isConflict ? "alert" : "status"}
+            className={releaseEvaluationToneStyles[copy.tone]}
+        >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold">Release evaluation</p>
+                <span className={releaseEvaluationBadgeStyles[copy.tone]}>
+                    {copy.title}
+                </span>
+            </div>
+            <p className="mt-1 text-sm opacity-90">{copy.detail}</p>
+            {(baseline !== null || candidate !== null) && (
+                <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                    {baseline !== null && (
+                        <Fact
+                            label="Baseline version"
+                            value={baseline.version}
+                        />
+                    )}
+                    {baseline !== null && (
+                        <Fact
+                            label="Baseline source"
+                            value={label(baseline.source)}
+                        />
+                    )}
+                    {candidate !== null && (
+                        <Fact label="Latest candidate" value={candidate} />
+                    )}
+                </dl>
+            )}
         </div>
     );
 }

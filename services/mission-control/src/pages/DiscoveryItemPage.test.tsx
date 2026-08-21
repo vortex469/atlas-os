@@ -307,6 +307,31 @@ describe("DiscoveryItemPage", () => {
         expect(screen.queryByRole("button", { name: /apply|execute|fix|remediate|refresh/i })).not.toBeInTheDocument();
     });
 
+    it("presents the bounded release evaluation without mutation or execution controls", async () => {
+        mockedGetDiscoveryItemEvidence.mockResolvedValue({
+            ...itemEvidence(),
+            release_evaluation: {
+                status: "update_available",
+                baseline: { version: "0.15.0", source: "item_version" },
+                latest_candidate: "0.16.1",
+                reason: null,
+            },
+        });
+
+        renderPage();
+
+        expect(await screen.findByText("Release evaluation")).toBeInTheDocument();
+        expect(screen.getByText("Update available")).toBeInTheDocument();
+        expect(screen.getByText("0.15.0")).toBeInTheDocument();
+        expect(screen.getByText("Item version")).toBeInTheDocument();
+        expect(screen.getByText("0.16.1")).toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", {
+                name: /apply|update|execute|fix|remediate|restart|refresh|approve/i,
+            }),
+        ).not.toBeInTheDocument();
+    });
+
     it("keeps curated item content usable when evidence is offline", async () => {
         mockedGetDiscoveryItemEvidence.mockRejectedValue(new Error("Evidence service offline"));
 

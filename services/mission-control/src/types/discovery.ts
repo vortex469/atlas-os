@@ -160,6 +160,32 @@ export type DiscoverySourceState = {
     cache_state: DiscoverySourceCacheState;
 };
 
+export type DiscoveryReleaseEvaluationStatus =
+    | "up_to_date"
+    | "update_available"
+    | "baseline_ahead"
+    | "conflicted"
+    | "stale_evidence"
+    | "no_baseline"
+    | "no_dynamic_evidence"
+    | "insufficient_information";
+
+export type DiscoveryReleaseEvaluationBaselineSource =
+    | "curated"
+    | "item_version";
+
+export type DiscoveryReleaseEvaluationBaseline = {
+    version: string;
+    source: DiscoveryReleaseEvaluationBaselineSource;
+};
+
+export type DiscoveryReleaseEvaluation = {
+    status: DiscoveryReleaseEvaluationStatus;
+    baseline?: DiscoveryReleaseEvaluationBaseline | null;
+    latest_candidate?: string | null;
+    reason?: string | null;
+};
+
 export type DiscoveryItemEvidence = {
     schema_version: "discovery-merged-item-v1";
     catalog_item_id: string;
@@ -167,6 +193,7 @@ export type DiscoveryItemEvidence = {
     dynamic_claims: DiscoveryDynamicClaim[];
     source_states: DiscoverySourceState[];
     conflict_state: DiscoveryConflictState;
+    release_evaluation?: DiscoveryReleaseEvaluation | null;
 };
 
 export type DiscoveryCatalogPage = {
