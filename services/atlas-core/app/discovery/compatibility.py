@@ -12,6 +12,7 @@ from app.discovery.models import (
     DiscoveryItem,
     DiscoveryRelationshipType,
 )
+from app.discovery.release_evaluation import parse_strict_numeric_version
 from app.discovery.repository import DiscoveryRepository
 
 
@@ -71,13 +72,21 @@ class ObservedPort(DiscoveryCenterModel):
 
 
 class ObservedService(DiscoveryCenterModel):
-    """Provider-neutral observed service or resource fact."""
+    """Provider-neutral observed service or resource fact.
+
+    ``installed_version`` is an advisory raw observation preserved as
+    provided; comparability is determined separately and only strict
+    canonical ``X.Y.Z`` versions are comparable evidence.
+    """
 
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     capabilities: tuple[str, ...] = ()
     status: str = "unknown"
     source: str = Field(min_length=1)
+    installed_version: str | None = Field(
+        default=None, min_length=1, max_length=64
+    )
 
     @field_validator("capabilities", mode="before")
     @classmethod
@@ -208,6 +217,19 @@ def assess_compatibility(
         evidence=tuple(builder.evidence),
         unknown_facts=tuple(sorted(builder.unknown_facts)),
     )
+
+
+def installed_version_key(
+    service: ObservedService,
+) -> tuple[int, int, int] | None:
+    """Strict numeric comparison key for an observed installed version.
+
+    Only strict canonical ``X.Y.Z`` observations are comparable installed-
+    version evidence. A missing or malformed version returns ``None`` and
+    must be treated as unknown; it can never yield a positive version
+    assertion.
+    """
+    return parse_strict_numeric_version(service.installed_version)
 
 
 class _AssessmentBuilder:

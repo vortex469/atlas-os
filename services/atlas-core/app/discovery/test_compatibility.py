@@ -15,6 +15,7 @@ from app.discovery.compatibility import (
     ObservedFact,
     ObservedService,
     assess_compatibility,
+    installed_version_key,
 )
 from app.discovery.models import (
     CapabilityReference,
@@ -232,6 +233,154 @@ def test_findings_reference_shared_evidence_without_duplication() -> None:
     for finding in assessment.findings:
         assert set(finding.evidence_ids).issubset(evidence_ids)
         assert "evidence" not in finding.model_dump()
+
+
+def test_observed_service_version_defaults_to_unknown() -> None:
+    service = ObservedService(id="frigate", name="Frigate", source="test")
+
+    assert service.installed_version is None
+    assert installed_version_key(service) is None
+
+
+def test_observed_service_strict_version_is_comparable() -> None:
+    lower = ObservedService(
+        id="frigate",
+        name="Frigate",
+        source="test",
+        installed_version="1.9.9",
+    )
+    higher = ObservedService(
+        id="frigate",
+        name="Frigate",
+        source="test",
+        installed_version="1.10.0",
+    )
+
+    assert installed_version_key(lower) == (1, 9, 9)
+    assert installed_version_key(higher) == (1, 10, 0)
+    assert installed_version_key(higher) > installed_version_key(lower)
+
+
+@pytest.mark.parametrize(
+    "version",
+    [
+        "v1.2.3",
+        "1.2",
+        "1.2.3.4",
+        "1.02.3",
+        "1.2.x",
+        "1.2.3-beta",
+        " 1.2.3",
+        "1.2.3 ",
+    ],
+)
+def test_malformed_installed_versions_fail_closed(version: str) -> None:
+    service = ObservedService(
+        id="frigate",
+        name="Frigate",
+        source="test",
+        installed_version=version,
+    )
+
+    assert installed_version_key(service) is None
+
+
+def test_observed_service_rejects_out_of_bounds_version() -> None:
+    with pytest.raises(ValidationError):
+        ObservedService(
+            id="frigate",
+            name="Frigate",
+            source="test",
+            installed_version="1.2." + "3" * 64,
+        )
+
+
+def test_observed_service_rejects_empty_version() -> None:
+    with pytest.raises(ValidationError):
+        ObservedService(
+            id="frigate",
+            name="Frigate",
+            source="test",
+            installed_version="",
+        )
+
+
+def test_observed_service_with_version_round_trips() -> None:
+    service = ObservedService(
+        id="frigate",
+        name="Frigate",
+        source="test",
+        installed_version="0.16.0",
+    )
+
+    assert ObservedService.model_validate(service.model_dump()) == service
+
+
+def test_installed_version_is_advisory_for_relationship_checks() -> None:
+    target = entry(
+        "app",
+        relationships=(
+            DiscoveryRelationship(
+                type=DiscoveryRelationshipType.DEPENDS_ON,
+                target="frigate",
+                required=True,
+            ),
+        ),
+    )
+    frigate = entry("frigate")
+    context = CompatibilityContext(
+        installed_services=(
+            ObservedService(
+                id="frigate",
+                name="Frigate",
+                source="test",
+                installed_version="0.16.0",
+            ),
+        ),
+    )
+
+    assessment = assess(target, context, frigate)
+
+    assert assessment.status == CompatibilityStatus.COMPATIBLE
+    assert assessment.unknown_facts == ()
+
+
+def test_installed_version_does_not_change_assessment() -> None:
+    target = entry(
+        "app",
+        relationships=(
+            DiscoveryRelationship(
+                type=DiscoveryRelationshipType.DEPENDS_ON,
+                target="frigate",
+                required=True,
+            ),
+        ),
+    )
+    frigate = entry("frigate")
+    context_without_version = CompatibilityContext(
+        installed_services=(
+            ObservedService(
+                id="frigate",
+                name="Frigate",
+                source="test",
+            ),
+        ),
+    )
+    context_with_version = CompatibilityContext(
+        installed_services=(
+            ObservedService(
+                id="frigate",
+                name="Frigate",
+                source="test",
+                installed_version="0.16.0",
+            ),
+        ),
+    )
+
+    assessment_without_version = assess(target, context_without_version, frigate)
+    assessment_with_version = assess(target, context_with_version, frigate)
+
+    assert assessment_without_version == assessment_with_version
 
 
 def test_assessment_rejects_findings_with_missing_evidence() -> None:
