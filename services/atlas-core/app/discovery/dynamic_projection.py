@@ -40,11 +40,24 @@ from app.discovery.dynamic_sources import (
     DynamicSourceProvenance,
 )
 from app.discovery.models import DISCOVERY_ID_PATTERN
+from app.discovery.release_evaluation import (
+    ReleaseEvaluationFreshness,
+    ReleaseEvaluationResult,
+    ReleaseEvaluationStatus,
+    evaluate_release,
+)
 from app.services.discovery import DiscoveryCatalogService
 
 MERGED_ITEM_SCHEMA = "discovery-merged-item-v1"
 ITEM_SOURCE_MAPPING: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {"frigate": (FRIGATE_ADAPTER_ID,)}
+)
+_POSITIVE_RELEASE_STATUSES = frozenset(
+    {
+        ReleaseEvaluationStatus.UP_TO_DATE,
+        ReleaseEvaluationStatus.UPDATE_AVAILABLE,
+        ReleaseEvaluationStatus.BASELINE_AHEAD,
+    }
 )
 
 
@@ -125,6 +138,7 @@ class DiscoveryMergedItemProjection(ProjectionModel):
     dynamic_claims: tuple[PublicDynamicClaim, ...] = ()
     source_states: tuple[DynamicSourceState, ...] = ()
     conflict_state: ConflictState
+    release_evaluation: ReleaseEvaluationResult | None = None
 
     @model_validator(mode="after")
     def validate_contract(self, info: ValidationInfo) -> DiscoveryMergedItemProjection:
@@ -177,6 +191,48 @@ class DiscoveryMergedItemProjection(ProjectionModel):
         )
         if self.conflict_state is not expected_conflict:
             raise ValueError("conflict state must match included public claims")
+        return self
+
+    @model_validator(mode="after")
+    def validate_release_evaluation_against_conflict_state(
+        self,
+    ) -> DiscoveryMergedItemProjection:
+        # Typed cross-field invariant between conflict_state and
+        # release_evaluation. It never inspects reason strings and only applies
+        # when release_evaluation is present (the field stays optional, so
+        # legacy serialized shapes that omit it still validate).
+        evaluation = self.release_evaluation
+        if evaluation is None:
+            return self
+        if self.conflict_state in (
+            ConflictState.CURATED_CONFLICT,
+            ConflictState.DYNAMIC_CONFLICT,
+        ):
+            # A conflict must surface as CONFLICTED with no candidate selected.
+            if evaluation.status is not ReleaseEvaluationStatus.CONFLICTED:
+                raise ValueError(
+                    "release_evaluation.status must be CONFLICTED when "
+                    f"conflict_state is {self.conflict_state.value}"
+                )
+            if evaluation.latest_candidate is not None:
+                raise ValueError(
+                    "release_evaluation.latest_candidate must be null when status "
+                    "is CONFLICTED"
+                )
+            return self
+        # Non-conflict conflict_state (NONE or AGREEMENT) from here on.
+        if evaluation.status is ReleaseEvaluationStatus.CONFLICTED:
+            raise ValueError(
+                "release_evaluation.status CONFLICTED requires a conflict_state of "
+                "CURATED_CONFLICT or DYNAMIC_CONFLICT"
+            )
+        if evaluation.status in _POSITIVE_RELEASE_STATUSES and (
+            evaluation.latest_candidate is None
+        ):
+            raise ValueError(
+                f"release_evaluation.status {evaluation.status.value} requires a "
+                "non-null latest_candidate"
+            )
         return self
 
 
@@ -404,6 +460,22 @@ class DynamicDiscoveryProjectionService:
             curated_claim=curated_claim,
             dynamic_claims=claims,
         )
+        release_evaluation = evaluate_release(
+            item_version=curated_entry.item.version,
+            curated_release_version=(
+                curated_claim.value.version if curated_claim is not None else None
+            ),
+            conflicted=conflict is not None
+            and conflict.state
+            in {ConflictState.CURATED_CONFLICT, ConflictState.DYNAMIC_CONFLICT},
+            evidence=tuple(
+                (
+                    claim.fact.version,
+                    ReleaseEvaluationFreshness(claim.freshness.value),
+                )
+                for claim in claims
+            ),
+        )
         return DiscoveryMergedItemProjection.model_validate(
             {
                 "schema_version": MERGED_ITEM_SCHEMA,
@@ -416,6 +488,7 @@ class DynamicDiscoveryProjectionService:
                 "conflict_state": (
                     conflict.state if conflict is not None else ConflictState.NONE
                 ),
+                "release_evaluation": release_evaluation,
             },
             context={
                 "item_source_mapping": self._mapping,

@@ -49,6 +49,12 @@ from app.discovery.models import (
     DiscoveryItem,
     DiscoveryItemType,
 )
+from app.discovery.release_evaluation import (
+    ReleaseEvaluationBaseline,
+    ReleaseEvaluationBaselineSource,
+    ReleaseEvaluationResult,
+    ReleaseEvaluationStatus,
+)
 from app.services.discovery import DiscoveryCatalogService, DiscoveryItemNotFoundError
 
 NOW = datetime(2026, 8, 17, 12, tzinfo=UTC)
@@ -697,3 +703,337 @@ def test_naive_projection_time_is_rejected_before_reads():
     with pytest.raises(ValueError, match="timezone-aware"):
         service(reader).get_item_projection("frigate", now=NOW.replace(tzinfo=None))
     assert reader.calls == []
+
+
+def _stale_snapshot() -> DynamicSourceReadSnapshot:
+    claim = evaluated(
+        FRIGATE_ADAPTER_ID,
+        version="0.14.0",
+        retrieved_at=NOW - timedelta(days=5),
+    )
+    return DynamicSourceReadSnapshot(
+        source_id=FRIGATE_ADAPTER_ID,
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(claim,),
+    )
+
+
+def test_release_evaluation_populated_from_fresh_dynamic_evidence():
+    projection = service(
+        FakeReader({FRIGATE_ADAPTER_ID: DynamicSourceReadSnapshot(
+            source_id=FRIGATE_ADAPTER_ID,
+            cache_state=DynamicCacheState.AVAILABLE,
+            claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.16.1"),),
+        )}),
+        entries=(entry(version="0.15.0"),),
+    ).get_item_projection("frigate", now=NOW)
+    evaluation = projection.release_evaluation
+    assert isinstance(evaluation, ReleaseEvaluationResult)
+    assert evaluation.status is ReleaseEvaluationStatus.UPDATE_AVAILABLE
+    assert evaluation.baseline == ReleaseEvaluationBaseline(
+        version="0.15.0", source=ReleaseEvaluationBaselineSource.ITEM_VERSION
+    )
+    assert evaluation.latest_candidate == "0.16.1"
+    assert evaluation.reason is None
+
+
+def test_release_evaluation_no_baseline_when_item_version_missing():
+    projection = service(
+        FakeReader({FRIGATE_ADAPTER_ID: DynamicSourceReadSnapshot(
+            source_id=FRIGATE_ADAPTER_ID,
+            cache_state=DynamicCacheState.AVAILABLE,
+            claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.16.1"),),
+        )}),
+        entries=(entry(version=None),),
+    ).get_item_projection("frigate", now=NOW)
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.NO_BASELINE
+    assert evaluation.baseline is None
+    assert evaluation.latest_candidate is None
+    assert evaluation.reason is not None
+
+
+def test_release_evaluation_curated_claim_is_authoritative_baseline():
+    projection = service(
+        FakeReader({FRIGATE_ADAPTER_ID: DynamicSourceReadSnapshot(
+            source_id=FRIGATE_ADAPTER_ID,
+            cache_state=DynamicCacheState.AVAILABLE,
+            claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.16.1"),),
+        )}),
+        curated_provider=CuratedProvider(curated_claim(version="0.16.1")),
+    ).get_item_projection("frigate", now=NOW)
+    assert projection.conflict_state is ConflictState.AGREEMENT
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.UP_TO_DATE
+    assert evaluation.baseline == ReleaseEvaluationBaseline(
+        version="0.16.1", source=ReleaseEvaluationBaselineSource.CURATED
+    )
+    assert evaluation.latest_candidate == "0.16.1"
+
+
+def test_release_evaluation_baseline_ahead_when_dynamic_is_older():
+    projection = service(
+        FakeReader({FRIGATE_ADAPTER_ID: DynamicSourceReadSnapshot(
+            source_id=FRIGATE_ADAPTER_ID,
+            cache_state=DynamicCacheState.AVAILABLE,
+            claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.14.0"),),
+        )}),
+        entries=(entry(version="0.15.0"),),
+    ).get_item_projection("frigate", now=NOW)
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.BASELINE_AHEAD
+    assert evaluation.latest_candidate == "0.14.0"
+    assert evaluation.baseline is not None
+    assert evaluation.baseline.version == "0.15.0"
+
+
+def test_release_evaluation_stale_evidence_is_never_positive():
+    projection = service(
+        FakeReader({FRIGATE_ADAPTER_ID: _stale_snapshot()}),
+        entries=(entry(version="0.15.0"),),
+    ).get_item_projection("frigate", now=NOW)
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.STALE_EVIDENCE
+    assert evaluation.baseline is not None
+    assert evaluation.latest_candidate is None
+    assert evaluation.reason is not None
+
+
+def test_release_evaluation_no_dynamic_evidence_when_no_claims():
+    projection = service(
+        FakeReader({FRIGATE_ADAPTER_ID: DynamicSourceReadSnapshot(
+            source_id=FRIGATE_ADAPTER_ID,
+            cache_state=DynamicCacheState.ABSENT,
+        )}),
+        entries=(entry(version="0.15.0"),),
+    ).get_item_projection("frigate", now=NOW)
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.NO_DYNAMIC_EVIDENCE
+    assert evaluation.baseline is not None
+    assert evaluation.latest_candidate is None
+    assert evaluation.reason is not None
+
+
+def test_release_evaluation_curated_conflict_selects_no_latest_version():
+    projection = service(
+        FakeReader({FRIGATE_ADAPTER_ID: DynamicSourceReadSnapshot(
+            source_id=FRIGATE_ADAPTER_ID,
+            cache_state=DynamicCacheState.AVAILABLE,
+            claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.16.1"),),
+        )}),
+        curated_provider=CuratedProvider(curated_claim(version="0.15.0")),
+    ).get_item_projection("frigate", now=NOW)
+    assert projection.conflict_state is ConflictState.CURATED_CONFLICT
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.CONFLICTED
+    assert evaluation.latest_candidate is None
+    assert evaluation.reason is not None
+
+
+def test_release_evaluation_curated_claim_wins_when_item_version_also_present():
+    # The explicit curated release claim is the authoritative baseline even when
+    # the catalog entry also carries an item.version; item.version must not
+    # shadow the curated claim.
+    projection = service(
+        FakeReader({FRIGATE_ADAPTER_ID: DynamicSourceReadSnapshot(
+            source_id=FRIGATE_ADAPTER_ID,
+            cache_state=DynamicCacheState.AVAILABLE,
+            claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.15.0"),),
+        )}),
+        curated_provider=CuratedProvider(curated_claim(version="0.15.0")),
+        entries=(entry(version="0.14.0"),),
+    ).get_item_projection("frigate", now=NOW)
+    assert projection.curated.item.version == "0.14.0"
+    assert projection.conflict_state is ConflictState.AGREEMENT
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.UP_TO_DATE
+    assert evaluation.baseline == ReleaseEvaluationBaseline(
+        version="0.15.0", source=ReleaseEvaluationBaselineSource.CURATED
+    )
+    assert evaluation.latest_candidate == "0.15.0"
+
+
+def test_release_evaluation_conflict_beats_stale_dynamic_evidence():
+    # Two stale claims that disagree still form a dynamic conflict at the
+    # projection level; the conflict must surface as CONFLICTED and must never
+    # be masked by the stale-evidence bounded state.
+    stale_a = DynamicSourceReadSnapshot(
+        source_id="source-a",
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(
+            evaluated(
+                "source-a",
+                version="9.9.9",
+                retrieved_at=NOW - timedelta(days=5),
+                release_id=1,
+            ),
+        ),
+    )
+    stale_b = DynamicSourceReadSnapshot(
+        source_id="source-b",
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(
+            evaluated(
+                "source-b",
+                version="8.8.8",
+                retrieved_at=NOW - timedelta(days=5),
+                release_id=2,
+            ),
+        ),
+    )
+    projection = service(
+        FakeReader({"source-a": stale_a, "source-b": stale_b}),
+        mapping={"frigate": ("source-a", "source-b")},
+        entries=(entry(version="0.15.0"),),
+    ).get_item_projection("frigate", now=NOW)
+    assert projection.conflict_state is ConflictState.DYNAMIC_CONFLICT
+    assert all(
+        claim.freshness is FreshnessState.STALE for claim in projection.dynamic_claims
+    )
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.CONFLICTED
+    assert evaluation.latest_candidate is None
+    assert evaluation.reason is not None
+
+
+def test_release_evaluation_rejects_contradictory_hand_built_payloads():
+    # A dynamic-conflict projection is a valid base; the cross-field invariant
+    # must reject release_evaluation payloads that contradict the conflict state.
+    conflict_a = DynamicSourceReadSnapshot(
+        source_id="source-a",
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(evaluated("source-a", version="9.0.0", release_id=1),),
+    )
+    conflict_b = DynamicSourceReadSnapshot(
+        source_id="source-b",
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(evaluated("source-b", version="10.0.0", release_id=2),),
+    )
+    base = service(
+        FakeReader({"source-a": conflict_a, "source-b": conflict_b}),
+        mapping={"frigate": ("source-a", "source-b")},
+    ).get_item_projection("frigate", now=NOW)
+    assert base.conflict_state is ConflictState.DYNAMIC_CONFLICT
+    conflict_dump = base.model_dump()
+    # The hand-built payload must carry the same code-owned mapping the
+    # projection was produced under, so only the cross-field invariant is the
+    # thing being rejected (the mapping/conflict-shape checks already pass).
+    conflict_context = {"item_source_mapping": {"frigate": ("source-a", "source-b")}}
+
+    item_baseline = ReleaseEvaluationBaseline(
+        version="0.15.0", source=ReleaseEvaluationBaselineSource.ITEM_VERSION
+    )
+    positive = {
+        "status": ReleaseEvaluationStatus.UPDATE_AVAILABLE,
+        "baseline": item_baseline,
+        "latest_candidate": "0.16.0",
+        "reason": None,
+    }
+    conflicted = {
+        "status": ReleaseEvaluationStatus.CONFLICTED,
+        "baseline": item_baseline,
+        "latest_candidate": None,
+        "reason": "conflicting release claims",
+    }
+    # conflict_state is DYNAMIC_CONFLICT here, so only CONFLICTED+null is valid.
+    # (Values are typed, not strings, so the only check that can fire is the
+    # cross-field invariant itself.)
+    for payload in (
+        conflict_dump | {"release_evaluation": positive},
+        conflict_dump
+        | {
+            "release_evaluation": {
+                **conflicted,
+                "latest_candidate": "9.0.0",
+            }
+        },
+    ):
+        with pytest.raises(
+            ValidationError, match="release_evaluation"
+        ):
+            DiscoveryMergedItemProjection.model_validate(
+                payload, context=conflict_context
+            )
+    # The matching CONFLICTED+null evaluation is a valid projection.
+    DiscoveryMergedItemProjection.model_validate(
+        conflict_dump | {"release_evaluation": conflicted},
+        context=conflict_context,
+    )
+
+    # A NO_DYNAMIC_EVIDENCE projection is a valid base; positive or conflicted
+    # payloads that contradict conflict_state NONE are rejected, while the
+    # matching bounded state is accepted.
+    no_evidence = service(
+        FakeReader(
+            {FRIGATE_ADAPTER_ID: DynamicSourceReadSnapshot(
+                source_id=FRIGATE_ADAPTER_ID,
+                cache_state=DynamicCacheState.ABSENT,
+            )}
+        ),
+        entries=(entry(version="0.15.0"),),
+    ).get_item_projection("frigate", now=NOW)
+    assert no_evidence.conflict_state is ConflictState.NONE
+    none_dump = no_evidence.model_dump()
+    stale = {
+        "status": ReleaseEvaluationStatus.STALE_EVIDENCE,
+        "baseline": item_baseline,
+        "latest_candidate": None,
+        "reason": "latest dynamic release evidence is stale",
+    }
+    # CONFLICTED requires a CURATED_CONFLICT or DYNAMIC_CONFLICT conflict_state,
+    # and a positive status requires a non-null latest_candidate. Both are
+    # rejected against the non-conflict NONE state.
+    for payload in (
+        none_dump | {"release_evaluation": conflicted},
+        none_dump
+        | {
+            "release_evaluation": {
+                **positive,
+                "status": ReleaseEvaluationStatus.UP_TO_DATE,
+                "latest_candidate": None,
+            }
+        },
+    ):
+        with pytest.raises(
+            ValidationError, match="release_evaluation"
+        ):
+            DiscoveryMergedItemProjection.model_validate(payload)
+    # A well-formed bounded state and a well-formed positive state are both
+    # accepted against a non-conflict conflict_state, so the invariant is precise
+    # and not over-rejecting.
+    DiscoveryMergedItemProjection.model_validate(none_dump | {"release_evaluation": stale})
+    DiscoveryMergedItemProjection.model_validate(none_dump | {"release_evaluation": positive})
+
+
+def test_release_evaluation_baseline_ahead_is_projected_when_fresh_candidate_is_older():
+    # A single fresh candidate older than the item baseline projects as
+    # BASELINE_AHEAD, selecting the fresh candidate. (The related "a stale high
+    # candidate is ignored in selection" behavior is asserted at the pure
+    # evaluate_release level, because at the projection level a stale claim that
+    # disagrees with the fresh claim is itself a dynamic conflict.)
+    fresh = DynamicSourceReadSnapshot(
+        source_id="source-fresh",
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(evaluated("source-fresh", version="0.14.0", release_id=1),),
+    )
+    projection = service(
+        FakeReader({"source-fresh": fresh}),
+        mapping={"frigate": ("source-fresh",)},
+        entries=(entry(version="0.15.0"),),
+    ).get_item_projection("frigate", now=NOW)
+    assert projection.conflict_state is ConflictState.NONE
+    evaluation = projection.release_evaluation
+    assert evaluation is not None
+    assert evaluation.status is ReleaseEvaluationStatus.BASELINE_AHEAD
+    assert evaluation.latest_candidate == "0.14.0"
+    assert evaluation.baseline is not None
+    assert evaluation.baseline.version == "0.15.0"
+    assert evaluation.reason is None

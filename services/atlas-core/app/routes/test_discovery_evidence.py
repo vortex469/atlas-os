@@ -20,9 +20,12 @@ from app.discovery.dynamic_projection import (
 from app.discovery.dynamic_sources import FRIGATE_ADAPTER_ID, DynamicSourceHealth
 from app.discovery.models import CuratedReleaseClaim
 from app.discovery.test_dynamic_projection import (
+    CuratedProvider,
     FakeReader,
     catalog,
+    curated_claim,
     entry,
+    evaluated,
     initialized,
     p1_record,
 )
@@ -481,6 +484,129 @@ def test_openapi_exposes_exact_get_only_contract() -> None:
     }
     model = app.openapi()["components"]["schemas"]["DiscoveryMergedItemProjection"]
     assert model["properties"]["schema_version"]["const"] == MERGED_ITEM_SCHEMA
+    # The additive release_evaluation property is exposed on the merged-item
+    # projection and references the bounded result schema. Being optional with a
+    # None default, Pydantic renders it as anyOf[$ref, null].
+    release_evaluation = model["properties"]["release_evaluation"]
+    assert release_evaluation == {
+        "anyOf": [
+            {"$ref": "#/components/schemas/ReleaseEvaluationResult"},
+            {"type": "null"},
+        ]
+    }
+    assert "ReleaseEvaluationResult" in app.openapi()["components"]["schemas"]
+    # Legacy item schemas are untouched by the additive release evaluation.
+    components = app.openapi()["components"]["schemas"]
+    for legacy_name in ("DiscoveryItemResponse", "DiscoveryCatalogEntryResponse"):
+        assert "release_evaluation" not in components[legacy_name].get("properties", {})
+
+
+def test_release_evaluation_update_available_is_projected_through_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = DynamicSourceReadSnapshot(
+        source_id=FRIGATE_ADAPTER_ID,
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.16.1"),),
+    )
+    install(
+        monkeypatch,
+        projection_service(
+            FakeReader({FRIGATE_ADAPTER_ID: snapshot}),
+            entries=(entry(version="0.15.0"),),
+        ),
+    )
+
+    body = request_body()
+
+    assert body["conflict_state"] == "none"
+    assert body["release_evaluation"] == {
+        "status": "update_available",
+        "baseline": {"version": "0.15.0", "source": "item_version"},
+        "latest_candidate": "0.16.1",
+        "reason": None,
+    }
+
+
+def test_release_evaluation_stale_evidence_is_projected_through_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = DynamicSourceReadSnapshot(
+        source_id=FRIGATE_ADAPTER_ID,
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(
+            evaluated(
+                FRIGATE_ADAPTER_ID,
+                version="0.16.1",
+                retrieved_at=NOW - timedelta(days=5),
+            ),
+        ),
+    )
+    install(
+        monkeypatch,
+        projection_service(
+            FakeReader({FRIGATE_ADAPTER_ID: snapshot}),
+            entries=(entry(version="0.15.0"),),
+        ),
+    )
+
+    body = request_body()
+
+    assert body["conflict_state"] == "none"
+    evaluation = body["release_evaluation"]
+    assert evaluation["status"] == "stale_evidence"
+    assert evaluation["latest_candidate"] is None
+    assert evaluation["baseline"] == {"version": "0.15.0", "source": "item_version"}
+    assert evaluation["reason"] is not None
+
+
+def test_release_evaluation_conflicted_has_null_candidate_through_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = DynamicSourceReadSnapshot(
+        source_id=FRIGATE_ADAPTER_ID,
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.16.1"),),
+    )
+    service = DynamicDiscoveryProjectionService(
+        catalog(entry(version="0.15.0")),
+        FakeReader({FRIGATE_ADAPTER_ID: snapshot}),
+        curated_claim_provider=CuratedProvider(curated_claim(version="0.15.0")),
+    )
+    install(monkeypatch, service)
+
+    body = request_body()
+
+    assert body["conflict_state"] == "curated_conflict"
+    evaluation = body["release_evaluation"]
+    assert evaluation["status"] == "conflicted"
+    assert evaluation["latest_candidate"] is None
+    assert evaluation["baseline"] == {"version": "0.15.0", "source": "curated"}
+    assert evaluation["reason"] is not None
+
+
+def test_release_evaluation_no_baseline_is_projected_through_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = DynamicSourceReadSnapshot(
+        source_id=FRIGATE_ADAPTER_ID,
+        cache_state=DynamicCacheState.AVAILABLE,
+        claims=(evaluated(FRIGATE_ADAPTER_ID, version="0.16.1"),),
+    )
+    install(
+        monkeypatch,
+        projection_service(FakeReader({FRIGATE_ADAPTER_ID: snapshot})),
+    )
+
+    body = request_body()
+
+    assert body["conflict_state"] == "none"
+    assert body["dynamic_claims"][0]["version"] == "0.16.1"
+    evaluation = body["release_evaluation"]
+    assert evaluation["status"] == "no_baseline"
+    assert evaluation["baseline"] is None
+    assert evaluation["latest_candidate"] is None
+    assert evaluation["reason"] is not None
 
 
 def test_legacy_item_json_and_openapi_do_not_gain_evidence_fields(
