@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -265,12 +266,68 @@ class CuratedReleaseClaim(DiscoveryCenterModel):
         return value.astimezone(UTC)
 
 
+class DeploymentBinding(DiscoveryCenterModel):
+    """Curated repository deployment knowledge for a catalog item.
+
+    The binding is declarative data only. It carries no executable values:
+    no image tag, desired value, command, target ID, approval level, or
+    execution intent. It is not exposed through the public API in P0.
+    """
+
+    compose_file: str = Field(min_length=1, max_length=512)
+    compose_service: str = Field(min_length=1, max_length=255)
+    mutable_property: Literal["image"] = "image"
+    deployment_method: Literal["docker-compose"] = "docker-compose"
+
+    @field_validator("compose_file", mode="before")
+    @classmethod
+    def normalize_compose_file(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise TypeError("compose_file must be a string.")
+        candidate = value
+        if candidate != candidate.strip():
+            raise ValueError("compose_file must not have surrounding whitespace.")
+        if "\\" in candidate:
+            raise ValueError("compose_file must not contain backslashes.")
+        if candidate.startswith("/"):
+            raise ValueError("compose_file must be repository-relative.")
+        if candidate.startswith("~"):
+            raise ValueError("compose_file must be repository-relative.")
+        if re.match(r"^[A-Za-z]:[\\/]", candidate):
+            raise ValueError("compose_file must not contain drive letters.")
+        segments = candidate.split("/")
+        if any(segment in ("", ".", "..") for segment in segments):
+            raise ValueError("compose_file must not contain traversal or empty segments.")
+        if len(segments) > 32:
+            raise ValueError("compose_file path depth exceeds the bound.")
+        if not segments[-1].endswith((".yaml", ".yml")):
+            raise ValueError("compose_file must end with a lowercase .yaml or .yml extension.")
+        return candidate
+
+    @field_validator("compose_service", mode="before")
+    @classmethod
+    def normalize_compose_service(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise TypeError("compose_service must be a string.")
+        candidate = value
+        if candidate != candidate.strip():
+            raise ValueError("compose_service must not have surrounding whitespace.")
+        if "/" in candidate:
+            raise ValueError("compose_service must not contain path separators.")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]*", candidate):
+            raise ValueError(
+                "compose_service must be a compose service identifier.",
+            )
+        return candidate
+
+
 class CatalogEntry(DiscoveryCenterModel):
     """Catalog record wrapper around a Discovery Center item."""
 
     schema_version: int = CATALOG_SCHEMA_VERSION
     item: DiscoveryItem
     provenance: CatalogProvenance
+    deployment_binding: DeploymentBinding | None = None
     release_claim: CuratedReleaseClaim | None = None
     metadata: Mapping[str, Any] = Field(default_factory=dict)
 
@@ -278,6 +335,20 @@ class CatalogEntry(DiscoveryCenterModel):
     def validate_schema_version(self) -> CatalogEntry:
         if self.schema_version != CATALOG_SCHEMA_VERSION:
             raise ValueError("unsupported catalog schema version.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_deployment_binding_requires_curated_provenance(self) -> CatalogEntry:
+        if (
+            self.deployment_binding is not None
+            and (
+                self.provenance.source_type is not CatalogSourceType.CURATED
+                or self.provenance.trust_level is not CatalogTrustLevel.CURATED
+            )
+        ):
+            raise ValueError(
+                "deployment_binding requires source_type and trust_level 'curated'.",
+            )
         return self
 
 

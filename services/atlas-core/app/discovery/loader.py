@@ -138,6 +138,7 @@ class YamlCatalogLoader:
     ) -> None:
         item_sources: dict[str, str] = {}
         entry_sources: dict[str, str] = {}
+        binding_sources: dict[tuple[str, str], str] = {}
 
         for entry, source_path in zip(entries, source_paths, strict=True):
             self._validate_unique_identifier(
@@ -153,6 +154,32 @@ class YamlCatalogLoader:
                     seen_sources=entry_sources,
                     label="provenance.entry_id",
                 )
+            self._validate_unique_deployment_binding(
+                entry=entry,
+                source_path=source_path,
+                seen_sources=binding_sources,
+            )
+
+    @staticmethod
+    def _validate_unique_deployment_binding(
+        *,
+        entry: CatalogEntry,
+        source_path: str,
+        seen_sources: dict[tuple[str, str], str],
+    ) -> None:
+        binding = entry.deployment_binding
+        if binding is None:
+            return
+        key = (binding.compose_file, binding.compose_service)
+        previous_source_path = seen_sources.get(key)
+        if previous_source_path is not None:
+            raise DiscoveryCatalogDuplicateError(
+                "Duplicate deployment binding "
+                f"(compose_file={binding.compose_file!r}, "
+                f"compose_service={binding.compose_service!r}) in "
+                f"{previous_source_path} and {source_path}.",
+            )
+        seen_sources[key] = source_path
 
     @staticmethod
     def _validate_unique_identifier(

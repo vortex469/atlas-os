@@ -167,3 +167,64 @@ def test_builtin_catalog_api_returns_populated_results(monkeypatch: pytest.Monke
         "mqtt",
         "coral-usb",
     }
+
+
+def test_all_builtin_entries_have_no_deployment_binding(loaded_catalog) -> None:
+    """P0 ships no real deployment binding.
+
+    Every current builtin catalog entry must load with
+    ``deployment_binding is None``. The first real binding is deferred
+    to a separately reviewed catalog-curation change.
+    """
+    assert len(loaded_catalog.entries) == len(EXPECTED_BUILTIN_IDS)
+    for entry in loaded_catalog.entries:
+        assert entry.deployment_binding is None, entry.item.id
+
+
+def test_deployment_binding_schema_is_validated_independently_of_catalog() -> None:
+    """The DeploymentBinding schema remains available on its own.
+
+    The schema must stay independently constructible and validated
+    without any catalog entry carrying a binding, so the deferred
+    first real binding can be reviewed against the same contract.
+    """
+    from pydantic import ValidationError
+
+    from app.discovery import CatalogEntry, CatalogProvenance, DeploymentBinding
+
+    binding = DeploymentBinding(
+        compose_file="compose.synthetic.yaml",
+        compose_service="synthetic-service",
+    )
+    assert binding.mutable_property == "image"
+    assert binding.deployment_method == "docker-compose"
+    assert binding.model_dump() == {
+        "compose_file": "compose.synthetic.yaml",
+        "compose_service": "synthetic-service",
+        "mutable_property": "image",
+        "deployment_method": "docker-compose",
+    }
+
+    for invalid in (
+        {"compose_file": "", "compose_service": "synthetic-service"},
+        {"compose_file": "../compose.yaml", "compose_service": "synthetic-service"},
+        {"compose_file": "/abs/compose.yaml", "compose_service": "synthetic-service"},
+        {"compose_file": "compose.txt", "compose_service": "synthetic-service"},
+        {"compose_file": "compose.yaml", "compose_service": "Bad Service"},
+        {"compose_file": "compose.yaml", "compose_service": ""},
+    ):
+        with pytest.raises(ValidationError):
+            DeploymentBinding(**invalid)
+
+    entry = CatalogEntry(
+        item={
+            "id": "synthetic-item",
+            "type": "service",
+            "status": "active",
+            "name": "Synthetic Item",
+        },
+        provenance=CatalogProvenance(source="catalog/synthetic.yaml"),
+        deployment_binding=binding,
+    )
+    assert entry.deployment_binding is not None
+    assert entry.deployment_binding.compose_file == "compose.synthetic.yaml"
