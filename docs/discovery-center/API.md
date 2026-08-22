@@ -91,6 +91,11 @@ Item fields include id, type, status, name, description, aliases, tags, URLs, ca
 
 This is a `GET`-only endpoint. It accepts no request body and no query parameters. The response model is `DiscoveryMergedItemProjection`, with schema version `discovery-merged-item-v1`.
 
+The additive, read-only `release_evaluation` property on this projection was
+added in Atlas v0.13 (Compatibility/Upgrade Intelligence). It is absent or
+`null` when it cannot be computed and never changes the curated result;
+publication and the `atlas-v0.13.0` tag remain pending.
+
 Response fields:
 
 - `schema_version`: `discovery-merged-item-v1`.
@@ -99,6 +104,47 @@ Response fields:
 - `dynamic_claims`: supplemental, non-authoritative release claims. Each claim includes `fact_kind`, `version`, `published_at`, `freshness`, and bounded `provenance`.
 - `source_states`: bounded evidence state for each mapped dynamic source. Each state includes `source_id`, `health`, and `cache_state`.
 - `conflict_state`: `none`, `agreement`, `dynamic_conflict`, or `curated_conflict`.
+- `release_evaluation`: an additive, optional, read-only upgrade-intelligence
+  projection. It is absent or `null` when it cannot be computed and never
+  changes the curated result. When present it includes:
+  - `status`: one of the eight bounded release-evaluation statuses below.
+  - `baseline`: the authoritative baseline version, or `null`. Each baseline has
+    `version` (the authoritative version, preserved as provided) and
+    `source`, which is exactly `curated` or `item_version`.
+  - `latest_candidate`: the freshest strict numeric `X.Y.Z` dynamic release
+    version selected, or `null` when none is selected. Positive statuses
+    (`up_to_date`, `update_available`, `baseline_ahead`) always carry it, and
+    `conflicted` always has it `null`. It may also be reported informationally
+    for `insufficient_information` when a fresh strict candidate was selected
+    but the baseline is non-comparable.
+  - `reason`: a bounded, controlled reason for the state, or `null` for the
+    positive statuses.
+
+Release-evaluation statuses (exactly these eight):
+
+- `no_baseline`: no authoritative baseline version is available to compare.
+- `no_dynamic_evidence`: no dynamic release claims are available to compare
+  against the baseline.
+- `insufficient_information`: the available versions cannot be compared as
+  strict numeric `X.Y.Z` versions.
+- `stale_evidence`: the latest dynamic release evidence is stale and may not
+  describe the current upstream release. No positive comparison is made.
+- `conflicted`: release claims conflict, so no latest version is selected. The
+  curated catalog remains authoritative.
+- `up_to_date`: the freshest dynamic release evidence matches the authoritative
+  baseline version.
+- `update_available`: a newer upstream release is observed than the
+  authoritative baseline version.
+- `baseline_ahead`: the authoritative baseline version is ahead of the freshest
+  observed upstream release.
+
+Baseline precedence: the baseline is the curated release version when present
+(`baseline.source=curated`), otherwise the item version
+(`baseline.source=item_version`). A conflict always resolves to `conflicted`
+with `latest_candidate` `null`, taking precedence over `no_baseline`. Only
+strict numeric `X.Y.Z` versions are comparable; a missing or non-strict
+baseline or candidate yields `insufficient_information` and never a positive
+status.
 
 The curated catalog item remains authoritative; dynamic claims supplement it and do not override it. Claim `freshness` is `fresh` or `stale`. Stale claims remain visible, while expired claims are omitted. Source `health` may be `healthy`, `degraded`, `unavailable`, or `null`; it is `null` until the process has observed that source. Source `cache_state` is `absent`, `available`, or `corrupt`.
 
@@ -189,6 +235,15 @@ Implemented compatibility statuses:
 Compatibility is evidence-based. Findings reference evidence by ID through `evidence_ids`. Evidence is returned once in the assessment-level `evidence` collection.
 
 Unknown facts are never interpreted as compatible and are never treated as warnings. Known missing requirements produce incompatible findings.
+
+Version-bounds compatibility: when a required relationship declares a curated
+`minimum_version` and/or `maximum_version`, the observed installed version of
+the resolved service is compared as a strict numeric `X.Y.Z` value. A version
+below the minimum or above the maximum is `incompatible`; a satisfying version
+is `compatible`; a missing or non-strict-numeric version is
+`insufficient_information`. Observed installed versions are advisory evidence,
+not authority, and version-bounds checks add no execution or remediation
+authority.
 
 ## Error semantics
 

@@ -233,11 +233,11 @@ Current
 
 ---
 
-# Current Released Baseline
+# Current Released Baseline: Atlas v0.12.0
 
-Atlas v0.11.0 — Provider Management Framework — Identity-Bound Runtime Intent
-
-V0.11 is complete and released as `atlas-v0.11.0`. The tag points to the exact
+V0.11.0 (Atlas v0.11.0 — Provider Management Framework — Identity-Bound
+Runtime Intent) was the previous released baseline as `atlas-v0.11.0`. The tag
+points to the exact
 evidence-bound implementation SHA
 `f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2`; no V0.11 implementation
 milestone remains. Production Provider Intent authority is activated on schema
@@ -264,10 +264,12 @@ still use it, but Proxmox guest YAML is compatibility/history evidence rather
 than current monitoring authority. Mission Control changes must not dirty the
 Git checkout.
 
-Atlas v0.12 has the accepted theme **Dynamic Discovery Sources** and implements
+Atlas v0.12.0 has the theme **Dynamic Discovery Sources** and is released as
+`atlas-v0.12.0`; the tag points to the documentation-only closure commit
+`c8d06a5`, which is not the tested implementation SHA. V0.12 implements
 Discovery Center D10 only. V0.12-P0 through P5 are implemented in the commit
-span `d268c7d` through `5075f1a`; publication, the release tag, release gates,
-image identity, and deployment evidence remain pending. Activation is opt-in
+span `d268c7d` through `5075f1a`; release-gate, image identity, and
+deployment evidence remain pending. Activation is opt-in
 and defaults off. Dynamic facts are read-only advisory evidence with explicit
 provenance, trust, freshness, health, and conflict state. The shipped curated
 catalog remains available offline and cannot be silently overwritten by dynamic
@@ -280,6 +282,20 @@ configuration, additional adapters, D11 semantic
 discovery, D12 community/private catalogs, notifications, user settings, learned
 AI intent, automatic remediation, bulk mutation, and execution expansion remain
 deferred.
+
+Atlas v0.13 has the accepted theme **Compatibility/Upgrade Intelligence** and
+implements Discovery Center compatibility and upgrade intelligence only.
+V0.13-P1 through P5 are implemented in the commit span `1df238c` through
+`64e8341`; publication, the release tag, release gates, image identity, and
+deployment evidence remain pending. The release evaluation is read-only,
+derived, and additive/optional in `discovery-merged-item-v1`: it compares the
+authoritative baseline version of a merged item against the freshest dynamic
+release evidence and evaluates observed installed versions against curated
+version bounds. The curated catalog remains authoritative; dynamic and observed
+facts remain evidence, not authority, and never override curated data. V0.13
+adds no execution or mutation authority: operational execution remains exactly
+`restart-service/proxmox/qemu`, repository execution remains
+`update-compose-stack`, and LXC remains unsupported.
 
 ---
 

@@ -521,11 +521,13 @@ and compatibility/lineage guidance (`b5390ba`).
 - [x] Bundle checksum-manifest SHA-256 is
   `6515cbaa8abe8e4cc800b98549b4aa3a9ef94cd9b705bc8b689840fdfe3c4a64`.
 
-## Atlas v0.12 implementation closure and pending release acceptance
+## Atlas v0.12 implementation closure and release acceptance
 
 Implementation closure is evidence-bound to the commit span `d268c7d` through
-`5075f1a`. Release identity and publication evidence are intentionally pending;
-unchecked items below must be completed against the selected exact release SHA.
+`5075f1a`. The annotated `atlas-v0.12.0` release tag exists and points to the
+documentation-only closure commit `c8d06a5`, which is not the tested
+implementation SHA. Remaining publication evidence is pending; unchecked
+items below must be completed against the selected exact release SHA.
 
 ### Atlas v0.12 P0–P5 implementation
 
@@ -556,17 +558,84 @@ unchecked items below must be completed against the selected exact release SHA.
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`.
 
-### Atlas v0.12 pending publication evidence
+### Atlas v0.12 release acceptance and pending publication evidence
 
-- [ ] Select and record the exact release SHA and create the annotated
-  `atlas-v0.12.0` tag.
+- [x] Select and record the exact release SHA and create the annotated
+  `atlas-v0.12.0` tag. Tag `atlas-v0.12.0` points to the documentation-only
+  closure commit `c8d06a5`; the tested implementation SHA remains `5075f1a`.
 - [ ] Record successful exact-SHA quality, test, Compose, recovery, and release
   gate runs.
 - [ ] Record immutable candidate image digests and source/image parity.
 - [ ] Record final release-evidence artifact identity and checksums.
 - [ ] Record production deployment and read-only acceptance evidence.
 
-These publication items are pending. No v0.12 tag, gate run, image digest,
+The remaining publication items are pending. No v0.12 gate run, image digest,
+release artifact, or deployment acceptance is asserted by this closure; the
+`atlas-v0.12.0` tag exists at `c8d06a5`.
+
+## Atlas v0.13 implementation closure and pending release acceptance
+
+Implementation closure is evidence-bound to the commit span `1df238c` through
+`64e8341`. Release identity and publication evidence are intentionally pending;
+unchecked items below must be completed against the selected exact release SHA.
+
+### Atlas v0.13 P1–P5 implementation
+
+- [x] P1 — Discovery release evaluation implemented: a bounded, deterministic,
+  side-effect-free evaluation of the authoritative baseline version against the
+  freshest dynamic release evidence, exposed as an additive, optional
+  `release_evaluation` property on `discovery-merged-item-v1` (`1df238c`).
+- [x] P2 — Observed installed version evidence implemented: a provider-neutral,
+  advisory `installed_version` observation on compatibility-context services and
+  a strict numeric `X.Y.Z` comparison key (`286521b`).
+- [x] P3 — Version-bounds compatibility implemented: deterministic `version`
+  compatibility checks comparing an observed installed version against a
+  required relationship's curated `minimum_version`/`maximum_version` bounds
+  (`4fe0c23`).
+- [x] P4 — Mission Control upgrade intelligence implemented: an advisory
+  release-evaluation notice on the Discovery evidence panel presenting the
+  bounded status, baseline, and latest candidate (`7d77bf7`).
+- [x] P5 — Release isolation/readiness validation implemented: isolation tests
+  proving the release-evaluation module has no I/O, network, cache, or
+  application-module coupling beyond its two reviewed Discovery consumers in
+  `discovery/compatibility.py` and `discovery/dynamic_projection.py` (`64e8341`).
+
+### Atlas v0.13 implementation exit criteria
+
+- [x] The release evaluation is read-only, derived, and additive/optional in
+  `discovery-merged-item-v1`; legacy item schemas are unchanged.
+- [x] It exposes exactly the eight bounded statuses
+  `no_baseline`, `no_dynamic_evidence`, `insufficient_information`,
+  `stale_evidence`, `conflicted`, `up_to_date`, `update_available`, and
+  `baseline_ahead`, with `baseline.source` exactly `curated` or `item_version`.
+- [x] A conflict always resolves to `conflicted` with `latest_candidate` `null`
+  and takes precedence over `no_baseline`.
+- [x] Only strict numeric `X.Y.Z` versions are comparable; a missing or
+  non-strict baseline or candidate yields `insufficient_information` and never
+  a positive status.
+- [x] The curated catalog remains authoritative; dynamic and observed facts
+  remain evidence, not authority, and never override curated data.
+- [x] The Mission Control upgrade notice exposes no Apply, Execute, update,
+  remediate, or other mutation control.
+- [x] Release evaluation, version-bounds compatibility, and upgrade
+  presentation add no execution, approval, provider-intent, or remediation
+  authority.
+- [x] Execution parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`; LXC remains unsupported.
+- [x] The rebuildable Discovery cache remains excluded from backup v3.
+
+### Atlas v0.13 pending publication evidence
+
+- [ ] Select and record the exact release SHA and create the annotated
+  `atlas-v0.13.0` tag.
+- [ ] Record successful exact-SHA quality, test, Compose, recovery, and release
+  gate runs.
+- [ ] Record immutable candidate image digests and source/image parity.
+- [ ] Record final release-evidence artifact identity and checksums.
+- [ ] Record production deployment and read-only acceptance evidence.
+
+These publication items are pending. No v0.13 tag, gate run, image digest,
 release artifact, or deployment acceptance is asserted by this closure.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15

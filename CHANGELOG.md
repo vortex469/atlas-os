@@ -6,11 +6,62 @@ release boundaries.
 
 ## Unreleased
 
+## atlas-v0.13.0 — Atlas v0.13.0 (2026-08-21)
+
+Atlas v0.13 has the theme **Compatibility/Upgrade Intelligence**. It turns the
+already-released v0.12 dynamic Discovery facts into bounded, read-only upgrade
+intelligence: a deterministic release evaluation for each merged item, observed
+installed-version evidence, version-bounds compatibility checks, and Mission
+Control upgrade presentation. Implementation is complete at `64e8341`; the
+`atlas-v0.13.0` tag, publication, release-gate evidence, image digests, and
+deployment remain pending. This documentation-only closure is not the tested
+implementation SHA.
+
+#### Added
+
+- P1 discovery release evaluation: a bounded, deterministic, side-effect-free
+  evaluation of the authoritative baseline version against the freshest dynamic
+  release evidence for each `discovery-merged-item-v1` projection, exposed as an
+  additive, optional `release_evaluation` property.
+- P2 observed installed version evidence: a provider-neutral, advisory
+  `installed_version` observation on compatibility context services and a strict
+  numeric `X.Y.Z` comparison key, so a missing or malformed version is unknown
+  and never yields a positive assertion.
+- P3 version-bounds compatibility: deterministic `version` compatibility checks
+  comparing an observed installed version against the curated
+  `minimum_version`/`maximum_version` bounds of a required relationship,
+  fail-closed to `insufficient_information` when a version is not strict
+  numeric `X.Y.Z`.
+- P4 Mission Control upgrade intelligence: an advisory release-evaluation
+  notice on the Discovery evidence panel presenting the bounded status,
+  baseline, and latest candidate with no Apply, Execute, update, or remediate
+  control.
+- P5 release isolation/readiness validation: isolation tests proving the
+  release-evaluation module has no I/O, network, cache, or application-module
+  coupling beyond its two reviewed Discovery consumers.
+
+#### Security and authority boundary
+
+- The release evaluation is read-only upgrade intelligence. It is derived, not
+  persisted; it adds no Provider Intent, policy, proposal, approval, provider
+  action, or execution authority.
+- The curated catalog remains authoritative. The baseline is the curated
+  release version when present (`baseline.source=curated`), otherwise the item
+  version (`baseline.source=item_version`). Dynamic and observed facts remain
+  evidence, not authority, and never override curated data.
+- Discovery remains `GET`-only and read-only. `release_evaluation` is additive
+  and optional in `discovery-merged-item-v1`; legacy item schemas are
+  unchanged.
+- Capability parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`. LXC remains unsupported. The rebuildable
+  Discovery cache remains excluded from backup v3.
+
 ## atlas-v0.12.0 — Atlas v0.12.0 (2026-08-19)
 
-Implementation is complete at `5075f1a`; the `atlas-v0.12.0` tag, publication,
-release-gate evidence, image digests, and deployment remain pending. This
-documentation-only closure is not the tested implementation SHA.
+Implementation is complete at `5075f1a`. The annotated `atlas-v0.12.0` release
+tag points to the documentation-only closure commit `c8d06a5`, which is not
+the tested implementation SHA.
 
 #### Added
 

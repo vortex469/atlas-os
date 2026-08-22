@@ -153,6 +153,45 @@ A compatibility result should include:
 
 Compatibility findings must be explainable without relying on AI interpretation. Semantic or AI-based behavior may rank, summarize, or assist later, but deterministic evidence must exist first.
 
+Version-bounds compatibility: when a required relationship declares curated
+`minimum_version` and/or `maximum_version`, the observed installed version of
+the resolved service is compared as a strict numeric `X.Y.Z` value. A version
+below the minimum or above the maximum is `incompatible`; a satisfying version
+is `compatible`; a missing or non-strict-numeric version is
+`insufficient_information`. Observed installed versions are advisory evidence,
+not authority, and version-bounds checks add no execution or remediation
+authority.
+
+## Upgrade intelligence (v0.13)
+
+Atlas v0.13 adds bounded, read-only upgrade intelligence on top of the
+compatibility and dynamic-source boundaries above. It compares the
+authoritative baseline version of a merged discovery item against the freshest
+dynamic release evidence and evaluates observed installed versions against
+curated version bounds, without adding any execution or mutation authority.
+
+The release evaluation is a pure, deterministic, side-effect-free derivation.
+It is additive and optional in the `discovery-merged-item-v1` projection, is
+absent or `null` when it cannot be computed, and never changes the curated
+result. The curated catalog remains authoritative: the baseline is the curated
+release version when present (`baseline.source=curated`), otherwise the item
+version (`baseline.source=item_version`). Dynamic and observed facts remain
+evidence, not authority, and never override curated data.
+
+The evaluation exposes exactly eight bounded statuses: `no_baseline`,
+`no_dynamic_evidence`, `insufficient_information`, `stale_evidence`,
+`conflicted`, `up_to_date`, `update_available`, and `baseline_ahead`. A conflict
+always resolves to `conflicted` with a `null` latest candidate and takes
+precedence over `no_baseline`. Only strict numeric `X.Y.Z` versions are
+comparable; a missing or non-strict baseline or candidate yields
+`insufficient_information` and never a positive status.
+
+The evaluation module is isolated from application wiring: it performs no I/O,
+network, or cache access and references only its two reviewed Discovery
+consumers. Mission Control presents the result as an advisory upgrade notice and
+exposes no Apply, Execute, update, remediate, or other mutation control. The
+rebuildable Discovery cache remains excluded from backup v3.
+
 ## YAML catalog source-of-truth policy
 
 The curated YAML catalog is the initial authoritative source for Discovery Center facts.

@@ -2,7 +2,7 @@
 
 Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. This roadmap describes direction and progress.
 
-## Current implementation status (as of Atlas v0.12 implementation closure)
+## Current implementation status (as of Atlas v0.13 implementation closure)
 
 Implemented:
 
@@ -19,10 +19,19 @@ Completed in v0.10:
 
 - D9 — Atlas Agent Proposal and Navigation Handoff
 
-Completed in v0.12 (publication and tag pending):
+Completed in v0.12 (released as `atlas-v0.12.0`):
 
 - D10 — Dynamic Source Adapters: one fixed Frigate GitHub latest-release
   adapter, with bounded read-only retrieval and rebuildable caching
+
+Completed in v0.13 (publication and tag pending):
+
+- Compatibility/Upgrade Intelligence — a deterministic, read-only release
+  evaluation comparing the authoritative baseline version of a merged item
+  against the freshest dynamic release evidence, observed installed-version
+  evidence, version-bounds compatibility checks, and Mission Control upgrade
+  presentation. It builds on D7 and D10 and adds no execution or mutation
+  authority.
 
 Deferred future work:
 
@@ -410,6 +419,93 @@ It is HTTPS-only and allowlisted, uses `supplemental` trust and
 read-only evidence for the curated `frigate` item. It is not an operator-managed
 source and grants no authority. Additional adapters remain deferred until
 separately reviewed.
+
+## v0.13 — Compatibility/Upgrade Intelligence
+
+**Status: P1–P5 implemented; publication and tag pending.** Evidence-bound to
+the commit span `1df238c` through `64e8341`. Atlas v0.13 turns the released v0.12
+dynamic Discovery facts into bounded, read-only upgrade intelligence. It builds
+on D7 (compatibility) and D10 (dynamic sources) and adds no new discovery item
+type, endpoint, or mutation authority.
+
+### Release goal and authority boundary
+
+The release evaluation is derived, not persisted, and is additive and optional in
+`discovery-merged-item-v1`. It compares the authoritative baseline version of a
+merged item against the freshest dynamic release evidence and evaluates observed
+installed versions against curated version bounds. The curated catalog remains
+authoritative; dynamic and observed facts remain evidence, not authority, and
+never override curated data.
+
+Release evaluation, version-bounds compatibility, and upgrade presentation add
+no permission, execution, or mutation authority. They create no Provider Intent,
+policy, proposal, approval, provider action, operational request, execution
+candidate, or remediation. Discovery remains `GET`-only and read-only.
+
+### v0.13-P1 — Discovery release evaluation
+
+**Status: complete.** `1df238c`.
+
+- A bounded, deterministic, side-effect-free release-evaluation contract.
+- An additive, optional `release_evaluation` field on `discovery-merged-item-v1`.
+- A typed cross-field invariant with `conflict_state`.
+- Route and OpenAPI contract tests; legacy item schemas remain unchanged.
+- Exactly the eight bounded statuses: `no_baseline`, `no_dynamic_evidence`,
+  `insufficient_information`, `stale_evidence`, `conflicted`, `up_to_date`,
+  `update_available`, and `baseline_ahead`. `baseline.source` is exactly
+  `curated` or `item_version`.
+
+### v0.13-P2 — Observed installed version evidence
+
+**Status: complete.** `286521b`.
+
+- A provider-neutral, advisory `installed_version` observation on
+  compatibility-context services.
+- A strict numeric `X.Y.Z` comparison key.
+- A missing or non-strict version is unknown and never yields a positive
+  assertion.
+
+### v0.13-P3 — Version-bounds compatibility
+
+**Status: complete.** `4fe0c23`.
+
+- Deterministic `version` compatibility checks comparing an observed installed
+  version against a required relationship's curated `minimum_version` and
+  `maximum_version` bounds.
+- Below-minimum or above-maximum is `incompatible`; a satisfying version is
+  `compatible`; a missing or non-strict version is `insufficient_information`.
+- Adds no execution or remediation authority.
+
+### v0.13-P4 — Mission Control upgrade intelligence
+
+**Status: complete.** `7d77bf7`.
+
+- An advisory release-evaluation notice on the Discovery evidence panel showing
+  the bounded status, baseline, and latest candidate.
+- No Apply, Execute, update, remediate, or other mutation control.
+
+### v0.13-P5 — Release isolation/readiness validation
+
+**Status: complete.** `64e8341`.
+
+- Isolation tests proving the release-evaluation module has no I/O, network,
+  cache, or application-module coupling beyond its two reviewed Discovery
+  consumers in `discovery/compatibility.py` and
+  `discovery/dynamic_projection.py`.
+- The module is side-effect-free and references only those two consumers.
+
+### v0.13 non-goals
+
+v0.13 adds no execution intent, provider mutation handler, LXC or synthetic LXC
+identity, backup/restore/install-provider/update-image execution, automatic
+approval, direct Discovery dispatch, arbitrary provider action or parameter,
+automatic retry or rollback, remote/distributed execution, automatic deployment
+or tagging, Proxmox ACL expansion, proposal-derived target authority, automatic
+remediation, or a new backup format. Repository execution remains separately
+gated as `update-compose-stack`; operational execution remains exactly
+`restart-service / proxmox / qemu`. The rebuildable Discovery cache remains
+excluded from backup v3. D11 semantic discovery and D12 community/private
+catalogs remain deferred.
 
 ## D11 — Semantic Discovery
 

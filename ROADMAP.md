@@ -724,7 +724,7 @@ Discovery catalogs, semantic catalog search, and bulk policy mutation.
 
 **Theme: Dynamic Discovery Sources**
 
-**Status: P0–P5 implemented; publication and tag pending.** The evidence-bound
+**Status: P0–P5 implemented; released as `atlas-v0.12.0`.** The evidence-bound
 implementation spans `d268c7d` through `5075f1a`. Atlas v0.12 is bounded to
 Discovery Center D10. D1 through D9 are released prerequisites; D11 semantic
 discovery and D12 community/private catalogs do not enter this release. The
@@ -938,3 +938,112 @@ item. Its evidence is classified `supplemental` and
 freshness, conflict, cache, degraded, and offline contracts without credential
 or arbitrary-URL authority. Other adapters remain deferred until separately
 reviewed.
+
+## Atlas v0.13 roadmap
+
+**Theme: Compatibility/Upgrade Intelligence**
+
+**Status: P1–P5 implemented; publication and tag pending.** The
+evidence-bound implementation spans `1df238c` through `64e8341`. Atlas v0.13
+builds read-only upgrade intelligence on top of the released v0.12 dynamic
+Discovery facts: it compares the authoritative baseline version of a merged
+item against the freshest dynamic release evidence and evaluates observed
+installed versions against curated version bounds, without adding any execution
+or mutation authority. The implemented dependency order is
+`V0.13-P1 → V0.13-P2 → V0.13-P3 → V0.13-P4 → V0.13-P5`.
+
+### Release goal and authority boundary
+
+V0.13 makes the existing Discovery compatibility and dynamic facts actionable
+as bounded upgrade intelligence. The release evaluation is derived, not
+persisted, and is additive and optional in `discovery-merged-item-v1`. The
+curated catalog remains authoritative; the baseline is the curated release
+version when present, otherwise the item version. Dynamic and observed facts
+remain evidence, not authority, and never override curated data.
+
+Release evaluation, version-bounds compatibility, and upgrade presentation add
+no permission, execution, or mutation authority. They create no Provider
+Intent, policy, proposal, approval, provider action, operational request,
+execution candidate, or remediation. Discovery remains `GET`-only and
+read-only. Operational execution remains exactly
+`restart-service/proxmox/qemu`, repository execution remains
+`update-compose-stack`, and LXC remains unsupported. The rebuildable Discovery
+cache remains excluded from backup v3.
+
+### V0.13-P1 — Discovery release evaluation
+
+**Status: complete.** `1df238c`.
+
+- Goal: compare the authoritative baseline version of each merged item against
+  the freshest dynamic release evidence.
+- Deliverables: a bounded, deterministic, side-effect-free release-evaluation
+  contract; an additive, optional `release_evaluation` field on
+  `discovery-merged-item-v1`; a typed cross-field invariant with
+  `conflict_state`; and route/OpenAPI contract tests.
+- Dependencies: released v0.12 dynamic Discovery facts and merged projection.
+- Non-goals: persistence, mutation, new endpoints, or authority changes.
+- Exit criteria: evaluation is deterministic, fail-closed, additive and
+  optional, and exposes exactly the eight bounded statuses.
+
+### V0.13-P2 — Observed installed version evidence
+
+**Status: complete.** `286521b`.
+
+- Goal: record observed installed versions as advisory compatibility evidence.
+- Deliverables: a provider-neutral `installed_version` observation on
+  compatibility-context services and a strict numeric `X.Y.Z` comparison key.
+- Dependencies: P1 strict numeric version parsing.
+- Non-goals: authority, mutation, or positive assertions from malformed data.
+- Exit criteria: a missing or non-strict version is unknown and never yields a
+  positive assertion.
+
+### V0.13-P3 — Version-bounds compatibility
+
+**Status: complete.** `4fe0c23`.
+
+- Goal: evaluate observed installed versions against curated version bounds.
+- Deliverables: deterministic `version` compatibility checks comparing an
+  observed installed version against a required relationship's
+  `minimum_version`/`maximum_version`.
+- Dependencies: P2 installed-version evidence and curated relationship bounds.
+- Non-goals: execution or remediation authority.
+- Exit criteria: below-minimum/above-maximum is incompatible; a satisfying
+  version is compatible; a missing or non-strict version is
+  `insufficient_information`.
+
+### V0.13-P4 — Mission Control upgrade intelligence
+
+**Status: complete.** `7d77bf7`.
+
+- Goal: present upgrade intelligence without presenting it as an action.
+- Deliverables: an advisory release-evaluation notice on the Discovery
+  evidence panel showing the bounded status, baseline, and latest candidate.
+- Dependencies: P1.
+- Non-goals: Apply, Execute, update, remediate, or any mutation control.
+- Exit criteria: the panel renders all eight bounded statuses and exposes no
+  execution or mutation affordance.
+
+### V0.13-P5 — Release isolation/readiness validation
+
+**Status: complete.** `64e8341`.
+
+- Goal: prove the release-evaluation boundary and release readiness.
+- Deliverables: isolation tests proving the release-evaluation module has no
+  I/O, network, cache, or application-module coupling beyond its two reviewed
+  Discovery consumers.
+- Dependencies: P1 through P4.
+- Non-goals: new production wiring or authority.
+- Exit criteria: the module is side-effect-free and references only the two
+  reviewed consumers.
+
+### V0.13 non-goals
+
+V0.13 adds no execution intent, provider mutation handler, LXC or synthetic
+LXC identity, backup/restore/install-provider/update-image execution,
+automatic approval, direct Discovery dispatch, arbitrary provider action or
+parameter, automatic retry or rollback, remote/distributed execution, automatic
+deployment or tagging, Proxmox ACL expansion, proposal-derived target
+authority, automatic remediation, or a new backup format. Repository execution
+remains separately gated as `update-compose-stack`; operational execution
+remains exactly `restart-service / proxmox / qemu`. D11 semantic discovery and
+D12 community/private catalogs remain deferred.

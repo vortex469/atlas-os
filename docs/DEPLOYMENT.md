@@ -1348,8 +1348,10 @@ not prune them:
 
 V0.12 adds one opt-in Dynamic Discovery source. It is disabled by default, so
 upgrading without configuration changes preserves curated-only Discovery reads
-and adds no external Discovery egress. Release publication and production
-deployment remain pending; when a release is accepted, deploy it using the
+and adds no external Discovery egress. The annotated `atlas-v0.12.0` release
+tag points to the documentation-only closure commit `c8d06a5`; the tested
+implementation SHA remains `5075f1a`. Production deployment, image digests,
+and release-evidence acceptance remain pending; deploy the release using the
 existing exact-SHA and immutable-image process.
 
 To enable the feature, set the following in the deployment `.env` before
