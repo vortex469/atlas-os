@@ -25,6 +25,38 @@ class DiscoveryCatalogDuplicateError(DiscoveryCatalogError):
     """Raised when catalog entries contain duplicate identifiers."""
 
 
+class ImageReleaseEvidenceLoaderError(DiscoveryCatalogError):
+    """Base exception for curated image-release evidence loader failures."""
+
+
+class ImageReleaseEvidencePathError(ImageReleaseEvidenceLoaderError):
+    """Raised when an image-release evidence path or file cannot be used."""
+
+
+class ImageReleaseEvidenceYamlError(ImageReleaseEvidenceLoaderError):
+    """Raised when an image-release evidence YAML source cannot be parsed."""
+
+
+class ImageReleaseEvidenceDocumentError(ImageReleaseEvidenceLoaderError):
+    """Raised when an image-release evidence YAML source has an invalid
+    document shape."""
+
+
+class ImageReleaseEvidenceValidationError(ImageReleaseEvidenceLoaderError):
+    """Raised when an image-release evidence row fails domain-model
+    validation."""
+
+
+class ImageReleaseEvidenceDuplicateError(ImageReleaseEvidenceLoaderError):
+    """Raised when image-release evidence rows contain duplicate
+    source identifiers."""
+
+
+class ImageReleaseEvidenceConflictError(ImageReleaseEvidenceLoaderError):
+    """Raised when image-release evidence rows conflict for one item and
+    release version."""
+
+
 class DiscoveryRepositoryError(RuntimeError):
     """Base exception for Discovery Center repository failures."""
 
