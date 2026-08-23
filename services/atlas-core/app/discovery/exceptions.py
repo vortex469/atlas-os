@@ -57,6 +57,15 @@ class ImageReleaseEvidenceConflictError(ImageReleaseEvidenceLoaderError):
     release version."""
 
 
+class ImageReleaseCollectorError(DiscoveryCatalogError):
+    """Base exception for image-release collector usage errors.
+
+    Collector acquisition outcomes are reported as typed in-memory results,
+    not exceptions; this exception type is reserved for programming errors
+    such as an invalid ``collect`` argument.
+    """
+
+
 class DiscoveryRepositoryError(RuntimeError):
     """Base exception for Discovery Center repository failures."""
 
