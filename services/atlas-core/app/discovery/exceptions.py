@@ -67,3 +67,27 @@ class DiscoveryRepositoryDuplicateError(DiscoveryRepositoryError):
 
 class DiscoveryRepositoryValidationError(DiscoveryRepositoryError):
     """Raised when repository relationship or index validation fails."""
+
+
+class RepositoryComposeObservationError(DiscoveryCatalogError):
+    """Base exception for repository compose-image observation failures."""
+
+
+class RepositoryComposeObservationPathError(RepositoryComposeObservationError):
+    """Raised when the compose path or repository root cannot be used."""
+
+
+class RepositoryComposeObservationSizeError(RepositoryComposeObservationError):
+    """Raised when a compose file exceeds the configured byte bound."""
+
+
+class RepositoryComposeObservationYamlError(RepositoryComposeObservationError):
+    """Raised when a compose file cannot be parsed as safe YAML."""
+
+
+class RepositoryComposeObservationDocumentError(RepositoryComposeObservationError):
+    """Raised when a compose document has an invalid shape."""
+
+
+class RepositoryComposeObservationValidationError(RepositoryComposeObservationError):
+    """Raised when a bound service's local image value fails validation."""
