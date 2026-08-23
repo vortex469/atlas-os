@@ -266,6 +266,150 @@ class CuratedReleaseClaim(DiscoveryCenterModel):
         return value.astimezone(UTC)
 
 
+class ImageReleaseEvidenceSourceClass(StrEnum):
+    """Provenance classes for immutable image-release evidence."""
+
+    CURATED = "curated"
+    REGISTRY_ATTESTED = "registry_attested"
+    UPSTREAM_SIGNED = "upstream_signed"
+
+
+# Image identity (optional registry, repository path, optional tag) but
+# never a digest suffix. Compared for exact equality against the identity
+# portion of a digest-pinned observed image reference.
+_IMAGE_REFERENCE_PATTERN = (
+    r"^([a-z0-9._-]+(?::[0-9]+)?/)?[a-z0-9._-]+(?:/[a-z0-9._-]+)*"
+    r"(?::[a-z0-9._-]+)?$"
+)
+_SHA256_DIGEST_PATTERN = r"^sha256:[0-9a-f]{64}$"
+# Strict numeric ``X.Y.Z``. Each component is the exact ``"0"`` or a decimal
+# integer with no leading zero, bounded to 10 digits (the width of the
+# largest 31-bit signed integer). Mirrors the strict-version semantics used
+# elsewhere in the Discovery Center.
+_STRICT_RELEASE_VERSION_PATTERN = (
+    r"^(0|[1-9][0-9]{0,9})\.(0|[1-9][0-9]{0,9})\.(0|[1-9][0-9]{0,9})$"
+)
+
+
+class ImageReleaseEvidence(DiscoveryCenterModel):
+    """Immutable attestation that one strict release of one catalog item is
+    published as one exact container image digest.
+
+    The contract is data only: it carries no mutable tag, no executable
+    value, and no execution intent. It is inert in v0.14 P1a and has no
+    production consumer.
+    """
+
+    catalog_item_id: str = Field(
+        min_length=1, max_length=64, pattern=DISCOVERY_ID_PATTERN
+    )
+    release_version: str = Field(
+        min_length=1, max_length=64, pattern=_STRICT_RELEASE_VERSION_PATTERN
+    )
+    image_reference: str = Field(
+        min_length=3, max_length=512, pattern=_IMAGE_REFERENCE_PATTERN
+    )
+    image_digest: str = Field(
+        min_length=71, max_length=71, pattern=_SHA256_DIGEST_PATTERN
+    )
+    source_class: ImageReleaseEvidenceSourceClass
+    source_id: str = Field(min_length=1, max_length=256)
+    attested_at: datetime
+
+    @field_validator("release_version")
+    @classmethod
+    def reject_release_version_whitespace(cls, value: str) -> str:
+        if value != value.strip():
+            raise ValueError("release_version must not have surrounding whitespace.")
+        return value
+
+    @field_validator("image_reference")
+    @classmethod
+    def reject_image_reference_whitespace(cls, value: str) -> str:
+        if value != value.strip():
+            raise ValueError(
+                "image_reference must not have surrounding whitespace."
+            )
+        return value
+
+    @field_validator("source_id")
+    @classmethod
+    def reject_source_id_whitespace(cls, value: str) -> str:
+        if value != value.strip():
+            raise ValueError("source_id must not have surrounding whitespace.")
+        return value
+
+    @field_validator("attested_at")
+    @classmethod
+    def normalize_attested_at(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("attested_at must be timezone-aware.")
+        return value.astimezone(UTC)
+
+
+class RepositoryComposeImageObservation(DiscoveryCenterModel):
+    """Observed image string for one compose file and service in a target
+    repository.
+
+    The observation is data only: it records what a deployment file says at
+    one point in time. It performs no filesystem read, registry resolution,
+    or tag resolution; those responsibilities belong to the caller that
+    constructs the observation. It is inert in v0.14 P1a and has no
+    production consumer.
+    """
+
+    compose_file: str = Field(min_length=1, max_length=512)
+    compose_service: str = Field(min_length=1, max_length=255)
+    image: str = Field(min_length=1, max_length=1024)
+
+    @field_validator("compose_file", mode="before")
+    @classmethod
+    def normalize_observed_compose_file(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise TypeError("compose_file must be a string.")
+        candidate = value
+        if candidate != candidate.strip():
+            raise ValueError("compose_file must not have surrounding whitespace.")
+        if "\\" in candidate:
+            raise ValueError("compose_file must not contain backslashes.")
+        if candidate.startswith("/"):
+            raise ValueError("compose_file must be repository-relative.")
+        if candidate.startswith("~"):
+            raise ValueError("compose_file must be repository-relative.")
+        if re.match(r"^[A-Za-z]:[\\/]", candidate):
+            raise ValueError("compose_file must not contain drive letters.")
+        segments = candidate.split("/")
+        if any(segment in ("", ".", "..") for segment in segments):
+            raise ValueError(
+                "compose_file must not contain traversal or empty segments."
+            )
+        if len(segments) > 32:
+            raise ValueError("compose_file path depth exceeds the bound.")
+        if not segments[-1].endswith((".yaml", ".yml")):
+            raise ValueError(
+                "compose_file must end with a lowercase .yaml or .yml extension."
+            )
+        return candidate
+
+    @field_validator("compose_service", mode="before")
+    @classmethod
+    def normalize_observed_compose_service(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise TypeError("compose_service must be a string.")
+        candidate = value
+        if candidate != candidate.strip():
+            raise ValueError("compose_service must not have surrounding whitespace.")
+        if "/" in candidate:
+            raise ValueError(
+                "compose_service must not contain path separators."
+            )
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]*", candidate):
+            raise ValueError(
+                "compose_service must be a compose service identifier."
+            )
+        return candidate
+
+
 class DeploymentBinding(DiscoveryCenterModel):
     """Curated repository deployment knowledge for a catalog item.
 
