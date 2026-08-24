@@ -4,6 +4,7 @@ import type {
     DiscoveryCatalogPage,
     DiscoveryCompatibilityAssessment,
     DiscoveryItemEvidence,
+    DiscoveryImageGroundingProjection,
     DiscoveryListQuery,
     DiscoveryMetadata,
     DiscoveryProposalNavigation,
@@ -73,6 +74,16 @@ export async function getDiscoveryItemEvidence(
 ): Promise<DiscoveryItemEvidence> {
     const response = await atlas.get<DiscoveryItemEvidence>(
         `/discovery/items/${encodeURIComponent(itemId)}/evidence`,
+    );
+
+    return response.data;
+}
+
+export async function getDiscoveryImageGrounding(
+    itemId: string,
+): Promise<DiscoveryImageGroundingProjection> {
+    const response = await atlas.get<DiscoveryImageGroundingProjection>(
+        `/discovery/items/${encodeURIComponent(itemId)}/image-grounding`,
     );
 
     return response.data;

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     getDiscoveryCompatibility,
     getDiscoveryItemEvidence,
+    getDiscoveryImageGrounding,
     getDiscoveryItem,
     getDiscoveryRelationships,
     listDiscoveryProposals,
@@ -13,6 +14,7 @@ import type {
     DiscoveryCatalogEntry,
     DiscoveryCompatibilityAssessment,
     DiscoveryItemEvidence,
+    DiscoveryImageGroundingProjection,
     DiscoveryRelationshipCollection,
     DiscoveryProposalNavigation,
 } from "../types/discovery";
@@ -28,6 +30,7 @@ vi.mock("../api/discovery", () => ({
     getDiscoveryRelationships: vi.fn(),
     getDiscoveryCompatibility: vi.fn(),
     getDiscoveryItemEvidence: vi.fn(),
+    getDiscoveryImageGrounding: vi.fn(),
     listDiscoveryProposals: vi.fn(),
 }));
 
@@ -35,6 +38,7 @@ const mockedGetDiscoveryItem = vi.mocked(getDiscoveryItem);
 const mockedGetDiscoveryRelationships = vi.mocked(getDiscoveryRelationships);
 const mockedGetDiscoveryCompatibility = vi.mocked(getDiscoveryCompatibility);
 const mockedGetDiscoveryItemEvidence = vi.mocked(getDiscoveryItemEvidence);
+const mockedGetDiscoveryImageGrounding = vi.mocked(getDiscoveryImageGrounding);
 const mockedListDiscoveryProposals = vi.mocked(listDiscoveryProposals);
 
 const compatibilityAssessment = (
@@ -216,6 +220,18 @@ function itemEvidence(): DiscoveryItemEvidence {
     };
 }
 
+function imageGrounding(): DiscoveryImageGroundingProjection {
+    return {
+        schema_version: "discovery-image-grounding-projection-v1",
+        catalog_item_id: "frigate",
+        status: "no_deployment_binding",
+        release_version: null,
+        deployment_binding: null,
+        observed_image: null,
+        accepted_evidence: [],
+    };
+}
+
 function renderPage(path = "/discovery/items/frigate") {
     return render(
         <MemoryRouter initialEntries={[path]}>
@@ -226,6 +242,14 @@ function renderPage(path = "/discovery/items/frigate") {
     );
 }
 
+function httpError(status: number, detail: string) {
+    return {
+        isAxiosError: true,
+        message: detail,
+        response: { status, data: { error: { message: detail } } },
+    };
+}
+
 describe("DiscoveryItemPage", () => {
     beforeEach(() => {
         vi.resetAllMocks();
@@ -233,6 +257,7 @@ describe("DiscoveryItemPage", () => {
         mockedGetDiscoveryRelationships.mockResolvedValue(relationships());
         mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment());
         mockedGetDiscoveryItemEvidence.mockResolvedValue(itemEvidence());
+        mockedGetDiscoveryImageGrounding.mockResolvedValue(imageGrounding());
         mockedListDiscoveryProposals.mockResolvedValue({ proposals: [], total: 0, limit: 25 });
     });
 
@@ -260,6 +285,8 @@ describe("DiscoveryItemPage", () => {
         expect(screen.getByText("Code: f0001")).toBeInTheDocument();
         expect(screen.getByText("Evidence e0001")).toBeInTheDocument();
         expect(mockedGetDiscoveryCompatibility).toHaveBeenCalledWith("frigate");
+        expect(await screen.findByRole("heading", { name: "Image grounding" })).toBeInTheDocument();
+        expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledWith("frigate");
     });
 
     it("loads a bounded related proposal section", async () => {
@@ -343,6 +370,22 @@ describe("DiscoveryItemPage", () => {
         expect(await screen.findByText("Dynamic evidence unavailable")).toBeInTheDocument();
         expect(screen.getByText(/Showing the curated catalog only/i)).toBeInTheDocument();
         expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
+    });
+
+    it.each([
+        [404, "Item grounding projection unavailable or not found."],
+        [503, "Image grounding is currently unavailable due to a local source or read failure."],
+        [500, "Image grounding is currently unavailable."],
+    ])("bounds image-grounding HTTP %s without exposing backend details", async (status, copy) => {
+        mockedGetDiscoveryImageGrounding.mockRejectedValue(
+            httpError(status, "SECRET token=hidden /private/repository"),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText(copy)).toBeInTheDocument();
+        expect(screen.queryByText(/SECRET|token=hidden|private\/repository/)).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Frigate" })).toBeInTheDocument();
     });
 
     it("distinguishes proposal transport failure from provider state", async () => {

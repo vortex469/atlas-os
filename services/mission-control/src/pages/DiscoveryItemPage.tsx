@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { isAxiosError } from "axios";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
     getDiscoveryCompatibility,
     getDiscoveryItemEvidence,
+    getDiscoveryImageGrounding,
     getDiscoveryItem,
     listDiscoveryProposals,
     getDiscoveryRelationships,
@@ -13,12 +15,17 @@ import type {
     DiscoveryCatalogEntry,
     DiscoveryCompatibilityAssessment,
     DiscoveryItemEvidence,
+    DiscoveryImageGroundingProjection,
     DiscoveryRelationshipReference,
     DiscoveryRequirements,
     DiscoveryProposalNavigation,
 } from "../types/discovery";
 import { DiscoveryProposalCard } from "../features/discovery/DiscoveryProposalCard";
 import { DiscoveryEvidencePanel } from "../features/discovery/DiscoveryEvidencePanel";
+import {
+    DiscoveryImageGroundingPanel,
+    type ImageGroundingErrorKind,
+} from "../features/discovery/DiscoveryImageGroundingPanel";
 
 type DetailState = {
     entry: DiscoveryCatalogEntry | null;
@@ -43,6 +50,11 @@ export function DiscoveryItemPage() {
     const [evidence, setEvidence] = useState<DiscoveryItemEvidence | null>(null);
     const [evidenceLoading, setEvidenceLoading] = useState(true);
     const [evidenceError, setEvidenceError] = useState<string | null>(null);
+    const [imageGrounding, setImageGrounding] =
+        useState<DiscoveryImageGroundingProjection | null>(null);
+    const [imageGroundingLoading, setImageGroundingLoading] = useState(true);
+    const [imageGroundingError, setImageGroundingError] =
+        useState<ImageGroundingErrorKind | null>(null);
     const [proposals, setProposals] = useState<DiscoveryProposalNavigation[]>([]);
     const [proposalsLoading, setProposalsLoading] = useState(true);
     const [proposalsError, setProposalsError] = useState<string | null>(null);
@@ -81,6 +93,39 @@ export function DiscoveryItemPage() {
                 }
                 setCompatibilityLoading(false);
             });
+    }, [itemId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) {
+                setImageGrounding(null);
+                setImageGroundingLoading(true);
+                setImageGroundingError(null);
+            }
+        });
+
+        getDiscoveryImageGrounding(itemId)
+            .then((projection) => {
+                if (!cancelled) setImageGrounding(projection);
+            })
+            .catch((requestError: unknown) => {
+                if (cancelled) return;
+                console.error(`Unable to load image grounding for ${itemId}:`, requestError);
+                const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
+                setImageGroundingError(
+                    status === 404
+                        ? "not_found"
+                        : status === 503
+                          ? "source_unavailable"
+                          : "unavailable",
+                );
+            })
+            .finally(() => {
+                if (!cancelled) setImageGroundingLoading(false);
+            });
+
+        return () => { cancelled = true; };
     }, [itemId]);
 
     useEffect(() => {
@@ -307,6 +352,12 @@ export function DiscoveryItemPage() {
                 evidence={evidence}
                 isLoading={evidenceLoading}
                 error={evidenceError}
+            />
+
+            <DiscoveryImageGroundingPanel
+                projection={imageGrounding}
+                isLoading={imageGroundingLoading}
+                errorKind={imageGroundingError}
             />
 
             <CompatibilityPanel

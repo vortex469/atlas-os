@@ -196,6 +196,50 @@ export type DiscoveryItemEvidence = {
     release_evaluation?: DiscoveryReleaseEvaluation | null;
 };
 
+export type DiscoveryImageGroundingStatus =
+    | "grounded"
+    | "no_deployment_binding"
+    | "no_strict_release_version"
+    | "no_repository_observation"
+    | "observation_mismatch"
+    | "mutable_observation"
+    | "no_image_release_evidence"
+    | "evidence_not_trusted"
+    | "evidence_version_mismatch"
+    | "repository_identity_mismatch"
+    | "digest_mismatch"
+    | "conflicted";
+
+export type DiscoveryImageEvidenceSourceClass =
+    | "curated"
+    | "registry_attested"
+    | "upstream_signed";
+
+export type DiscoveryImageGroundingProjection = {
+    schema_version: "discovery-image-grounding-projection-v1";
+    catalog_item_id: string;
+    status: DiscoveryImageGroundingStatus;
+    release_version: string | null;
+    deployment_binding: {
+        compose_file: string;
+        compose_service: string;
+        mutable_property: "image";
+        deployment_method: "docker-compose";
+    } | null;
+    observed_image: {
+        image_reference: string;
+        image_digest: string;
+    } | null;
+    accepted_evidence: Array<{
+        release_version: string;
+        image_reference: string;
+        image_digest: string;
+        source_class: DiscoveryImageEvidenceSourceClass;
+        source_id: string;
+        attested_at: string;
+    }>;
+};
+
 export type DiscoveryCatalogPage = {
     entries: DiscoveryCatalogEntry[];
     total: number;
