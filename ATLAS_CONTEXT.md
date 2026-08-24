@@ -61,9 +61,18 @@ compatibility/evidence, advisory proposals, operational review/history/
 recovery, and Atlas Agent workflow views. Browser mutations require their
 specific Core-owned authority and deployment gates.
 
+## Selected v0.15 scope
+
+Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**: a
+bounded, read-only, informational operator-facing surface over the released
+v0.14 image grounding and provenance, with initial evidence breadth limited to
+the accepted Home Assistant `2026.8.3` registry-attested proof. It adds no
+collector, no scheduled collection, and no execution, approval,
+provider-intent, or remediation authority, and no Discovery-to-dispatch
+coupling.
+
 ## Deferred capabilities
 
 Semantic Discovery (D11), private/community catalogs (D12), additional
 operational and repository intents, broader Provider Intent domains, generic
-image collection, and distributed orchestration remain uncommitted. No v0.15
-scope is selected here.
+image collection, and distributed orchestration remain uncommitted.

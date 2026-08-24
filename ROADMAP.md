@@ -48,9 +48,45 @@ The detailed v0.6-v0.14 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## 4. Uncommitted future directions
+## 4. Selected v0.15 scope — Deployment Image Grounding Operator Surface
 
-The following are directions, not commitments or a selected v0.15 scope:
+Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**. It
+extends the released v0.14 read-only image grounding (exact repository Compose
+image observation, accepted image-release evidence, and informational
+grounding/provenance) into a bounded operator-facing presentation surface.
+
+The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is the
+documentation-only scope-selection and boundary sign-off recorded in
+[CHANGELOG.md](CHANGELOG.md) and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md); P1 through P5 are
+not started.
+
+### Scope
+
+- The surface is read-only and informational. It presents already-accepted
+  grounding and provenance to the operator; presentation derives no new
+  authority.
+- Initial evidence breadth is the accepted Home Assistant `2026.8.3`
+  registry-attested proof only. No other release evidence is in scope.
+- Discovery remains GET-only. Grounding, evidence, and provenance remain
+  evidence, not authority, and never override curated data.
+
+### Non-goals (binding for v0.15)
+
+- No generic image collectors and no collector activation.
+- No scheduled or startup collection of any kind.
+- No update, pull, install, restart, deploy, rollback, approval, or execution
+  authority of any kind.
+- No automatic remediation or automatic application.
+- No Discovery-to-dispatch coupling: grounding, evidence, or provenance never
+  create candidates, intents, approvals, action requests, or dispatches.
+- Provider Intent remains limited to Proxmox QEMU `monitoring-policy`.
+- Capability parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`; LXC remains unsupported.
+
+## 5. Uncommitted future directions
+
+The following remain uncommitted directions, not commitments:
 
 - D11 semantic Discovery grounded in deterministic catalog/evidence results.
 - D12 private and community catalogs with explicit provenance and trust rules.

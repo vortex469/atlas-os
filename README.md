@@ -106,5 +106,7 @@ to their surface.
 
 ## Roadmap link
 
-See the [Atlas roadmap](ROADMAP.md). Future directions are uncommitted; this
-documentation reconciliation does not select a v0.15 milestone.
+See the [Atlas roadmap](ROADMAP.md). The selected v0.15 theme is
+**Deployment Image Grounding Operator Surface**, a read-only operator-facing
+surface over released image grounding; remaining future directions are
+uncommitted.

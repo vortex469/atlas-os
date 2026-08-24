@@ -6,6 +6,26 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.15-P0 — Scope selection and boundary sign-off (documentation-only)
+
+Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**.
+P0 is documentation-only: it selects the v0.15 scope and signs off the
+boundaries. It makes no runtime, configuration, script, Compose,
+authentication, execution, approval, provider, or mutation change.
+
+- The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5.
+- The selected surface is read-only and informational: it presents the
+  released v0.14 image grounding and provenance to the operator and derives
+  no new authority from presentation.
+- Initial evidence breadth is the accepted Home Assistant `2026.8.3`
+  registry-attested proof only.
+- Non-goals: no generic collectors, no scheduled or startup collection, no
+  execution authority, no automatic remediation, and no
+  Discovery-to-dispatch coupling.
+- Capability parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`; LXC remains unsupported.
+
 ## atlas-v0.14.0 — Atlas v0.14.0 (2026-08-24)
 
 Atlas v0.14.0 is released as the immutable `atlas-v0.14.0` tag at

@@ -36,7 +36,12 @@ Discovery remains useful offline and fails to unknown/insufficient evidence
 rather than inventing compatibility. It does not override Provider Intent,
 provider-action, operational, repository, approval, or backup authority.
 D11 semantic Discovery and D12 community/private catalogs remain uncommitted
-future directions; no v0.15 choice is made here.
+future directions. The selected v0.15 theme, Deployment Image Grounding
+Operator Surface, extends the released read-only grounding and provenance
+into a bounded operator-facing presentation surface with initial evidence
+breadth limited to the accepted Home Assistant `2026.8.3` proof; it adds no
+collector, no scheduled collection, no authority of any kind, and no
+Discovery-to-dispatch coupling.
 
 ## Historical D0 note
 

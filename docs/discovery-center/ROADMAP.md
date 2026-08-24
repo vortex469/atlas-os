@@ -47,4 +47,22 @@ An uncommitted direction is validated operator/community catalog extension
 with explicit provenance, versioning, migration, conflict, and trust rules.
 It must not enable unsandboxed third-party execution or secret distribution.
 
-Neither D11 nor D12 is selected as v0.15 by this reconciliation.
+## Selected v0.15 — Deployment Image Grounding Operator Surface
+
+The selected v0.15 theme is **Deployment Image Grounding Operator Surface**.
+It is Discovery-facing: it presents the already-released read-only image
+grounding and provenance as a bounded operator-facing surface. Neither D11
+nor D12 is selected by v0.15.
+
+Discovery-facing boundaries:
+
+- The surface is read-only and informational; presentation grants no
+  authority.
+- Initial evidence breadth is the accepted Home Assistant `2026.8.3`
+  registry-attested proof only.
+- The generic image collector remains inactive; no scheduled or startup
+  collection is added.
+- Grounding, evidence, and provenance never create candidates, intents,
+  approvals, action requests, or dispatches.
+- The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is the
+  documentation-only scope-selection and boundary sign-off.

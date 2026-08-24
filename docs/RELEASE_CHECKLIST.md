@@ -3,6 +3,34 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.15-P0 scope-selection and boundary sign-off
+
+Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**.
+P0 is documentation-only: it selects the v0.15 scope and signs off the
+boundaries without changing runtime code, provider state, configuration,
+permissions, gates, handlers, ACLs, or production execution.
+
+- [x] Record the selected v0.15 theme in `ROADMAP.md`.
+- [x] Replace every repository statement that no v0.15 scope is selected.
+- [x] Record v0.15-P0 under `CHANGELOG.md` Unreleased.
+- [x] Update the Discovery Center roadmap and context for the selected
+  Discovery-facing theme.
+- [x] Confirm the milestone dependency order is
+  P0 → P1 → P2 → P3 → P4 → P5.
+- [x] Confirm initial evidence breadth remains the accepted Home Assistant
+  `2026.8.3` registry-attested proof only.
+- [x] Confirm the non-goals: no generic collectors, no scheduled or startup
+  collection, no execution authority, no automatic remediation, and no
+  Discovery-to-dispatch coupling.
+- [x] Confirm documentation-only scope: no runtime, configuration, script,
+  Compose, authentication, execution, approval, provider, or mutation change.
+- [x] Confirm capability parity remains exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`; LXC remains unsupported.
+
+P0 is complete. P1 through P5 are not started and are not marked complete by
+this sign-off.
+
 ## Atlas v0.14 final release — 2026-08-24
 
 The immutable `atlas-v0.14.0` tag exists and peels to
