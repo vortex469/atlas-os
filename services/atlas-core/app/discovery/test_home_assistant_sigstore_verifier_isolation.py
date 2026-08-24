@@ -22,6 +22,7 @@ _OWNED = {
     "home_assistant_registry_attested.py",
     "test_home_assistant_registry_attested.py",
     "test_home_assistant_registry_attested_isolation.py",
+    "test_home_assistant_registry_attested_promotion.py",
 }
 _FIXTURE = (
     Path(__file__).parent / "testdata/home_assistant_sigstore/ha-2026.8.3-bundle.json"

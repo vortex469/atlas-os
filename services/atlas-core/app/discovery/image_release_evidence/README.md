@@ -1,16 +1,21 @@
-# Curated Image-Release Evidence (v0.14 P1b)
+# Reviewed Image-Release Evidence (v0.14 P1b)
 
-This directory is the curated evidence root for the inert v0.14 P1b
-image-release evidence loader
+This directory is the reviewed and accepted evidence root for the inert
+v0.14 P1b image-release evidence loader
 (`app/discovery/image_release_evidence_loader.py`).
 
-## Shipped state: ZERO evidence rows
+## Reviewed evidence publication
 
-This directory ships with **zero** `.yaml` / `.yml` evidence rows. The
-only file that ships here is this README. `ImageReleaseEvidenceLoader`
-treats the default directory as an implicit default: an empty (or
-missing) directory loads to an empty `LoadedImageReleaseEvidence`
-result. No production code path reads this directory at runtime.
+Checking in a row is an acceptance and publication boundary. Human review does
+not change its provenance: `curated` and `registry_attested` remain distinct
+source classes, and a reviewed `registry_attested` row must not be rewritten as
+`curated`. Every `registry_attested` row requires separately reviewed,
+reproducible cryptographic proof.
+
+The runtime loader only parses and validates these local published files. It
+performs no network or cryptographic verification. No production code path
+reads this directory at runtime, and no evidence row grants deployment, update,
+pull, restart, or any other operational authority.
 
 ## Schema
 
@@ -63,13 +68,5 @@ partial results:
 - P1b has **no production consumer**: the loader is unexported
   (`app/discovery/__init__.py` is intentionally untouched) and nothing
   in the application imports it.
-- A future **P1b-collector** (any component that produces new evidence
-  rows, e.g. from registry attestation APIs) is **separately reviewed**
-  and is not part of this change.
-- Do **not** assume any registry authentication behavior and do **not**
-  hard-code an authentication hostname in this contract or in future
-  collector design.
-- A future collector **must validate and constrain** any
-  `WWW-Authenticate` challenge or endpoint it encounters under its own
-  reviewed allowlist/security contract before any credential material
-  is exposed to it.
+- Evidence publication does not activate a collector or adapter. Any runtime
+  collection remains separately reviewed and out of scope.

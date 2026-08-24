@@ -23,10 +23,7 @@ from app.discovery.image_release_evidence_loader import (
 )
 from app.discovery.models import DiscoveryCenterModel
 
-DIGEST = (
-    "sha256:"
-    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-)
+DIGEST = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 REFERENCE = "ghcr.example/atlas/my-service"
 
 
@@ -49,7 +46,7 @@ def evidence_yaml(
         f"  image_digest: {image_digest}\n"
         f"  source_class: {source_class}\n"
         f"  source_id: {source_id}\n"
-        f"  attested_at: \"{attested_at}\"\n"
+        f'  attested_at: "{attested_at}"\n'
     )
 
 
@@ -114,9 +111,7 @@ def test_envelope_is_frozen_and_extra_forbid() -> None:
 
 
 def test_loaded_result_is_frozen_and_extra_forbid() -> None:
-    assert (
-        LoadedImageReleaseEvidence.model_config["extra"] == "forbid"
-    )
+    assert LoadedImageReleaseEvidence.model_config["extra"] == "forbid"
     result = LoadedImageReleaseEvidence()
     assert result.rows == ()
     assert result.source_paths == ()
@@ -248,20 +243,34 @@ def test_explicit_empty_directory_returns_empty(tmp_path: Path) -> None:
     assert result == LoadedImageReleaseEvidence()
 
 
-def test_default_directory_ships_zero_yaml_files() -> None:
+def test_default_directory_ships_exact_promoted_yaml_file() -> None:
     assert DEFAULT_IMAGE_RELEASE_EVIDENCE_DIR.is_dir()
     yaml_files = [
         path
         for path in DEFAULT_IMAGE_RELEASE_EVIDENCE_DIR.rglob("*")
         if path.suffix.lower() in {".yaml", ".yml"}
     ]
-    assert yaml_files == []
+    assert [
+        path.relative_to(DEFAULT_IMAGE_RELEASE_EVIDENCE_DIR).as_posix()
+        for path in yaml_files
+    ] == ["home-assistant/2026.8.3-registry-attested.yaml"]
 
 
-def test_default_directory_loads_to_empty_result() -> None:
+def test_default_directory_loads_exact_promoted_row() -> None:
     result = ImageReleaseEvidenceLoader().load()
-    assert result.rows == ()
-    assert result.source_paths == ()
+    assert len(result.rows) == 1
+    assert result.rows[0].model_dump(mode="json") == {
+        "catalog_item_id": "home-assistant",
+        "release_version": "2026.8.3",
+        "image_reference": "ghcr.io/home-assistant/home-assistant",
+        "image_digest": "sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe",
+        "source_class": "registry_attested",
+        "source_id": "collector:home-assistant-ghcr-cosign",
+        "attested_at": "2026-08-21T20:54:36Z",
+    }
+    assert [Path(path).name for path in result.source_paths] == [
+        "2026.8.3-registry-attested.yaml"
+    ]
 
 
 def test_load_file_rejects_unsupported_extension(tmp_path: Path) -> None:
@@ -352,7 +361,9 @@ def test_duplicate_source_id_identical_rows_still_fails(tmp_path: Path) -> None:
         ImageReleaseEvidenceLoader(tmp_path).load()
 
 
-def test_agreement_with_different_source_ids_is_retained(tmp_path: Path) -> None:
+def test_curated_and_registry_attested_agreement_are_both_retained(
+    tmp_path: Path,
+) -> None:
     write(tmp_path, "a.yaml", evidence_yaml(source_id="source-a"))
     write(
         tmp_path,
@@ -365,9 +376,9 @@ def test_agreement_with_different_source_ids_is_retained(tmp_path: Path) -> None
     )
     result = ImageReleaseEvidenceLoader(tmp_path).load()
     assert [row.source_id for row in result.rows] == ["source-a", "source-b"]
-    assert {
-        (row.image_reference, row.image_digest) for row in result.rows
-    } == {(REFERENCE, DIGEST)}
+    assert {(row.image_reference, row.image_digest) for row in result.rows} == {
+        (REFERENCE, DIGEST)
+    }
 
 
 def test_conflicting_reference_or_digest_fails(tmp_path: Path) -> None:
@@ -377,6 +388,7 @@ def test_conflicting_reference_or_digest_fails(tmp_path: Path) -> None:
         "b.yaml",
         evidence_yaml(
             source_id="source-b",
+            source_class="registry_attested",
             image_digest="sha256:" + "ab" * 32,
         ),
     )
@@ -391,7 +403,47 @@ def test_conflicting_reference_fails(tmp_path: Path) -> None:
         "b.yaml",
         evidence_yaml(
             source_id="source-b",
+            source_class="registry_attested",
             image_reference="ghcr.example/atlas/other",
+        ),
+    )
+    with pytest.raises(ImageReleaseEvidenceConflictError):
+        ImageReleaseEvidenceLoader(tmp_path).load()
+
+
+def test_registry_attested_agreement_with_different_sources_is_retained(
+    tmp_path: Path,
+) -> None:
+    write(
+        tmp_path,
+        "a.yaml",
+        evidence_yaml(source_id="registry-a", source_class="registry_attested"),
+    )
+    write(
+        tmp_path,
+        "b.yaml",
+        evidence_yaml(source_id="registry-b", source_class="registry_attested"),
+    )
+    result = ImageReleaseEvidenceLoader(tmp_path).load()
+    assert [row.source_id for row in result.rows] == ["registry-a", "registry-b"]
+    assert all(row.source_class.value == "registry_attested" for row in result.rows)
+
+
+def test_registry_attested_contradiction_with_different_sources_fails(
+    tmp_path: Path,
+) -> None:
+    write(
+        tmp_path,
+        "a.yaml",
+        evidence_yaml(source_id="registry-a", source_class="registry_attested"),
+    )
+    write(
+        tmp_path,
+        "b.yaml",
+        evidence_yaml(
+            source_id="registry-b",
+            source_class="registry_attested",
+            image_digest="sha256:" + "ef" * 32,
         ),
     )
     with pytest.raises(ImageReleaseEvidenceConflictError):

@@ -1,0 +1,9 @@
+schema_version: 1
+evidence:
+  catalog_item_id: home-assistant
+  release_version: "2026.8.3"
+  image_reference: ghcr.io/home-assistant/home-assistant
+  image_digest: sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe
+  source_class: registry_attested
+  source_id: collector:home-assistant-ghcr-cosign
+  attested_at: "2026-08-21T20:54:36Z"

@@ -12,6 +12,7 @@ from app.discovery.loader import YamlCatalogLoader
 
 _LOADER_NAME = "image_release_evidence_loader"
 _LOADER_TEST_NAMES = {
+    "test_home_assistant_registry_attested_promotion.py",
     "test_image_release_evidence_loader.py",
     "test_image_release_evidence_isolation.py",
 }
@@ -43,10 +44,9 @@ def test_loader_imports_are_filesystem_and_contract_only() -> None:
         "pydantic",
     }
     for name in imports:
-        assert (
-            name in allowed_exact
-            or name.startswith(allowed_prefixes)
-        ), f"unexpected loader import: {name}"
+        assert name in allowed_exact or name.startswith(allowed_prefixes), (
+            f"unexpected loader import: {name}"
+        )
 
 
 def test_loader_has_no_forbidden_runtime_capabilities() -> None:
@@ -128,9 +128,7 @@ def test_loader_has_no_forbidden_runtime_capabilities() -> None:
     }
     for node in ast.walk(tree):
         if isinstance(node, ast.Attribute) and node.attr in forbidden_call_attributes:
-            raise AssertionError(
-                f"loader references forbidden attribute {node.attr!r}"
-            )
+            raise AssertionError(f"loader references forbidden attribute {node.attr!r}")
 
 
 def test_loader_is_not_wired_into_any_application_module() -> None:
@@ -165,9 +163,8 @@ def test_loader_is_not_exported_from_public_api() -> None:
             assert _LOADER_NAME not in path.read_text(encoding="utf-8")
 
 
-def test_default_evidence_directory_ships_zero_rows() -> None:
-    """The shipped evidence directory contains zero yaml/yml files and
-    loads to the empty result."""
+def test_default_evidence_directory_ships_only_promoted_row() -> None:
+    """The shipped directory contains only the reviewed promotion."""
 
     assert DEFAULT_IMAGE_RELEASE_EVIDENCE_DIR.is_dir()
     yaml_files = [
@@ -175,11 +172,23 @@ def test_default_evidence_directory_ships_zero_rows() -> None:
         for path in DEFAULT_IMAGE_RELEASE_EVIDENCE_DIR.rglob("*")
         if path.suffix.lower() in {".yaml", ".yml"}
     ]
-    assert yaml_files == []
+    assert [path.name for path in yaml_files] == ["2026.8.3-registry-attested.yaml"]
 
     result = ImageReleaseEvidenceLoader().load()
-    assert result.rows == ()
-    assert result.source_paths == ()
+    assert len(result.rows) == 1
+    assert result.rows[0].source_id == "collector:home-assistant-ghcr-cosign"
+    assert result.rows[0].source_class.value == "registry_attested"
+
+
+def test_ordinary_load_performs_no_filesystem_writes(monkeypatch) -> None:
+    def forbidden(*args, **kwargs):
+        raise AssertionError("ordinary evidence loading crossed an isolation boundary")
+
+    monkeypatch.setattr(Path, "write_text", forbidden)
+    monkeypatch.setattr(Path, "write_bytes", forbidden)
+
+    result = ImageReleaseEvidenceLoader().load()
+    assert len(result.rows) == 1
 
 
 def test_shipped_catalog_still_has_zero_deployment_bindings() -> None:
@@ -202,9 +211,7 @@ def test_no_frigate_evidence_row_is_shipped() -> None:
             assert "frigate" not in content.lower()
 
     result = ImageReleaseEvidenceLoader().load()
-    assert all(
-        row.catalog_item_id != "frigate" for row in result.rows
-    )
+    assert all(row.catalog_item_id != "frigate" for row in result.rows)
 
 
 def test_default_catalog_and_evidence_dirs_are_distinct() -> None:
