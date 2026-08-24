@@ -252,7 +252,9 @@ describe("DiscoveryItemPage", () => {
         expect(screen.queryByText("Ignored item metadata note.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
 
-        expect(screen.getByRole("heading", { name: "Compatibility status" })).toBeInTheDocument();
+        expect(
+            await screen.findByRole("heading", { name: "Compatibility status" }),
+        ).toBeInTheDocument();
         expect(screen.getByText("Compatible")).toBeInTheDocument();
         expect(screen.getByText("Catalog item status is active.")).toBeInTheDocument();
         expect(screen.getByText("Code: f0001")).toBeInTheDocument();
