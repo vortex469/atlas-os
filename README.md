@@ -1,865 +1,110 @@
-## Atlas v0.8.0
-
-The immutable `atlas-v0.8.0` release was published at
-`f83cd90982d4682ce49e60308e93dc9840984211`, promoting the immutable
-`atlas-v0.8-rc1` candidate at
-`cf09dfe1eebbd138d37ba7144d91b893f70732fa`. V0.8 completed Operational
-Control Plane Clarity and Observability without widening the operational
-mutation boundary beyond `restart-service / proxmox / qemu`.
-
-It adds effect-aware approval presentation, a unified read-only lifecycle,
-operational history and recovery UX, provider-neutral capability and selector
-descriptors, and hardened Edge-only HTTPS ingress and operator-session UX.
-
-## Atlas v0.7.0
-
-The immutable `atlas-v0.7.0` release was published at
-`8dbc43de73dda300b50c121f19324cb5174df2a9` from the immutable
-`atlas-v0.7-rc1` candidate at
-`5b1321091af0fc191844cdf71e9e0d919e4ea415`. It adds the first
-approval-gated operational-action workflow:
-
-- `restart-service / proxmox / qemu`
-
-An operator request identifies one authoritative QEMU resource; it does not
-submit a command or provider payload. Atlas then requires deterministic
-planning, workflow-shell approval, immutable action-request translation, and
-exact action approval. Agent and Core independently enforce the enabled intent,
-Core revalidates the target fingerprint before a durable dispatch barrier, and
-verification follows only the provider UPID captured from that one operation.
-Unknown outcomes never trigger an automatic replay.
-
-Browser mutation access requires authenticated HTTPS, a Core-owned operator
-session with `operational_intent:create`, an exact trusted origin, and CSRF
-validation. Edge HTTP Basic authentication remains defense-in-depth and does
-not replace Core authentication. See the
-[deployment guide](docs/DEPLOYMENT.md#core-owned-operator-authentication),
-[restart contract](docs/architecture/proxmox-qemu-operational-restart.md), and
-[verification/recovery contract](docs/architecture/operational-verification-recovery.md).
-
-## Atlas v0.9.0
-
-Atlas v0.9 has the theme **Operational Recovery and Evidence Automation**. It
-adds read-only recovery diagnostics, bounded sanitized support bundles,
-check-only release-evidence automation, and Mission Control recovery/history
-UX without adding a provider mutation capability. V0.9-P0 through V0.9-P5 are
-complete. The immutable `atlas-v0.9.0` release was published at
-`7a5beac58e1677cd97b9bcc2f160dc30573582aa`, promoting the immutable
-`atlas-v0.9-rc1` candidate at
-`bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3` passed exact-SHA CI,
-release-evidence validation, no-cache production deployment, source/image
-parity, and sequential service-restart soak. Final Quality gates run
-`31861408265` and Container release gate run `31861408264` passed. The existing
-`restart-service / proxmox / qemu` path remains the only operational production
-tuple.
-
-A read-only feasibility audit found no provider-authoritative,
-configuration-independent LXC incarnation identity. Atlas therefore rejected
-`restart-service / proxmox / lxc` fail-closed rather than synthesizing identity
-from reusable or mutable fields. LXC remains unsupported and non-requestable.
-
-- [Atlas v0.8.0 to v0.9 upgrade and rollback](docs/DEPLOYMENT.md#atlas-v080-to-v09-upgrade-and-rollback)
-
-## Atlas v0.10.0
-
-Atlas v0.10 has the theme **Discovery-to-Operator Proposal Handoff**. P0 through
-P5 are complete. Atlas turns trusted Discovery and Orion advisory
-evidence into sanitized, stale-aware operator proposals that navigate to
-existing authoritative review or operator-intent surfaces without granting
-Discovery execution authority.
-Proposals cannot create candidates, action requests, approvals, or dispatches;
-the destination must freshly resolve capability, resource, target fingerprint,
-and operator authority. V0.10 does not widen the existing repository or
-operational execution boundaries.
-
-The proposal API is GET-only, Mission Control presents proposal context as
-advisory, and every maintenance destination reloads current operator,
-capability, selector, resource, and fingerprint authority. The immutable
-`atlas-v0.10-rc1` tag at
-`95d98a4d5e0e9767dd6cb5df06c7ffdb693bf162` passed exact-SHA CI,
-release-evidence validation, no-cache production deployment, proposal-boundary
-acceptance, and sequential restart soak. The immutable `atlas-v0.10.0` release
-was published at `b19ded149f65dfb4043a1b80833e5ff64d83e55d`.
-
-Atlas v0.11 has the theme **Provider Management Framework — Identity-Bound
-Runtime Intent**. Its initial write direction is limited to Proxmox QEMU
-monitoring intent; it does not widen provider-action, operational, or
-repository execution authority. See the [v0.11 roadmap](ROADMAP.md#atlas-v011-roadmap).
-
-- [Atlas v0.9.0 to v0.10 upgrade and rollback](docs/DEPLOYMENT.md#atlas-v090-to-v010-upgrade-and-rollback)
-
-## Atlas v0.6.0
-
-Atlas v0.6 completes the Phase 3 candidate workflow while preserving Atlas's provider-neutral, local-first design. Atlas Core owns Discovery evidence, intelligence recommendations, execution-candidate projection, and planning-intake revalidation. Atlas Agent owns local approval-gated orchestration, restart-safe side effects, audit-chain validation, deterministic review, and local Git commit. Mission Control presents state and does not currently expose Phase 3 execution controls.
-
-Supported execution intent:
-
-- `update-compose-stack`
-
-Atlas v0.6.0 requires structured, immutable Compose mutation evidence before an
-implementation approval can be requested. Planning, exact approval binding,
-persistence/recovery, and successor concurrency are production-ready. The
-Codex-backed repository mutation stage is production-ready through the exact
-approval-gated candidate path. Execution uses a named `workspace-write`
-permission profile in a runsc-isolated worker with an authenticated,
-network-segmented control plane. Atlas v0.6.0 does not use unconfined profiles,
-`CAP_SYS_ADMIN`, root execution, or Codex `danger-full-access`.
-
-Atlas does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or automate rollback. See:
-
-- [Changelog](CHANGELOG.md)
-- [Atlas v0.6.0 upgrade procedure](docs/DEPLOYMENT.md#atlas-v060-upgrade-and-manual-rollback)
-- [Atlas v0.6.0 rollback procedure](docs/DEPLOYMENT.md#atlas-v060-upgrade-and-manual-rollback)
-- [Atlas v0.6 release checklist](docs/RELEASE_CHECKLIST.md)
-
-<div align="center">
-
 # Atlas OS
 
-### Own Your Infrastructure. Through Conversation.
+Atlas OS is a local-first infrastructure control plane that turns provider,
+inventory, policy, and Discovery evidence into operator-facing explanations,
+recommendations, and tightly bounded approved actions.
 
-**A conversational infrastructure platform for understanding, operating, and automating modern infrastructure.**
+## Current release
 
-Atlas is an intent-driven infrastructure operating system. Other tools show what is; Atlas understands what should be. The product principles behind that direction are documented in [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md), and the planned boundary between immutable defaults and runtime state is defined in [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md).
+The current release is **Atlas v0.14.0**, published as `atlas-v0.14.0` at
+`4d2526e1b022c5c36eaced65bf5b71703da5d2d7` on 2026-08-24.
 
-![Status](https://img.shields.io/badge/status-active%20development-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Release](https://img.shields.io/badge/release-Foundry-orange)
+## What Atlas does today
 
-</div>
+Atlas Core collects and normalizes infrastructure state, evaluates policy,
+serves the API, and owns durable control-plane state. Mission Control provides
+the browser experience. Atlas Agent manages approval-gated engineering
+workflows. Discovery Center supplies curated and dynamic read-only evidence,
+compatibility and release intelligence, proposals, exact Compose image
+observation, image grounding, and provenance.
 
----
+Released mutation surfaces are deliberately separate:
 
-## Infrastructure should be understandable.
+- legacy provider actions exposed by individual providers;
+- Provider Intent mutation, limited to Proxmox QEMU `monitoring-policy`;
+- hardened operational dispatch, exactly `restart-service / proxmox / qemu`;
+- repository candidate execution, exactly `update-compose-stack`.
 
-Modern infrastructure is spread across dozens of tools.
+## What Atlas deliberately does not do
 
-Docker.
-Proxmox.
-Kubernetes.
-Home Assistant.
-SSH.
-Cloud providers.
-Dashboards.
+Atlas does not automatically remediate, approve, update, deploy, roll back, or
+publish releases. Discovery is GET-only/read-only. V0.14 image evidence and
+grounding are informational and grant no operational authority. The generic
+image collector is inactive: production descriptor and adapter registries are
+empty and no startup or scheduled collection is wired.
 
-Atlas brings them together into a single platform that understands your infrastructure before it changes it.
-
-Instead of asking:
-
-> "What command do I run?"
-
-Atlas helps answer:
-
-> **"What is happening, what should I do next, and why?"**
-
----
-
-# What is Atlas?
-
-Atlas is an open-source conversational infrastructure platform.
-
-It analyzes infrastructure, explains deployments, identifies risks, recommends actions, and eventually executes approved changes through a unified operational experience.
-
-Atlas is designed for:
-
-- Homelabs
-- Self-hosted services
-- Edge infrastructure
-- Small business environments
-- Enterprise platforms
-
----
-
-# Philosophy
-
-Atlas follows one simple rule.
-
-> **Understanding comes before automation.**
-
-Every deployment follows the same workflow.
+## Architecture overview
 
 ```text
-Understand
-
-↓
-
-Explain
-
-↓
-
-Recommend
-
-↓
-
-Approve
-
-↓
-
-Execute
-
-↓
-
-Observe
+browser -> Mission Control -> Atlas Core -> providers / runtime state
+                      |           |
+                      v           v
+                 Atlas Agent   operational dispatch
+                      |
+             local execution backend (default)
+                      |
+             optional, separately gated:
+             authenticated worker requests through relay
+                      -> isolated execution worker -> egress proxy
 ```
 
-Automation without understanding creates surprises.
+The optional HTTPS overlay puts Atlas Edge in front of Mission Control. See
+[the canonical architecture](ARCHITECTURE.md).
 
-Atlas is designed to eliminate those surprises.
+## Production services
 
-Atlas evaluates infrastructure against user intent, not raw state alone. A stopped resource is not automatically a problem; it becomes a warning when Atlas knows the user expected it to be running. See [Atlas Design Principles](ATLAS_DESIGN_PRINCIPLES.md) for the planned product model behind Provider Management Framework work, and [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md) for the planned storage boundary that keeps Mission Control writes out of tracked repository configuration.
+`compose.production.yaml` defines nine base services: `atlas-core`,
+`atlas-agent`, `atlas-agent-auth-stager`, `atlas-execution-worker`,
+`atlas-execution-worker-relay`, `atlas-execution-auth-stager`,
+`atlas-core-agent-auth-stager`, `atlas-egress-proxy`, and `mission-control`.
+Overlays add HTTPS/`atlas-edge`, Core-owned operator authentication, and
+Provider Intent activation.
 
----
+## Local development
 
-# Development setup
-
-Atlas currently runs as two services:
-
-- Atlas Core requires Python 3.12.
-- Mission Control requires Node.js 20.19+ or 22.12+ and npm 10+.
-
-Start Atlas Core:
+Local development runs components directly and is not the production topology.
+Atlas Core requires Python 3.12; Mission Control requires a supported Node.js
+and npm toolchain. Typical startup:
 
 ```bash
 cd services/atlas-core
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8643
-```
 
-In another terminal, start Mission Control:
-
-```bash
-cd services/mission-control
+cd ../mission-control
 npm ci
 npm run dev
 ```
 
-Mission Control proxies API requests to Atlas Core at
-`http://127.0.0.1:8643`. Copy `.env.example` to `.env` only when the
-configured providers require credentials; never commit real secrets.
+The development server proxies API requests to Core. Atlas Agent and the
+hardened execution path have their own development and test workflows.
 
-Run the release gates:
+## Production deployment
 
-```bash
-cd services/atlas-core
-.venv/bin/pytest -q
+Production uses the hardened Compose package and persistent named volumes.
+Agent defaults to its local repository execution backend. The package also
+includes default-disabled worker, relay, egress-proxy, and related auth-staging
+infrastructure for an isolated backend that requires explicit, separately gated
+activation. Follow [Production Deployment](docs/DEPLOYMENT.md); do not infer
+production layout from the two-process development example.
 
-cd ../mission-control
-npm test
-npm run lint
-npm run build
+## Security / authority model
 
-cd ../..
-./scripts/container-release-gate
-```
+Core owns API contracts, operator sessions, Provider Intent, operational
+dispatch, and Discovery state. Agent owns repository workflow orchestration and
+independently enforces execution capabilities. Backup/restore is operator
+maintenance tooling, never an Agent execution intent. Credentials remain
+outside tracked configuration and side effects require the authority specific
+to their surface.
 
-See [Atlas Core operations](docs/ATLAS_CORE.md) and
-[dependency security](docs/DEPENDENCY_SECURITY.md) for operational
-details. For a production deployment, use the hardened
-[Docker Compose package](docs/DEPLOYMENT.md), which supports
-loopback/LAN HTTP and optional authenticated HTTPS ingress. Before
-tagging a release, complete the
-[Foundry release checklist](docs/RELEASE_CHECKLIST.md).
+## Release history links
 
----
+- [Changelog](CHANGELOG.md)
+- [Release checklist and evidence](docs/RELEASE_CHECKLIST.md)
+- [Deployment and historical upgrade notes](docs/DEPLOYMENT.md)
 
-# Components
+## Roadmap link
 
-## Atlas Core
-
-The backend reasoning engine.
-
-Current capabilities:
-
-- Deployment analysis
-- Risk assessment
-- Planning engine
-- Provider abstraction
-- Versioned REST API with typed contracts
-- Standardized API errors and request tracing
-- Provider action discovery and execution
-- Persistent, sanitized provider action history
-- Live, validated operational policy reload
-- Policy-aware Docker expected-state monitoring
-- Atlas Doctor diagnostics through CLI and Operations API
-- Read-only OPNsense health and diagnostics provider
-- Concurrent provider-backed ACE findings
-- Bounded provider intelligence collection
-- Provider intelligence timing and outcome dashboard
-- Live provider policy snapshot and Mission Control visibility
-- Provider-specific operational policy detail views
-- Policy reload validation and timing telemetry
-- Structured field-level policy validation diagnostics
-- Read-only Frigate camera health and version telemetry
-- Aggregated dashboard, health, and AI status
-- Modular architecture
-
-Planned direction:
-
-- Atlas v0.9 Operational Recovery and Evidence Automation as the current bounded release theme
-- Atlas Runtime Foundation as a continuing cross-release track for separating immutable defaults from mutable runtime state
-- Provider Management Framework as a Runtime Foundation subsystem for provider connection, discovery, resources, monitoring, actions, and diagnostics
-- Discovery Center runtime status:
-  - ✅ Implemented: provider-neutral catalog models, YAML loader, deterministic repository/search, read-only API, and compatibility engine.
-  - ✅ Implemented: Mission Control discovery API client and read-only Discovery Center pages for catalog browse, item details, relationships, provenance, and compatibility evidence.
-  - 📌 Future: dynamic catalog sources, semantic discovery, Atlas Agent handoff protocol, community/private catalogs.
-- Mission Control management for provider resources without normal users editing YAML
-- Needs Review workflows for newly discovered resources before Atlas remembers user intent
-- AI suggests policy improvements, while users decide and approve changes
-- Normal Mission Control changes must not dirty the Git checkout
-
----
-
-### OPNsense provider
-
-Add an `opnsense` service to `inventory/services.yaml`:
-
-```yaml
-services:
-  opnsense:
-    name: OPNsense
-    host: firewall.home.arpa
-    port: 443
-    protocol: https
-    health_endpoint: /api/core/firmware/status
-    expected_status: [200]
-    critical: true
-    verify_tls: true
-    # ca_bundle: /opt/atlas/config/certificates/opnsense.pem
-```
-
-Provide the read-only API credentials through the environment:
-
-```dotenv
-OPNSENSE_API_KEY=replace-me
-OPNSENSE_API_SECRET=replace-me
-```
-
-TLS verification is enabled by default. Use `ca_bundle` for a private
-certificate authority; disabling verification should be limited to
-temporary development environments.
-
-Firmware posture is controlled live through `config/policies.yaml`:
-
-```yaml
-opnsense:
-  pending_update_warning_threshold: 1
-  reboot_required_severity: warning
-```
-
-Set the update threshold to `null` to keep pending packages
-informational. Reboot severity accepts `info`, `warning`, or
-`critical`.
-
-Provider finding collection uses a configurable deadline in
-`config/atlas.yaml`:
-
-```yaml
-intelligence:
-  provider_timeout_seconds: 10
-  telemetry_database: /opt/atlas/data/provider_intelligence.db
-  telemetry_max_entries: 10000
-  telemetry_retention_days: 30
-```
-
-The timeout must be greater than zero and no more than 60 seconds.
-Collection snapshots are persisted locally, bounded by entry count and
-retention window, and available from
-`/api/v1/intelligence/telemetry/history`.
-The history endpoint accepts `provider_id`, `status`,
-`collected_from`, `collected_to`, and a bounded `limit`. Status accepts
-`completed`, `timed_out`, or `failed`.
-Filtered history can be exported from
-`/api/v1/intelligence/telemetry/history/export` with `format=json` or
-`format=csv`. CSV output uses one row per snapshot/provider and escapes
-spreadsheet formula prefixes.
-Retention status is available at
-`/api/v1/intelligence/telemetry/history/retention`. A confirmed
-`POST /api/v1/intelligence/telemetry/history/prune` removes snapshots
-outside the configured retention and entry limits.
-ACE situation reports include collection telemetry for operational
-visibility:
-
-```json
-{
-  "telemetry": {
-    "provider_collection_duration_ms": 42.5,
-    "provider_timeout_seconds": 10,
-    "providers": [
-      {
-        "provider_id": "frigate",
-        "provider_name": "Frigate",
-        "status": "completed",
-        "duration_ms": 38.2,
-        "finding_count": 1
-      }
-    ]
-  }
-}
-```
-
-Provider status is `completed`, `timed_out`, or `failed`. Durations use
-monotonic elapsed time and provider collection remains concurrent.
-Mission Control charts recent collection duration and highlights
-snapshots containing provider failures or time-outs. Provider and
-outcome controls filter the visible trend without another request.
-JSON and CSV download actions apply the active provider and outcome
-filters.
-Each Provider detail page also charts that provider's individual
-collection duration and outcomes, separating integration performance
-from the overall concurrent ACE collection time.
-When a performance policy exists, the chart includes a severity-colored
-threshold line and counts completed snapshots above policy separately
-from failed or timed-out collection.
-
-Successful provider collection can also be bounded by live policy:
-
-```yaml
-intelligence:
-  providers:
-    qdrant:
-      maximum_collection_duration_ms: 500
-      severity: warning
-    n8n:
-      maximum_collection_duration_ms: 1000
-      severity: info
-```
-
-Completed collection above its threshold creates a slow-provider
-finding. Time-outs keep their dedicated timeout finding and are not
-reported twice. Severity accepts `info`, `warning`, or `critical`.
-Mission Control also displays stored entry count, retention days, and
-the entry cap, with oldest/newest snapshot times and a capacity meter.
-Manual pruning requires confirmation in both the UI and the Core API.
-
----
-
-### Frigate provider
-
-For the authenticated Frigate API, add this service to
-`inventory/services.yaml`:
-
-```yaml
-services:
-  frigate:
-    name: Frigate
-    host: frigate.home.arpa
-    port: 8971
-    protocol: https
-    health_endpoint: /api/stats
-    expected_status: [200]
-    critical: false
-    verify_tls: true
-    # ca_bundle: /opt/atlas/config/certificates/frigate.pem
-```
-
-Provide a Frigate JWT through the environment when authentication is
-enabled:
-
-```dotenv
-FRIGATE_API_TOKEN=replace-me
-```
-
-The internal unauthenticated API on port `5000` is also supported when
-the token is omitted. That port grants broad access and must only be
-used on a trusted, isolated container network.
-
-Camera health expectations are live-reloaded from
-`config/policies.yaml`:
-
-```yaml
-frigate:
-  stalled_camera_severity: warning
-  cameras:
-    front:
-      expected: active
-      minimum_camera_fps: 5
-      minimum_process_fps: 5
-    retired_camera:
-      expected: inactive
-```
-
-Active cameras are reported when they are missing, stop producing or
-processing frames, or fall below their configured FPS minimum.
-Inactive cameras are excluded from health findings. Unlisted cameras
-retain the safe default check for zero capture or processing FPS.
-Severity accepts `info`, `warning`, or `critical`; informational
-findings do not reduce the Atlas health score.
-
----
-
-### Obsidian provider
-
-Mount the vault read-only into Atlas Core and add it to
-`inventory/services.yaml`:
-
-```yaml
-services:
-  obsidian:
-    name: Obsidian
-    vault_path: /vaults/atlas
-    critical: false
-    max_scan_files: 10000
-    exclude_directories:
-      - .obsidian
-      - .trash
-```
-
-The vault path must be absolute. Atlas reads filesystem metadata only;
-note contents and full local paths are not returned by the provider.
-The bounded scan reports Markdown note count, attachment count, newest
-note modification time, and whether the file limit truncated the scan.
-Symlinked files and directories are skipped to keep collection inside
-the configured vault.
-
-Vault expectations are live-reloaded from `config/policies.yaml`:
-
-```yaml
-obsidian:
-  minimum_note_count: 10
-  stale_after_days: 30
-  insufficient_notes_severity: warning
-  stale_severity: info
-  scan_truncated_severity: warning
-```
-
-`stale_after_days` is optional. Each finding severity accepts `info`,
-`warning`, or `critical`; informational findings do not reduce health.
-Missing vaults remain governed by the provider's inventory priority.
-
-The complete validated policy snapshot is available read-only at
-`/api/v1/policies` and is displayed in Mission Control. Policy changes
-continue to reload from `config/policies.yaml` without a process
-restart.
-
-Reload health is available at `/api/v1/policies/status`. It reports
-validation status, reload duration, source presence, check time, and a
-sanitized error when validation fails. Diagnostics identify the policy
-field and validation type, with line and column for YAML syntax errors.
-Mission Control continues loading provider and ACE state when the
-policy snapshot is invalid, so operators can see and correct the
-degraded policy state.
-
-For example, this invalid policy contains a duplicate collection and
-an unsupported severity:
-
-```yaml
-qdrant:
-  expected_collections:
-    - memory
-    - memory
-n8n:
-  scan_truncated_severity: urgent
-```
-
-`GET /api/v1/policies/status` returns a sanitized diagnostic response:
-
-```json
-{
-  "status": "degraded",
-  "source_exists": true,
-  "checked_at": "2026-07-25T19:00:00Z",
-  "loaded_at": null,
-  "duration_ms": 0.42,
-  "error": "Policy reload failed with 2 diagnostic(s).",
-  "diagnostics": [
-    {
-      "path": "qdrant.expected_collections",
-      "error_type": "value_error",
-      "message": "Value error, expected_collections must not contain duplicates.",
-      "line": null,
-      "column": null
-    },
-    {
-      "path": "n8n.scan_truncated_severity",
-      "error_type": "literal_error",
-      "message": "Input should be 'info', 'warning' or 'critical'",
-      "line": null,
-      "column": null
-    }
-  ]
-}
-```
-
-Schema diagnostics use dotted policy paths. YAML syntax diagnostics use
-`"$"` as the path and include one-based `line` and `column` values.
-Neither response type includes the policy filename or rejected input
-value. After correcting the file, refresh Mission Control; the status
-returns to `healthy` and the newly validated snapshot appears
-immediately.
-
----
-
-### Qdrant provider
-
-Add Qdrant to `inventory/services.yaml`:
-
-```yaml
-services:
-  qdrant:
-    name: Qdrant
-    host: qdrant.home.arpa
-    port: 6333
-    protocol: https
-    critical: false
-    verify_tls: true
-    # ca_bundle: /opt/atlas/config/certificates/qdrant.pem
-```
-
-Provide the API key through the environment when authentication is
-enabled:
-
-```dotenv
-QDRANT_API_KEY=replace-me
-```
-
-Collection expectations are live-reloaded from
-`config/policies.yaml`:
-
-```yaml
-qdrant:
-  expected_collections:
-    - atlas-memory
-    - atlas-documents
-  missing_collection_severity: warning
-  empty_instance_severity: info
-```
-
-The provider reads collection inventory from Qdrant's HTTP API and
-reports collection count, names, and missing expected collections.
-Finding severity accepts `info`, `warning`, or `critical`; informational
-findings do not reduce health. The API key is sent only in the `api-key`
-request header and is never included in provider output.
-
-An unauthenticated internal API is supported when the key is omitted,
-but it should only be exposed on a trusted network. TLS verification is
-enabled by default and may use a private CA bundle.
-
----
-
-### n8n provider
-
-Add n8n to `inventory/services.yaml`:
-
-```yaml
-services:
-  n8n:
-    name: n8n
-    host: n8n.home.arpa
-    port: 5678
-    protocol: https
-    critical: false
-    verify_tls: true
-    # ca_bundle: /opt/atlas/config/certificates/n8n.pem
-    max_workflows: 250
-```
-
-Provide a public API key through the environment:
-
-```dotenv
-N8N_API_KEY=replace-me
-```
-
-Workflow expectations are live-reloaded from
-`config/policies.yaml`:
-
-```yaml
-n8n:
-  expected_active_workflows:
-    - Daily infrastructure backup
-    - Atlas knowledge sync
-  inactive_workflow_severity: warning
-  scan_truncated_severity: warning
-  empty_instance_severity: info
-```
-
-The provider paginates the read-only workflow endpoint and reports
-active and inactive workflow inventory. Finding severity accepts
-`info`, `warning`, or `critical`; informational findings do not reduce
-health. The inventory `max_workflows` setting remains a hard bound on
-collection size.
-
-The key is sent only in the `X-N8N-API-KEY` header and is never included
-in provider output. TLS verification is enabled by default and supports
-a private CA bundle.
-
----
-
-## Forge
-
-Deployment analysis workspace.
-
-Features:
-
-- Deployment Briefs
-- Docker Compose analysis
-- Diagnostics
-- Execution planning
-- Rich component inspection
-- Risk visualization
-- Application recognition
-
----
-
-## Mission Control
-
-Operational dashboard.
-
-Provides:
-
-- Infrastructure overview
-- Live Atlas and service health
-- Provider catalog and drill-down pages
-- Service details and health refresh
-- Confirmed, parameterized provider operations
-- Filterable action history with request correlation
-- ACE findings and recommendations
-- Provider intelligence telemetry and trends
-- Live policy status, diagnostics, and provider policy details
-- Telemetry and action-history export and retention administration
-
----
-
-## Orion *(Planned)*
-
-Conversational infrastructure assistant.
-
-Future capabilities:
-
-- Voice interaction
-- Guided troubleshooting
-- Operational recommendations
-- Conversational infrastructure management
-
----
-
-# Architecture
-
-```text
- Docker Compose
- Kubernetes
- Terraform
- Infrastructure Providers
-          │
-          ▼
- Deployment Analysis
-          │
-          ▼
- Knowledge Engine
-          │
-          ▼
-   Risk Assessment
-          │
-          ▼
-  Planning Engine
-          │
-          ▼
- Mission Control
-```
-
----
-
-# Current Features
-
-- Deployment analysis
-- Deployment Briefs
-- Docker Compose parser
-- Risk engine
-- Planning engine
-- Diagnostics
-- Modular analyzers
-- Provider abstraction
-- Atlas API v1
-- Unified dashboard control plane
-- Standardized API error contracts
-- Proxmox, Docker, Home Assistant, Ollama, OPNsense, Frigate, Obsidian,
-  Qdrant, and n8n integration
-- Ollama model lifecycle operations
-- Live Mission Control service health
-- Provider-backed operational actions
-- Operations workspace and action audit visibility
-- JSON and CSV audit export
-- Confirmed retention maintenance
-- Provider and UTC date-range audit filtering
-- Filter-aware audit exports
-- Paginated audit results
-- Audit detail views with shareable deep links
-- Action and request-ID search
-- 260 Atlas Core tests
-- Mission Control component tests, lint, and production build gates
-
----
-
-# Roadmap
-
-## Foundry (Current)
-
-- Deployment analysis
-- Forge
-- Mission Control
-- Risk engine
-- Planning engine
-- Atlas API v1
-- Service health and provider operations
-- Action history and audit visibility
-- Audit export and retention administration
-
----
-
-## Knowledge Engine
-
-- Application recognition
-- Knowledge catalog
-- Infrastructure expertise
-- Resource estimation
-- Best-practice recommendations
-
----
-
-## Deployment Platform
-
-- Approval workflows
-- Provider execution
-- Rollback support
-- Live deployment monitoring
-
----
-
-## Conversational Infrastructure
-
-- Orion Assistant
-- Voice interaction
-- Cross-provider reasoning
-- Guided troubleshooting
-- Conversational operations
-
----
-
-# Why Atlas?
-
-Most infrastructure software focuses on automation.
-
-Atlas focuses on understanding.
-
-Automation is simply the final step.
-
----
-
-# Contributing
-
-Atlas is under active development.
-
-Contributions are welcome, including:
-
-- Documentation
-- Providers
-- Knowledge catalog entries
-- UI improvements
-- Testing
-- Infrastructure integrations
-
----
-
-# License
-
-[MIT](LICENSE)
+See the [Atlas roadmap](ROADMAP.md). Future directions are uncommitted; this
+documentation reconciliation does not select a v0.15 milestone.

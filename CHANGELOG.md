@@ -6,12 +6,13 @@ release boundaries.
 
 ## Unreleased
 
-## atlas-v0.14.0 — release-candidate closure
+## atlas-v0.14.0 — Atlas v0.14.0 (2026-08-24)
 
-Atlas v0.14 implementation is complete and is in release-candidate closure.
-It is not yet tagged or released; exact closure-SHA validation, required CI and
-container gates, production image/source parity, and read-only production
-acceptance remain release gates.
+Atlas v0.14.0 is released as the immutable `atlas-v0.14.0` tag at
+`4d2526e1b022c5c36eaced65bf5b71703da5d2d7`. RC1 at `4abace1` exposed a
+Mission Control asynchronous test race; the test-only fix produced the final
+release commit, also selected by RC2. Quality gates and the container release
+gate succeeded on that exact final commit.
 
 #### Added
 

@@ -1,171 +1,131 @@
-# Atlas Architecture
+# Atlas OS Architecture — v0.14
 
-Atlas is a local-first, provider-neutral infrastructure control plane. It helps operators understand infrastructure, convert deterministic findings into candidate work, and execute only the narrow changes that receive explicit human approval.
+## Released production topology
 
-The released Atlas v0.11 architecture has two separately gated execution
-boundaries: repository execution remains `update-compose-stack`, and hardened
-operational execution remains exactly `restart-service/proxmox/qemu`. Provider
-Intent is monitoring-policy state and is not infrastructure execution.
+`compose.production.yaml` is the base production source of truth:
 
-Atlas does not push, tag, publish releases, deploy remotely, auto-approve, or auto-execute work.
+```text
+operator browser
+  -> Mission Control
+       -> Atlas Core
+       -> Atlas Agent
+            -> local repository execution backend (default)
+            -> optional, separately gated isolated backend:
+                 authenticated worker requests through relay
+                      -> runsc-isolated execution worker
+                           -> allowlisted egress proxy
 
-## Subsystems and responsibilities
+one-shot stagers:
+  atlas-agent-auth-stager
+  atlas-execution-auth-stager
+  atlas-core-agent-auth-stager
+```
 
-### Atlas Core
+The base has nine services: `atlas-core`, `atlas-agent`,
+`atlas-agent-auth-stager`, `atlas-execution-worker`,
+`atlas-execution-worker-relay`, `atlas-execution-auth-stager`,
+`atlas-core-agent-auth-stager`, `atlas-egress-proxy`, and `mission-control`.
+`compose.https.yaml` removes Mission Control's host publication and adds
+`atlas-edge` as authenticated TLS ingress. `compose.operator-auth.yaml`
+enables Core-owned operator sessions. `compose.provider-intent-activated.yaml`
+explicitly activates Provider Intent against an operator-selected database and
+accepted legacy-import identity.
 
-Atlas Core owns the authoritative system view and public platform API. It collects provider state, exposes Discovery Center catalog and compatibility evidence, prepares explainable intelligence findings for recommendations, projects execution candidates, performs planning-intake revalidation, owns Provider Intent authority, and owns hardened operational dispatch.
+## Component responsibilities
 
-Atlas Core does not execute repository candidate work or grant approval for
-Agent side effects. Operational dispatch is a separate, authenticated,
-approval-gated subsystem restricted to the accepted capability tuple.
+### Atlas Edge
 
-### Provider Intent
-
-The activated schema-v2 Provider Intent Store is production authority for
-supported Proxmox QEMU monitoring intent. Records bind to the
-provider-authoritative resource incarnation; a reused VMID with a different
-identity cannot inherit prior intent. Mutation is explicit and authenticated,
-uses exact live-identity and compare-and-swap validation, and preserves durable
-idempotency and operator-bound audit evidence.
-
-LXC may remain visible in observed inventory, but it has no accepted
-provider-authoritative incarnation identity and is unsupported for
-identity-bound Provider Intent. Atlas does not synthesize an LXC identity.
-
-### Discovery Center
-
-Discovery Center owns implemented provider-neutral catalog facts and deterministic compatibility evidence as a runtime, read-only, curated-catalog-first subsystem. Future roadmap work remains for dynamic catalog sources, semantic discovery, and broader execution handoff affordances.
-
-### Intelligence and execution candidates
-
-Atlas intelligence consumes Discovery compatibility evidence and emits explainable recommendations. Execution candidate projection converts eligible recommendations into structured candidate records with stable identifiers and fingerprints.
-
-### Atlas Agent
-
-Atlas Agent owns local engineering orchestration. It creates candidate planning sessions, deterministic candidate plans, workflow shells, immutable implementation requests, verification plans, audit-chain validation, deterministic review, and local Git commits.
-
-Agent state is local-first and file-backed under `ATLAS_AGENT_STATE_DIR`. Side-effect stages are approval-gated, persisted, restart-aware, and at-most-once.
+Atlas Edge is optional hardened HTTPS ingress. It terminates TLS, applies HTTP
+Basic authentication as defense in depth, and proxies browser traffic. It does
+not replace Core authentication or grant mutation authority.
 
 ### Mission Control
 
-Mission Control is the operator UI. Public provider-management-v2 is canonical
-for provider identity and monitoring state; authenticated provider-management-v3
-adds only caller-specific mutation readiness. The Provider Intent editor keeps
-observed state, monitoring intent, compatibility actions, and operational
-maintenance distinct. Advisory suggestion Review changes local UI state only;
-Save is the separate explicit Provider Intent mutation boundary. Mission Control
-must not bypass Core or Agent authentication, permission, identity, approval, or
-execution boundaries.
+Mission Control serves the operator UI and proxies Core and Agent APIs. It
+presents provider, policy, Discovery, operational, recovery, and engineering
+workflow state; authoritative validation remains server-side.
 
-## Ownership boundaries
+### Atlas Core
 
-- Core owns candidate source authority and revalidation.
-- Agent owns local workflow orchestration and side-effect gating.
-- Mission Control owns presentation and user interaction.
-- Core owns Provider Intent authority, mutation validation, and operational
-  dispatch; neither advisory data nor UI state owns these authorities.
-- External tools own their own effects, such as Codex implementation, Docker Compose verification, and Git.
-- Operators own approval decisions.
+Core owns typed APIs, provider loading, policies and findings, operator
+sessions, Provider Intent, Discovery, operational lifecycle state, and durable
+control-plane databases. It mounts the Docker socket read-only for released
+observation needs and dispatches only the registered operational tuple.
 
-## Trust boundaries
+### Atlas Agent
 
-- Caller-controlled API bodies use strict request models and cannot supply commands, paths, evidence, or approval overrides for candidate side effects.
-- Candidate execution starts only from Core-projected candidates and stable fingerprints.
-- Implementation, verification, and commit approvals bind to exact immutable requests.
-- Raw secrets, authorization headers, uncontrolled command output, and broad diffs must not be logged or persisted as public contract data.
-- Local Git commit is the final implemented Phase 3 side effect. Push, tag, release, rollback, and remote deployment are outside v0.6 scope.
-- Discovery proposals, ACE recommendations, and Provider Intent suggestions are
-  advisory. They grant neither permission nor execution and cannot authorize
-  mutation, approval, or dispatch.
-- Provider Intent mutation does not invoke provider actions or operational
-  dispatch. Monitoring intent causes no automatic remediation.
+Agent owns approval-gated repository workflow orchestration, persistence,
+verification, review, and local commit boundaries. Its released repository
+execution intent is only `update-compose-stack`. Agent also independently
+enforces the hardened operational capability it relays from Core.
 
-## Phase 3 pipeline
+### Authentication staging
 
-```mermaid
-flowchart TD
-    A[Discovery catalog and compatibility evidence] --> B[Atlas intelligence finding]
-    B --> C[Execution candidate]
-    C --> D[Core planning intake revalidation]
-    D --> E[Agent candidate planning session]
-    E --> F[Deterministic candidate plan]
-    F --> G[Workflow shell]
-    G --> H[Immutable implementation request]
-    H --> I[Exact implementation approval]
-    I --> J[Implementation execution]
-    J --> K[Verification plan]
-    K --> L[Exact verification approval]
-    L --> M[Verification evidence]
-    M --> N[Deterministic review]
-    N --> O[Exact commit approval]
-    O --> P[Local Git commit]
-    P --> Q[Completed workflow]
-```
+Three one-shot services stage least-privilege files into dedicated volumes:
+Codex credentials for Agent, the Agent-to-worker token, and the Core-to-Agent
+operational dispatch token. Runtime services mount only the credentials they
+need.
 
-## Approval flow
+### Execution relay, worker, and egress proxy
 
-Each side-effect stage has its own approval boundary.
+Agent uses the local repository execution backend by default. The packaged
+`atlas-execution-worker`, `atlas-execution-worker-relay`, `atlas-egress-proxy`,
+and related authentication staging are default-disabled infrastructure for an
+optional isolated backend that requires explicit, separately gated activation.
+When activated, authenticated worker requests pass through the relay on a
+segmented internal network. Authentication is enforced end-to-end by the
+worker together with the allowed relay-peer boundary. The worker runs with
+`runsc`, a read-only repository source, disposable workspaces, and dropped
+capabilities; outbound access passes through an allowlisted Squid proxy.
 
-1. Implementation approval authorizes one immutable implementation request with exact command, arguments, working directory, and evidence.
-2. Verification approval authorizes one immutable verification plan with exact checks.
-3. Commit approval authorizes one immutable commit request with exact branch, HEAD, reviewed files, fingerprint, and message.
+## Four distinct side-effect surfaces
 
-Rejected, mismatched, missing, or stale approvals block the workflow. Empty-command approval records cannot authorize execution. Later-generated work cannot inherit an earlier approval.
+1. **Legacy provider actions.** Provider routes expose a separate guarded
+   action surface implemented by individual providers and recorded in provider
+   action history. This exists and must not be described as the hardened tuple.
+2. **Provider Intent control-plane mutation.** An authenticated, explicitly
+   activated Core surface changes identity-bound Proxmox QEMU
+   `monitoring-policy` only. It neither performs provider actions nor grants
+   operational execution.
+3. **Hardened operational dispatch.** The exact released tuple is
+   `restart-service / proxmox / qemu`. Core and Agent enforce it independently;
+   durable planning, approval, target fingerprint revalidation, dispatch, and
+   verification contracts apply.
+4. **Repository candidate execution.** The exact released intent is
+   `update-compose-stack`, executed only through the Agent candidate workflow.
+   The Agent local backend is the production default; the isolated worker
+   backend requires explicit, separately gated activation. It is not provider
+   or operational dispatch.
 
-## Restart behavior
+No surface implies automatic remediation, approval, update, deployment,
+rollback, or release publication.
 
-Planning, workflow conversion, implementation translation, execution, verification, review, and commit artifacts are persisted. Approval-wait states restore unchanged. Completed and blocked workflows restore unchanged with their artifacts. Interrupted side-effect states such as executing, verifying, and committing recover as blocked rather than replaying the side effect.
+## Provider Intent
 
-Aggregate snapshots are atomic and versioned. Corrupt, unsupported, or partially written active snapshots fail safely instead of silently resuming unsafe state.
+Provider Intent is default-not-activated in the base file. Its overlay changes
+that state only when the database path and expected legacy import ID are
+provided. The schema-v2 store then owns Proxmox QEMU monitoring expectations.
+Authority is limited to monitoring policy and requires the dedicated operator
+permission; operational and provider-action permissions do not imply it.
 
-## Audit chain
+## Discovery evidence and cache
 
-Candidate workflows preserve machine-readable links across:
+Discovery's public API is GET-only. Curated catalog data remains authoritative;
+dynamic facts and the rebuildable cache are evidence with freshness, conflict,
+and provenance semantics. V0.14 adds internal exact DeploymentBinding, Compose
+observation, grounding, and provenance composition. Image evidence is
+informational/read-only and has no operational authority. The generic image
+collector is shipped inactive with empty production registries.
 
-- finding identity
-- execution candidate ID and fingerprint
-- candidate planning session ID
-- candidate plan ID and fingerprint
-- workflow ID and candidate metadata
-- implementation request and approval IDs
-- execution result
-- verification plan, approval, and evidence IDs
-- candidate review result and generic review report
-- commit request, approval, result SHA, and committed files
+## Backup and restore boundary
 
-Audit validation uses identifiers and fingerprints, never rationale, titles, descriptions, or recommendation prose.
+Backup/restore is explicit operator maintenance tooling over documented durable
+state. It is not an Agent execution intent. Rebuildable Discovery cache is not
+durable backup authority, and restore compatibility is validated rather than
+inferred from prose.
 
-## Released v0.11 execution boundaries
+## Historical note
 
-- Repository execution: `update-compose-stack` candidate workflows ending in a
-  local Git commit.
-- Operational execution: exactly `restart-service/proxmox/qemu` through the
-  hardened operational request, approval, dispatch, and verification path.
-
-Provider Intent updates are explicit authenticated control-plane mutations, not
-execution capabilities. Discovery, ACE, and suggestion reads do not expand the
-two execution boundaries. Automatic approval, automatic execution, automatic
-remediation, LXC operational execution, arbitrary provider operations, push,
-tag, release publication, remote deployment, and rollback automation remain
-unsupported production capabilities.
-
-## Historical v0.6 operation boundary
-
-Supported in v0.6:
-
-- `update-compose-stack` candidate workflows that end in a local Git commit.
-
-Not supported in v0.6:
-
-- `restart-service`
-- `backup`
-- `restore`
-- `install-provider`
-- `update-image`
-- push
-- tag
-- release publication
-- remote deployment
-- rollback automation
-- automatic approval
-- automatic execution
+Earlier releases and documents sometimes described Core plus Mission Control
+as the whole runtime. That was accurate only for an earlier development stage;
+it is not the v0.14 production architecture.

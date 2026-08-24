@@ -1,134 +1,45 @@
-# Atlas Discovery Center Context
+# Discovery Center Current Context — v0.14
 
-Discovery Center is the implemented provider-neutral catalog and compatibility subsystem for Atlas. It provides structured local knowledge so Atlas can reason about catalog facts, relationships, and compatibility before recommendations or approved execution paths.
+Discovery Center is Atlas's provider-neutral, local-first, read-only knowledge
+and evidence surface. Its public API is GET-only and its Mission Control views
+cannot create candidates, intents, actions, approvals, dispatches, updates, or
+deployments.
 
-D0 is documentation only. It records the intended product and architecture context; runtime Discovery Center functionality has since been implemented in later phases.
+## Current sources and authority
 
-## Why Discovery Center exists
+- Shipped curated YAML is authoritative catalog knowledge.
+- Dynamic source facts and the rebuildable cache are supplemental evidence
+  with provenance, freshness, source health, and deterministic conflict rules.
+- Compatibility and release evaluation derive advisory results from curated
+  requirements plus observed evidence.
+- Proposals are sanitized navigation/advice. Their destination must freshly
+  establish authority; a proposal grants none.
+- V0.14 DeploymentBinding, exact repository Compose observation, accepted
+  image-release evidence, grounding, and provenance are internal/read-only.
+  Image evidence is informational and has no operational authority.
 
-Atlas already observes infrastructure through providers, deployment analysis, policies, and health checks. It also has a current Knowledge Engine with YAML application definitions and deployment-plan assessment.
+The generic image collector is inactive. Production descriptor and adapter
+registries are empty, and no route, startup refresh, or scheduler wires it.
+This is distinct from v0.12's bounded, opt-in dynamic Discovery refresh.
 
-Discovery Center gives Atlas a broader structured catalog for answering:
+## Released evolution
 
-- What applications, services, images, models, integrations, devices, and deployment methods does Atlas know about?
-- What capabilities do they provide?
-- What requirements and relationships do they have?
-- Are they compatible with the current Atlas environment?
+D0-D9 established models, curated loading, deterministic search, public GET
+API, Mission Control, compatibility, Orion evidence use, and advisory handoff.
+D10 and v0.12 added bounded dynamic sources, merge/cache/offline behavior, and
+provenance. V0.13 added observed-version and upgrade intelligence. V0.14 added
+trusted Compose image observation and informational grounding.
 
-This enables Mission Control and Atlas Agent to share a common factual base while preserving clear ownership boundaries. Orion provides recommendation ownership.
+## Boundaries and future
 
-## Current Atlas sources of truth
+Discovery remains useful offline and fails to unknown/insufficient evidence
+rather than inventing compatibility. It does not override Provider Intent,
+provider-action, operational, repository, approval, or backup authority.
+D11 semantic Discovery and D12 community/private catalogs remain uncommitted
+future directions; no v0.15 choice is made here.
 
-Current relevant sources include:
+## Historical D0 note
 
-- `services/atlas-core/app/knowledge_engine/applications/*.yaml` for application knowledge.
-- `services/atlas-core/app/knowledge_engine` loader, matcher, assessors, and rules.
-- `services/atlas-core/app/catalog` application, capability, and requirement concepts.
-- `services/atlas-core/app/deploy` deployment components, ports, storage, resources, risks, and planning models.
-- `inventory/services.yaml` for known services and provider loading.
-- Provider resources exposed through generic provider resource contracts.
-- Atlas Runtime Foundation for mutable runtime state under `data/`.
-- Provider connection and policy stores for user-owned runtime configuration.
-
-Discovery Center reuses these concepts where appropriate instead of duplicating them.
-
-## Knowledge Engine relationship
-
-The Knowledge Engine is the current predecessor for structured application knowledge and assessment behavior.
-
-D0 keeps the relationship neutral. D1-D3 should evaluate individual Knowledge Engine components and decide whether Discovery Center should extend, migrate, absorb, or replace each one. The decision may differ by component. For example, YAML loading patterns may be reused directly, while application-only models may need broader Discovery Center item contracts.
-
-## Product boundaries
-
-Discovery Center answers what exists, what it provides, what it requires, and whether it appears compatible.
-
-Orion owns recommendation generation. Discovery Center does not generate recommendations directly; it supplies deterministic facts and evidence for recommendation pathways.
-
-Atlas Agent owns execution handoff. Future executable work must still flow through Atlas Agent planning, execution, verification, review, and commit controls.
-
-Mission Control owns the UI. It should present Discovery Center facts, compatibility evidence, and provenance without bypassing approval boundaries.
-
-## Initial item types
-
-Initial item types are:
-
-- application
-- service
-- container image
-- AI model
-- integration
-- hardware device
-- deployment method
-
-Dependencies are primarily relationships. A dependency may be represented as an item when independently discoverable, such as PostgreSQL, MQTT, Redis, or an Ollama model.
-
-## Relationship terminology
-
-Relationship terms include:
-
-- dependency
-- depends-on
-- provides
-- consumes
-- requires
-- integrates-with
-- conflicts-with
-- compatible-with
-- incompatible-with
-- runs-on
-- deployed-by
-
-Relationships should be structured, directional where applicable, and explainable.
-
-## Expected data lifecycle
-
-Initial lifecycle:
-
-1. Curated YAML catalog is loaded from shipped source files.
-2. YAML entries validate against typed models.
-3. A repository exposes deterministic lookup and search.
-4. A read-only API projects catalog entries and compatibility evidence.
-5. Mission Control displays catalog facts and relationships.
-6. Compatibility checks compare catalog requirements with observed Atlas environment data.
-7. Atlas intelligence consumes Discovery Center evidence when forming deterministic findings and recommendation context.
-8. Execution requests are handed to Atlas Agent only after user approval.
-
-## Offline-first assumptions
-
-Discovery Center should remain useful without internet access.
-
-Rules:
-
-- Curated local YAML loads without network access.
-- Deterministic search does not require AI or online services.
-- Compatibility can return `unknown` when required evidence is absent.
-- Dynamic ingestion is optional and must not become a startup dependency.
-- Cached or ingested facts must include provenance.
-
-## Runtime-state assumptions
-
-Shipped curated catalog files are immutable defaults. Future private catalogs, dynamic-source caches, indexes, or learned knowledge should live under runtime state, likely `data/knowledge/`, following Atlas Runtime Foundation rules.
-
-Normal user changes through Mission Control must not dirty the Git checkout.
-
-## User workflows
-
-Initial user-facing workflows should be read-only:
-
-- Browse known catalog items.
-- Search for an application, service, model, integration, device, or deployment method.
-- Inspect what an item provides and requires.
-- Inspect dependencies and conflicts.
-- Check compatibility against the current Atlas environment.
-- See evidence and provenance for every result.
-
-Future workflows may expand Orion recommendation and execution handoff integration, but Discovery Center itself remains non-executing.
-
-## Glossary
-
-- Item: a catalog entry such as an application, service, container image, AI model, integration, hardware device, or deployment method.
-- Capability: something an item provides.
-- Requirement: something an item needs.
-- Relationship: a structured link between items, capabilities, requirements, providers, or environment facts.
-- Compatibility: an evidence-backed status comparing requirements with an environment.
-- Provenance: metadata describing where a catalog fact came from and how much it should be trusted.
+The original D0 plan described only a future curated catalog. That material is
+historical: the catalog and subsequent D1-D10 capabilities have shipped and
+must not be read as current future-tense scope.
