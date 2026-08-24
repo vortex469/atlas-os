@@ -1,428 +1,68 @@
 # Atlas Agent
 
-## Mission
+Atlas Agent is Atlas's approval-gated orchestration service. In released v0.14 it coordinates repository candidate planning, implementation, verification, deterministic review, and local commit, and it provides the Agent-facing transport boundary for hardened operational dispatch. It does not own Atlas Core state, provider state, operator authentication, deployment policy, CI, package management, or arbitrary infrastructure execution.
 
-Atlas Agent is the engineering orchestration service for Atlas.
+See [Agent architecture](ARCHITECTURE.md) for component boundaries and [Atlas architecture](../../ARCHITECTURE.md) for the system authority model.
 
-Its purpose is to coordinate software engineering workflows by combining
-planning, implementation, verification, review, and human approval into a
-single repeatable process.
+## Released responsibilities
 
-Atlas Agent does **not** replace Git, Codex, pytest, Ruff, Docker, or other
-engineering tools. It orchestrates them.
-
----
-
-# Responsibilities
-
-Atlas Agent owns five engineering responsibilities.
-
-## Planning
-
-Generate implementation plans from approved roadmap checkpoints and
-architectural guidance.
-
-Planning determines:
-
-- implementation scope
-- affected components
-- required tests
-- implementation risks
-
-Planning never modifies source code.
-
----
-
-## Execution
-
-Coordinate implementation through approved engineering tools.
-
-Execution is responsible for:
-
-- launching implementation workflows
-- monitoring progress
-- collecting execution results
-
-Execution does not decide architecture.
-
----
-
-## Verification
-
-Verify every implementation before review.
-
-Verification may execute:
-
-- pytest
-- Ruff
-- frontend tests
-- builds
-- other project-specific validation
-
-Verification reports results without changing source code.
-
----
-
-## Review
-
-Review completed work against the approved architecture.
-
-Review answers questions such as:
-
-- Does the implementation match the approved design?
-- Is the change larger than necessary?
-- Are required tests present?
-- Does the implementation follow Atlas conventions?
-
-Review produces recommendations.
-
-Review never commits code.
-
----
-
-## Reporting
-
-Produce structured engineering reports.
-
-Reports summarize:
-
-- modified files
-- test results
-- verification status
-- review findings
-- overall recommendation
-
----
-
-# Atlas Responsibilities
-
-Atlas Agent owns:
-
-- engineering orchestration
-- workflow coordination
-- implementation planning
-- verification
-- review
-- engineering reports
-- its own service deployment artifacts
-
-Atlas Agent does not own:
-
-- authentication
-- authorization
-- broader Atlas platform persistence
-- broader Atlas platform deployment strategy
-- cloud infrastructure
-- CI systems
-- package management
-- source control
-
-Those responsibilities remain with their existing Atlas services or external tools.
-
----
-
-# Relationship to Atlas Core
-
-Atlas Core remains the primary platform for Atlas capabilities.
-
-Atlas Agent consumes architectural context and project information when
-required but does not replace Atlas Core functionality.
-
-Atlas Core context is retrieved once before workflow planning and retained as
-an immutable workflow snapshot for planning, verification, and review. Resume
-reuses that snapshot and does not contact Atlas Core again. Context retrieval
-is read-only, has no retries, and is optional by default. Set
-`ATLAS_CORE_REQUIRED=true` to block new workflows when context is unavailable.
-
-Health and status are essential Atlas Core context. The typed Atlas Core client
-also requests `/api/v1/intelligence/summary` as advisory enrichment. A
-recognized intelligence connection, timeout, response, or payload failure is
-recorded in the context without discarding valid health and status data.
-Intelligence evidence may add bounded planning risks, but it never changes
-execution commands, arguments, environment, working directories, approval
-state, execution policy, verification commands, or commit behavior.
-
----
-
-# Relationship to Mission Control
-
-Mission Control remains the primary user interface.
-
-Mission Control currently displays Atlas Agent repository, sprint,
-verification, and review state. Its Atlas Agent data hook also loads pending
-approvals, and an approval card can submit decisions through the Atlas Agent
-approval API. The current status panel does not yet mount that approval card.
-
-Mission Control is responsible for user interaction.
-
-Atlas Agent is responsible for engineering orchestration.
-
----
-
-# Relationship to Orion
-
-Orion remains an independent Atlas capability.
-
-Atlas Agent may integrate with Orion where engineering workflows benefit
-from Orion functionality.
-
-Atlas Agent does not redefine Orion's responsibilities.
-
----
-
-# Engineering Workflow
-
-Atlas Agent follows a fixed engineering workflow.
-
-Roadmap
-    ↓
-
-Architecture
-    ↓
-
-Planning
-    ↓
-
-Awaiting implementation approval
-    ↓
-
-Implementation execution
-    ↓
-
-Awaiting verification approval
-    ↓
-
-Verification
-    ↓
-
-Review
-    ↓
-
-Awaiting commit approval
-    ↓
-
-Commit
-
-The production workflow states are:
+For repository candidates, Agent owns immutable context snapshots, deterministic plans, workflow shells, exact approval requests, controlled implementation, verification evidence, deterministic review, commit evidence, local workflow persistence, and audit-chain validation. The only released repository execution intent is:
 
 ```text
-planned
-→ awaiting implementation approval
-→ executing
-→ awaiting verification approval
-→ verifying
-→ reviewing
-→ awaiting commit approval
-→ committing
-→ completed
+update-compose-stack
 ```
 
-Every engineering change must pass through this workflow.
-
----
-
-# Human Approval
-
-Human approval is a required engineering gate.
-
-The approval workflow includes:
-- Pause at defined tool execution points
-- Resume after human approval
-- Mission Control visibility of approval status
-
-Atlas Agent may recommend changes.
-
-Atlas Agent may verify changes.
-
-Atlas Agent may review changes.
-
-Implementation execution, verification commands, and the final deterministic
-Git commit each have independent approval boundaries. Missing or pending
-approvals keep the workflow waiting. Rejected, invalid, or mismatched approvals
-block the workflow.
-
-Resume is stage-aware and idempotent. Implementation does not replay after the
-verification approval pause, verification and review do not replay after the
-commit approval pause, and commit executes at most once. Atomic compare-and-swap
-state transitions protect each side-effect stage. Execution, verification,
-review, and commit artifacts persist in the immutable workflow session between
-approval pauses.
-
-Commit approval is bound to immutable repository evidence: expected branch,
-expected HEAD, exact reviewed changed paths, a content/status fingerprint, and
-the commit message. Repository drift before commit blocks the workflow.
-
----
-
-# Design Principles
-
-Atlas Agent follows these principles.
-
-- Architecture is designed by humans.
-- AI assists implementation.
-- Small changes are preferred.
-- Every change is verifiable.
-- Every change is reviewable.
-- Every change is reversible.
-- Human approval precedes every commit.
-
-These principles guide every future Atlas Agent capability.
-
----
-
-# Architecture
-
-For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
-
----
-
-# Current Implementation Status
-
-For checkpoint details, see [ROADMAP.md](./ROADMAP.md).
-
-- A0–A7 are complete.
-- A8 is partially complete. Its first production slice consumes bounded Atlas
-  intelligence summary evidence through Atlas Core.
-- A9 is complete.
-- A10 is partially complete. Production deployment artifacts are implemented;
-  recorded release acceptance testing and remaining operational-readiness
-  evidence are still unfinished.
-- A11 is functionally complete.
-- A12 is complete for its currently defined approval-boundary scope.
-- A13 is partially complete.
-- A14 is complete for its currently listed status scope; it overlaps the
-  earlier A7 Mission Control checkpoint. Pending approval data and decision UI
-  exist, but the decision card is not mounted in the current status panel.
-- A15 is partially complete. Production service deployment exists; broader
-  approval-gated development-loop hardening remains unfinished.
-
----
-
-# HTTP Endpoints
-
-Atlas Agent exposes these operational and workflow endpoints:
+For hardened operations, Core owns operator authorization, durable lifecycle state, target revalidation, and dispatch. Agent independently validates and transports only the released tuple:
 
 ```text
-GET /health
-GET /diagnostics
-GET /api/v1/agent/info
-GET /api/v1/agent/repository
-GET /api/v1/agent/sprint
-GET /api/v1/agent/verification
-GET /api/v1/agent/review
-POST /api/v1/agent/approval/request
-GET /api/v1/agent/approval/pending
-GET /api/v1/agent/approval/{request_id}
-POST /api/v1/agent/approval/{request_id}/decision
-POST /api/v1/agent/workflows
-POST /api/v1/agent/workflows/{workflow_id}/resume
+restart-service / proxmox / qemu
 ```
 
-`GET /api/v1/agent/info` returns the configured application name,
-runtime environment, repository root, development version marker, and
-the workflow and verification states supported by the service.
+This operational path is separate from repository candidate execution and from legacy provider actions. Provider Intent is Core-owned monitoring-policy authority only and is not an Agent execution capability. Backup/restore is operator maintenance tooling, not an Agent intent.
 
-Starting a workflow performs deterministic planning and returns an approval
-request without executing the implementation. Resume is stage-aware: each
-approved side-effect stage is atomically claimed once, artifacts are retained in
-the immutable workflow session, and later resumes continue from the current
-approval boundary rather than replaying completed stages. Workflow and approval
-state is persisted as a local file-backed aggregate snapshot under
-`ATLAS_AGENT_STATE_DIR`. Approval-boundary workflows survive process restart,
-while interrupted `EXECUTING`, `VERIFYING`, and `COMMITTING` side-effect stages
-recover as blocked rather than being replayed.
+Agent accepts no arbitrary command, intent, provider, or resource type. It does not automatically approve, remediate, update, deploy, roll back, push, tag, or publish releases.
 
-The local snapshot is single-process file-backed persistence for Atlas Agent's
-own workflow coordination state. It is not broader Atlas platform persistence,
-and it does not provide a distributed store, database, multi-process
-coordination, or cross-host recovery. Redacted verification environment values
-must match current environment values after restart before verification can
-continue. Corrupt or unsupported snapshots block startup.
-
----
-
-# Production Deployment
-
-Atlas Agent has dedicated production service deployment artifacts while still
-leaving the broader Atlas platform deployment strategy to the existing Atlas
-release and operations layers.
-
-The production image is built from `deploy/docker/atlas-agent.Dockerfile` using
-the repository's Python 3.12 slim convention. The image contains the Python
-runtime, Uvicorn, Atlas Agent runtime dependencies, and Git. It intentionally
-does not bundle project-specific workflow tools such as Codex, Ruff, pytest,
-Node/npm, Docker, or repository-specific verification toolchains. Those tools
-are operator-provided in the managed repository environment when workflows need
-them.
-
-`compose.production.yaml` defines the `atlas-agent` service. The service is
-internal-only on port 8090 with no published host port, depends on a healthy
-`atlas-core`, runs with a read-only root filesystem, a `/tmp` tmpfs, all Linux
-capabilities dropped, and `no-new-privileges:true`. Production health checks use
-`GET /health` inside the container.
-
-Repository mounting uses two distinct paths:
-
-- `ATLAS_REPOSITORY_HOST_PATH` is a Compose-only host path selected by the
-  operator.
-- `ATLAS_AGENT_REPOSITORY_ROOT=/workspace/repository` is the container path used
-  by the Atlas Agent application.
-
-Compose mounts `${ATLAS_REPOSITORY_HOST_PATH}:/workspace/repository` and passes
-`ATLAS_AGENT_REPOSITORY_ROOT=/workspace/repository`. The application never needs
-to know the host filesystem layout. Workflow and approval snapshots are stored
-on the named `atlas-agent-state` volume mounted at `/opt/atlas/agent-state` and
-configured through `ATLAS_AGENT_STATE_DIR`.
-
-Mission Control proxies `/agent-api/` to Atlas Agent and strips the prefix, so
-`/agent-api/health` reaches `/health` and
-`/agent-api/api/v1/agent/repository` reaches `/api/v1/agent/repository`.
-HTTPS deployments continue to flow through `atlas-edge`:
+## Repository workflow
 
 ```text
-client -> atlas-edge -> mission-control -> atlas-agent
-```
-
-`atlas-edge` does not need a separate Atlas Agent route because Mission Control
-is the internal reverse proxy for `/agent-api/`.
-
-The container release gate builds Atlas Agent, validates production and HTTPS
-Compose configuration, starts the production stack, waits for Atlas Agent health,
-checks container hardening and mounts, verifies that Atlas Agent has no
-published host ports, confirms the writable `atlas-agent-state` volume, and
-smoke-tests `/agent-api/health` plus the repository endpoint through Mission
-Control. It also checks authenticated HTTPS ingress through `atlas-edge`.
-
----
-
-# Local Model Assistance
-
-Atlas Agent has a replaceable model-provider interface, an Ollama provider, a
-model service, and optional model-assisted planning analysis. Deterministic
-planning remains the source of the implementation plan. Model-assisted review,
-model selection, and autonomous model-driven execution are not implemented.
-
-## Candidate workflow in v0.6
-
-Atlas Agent now supports the complete Phase 3 candidate workflow:
-
-```text
-Core planning intake
-→ candidate planning session
-→ deterministic candidate plan
-→ workflow shell
+candidate intake and planning
 → immutable implementation request
 → exact implementation approval
-→ implementation execution
-→ verification plan
+→ implementation
+→ immutable verification request
 → exact verification approval
-→ verification evidence
-→ deterministic review
+→ verification and deterministic review
+→ immutable commit request
 → exact commit approval
 → local Git commit
-→ completed workflow
 ```
 
-Only `update-compose-stack` is supported. Atlas Agent does not push, tag, publish releases, deploy remotely, auto-approve, auto-execute, or roll back changes.
+Each side-effect stage is claimed atomically. Approval is bound to immutable request evidence; commit approval includes expected branch and HEAD, exact reviewed paths, content/status fingerprint, and commit message. Repository drift or mismatched approval blocks the workflow.
 
-Each side-effect stage has an independent exact approval bound to an immutable request. Workflow, approval, planning, implementation, verification, review, and commit artifacts persist in the local aggregate state store. Approval-wait states restore unchanged; completed and blocked states restore unchanged; interrupted side-effect states recover blocked and do not replay.
+Workflow resume is stage-aware and idempotent. Completed stages do not replay, commit executes at most once, and an interrupted implementation, verification, commit, or operational dispatch is recovered conservatively rather than relaunched. Local aggregate snapshots under `ATLAS_AGENT_STATE_DIR` preserve approval-boundary workflow artifacts across restart; they are single-process Agent coordination state, not broader Atlas persistence or cross-host recovery.
+
+## Planning and context
+
+Agent captures Atlas Core health and status once before repository workflow planning and retains the typed snapshot. Intelligence summary data is optional advisory evidence: failures do not discard valid essential context, and intelligence cannot alter commands, arguments, environment, working directory, execution policy, approval state, verification, or commit behavior. Deterministic planning remains authoritative; model assistance does not authorize execution.
+
+Operational planning is descriptive until Core supplies the separately authorized immutable dispatch request. Repository planning and operational planning cannot be converted into one another.
+
+## Production execution backends
+
+Base production sets:
+
+```text
+ATLAS_EXECUTION_BACKEND=local
+```
+
+The local repository backend is the normal production default. The worker/relay/egress stack is packaged but default-disabled. Using it requires separately gated configuration and runtime validation. When activated, authenticated worker requests pass through the relay to the isolated worker and constrained egress path. Backend selection does not expand the allowed intent or approval boundary.
+
+## Service boundary
+
+Agent exposes health and diagnostics plus versioned endpoints for repository status, approvals, candidate planning, workflows, operational planning/translation, and the authenticated internal operational action boundary. Mission Control proxies the operator-facing Agent API; Core calls the dedicated internal operational boundary. Authoritative validation remains server-side.
+
+The production service is defined by `compose.production.yaml`, uses an internal-only network, a read-only root filesystem, dropped capabilities, narrow state and repository mounts, and no published host port. Follow [Production Deployment](../../docs/DEPLOYMENT.md) rather than treating local development topology as production authority.
+
+## Local development
+
+Use the repository-pinned Python environment and run the Agent tests from this directory. Local development must preserve the exact capability registries and should not enable the worker backend or operational execution merely to exercise planning paths.

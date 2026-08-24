@@ -67,15 +67,22 @@ Atlas Agent owns:
 - Verification
 - Review
 - Reporting
+- Local workflow aggregate persistence and restart recovery required for its
+  approved workflows
+- The exact approved local Git staging and commit boundary for supported
+  repository execution
 
 Atlas Agent does not own:
 
 - Authentication
 - Authorization
-- Persistence
+- Broader Atlas/Core durable-state persistence
+- External infrastructure or provider persistence
 - Deployment
 - CI
-- Source control
+- Remote source-control authority, including push, tag creation, and release
+  publication
+- Arbitrary source-control operations
 - Package management
 
 ---
@@ -184,48 +191,42 @@ replace it.
 
 # Current Implementation Status
 
-- A0–A7 are complete.
-- A8 is partially complete with bounded advisory Atlas intelligence summary
-  integration.
-- A9 is complete.
-- A10 is partially complete; A10.1 synchronizes documentation.
-- A11 is functionally complete.
-- A12 is complete for its currently defined approval-boundary scope.
-- A13 is partially complete.
-- A14 is complete for its listed Mission Control status scope and overlaps A7;
-  pending approval data is loaded, but its decision card is not mounted in the
-  current status panel.
-- A15 is partially complete.
+Atlas v0.14 has two separate Agent-facing work classes:
 
-Atlas Core health and status are essential context. Intelligence is optional
-advisory enrichment: recognized intelligence failures preserve valid health
-and status data and are represented deterministically in `AgentContext`.
-Intelligence content is evidence only and cannot alter execution or approval
-inputs.
+- Repository candidate execution supports exactly `update-compose-stack` and
+  retains deterministic planning, immutable implementation/verification/commit
+  requests, independent exact approvals, controlled execution, verification,
+  deterministic review, local commit, persisted artifacts, and audit-chain
+  validation.
+- Hardened operational transport supports exactly
+  `restart-service / proxmox / qemu`. Core owns operator authorization,
+  lifecycle, target revalidation, dispatch, and recovery; Agent independently
+  validates the authenticated immutable request and exact capability before the
+  provider operation.
 
-Workflow and approval state is persisted as a local file-backed aggregate
-snapshot under `ATLAS_AGENT_STATE_DIR`. Approval-boundary workflows survive
-process restart. Interrupted `EXECUTING`, `VERIFYING`, and `COMMITTING`
-side-effect stages recover as blocked rather than being replayed. This is local
-single-process file-backed persistence for Atlas Agent workflow coordination
-state only; Atlas Agent still does not own broader Atlas platform persistence. It
-does not provide a distributed store, database, multi-process coordination, or
-cross-host recovery. Redacted verification environment values require matching
-current environment values after restart, and corrupt or unsupported snapshots
-block startup.
+Legacy provider actions are separate from hardened operations. Provider Intent
+is monitoring-policy authority only and is not Agent execution. Backup/restore
+is operator maintenance tooling, not an Agent intent. No path accepts arbitrary
+commands or automatically approves, remediates, updates, deploys, rolls back,
+pushes, tags, or publishes releases.
 
-The roadmap leaves ordering between the remaining unfinished tracks to human
-selection. Based on the existing roadmap, those tracks include broader A8
-knowledge capabilities, A10 production-readiness evidence, A13 model-assisted
-review/model selection, A15 broader development-loop hardening, and Docker policy
-beyond the current A12 scope.
+Atlas Core health and status are essential immutable planning context.
+Intelligence is optional advisory evidence and cannot alter commands, arguments,
+environment, working directory, target, approval, execution policy,
+verification, or commit behavior.
 
-## v0.6 operating rules
+Repository workflow state persists as a local, single-process aggregate under
+`ATLAS_AGENT_STATE_DIR`. Approval-wait, completed, and blocked states restore
+without replay; interrupted side-effect states recover blocked. Core's separate
+`operational_dispatch.db` owns durable operational safety and no-replay state.
 
-Atlas Agent has completed the Phase 3 candidate workflow and P3.14A reliability hardening. The supported execution intent is `update-compose-stack`.
+Base production uses `ATLAS_EXECUTION_BACKEND=local`. The packaged isolated
+worker/relay/egress backend is default-disabled and requires separately gated
+activation and runtime validation. When activated, authenticated worker
+requests pass through the relay; backend selection never expands the allowed
+intent registry.
 
-Agent owns local candidate planning, deterministic plans, workflow shells, immutable implementation requests, exact approval checks, execution coordination, verification evidence, deterministic review, local Git commits, local workflow persistence, and audit-chain validation.
-
-Agent does not own Atlas Core state, Mission Control UI decisions, external tools, package management, CI, remote deployment, release publication, push, tag, or rollback automation.
-
-Implementation, verification, and commit stages each require exact approval bound to immutable requests. Completed candidate workflows must restore candidate metadata, implementation request, execution result, verification plan, verification evidence, review result, commit request, commit result, and approval IDs after restart.
+For current system and component boundaries, use
+[Atlas architecture](../../ARCHITECTURE.md), [Agent architecture](ARCHITECTURE.md),
+and [Agent README](README.md). Roadmaps and historical phase records provide
+history, not current release authority.

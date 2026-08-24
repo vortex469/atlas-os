@@ -2,7 +2,31 @@
 
 Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. It owns structured knowledge about applications, services, container images, AI models, integrations, hardware devices, deployment methods, capabilities, requirements, and relationships.
 
-D0 is documentation only. It defines the intended architecture and boundaries, while runtime Discovery Center functionality has since been implemented in later phases (D1–D8).
+## Current v0.14 architecture
+
+V0.14 implements a GET-only/read-only Discovery subsystem around an
+authoritative curated YAML catalog. Dynamic Frigate release evidence is held in
+a rebuildable, non-authoritative cache and projected with freshness, source
+health, conflict, and provenance. Merged item evidence supports deterministic
+compatibility, advisory proposals and navigation, observed installed versions,
+and bounded release evaluation.
+
+Curated `DeploymentBinding` metadata selects an exact repository Compose file
+and service for literal image observation. Accepted checked-in image-release
+evidence then supports image grounding and composed provenance. The fixed Home
+Assistant proof uses bounded GHCR acquisition, offline Sigstore verification,
+and preserves `REGISTRY_ATTESTED` trust. Production image-collector descriptor
+and adapter registries are empty: there is no startup or scheduled collection.
+
+Curated facts remain authority; dynamic cache rows, observations, compatibility,
+proposals, release evaluations, image evidence, grounding, and provenance are
+evidence only. They confer no approval, update, remediation, dispatch,
+deployment, rollback, or release-publication authority. D11 semantic Discovery
+and D12 private/community catalogs remain future direction.
+
+The D0-oriented sections below are retained as explicitly historical design
+context. Where their future tense conflicts with this preface or the v0.13 and
+v0.14 implementation sections, the current implementation description governs.
 
 ## Purpose and scope
 
@@ -13,7 +37,7 @@ Discovery Center answers four questions:
 3. What does it require?
 4. Is it compatible with this Atlas environment?
 
-Discovery Center is intentionally structured and deterministic before semantic or AI-based behavior. Its initial authoritative source is a curated YAML catalog. Dynamic ingestion, semantic discovery, and AI-assisted matching may supplement curated data later, but they must not silently replace curated facts.
+Discovery Center is intentionally structured and deterministic before semantic or AI-based behavior. Its authoritative source is a curated YAML catalog. Released dynamic ingestion supplements curated data with evidence and never silently replaces curated facts. Semantic discovery and AI-assisted matching remain future D11 direction.
 
 ## Non-goals
 
@@ -28,7 +52,7 @@ Discovery Center must not:
 - Execute deployment plans.
 - Silently change Atlas policy or runtime configuration.
 
-All future executable work must be handed to Atlas Agent and pass through approval-controlled planning, execution, verification, review, and commit workflow.
+This was the D0 execution boundary. Released downstream workflows remain separate from Discovery: repository execution is exactly `update-compose-stack`, hardened operational dispatch is exactly `restart-service / proxmox / qemu`, and Discovery grants authority to neither.
 
 ## Ownership boundaries
 
@@ -53,13 +77,13 @@ Discovery Center may identify compatibility status and supporting evidence. Orio
 
 Atlas Agent owns execution handoff.
 
-Discovery Center may provide structured context for a future change, but it must not execute that change. Any future executable work must cross the Atlas Agent approval boundary and use its planning, execution, verification, review, and commit workflow.
+Discovery Center provides structured evidence for proposals and downstream candidate projection but does not execute changes. Any separately supported repository work crosses Atlas Agent's exact approval boundary; hardened operations use their separate Core-owned lifecycle and Agent-facing dispatch boundary.
 
 ### Mission Control
 
 Mission Control owns the user interface.
 
-Mission Control should present catalog entries, compatibility evidence, provenance, and eventually Orion recommendations and Agent handoffs. Mission Control must not bypass Discovery Center's read-only default or Atlas Agent approval boundaries.
+Mission Control presents catalog entries, merged evidence, compatibility, release evaluation, proposals, grounding, and provenance. It must not bypass Discovery Center's read-only contract or any downstream authority boundary.
 
 ## Relationship to the Knowledge Engine
 
@@ -247,15 +271,15 @@ scheduled or startup collection path.
 
 ## YAML catalog source-of-truth policy
 
-The curated YAML catalog is the initial authoritative source for Discovery Center facts.
+The curated YAML catalog is the authoritative source for Discovery Center facts.
 
 Rules:
 
-- YAML files are read-only shipped catalog data in early phases.
+- YAML files are read-only shipped catalog data.
 - Catalog entries must validate against typed models before use.
 - Invalid catalog entries fail safely with clear diagnostics.
-- Dynamic ingestion may supplement curated entries later, but cannot silently override curated facts without provenance and conflict handling.
-- Private and community catalogs are future work and must include trust and provenance metadata.
+- Released dynamic ingestion supplements curated entries but cannot override curated facts; it carries provenance, freshness, health, and conflict handling.
+- Private and community catalogs remain future D12 work and require trust and provenance metadata.
 
 ## Repository and service boundaries
 
@@ -265,7 +289,7 @@ The backend implementation lives under a provider-neutral Atlas Core namespace:
 services/atlas-core/app/discovery/
 ```
 
-Initial runtime code should be independent of provider implementations. Provider data should enter Discovery Center through explicit projections rather than Discovery Center importing provider clients directly.
+Runtime code remains independent of provider implementations. Provider data enters Discovery Center through explicit projections rather than Discovery Center importing provider clients directly.
 
 Implemented catalog data lives under:
 
@@ -273,11 +297,14 @@ Implemented catalog data lives under:
 services/atlas-core/app/discovery/catalog/
 ```
 
-or another reviewed source path selected in D1-D2. Runtime indexes and private catalogs, when implemented, should follow Atlas Runtime Foundation and use `data/knowledge/` or another documented runtime state location.
+The released dynamic cache is runtime projection state and is rebuildable,
+non-authoritative, and excluded from backup v3. Future private catalogs must
+make an explicit durable-state decision under Atlas Runtime Foundation rather
+than inheriting cache semantics.
 
-## Read-only API direction
+## Read-only API
 
-The initial API should be read-only.
+The released API is GET-only/read-only.
 
 Implemented D7.5 routes:
 
@@ -285,9 +312,12 @@ Implemented D7.5 routes:
 GET /api/v1/discovery
 GET /api/v1/discovery/items
 GET /api/v1/discovery/items/{item_id}
+GET /api/v1/discovery/items/{item_id}/evidence
 GET /api/v1/discovery/items/{item_id}/relationships
 GET /api/v1/discovery/items/{item_id}/compatibility
 GET /api/v1/discovery/search
+GET /api/v1/discovery/proposals
+GET /api/v1/discovery/proposals/{proposal_id}
 ```
 
 The compatibility endpoint uses the current Atlas compatibility context and remains read-only. It must not write runtime state, secrets, policies, configuration, ports, containers, or packages. See [Discovery Center API Contract](API.md).
@@ -316,9 +346,9 @@ Offline-first rules:
 
 - Local YAML catalog loads deterministically.
 - Search and compatibility checks work from local data first.
-- Dynamic sources are optional supplements.
+- Dynamic sources are optional evidence supplements; cached Frigate evidence is implemented.
 - Missing external metadata should produce `insufficient_information`, not a hard failure when local data is sufficient.
-- Online enrichment must be cached and provenance-tagged before use in future phases.
+- Online enrichment must be cached and provenance-tagged before use.
 
 ## Catalog trust and provenance
 
@@ -331,7 +361,8 @@ Initial curated entries can use repository provenance:
 - catalog version or Git revision when available
 - entry id
 
-Future dynamic entries should include:
+Released dynamic entries include bounded source, retrieval, freshness, health,
+provenance, and conflict metadata. Any additional dynamic source should retain:
 
 - source adapter
 - fetched_at
@@ -357,8 +388,8 @@ Expected test categories:
 - no side effects from read-only operations
 - security tests proving no execution or secret writes occur
 
-## v0.6 Phase 3 status
+## Historical v0.6 Phase 3 status
 
 Discovery Center now feeds the completed Phase 3 candidate pipeline by providing deterministic catalog and compatibility evidence to Atlas intelligence and execution-candidate projection. Discovery remains provider-neutral and read-only. It does not install, configure, execute, push, tag, release, deploy remotely, approve, or roll back changes.
 
-The only supported downstream execution intent in v0.6 is `update-compose-stack`, and any execution must pass through Atlas Agent planning, immutable requests, exact approvals, verification, deterministic review, and local commit.
+At that historical phase, the only downstream execution intent was `update-compose-stack`. In current v0.14, that remains the sole repository intent; the separately released hardened operational tuple is `restart-service / proxmox / qemu`. Neither is Discovery authority.

@@ -1,213 +1,79 @@
 # Atlas Runtime Architecture
 
-Atlas Runtime Foundation defines the boundary between immutable shipped defaults and mutable user-owned runtime state. It is the storage and configuration foundation for the Provider Management Framework and future Mission Control features.
-
-This document describes the intended architecture. Current released behavior
-reads policy domains that still use mutable runtime policy from
-`data/config/policies.yaml`, with `config/policies.yaml` used only as the
-immutable bootstrap template. Activated Proxmox QEMU monitoring intent uses the
-schema-v2 Provider Intent Store instead, as described below.
+Atlas Runtime Foundation defines the boundary between immutable shipped defaults and mutable operator-owned runtime state. This document specializes in that storage boundary; the current component and deployment topology remains in [ARCHITECTURE.md](ARCHITECTURE.md), and operational procedures remain in [Production Deployment](docs/DEPLOYMENT.md).
 
 ## 1. Immutable defaults
 
-`config/` contains shipped templates and factory defaults.
+Tracked files under `config/`, the curated Discovery catalog, accepted image-release evidence, and other reviewed repository knowledge are shipped defaults. Production mounts these inputs read-only. An upgrade may replace them, but it must not overwrite operator-owned runtime state.
 
-Examples include:
+Accepted image evidence is checked-in, immutable knowledge admitted through review. `CURATED` and verified `REGISTRY_ATTESTED` assertions retain their provenance and trust class. They are informational and grant no approval, dispatch, deployment, update, or rollback authority.
 
-- `config/atlas.yaml`
-- `config/policies.yaml`
-- provider and operator-facing template files added in future releases
+## 2. Mutable runtime state
 
-Rules:
-
-- Files in `config/` are read-only in production.
-- Defaults may be replaced by an Atlas upgrade.
-- Defaults must never overwrite user-owned runtime state.
-- Defaults are suitable for review, bootstrapping, and advanced operator automation.
-- Normal Mission Control writes must not modify files in `config/`.
-
-The tracked repository copy is an immutable source of defaults, not the normal write target for user intent.
-
-## 2. Runtime state
-
-`data/` contains everything Atlas learns or the user changes.
-
-Recommended structure:
+`data/` contains state Atlas or an operator changes at runtime. The principal layout is:
 
 ```text
 data/
-  config/
-  databases/
-  history/
-  cache/
-  knowledge/
-  backups/
+  config/       operator-owned runtime configuration
+  databases/    authoritative durable stores
+  history/      durable history not held in a database
+  cache/        rebuildable, non-authoritative projections
+  knowledge/    future operator-owned knowledge stores
+  backups/      operator-selected local backup output
 ```
 
-Intended ownership:
+Durable runtime stores can be authoritative for their declared domain. That rule does not make all mutable data authoritative: the dynamic Discovery cache is rebuildable evidence, can be discarded and reconstructed, and is excluded from backup format v3.
 
-- `data/config/` stores user-owned runtime configuration initialized from templates.
-- `data/databases/` stores SQLite databases and other durable data stores.
-- `data/history/` stores audit, action, event, and timeline history when not database-backed.
-- `data/cache/` stores rebuildable provider discovery caches and transient indexes.
-- `data/knowledge/` stores local knowledge, learned preferences, and future AI memory stores.
-- `data/backups/` stores local backups when the operator chooses an in-repository backup location.
+## 3. Bootstrap and policy files
 
-Runtime state is persistent, user-owned, and authoritative once initialized.
+Missing runtime configuration is initialized from validated tracked templates. Initialization creates only missing files, validates before serving, and must not overwrite an existing runtime file. Writes use narrow permissions, locking, validation, temporary files, `fsync`, and atomic replacement where applicable.
 
-## 3. Runtime configuration initialization
+The tracked `config/policies.yaml` is the immutable bootstrap template. `ATLAS_POLICY_FILE` defaults to `/opt/atlas/data/config/policies.yaml`; policy domains that still use that file treat the initialized runtime copy as authoritative.
 
-On first startup, Atlas initializes missing runtime files from tracked templates.
+## 4. Provider Intent
 
-Rules:
+Released v0.14 Provider Intent is explicitly activated through the production overlay and schema-v2 store. When activated, that store is authoritative only for identity-bound Proxmox QEMU `monitoring-policy`. Legacy Proxmox guest values in `policies.yaml` remain compatibility evidence, not competing authority.
 
-1. Validate the template before copying it.
-2. Create only missing runtime files.
-3. Never overwrite an existing runtime file.
-4. Use atomic creation where possible.
-5. Validate the runtime file before serving it.
-6. Fail safely with diagnostics when a template or runtime file is invalid.
+Provider Intent mutation requires its dedicated operator permission. It does not own provider actions or infrastructure execution. A QEMU intent binds to provider-authoritative incarnation identity (`vmgenid`) and fails closed if a reused VMID identifies another incarnation. Atlas has no accepted LXC identity for this purpose and must not synthesize one.
 
-Initialization is a bootstrap operation, not an upgrade overwrite mechanism.
+Needs Review and status are derived from observed resource identity plus stored intent; they are not separate mutable authority.
 
-## 4. Runtime policy storage
+## 5. Discovery runtime evidence
 
-Operational policy must move from tracked defaults to runtime state.
+The curated catalog remains authoritative. Dynamic Frigate evidence is stored in a rebuildable cache with explicit freshness, health, conflict, and provenance semantics. Dynamic facts supplement but never silently replace curated facts. Compatibility, installed-version evidence, release evaluation, proposals, Compose observation, image grounding, and provenance are read-only derivations and add no operational authority.
 
-Template path:
+Private and community catalogs are future work. If introduced, they require explicit trust, provenance, validation, migration, and backup decisions; they must not be inferred from the current dynamic cache.
 
-```text
-/opt/atlas/config/policies.yaml
-```
+## 6. Operational dispatch ledger
 
-Runtime path:
+`operational_dispatch.db` is durable safety and audit state for the hardened operational path. It records request identity and lifecycle evidence needed to preserve exact approval, reconciliation, and no-replay behavior for the sole released tuple `restart-service / proxmox / qemu`.
 
-```text
-/opt/atlas/data/config/policies.yaml
-```
-
-Environment variables:
-
-```text
-ATLAS_POLICY_FILE=/opt/atlas/data/config/policies.yaml
-ATLAS_POLICY_TEMPLATE_FILE=/opt/atlas/config/policies.yaml
-```
-
-After initialization, the runtime policy file remains authoritative for policy
-domains that still use it. Activated Proxmox QEMU monitoring intent is an
-explicit exception: the schema-v2 Provider Intent Store is authoritative for
-that domain, while Proxmox guest values in `policies.yaml` are retained only as
-non-authoritative legacy and compatibility evidence. Mission Control and API
-writes target the authoritative runtime store for their domain and never update
-the tracked template.
-
-The template remains read-only and may be updated by future Atlas releases. Atlas must not silently replace the runtime policy file when the template changes.
-
-## 5. Configuration Store
-
-Atlas needs a configuration store pattern that separates generic product flows from provider-specific persistence details.
-
-Rules:
-
-- Provider-specific persistence remains behind generic service interfaces.
-- Mission Control writes runtime state, not repository files.
-- Provider adapters map native provider resources into generic Atlas resource contracts.
-- Policy writers validate existing runtime state before writing updated runtime state.
-- Writes must be atomic and auditable.
-- Needs Review remains derived and is not persisted.
-
-Provider Management Framework is a subsystem of Atlas Runtime Foundation. Runtime Foundation defines where user-owned state lives; Provider Management Framework defines how providers expose resources, expectations, actions, and diagnostics through Mission Control.
-
-## 6. Upgrade rules
-
-New images may ship new defaults.
-
-Existing runtime files remain authoritative.
-
-Future migrations must be:
-
-- versioned;
-- validated before and after mutation;
-- reversible when practical;
-- auditable;
-- explicit about unsupported or unknown configuration.
-
-Atlas must not silently discard unsupported user configuration. If a runtime file contains fields a new version does not understand, Atlas should preserve them when possible or stop with clear diagnostics before data loss.
-
-Rollback in v0.6 is operator-driven by selecting a prior release tag/image and, when needed, using documented restore procedures to rehydrate runtime state from a validated backup.
+The ledger is not a queue whose rows authorize replay. An interrupted or uncertain dispatch is recovered conservatively and is never automatically relaunched. Legacy provider-action history is a separate surface, and repository execution remains exactly `update-compose-stack` through Atlas Agent.
 
 ## 7. Backup and restore
 
-Runtime configuration must be backed up with Atlas data.
+Backup format v3 covers the documented durable Core state and runtime configuration, including Provider Intent and operational-dispatch safety state. It excludes rebuildable Discovery cache data. Older supported formats are validated through explicit compatibility rules rather than assumed to contain newer stores.
 
-Rules:
+Restore is operator maintenance tooling, not an Agent execution intent. Restore validates the archive and target state, preserves ownership and atomicity, coordinates the runtime interlock, and invalidates existing operator sessions so pre-restore authentication state cannot survive the restored control-plane boundary. Atlas must not resume normal operation from partially restored or unvalidated state.
 
-- Runtime policy files under `data/config/` are part of durable Atlas state.
-- Backups must include runtime configuration, not only databases.
-- Restore must preserve ownership, permissions, validation, and atomicity.
-- Restored runtime files must be validated before Atlas resumes normal operation.
-- Existing version-1 database-only backups need backward compatibility.
+## 8. Upgrade, rollback, and migration rules
 
-A restore from an older backup may not contain runtime policy files. Atlas must handle that case by using the same safe initialization rules used by fresh installations.
+Shipped defaults may change on upgrade; existing operator-owned state remains authoritative for its declared domain. Migrations must be versioned, validated before and after mutation, auditable, explicit about unsupported data, and reversible where practical. Unknown configuration must be preserved when safe or rejected before loss.
 
-## 8. Security model
+Rollback and restore are explicit operator procedures. Atlas does not automatically deploy, roll back, remediate, update, approve, or publish a release.
 
-Container hardening remains a core requirement.
+## 9. Container mount and security model
 
-Rules:
-
-- Containers remain non-root.
-- Root filesystems remain read-only.
-- Only explicit runtime directories are writable.
-- Templates, inventory, and source configuration stay read-only.
-- Runtime write paths must be narrow and documented.
-- Policy writes must keep existing file locking, temp-file writes, validation, fsync, and atomic replace behavior.
-- Secrets must eventually use a dedicated protected runtime store.
-
-Runtime writeability is not a reason to weaken the whole container. It should be scoped to `/opt/atlas/data` or a more specific runtime mount.
-
-## 9. Container mount model
-
-Production containers should follow this model:
+Production follows the repository-owned Compose deployment path and keeps write access narrow:
 
 ```text
-/opt/atlas/config     read-only templates and defaults
-/opt/atlas/inventory  read-only inventory until a runtime inventory store exists
-/opt/atlas/data       read-write persistent runtime state
+/opt/atlas/config       read-only templates and defaults
+/opt/atlas/inventory    read-only inventory
+/opt/atlas/data         read-write runtime state
 ```
 
-Runtime paths should be explicitly configured through environment variables or settings. Normal configuration must not require a writable repository bind mount.
+Containers remain non-root where specified, use read-only root filesystems, and receive only documented writable mounts. Normal Mission Control configuration must not require a writable repository bind mount. Secrets belong in protected runtime inputs, never tracked defaults or backup metadata not designed to contain them.
 
-There must be no writable repository bind mount for normal Mission Control configuration.
+## 10. Product rule
 
-## 10. Current and future stores
-
-Atlas Runtime Foundation should support future stores without changing the immutable-defaults boundary.
-
-Implemented store:
-
-- Provider Intent Store
-
-Potential future stores:
-
-- Provider Connection Store
-- Discovery Store
-- Notification Store
-- User Settings Store
-- AI preference and learned-intent storage
-
-These stores may be files, SQLite databases, or another local durable backend. Regardless of storage engine, they belong under runtime state and must be covered by backup, restore, validation, and migration rules.
-
-The Provider Intent Store owns control-plane monitoring and policy intent; it
-does not own provider actions or infrastructure execution. For
-identity-capable managed resources, stored intent must bind to
-provider-authoritative incarnation identity, not reusable provider coordinates
-alone. Proxmox QEMU intent must fail closed when a reused VMID resolves to a
-different authoritative incarnation identity. LXC has no accepted identity for
-this purpose, and Atlas must not synthesize one.
-
-## 11. Product rule
-
-Nothing a normal user changes through Mission Control should dirty the Git checkout.
-
-Advanced operators may still edit files deliberately, review templates, and automate configuration. Normal users should express intent through Mission Control, and Atlas should persist that intent in runtime state.
+Normal operator changes through Mission Control write the authoritative runtime store for that domain and do not dirty the Git checkout. Advanced operators may still review templates and use documented maintenance tooling, but immutable defaults and mutable runtime state must remain visibly distinct.

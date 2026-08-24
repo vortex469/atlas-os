@@ -1,90 +1,56 @@
 # Atlas Design Principles
 
-Atlas is an intent-driven infrastructure operating system. Other tools show what is; Atlas understands what should be.
+Atlas is an intent-driven infrastructure operating system. It combines observed state with explicit operator intent while keeping evidence, recommendations, approvals, and execution as separate authorities. The runtime-state boundary is defined in [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md); released topology and authority are summarized in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-These principles guide the Provider Management Framework, Atlas Runtime Foundation, and future Atlas features. They describe the product direction Atlas should follow as Mission Control becomes the normal way to manage infrastructure intent. The runtime-state boundary for these principles is defined in [Atlas Runtime Architecture](ATLAS_RUNTIME_ARCHITECTURE.md).
+## Enduring principles
 
-## 1. Intent over state
+### Intent over state
 
-Atlas evaluates whether observed infrastructure matches user intent.
+Observed state alone does not determine health. Atlas evaluates it against declared intent and explains the observed value, expected value, reason, and available next step.
 
-A stopped resource is not automatically a problem. It becomes a problem only when Atlas knows the user expects that resource to be running. The same observed state can be healthy, unhealthy, or intentionally ignored depending on the user's declared intent.
+### Discover before asking
 
-## 2. Discover first
+Atlas should discover provider resources and relevant evidence before asking operators to encode normal inventory or policy. Unknown or unsupported evidence fails closed; it is not treated as success.
 
-Providers should discover resources automatically.
+### Ask once and retain identity
 
-Users should not manually maintain normal inventory. Atlas should connect to infrastructure providers, discover the resources they expose, and present those resources in Mission Control before asking users to define monitoring intent.
+New resources can enter Needs Review. Atlas records approved intent against authoritative identity where one exists so reusable provider coordinates do not silently transfer policy to a different resource incarnation.
 
-## 3. Ask once
+### Mission Control for normal operation
 
-Newly discovered resources enter Needs Review.
+Normal operators should use Mission Control rather than edit tracked YAML. Runtime mutations write narrow, validated operator-owned stores and do not dirty the checkout. Files remain useful for immutable defaults, advanced review, and documented maintenance.
 
-Atlas asks the user for intent and remembers the answer. After the user chooses an expectation, Atlas should apply that policy consistently instead of repeatedly asking about the same resource.
+### Evidence is not authority
 
-## 4. No YAML for normal users
+Curated facts, dynamic observations, compatibility results, grounding, diagnostics, and AI suggestions must retain provenance and explain uncertainty. Evidence and recommendations do not grant approval or operational execution.
 
-Mission Control is the normal configuration interface.
+### Explicit authority and exact approval
 
-Files remain available for advanced operators, automation, backup, and review, but routine provider configuration should not require editing YAML. Normal users should be able to express intent safely through Mission Control, and those changes should write runtime state rather than tracked repository files.
+Every mutation surface has a bounded contract and its own permission or approval rules. Approval for one surface never implies authority for another. Interrupted side effects fail conservatively and must not be replayed merely because work appears incomplete.
 
-## 5. Consistent provider experience
+### Safe and explainable by default
 
-Providers should expose a consistent management surface:
+Read-only discovery and explanation precede mutation. Warnings should show what Atlas observed, what it expected, why the finding exists, and which separately authorized actions are available.
 
-- Connection
-- Discovery
-- Resources
-- Monitoring
-- Actions
-- Diagnostics
+### AI suggests; operators decide
 
-Each provider will have different capabilities, but users should not need to learn a different product model for every integration.
+AI may summarize evidence or suggest changes, but it never silently changes policy, approves work, or expands an allowed command, intent, target, or deployment boundary.
 
-## 6. AI suggests; users decide
+### Consistency without false equivalence
 
-AI may identify patterns and recommend intent changes.
+Providers should share understandable concepts—connection, resources, monitoring, actions, diagnostics, and history—while preserving provider-specific capabilities and authority. A uniform UI must not pretend unsupported behavior exists.
 
-AI must not silently change policy. Atlas can explain that a resource is repeatedly stopped and suggest marking it Expected Stopped or Ignore, but the user must approve the change before Atlas updates monitoring policy.
+## Implemented through v0.14
 
-## 7. Explain every warning
+- Provider Management presents provider and resource state, diagnostics, legacy provider actions, and history through typed Core APIs and Mission Control.
+- Explicitly activated Provider Intent owns only identity-bound Proxmox QEMU `monitoring-policy`; it is no longer merely planned and does not authorize provider or operational actions.
+- Discovery combines an authoritative curated catalog with dynamic evidence, freshness, health, conflicts, compatibility, proposals, release evaluation, Compose observation, accepted image evidence, grounding, and provenance. Its public surface is GET-only/read-only.
+- Repository candidate execution is exactly `update-compose-stack`. Hardened operational dispatch is separately limited to `restart-service / proxmox / qemu`; legacy provider actions remain separate.
+- Backup/restore v3 is explicit operator maintenance, invalidates operator sessions on restore, and preserves operational no-replay safety state while excluding rebuildable Discovery cache data.
+- The production Agent backend is local. The packaged isolated worker path is default-disabled and requires separate activation and validation.
 
-Every warning should show:
+Atlas does not automatically approve, remediate, update, deploy, roll back, or publish releases.
 
-- Observed state
-- Expected state
-- Why the finding exists
-- Available remediation
+## Future design direction
 
-A finding should be understandable without reading source code or YAML. Users should be able to see what Atlas observed, what Atlas expected, why the two do not match, and what safe actions are available.
-
-## 8. Safe by default
-
-Infrastructure changes, destructive operations, and policy changes require approval.
-
-Atlas should prefer read-only discovery and explanation before mutation. When a change is needed, Atlas should present the consequence clearly and require explicit user approval.
-
-## 9. Learn without nagging
-
-Atlas may notice repeated patterns and offer a one-time suggestion.
-
-The system should help users reduce noise without becoming noise itself. If a resource is intentionally stopped over time, Atlas may suggest changing intent, but it should avoid repeatedly interrupting the user after that suggestion is addressed or dismissed.
-
-## 10. One place to manage infrastructure
-
-Mission Control should become the unified control plane across providers.
-
-The long-term direction is that users discover resources, set intent, review findings, approve actions, inspect diagnostics, and understand infrastructure relationships from one consistent interface.
-
-## Provider Management Framework direction
-
-The Provider Management Framework is the planned product layer that applies these principles across Atlas providers. Its goal is to move provider management from file-first configuration to discoverable, reviewable, user-approved intent management in Mission Control. It sits on Atlas Runtime Foundation, which separates immutable defaults from mutable runtime state so normal Mission Control changes do not dirty the Git checkout.
-
-Initial work should distinguish clearly between current behavior and planned behavior. Atlas already has provider discovery, findings, policy loading, and Mission Control visibility in several areas. Atlas Runtime Foundation is the active architecture milestone that defines where user-owned state lives; the Provider Management Framework remains the subsystem that makes provider capabilities consistent, editable, and understandable for normal users.
-
-Provider intent is control-plane monitoring and policy state, not provider or
-infrastructure execution. For resources with authoritative incarnation
-identity, durable intent must bind to that identity rather than reusable
-provider coordinates alone. In particular, a reused Proxmox QEMU VMID must not
-silently inherit intent after `vmgenid`-backed authoritative identity changes.
-Atlas has no accepted equivalent for LXC and must not invent a synthetic one.
+Provider consistency may broaden only as reviewed provider contracts support it. Semantic Discovery (D11), private/community catalogs (D12), richer AI assistance, broader automation, and additional orchestration remain future direction—not released behavior. Any future capability must preserve provenance, explicit authority, exact approval, no-replay safety, and the immutable-defaults/runtime-state boundary.
