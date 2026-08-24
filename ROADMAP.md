@@ -943,7 +943,7 @@ reviewed.
 
 **Theme: Compatibility/Upgrade Intelligence**
 
-**Status: P1–P5 implemented; publication and tag pending.** The
+**Status: P1–P5 implemented; released as `atlas-v0.13.0`.** The
 evidence-bound implementation spans `1df238c` through `64e8341`. Atlas v0.13
 builds read-only upgrade intelligence on top of the released v0.12 dynamic
 Discovery facts: it compares the authoritative baseline version of a merged
@@ -1047,3 +1047,38 @@ authority, automatic remediation, or a new backup format. Repository execution
 remains separately gated as `update-compose-stack`; operational execution
 remains exactly `restart-service / proxmox / qemu`. D11 semantic discovery and
 D12 community/private catalogs remain deferred.
+
+## Atlas v0.14 roadmap
+
+**Theme: Trusted Compose Image Observation and Grounding**
+
+**Status: P0–P1c and the bounded integration chain are implementation-complete;
+final release validation is pending.** V0.14 is not yet tagged or released.
+
+### Completed milestone
+
+- **P0 — DeploymentBinding:** a curated, bounded association identifies one
+  repository Compose file and service.
+- **P1a — Image grounding:** deterministic, read-only composition compares the
+  deployment binding, repository observation, and accepted release evidence.
+- **P1b — Evidence loader and collector path:** reviewed immutable evidence can
+  be loaded at runtime; bounded GHCR acquisition and offline Home Assistant
+  Sigstore verification remain behind a trusted, inactive collector boundary.
+- **P1c — Compose image observation:** the bound repository Compose image is
+  observed with fail-closed path, YAML, and size handling.
+- The fixed Home Assistant `2026.8.3` proof case completes acquisition,
+  repository-owned/hash-pinned trust-root verification, accepted
+  `REGISTRY_ATTESTED` integration, reviewed evidence promotion, read-only
+  grounding composition, and evidence provenance projection.
+
+Acquisition, verification, accepted evidence, grounding, and operational
+authority are separate stages. Production collector registries remain empty;
+there is no startup or scheduled collection and no update, pull, restart,
+deployment, or other operational authority.
+
+### Explicit deferrals
+
+- Generic arbitrary registry collectors and generic source configuration.
+- Automated, startup, or scheduled collection.
+- A collector or grounding UI/control surface.
+- Update or deployment execution authority.

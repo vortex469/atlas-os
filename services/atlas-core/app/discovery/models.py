@@ -236,7 +236,9 @@ class DiscoveryItem(DiscoveryCenterModel):
         cls,
         values: tuple[DiscoveryRelationship, ...],
     ) -> tuple[DiscoveryRelationship, ...]:
-        relationship_keys = [(relationship.type, relationship.target) for relationship in values]
+        relationship_keys = [
+            (relationship.type, relationship.target) for relationship in values
+        ]
         if len(relationship_keys) != len(set(relationship_keys)):
             raise ValueError("relationship type and target pairs must be unique.")
         return values
@@ -255,7 +257,9 @@ class CatalogProvenance(DiscoveryCenterModel):
 class CuratedReleaseClaim(DiscoveryCenterModel):
     """Explicit curated assertion used only for release-conflict evaluation."""
 
-    version: str = Field(min_length=1, max_length=64, pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
+    version: str = Field(
+        min_length=1, max_length=64, pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$"
+    )
     published_at: datetime
 
     @field_validator("published_at")
@@ -327,9 +331,7 @@ class ImageReleaseEvidence(DiscoveryCenterModel):
     @classmethod
     def reject_image_reference_whitespace(cls, value: str) -> str:
         if value != value.strip():
-            raise ValueError(
-                "image_reference must not have surrounding whitespace."
-            )
+            raise ValueError("image_reference must not have surrounding whitespace.")
         return value
 
     @field_validator("source_id")
@@ -400,13 +402,9 @@ class RepositoryComposeImageObservation(DiscoveryCenterModel):
         if candidate != candidate.strip():
             raise ValueError("compose_service must not have surrounding whitespace.")
         if "/" in candidate:
-            raise ValueError(
-                "compose_service must not contain path separators."
-            )
+            raise ValueError("compose_service must not contain path separators.")
         if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]*", candidate):
-            raise ValueError(
-                "compose_service must be a compose service identifier."
-            )
+            raise ValueError("compose_service must be a compose service identifier.")
         return candidate
 
 
@@ -441,11 +439,15 @@ class DeploymentBinding(DiscoveryCenterModel):
             raise ValueError("compose_file must not contain drive letters.")
         segments = candidate.split("/")
         if any(segment in ("", ".", "..") for segment in segments):
-            raise ValueError("compose_file must not contain traversal or empty segments.")
+            raise ValueError(
+                "compose_file must not contain traversal or empty segments."
+            )
         if len(segments) > 32:
             raise ValueError("compose_file path depth exceeds the bound.")
         if not segments[-1].endswith((".yaml", ".yml")):
-            raise ValueError("compose_file must end with a lowercase .yaml or .yml extension.")
+            raise ValueError(
+                "compose_file must end with a lowercase .yaml or .yml extension."
+            )
         return candidate
 
     @field_validator("compose_service", mode="before")
@@ -483,12 +485,9 @@ class CatalogEntry(DiscoveryCenterModel):
 
     @model_validator(mode="after")
     def validate_deployment_binding_requires_curated_provenance(self) -> CatalogEntry:
-        if (
-            self.deployment_binding is not None
-            and (
-                self.provenance.source_type is not CatalogSourceType.CURATED
-                or self.provenance.trust_level is not CatalogTrustLevel.CURATED
-            )
+        if self.deployment_binding is not None and (
+            self.provenance.source_type is not CatalogSourceType.CURATED
+            or self.provenance.trust_level is not CatalogTrustLevel.CURATED
         ):
             raise ValueError(
                 "deployment_binding requires source_type and trust_level 'curated'.",

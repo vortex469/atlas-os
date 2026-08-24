@@ -184,27 +184,19 @@ def test_unrelated_valid_compose_keys_accepted(tmp_path: Path, content: str) -> 
 
 
 def test_missing_repository_root_rejected(tmp_path: Path) -> None:
-    with pytest.raises(
-        RepositoryComposeObservationPathError, match="does not exist"
-    ):
+    with pytest.raises(RepositoryComposeObservationPathError, match="does not exist"):
         RepositoryComposeImageObservationAcquirer(tmp_path / "missing").observe(
             binding()
         )
 
 
-@pytest.mark.parametrize(
-    "relative", ["repo", "./repo", "../repo", "deploy/../repo"]
-)
-def test_relative_repository_root_rejected(
-    tmp_path: Path, relative: str
-) -> None:
+@pytest.mark.parametrize("relative", ["repo", "./repo", "../repo", "deploy/../repo"])
+def test_relative_repository_root_rejected(tmp_path: Path, relative: str) -> None:
     """A relative repository_root is rejected at construction; it is never
     normalized against the process working directory."""
     compose_root(tmp_path)
 
-    with pytest.raises(
-        RepositoryComposeObservationPathError, match="absolute"
-    ):
+    with pytest.raises(RepositoryComposeObservationPathError, match="absolute"):
         RepositoryComposeImageObservationAcquirer(Path(relative))
 
 
@@ -227,9 +219,7 @@ def test_symlink_repository_root_rejected(tmp_path: Path) -> None:
 
 def test_missing_intermediate_directory_rejected(tmp_path: Path) -> None:
     root = compose_root(tmp_path)
-    with pytest.raises(
-        RepositoryComposeObservationPathError, match="intermediate"
-    ):
+    with pytest.raises(RepositoryComposeObservationPathError, match="intermediate"):
         RepositoryComposeImageObservationAcquirer(root).observe(
             binding(compose_file="nested/missing/deploy/compose.yaml")
         )
@@ -247,9 +237,7 @@ def test_intermediate_component_must_be_directory(tmp_path: Path) -> None:
 
 def test_missing_compose_target_rejected(tmp_path: Path) -> None:
     root = compose_root(tmp_path)
-    with pytest.raises(
-        RepositoryComposeObservationPathError, match="does not exist"
-    ):
+    with pytest.raises(RepositoryComposeObservationPathError, match="does not exist"):
         RepositoryComposeImageObservationAcquirer(root).observe(
             binding(compose_file="deploy/absent.yaml")
         )
@@ -259,9 +247,7 @@ def test_target_directory_rejected(tmp_path: Path) -> None:
     root = compose_root(tmp_path)
     (root / "deploy" / "adir.yaml").mkdir()
 
-    with pytest.raises(
-        RepositoryComposeObservationPathError, match="regular file"
-    ):
+    with pytest.raises(RepositoryComposeObservationPathError, match="regular file"):
         RepositoryComposeImageObservationAcquirer(root).observe(
             binding(compose_file="deploy/adir.yaml")
         )
@@ -304,9 +290,7 @@ def test_symlink_escape_of_root_rejected(tmp_path: Path) -> None:
     (root / "deploy").rmdir()
     (root / "deploy").symlink_to(outside)
 
-    with pytest.raises(
-        RepositoryComposeObservationPathError, match="symlink|escape"
-    ):
+    with pytest.raises(RepositoryComposeObservationPathError, match="symlink|escape"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -376,9 +360,7 @@ def test_max_plus_one_bytes_rejected_before_yaml_parse(tmp_path: Path) -> None:
     )
     assert (root / COMPOSE_FILE).stat().st_size == MAX_COMPOSE_FILE_BYTES + 1
 
-    with pytest.raises(
-        RepositoryComposeObservationSizeError, match="exceeds the"
-    ):
+    with pytest.raises(RepositoryComposeObservationSizeError, match="exceeds the"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -394,9 +376,7 @@ def test_custom_max_file_bytes_enforced(tmp_path: Path) -> None:
 
 def test_non_utf8_compose_rejected(tmp_path: Path) -> None:
     root = compose_root(tmp_path)
-    (root / COMPOSE_FILE).write_bytes(
-        b"services:\n  app:\n    image: a\xffb:v1\n"
-    )
+    (root / COMPOSE_FILE).write_bytes(b"services:\n  app:\n    image: a\xffb:v1\n")
 
     with pytest.raises(RepositoryComposeObservationYamlError, match="UTF-8"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
@@ -409,7 +389,9 @@ def test_non_utf8_compose_rejected(tmp_path: Path) -> None:
 
 def test_malformed_yaml_rejected(tmp_path: Path) -> None:
     root = compose_root(tmp_path)
-    (root / COMPOSE_FILE).write_text("services:\n  app:\n   image: a/b:v1\n\t- x\n", encoding="utf-8")
+    (root / COMPOSE_FILE).write_text(
+        "services:\n  app:\n   image: a/b:v1\n\t- x\n", encoding="utf-8"
+    )
 
     with pytest.raises(RepositoryComposeObservationYamlError, match="parse"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
@@ -429,9 +411,7 @@ def test_multi_document_rejected(tmp_path: Path) -> None:
         "a: 1\n---\nservices:\n  app:\n    image: x/y:v1\n", encoding="utf-8"
     )
 
-    with pytest.raises(
-        RepositoryComposeObservationDocumentError, match="exactly one"
-    ):
+    with pytest.raises(RepositoryComposeObservationDocumentError, match="exactly one"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -441,9 +421,7 @@ def test_trailing_document_rejected(tmp_path: Path) -> None:
         f"services:\n  {SERVICE}:\n    image: {IMAGE}\n---\n", encoding="utf-8"
     )
 
-    with pytest.raises(
-        RepositoryComposeObservationDocumentError, match="exactly one"
-    ):
+    with pytest.raises(RepositoryComposeObservationDocumentError, match="exactly one"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -453,9 +431,7 @@ def test_unsafe_python_tag_rejected(tmp_path: Path) -> None:
         'services: !!python/serialize "x"\n', encoding="utf-8"
     )
 
-    with pytest.raises(
-        RepositoryComposeObservationYamlError, match="unsafe|non-safe"
-    ):
+    with pytest.raises(RepositoryComposeObservationYamlError, match="unsafe|non-safe"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -465,9 +441,7 @@ def test_unsafe_vendor_tag_rejected(tmp_path: Path) -> None:
         "services: {app: {image: !!x/compose ghcr.io/a/b:v1}}\n", encoding="utf-8"
     )
 
-    with pytest.raises(
-        RepositoryComposeObservationYamlError, match="unsafe|non-safe"
-    ):
+    with pytest.raises(RepositoryComposeObservationYamlError, match="unsafe|non-safe"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -475,9 +449,7 @@ def test_root_must_be_mapping(tmp_path: Path) -> None:
     root = compose_root(tmp_path)
     (root / COMPOSE_FILE).write_text("- a\n- b\n", encoding="utf-8")
 
-    with pytest.raises(
-        RepositoryComposeObservationDocumentError, match="mapping"
-    ):
+    with pytest.raises(RepositoryComposeObservationDocumentError, match="mapping"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -529,8 +501,6 @@ def test_recursion_error_from_yaml_compose_converted_to_document_error(
     ) as exc_info:
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
     assert isinstance(exc_info.value.__cause__, RecursionError)
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -600,8 +570,7 @@ def test_extends_without_local_image_fails_closed(tmp_path: Path) -> None:
         "services:\n  base:\n    image: base/x:v1\n", encoding="utf-8"
     )
     (root / COMPOSE_FILE).write_text(
-        "services:\n  app:\n    extends:\n      file: base.yaml\n"
-        "      service: base\n",
+        "services:\n  app:\n    extends:\n      file: base.yaml\n      service: base\n",
         encoding="utf-8",
     )
 
@@ -655,7 +624,7 @@ def test_non_string_image_rejected(tmp_path: Path, image_node: str) -> None:
     "image_node",
     [
         'image: ""\n',
-        'image: \'\'\n',
+        "image: ''\n",
         'image: "a/b:v1 "\n',
         'image: " a/b:v1"\n',
         'image: "a/b:v1\t"\n',
@@ -694,9 +663,7 @@ def test_image_at_exact_character_bound_accepted(tmp_path: Path) -> None:
         f"services:\n  {SERVICE}:\n    image: {image}\n", encoding="utf-8"
     )
 
-    observation = RepositoryComposeImageObservationAcquirer(root).observe(
-        binding()
-    )
+    observation = RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
     assert observation.image == image
 
@@ -758,9 +725,7 @@ def test_duplicate_mapping_keys_rejected(tmp_path: Path, content: str) -> None:
     root = compose_root(tmp_path)
     (root / COMPOSE_FILE).write_text(content, encoding="utf-8")
 
-    with pytest.raises(
-        RepositoryComposeObservationDocumentError, match="Duplicate"
-    ):
+    with pytest.raises(RepositoryComposeObservationDocumentError, match="Duplicate"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -792,9 +757,7 @@ def test_duplicate_mapping_keys_nested_in_sequences_rejected(
     root = compose_root(tmp_path)
     (root / COMPOSE_FILE).write_text(content, encoding="utf-8")
 
-    with pytest.raises(
-        RepositoryComposeObservationDocumentError, match="Duplicate"
-    ):
+    with pytest.raises(RepositoryComposeObservationDocumentError, match="Duplicate"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -815,18 +778,14 @@ def test_duplicate_mapping_keys_nested_in_sequences_rejected(
         ),
     ],
 )
-def test_merge_keys_nested_in_sequences_rejected(
-    tmp_path: Path, content: str
-) -> None:
+def test_merge_keys_nested_in_sequences_rejected(tmp_path: Path, content: str) -> None:
     root = compose_root(tmp_path)
     (root / COMPOSE_FILE).write_text(content, encoding="utf-8")
 
     # Fail-closed: the alias used for the merge is rejected by the
     # anchor/alias scan, or the merge key itself by the merge-key check.
     # Either way a nested merge construct in a sequence is never accepted.
-    with pytest.raises(
-        RepositoryComposeObservationError, match="merge|anchor|alias"
-    ):
+    with pytest.raises(RepositoryComposeObservationError, match="merge|anchor|alias"):
         RepositoryComposeImageObservationAcquirer(root).observe(binding())
 
 
@@ -846,9 +805,7 @@ def test_walker_rejects_merge_key_nested_in_sequence_directly() -> None:
     )
     assert isinstance(node, MappingNode)
 
-    with pytest.raises(
-        RepositoryComposeObservationYamlError, match="merge"
-    ):
+    with pytest.raises(RepositoryComposeObservationYamlError, match="merge"):
         _Acquirer._reject_duplicate_keys(node, "deploy/compose.yaml")
 
 

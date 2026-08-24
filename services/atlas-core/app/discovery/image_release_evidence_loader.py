@@ -145,9 +145,7 @@ class ImageReleaseEvidenceLoader:
     def _discover_evidence_files(self, evidence_path: Path) -> tuple[Path, ...]:
         try:
             candidates = (
-                evidence_path.rglob("*")
-                if self._recursive
-                else evidence_path.glob("*")
+                evidence_path.rglob("*") if self._recursive else evidence_path.glob("*")
             )
             return tuple(
                 sorted(

@@ -2,6 +2,43 @@
 
 Use this checklist before creating a Foundry release tag.
 
+## Atlas v0.14 closure and release
+
+Implementation is complete, but v0.14 remains a release candidate until every
+applicable gate below is executed and its exact evidence is recorded. Unchecked
+items are not implied to have passed.
+
+- [ ] Record the exact closure commit SHA and run final validation against that
+  exact SHA.
+- [ ] Run Ruff check on every Python file changed by the closure.
+- [ ] Run `ruff format --check` on every Python file changed by the closure.
+- [ ] Run the full canonical Atlas Core test suite from its documented working
+  directory.
+- [ ] Record any known environment-only ownership-test handling separately;
+  do not treat an unavailable ownership fixture as a product failure or hide a
+  real failure.
+- [ ] Run `pip check` in the exact Core release environment.
+- [ ] Review the pinned Sigstore dependency set and record the result.
+- [ ] Validate the repository-owned Sigstore trust-root hash against the
+  reviewed pinned value.
+- [ ] Validate bundle identity, image digest, release identity, evidence row,
+  and catalog/deployment binding identity end to end.
+- [ ] Require a clean tracked worktree at the exact closure SHA; exclude only
+  explicitly documented local-only artifacts.
+- [ ] Build the production Core image from the exact closure SHA.
+- [ ] Prove the running/built image source SHA matches the exact closure SHA.
+- [ ] Require and record all mandatory Quality/CI and container release gates
+  on the exact candidate SHA.
+- [ ] If an RC tag is used, create an immutable annotated RC tag only after the
+  exact candidate SHA is green.
+- [ ] Create the final immutable annotated `atlas-v0.14.0` tag only after all
+  final gates pass.
+- [ ] Complete read-only production acceptance: collector registries remain
+  empty, no startup/scheduled collection occurs, and evidence, grounding, and
+  provenance reads cause no operational action.
+- [ ] Record production Core image digests and the accepted Home Assistant
+  `2026.8.3` evidence identities with the release evidence.
+
 ## Atlas v0.8 implementation status
 
 - [x] V0.8-P0 — Roadmap and release-state reconciliation.
@@ -573,11 +610,11 @@ The remaining publication items are pending. No v0.12 gate run, image digest,
 release artifact, or deployment acceptance is asserted by this closure; the
 `atlas-v0.12.0` tag exists at `c8d06a5`.
 
-## Atlas v0.13 implementation closure and pending release acceptance
+## Atlas v0.13 implementation and release status
 
 Implementation closure is evidence-bound to the commit span `1df238c` through
-`64e8341`. Release identity and publication evidence are intentionally pending;
-unchecked items below must be completed against the selected exact release SHA.
+`64e8341`. V0.13 was subsequently released as the immutable
+`atlas-v0.13.0` release.
 
 ### Atlas v0.13 P1–P5 implementation
 
@@ -624,19 +661,6 @@ unchecked items below must be completed against the selected exact release SHA.
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`; LXC remains unsupported.
 - [x] The rebuildable Discovery cache remains excluded from backup v3.
-
-### Atlas v0.13 pending publication evidence
-
-- [ ] Select and record the exact release SHA and create the annotated
-  `atlas-v0.13.0` tag.
-- [ ] Record successful exact-SHA quality, test, Compose, recovery, and release
-  gate runs.
-- [ ] Record immutable candidate image digests and source/image parity.
-- [ ] Record final release-evidence artifact identity and checksums.
-- [ ] Record production deployment and read-only acceptance evidence.
-
-These publication items are pending. No v0.13 tag, gate run, image digest,
-release artifact, or deployment acceptance is asserted by this closure.
 
 ### Atlas v0.8 RC1 promotion evidence — 2026-08-15
 

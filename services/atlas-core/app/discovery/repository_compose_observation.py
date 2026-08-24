@@ -217,12 +217,9 @@ class RepositoryComposeImageObservationAcquirer:
         """
         try:
             for event in yaml.parse(content):
-                if isinstance(event, yaml.AliasEvent) or getattr(
-                    event, "anchor", None
-                ):
+                if isinstance(event, yaml.AliasEvent) or getattr(event, "anchor", None):
                     raise RepositoryComposeObservationYamlError(
-                        f"Compose document must not use anchors or "
-                        f"aliases: {source}"
+                        f"Compose document must not use anchors or aliases: {source}"
                     )
         except RecursionError as error:
             raise RepositoryComposeObservationDocumentError(
@@ -235,9 +232,7 @@ class RepositoryComposeImageObservationAcquirer:
             ) from error
 
     @staticmethod
-    def _parse_compose_document(
-        content: bytes, *, source: str
-    ) -> MappingNode:
+    def _parse_compose_document(content: bytes, *, source: str) -> MappingNode:
         RepositoryComposeImageObservationAcquirer._reject_anchors_and_aliases(
             content, source=source
         )
@@ -340,9 +335,7 @@ class RepositoryComposeImageObservationAcquirer:
                     stack.append((child, depth + 1))
 
     @staticmethod
-    def _mapping_key(
-        mapping: MappingNode, key: str, *, source: str
-    ) -> MappingNode:
+    def _mapping_key(mapping: MappingNode, key: str, *, source: str) -> MappingNode:
         for key_node, value_node in mapping.value:
             if isinstance(key_node, ScalarNode) and key_node.value == key:
                 if not isinstance(value_node, MappingNode):
@@ -368,8 +361,7 @@ class RepositoryComposeImageObservationAcquirer:
             )
         if value != value.strip():
             raise RepositoryComposeObservationValidationError(
-                f"Compose {label} must not have surrounding whitespace: "
-                f"{source}"
+                f"Compose {label} must not have surrounding whitespace: {source}"
             )
 
     def _extract_bound_image(
@@ -377,9 +369,7 @@ class RepositoryComposeImageObservationAcquirer:
     ) -> str:
         source = binding.compose_file
         services = self._mapping_key(document, _SERVICES_KEY, source=source)
-        service = self._mapping_key(
-            services, binding.compose_service, source=source
-        )
+        service = self._mapping_key(services, binding.compose_service, source=source)
         for key_node, value_node in service.value:
             if not isinstance(key_node, ScalarNode) or key_node.value != _IMAGE_KEY:
                 continue
@@ -389,8 +379,7 @@ class RepositoryComposeImageObservationAcquirer:
                 )
             if value_node.tag != _PLAIN_STR_TAG:
                 raise RepositoryComposeObservationValidationError(
-                    f"Bound service image must be a plain string literal: "
-                    f"{source}"
+                    f"Bound service image must be a plain string literal: {source}"
                 )
             image = value_node.value
             self._scalar_literal(image, source=source, label="image")
@@ -400,6 +389,5 @@ class RepositoryComposeImageObservationAcquirer:
                 )
             return image
         raise RepositoryComposeObservationValidationError(
-            "Bound service must declare its own local image key: "
-            f"{source}"
+            f"Bound service must declare its own local image key: {source}"
         )

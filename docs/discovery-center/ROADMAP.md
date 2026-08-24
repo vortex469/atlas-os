@@ -2,7 +2,7 @@
 
 Discovery Center is Atlas's provider-neutral catalog and compatibility subsystem. This roadmap describes direction and progress.
 
-## Current implementation status (as of Atlas v0.13 implementation closure)
+## Current implementation status (as of Atlas v0.14 release closure)
 
 Implemented:
 
@@ -24,7 +24,7 @@ Completed in v0.12 (released as `atlas-v0.12.0`):
 - D10 — Dynamic Source Adapters: one fixed Frigate GitHub latest-release
   adapter, with bounded read-only retrieval and rebuildable caching
 
-Completed in v0.13 (publication and tag pending):
+Completed and released in `atlas-v0.13.0`:
 
 - Compatibility/Upgrade Intelligence — a deterministic, read-only release
   evaluation comparing the authoritative baseline version of a merged item
@@ -32,6 +32,11 @@ Completed in v0.13 (publication and tag pending):
   evidence, version-bounds compatibility checks, and Mission Control upgrade
   presentation. It builds on D7 and D10 and adds no execution or mutation
   authority.
+
+Implementation-complete in v0.14; final release validation pending:
+
+- P0 `DeploymentBinding`, P1a image grounding, P1b accepted-evidence loader and
+  trusted collector path, and P1c repository Compose-image observation.
 
 Deferred future work:
 
@@ -422,7 +427,7 @@ separately reviewed.
 
 ## v0.13 — Compatibility/Upgrade Intelligence
 
-**Status: P1–P5 implemented; publication and tag pending.** Evidence-bound to
+**Status: P1–P5 implemented; released as `atlas-v0.13.0`.** Evidence-bound to
 the commit span `1df238c` through `64e8341`. Atlas v0.13 turns the released v0.12
 dynamic Discovery facts into bounded, read-only upgrade intelligence. It builds
 on D7 (compatibility) and D10 (dynamic sources) and adds no new discovery item
@@ -506,6 +511,33 @@ gated as `update-compose-stack`; operational execution remains exactly
 `restart-service / proxmox / qemu`. The rebuildable Discovery cache remains
 excluded from backup v3. D11 semantic discovery and D12 community/private
 catalogs remain deferred.
+
+## v0.14 — Trusted Compose Image Observation and Grounding
+
+**Status: implementation complete; final release validation pending.** V0.14
+has advanced Discovery Center through P0, P1a, P1b, and P1c without adding a
+mutation route, control surface, or collector activation.
+
+- **P0:** `DeploymentBinding` binds a curated catalog entry to one exact
+  repository Compose file and service.
+- **P1a:** read-only image grounding deterministically composes binding,
+  repository observation, and accepted evidence.
+- **P1b:** the evidence loader accepts reviewed immutable rows, while the
+  bounded acquisition and offline verification path remains a trusted inactive
+  collector boundary.
+- **P1c:** repository Compose image observation reads only the bound image and
+  fails closed on path, document, or value ambiguity.
+
+The reviewed Home Assistant `2026.8.3` chain is bounded GHCR acquisition,
+offline Sigstore verification with a repository-owned/hash-pinned trust root,
+an accepted immutable `REGISTRY_ATTESTED` row, read-only grounding, and
+provenance projection. Reviewed promotion does not relabel the row `CURATED`.
+Conflicts fail closed with no precedence selection.
+
+The live collector remains inactive: production collector registries are empty
+and no startup or scheduled collection is wired. Generic registry collectors,
+generic source configuration, automated collection, UI/control surfaces, and
+update/deployment authority remain deferred.
 
 ## D11 — Semantic Discovery
 

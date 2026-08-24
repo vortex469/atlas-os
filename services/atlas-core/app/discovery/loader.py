@@ -115,13 +115,16 @@ class YamlCatalogLoader:
 
     def _discover_catalog_files(self, catalog_path: Path) -> tuple[Path, ...]:
         try:
-            candidates = catalog_path.rglob("*") if self._recursive else catalog_path.glob("*")
+            candidates = (
+                catalog_path.rglob("*") if self._recursive else catalog_path.glob("*")
+            )
             return tuple(
                 sorted(
                     (
                         candidate
                         for candidate in candidates
-                        if candidate.is_file() and candidate.suffix.lower() in _YAML_SUFFIXES
+                        if candidate.is_file()
+                        and candidate.suffix.lower() in _YAML_SUFFIXES
                     ),
                     key=lambda path: path.as_posix(),
                 ),

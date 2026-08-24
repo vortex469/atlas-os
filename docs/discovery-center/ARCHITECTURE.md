@@ -192,6 +192,59 @@ consumers. Mission Control presents the result as an advisory upgrade notice and
 exposes no Apply, Execute, update, remediate, or other mutation control. The
 rebuildable Discovery cache remains excluded from backup v3.
 
+## v0.14 image-evidence and grounding boundary
+
+V0.14 adds a read-only knowledge chain without redesigning Discovery Center or
+joining it to operational execution:
+
+```text
+DeploymentBinding -> repository Compose observation
+
+bounded registry acquisition -> offline Sigstore verification
+    -> accepted image-release evidence -> image grounding
+    -> evidence provenance projection
+```
+
+`DeploymentBinding` is curated metadata naming one exact repository Compose
+file and service. Repository observation reads that bound service's literal
+image value; it does not resolve arbitrary operator input or run Compose.
+
+The stages have deliberately different meanings:
+
+- Acquisition is bounded retrieval, not authority and not verification.
+- Verification establishes that the reviewed bundle and image identity satisfy
+  the pinned cryptographic policy. It is not operational authority.
+- Accepted evidence is immutable knowledge admitted after review. Runtime
+  consumers do not mutate it.
+- Grounding is an informational, read-only comparison. It neither chooses nor
+  changes a deployed image.
+- Update, pull, restart, deployment, approval, and dispatch actions remain
+  separate and absent from this chain.
+
+### Trust classes, conflicts, and verification ownership
+
+`CURATED` is a repository-authored release assertion.
+`REGISTRY_ATTESTED` is separately accepted registry evidence backed by the
+reviewed verification chain. Promotion into the accepted evidence set preserves
+`REGISTRY_ATTESTED`; it does not become `CURATED` merely because it was
+reviewed.
+
+Grounding applies exact matching and fail-closed conflict handling. If
+compatible evidence rows disagree on image reference or digest, the result is a
+conflict. Neither `CURATED` nor `REGISTRY_ATTESTED` receives precedence, and no
+row is selected as the winning authority.
+
+The fixed Home Assistant `2026.8.3` proof uses bounded GHCR acquisition and
+offline Sigstore verification. Its trust root is repository-owned and
+hash-pinned. Network acquisition and cryptographic verification occur only in
+the trusted collector workflow; the runtime evidence loader only validates and
+loads already accepted immutable evidence. It performs no network or
+cryptographic verification.
+
+The collector is not registered or activated during Core startup or normal
+runtime. Production collector registries remain empty, and there is no
+scheduled or startup collection path.
+
 ## YAML catalog source-of-truth policy
 
 The curated YAML catalog is the initial authoritative source for Discovery Center facts.

@@ -53,13 +53,13 @@ IMAGE_GROUNDING_SCHEMA = "discovery-image-grounding-v1"
 #: Source classes that may positively ground a deployment image.
 #: ``upstream_signed`` is not trusted in P1a: an upstream signature does
 #: not by itself attest release correspondence for this deployment.
-TRUSTED_IMAGE_RELEASE_SOURCE_CLASSES: frozenset[
-    ImageReleaseEvidenceSourceClass
-] = frozenset(
-    {
-        ImageReleaseEvidenceSourceClass.CURATED,
-        ImageReleaseEvidenceSourceClass.REGISTRY_ATTESTED,
-    }
+TRUSTED_IMAGE_RELEASE_SOURCE_CLASSES: frozenset[ImageReleaseEvidenceSourceClass] = (
+    frozenset(
+        {
+            ImageReleaseEvidenceSourceClass.CURATED,
+            ImageReleaseEvidenceSourceClass.REGISTRY_ATTESTED,
+        }
+    )
 )
 
 _DIGEST_PIN_PATTERN = re.compile(r"@sha256:[0-9a-f]{64}$")
@@ -239,8 +239,7 @@ def ground_deployment_image(
     # construction, so only the compose file and service need comparing.
     if (
         repository_observation.compose_file != deployment_binding.compose_file
-        or repository_observation.compose_service
-        != deployment_binding.compose_service
+        or repository_observation.compose_service != deployment_binding.compose_service
     ):
         return _result(
             ImageGroundingStatus.OBSERVATION_MISMATCH,
@@ -289,8 +288,7 @@ def ground_deployment_image(
     # independent of the input evidence tuple order. A single contradictory
     # row (trusted or not) fails the whole decision closed.
     conflict_keys = {
-        (evidence.image_reference, evidence.image_digest)
-        for evidence in compatible
+        (evidence.image_reference, evidence.image_digest) for evidence in compatible
     }
     if len(conflict_keys) > 1:
         return _result(

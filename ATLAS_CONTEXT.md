@@ -284,10 +284,9 @@ AI intent, automatic remediation, bulk mutation, and execution expansion remain
 deferred.
 
 Atlas v0.13 has the accepted theme **Compatibility/Upgrade Intelligence** and
-implements Discovery Center compatibility and upgrade intelligence only.
-V0.13-P1 through P5 are implemented in the commit span `1df238c` through
-`64e8341`; publication, the release tag, release gates, image identity, and
-deployment evidence remain pending. The release evaluation is read-only,
+is released as `atlas-v0.13.0`. It implements Discovery Center compatibility
+and upgrade intelligence only. V0.13-P1 through P5 were implemented in the
+commit span `1df238c` through `64e8341`. The release evaluation is read-only,
 derived, and additive/optional in `discovery-merged-item-v1`: it compares the
 authoritative baseline version of a merged item against the freshest dynamic
 release evidence and evaluates observed installed versions against curated
@@ -296,6 +295,26 @@ facts remain evidence, not authority, and never override curated data. V0.13
 adds no execution or mutation authority: operational execution remains exactly
 `restart-service/proxmox/qemu`, repository execution remains
 `update-compose-stack`, and LXC remains unsupported.
+
+Atlas v0.14 implementation is complete and awaits final release validation; it
+must not be described as released until the exact closure SHA, required gates,
+production image/source parity, acceptance evidence, and final annotated tag
+exist. P0 `DeploymentBinding`, P1a image grounding, P1b the evidence
+loader/trusted collector path, and P1c repository Compose-image observation are
+complete.
+
+The complete reviewed Home Assistant trust chain is fixed to Home Assistant
+`2026.8.3`: a bounded GHCR acquisition feeds offline Sigstore verification
+against a repository-owned, hash-pinned trust root; reviewed immutable evidence
+is accepted as `REGISTRY_ATTESTED` (not `CURATED`); the bound repository Compose
+image is observed; grounding composes those facts; and provenance is projected.
+
+Acquisition, verification, accepted evidence, grounding, and operational
+authority remain distinct. Accepted evidence is immutable knowledge, grounding
+and provenance are read-only informational projections, and none grants update,
+pull, restart, deploy, approval, or dispatch authority. The trusted collector
+remains inactive in production: collector registries are empty and no startup
+or scheduled collection is wired.
 
 ---
 

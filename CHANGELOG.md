@@ -6,16 +6,56 @@ release boundaries.
 
 ## Unreleased
 
+## atlas-v0.14.0 — release-candidate closure
+
+Atlas v0.14 implementation is complete and is in release-candidate closure.
+It is not yet tagged or released; exact closure-SHA validation, required CI and
+container gates, production image/source parity, and read-only production
+acceptance remain release gates.
+
+#### Added
+
+- `DeploymentBinding` connects a curated catalog item to one exact repository
+  Compose file and service without granting access to arbitrary source
+  configuration.
+- Image grounding composes an exact repository Compose-image observation with
+  accepted image-release evidence. The resulting grounding and evidence
+  provenance projection are read-only and informational.
+- The image-release evidence loader accepts reviewed, immutable evidence rows;
+  reviewed promotion preserves the `REGISTRY_ATTESTED` source class rather than
+  converting registry proof into `CURATED` knowledge.
+- Repository Compose-image observation reads the bound image from the reviewed
+  repository boundary without adding a route, collector activation, or
+  execution path.
+- The trusted collector boundary supports bounded GHCR acquisition and offline
+  Sigstore verification for one reviewed fixed proof case: Home Assistant
+  `2026.8.3`. Its Sigstore trust root is repository-owned and hash-pinned.
+- The accepted Home Assistant proof integrates as `REGISTRY_ATTESTED` evidence,
+  then participates in read-only grounding composition and provenance
+  projection.
+
+#### Security and authority boundary
+
+`acquisition != verification != accepted evidence != grounding != operational authority`
+
+- Acquisition is bounded retrieval, verification is offline cryptographic
+  evaluation, accepted evidence is immutable knowledge, and grounding is an
+  informational composition. None grants operational authority.
+- The collector remains inactive in production. Production collector
+  registries remain empty, and there is no scheduled or startup collection.
+- V0.14 adds no update, pull, restart, or deploy authority. It does not change
+  the existing operational or repository execution boundaries.
+- `REGISTRY_ATTESTED` and `CURATED` remain distinct trust classes. Accepted
+  registry evidence is never silently promoted to curated authority.
+
 ## atlas-v0.13.0 — Atlas v0.13.0 (2026-08-21)
 
 Atlas v0.13 has the theme **Compatibility/Upgrade Intelligence**. It turns the
 already-released v0.12 dynamic Discovery facts into bounded, read-only upgrade
 intelligence: a deterministic release evaluation for each merged item, observed
 installed-version evidence, version-bounds compatibility checks, and Mission
-Control upgrade presentation. Implementation is complete at `64e8341`; the
-`atlas-v0.13.0` tag, publication, release-gate evidence, image digests, and
-deployment remain pending. This documentation-only closure is not the tested
-implementation SHA.
+Control upgrade presentation. The immutable `atlas-v0.13.0` release is
+published; implementation completed at `64e8341` before its release closure.
 
 #### Added
 
