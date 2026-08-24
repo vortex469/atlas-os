@@ -20,6 +20,7 @@ from app.discovery.api_models import (
     search_result_to_response,
 )
 from app.discovery.dynamic_projection import DiscoveryMergedItemProjection
+from app.discovery.exceptions import DiscoveryCatalogError
 from app.discovery.models import (
     CATALOG_SCHEMA_VERSION,
     DiscoveryItemStatus,
@@ -46,10 +47,19 @@ from app.services.discovery_dynamic_projection import (
     get_discovery_projection_service,
     get_discovery_request_time,
 )
+from app.services.discovery_image_grounding import (
+    ImageGroundingReadError,
+    get_discovery_image_grounding_service,
+)
 from app.services.discovery_proposals import (
     DiscoveryProposalEvaluation,
     DiscoveryProposalNotFoundError,
     get_discovery_proposal_service,
+)
+
+from ..discovery.image_grounding_projection import (
+    DiscoveryImageGroundingProjection,
+    project_image_grounding,
 )
 
 router = APIRouter(prefix="/discovery", tags=["Discovery"])
@@ -256,6 +266,30 @@ def get_discovery_item(item_id: str) -> DiscoveryCatalogEntryResponse:
         raise _item_not_found(error) from error
     except DiscoveryCatalogUnavailableError as error:
         raise _catalog_unavailable(error) from error
+
+
+@router.get(
+    "/items/{item_id}/image-grounding",
+    response_model=DiscoveryImageGroundingProjection,
+    responses={404: {"model": APIError}, 503: {"model": APIError}},
+    summary="Read local image grounding for a Discovery catalog item",
+)
+def get_discovery_item_image_grounding(
+    item_id: str,
+) -> DiscoveryImageGroundingProjection:
+    try:
+        read_model = get_discovery_image_grounding_service().get(item_id)
+        return project_image_grounding(read_model)
+    except ImageGroundingReadError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Discovery item '{item_id}' was not found.",
+        ) from error
+    except (DiscoveryCatalogError, ValidationError, ValueError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Image grounding is unavailable.",
+        ) from error
 
 
 @router.get(
