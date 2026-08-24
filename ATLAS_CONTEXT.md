@@ -71,6 +71,21 @@ collector, no scheduled collection, and no execution, approval,
 provider-intent, or remediation authority, and no Discovery-to-dispatch
 coupling.
 
+The implementation sequence is fixed. P1 composes the existing
+`DeploymentBinding`, repository Compose observation, accepted evidence, and
+`ground_deployment_image` semantics into a deterministic fail-closed read
+model. P2 exposes a bounded, redacted GET-only Core projection. P3 renders the
+status and provenance in Mission Control as advisory information. P4 proves
+there is no startup, scheduled, or request-time acquisition and that a GET
+uses only already-accepted local evidence and reviewed local readers, without
+triggering GHCR access, registry acquisition, Sigstore verification, collector
+execution, or evidence refresh. It also proves isolation, redaction, and
+unchanged authority contracts.
+P5 performs exact-SHA release validation and read-only production acceptance.
+No phase may add evidence or bindings, acquire or verify evidence at runtime,
+persist projection state, silently choose a source, or create a mutation or
+execution path.
+
 ## Deferred capabilities
 
 Semantic Discovery (D11), private/community catalogs (D12), additional

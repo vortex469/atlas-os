@@ -60,9 +60,43 @@ Discovery-facing boundaries:
   authority.
 - Initial evidence breadth is the accepted Home Assistant `2026.8.3`
   registry-attested proof only.
-- The generic image collector remains inactive; no scheduled or startup
-  collection is added.
+- The generic image collector remains inactive; no startup, scheduled, or
+  request-time collection is added.
 - Grounding, evidence, and provenance never create candidates, intents,
   approvals, action requests, or dispatches.
 - The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is the
   documentation-only scope-selection and boundary sign-off.
+
+Implementation is fixed by phase:
+
+- **P1 — read model:** deterministically compose the existing
+  `DeploymentBinding`, repository Compose observation, accepted evidence, and
+  `ground_deployment_image` semantics. Preserve provenance and fail closed.
+  Add no bindings or evidence; perform no network, acquisition, runtime
+  verification, collection, clock-based decision, persistence, mutation, or
+  execution. Home Assistant `2026.8.3` remains the only accepted proof.
+- **P2 — Core projection:** add a bounded, additive, redacted GET-only
+  projection with fail-closed statuses intact. Select exact endpoint and route
+  placement during repository-grounded P2 implementation review. It has no
+  mutation sibling, persistence, Agent dependency, provider mutation, or
+  proposal/candidate/workflow creation. OpenAPI, method, redaction, and
+  route-isolation tests are release gates.
+- **P3 — Mission Control:** show status and provenance as advisory information,
+  keep `REGISTRY_ATTESTED` distinct from `CURATED`, and show conflict, missing,
+  and unknown states. There are no Apply, Execute, Update, Pull, Restart,
+  Remediate, or workflow-conversion controls.
+- **P4 — isolation:** prove empty production collector registries and absence
+  of startup, scheduled, and request-time acquisition. A GET consumes only
+  already-accepted local evidence and reviewed local readers and cannot trigger
+  GHCR access, registry acquisition, Sigstore verification, collector
+  execution, or evidence refresh. Also prove separation from
+  mutation/execution, no silent precedence, redaction, and unchanged Provider
+  Intent, capability, approval, no-replay, worker-default, and backup/restore
+  contracts.
+- **P5 — closure:** run focused and full Core validation, Agent regressions,
+  Mission Control tests/lint/build, capability parity, and exact-SHA CI and
+  container gates; then record read-only production acceptance,
+  collector-inactivity evidence, documentation reconciliation, rollback, and
+  release evidence.
+
+P1 through P5 are sequential implementation milestones, not completed work.

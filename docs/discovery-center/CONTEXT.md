@@ -43,6 +43,20 @@ breadth limited to the accepted Home Assistant `2026.8.3` proof; it adds no
 collector, no scheduled collection, no authority of any kind, and no
 Discovery-to-dispatch coupling.
 
+V0.15 implementation is constrained to a binding-driven read model, a
+redacted GET-only Core projection, and an advisory Mission Control view. The
+model reuses `DeploymentBinding`, repository Compose observation, accepted
+evidence, and `ground_deployment_image`; it preserves fail-closed states and
+provenance, including the distinction between `REGISTRY_ATTESTED` and
+`CURATED`. Release gates must prove empty collector registries and no startup,
+scheduled, or request-time acquisition. A GET uses only already-accepted local
+evidence and reviewed local readers and cannot trigger GHCR access, registry
+acquisition, Sigstore verification, collector execution, or evidence refresh.
+The gates also prove no authority imports or mutation controls, unchanged
+capability and approval/no-replay contracts, exact-SHA validation, and
+read-only production acceptance. Home Assistant `2026.8.3` remains the only
+accepted proof.
+
 ## Historical D0 note
 
 The original D0 plan described only a future curated catalog. That material is

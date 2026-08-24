@@ -19,8 +19,9 @@ permissions, gates, handlers, ACLs, or production execution.
   P0 → P1 → P2 → P3 → P4 → P5.
 - [x] Confirm initial evidence breadth remains the accepted Home Assistant
   `2026.8.3` registry-attested proof only.
-- [x] Confirm the non-goals: no generic collectors, no scheduled or startup
-  collection, no execution authority, no automatic remediation, and no
+- [x] Confirm the non-goals: no generic collectors, no startup, scheduled, or
+  request-time collection, no execution authority, no automatic remediation,
+  and no
   Discovery-to-dispatch coupling.
 - [x] Confirm documentation-only scope: no runtime, configuration, script,
   Compose, authentication, execution, approval, provider, or mutation change.
@@ -30,6 +31,84 @@ permissions, gates, handlers, ACLs, or production execution.
 
 P0 is complete. P1 through P5 are not started and are not marked complete by
 this sign-off.
+
+### Atlas v0.15 P1–P5 implementation and release gates
+
+Unchecked items below are required future evidence, not claims of completion.
+
+#### P1 — binding-driven image-grounding read model
+
+- [ ] Reuse the existing `DeploymentBinding`, bounded repository Compose
+  observation, accepted image evidence, and `ground_deployment_image`
+  semantics in one deterministic, read-only composition path.
+- [ ] Preserve input and evidence provenance and every fail-closed status,
+  including missing, unknown, mutable, mismatched, untrusted, and conflict
+  results; introduce no silent source precedence or clock-derived authority.
+- [ ] Keep Home Assistant `2026.8.3` as the sole accepted
+  `REGISTRY_ATTESTED` proof; add no evidence row or `DeploymentBinding`.
+- [ ] Prove no network, registry acquisition, Sigstore runtime verification,
+  collector activation, persistence, mutation, or execution is reachable.
+
+#### P2 — GET-only Core grounding/provenance projection
+
+- [ ] Add only a bounded, additive, redacted GET response schema, retaining
+  exact fail-closed statuses and provenance/source-class distinctions.
+- [ ] Select exact endpoint and route placement only during repository-grounded
+  P2 implementation review; do not preselect it in the plan.
+- [ ] Prove there is no mutation sibling, persistence, Agent dependency,
+  provider mutation, or proposal, candidate, intent, workflow, approval,
+  action-request, or dispatch creation.
+- [ ] Pass contract, OpenAPI, unsupported-method, redaction, authority-import,
+  and route-isolation tests.
+
+#### P3 — Mission Control advisory surface
+
+- [ ] Display grounding status and sanitized evidence provenance, visibly
+  distinguish `REGISTRY_ATTESTED` from `CURATED`, and render grounded,
+  conflict, missing, unknown, and error states as informational/advisory.
+- [ ] Prove there is no Apply, Execute, Update, Pull, Restart, Remediate,
+  approval, proposal/candidate/workflow conversion, or mutation request.
+- [ ] Pass rendering, error-state, accessibility, lint, and production-build
+  checks for the bounded surface.
+
+#### P4 — security, isolation, and authority gates
+
+- [ ] Prove production collector descriptor and adapter registries remain
+  empty and no startup, scheduled, or request-time acquisition exists.
+- [ ] Prove a grounding/provenance GET consumes only already-accepted local
+  evidence and reviewed local readers and cannot trigger GHCR access, registry
+  acquisition, Sigstore verification, collector execution, or evidence
+  refresh.
+- [ ] Prove grounding/provenance cannot reach mutation or execution modules;
+  secrets, credentials, raw provider payloads, and commands are absent from
+  the projection.
+- [ ] Prove curated authority remains authoritative,
+  `REGISTRY_ATTESTED != CURATED`, conflicts fail closed, and no silent source
+  precedence exists.
+- [ ] Prove Provider Intent remains identity-bound Proxmox QEMU
+  `monitoring-policy` only; operational capability remains
+  `restart-service/proxmox/qemu`; repository execution remains
+  `update-compose-stack`; and LXC remains unsupported.
+- [ ] Prove stage-specific approvals remain independent, interrupted side
+  effects remain non-replayable, the worker backend remains optional and
+  default-disabled, and backup/restore remains operator maintenance.
+
+#### P5 — release validation and closure
+
+- [ ] Record focused Core grounding/API/isolation test results and the full
+  Core test result.
+- [ ] Record Agent regression results and Mission Control test, lint, and
+  production-build results.
+- [ ] Record capability parity and successful CI plus container release gates
+  against one exact candidate SHA, including image identities/digests.
+- [ ] Record read-only production acceptance for the Home Assistant proof and
+  fail-closed states; confirm no mutation/execution request occurred.
+- [ ] Record empty collector registries and absence of startup/scheduled or
+  request-time acquisition in production.
+- [ ] Reconcile all v0.15 documentation and record rollback guidance, release
+  evidence, and final checklist sign-off. Rollback uses the prior accepted
+  image/configuration and requires no data migration, evidence rollback,
+  side-effect replay, or automated remediation.
 
 ## Atlas v0.14 final release — 2026-08-24
 

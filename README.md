@@ -110,3 +110,13 @@ See the [Atlas roadmap](ROADMAP.md). The selected v0.15 theme is
 **Deployment Image Grounding Operator Surface**, a read-only operator-facing
 surface over released image grounding; remaining future directions are
 uncommitted.
+
+The decision-complete P1–P5 plan is in the roadmap: reuse the released
+binding/observation/evidence grounding chain, expose it through a redacted
+GET-only Core projection, render it as advisory Mission Control information,
+prove authority isolation and absence of startup, scheduled, and request-time
+acquisition, and close with exact-SHA release gates plus read-only production
+acceptance. A grounding/provenance GET uses only already-accepted local
+evidence and reviewed local readers; it cannot trigger GHCR access, registry
+acquisition, Sigstore verification, collector execution, or evidence refresh.
+The plan adds no durable state, mutation, or execution authority.

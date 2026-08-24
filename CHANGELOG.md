@@ -19,12 +19,38 @@ authentication, execution, approval, provider, or mutation change.
   no new authority from presentation.
 - Initial evidence breadth is the accepted Home Assistant `2026.8.3`
   registry-attested proof only.
-- Non-goals: no generic collectors, no scheduled or startup collection, no
-  execution authority, no automatic remediation, and no
+- Non-goals: no generic collectors, no startup, scheduled, or request-time
+  collection, no execution authority, no automatic remediation, and no
   Discovery-to-dispatch coupling.
 - Capability parity remains exactly
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`; LXC remains unsupported.
+- P1 is specified as a deterministic, fail-closed, binding-driven read model
+  reusing existing Compose observation, accepted evidence, and
+  `ground_deployment_image`, with provenance preserved and no acquisition,
+  persistence, mutation, or execution.
+- P2 is specified as an additive, bounded, redacted GET-only Core projection;
+  exact endpoint and route placement is selected during repository-grounded P2
+  implementation review. It has no mutation sibling, Agent dependency,
+  provider mutation, persistence, or proposal/candidate/workflow creation;
+  OpenAPI and route-isolation tests are required.
+- P3 is specified as an advisory Mission Control status/provenance surface
+  that distinguishes `REGISTRY_ATTESTED` from `CURATED`, displays fail-closed
+  states, and offers no action or workflow conversion.
+- P4 is specified as security and isolation proof for absence of startup,
+  scheduled, and request-time acquisition. A GET consumes only already-accepted
+  local evidence and reviewed local readers and cannot trigger GHCR access,
+  registry acquisition, Sigstore verification, collector execution, or
+  evidence refresh. P4 also proves mutation/execution separation, redaction,
+  source conflict handling, and all unchanged authority, approval, no-replay,
+  worker, and maintenance contracts.
+- P5 is specified as focused/full component validation, capability parity,
+  exact-SHA CI/container gates, read-only production acceptance,
+  collector-inactivity verification, documentation reconciliation, rollback
+  guidance, and recorded release evidence.
+
+These bullets define future implementation and exit criteria; P1 through P5
+remain unimplemented and are not release claims.
 
 ## atlas-v0.14.0 — Atlas v0.14.0 (2026-08-24)
 

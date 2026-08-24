@@ -55,10 +55,11 @@ extends the released v0.14 read-only image grounding (exact repository Compose
 image observation, accepted image-release evidence, and informational
 grounding/provenance) into a bounded operator-facing presentation surface.
 
-The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is the
-documentation-only scope-selection and boundary sign-off recorded in
-[CHANGELOG.md](CHANGELOG.md) and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md); P1 through P5 are
-not started.
+The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is this
+documentation-only, decision-complete architecture and boundary sign-off,
+recorded in [CHANGELOG.md](CHANGELOG.md) and
+[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md). P1 through P5 are
+implementation milestones and are not started.
 
 ### Scope
 
@@ -73,7 +74,7 @@ not started.
 ### Non-goals (binding for v0.15)
 
 - No generic image collectors and no collector activation.
-- No scheduled or startup collection of any kind.
+- No startup, scheduled, or request-time collection of any kind.
 - No update, pull, install, restart, deploy, rollback, approval, or execution
   authority of any kind.
 - No automatic remediation or automatic application.
@@ -83,6 +84,98 @@ not started.
 - Capability parity remains exactly
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`; LXC remains unsupported.
+
+### P1 — Binding-driven image-grounding read model
+
+Implement one deterministic, fail-closed, read-only composition path for each
+catalog item. It must consume the item's existing `DeploymentBinding`, the
+existing bounded repository Compose observation, the existing accepted image
+evidence, and the existing `ground_deployment_image` semantics. The result
+must preserve the observation and evidence provenance and every existing
+non-grounded/conflict status; it must not add fallback precedence or infer a
+positive result from missing, malformed, mutable, mismatched, untrusted, or
+conflicting input.
+
+P1 is composition only. Home Assistant `2026.8.3` remains the sole accepted
+registry-attested proof. P1 must add neither evidence rows nor
+`DeploymentBinding` entries, and must perform no network access, registry
+acquisition, Sigstore runtime verification, collector activation, persistence,
+clock-derived authority, mutation, or execution. Focused tests must prove
+determinism, provenance preservation, the complete fail-closed status mapping,
+and isolation from collectors and authority modules.
+
+### P2 — GET-only Core grounding/provenance projection
+
+Expose the P1 result through an additive, bounded Core GET-only projection.
+Exact endpoint and route placement must be selected during repository-grounded
+P2 implementation review, not preselected by this plan. The projection must be
+redacted and retain the exact fail-closed status and provenance distinctions;
+unavailable data is represented explicitly rather than omitted in a way that
+implies success. It has no mutation sibling.
+
+The request path must not persist state, depend on Atlas Agent, mutate a
+provider, or create a proposal, candidate, intent, workflow, approval, action
+request, or dispatch. Contract, OpenAPI, method-rejection, route-isolation,
+redaction, and authority-import tests are required. In particular, no route or
+schema addition may make collector, provider, operational, repository, Agent,
+or execution modules reachable from the projection.
+
+### P3 — Mission Control advisory image-evidence surface
+
+Add an explicitly **informational/advisory** presentation on the existing
+Discovery item experience. It displays grounding status and sanitized evidence
+provenance, visibly preserves `REGISTRY_ATTESTED` versus `CURATED`, and renders
+grounded, conflict, missing, unknown, and other fail-closed states without
+turning absence into a positive claim.
+
+The surface has no Apply, Execute, Update, Pull, Restart, Remediate, approval,
+or workflow-conversion control. It cannot create or navigate through a
+proposal/candidate/workflow as a substitute for such a control. Tests must
+cover status/provenance rendering, source-class distinction, missing and error
+responses, accessibility, and the absence of mutation controls and requests.
+
+### P4 — Security, isolation, and authority gates
+
+Add structural and behavioral tests proving all of the following together:
+
+- production image-collector descriptor and adapter registries remain empty,
+  with no startup, scheduled, or request-time acquisition wiring;
+- a grounding/provenance GET consumes only already-accepted local evidence and
+  reviewed local readers and cannot trigger GHCR access, registry acquisition,
+  Sigstore verification, collector execution, or evidence refresh;
+- grounding/provenance imports and request paths cannot reach mutation or
+  execution modules, and projected data excludes secrets, credentials, raw
+  provider payloads, and commands;
+- curated catalog authority is not silently displaced: `REGISTRY_ATTESTED`
+  remains distinct from `CURATED`, conflicts fail closed, and no silent source
+  precedence is introduced;
+- Provider Intent remains identity-bound Proxmox QEMU `monitoring-policy`
+  only; operational capability remains `restart-service/proxmox/qemu`,
+  repository execution remains `update-compose-stack`, and LXC remains
+  unsupported;
+- independent, stage-specific approvals and interrupted-side-effect no-replay
+  behavior remain unchanged;
+- the execution-worker backend remains optional and default-disabled; and
+- backup/restore remains explicit operator maintenance, outside Agent and
+  Discovery authority.
+
+### P5 — Release validation and closure
+
+Run and record focused Core grounding/API/isolation tests, the full Core suite,
+Agent regression tests, and Mission Control tests, lint, and production build.
+Prove capability parity and run CI and container release gates against the
+same recorded exact candidate SHA. Production acceptance is read-only: verify
+the projected Home Assistant proof and fail-closed states, verify collector
+registries remain empty and acquisition remains inactive, and verify no
+mutation/execution request occurs.
+
+Reconcile the roadmap, current context, README, changelog, Discovery docs, and
+release checklist to the observed result. Record commands, outcomes, exact
+SHA, image identities/digests, capability evidence, production read-only
+acceptance, collector-inactivity evidence, and rollback guidance. Rollback is
+the normal image/configuration rollback to the previously accepted release;
+there is no data migration, evidence rollback, replay, or automated remediation
+to perform because v0.15 adds no durable state or execution authority.
 
 ## 5. Uncommitted future directions
 
