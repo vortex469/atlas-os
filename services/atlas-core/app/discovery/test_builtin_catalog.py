@@ -84,10 +84,14 @@ def test_builtin_catalog_has_only_public_safe_metadata() -> None:
     ):
         text = path.read_text(encoding="utf-8").lower()
         for fragment in FORBIDDEN_PUBLIC_FRAGMENTS:
-            assert fragment not in text, f"{path} contains forbidden fragment {fragment!r}"
+            assert fragment not in text, (
+                f"{path} contains forbidden fragment {fragment!r}"
+            )
 
 
-def test_builtin_catalog_repository_build_validates_required_relationships(repository) -> None:
+def test_builtin_catalog_repository_build_validates_required_relationships(
+    repository,
+) -> None:
     for item_id in EXPECTED_BUILTIN_IDS:
         assert repository.get_item(item_id) is not None
 
@@ -108,7 +112,9 @@ def test_builtin_catalog_relationship_graph_is_conservative(repository) -> None:
         "mission-control",
     }
 
-    frigate_targets = {reference.target for reference in repository.outgoing_relationships("frigate")}
+    frigate_targets = {
+        reference.target for reference in repository.outgoing_relationships("frigate")
+    }
     assert {"mqtt", "coral-usb"}.issubset(frigate_targets)
 
     deployed_by_relationships = [
@@ -121,7 +127,9 @@ def test_builtin_catalog_relationship_graph_is_conservative(repository) -> None:
 
 
 def test_builtin_catalog_search_finds_expected_items(repository) -> None:
-    home_results = search_repository(repository, DiscoverySearchQuery(text="home assistant"))
+    home_results = search_repository(
+        repository, DiscoverySearchQuery(text="home assistant")
+    )
     assert [result.item.id for result in home_results][:1] == ["home-assistant"]
 
     ollama_results = search_repository(repository, DiscoverySearchQuery(text="ollama"))
@@ -143,7 +151,9 @@ def test_builtin_catalog_filters_by_capability_and_relationship(repository) -> N
     ]
 
 
-def test_builtin_catalog_api_returns_populated_results(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_builtin_catalog_api_returns_populated_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     service = DiscoveryCatalogService(YamlCatalogLoader(DEFAULT_DISCOVERY_CATALOG_DIR))
     monkeypatch.setattr(route_module, "get_discovery_service", lambda: service)
 
@@ -169,16 +179,18 @@ def test_builtin_catalog_api_returns_populated_results(monkeypatch: pytest.Monke
     }
 
 
-def test_all_builtin_entries_have_no_deployment_binding(loaded_catalog) -> None:
-    """P0 ships no real deployment binding.
-
-    Every current builtin catalog entry must load with
-    ``deployment_binding is None``. The first real binding is deferred
-    to a separately reviewed catalog-curation change.
-    """
+def test_only_home_assistant_has_reviewed_grounding_metadata(loaded_catalog) -> None:
+    """The sole shipped binding is Home Assistant observational metadata."""
     assert len(loaded_catalog.entries) == len(EXPECTED_BUILTIN_IDS)
     for entry in loaded_catalog.entries:
-        assert entry.deployment_binding is None, entry.item.id
+        if entry.item.id != "home-assistant":
+            assert entry.deployment_binding is None, entry.item.id
+            continue
+        assert entry.deployment_binding is not None
+        assert entry.deployment_binding.compose_file == "compose/home-assistant.yaml"
+        assert entry.deployment_binding.compose_service == "home-assistant"
+        assert entry.release_claim is not None
+        assert entry.release_claim.version == "2026.8.3"
 
 
 def test_deployment_binding_schema_is_validated_independently_of_catalog() -> None:

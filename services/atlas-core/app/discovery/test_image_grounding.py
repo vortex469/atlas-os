@@ -122,7 +122,8 @@ def ground(
         ),  # type: ignore[arg-type]
         release_version=release_version,
         repository_observation=(
-            observation() if repository_observation is _UNSET
+            observation()
+            if repository_observation is _UNSET
             else repository_observation
         ),  # type: ignore[arg-type]
         image_release_evidence=image_release_evidence,
@@ -337,9 +338,7 @@ def test_evidence_image_reference_rejects_noncanonical_forms(
 
 
 def test_evidence_attested_at_is_normalized_to_utc() -> None:
-    aware = datetime(
-        2026, 1, 15, 5, 30, tzinfo=timezone(timedelta(hours=5))
-    )
+    aware = datetime(2026, 1, 15, 5, 30, tzinfo=timezone(timedelta(hours=5)))
 
     row = ImageReleaseEvidence(
         catalog_item_id=ITEM_ID,
@@ -621,9 +620,7 @@ def test_registry_attested_row_is_trusted() -> None:
 
 
 def test_repository_identity_mismatch_status() -> None:
-    result = ground(
-        image_release_evidence=(evidence(image_reference=OTHER_REFERENCE),)
-    )
+    result = ground(image_release_evidence=(evidence(image_reference=OTHER_REFERENCE),))
 
     assert result.status is ImageGroundingStatus.REPOSITORY_IDENTITY_MISMATCH
     assert result.release_version == VERSION
@@ -632,9 +629,7 @@ def test_repository_identity_mismatch_status() -> None:
 
 
 def test_digest_mismatch_status() -> None:
-    result = ground(
-        image_release_evidence=(evidence(image_digest=OTHER_DIGEST),)
-    )
+    result = ground(image_release_evidence=(evidence(image_digest=OTHER_DIGEST),))
 
     assert result.status is ImageGroundingStatus.DIGEST_MISMATCH
     assert result.release_version == VERSION
@@ -794,9 +789,7 @@ def test_empty_catalog_item_id() -> None:
 def test_observation_identity_starting_with_sha256_rejected() -> None:
     # An observed image whose identity portion starts with ``sha256:`` is
     # unparseable, so it can never ground.
-    result = ground(
-        repository_observation=observation(image="sha256:" + "a" * 64)
-    )
+    result = ground(repository_observation=observation(image="sha256:" + "a" * 64))
 
     assert result.status is ImageGroundingStatus.MUTABLE_OBSERVATION
 
@@ -878,8 +871,7 @@ def test_grounding_module_ast_is_pure_and_side_effect_free() -> None:
         "recovery",
     }
     assert not any(
-        any(part in name.lower() for part in forbidden_imports)
-        for name in imports
+        any(part in name.lower() for part in forbidden_imports) for name in imports
     )
     forbidden_calls = {
         "open",
@@ -902,7 +894,7 @@ def test_grounding_module_ast_is_pure_and_side_effect_free() -> None:
     assert "time.time" not in source
 
 
-def test_grounding_module_has_no_production_consumer() -> None:
+def test_grounding_module_has_only_reviewed_home_assistant_consumer() -> None:
     app_dir = Path(grounding_module.__file__).parents[1]
     module_name = _grounding_module_name()
     references = [
@@ -913,7 +905,7 @@ def test_grounding_module_has_no_production_consumer() -> None:
         and module_name in path.read_text(encoding="utf-8")
     ]
 
-    assert references == []
+    assert references == ["services/home_assistant_image_grounding.py"]
 
 
 def test_grounding_module_public_surface() -> None:
@@ -946,9 +938,12 @@ def test_dynamic_release_fact_has_no_image_or_digest_fields() -> None:
     assert "image_digest" not in dynamic_fact.model_fields
 
 
-def test_shipped_catalog_still_has_zero_deployment_bindings() -> None:
+def test_shipped_catalog_has_only_reviewed_home_assistant_binding() -> None:
     catalog = YamlCatalogLoader().load()
 
     assert len(catalog.entries) > 0
     for entry in catalog.entries:
-        assert entry.deployment_binding is None, entry.item.id
+        if entry.item.id == "home-assistant":
+            assert entry.deployment_binding is not None
+        else:
+            assert entry.deployment_binding is None, entry.item.id

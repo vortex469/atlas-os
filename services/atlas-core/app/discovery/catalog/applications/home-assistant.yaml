@@ -37,6 +37,12 @@ provenance:
   source: atlas-curated-discovery-catalog
   entry_id: d5-home-assistant
   trust_level: curated
+deployment_binding:
+  compose_file: compose/home-assistant.yaml
+  compose_service: home-assistant
+release_claim:
+  version: "2026.8.3"
+  published_at: "2026-08-21T20:54:36Z"
 metadata:
   reviewed_for_d5: true
   catalog_notes:

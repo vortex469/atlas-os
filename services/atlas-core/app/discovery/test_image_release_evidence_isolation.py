@@ -12,6 +12,9 @@ from app.discovery.loader import YamlCatalogLoader
 
 _LOADER_NAME = "image_release_evidence_loader"
 _LOADER_TEST_NAMES = {
+    "home_assistant_image_grounding.py",
+    "test_home_assistant_image_grounding.py",
+    "test_home_assistant_image_grounding_isolation.py",
     "test_home_assistant_registry_attested_promotion.py",
     "test_image_release_evidence_loader.py",
     "test_image_release_evidence_isolation.py",
@@ -191,13 +194,16 @@ def test_ordinary_load_performs_no_filesystem_writes(monkeypatch) -> None:
     assert len(result.rows) == 1
 
 
-def test_shipped_catalog_still_has_zero_deployment_bindings() -> None:
-    """P1b does not add deployment bindings or any catalog data."""
+def test_evidence_loader_remains_independent_of_reviewed_binding() -> None:
+    """P1b remains unchanged by the sole reviewed composition binding."""
 
     catalog = YamlCatalogLoader().load()
     assert len(catalog.entries) > 0
     for entry in catalog.entries:
-        assert entry.deployment_binding is None, entry.item.id
+        if entry.item.id == "home-assistant":
+            assert entry.deployment_binding is not None
+        else:
+            assert entry.deployment_binding is None, entry.item.id
 
 
 def test_no_frigate_evidence_row_is_shipped() -> None:

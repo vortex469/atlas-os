@@ -241,12 +241,8 @@ def test_catalog_entry_deployment_binding_defaults_to_none() -> None:
 def test_catalog_entry_accepts_valid_deployment_binding() -> None:
     catalog_entry = entry(deployment_binding=binding())
 
-    assert (
-        catalog_entry.deployment_binding.compose_file == "compose.synthetic.yaml"
-    )
-    assert (
-        catalog_entry.deployment_binding.compose_service == "synthetic-service"
-    )
+    assert catalog_entry.deployment_binding.compose_file == "compose.synthetic.yaml"
+    assert catalog_entry.deployment_binding.compose_service == "synthetic-service"
 
 
 def test_deployment_binding_not_allowed_on_non_curated_source_type() -> None:
@@ -333,9 +329,12 @@ def test_loader_rejects_deployment_binding_extra_fields(tmp_path: Path) -> None:
 def test_loader_rejects_deployment_binding_on_non_curated_entry(tmp_path: Path) -> None:
     catalog_file = tmp_path / "postgres.yaml"
     text = (
-        catalog_entry_yaml("postgres", binding_yaml="deployment_binding:\n"
-        "  compose_file: compose.yaml\n"
-        "  compose_service: svc\n")
+        catalog_entry_yaml(
+            "postgres",
+            binding_yaml="deployment_binding:\n"
+            "  compose_file: compose.yaml\n"
+            "  compose_service: svc\n",
+        )
         .replace("  source_type: curated", "  source_type: community")
         .replace("  trust_level: curated", "  trust_level: community")
     )
@@ -345,7 +344,9 @@ def test_loader_rejects_deployment_binding_on_non_curated_entry(tmp_path: Path) 
         YamlCatalogLoader(tmp_path).load()
 
 
-def test_loader_rejects_duplicate_deployment_bindings_deterministically(tmp_path: Path) -> None:
+def test_loader_rejects_duplicate_deployment_bindings_deterministically(
+    tmp_path: Path,
+) -> None:
     binding_yaml = (
         "deployment_binding:\n"
         "  compose_file: compose.production.yaml\n"
@@ -483,18 +484,16 @@ def test_p0_deployment_binding_has_no_execution_agent_or_planning_coupling() -> 
     assert "deployment_binding" not in v1_source
 
 
-def test_shipped_builtin_catalog_has_no_deployment_binding() -> None:
-    """Regression guard: P0 ships no real curated deployment binding.
-
-    The first real binding is deferred to a separately reviewed
-    catalog-curation change. Every shipped builtin catalog entry must
-    therefore load with ``deployment_binding is None``.
-    """
+def test_shipped_builtin_catalog_has_only_reviewed_home_assistant_binding() -> None:
+    """Regression guard: all other catalog entries remain unbound."""
     catalog = YamlCatalogLoader().load()
 
     assert len(catalog.entries) > 0
     for entry in catalog.entries:
-        assert entry.deployment_binding is None, entry.item.id
+        if entry.item.id == "home-assistant":
+            assert entry.deployment_binding is not None
+        else:
+            assert entry.deployment_binding is None, entry.item.id
 
 
 def test_catalog_entry_release_baseline_stays_unchanged() -> None:

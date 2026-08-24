@@ -18,6 +18,9 @@ _MODULE_NAME = "repository_compose_observation"
 _MODULE_TEST_NAMES = {
     "test_repository_compose_observation.py",
     "test_repository_compose_observation_isolation.py",
+    "home_assistant_image_grounding.py",
+    "test_home_assistant_image_grounding.py",
+    "test_home_assistant_image_grounding_isolation.py",
 }
 
 
@@ -33,9 +36,7 @@ def _imported_names(tree: ast.Module) -> set[str]:
             names.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
             names.add(node.module or "")
-            names.update(
-                alias.name for alias in node.names if alias.name != "*"
-            )
+            names.update(alias.name for alias in node.names if alias.name != "*")
     return names
 
 
@@ -55,11 +56,13 @@ def test_module_imports_are_filesystem_and_contract_only() -> None:
                 }, f"unexpected acquirer import: {alias.name}"
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            assert (
-                module.startswith("app.discovery.")
-                or module
-                in {"yaml", "yaml.nodes", "__future__", "pathlib", "typing"}
-            ), f"unexpected acquirer import: {module}"
+            assert module.startswith("app.discovery.") or module in {
+                "yaml",
+                "yaml.nodes",
+                "__future__",
+                "pathlib",
+                "typing",
+            }, f"unexpected acquirer import: {module}"
 
 
 def test_module_has_no_forbidden_runtime_capabilities() -> None:
@@ -181,14 +184,16 @@ def test_module_is_not_exported_from_public_api() -> None:
             assert _MODULE_NAME not in path.read_text(encoding="utf-8")
 
 
-def test_no_deployment_bindings_are_shipped() -> None:
-    """P1c ships no deployment bindings or catalog data: every shipped
-    builtin catalog entry loads with ``deployment_binding is None``."""
+def test_only_reviewed_home_assistant_deployment_binding_is_shipped() -> None:
+    """P1c remains unchanged; composition adds one reviewed consumer."""
 
     catalog = YamlCatalogLoader().load()
     assert len(catalog.entries) > 0
     for entry in catalog.entries:
-        assert entry.deployment_binding is None, entry.item.id
+        if entry.item.id == "home-assistant":
+            assert entry.deployment_binding is not None
+        else:
+            assert entry.deployment_binding is None, entry.item.id
 
 
 def test_observable_contract_field_sets_remain_unchanged() -> None:
