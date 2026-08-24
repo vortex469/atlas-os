@@ -171,15 +171,48 @@ must execute against the v0.15 candidate source tree at
 `/opt/atlas/.venv`. Results obtained by validating `/opt/atlas` main do not
 validate this candidate.
 
-- [ ] Core focused authority/isolation suite.
-- [ ] Core full suite.
-- [ ] Agent Ruff and full suite.
-- [ ] Execution Worker full suite.
-- [ ] Backup/restore focused suite.
-- [ ] `scripts/operational-capability-parity`.
-- [ ] Mission Control full tests, lint, and build.
-- [ ] `git diff --check`.
-- [ ] `container-release-gate`.
+- [x] Core focused authority/isolation suite.
+- [x] Core full suite.
+- [x] Agent Ruff and full suite.
+- [x] Execution Worker full suite.
+- [x] Backup/restore focused suite.
+- [x] `scripts/operational-capability-parity`.
+- [x] Mission Control full tests, lint, and build.
+- [x] `git diff --check`.
+- [x] `container-release-gate`.
+
+P4 validation completed against candidate
+`2032d4ebc8631848a10d594ececd76faaccd2503` with these results:
+
+- Core focused authority/isolation suite: `336 passed`.
+- Core full suite: `2286 passed`, `41 warnings`. It executed hermetically
+  with `PYTHON_DOTENV_DISABLED=1` and candidate-source `PYTHONPATH` because
+  `/opt/atlas/.env` otherwise contaminates candidate tests.
+- Agent Ruff: passed. Agent full suite: `911 passed`, `1 warning`.
+- Execution Worker full suite: `51 passed`, `1 warning`.
+- Backup/restore focused suite: `231 passed`.
+- Operational capability parity: passed, with exact operational capability
+  `restart-service/proxmox/qemu` and exact repository execution
+  `update-compose-stack`.
+- Mission Control: `427 passed`; lint passed with zero errors and one
+  pre-existing warning; production build passed with the existing large-chunk
+  advisory.
+- `git diff --check`: passed.
+- `container-release-gate`: passed with exit code `0`.
+
+The mandatory container gate initially exposed a pre-existing linked-worktree
+compatibility defect in the release gate. Commit
+`2032d4e fix(release): support linked worktree candidates` stages an
+independent, self-contained Git checkout at the exact candidate HEAD,
+preserves the worker's Git-worktree security requirement, and allows linked
+candidate worktrees to be validated without exposing shared `/opt/atlas/.git`
+metadata. The real gate passed after the fix on a clean committed candidate.
+
+P4 is complete. The authoritative validation matrix found no widening of
+collector authority, grounding/provenance authority, Provider Intent
+authority, operational capability, repository execution, approval authority,
+no-replay behavior, worker activation, backup/restore authority, or Mission
+Control execution authority. P5 remains next.
 
 #### P5 — release validation and closure
 
