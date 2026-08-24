@@ -3,7 +3,6 @@ from collections.abc import Callable
 from app.config.policies import get_expected_container_states
 from app.intelligence.findings import Finding, Severity
 
-
 ExpectedStatesGetter = Callable[[], dict[str, str]]
 
 
@@ -38,17 +37,12 @@ def normalize_container_state(state: str | None) -> str:
 
 def evaluate_docker(
     status: dict,
-    expected_states_getter: ExpectedStatesGetter = (
-        get_expected_container_states
-    ),
+    expected_states_getter: ExpectedStatesGetter = (get_expected_container_states),
 ) -> list[Finding]:
     if status.get("status") == "offline":
         return [
             docker_failure_finding(
-                str(
-                    status.get("error")
-                    or "Docker daemon is offline."
-                ),
+                str(status.get("error") or "Docker daemon is offline."),
             ),
         ]
 
@@ -72,7 +66,10 @@ def evaluate_docker(
             "image": container.get("image"),
         }
         for container in containers
-        if container.get("health") == "unhealthy"
+        if (
+            container.get("status") == "running"
+            and container.get("health") == "unhealthy"
+        )
     ]
 
     if unhealthy_containers:
@@ -85,8 +82,7 @@ def evaluate_docker(
                 component="Docker",
                 title="Docker containers unhealthy",
                 message=(
-                    f"{len(unhealthy_containers)} Docker container(s) "
-                    "are unhealthy."
+                    f"{len(unhealthy_containers)} Docker container(s) are unhealthy."
                 ),
                 recommendation=(
                     "Inspect unhealthy containers and review their logs "
@@ -110,9 +106,7 @@ def evaluate_docker(
         if container is None:
             actual_state = "missing"
         else:
-            actual_state = normalize_container_state(
-                container.get("status")
-            )
+            actual_state = normalize_container_state(container.get("status"))
 
         if actual_state == expected_state:
             continue
@@ -122,16 +116,8 @@ def evaluate_docker(
                 "name": name,
                 "expected": expected_state,
                 "actual": actual_state,
-                "status": (
-                    container.get("status")
-                    if container is not None
-                    else None
-                ),
-                "health": (
-                    container.get("health")
-                    if container is not None
-                    else None
-                ),
+                "status": (container.get("status") if container is not None else None),
+                "health": (container.get("health") if container is not None else None),
             }
         )
 
