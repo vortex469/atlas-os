@@ -905,7 +905,10 @@ def test_grounding_module_has_only_reviewed_home_assistant_consumer() -> None:
         and module_name in path.read_text(encoding="utf-8")
     ]
 
-    assert references == ["services/home_assistant_image_grounding.py"]
+    assert references == [
+        "services/image_grounding_read_model.py",
+        "services/home_assistant_image_grounding.py",
+    ]
 
 
 def test_grounding_module_public_surface() -> None:

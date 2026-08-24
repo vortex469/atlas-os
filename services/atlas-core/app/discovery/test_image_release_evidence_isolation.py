@@ -21,6 +21,9 @@ _LOADER_TEST_NAMES = {
     "test_home_assistant_registry_attested_promotion.py",
     "test_image_release_evidence_loader.py",
     "test_image_release_evidence_isolation.py",
+    "image_grounding_read_model.py",
+    "test_image_grounding_read_model.py",
+    "test_image_grounding_read_model_isolation.py",
 }
 
 

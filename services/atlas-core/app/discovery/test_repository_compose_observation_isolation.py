@@ -21,6 +21,9 @@ _MODULE_TEST_NAMES = {
     "home_assistant_image_grounding.py",
     "test_home_assistant_image_grounding.py",
     "test_home_assistant_image_grounding_isolation.py",
+    "image_grounding_read_model.py",
+    "test_image_grounding_read_model.py",
+    "test_image_grounding_read_model_isolation.py",
 }
 
 
