@@ -34,13 +34,17 @@ from app.discovery.models import (
 _COLLECTOR_MODULE = "image_release_collector"
 _TRANSPORT_MODULE = "image_release_collector_transport"
 
-# Every file this first slice owns, plus this test module. Nothing outside this
-# set may reference the collector.
+# Every file this first slice owns, plus the reviewed inactive attested
+# integration allowed to reuse its result contracts. Nothing else may refer to
+# the collector.
 _OWNED_FILE_NAMES = {
     f"{_COLLECTOR_MODULE}.py",
     f"{_TRANSPORT_MODULE}.py",
     "test_image_release_collector.py",
     "test_image_release_collector_isolation.py",
+    "home_assistant_registry_attested.py",
+    "test_home_assistant_registry_attested.py",
+    "test_home_assistant_registry_attested_isolation.py",
 }
 
 

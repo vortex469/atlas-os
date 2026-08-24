@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,7 @@ _TRUSTED_ROOT_SIZE = 6787
 _TRUSTED_ROOT_SHA256 = (
     "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66"
 )
+_MAX_INTEGRATED_TIME = 253402300799  # 9999-12-31T23:59:59Z
 
 
 class HomeAssistantSigstoreVerificationError(ValueError):
@@ -70,6 +72,7 @@ class _VerifiedHomeAssistantAttestation:
     authenticated_repository: str
     authenticated_workflow_identity: str
     authenticated_workflow_name: str
+    integrated_at: datetime
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -126,6 +129,28 @@ def _validate_statement(payload: bytes) -> None:
         raise HomeAssistantSigstoreVerificationError("subject digest does not match")
 
 
+def _authenticated_integrated_at(tlog_entries: Any) -> datetime:
+    if not isinstance(tlog_entries, (list, tuple)) or len(tlog_entries) != 1:
+        raise HomeAssistantSigstoreVerificationError(
+            "bundle must contain exactly one verified transparency-log entry"
+        )
+    integrated_time = getattr(tlog_entries[0], "integrated_time", None)
+    if (
+        isinstance(integrated_time, bool)
+        or not isinstance(integrated_time, int)
+        or not 0 <= integrated_time <= _MAX_INTEGRATED_TIME
+    ):
+        raise HomeAssistantSigstoreVerificationError(
+            "verified transparency-log time is invalid"
+        )
+    try:
+        return datetime.fromtimestamp(integrated_time, tz=UTC)
+    except (OSError, OverflowError, TypeError, ValueError):
+        raise HomeAssistantSigstoreVerificationError(
+            "verified transparency-log time is invalid"
+        ) from None
+
+
 def verify_home_assistant_2026_8_3_bundle(
     *, bundle_bytes: bytes
 ) -> _VerifiedHomeAssistantAttestation:
@@ -172,6 +197,9 @@ def verify_home_assistant_2026_8_3_bundle(
     if payload_type != _DSSE_PAYLOAD_TYPE:
         raise HomeAssistantSigstoreVerificationError("unexpected DSSE payload type")
     _validate_statement(payload)
+    integrated_at = _authenticated_integrated_at(
+        bundle._inner.verification_material.tlog_entries
+    )
     return _VerifiedHomeAssistantAttestation(
         release_version=_RELEASE,
         image_digest=_IMAGE_DIGEST,
@@ -180,4 +208,5 @@ def verify_home_assistant_2026_8_3_bundle(
         authenticated_repository=_REPOSITORY,
         authenticated_workflow_identity=_IDENTITY,
         authenticated_workflow_name=_WORKFLOW_NAME,
+        integrated_at=integrated_at,
     )

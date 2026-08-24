@@ -4,7 +4,9 @@ import base64
 import hashlib
 import json
 from dataclasses import FrozenInstanceError, asdict
+from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sigstore.models import TrustedRoot
@@ -72,9 +74,77 @@ def test_exact_fixture_verifies() -> None:
         "authenticated_repository": "home-assistant/core",
         "authenticated_workflow_identity": "https://github.com/home-assistant/core/.github/workflows/builder.yml@refs/tags/2026.8.3",
         "authenticated_workflow_name": "Build images",
+        "integrated_at": datetime(2026, 8, 21, 20, 54, 36, tzinfo=UTC),
     }
     with pytest.raises(FrozenInstanceError):
         result.release_version = "other"
+
+
+def _verify_with_authenticated_times(monkeypatch, times, *, raw_entries=False):
+    document = json.loads(_FIXTURE.read_bytes())
+    payload = base64.b64decode(document["dsseEnvelope"]["payload"])
+    entries = (
+        times
+        if raw_entries
+        else [SimpleNamespace(integrated_time=value) for value in times]
+    )
+    bundle = SimpleNamespace(
+        _inner=SimpleNamespace(
+            media_type=verifier_module._BUNDLE_MEDIA_TYPE,
+            verification_material=SimpleNamespace(tlog_entries=entries),
+        )
+    )
+
+    class FakeBundle:
+        @staticmethod
+        def from_json(_bundle_bytes):
+            return bundle
+
+    class FakeVerifier:
+        def __init__(self, *, trusted_root):
+            assert trusted_root is not None
+
+        def verify_dsse(self, *, bundle, policy):
+            assert bundle is not None
+            assert policy is not None
+            return verifier_module._DSSE_PAYLOAD_TYPE, payload
+
+    monkeypatch.setattr("sigstore.models.Bundle", FakeBundle)
+    monkeypatch.setattr("sigstore.verify.Verifier", FakeVerifier)
+    monkeypatch.setattr(verifier_module, "_load_trusted_root", object)
+    return _verify(b"controlled bundle bytes")
+
+
+def _verify_with_missing_authenticated_time(monkeypatch):
+    return _verify_with_authenticated_times(
+        monkeypatch, [SimpleNamespace()], raw_entries=True
+    )
+
+
+def test_exactly_one_authenticated_tlog_entry_returns_utc_time(monkeypatch) -> None:
+    result = _verify_with_authenticated_times(monkeypatch, [1787345676])
+    assert result.integrated_at == datetime(2026, 8, 21, 20, 54, 36, tzinfo=UTC)
+    assert result.integrated_at.tzinfo is UTC
+
+
+@pytest.mark.parametrize("times", [[], [1787345676, 1787345676]])
+def test_tlog_entry_count_must_be_exactly_one(monkeypatch, times) -> None:
+    with pytest.raises(HomeAssistantSigstoreVerificationError, match="exactly one"):
+        _verify_with_authenticated_times(monkeypatch, times)
+
+
+def test_missing_integrated_time_fails(monkeypatch) -> None:
+    with pytest.raises(HomeAssistantSigstoreVerificationError, match="time is invalid"):
+        _verify_with_missing_authenticated_time(monkeypatch)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [None, "1787345676", 1787345676.0, True, -1, 253402300800],
+)
+def test_integrated_time_must_be_bounded_integer(monkeypatch, value) -> None:
+    with pytest.raises(HomeAssistantSigstoreVerificationError, match="time is invalid"):
+        _verify_with_authenticated_times(monkeypatch, [value])
 
 
 def test_one_byte_trust_root_mutation_fails_before_sigstore_verification(
@@ -126,6 +196,7 @@ def test_result_constructor_is_not_treated_as_provenance() -> None:
         authenticated_repository="unverified",
         authenticated_workflow_identity="unverified",
         authenticated_workflow_name="unverified",
+        integrated_at=datetime(2000, 1, 1, tzinfo=UTC),
     )
     assert constructed.release_version == "unverified"
 

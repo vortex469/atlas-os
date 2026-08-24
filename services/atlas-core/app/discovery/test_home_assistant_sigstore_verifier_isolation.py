@@ -19,6 +19,9 @@ _OWNED = {
     f"{_MODULE_NAME}.py",
     f"test_{_MODULE_NAME}.py",
     f"test_{_MODULE_NAME}_isolation.py",
+    "home_assistant_registry_attested.py",
+    "test_home_assistant_registry_attested.py",
+    "test_home_assistant_registry_attested_isolation.py",
 }
 _FIXTURE = (
     Path(__file__).parent / "testdata/home_assistant_sigstore/ha-2026.8.3-bundle.json"
@@ -50,6 +53,7 @@ def test_module_imports_only_contract_and_lazy_sigstore_apis() -> None:
     assert origins == {
         "__future__",
         "dataclasses",
+        "datetime",
         "hashlib",
         "json",
         "pathlib",
