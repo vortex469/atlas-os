@@ -73,42 +73,135 @@ Unchecked items below are required future evidence, not claims of completion.
 
 #### P4 — security, isolation, and authority gates
 
-- [ ] Prove production collector descriptor and adapter registries remain
-  empty and no startup, scheduled, or request-time acquisition exists.
-- [ ] Prove a grounding/provenance GET consumes only already-accepted local
-  evidence and reviewed local readers and cannot trigger GHCR access, registry
-  acquisition, Sigstore verification, collector execution, or evidence
-  refresh.
-- [ ] Prove grounding/provenance cannot reach mutation or execution modules;
-  secrets, credentials, raw provider payloads, and commands are absent from
-  the projection.
-- [ ] Prove curated authority remains authoritative,
-  `REGISTRY_ATTESTED != CURATED`, conflicts fail closed, and no silent source
-  precedence exists.
-- [ ] Prove Provider Intent remains identity-bound Proxmox QEMU
-  `monitoring-policy` only; operational capability remains
-  `restart-service/proxmox/qemu`; repository execution remains
-  `update-compose-stack`; and LXC remains unsupported.
-- [ ] Prove stage-specific approvals remain independent, interrupted side
-  effects remain non-replayable, the worker backend remains optional and
-  default-disabled, and backup/restore remains operator maintenance.
+P4 acceptance is the union of the existing authoritative behavioral,
+structural/isolation, capability-parity, and Mission Control
+security/rendering suites. No single monolithic P4 test proves the entire
+authority model.
+
+##### V0.15 P4 validation matrix
+
+1. **Collector inactivity** — Authoritative coverage:
+   `services/atlas-core/app/discovery/test_image_release_collector_isolation.py`,
+   `services/atlas-core/app/discovery/test_home_assistant_ghcr_acquisition_isolation.py`,
+   `services/atlas-core/app/discovery/test_home_assistant_sigstore_verifier_isolation.py`,
+   `services/atlas-core/app/discovery/test_dynamic_refresh_isolation.py`, and
+   `services/atlas-core/app/routes/test_discovery_image_grounding_isolation.py`.
+   Contract: empty production registries and no startup, scheduled/background,
+   or request-time acquisition, verification, or refresh.
+2. **P1/P2 isolation** — Authoritative coverage:
+   `services/atlas-core/app/services/test_image_grounding_read_model_isolation.py`,
+   `services/atlas-core/app/services/test_home_assistant_image_grounding_isolation.py`,
+   `services/atlas-core/app/services/test_home_assistant_image_evidence_provenance_isolation.py`,
+   `services/atlas-core/app/routes/test_discovery_image_grounding_isolation.py`,
+   `services/atlas-core/app/discovery/test_image_release_evidence_isolation.py`,
+   and
+   `services/atlas-core/app/discovery/test_repository_compose_observation_isolation.py`.
+   Contract: reviewed local, read-only grounding and provenance reads only; no
+   acquisition or verification and no mutation, Agent, provider, execution,
+   operational, startup, scheduler, route, worker, or maintenance authority.
+3. **Redaction** — Authoritative coverage:
+   `services/atlas-core/app/routes/test_discovery_image_grounding.py`,
+   `services/atlas-core/app/discovery/test_image_grounding.py`, and
+   `services/mission-control/src/features/discovery/DiscoveryImageGroundingPanel.test.tsx`.
+   Contract: closed bounded public projection and bounded UI errors; no
+   sensitive or internal material.
+4. **Trust/conflict** — Authoritative coverage:
+   `services/atlas-core/app/discovery/test_image_grounding.py`,
+   `services/atlas-core/app/services/test_image_grounding_read_model.py`,
+   `services/atlas-core/app/routes/test_discovery_image_grounding.py`, and
+   `services/mission-control/src/features/discovery/DiscoveryImageGroundingPanel.test.tsx`.
+   Contract: `CURATED`, `REGISTRY_ATTESTED`, and `UPSTREAM_SIGNED` remain
+   distinct; conflicts fail closed; no precedence, newest-wins, voting,
+   fallback, or trust promotion.
+5. **Provider Intent** — Authoritative coverage:
+   `services/atlas-core/app/provider_intents/test_models.py`,
+   `services/atlas-core/app/provider_intents/test_target_resolver.py`,
+   `services/atlas-core/app/provider_intents/test_resolver.py`, and
+   `services/atlas-core/app/execution_candidates/test_operator_intents.py`.
+   Contract: identity-bound Proxmox QEMU `monitoring-policy` only; LXC and
+   mismatches fail closed.
+6. **Operational parity** — Authoritative coverage:
+   `services/atlas-core/app/test_operational_capability_parity.py`,
+   `services/atlas-core/app/execution_candidates/test_operational_capabilities.py`,
+   and `scripts/operational-capability-parity`. Contract: exactly
+   `restart-service/proxmox/qemu`.
+7. **Repository execution parity** — Authoritative coverage:
+   `services/atlas-agent/tests/candidate_planning/test_models.py`,
+   `services/atlas-agent/tests/test_worker_contracts.py`,
+   `services/atlas-agent/tests/candidate_planning/test_execution.py`, and
+   `scripts/operational-capability-parity`. Contract: exactly
+   `update-compose-stack`.
+8. **Approval authority** — Authoritative coverage:
+   `services/atlas-agent/tests/test_approval_engine.py`,
+   `services/atlas-agent/tests/candidate_planning/test_execution.py`,
+   `services/atlas-agent/tests/candidate_planning/test_commit.py`, and the
+   P1/P2 isolation suites. Contract: stage-specific approvals remain
+   independent; grounding grants no approval authority.
+9. **No-replay** — Authoritative coverage:
+   `services/atlas-core/app/operational_dispatch/test_service.py`,
+   `services/atlas-core/app/operational_dispatch/test_lifecycle.py`, and
+   `services/atlas-agent/tests/test_operational_execution.py`. Contract:
+   uncertain effects are not replayed or redispatched.
+10. **Worker** — Authoritative coverage:
+    `services/atlas-execution-worker/tests/test_config.py`,
+    `services/atlas-execution-worker/tests/test_worker.py`,
+    `services/atlas-agent/tests/test_auth_stager.py`, and the P1/P2 isolation
+    suites. Contract: the worker remains optional, separately activated,
+    default-disabled, and unrelated to grounding.
+11. **Backup/restore** — Authoritative coverage:
+    `scripts/test_atlas_data_tool.py`,
+    `services/atlas-core/app/core/test_restore_interlock.py`, the operational
+    and repository parity gates, and the P1/P2 isolation suites. Contract:
+    operator-maintenance tooling only; not Discovery, Agent, repository, or
+    operational execution authority.
+12. **Mission Control** — Authoritative coverage:
+    `services/mission-control/src/api/discoveryImageGrounding.test.ts`,
+    `services/mission-control/src/features/discovery/DiscoveryImageGroundingBoundary.test.ts`,
+    `services/mission-control/src/features/discovery/DiscoveryImageGroundingPanel.test.tsx`,
+    and
+    `services/mission-control/src/pages/DiscoveryItemPage.test.tsx`. Contract:
+    GET-only advisory rendering, bounded errors, and no
+    mutation/action/workflow authority.
+
+##### P4 validation commands
+
+All entries remain unchecked until their commands actually pass. Validation
+must execute against the v0.15 candidate source tree at
+`/opt/atlas-worktrees/v015-planning`; commands may use the tool environment at
+`/opt/atlas/.venv`. Results obtained by validating `/opt/atlas` main do not
+validate this candidate.
+
+- [ ] Core focused authority/isolation suite.
+- [ ] Core full suite.
+- [ ] Agent Ruff and full suite.
+- [ ] Execution Worker full suite.
+- [ ] Backup/restore focused suite.
+- [ ] `scripts/operational-capability-parity`.
+- [ ] Mission Control full tests, lint, and build.
+- [ ] `git diff --check`.
+- [ ] `container-release-gate`.
 
 #### P5 — release validation and closure
 
-- [ ] Record focused Core grounding/API/isolation test results and the full
-  Core test result.
-- [ ] Record Agent regression results and Mission Control test, lint, and
-  production-build results.
-- [ ] Record capability parity and successful CI plus container release gates
-  against one exact candidate SHA, including image identities/digests.
-- [ ] Record read-only production acceptance for the Home Assistant proof and
-  fail-closed states; confirm no mutation/execution request occurred.
-- [ ] Record empty collector registries and absence of startup/scheduled or
-  request-time acquisition in production.
-- [ ] Reconcile all v0.15 documentation and record rollback guidance, release
-  evidence, and final checklist sign-off. Rollback uses the prior accepted
-  image/configuration and requires no data migration, evidence rollback,
-  side-effect replay, or automated remediation.
+P5 remains separate from the P4 validation matrix and records release closure:
+
+- [ ] Record the exact closure SHA.
+- [ ] Record CI and container gates against that exact SHA.
+- [ ] Record production image identity and digest.
+- [ ] Record production read-only acceptance for the Home Assistant grounding
+  proof and representative fail-closed states.
+- [ ] Explicitly confirm during production acceptance that no mutation or
+  execution request occurred.
+- [ ] Record production collector-inactivity evidence: empty production
+  collector registries, no startup acquisition, no scheduled/background
+  acquisition, and no request-time acquisition.
+- [ ] Reconcile all v0.15 documentation.
+- [ ] Record explicit rollback evidence confirming rollback uses the prior
+  accepted image/configuration, requires no data migration or evidence
+  rollback, performs no side-effect replay, and performs no automated
+  remediation.
+- [ ] Record release evidence.
+- [ ] Complete final tagging.
 
 ## Atlas v0.14 final release — 2026-08-24
 
