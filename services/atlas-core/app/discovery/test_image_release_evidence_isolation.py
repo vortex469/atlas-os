@@ -13,6 +13,9 @@ from app.discovery.loader import YamlCatalogLoader
 _LOADER_NAME = "image_release_evidence_loader"
 _LOADER_TEST_NAMES = {
     "home_assistant_image_grounding.py",
+    "home_assistant_image_evidence_provenance.py",
+    "test_home_assistant_image_evidence_provenance.py",
+    "test_home_assistant_image_evidence_provenance_isolation.py",
     "test_home_assistant_image_grounding.py",
     "test_home_assistant_image_grounding_isolation.py",
     "test_home_assistant_registry_attested_promotion.py",
@@ -134,9 +137,8 @@ def test_loader_has_no_forbidden_runtime_capabilities() -> None:
             raise AssertionError(f"loader references forbidden attribute {node.attr!r}")
 
 
-def test_loader_is_not_wired_into_any_application_module() -> None:
-    """No production module outside the P1b loader and its tests
-    references the loader: P1b has no production consumer."""
+def test_loader_has_only_reviewed_read_only_composition_consumers() -> None:
+    """Only separately reviewed local read-only compositions consume it."""
 
     app_dir = Path(__file__).parents[1]
     references = []
