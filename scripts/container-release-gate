@@ -2,6 +2,51 @@
 
 set -euo pipefail
 
+verify_staged_repository_head() {
+    local staged_repository=$1
+    local expected_head=$2
+    local staged_head
+
+    [[ -d "$staged_repository/.git" ]] || {
+        echo "Staged repository does not contain a self-contained .git directory: $staged_repository" >&2
+        return 1
+    }
+    [[ "$(git -C "$staged_repository" rev-parse --is-inside-work-tree)" = "true" ]] || {
+        echo "Staged repository is not a Git worktree: $staged_repository" >&2
+        return 1
+    }
+    staged_head="$(git -C "$staged_repository" rev-parse --verify 'HEAD^{commit}')"
+    [[ "$staged_head" = "$expected_head" ]] || {
+        echo "Staged repository HEAD mismatch: expected $expected_head, found $staged_head" >&2
+        return 1
+    }
+}
+
+stage_candidate_repository() {
+    local source_repository=$1
+    local staged_repository=$2
+    local candidate_head
+
+    candidate_head="$(git -C "$source_repository" rev-parse --verify 'HEAD^{commit}')"
+    if ! git -C "$source_repository" diff --quiet --ignore-submodules -- || \
+        ! git -C "$source_repository" diff --cached --quiet --ignore-submodules --; then
+        echo "Candidate repository has tracked uncommitted changes; refusing to stage committed HEAD." >&2
+        return 1
+    fi
+
+    # --no-local prevents alternates/shared object stores and --no-hardlinks makes
+    # the staged object database independent of the source repository.
+    git clone --quiet --no-local --no-hardlinks --no-checkout \
+        "$source_repository" "$staged_repository" || return
+    git -C "$staged_repository" checkout --quiet --detach "$candidate_head"
+    verify_staged_repository_head "$staged_repository" "$candidate_head"
+    printf '%s\n' "$candidate_head"
+}
+
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+fi
+
 SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ATLAS_ROOT="$(cd -- "$SCRIPT_DIRECTORY/.." && pwd)"
 COMPOSE_FILE="$ATLAS_ROOT/compose.production.yaml"
@@ -37,10 +82,61 @@ GATE_HTPASSWD_FILE="$GATE_DIRECTORY/htpasswd"
 GATE_CODEX_AUTH_FILE="$GATE_DIRECTORY/codex-auth.json"
 GATE_COMPOSE_FILE="$GATE_DIRECTORY/compose.gate.yaml"
 GATE_PROXY_CONFIG_FILE="$GATE_DIRECTORY/atlas-execution-worker-squid.conf"
+GATE_STAGED_REPOSITORY="$GATE_DIRECTORY/repository"
 GATE_PROJECT="atlas-release-gate-$$"
 gate_auth_fixture_requires_sudo_cleanup=false
 
-for executable in docker curl openssl python3; do
+cleanup() {
+    cleanup_status=$?
+    if [[ "$cleanup_status" -ne 0 && -f "$GATE_COMPOSE_FILE" ]]; then
+        docker compose \
+            --project-name "$GATE_PROJECT" \
+            --file "$COMPOSE_FILE" \
+            --file "$HTTPS_COMPOSE_FILE" \
+            --file "$GATE_COMPOSE_FILE" \
+            logs \
+            atlas-agent-auth-stager \
+            atlas-execution-auth-stager \
+            atlas-core-agent-auth-stager \
+            atlas-agent \
+            atlas-execution-worker \
+            atlas-execution-worker-relay \
+            >&2 || true
+    fi
+    if [[ -f "$GATE_COMPOSE_FILE" ]]; then
+        docker compose \
+            --project-name "$GATE_PROJECT" \
+            --file "$COMPOSE_FILE" \
+            --file "$HTTPS_COMPOSE_FILE" \
+            --file "$GATE_COMPOSE_FILE" \
+            down \
+            --volumes \
+            --rmi local \
+            --remove-orphans \
+            >/dev/null 2>&1 || true
+    fi
+    if [[ "$gate_auth_fixture_requires_sudo_cleanup" = "true" ]]; then
+        sudo rm -f "$GATE_CODEX_AUTH_FILE"
+    fi
+    rm -f \
+        "$GATE_ENV_FILE" \
+        "$GATE_CERT_FILE" \
+        "$GATE_KEY_FILE" \
+        "$GATE_HTPASSWD_FILE" \
+        "$GATE_CODEX_AUTH_FILE" \
+        "$GATE_COMPOSE_FILE" \
+        "$GATE_PROXY_CONFIG_FILE"
+    rm -rf -- "$GATE_STAGED_REPOSITORY"
+    rmdir "$GATE_DIRECTORY" 2>/dev/null || true
+    return "$cleanup_status"
+}
+
+trap cleanup EXIT
+
+candidate_head="$(stage_candidate_repository "$ATLAS_ROOT" "$GATE_STAGED_REPOSITORY")"
+export ATLAS_REPOSITORY_HOST_PATH="$GATE_STAGED_REPOSITORY"
+
+for executable in docker curl git openssl python3; do
     if ! command -v "$executable" >/dev/null 2>&1; then
         echo "Required executable not found: $executable" >&2
         exit 127
@@ -62,50 +158,6 @@ runtimes = json.load(sys.stdin)
 if required not in runtimes:
     raise SystemExit(f"Required container runtime is unavailable: {required}")
 ' "$gate_runtime"
-
-cleanup() {
-    cleanup_status=$?
-    if [[ "$cleanup_status" -ne 0 ]]; then
-        docker compose \
-            --project-name "$GATE_PROJECT" \
-            --file "$COMPOSE_FILE" \
-            --file "$HTTPS_COMPOSE_FILE" \
-            --file "$GATE_COMPOSE_FILE" \
-            logs \
-            atlas-agent-auth-stager \
-            atlas-execution-auth-stager \
-            atlas-core-agent-auth-stager \
-            atlas-agent \
-            atlas-execution-worker \
-            atlas-execution-worker-relay \
-            >&2 || true
-    fi
-    docker compose \
-        --project-name "$GATE_PROJECT" \
-        --file "$COMPOSE_FILE" \
-        --file "$HTTPS_COMPOSE_FILE" \
-        --file "$GATE_COMPOSE_FILE" \
-        down \
-        --volumes \
-        --rmi local \
-        --remove-orphans \
-        >/dev/null 2>&1 || true
-    if [[ "$gate_auth_fixture_requires_sudo_cleanup" = "true" ]]; then
-        sudo rm -f "$GATE_CODEX_AUTH_FILE"
-    fi
-    rm -f \
-        "$GATE_ENV_FILE" \
-        "$GATE_CERT_FILE" \
-        "$GATE_KEY_FILE" \
-        "$GATE_HTPASSWD_FILE" \
-        "$GATE_CODEX_AUTH_FILE" \
-        "$GATE_COMPOSE_FILE" \
-        "$GATE_PROXY_CONFIG_FILE"
-    rmdir "$GATE_DIRECTORY" 2>/dev/null || true
-    return "$cleanup_status"
-}
-
-trap cleanup EXIT
 
 if [[ -z "${ATLAS_CODEX_AUTH_HOST_PATH+x}" ]]; then
     printf '{}\n' >"$GATE_CODEX_AUTH_FILE"
@@ -223,7 +275,7 @@ export ATLAS_HTTP_BIND=127.0.0.1
 export ATLAS_HTTP_PORT=0
 export ATLAS_HTTPS_BIND=127.0.0.1
 export ATLAS_HTTPS_PORT=0
-export ATLAS_REPOSITORY_HOST_PATH="${ATLAS_REPOSITORY_HOST_PATH:-$ATLAS_ROOT}"
+verify_staged_repository_head "$ATLAS_REPOSITORY_HOST_PATH" "$candidate_head"
 export ATLAS_TLS_CERT_FILE="$GATE_CERT_FILE"
 export ATLAS_TLS_KEY_FILE="$GATE_KEY_FILE"
 export ATLAS_HTPASSWD_FILE="$GATE_HTPASSWD_FILE"
