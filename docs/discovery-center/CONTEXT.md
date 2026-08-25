@@ -1,4 +1,4 @@
-# Discovery Center Current Context — v0.15 released
+# Discovery Center Current Context — v0.15 released, v0.16 selected
 
 Discovery Center is Atlas's provider-neutral, local-first, read-only knowledge
 and evidence surface. Its public API is GET-only and its Mission Control views
@@ -71,3 +71,20 @@ or execution authority.
 The original D0 plan described only a future curated catalog. That material is
 historical: the catalog and subsequent D1-D10 capabilities have shipped and
 must not be read as current future-tense scope.
+
+## V0.16 selected planning boundary
+
+**Grounded Installation Planning** will consume reviewed Discovery/catalog,
+binding, compatibility, evidence, grounding, and provenance facts to assemble
+ephemeral informational `InstallationPlan` reads. Consumption grants no new
+Discovery authority: evidence and grounding cannot approve or execute, and a
+plan ready for review is neither approved, executable, nor deployable.
+
+Home Assistant currently binds exactly to absent
+`compose/home-assistant.yaml`, so its plan must be
+`missing_deployment_artifact`; the accepted immutable image proof cannot turn
+that absence into readiness. No artifact, mutable image, or target identity may
+be synthesized. The planned endpoint and UI are GET-only/read-only and remain
+isolated from the legacy `POST /analysis/deployments` caller-document proposal
+path. P0 remains pending and v0.16 introduces no durable plan store, approved
+target, candidate, intent, workflow, approval, dispatch, or execution path.

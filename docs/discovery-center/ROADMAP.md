@@ -103,3 +103,51 @@ Implementation is fixed by phase:
 
 P5 release closure is complete at
 `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
+
+## Selected v0.16 — Grounded Installation Planning
+
+V0.16 selects a bounded read-side consumer of released Discovery facts. It
+plans deterministic, immutable, provenance-linked, ephemeral
+`InstallationPlan` views answering what would be required to install an
+application here. P0 through P5 are planned and pending; P0 is not implemented
+or complete.
+
+- P0 reviews and freezes the exact versioned closed schema/status/blocker
+  vocabularies, field definitions, status semantics and evaluation/transition
+  rules, unknown-value behavior, and complete precedence table, along with the
+  fingerprint, provenance/freshness/conflict rules, payload allowlist,
+  ephemeral/no-store and optional sanitized target decisions, failure/threat
+  models, dependency and legacy-route isolation, and complete test matrix.
+- P1 assembles the Home Assistant reference deterministically. Its exact
+  `compose/home-assistant.yaml` artifact is absent, so the only valid current
+  outcome is `missing_deployment_artifact`—never a substitute artifact,
+  mutable-image inference, or grounding-derived readiness.
+- P2 evaluates readiness, blockers, risks, assumptions, missing facts,
+  prerequisites, relationships, and confirmations without creating authority.
+- P3 exposes only a bounded GET read; it does not reuse or expand legacy
+  `POST /analysis/deployments`, accept caller deployment documents, or persist.
+- P4 presents read-only Mission Control review with no action or conversion
+  controls. P5 validates isolation, authority parity, and release closure.
+
+The binding minimum v0.16 status concepts are `plan_ready_for_review`,
+`insufficient_information`, `incompatible`, `conflicted`, `stale_evidence`,
+and `missing_deployment_artifact`. P0 must define and freeze their exact
+versioned vocabulary, exact semantics, evaluation/transition rules, and
+unknown-value behavior; additional status values are permitted only when they
+fail closed, are required by the decision-complete threat/failure model, and
+are reviewed within P0. The binding minimum precedence constraints are that
+conflict cannot resolve to readiness, successful image grounding cannot
+override a missing required deployment artifact, and absence of optional
+context cannot erase incompatibility. P0 must define, review, test, and freeze
+the complete status/freshness/conflict/blocker precedence table.
+Ready-for-review is not approved, executable, or deployable. Plans cannot
+create candidates, intents, approvals, workflows,
+dispatches, repository or worker execution, and cannot contain commands,
+executable payloads, secrets, or credentials. Optional target context is
+server-resolved, sanitized, informational, and non-authorizing; no approved
+installation-target contract is selected.
+
+Execution candidate generation, install-container execution, installation
+intents, approved targets, conversational installation, generic collection,
+D11, D12, distributed orchestration, and general VM/container lifecycle
+management are explicitly deferred.

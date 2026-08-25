@@ -123,3 +123,19 @@ uses only already-accepted local evidence and reviewed local readers; it cannot
 trigger GHCR access, registry
 acquisition, Sigstore verification, collector execution, or evidence refresh.
 The plan adds no durable state, mutation, or execution authority.
+
+## Selected v0.16 plan
+
+The next selected theme is **Grounded Installation Planning**: deterministic,
+immutable, provenance-linked, ephemeral read models answering what would be
+required to install an application here. This is planning only; P0 is not
+implemented or complete. An `InstallationPlan` is informational and cannot
+approve, execute, deploy, persist, create candidates/intents/workflows, invoke
+workers, or contain commands, executable payloads, secrets, or credentials.
+`plan_ready_for_review` is not approved, executable, or deployable.
+
+The current Home Assistant binding points to absent
+`compose/home-assistant.yaml`, so planning must report
+`missing_deployment_artifact`. The legacy `POST /analysis/deployments` surface
+remains isolated; the intended v0.16 operator path is GET-only/read-only. See
+the [Atlas roadmap](ROADMAP.md) for the P0–P5 contract and deferrals.

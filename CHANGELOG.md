@@ -6,6 +6,35 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.16 planning selected — Grounded Installation Planning
+
+- Selected P0 → P5 planning for deterministic, immutable,
+  provenance-linked, ephemeral informational `InstallationPlan` read models.
+  No v0.16 milestone, including P0, is implemented or complete.
+- Selected `plan_ready_for_review`, `insufficient_information`, `incompatible`,
+  `conflicted`, `stale_evidence`, and `missing_deployment_artifact` as required
+  minimum v0.16 status concepts; P0 remains responsible for defining and
+  freezing their exact versioned vocabulary, semantics, evaluation/transition
+  rules, and unknown-value behavior, and may add only P0-reviewed fail-closed
+  values required by the decision-complete threat/failure model.
+- Bound only the minimum precedence constraints: conflict cannot resolve to
+  readiness, successful image grounding cannot override a missing required
+  deployment artifact, and absent optional context cannot erase
+  incompatibility. P0 must define, review, test, and freeze the complete
+  status/freshness/conflict/blocker precedence table.
+- Required the Home Assistant case to fail closed as
+  `missing_deployment_artifact` because its exact binding target,
+  `compose/home-assistant.yaml`, is absent. Image grounding is not deployment
+  readiness, and no substitute artifact or mutable image may be inferred.
+- Kept plans read-only and non-persistent, optional target context
+  server-resolved/sanitized/non-authorizing, and the new operator path GET-only.
+- Isolated the legacy caller-document `POST /analysis/deployments` analysis and
+  proposal path from v0.16; it will not be expanded, reused, or converted into
+  an InstallationPlan path.
+- Added no code, test, CI, runtime/Compose, authority, candidate, intent,
+  approval, workflow, dispatch, repository, worker, command, credential, or
+  release-publication change.
+
 ## atlas-v0.15.0 — Atlas v0.15.0 (2026-08-25)
 
 #### v0.15-P0–P5 — Grounded image identity and provenance operator surface

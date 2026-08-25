@@ -3,6 +3,60 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.16-P0 planning and boundary gate — pending
+
+Atlas v0.16 is selected as **Grounded Installation Planning**. This section is
+a planning gate only; P0 is not implemented or complete. P0 may be marked
+complete only when all items are decision-complete and their planned tests are
+specified in the canonical [roadmap](../ROADMAP.md).
+
+- [ ] Freeze the exact schema version, immutable closed field set, field types,
+  required/optional classification, bounds, normalization, compatibility and
+  unknown-field rules, exact versioned status vocabulary and semantics,
+  evaluation/transition and unknown-value rules, and closed blocker vocabulary.
+- [ ] Freeze canonical fingerprint inputs/serialization, provenance links,
+  freshness windows/evaluation instant, and the complete status/freshness/
+  conflict/blocker precedence table.
+- [ ] Freeze the payload allowlist and prove prohibition/redaction of secrets,
+  credentials, commands, shell/argv/scripts, environment, executable or opaque
+  payloads, raw provider data, and secret-bearing URLs.
+- [ ] Confirm plans are ephemeral, assembled on GET, and have no durable store,
+  cache authority, replay semantics, or mutation sibling.
+- [ ] Confirm optional target context is server-resolved, sanitized,
+  read-only, informational, and non-authorizing; no approved target contract is
+  introduced and Proxmox/QEMU restart identity grants no guest-install power.
+- [ ] Freeze bounded failure behavior and the threat model, including authority
+  confusion, injection, leakage, spoofing, mutable-image substitution, path
+  escape, stale replay, conflict suppression, fingerprint ambiguity, unsafe
+  rendering, and mutation/execution dependency coupling.
+- [ ] Prove dependency/import isolation from Agent, candidates, approvals,
+  provider mutation, operational/repository execution, workers, maintenance,
+  and the legacy deployment planner.
+- [ ] Prove `POST /analysis/deployments` remains an isolated legacy
+  caller-document analysis/proposal route and is neither expanded nor reused
+  by v0.16.
+- [ ] Specify and pass the complete schema, status/blocker, determinism,
+  provenance, freshness, conflict, artifact/path, image, compatibility,
+  prerequisite, target, redaction/injection, no-persistence/network/side-effect,
+  import/legacy-route, GET/OpenAPI/method, Home Assistant, UI/accessibility, and
+  authority-regression matrix in `ROADMAP.md`.
+- [ ] Prove explicitly that `plan_ready_for_review` is not approved,
+  executable, or deployable and cannot convert to a candidate, intent,
+  workflow, action request, or dispatch.
+- [ ] Confirm the exact Home Assistant binding remains
+  `compose/home-assistant.yaml`, the artifact remains absent, and the plan
+  returns `missing_deployment_artifact` without substitution or synthesis.
+- [ ] Reconfirm capability parity and all enduring security contracts:
+  operational `restart-service/proxmox/qemu`, repository
+  `update-compose-stack`, default-deny unsupported intents, separately
+  activated/default-disabled worker, unchanged no-replay/persistence and
+  backup/restore ownership, inactive generic collector, and no autonomous
+  mutation or release publication.
+
+Planned milestones remain P0 contract/threat model; P1 deterministic Home
+Assistant assembler; P2 readiness/blocker/risk evaluation; P3 GET-only API; P4
+Mission Control review; and P5 isolation, validation, and closure.
+
 ## Atlas v0.15-P0 scope-selection and boundary sign-off
 
 Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**.

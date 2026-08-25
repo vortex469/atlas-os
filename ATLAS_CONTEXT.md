@@ -95,3 +95,26 @@ execution path.
 Semantic Discovery (D11), private/community catalogs (D12), additional
 operational and repository intents, broader Provider Intent domains, generic
 image collection, and distributed orchestration remain uncommitted.
+
+## Selected v0.16 planning state
+
+V0.16 is selected as **Grounded Installation Planning**. This selection plans
+ephemeral, immutable, provenance-linked informational `InstallationPlan` read
+models; it does not implement or complete P0. Plans are assembled on read,
+never durably stored, and authorize nothing. `plan_ready_for_review` is not
+approved, executable, or deployable. No approved installation-target contract
+is introduced; optional server-resolved target context is sanitized,
+read-only, informational, and non-authorizing.
+
+The current Home Assistant binding names exactly
+`compose/home-assistant.yaml`; that artifact is absent, so current planning
+must fail closed as `missing_deployment_artifact`. Existing image grounding
+does not establish deployment readiness. The legacy caller-document
+`POST /analysis/deployments` analysis/planning surface remains separate and is
+not reused or expanded for v0.16. The intended v0.16 API and Mission Control
+surface are GET-only/read-only.
+
+Execution candidates, install-container execution, installation intents,
+approved targets, conversational installation, generic image collection, D11,
+D12, distributed orchestration, and general VM/container lifecycle management
+are explicitly deferred.
