@@ -29,13 +29,16 @@ permissions, gates, handlers, ACLs, or production execution.
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`; LXC remains unsupported.
 
-P0 is complete. P1 through P4 are complete; P5 is in progress. Atlas v0.15 is
-not yet released.
+P0 is complete. P1 through P4 are complete; P5 final release-evidence closure
+is recorded below, with final tag identity and unperformed evidence still
+pending. Atlas v0.15 is not yet released.
 
 ### Atlas v0.15 P1–P5 implementation and release gates
 
-Checked P1–P4 items record the implemented and validated P4 state. P5 evidence
-remains unchecked until it exists for the final closure SHA.
+Checked P1–P4 items record the implemented and validated P4 state. Checked P5
+items record evidence established for final closure SHA
+`1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`; an unchecked item is not implied
+to have passed.
 
 #### P1 — binding-driven image-grounding read model
 
@@ -214,73 +217,105 @@ P4 is complete. The authoritative validation matrix found no widening of
 collector authority, grounding/provenance authority, Provider Intent
 authority, operational capability, repository execution, approval authority,
 no-replay behavior, worker activation, backup/restore authority, or Mission
-Control execution authority. P5 remains next.
+Control execution authority. P5 final evidence closure is recorded below.
 
 #### P5 — release validation and closure
 
-P5 is in progress and remains separate from the completed P4 validation matrix.
-The documentation commit produced from this reconciliation becomes provisional
-closure candidate C. C cannot be known until that commit exists. Every
-evidence-dependent item below is deliberately unchecked and pending; none is a
-claim of release, production acceptance, CI success, or tag creation.
+P5 final release-evidence closure is recorded here and remains separate from
+the completed P4 validation matrix. Final closure candidate C is
+`1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`. The final tag does not exist, so
+this is not a claim that v0.15 is released. Results recorded for earlier SHAs
+remain attributed to those SHAs and are not silently promoted to exact-C
+evidence.
 
 ##### Exact-SHA and clean-tree evidence
 
-- [ ] **Final closure SHA C:** pending; record the full commit SHA after the
-  documentation-only closure candidate is committed.
+- [x] **Final closure SHA C:**
+  `1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`; exact deployed source and
+  `origin/main` at final evidence collection matched C. The self-contained
+  production source checkout was `/opt/atlas-release-v015-final`.
 - [ ] **Clean-tree proof:** pending; record command, timestamp, and output for
   the committed C worktree.
-- [ ] **Local exact-SHA P4 rerun:** pending; record commands, results, and proof
-  that the checked-out HEAD equals C.
+- [ ] **Local exact-SHA P4 rerun:** no complete exact-C P4 rerun is recorded.
+  Exact-C local evidence is limited to the final Core suite (`2287 passed`,
+  `41 warnings`), the GHCR acquisition module (`105 passed`), and 20 repeated
+  selections of the repaired deadline tests passing. Commit C changed tests
+  only; production acquisition code did not change. Agent, Worker,
+  backup/restore, parity, Mission Control, and container results recorded in
+  the P4 section remain attributed to
+  `2032d4ebc8631848a10d594ececd76faaccd2503`.
 
 ##### CI evidence for exact C
 
-- [ ] **Quality gates:** pending workflow run ID, `headSha`, and conclusion for
-  the required `atlas-agent`, `atlas-core`, and `mission-control` jobs.
-- [ ] **Container release gate:** pending workflow run ID, `headSha`, and
-  conclusion for `Container integration (runc; no gVisor proof)`.
-- [ ] Confirm both workflow `headSha` values equal final C exactly.
+- [x] **Quality gates:** GitHub main-push run `32797990417`, event `push`,
+  `headSha=1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`, conclusion `success`.
+- [x] **Container release gate:** GitHub main-push run `32797990447`, event
+  `push`, `headSha=1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`, conclusion `success`.
+- [x] Both workflow `headSha` values equal final C exactly.
 
 ##### Container validation for exact C
 
-- [ ] **GitHub-integration container gate:** pending result for
+- [ ] **GitHub-integration container gate:** no separately recorded exact-C
+  local result for
   `ATLAS_CONTAINER_GATE_MODE=github-integration ./scripts/container-release-gate`.
-- [ ] **Production-mode runsc container gate:** pending result for
+- [ ] **Production-mode runsc container gate:** no separately recorded exact-C
+  local result for
   `./scripts/container-release-gate`; this invocation is the production runsc
   proof, not the CI runc proof.
 
 ##### Production identity evidence
 
-- [ ] **Production service/image manifest:** pending.
-- [ ] **Immutable image IDs:** pending for every accepted production service.
+- [x] **Production service/image manifest:** exact deployed source C used the
+  running identities recorded below.
+- [x] **Immutable image IDs:** accepted production identities:
+  `atlas-agent=sha256:0e1bafa09eac14aafcf1ef4b130dfbea32c22a2652d0e40fa9d87f2e17fe2955`;
+  `atlas-agent-auth-stager=sha256:0b3519fdf4089f7389427ca91cbeb8e02b6729d645edf104101898132ff49340`;
+  `atlas-core=sha256:4c437acc0602403121f6ecb607bb547627df98e38814ba4067389d56ae505f45`;
+  `atlas-core-agent-auth-stager=sha256:925f6ac3169bc9994fdf4e5dc893768dc3f67f071bfacfeea847214f38c0300c`;
+  `atlas-execution-auth-stager=sha256:4052f833ad3ef7261a6393622462d4feefee16662a3662e5f456f01a8d2c2277`;
+  `atlas-execution-worker=sha256:b1706b3348fbb7393191307c4b1758531bfd74470ccfa973cafe79ed87e0f65c`;
+  `atlas-execution-worker-relay=sha256:37864b442cb40f40623b7af10bd850a2fff21466931d2c06bafe73795236cdb7`;
+  `mission-control=sha256:71711e7bd96e65cc78b97aa065e33fc7049ba4ddf063a1237549fca78f885a17`;
+  pinned upstream
+  `atlas-edge=sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6`;
+  and pinned upstream
+  `atlas-egress-proxy=sha256:6a097f68bae708cedbabd6188d68c7e2e7a38cedd05a176e1cc0ba29e3bbe029`.
 - [ ] **RepoDigests:** pending where present.
 - [ ] **Container IDs and `.Image` values:** pending.
 - [ ] **Deployment build timestamp:** pending.
+
+At acceptance, `atlas-core`, `atlas-agent`, `atlas-execution-worker`,
+`atlas-execution-worker-relay`, `mission-control`, and `atlas-edge` were
+healthy with `restart_count=0` for each.
 
 ##### Read-only production acceptance
 
 The acceptance interval must issue only the following GETs and visual checks.
 No `POST`, `PUT`, `PATCH`, or `DELETE` is permitted.
 
-- [ ] **HermesII acceptance interval:** pending start/end timestamps and
-  operator/environment identity.
-- [ ] `GET /api/v1/discovery/items/home-assistant/image-grounding`: pending
-  response; expected HTTP 503 with the exact sanitized, bounded message
+- [ ] **HermesII acceptance interval:** the production interval was
+  `2026-08-25T01:38:34Z` through `2026-08-25T01:38:48Z`; operator/environment
+  identity was not supplied, so the combined item remains incomplete.
+- [x] `GET /api/v1/discovery/items/home-assistant/image-grounding`: HTTP 503
+  with the exact sanitized, bounded public message
   `Image grounding is unavailable.` The response must expose no internal path
   or exception details and make no positive grounding claim. This is the
   expected fail-closed result because the Home Assistant `DeploymentBinding`
   names the exact repository artifact `compose/home-assistant.yaml` and that
   artifact is deliberately absent.
-- [ ] `GET /api/v1/discovery/items/frigate/image-grounding`: pending response;
-  expected `no_deployment_binding`.
-- [ ] `GET` for a recorded known-absent item: pending sanitized 404 response.
+- [x] `GET /api/v1/discovery/items/frigate/image-grounding`: HTTP 200 with
+  `status=no_deployment_binding`.
+- [x] `GET /api/v1/discovery/items/definitely-not-an-atlas-item-v015/image-grounding`:
+  HTTP 404 with a sanitized, bounded not-found response.
 - [ ] **Mission Control visual acceptance:** pending Home Assistant bounded
   local-source-unavailable / grounding-unavailable advisory, with no positive
   grounded presentation, no action control, and no deployment or execution
   authority; and Frigate no-deployment-binding advisory evidence.
-- [ ] **Explicit zero mutation/execution result:** pending proof that acceptance
-  caused no mutation, execution, proposal, candidate, approval, workflow,
-  provider, worker, or repository action.
+- [x] **Explicit zero mutation/execution result:** the acceptance runtime
+  authority scan was empty. No `POST`, `PUT`, `PATCH`, `DELETE`, dispatch,
+  execution, approval, proposal, candidate, workflow, provider action,
+  collector, Sigstore, GHCR, refresh, or remediation activity was observed in
+  the acceptance interval.
 
 The expected Home Assistant HTTP 503 does not mean accepted image evidence is
 missing, evidence has become untrusted, deployment is authorized, or execution
@@ -299,15 +334,28 @@ grants no deployment or execution authority, and no action controls were added.
 
 Prove inactivity without activating anything:
 
-- [ ] Production collector descriptor and adapter registries are empty.
-- [ ] Rendered configuration contains no collector enablement.
-- [ ] No startup acquisition occurred.
-- [ ] No scheduled or background acquisition occurred.
-- [ ] No request-time acquisition occurred.
-- [ ] No GHCR acquisition traffic correlates with the acceptance interval.
-- [ ] No runtime Sigstore verification occurred.
-- [ ] No collector invocation occurred.
-- [ ] No evidence refresh occurred.
+- [x] Production collector descriptor and adapter registries are empty:
+  `PRODUCTION_DESCRIPTORS_COUNT=0` and
+  `PRODUCTION_SOURCE_ADAPTERS_COUNT=0`. The production collector was
+  constructed, and collector inactivity passed without activating production
+  acquisition authority.
+- [x] Rendered configuration contains no collector enablement. Final rendered
+  production Compose had
+  `ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH=false`, and the running `atlas-core`
+  retained `ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH=false`. `atlas-agent` and
+  `atlas-execution-worker` contained no collector/acquisition enablement. The
+  absence of environment enablement is configuration evidence; the separately
+  recorded runtime observations and empty production registries establish the
+  corresponding inactivity evidence without overclaiming from environment
+  strings alone.
+- [x] No startup acquisition was observed in the recorded production evidence.
+- [x] No scheduled or background acquisition was observed in the recorded
+  production evidence.
+- [x] No request-time acquisition was observed during acceptance.
+- [x] No GHCR acquisition traffic correlated with the acceptance interval.
+- [x] No runtime Sigstore verification was observed during acceptance.
+- [x] No collector invocation was observed during acceptance.
+- [x] No evidence refresh was observed during acceptance.
 
 ##### Rollback and release evidence
 
@@ -316,10 +364,23 @@ The prior accepted release is `atlas-v0.14.0` at
 image/configuration. It requires no data migration, no evidence rollback, no
 side-effect replay, no action/dispatch recreation, and no automated remediation.
 
-- [ ] **Rollback evidence:** pending proof of the contract above; do not execute
-  rollback merely to populate this field unless separately authorized.
-- [ ] **Release-evidence artifact checksum:** pending artifact identity and
-  checksum.
+- [x] **Rollback evidence:** the prior accepted image/configuration is retained.
+  Rollback image tags were created before v0.15 deployment for all eight
+  Compose-built v0.14 images. The contract requires no data migration, evidence
+  rollback, side-effect replay, action/dispatch recreation, or automated
+  remediation; rollback was not executed merely to create evidence.
+- [ ] **Release-evidence artifact checksum:** no repository-native retained
+  artifact location is established by prior tracked release records. A pre-tag
+  `atlas-release-evidence-v1` run against
+  `1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0` was intentionally blocked only
+  because this checklist was a dirty tracked path, so its checksum is not
+  final and the artifact remains incomplete. Before blocking, the command
+  observed HEAD and `origin/main` equal to the expected SHA; Quality gates run
+  `32797990417` and Container release gate run `32797990447` passed;
+  capability parity, base/hardened Compose render, and running image
+  inspection passed; and security findings were empty. A clean-tree
+  release-evidence run remains required after this documentation commit. No
+  artifact or checksum is invented here.
 - [ ] **Final tag identity:** pending; `atlas-v0.15.0` has not yet been created.
   Record it only after the final tag actually exists and resolves to the
   accepted final SHA.
