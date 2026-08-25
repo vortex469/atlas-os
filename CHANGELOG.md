@@ -6,31 +6,47 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.16-P0 — InstallationPlan contract and threat model
+
+- Completed documentation-only P0 and froze the normative
+  [InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md):
+  exact closed schema, six statuses, blocker vocabulary and total precedence;
+  JCS/NFC SHA-256 fingerprint; provenance, freshness and conflict rules;
+  item-scoped-only target decision; failure/threat models; legacy/dependency
+  isolation; and the complete P1–P5 validation matrix.
+- Closed the final P0 contract gaps with a bounded raw-evidence adapter model,
+  exhaustive evidence-decision relation, valid-only nullable evidence values,
+  closed catalog and compatibility decision/provenance inputs, and a fully
+  typed fingerprint schema with total sorting and domain-separated identities.
+- Froze evidence classification and internal identity emission precedence,
+  curated release-claim projection, bounded compatibility evidence IDs,
+  canonical primitives and overflow-safe age range, exhaustive image and
+  prerequisite projection, and typed assumption/confirmation production; no
+  unreachable target-ambiguity runtime state remains.
+- P0 adds no plan implementation, API, UI, test, runtime configuration,
+  persistence, approval, target, mutation, execution, or authority.
+
 #### v0.16 planning selected — Grounded Installation Planning
 
 - Selected P0 → P5 planning for deterministic, immutable,
   provenance-linked, ephemeral informational `InstallationPlan` read models.
-  No v0.16 milestone, including P0, is implemented or complete.
-- Selected `plan_ready_for_review`, `insufficient_information`, `incompatible`,
-  `conflicted`, `stale_evidence`, and `missing_deployment_artifact` as required
-  minimum v0.16 status concepts; P0 remains responsible for defining and
-  freezing their exact versioned vocabulary, semantics, evaluation/transition
-  rules, and unknown-value behavior, and may add only P0-reviewed fail-closed
-  values required by the decision-complete threat/failure model.
-- Bound only the minimum precedence constraints: conflict cannot resolve to
+  P0 is now complete as documentation/architecture; P1–P5 remain pending.
+- Froze `plan_ready_for_review`, `insufficient_information`, `incompatible`,
+  `conflicted`, `stale_evidence`, and `missing_deployment_artifact` as the exact
+  closed v1 status vocabulary and froze the total blocker mapping.
+- Froze precedence so conflict cannot resolve to
   readiness, successful image grounding cannot override a missing required
-  deployment artifact, and absent optional context cannot erase
-  incompatibility. P0 must define, review, test, and freeze the complete
-  status/freshness/conflict/blocker precedence table.
+  deployment artifact, and absent optional context cannot erase known
+  incompatibility; the normative contract contains the complete table.
 - Required the Home Assistant case to fail closed as
   `missing_deployment_artifact` because its exact binding target,
   `compose/home-assistant.yaml`, is absent. Image grounding is not deployment
   readiness, and no substitute artifact or mutable image may be inferred.
-- Kept plans read-only and non-persistent, optional target context
-  server-resolved/sanitized/non-authorizing, and the new operator path GET-only.
-- Isolated the legacy caller-document `POST /analysis/deployments` analysis and
-  proposal path from v0.16; it will not be expanded, reused, or converted into
-  an InstallationPlan path.
+- Kept plans read-only and non-persistent and the new operator path GET-only;
+  P0 subsequently selected item-scoped-only v1 with no target selector.
+- Isolated legacy caller-document `POST /analysis/deployments` and
+  `POST /api/v1/analysis/deployments` from v0.16; neither will be expanded,
+  reused, or converted into an InstallationPlan path.
 - Added no code, test, CI, runtime/Compose, authority, candidate, intent,
   approval, workflow, dispatch, repository, worker, command, credential, or
   release-publication change.

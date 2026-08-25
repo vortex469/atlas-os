@@ -185,7 +185,8 @@ Atlas v0.16 is selected as **Grounded Installation Planning**. It will create
 deterministic, immutable, provenance-linked, ephemeral `InstallationPlan` read
 models answering: “What would be required to install this application here?”
 The dependency order is P0 → P1 → P2 → P3 → P4 → P5. This is a planning-only
-selection: no v0.16 milestone, including P0, is implemented or complete.
+selection: P0 is complete as documentation/architecture only; no v0.16
+production implementation exists and P1–P5 remain pending.
 
 ### Binding scope and authority boundary
 
@@ -203,97 +204,38 @@ executable payloads, secrets, or credentials.
 `plan_ready_for_review != deployable`. Planning cannot silently become
 approval, and approval cannot silently become execution.
 
-### P0 — InstallationPlan contract and threat model
+### P0 — InstallationPlan contract and threat model — complete
 
-P0 is documentation/architecture work and remains pending. It is not complete
-until all decisions below are reviewed together:
+P0 is complete as documentation/architecture work. The normative
+[InstallationPlan v1 contract and threat model](docs/architecture/installation-plan-v1.md)
+freezes the exact schema, six-status and blocker vocabularies, total precedence,
+fingerprint, provenance/freshness/conflict semantics, item-scoped target
+decision, failure/threat models, isolation rules, and P1–P5 validation matrix.
+This completion implements no plan, endpoint, UI, test, or runtime behavior.
 
-- **Schema and version:** design an additive InstallationPlan read model, with
-  `installation-plan-v1` as the proposed candidate version. Minimum information
-  categories for P0 design, expressed as candidate fields, are
-  `schema_version`, `plan_id`, `fingerprint`, `application`, `status`,
-  `deployment_artifact`, `image`, `accepted_evidence`, `provenance`,
-  `compatibility`, `prerequisites`, `relationships`, `assumptions`, `blockers`,
-  `risks`, `missing_facts`, `required_operator_confirmations`, and optional
-  `target_context`. P0 must review and freeze the exact schema version, closed
-  field set, field types, required/optional classification, bounds,
-  normalization, compatibility rules, and unknown-field behavior. P0 must also
-  define deterministic collection ordering and explicit representation of
-  unknown facts rather than omission or synthesis.
-- **Status and blocker vocabularies:** the binding minimum v0.16 status concepts
-  are `plan_ready_for_review`, `insufficient_information`, `incompatible`,
-  `conflicted`, `stale_evidence`, and `missing_deployment_artifact`. P0 must
-  define and freeze their exact versioned vocabulary, the exact semantics of
-  each status, evaluation and transition rules, and unknown-value behavior. P0
-  may add fail-closed status values only when required by the decision-complete
-  threat/failure model and reviewed within P0. P0 must also define a closed,
-  versioned blocker vocabulary covering at least missing or
-  invalid artifacts, missing immutable image identity, missing/stale/untrusted
-  evidence, provenance conflict, incompatibility, missing prerequisite facts,
-  missing target identity, and required operator confirmation. Unknown blocker
-  values fail closed.
-- **Fingerprint:** hash a documented canonical serialization of
-  `schema_version` plus every normalized decision input and provenance
-  identity; exclude request time, presentation text, unordered input order,
-  and transport metadata. Identical inputs produce identical fingerprints;
-  any decision-relevant fact, freshness bucket, conflict, or target-context
-  change changes the fingerprint. The fingerprint is identity/integrity
-  information, not approval, freshness proof, or replay authority.
-- **Provenance, freshness, and conflict:** every derived claim links to its
-  sanitized source identity, source class, immutable evidence identity, and
-  applicable observation/attestation time. Freshness is evaluated from one
-  server-supplied evaluation instant under explicit source-specific windows.
-  The binding minimum precedence constraints are that conflict cannot resolve
-  to readiness, a missing required deployment artifact cannot be overridden by
-  successful image grounding, and incompatibility cannot be erased by absence
-  of optional context. P0 must define, review, test, and freeze the complete
-  status/freshness/conflict/blocker precedence table. No newest-wins, trust
-  promotion, voting, or fallback may silently resolve disagreement.
-- **Payload allowlist:** only the named typed fields and bounded scalar/enum/
-  relationship values are admitted. Unknown fields and opaque blobs fail
-  closed. Commands, shell, argv, scripts, executable content, environment
-  variables, credentials, secrets, secret-bearing URLs, and raw provider
-  payloads are prohibited from inputs, plans, evidence, fingerprints, logs,
-  and UI.
-- **Lifetime and target context:** plans are assembled on read and are never
-  durably stored. Optional target context is server-resolved, sanitized,
-  read-only, informational, and non-authorizing. V0.16 introduces no approved
-  installation-target contract. Existing Proxmox/QEMU restart identity grants
-  no guest installation authority, and missing target identity is never
-  synthesized.
-- **Legacy isolation and dependencies:** the existing
-  `POST /analysis/deployments` accepts caller-supplied deployment documents and
-  returns its legacy analysis/planning proposal, including steps and an
-  `approval_required` flag. It remains a separate legacy Forge analysis path.
-  V0.16 must neither expand nor reuse it and must not translate its input or
-  output into an `InstallationPlan`, candidate, intent, approval, or workflow.
-  The new path may import only reviewed read-side Discovery/catalog,
-  binding/observation, evidence/provenance, compatibility, and sanitization
-  modules; imports from Agent, candidates, approvals, provider mutation,
-  operational/repository execution, workers, maintenance, or the legacy deploy
-  planner fail structural review.
-- **Failure model:** malformed or unavailable input produces a bounded explicit
-  non-ready status and blocker; it never raises readiness, drops a conflict,
-  performs network acquisition, mutates state, or falls back to caller content.
-  Missing artifacts and target identity cannot be fabricated. Timeout or
-  internal failure returns a sanitized read error, never a partial positive
-  plan.
-- **Threat model:** address authority confusion, confused-deputy conversion,
-  caller-controlled executable injection, secret leakage, provenance spoofing,
-  mutable-image substitution, path traversal/symlink escape, stale-evidence
-  replay, conflict suppression, fingerprint ambiguity, target-identity
-  spoofing, enumeration, cache/persistence drift, unsafe rendering, and import
-  coupling to mutation/execution.
+The superseded selection-time alternatives are omitted here. The finalized
+decisions are: a closed `installation-plan-v1` schema and total state table;
+exact-time freshness and typed fingerprint input; released-field-only evidence
+and provenance derivation without trust promotion; all released relationship
+kinds; and fail-closed target-free compatibility. V1 has no `plan_id`, target
+field/selector, caller evidence, caller artifact, or caller source fact.
+Required-reader, clock, schema, timeout and internal failures return sanitized
+no-plan errors. The normative contract freezes the isolated module stack and
+both legacy mounts.
+The evidence adapter never invents normalized values for malformed input; the
+normative contract exhaustively freezes evidence decision triples and closes
+catalog, compatibility, provenance, fingerprint, absence, conflict, optional
+source-unavailability, sorting, and compound-identity inputs.
 
-P0's complete test matrix must be decision-complete before P1: schema/version
+P0's frozen test matrix requires: schema/version
 and unknown-field rejection; immutable/closed fields; every status and blocker;
 canonical-order/fingerprint stability and sensitivity; provenance preservation;
 freshness boundaries; conflict precedence; artifact/path/symlink failures;
 mutable/missing/mismatched image failures; compatibility and prerequisite
-combinations; optional target sanitization and missing identity; payload
+combinations; item-scoped target rejection and required missing identity; payload
 allowlist, secret/URL redaction, command/executable rejection; no persistence,
-network, clock ambiguity, or side effects; dependency/import isolation; legacy
-POST isolation; GET/OpenAPI/unsupported-method behavior; deterministic Home
+network, clock ambiguity, or side effects; dependency/import isolation; both
+legacy POST mounts; GET/OpenAPI/unsupported-method behavior; deterministic Home
 Assistant missing-artifact behavior; UI rendering/accessibility/no controls;
 authority/capability/no-replay/worker/backup regressions; and explicit tests
 that ready-for-review is neither approval, executable, nor deployable.

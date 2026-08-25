@@ -82,3 +82,11 @@ v0.13, and trusted Compose image observation/grounding in v0.14. The v0.15 API
 and operator surface are released as `atlas-v0.15.0` at
 `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`; P0 through P5 and production
 acceptance are complete.
+
+## V0.16 InstallationPlan API status
+
+P0 is documentation/architecture complete. The normative
+[InstallationPlan v1 contract](../architecture/installation-plan-v1.md) freezes
+the future exact GET path and projection, failure behavior, GET-only isolation,
+and item-scoped-only request contract. The endpoint is not implemented; the
+public endpoint list above remains the released v0.15 surface.

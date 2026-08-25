@@ -74,7 +74,9 @@ must not be read as current future-tense scope.
 
 ## V0.16 selected planning boundary
 
-**Grounded Installation Planning** will consume reviewed Discovery/catalog,
+**Grounded Installation Planning** P0 is documentation-complete under the
+normative [InstallationPlan v1 contract](../architecture/installation-plan-v1.md).
+P1–P5 remain pending. It will consume reviewed Discovery/catalog,
 binding, compatibility, evidence, grounding, and provenance facts to assemble
 ephemeral informational `InstallationPlan` reads. Consumption grants no new
 Discovery authority: evidence and grounding cannot approve or execute, and a
@@ -85,6 +87,7 @@ Home Assistant currently binds exactly to absent
 `missing_deployment_artifact`; the accepted immutable image proof cannot turn
 that absence into readiness. No artifact, mutable image, or target identity may
 be synthesized. The planned endpoint and UI are GET-only/read-only and remain
-isolated from the legacy `POST /analysis/deployments` caller-document proposal
-path. P0 remains pending and v0.16 introduces no durable plan store, approved
+isolated from legacy `POST /analysis/deployments` and
+`POST /api/v1/analysis/deployments` caller-document proposal mounts. P0 adds no
+implementation and v0.16 introduces no durable plan store, approved
 target, candidate, intent, workflow, approval, dispatch, or execution path.

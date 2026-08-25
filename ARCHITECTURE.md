@@ -134,6 +134,15 @@ state. It is not an Agent execution intent. Rebuildable Discovery cache is not
 durable backup authority, and restore compatibility is validated rather than
 inferred from prose.
 
+## Selected v0.16 read-side contract
+
+V0.16 P0 is complete as documentation/architecture only. The normative
+[InstallationPlan v1 contract and threat model](docs/architecture/installation-plan-v1.md)
+freezes an ephemeral, item-scoped, GET-oriented and non-authorizing read model,
+its isolation from every side-effect surface and the legacy deployment-analysis
+planner, and the P1–P5 validation matrix. No InstallationPlan implementation,
+target authority, persistence, mutation, or execution path exists yet.
+
 ## Historical note
 
 Earlier releases and documents sometimes described Core plus Mission Control

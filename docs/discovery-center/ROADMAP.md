@@ -106,18 +106,22 @@ P5 release closure is complete at
 
 ## Selected v0.16 — Grounded Installation Planning
 
-V0.16 selects a bounded read-side consumer of released Discovery facts. It
+V0.16 selects a bounded read-side consumer of released Discovery facts. P0 is
+complete as documentation/architecture in the normative
+[InstallationPlan v1 contract](../architecture/installation-plan-v1.md); P1–P5
+remain pending. It
 plans deterministic, immutable, provenance-linked, ephemeral
 `InstallationPlan` views answering what would be required to install an
-application here. P0 through P5 are planned and pending; P0 is not implemented
-or complete.
+application here. P0 adds no implementation.
 
-- P0 reviews and freezes the exact versioned closed schema/status/blocker
-  vocabularies, field definitions, status semantics and evaluation/transition
-  rules, unknown-value behavior, and complete precedence table, along with the
-  fingerprint, provenance/freshness/conflict rules, payload allowlist,
-  ephemeral/no-store and optional sanitized target decisions, failure/threat
-  models, dependency and legacy-route isolation, and complete test matrix.
+- P0 freezes the exact closed schema/status/blocker vocabularies and total
+  mapping, exact-time freshness, typed fingerprint, released-data evidence and
+  provenance derivation, item-scoped target rejection, no-plan boundary,
+  isolated modules, both legacy mounts, and the validation matrix.
+- P0 also freezes a bounded raw-evidence adaptation boundary, the exhaustive
+  evidence disposition/eligibility/reason relation, and closed typed catalog,
+  compatibility, provenance, fingerprint, absence/conflict/unavailability,
+  sorting, and identity inputs without invented malformed-record values.
 - P1 assembles the Home Assistant reference deterministically. Its exact
   `compose/home-assistant.yaml` artifact is absent, so the only valid current
   outcome is `missing_deployment_artifact`—never a substitute artifact,
@@ -125,27 +129,24 @@ or complete.
 - P2 evaluates readiness, blockers, risks, assumptions, missing facts,
   prerequisites, relationships, and confirmations without creating authority.
 - P3 exposes only a bounded GET read; it does not reuse or expand legacy
-  `POST /analysis/deployments`, accept caller deployment documents, or persist.
+  `POST /analysis/deployments` or `POST /api/v1/analysis/deployments`, accept
+  caller deployment documents, or persist.
 - P4 presents read-only Mission Control review with no action or conversion
   controls. P5 validates isolation, authority parity, and release closure.
 
-The binding minimum v0.16 status concepts are `plan_ready_for_review`,
+The exact v0.16 statuses are `plan_ready_for_review`,
 `insufficient_information`, `incompatible`, `conflicted`, `stale_evidence`,
-and `missing_deployment_artifact`. P0 must define and freeze their exact
-versioned vocabulary, exact semantics, evaluation/transition rules, and
-unknown-value behavior; additional status values are permitted only when they
-fail closed, are required by the decision-complete threat/failure model, and
-are reviewed within P0. The binding minimum precedence constraints are that
+and `missing_deployment_artifact`; no additional v1 status is selectable. The
+normative contract freezes their semantics, unknown behavior and precedence:
 conflict cannot resolve to readiness, successful image grounding cannot
 override a missing required deployment artifact, and absence of optional
-context cannot erase incompatibility. P0 must define, review, test, and freeze
-the complete status/freshness/conflict/blocker precedence table.
+context cannot invent compatibility.
 Ready-for-review is not approved, executable, or deployable. Plans cannot
 create candidates, intents, approvals, workflows,
 dispatches, repository or worker execution, and cannot contain commands,
-executable payloads, secrets, or credentials. Optional target context is
-server-resolved, sanitized, informational, and non-authorizing; no approved
-installation-target contract is selected.
+executable payloads, secrets, or credentials. V1 is item-scoped only; every
+caller target selector is rejected with 422 and no approved installation-target
+contract is selected.
 
 Execution candidate generation, install-container execution, installation
 intents, approved targets, conversational installation, generic collection,
