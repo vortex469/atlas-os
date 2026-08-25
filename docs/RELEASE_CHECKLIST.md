@@ -265,18 +265,31 @@ No `POST`, `PUT`, `PATCH`, or `DELETE` is permitted.
 - [ ] **HermesII acceptance interval:** pending start/end timestamps and
   operator/environment identity.
 - [ ] `GET /api/v1/discovery/items/home-assistant/image-grounding`: pending
-  response; expected `grounded` for release `2026.8.3`, image
-  `ghcr.io/home-assistant/home-assistant`, digest
-  `sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe`,
-  source class `REGISTRY_ATTESTED`.
+  response; expected HTTP 503 with the exact sanitized, bounded message
+  `Image grounding is unavailable.` The response must expose no internal path
+  or exception details and make no positive grounding claim. This is the
+  expected fail-closed result because the Home Assistant `DeploymentBinding`
+  names the exact repository artifact `compose/home-assistant.yaml` and that
+  artifact is deliberately absent.
 - [ ] `GET /api/v1/discovery/items/frigate/image-grounding`: pending response;
   expected `no_deployment_binding`.
 - [ ] `GET` for a recorded known-absent item: pending sanitized 404 response.
-- [ ] **Mission Control visual acceptance:** pending Home Assistant grounded
-  advisory and Frigate no-deployment-binding advisory evidence.
+- [ ] **Mission Control visual acceptance:** pending Home Assistant bounded
+  local-source-unavailable / grounding-unavailable advisory, with no positive
+  grounded presentation, no action control, and no deployment or execution
+  authority; and Frigate no-deployment-binding advisory evidence.
 - [ ] **Explicit zero mutation/execution result:** pending proof that acceptance
   caused no mutation, execution, proposal, candidate, approval, workflow,
   provider, worker, or repository action.
+
+The expected Home Assistant HTTP 503 does not mean accepted image evidence is
+missing, evidence has become untrusted, deployment is authorized, or execution
+is authorized. The conditional `grounded` contract remains available when the
+exact bound Compose artifact genuinely exists and matches accepted evidence;
+tests prove that path by synthesizing a temporary Home Assistant Compose
+artifact. No v0.15 contract requires shipping
+`compose/home-assistant.yaml`; v0.16 reserves its absence as the
+`missing_deployment_artifact` reference case.
 
 Registry-attested evidence is informational. It is not deployment approval,
 authorization, install readiness, or execution authority. Image grounding
