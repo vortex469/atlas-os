@@ -34,6 +34,10 @@ the decisions and validation matrix; P1–P5 implementation remains pending.
   placeholder source for every v1 prerequisite producer.
 - [x] Freeze the only allowed assumption and confirmation producers, their
   blocker relations, and the reachability of every runtime blocker/state.
+- [x] Freeze exactly one deterministic producer, severity, subject,
+  confirmation behavior, and fingerprint participation for every runtime risk;
+  remove the unreachable `artifact_content_change` and
+  `environment_variance` values so the closed risk vocabulary is total.
 - [x] Freeze the one exact non-authorizing human-review prompt template for
   each v1 `prompt_template_id`, including normalized subject interpolation and
   punctuation.

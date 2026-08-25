@@ -27,6 +27,11 @@ release boundaries.
   derivation, every prerequisite description template, and every confirmation
   prompt template; all remain deterministic, presentation-only where
   applicable, and non-authorizing.
+- Amended P0's closed risk vocabulary to the two deterministic, reachable
+  producers `evidence_approaching_expiry` and `compatibility_warning`; removed
+  the speculative `artifact_content_change` and target-dependent
+  `environment_variance` runtime values and froze severity, subject,
+  confirmation, ordering, and fingerprint behavior for every remaining risk.
 - P0 adds no plan implementation, API, UI, test, runtime configuration,
   persistence, approval, target, mutation, execution, or authority.
 

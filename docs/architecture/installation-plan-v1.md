@@ -164,9 +164,8 @@ All fields in these closed nested types are required:
   statement:PlainText[1..256]}`; it cannot assert approval, target,
   compatibility, artifact presence, image identity or prerequisite success.
 * `Blocker={code:BlockerCode,subject:Id[1..128]}`.
-* `Risk={code:artifact_content_change|evidence_approaching_expiry|
-  environment_variance|compatibility_warning,severity:low|medium|high|
-  critical,subject:Id[1..128]}`.
+* `Risk={code:evidence_approaching_expiry|compatibility_warning,
+  severity:low|medium|high|critical,subject:Id[1..128]}`.
 * `MissingFact={code:deployment_binding|deployment_artifact|
   immutable_image_identity|accepted_evidence|prerequisite_fact|
   target_identity|compatibility_fact|source_fact,subject:Id[1..128]}`.
@@ -902,6 +901,40 @@ unavailable clock is 503/no plan. Fresh evidence with remaining seconds <=
 window, age and result are fingerprinted, preventing equal fingerprints across
 different freshness decisions.
 
+## Risk projection
+
+The closed v1 risk vocabulary is total. These are its only producers:
+
+| Risk code | Exact producer | Severity | Subject | Confirmation and fingerprint behavior |
+|---|---|---|---|---|
+| `evidence_approaching_expiry` | each `accepted` / eligible / `accepted_fresh` evidence decision whose freshness decision has `window_seconds-age_seconds <= floor(window_seconds/10)` | `low` | the normalized evidence `subject` | informational only; produces no `confirm_risk`; the risk tuple, evidence decision, and freshness decision enter the fingerprint |
+| `compatibility_warning` | the one item-scoped compatibility decision projected as `compatible_with_warnings` / `target_free_catalog_warning` | `medium` | the selected application `item_id` | produces exactly one same-subject `confirm_risk` and the already frozen catalog assumption, whose own `accept_assumption` is also required; the risk, assumption, confirmation, and producing compatibility tuples enter the fingerprint |
+
+An artifact, compatibility, prerequisite, confirmation, or other independent
+blocker does not suppress the approaching-expiry producer. It is never emitted
+for missing, untrusted, unsupported, malformed, conflicted, mismatched, or stale
+evidence, even where the evidence precedence table retains an independently
+valid freshness decision. The compatibility-warning producer is excluded for every other
+compatibility projection, including `unknown`; unknown environmental
+prerequisites retain only their frozen missing-fact, blocker, assumption, and
+confirmation projections. Duplicate `(code,subject)` risk tuples collapse.
+Canonical risk ordering and fingerprint participation remain the exact rules
+in **Fingerprint input and exact ordering** below.
+
+`artifact_content_change` is unreachable in item-scoped v1 and is not a
+runtime enum value: the frozen inputs contain a current content digest but no
+repository history, prior content identity, mutation observation, likelihood,
+or future-change prediction. Missing, invalid, unsafe, and unknown artifacts
+retain only their frozen blocker and missing-fact projections; no artifact
+risk or confirmation is synthesized.
+
+`environment_variance` is unreachable in item-scoped v1 and is not a runtime
+enum value: v1 has no target context or target/environment observation. Merely
+unknown environmental information is already represented by the exact
+unknown-prerequisite blocker, missing fact, environmental assumption, and
+confirmations, while compatibility has its separate frozen projection. No
+second risk or confirmation is synthesized from that absence.
+
 The maximum nonnegative difference between two valid `UtcSecond` values is
 315537897599, so the `age_seconds` bound represents every valid computation.
 Subtraction uses exact mathematical integers; overflow, wrap, truncation or
@@ -964,9 +997,8 @@ AssumptionDecisionInputV1={assumption_id:Id[1..64],kind:catalog|environment|
  operator,source_fact_kind:prerequisite_unknown|compatibility_warning,
  subject:Id[1..128]}
 BlockerDecisionInputV1={code:BlockerCode,subject:Id[1..128]}
-RiskDecisionInputV1={code:artifact_content_change|evidence_approaching_expiry|
- environment_variance|compatibility_warning,severity:low|medium|high|critical,
- subject:Id[1..128]}
+RiskDecisionInputV1={code:evidence_approaching_expiry|compatibility_warning,
+ severity:low|medium|high|critical,subject:Id[1..128]}
 MissingFactDecisionInputV1={code:deployment_binding|deployment_artifact|
  immutable_image_identity|accepted_evidence|prerequisite_fact|target_identity|
  compatibility_fact|source_fact,subject:Id[1..128]}
