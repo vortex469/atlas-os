@@ -58,8 +58,10 @@ grounding/provenance) into a bounded operator-facing presentation surface.
 The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is this
 documentation-only, decision-complete architecture and boundary sign-off,
 recorded in [CHANGELOG.md](CHANGELOG.md) and
-[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md). P1 through P5 are
-implementation milestones and are not started.
+[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md). P0 through P4 are
+complete. P5 is in progress. `atlas-v0.14.0` remains the latest released Atlas
+version; `atlas-v0.15.0` has not yet been created, and v0.15 is not yet
+released.
 
 ### Scope
 
@@ -87,8 +89,8 @@ implementation milestones and are not started.
 
 ### P1 — Binding-driven image-grounding read model
 
-Implement one deterministic, fail-closed, read-only composition path for each
-catalog item. It must consume the item's existing `DeploymentBinding`, the
+Implemented: one deterministic, fail-closed, local read-only composition path
+for each catalog item. It consumes the item's existing `DeploymentBinding`, the
 existing bounded repository Compose observation, the existing accepted image
 evidence, and the existing `ground_deployment_image` semantics. The result
 must preserve the observation and evidence provenance and every existing
@@ -106,10 +108,9 @@ and isolation from collectors and authority modules.
 
 ### P2 — GET-only Core grounding/provenance projection
 
-Expose the P1 result through an additive, bounded Core GET-only projection.
-Exact endpoint and route placement must be selected during repository-grounded
-P2 implementation review, not preselected by this plan. The projection must be
-redacted and retain the exact fail-closed status and provenance distinctions;
+Implemented at `GET /api/v1/discovery/items/{item_id}/image-grounding` as an
+additive, bounded Core GET-only projection. The projection is redacted and
+retains the exact fail-closed status and provenance distinctions;
 unavailable data is represented explicitly rather than omitted in a way that
 implies success. It has no mutation sibling.
 
@@ -122,7 +123,7 @@ or execution modules reachable from the projection.
 
 ### P3 — Mission Control advisory image-evidence surface
 
-Add an explicitly **informational/advisory** presentation on the existing
+Implemented an explicitly **informational/advisory** presentation on the existing
 Discovery item experience. It displays grounding status and sanitized evidence
 provenance, visibly preserves `REGISTRY_ATTESTED` versus `CURATED`, and renders
 grounded, conflict, missing, unknown, and other fail-closed states without
@@ -136,7 +137,8 @@ responses, accessibility, and the absence of mutation controls and requests.
 
 ### P4 — Security, isolation, and authority gates
 
-Add structural and behavioral tests proving all of the following together:
+Completed the authoritative structural and behavioral validation matrix proving
+all of the following together:
 
 - production image-collector descriptor and adapter registries remain empty,
   with no startup, scheduled, or request-time acquisition wiring;
@@ -161,7 +163,7 @@ Add structural and behavioral tests proving all of the following together:
 
 ### P5 — Release validation and closure
 
-Run and record focused Core grounding/API/isolation tests, the full Core suite,
+P5 is in progress. Run and record focused Core grounding/API/isolation tests, the full Core suite,
 Agent regression tests, and Mission Control tests, lint, and production build.
 Prove capability parity and run CI and container release gates against the
 same recorded exact candidate SHA. Production acceptance is read-only: verify

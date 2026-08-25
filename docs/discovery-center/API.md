@@ -1,8 +1,8 @@
-# Discovery Center API — Atlas v0.14
+# Discovery Center API — v0.15 provisional closure candidate
 
 ## Public contract
 
-The v0.14 Discovery router is mounted under `/api/v1/discovery` and is
+The Discovery router is mounted under `/api/v1/discovery` and is
 GET-only/read-only. It creates no candidate, intent, provider action, approval,
 dispatch, update, deployment, or rollback.
 
@@ -14,14 +14,27 @@ Public GET endpoints are:
 - `/api/v1/discovery/items/{item_id}/evidence`
 - `/api/v1/discovery/items/{item_id}/relationships`
 - `/api/v1/discovery/items/{item_id}/compatibility`
+- `/api/v1/discovery/items/{item_id}/image-grounding`
 - `/api/v1/discovery/search`
 - `/api/v1/discovery/proposals`
 - `/api/v1/discovery/proposals/{proposal_id}`
 
 List and search endpoints provide bounded pagination and typed filters. Missing
 items return 404, invalid queries 422, and unavailable catalog or compatibility
-context 503. Response models in released code are authoritative for exact
+context 503. Response models in the candidate code are authoritative for exact
 fields and schemas.
+
+## Image-grounding API
+
+`GET /api/v1/discovery/items/{item_id}/image-grounding` is GET-only,
+informational, and read-only. Its bounded projection contains status, release
+version, deployment binding, observed immutable image identity, and accepted
+evidence with source class, source identity, and attestation time. It preserves
+`grounded` and every fail-closed status, including `no_deployment_binding`.
+Known-absent items return a sanitized 404; unavailable local data returns a
+sanitized 503; Mission Control bounds these and other request errors without
+exposing backend detail. The route has no mutation sibling and grants no
+mutation, deployment, approval, install, execution, or other action authority.
 
 ## Dynamic evidence API
 
@@ -66,4 +79,5 @@ can be loaded without making collection a production capability.
 
 Dynamic evidence/cache shipped in v0.12, compatibility/upgrade intelligence in
 v0.13, and trusted Compose image observation/grounding in v0.14. Atlas v0.14.0
-is released; none of these features is pending or a release candidate.
+is released. The v0.15 API and operator-surface implementation through P4 is
+complete, P5 is in progress, and v0.15 is not yet released.

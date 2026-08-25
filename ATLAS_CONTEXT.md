@@ -61,7 +61,7 @@ compatibility/evidence, advisory proposals, operational review/history/
 recovery, and Atlas Agent workflow views. Browser mutations require their
 specific Core-owned authority and deployment gates.
 
-## Selected v0.15 scope
+## v0.15 implementation and provisional closure state
 
 Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**: a
 bounded, read-only, informational operator-facing surface over the released
@@ -71,11 +71,17 @@ collector, no scheduled collection, and no execution, approval,
 provider-intent, or remediation authority, and no Discovery-to-dispatch
 coupling.
 
-The implementation sequence is fixed. P1 composes the existing
+P0, P1, P2, P3, and P4 are complete. P5 is in progress. `atlas-v0.14.0`
+remains the latest released Atlas version; `atlas-v0.15.0` has not yet been
+created, v0.15 is not yet released, and the current P4 HEAD is not the final
+closure SHA. P1 composes the existing
 `DeploymentBinding`, repository Compose observation, accepted evidence, and
-`ground_deployment_image` semantics into a deterministic fail-closed read
-model. P2 exposes a bounded, redacted GET-only Core projection. P3 renders the
-status and provenance in Mission Control as advisory information. P4 proves
+`ground_deployment_image` semantics into a deterministic fail-closed local
+read-only model. P2 exposes the bounded, redacted GET-only projection at
+`GET /api/v1/discovery/items/{item_id}/image-grounding`. P3 renders status,
+release, deployment binding, observed image, accepted evidence, source class,
+source identity, and attestation time in Mission Control as advisory
+information, with no action controls. P4 proves
 there is no startup, scheduled, or request-time acquisition and that a GET
 uses only already-accepted local evidence and reviewed local readers, without
 triggering GHCR access, registry acquisition, Sigstore verification, collector

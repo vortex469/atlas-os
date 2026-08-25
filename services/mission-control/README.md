@@ -2,11 +2,12 @@
 
 Mission Control is the Atlas OS operator interface: a React, TypeScript, and Vite application backed by Atlas Core API v1 and the proxied Atlas Agent API.
 
-## Released v0.14 surfaces
+## Current surfaces
 
 - Infrastructure dashboard with Atlas, inventory-service, health, policy, finding, recommendation, and intelligence summaries.
 - Provider workspaces for connections, resources, monitoring status, Provider Intent editing, intent suggestions, diagnostics, provider-advertised legacy actions, and filterable action history/detail.
 - Discovery browse and item detail views with relationships, compatibility, dynamic evidence, freshness/health/conflicts, installed-version evidence, release evaluation, Compose/image evidence, grounding, and provenance.
+- The additive v0.15 Image Grounding panel presents status, release, deployment binding, observed image, accepted evidence, source class, source identity, and attestation time. It is advisory, grants no deployment or execution authority, and adds no action controls.
 - Discovery proposals with bounded navigation into supported next-step surfaces; proposals do not execute or approve work.
 - Execution-candidate browsing, planning sessions, workflow-shell intake, exact repository approval stages, execution/verification/review/commit artifacts, workflow dashboards, timelines, and audit-chain views.
 - Operational maintenance request preparation, operational lifecycle/history, recovery guidance, diagnostics, and support-bundle access.
@@ -16,6 +17,8 @@ Mission Control is the Atlas OS operator interface: a React, TypeScript, and Vit
 Mission Control presents and submits requests to authoritative backend contracts. It does not itself execute infrastructure changes, decide approval, expand intent sets, or bypass server-side identity, permission, target-fingerprint, and exact-approval checks.
 
 Released mutation authorities remain separate: Provider Intent is monitoring-policy only; legacy provider actions use their provider surface; repository execution is exactly `update-compose-stack`; hardened operational dispatch is exactly `restart-service / proxmox / qemu`. Discovery is GET-only/read-only. There is no automatic approval, remediation, update, deployment, rollback, or release publication.
+
+P0 through P4 of v0.15 are complete. P5 is in progress; v0.15 is not yet released.
 
 ## Development
 

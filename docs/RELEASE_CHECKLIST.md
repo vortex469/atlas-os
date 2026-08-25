@@ -29,46 +29,48 @@ permissions, gates, handlers, ACLs, or production execution.
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`; LXC remains unsupported.
 
-P0 is complete. P1 through P5 are not started and are not marked complete by
-this sign-off.
+P0 is complete. P1 through P4 are complete; P5 is in progress. Atlas v0.15 is
+not yet released.
 
 ### Atlas v0.15 P1–P5 implementation and release gates
 
-Unchecked items below are required future evidence, not claims of completion.
+Checked P1–P4 items record the implemented and validated P4 state. P5 evidence
+remains unchecked until it exists for the final closure SHA.
 
 #### P1 — binding-driven image-grounding read model
 
-- [ ] Reuse the existing `DeploymentBinding`, bounded repository Compose
+- [x] Reuse the existing `DeploymentBinding`, bounded repository Compose
   observation, accepted image evidence, and `ground_deployment_image`
   semantics in one deterministic, read-only composition path.
-- [ ] Preserve input and evidence provenance and every fail-closed status,
+- [x] Preserve input and evidence provenance and every fail-closed status,
   including missing, unknown, mutable, mismatched, untrusted, and conflict
   results; introduce no silent source precedence or clock-derived authority.
-- [ ] Keep Home Assistant `2026.8.3` as the sole accepted
+- [x] Keep Home Assistant `2026.8.3` as the sole accepted
   `REGISTRY_ATTESTED` proof; add no evidence row or `DeploymentBinding`.
-- [ ] Prove no network, registry acquisition, Sigstore runtime verification,
+- [x] Prove no network, registry acquisition, Sigstore runtime verification,
   collector activation, persistence, mutation, or execution is reachable.
 
 #### P2 — GET-only Core grounding/provenance projection
 
-- [ ] Add only a bounded, additive, redacted GET response schema, retaining
+- [x] Add only a bounded, additive, redacted GET response schema at
+  `GET /api/v1/discovery/items/{item_id}/image-grounding`, retaining
   exact fail-closed statuses and provenance/source-class distinctions.
-- [ ] Select exact endpoint and route placement only during repository-grounded
-  P2 implementation review; do not preselect it in the plan.
-- [ ] Prove there is no mutation sibling, persistence, Agent dependency,
+- [x] Select the exact endpoint and route placement during repository-grounded
+  P2 implementation review.
+- [x] Prove there is no mutation sibling, persistence, Agent dependency,
   provider mutation, or proposal, candidate, intent, workflow, approval,
   action-request, or dispatch creation.
-- [ ] Pass contract, OpenAPI, unsupported-method, redaction, authority-import,
+- [x] Pass contract, OpenAPI, unsupported-method, redaction, authority-import,
   and route-isolation tests.
 
 #### P3 — Mission Control advisory surface
 
-- [ ] Display grounding status and sanitized evidence provenance, visibly
+- [x] Display grounding status and sanitized evidence provenance, visibly
   distinguish `REGISTRY_ATTESTED` from `CURATED`, and render grounded,
   conflict, missing, unknown, and error states as informational/advisory.
-- [ ] Prove there is no Apply, Execute, Update, Pull, Restart, Remediate,
+- [x] Prove there is no Apply, Execute, Update, Pull, Restart, Remediate,
   approval, proposal/candidate/workflow conversion, or mutation request.
-- [ ] Pass rendering, error-state, accessibility, lint, and production-build
+- [x] Pass rendering, error-state, accessibility, lint, and production-build
   checks for the bounded surface.
 
 #### P4 — security, isolation, and authority gates
@@ -216,25 +218,98 @@ Control execution authority. P5 remains next.
 
 #### P5 — release validation and closure
 
-P5 remains separate from the P4 validation matrix and records release closure:
+P5 is in progress and remains separate from the completed P4 validation matrix.
+The documentation commit produced from this reconciliation becomes provisional
+closure candidate C. C cannot be known until that commit exists. Every
+evidence-dependent item below is deliberately unchecked and pending; none is a
+claim of release, production acceptance, CI success, or tag creation.
 
-- [ ] Record the exact closure SHA.
-- [ ] Record CI and container gates against that exact SHA.
-- [ ] Record production image identity and digest.
-- [ ] Record production read-only acceptance for the Home Assistant grounding
-  proof and representative fail-closed states.
-- [ ] Explicitly confirm during production acceptance that no mutation or
-  execution request occurred.
-- [ ] Record production collector-inactivity evidence: empty production
-  collector registries, no startup acquisition, no scheduled/background
-  acquisition, and no request-time acquisition.
-- [ ] Reconcile all v0.15 documentation.
-- [ ] Record explicit rollback evidence confirming rollback uses the prior
-  accepted image/configuration, requires no data migration or evidence
-  rollback, performs no side-effect replay, and performs no automated
-  remediation.
-- [ ] Record release evidence.
-- [ ] Complete final tagging.
+##### Exact-SHA and clean-tree evidence
+
+- [ ] **Final closure SHA C:** pending; record the full commit SHA after the
+  documentation-only closure candidate is committed.
+- [ ] **Clean-tree proof:** pending; record command, timestamp, and output for
+  the committed C worktree.
+- [ ] **Local exact-SHA P4 rerun:** pending; record commands, results, and proof
+  that the checked-out HEAD equals C.
+
+##### CI evidence for exact C
+
+- [ ] **Quality gates:** pending workflow run ID, `headSha`, and conclusion for
+  the required `atlas-agent`, `atlas-core`, and `mission-control` jobs.
+- [ ] **Container release gate:** pending workflow run ID, `headSha`, and
+  conclusion for `Container integration (runc; no gVisor proof)`.
+- [ ] Confirm both workflow `headSha` values equal final C exactly.
+
+##### Container validation for exact C
+
+- [ ] **GitHub-integration container gate:** pending result for
+  `ATLAS_CONTAINER_GATE_MODE=github-integration ./scripts/container-release-gate`.
+- [ ] **Production-mode runsc container gate:** pending result for
+  `./scripts/container-release-gate`; this invocation is the production runsc
+  proof, not the CI runc proof.
+
+##### Production identity evidence
+
+- [ ] **Production service/image manifest:** pending.
+- [ ] **Immutable image IDs:** pending for every accepted production service.
+- [ ] **RepoDigests:** pending where present.
+- [ ] **Container IDs and `.Image` values:** pending.
+- [ ] **Deployment build timestamp:** pending.
+
+##### Read-only production acceptance
+
+The acceptance interval must issue only the following GETs and visual checks.
+No `POST`, `PUT`, `PATCH`, or `DELETE` is permitted.
+
+- [ ] **HermesII acceptance interval:** pending start/end timestamps and
+  operator/environment identity.
+- [ ] `GET /api/v1/discovery/items/home-assistant/image-grounding`: pending
+  response; expected `grounded` for release `2026.8.3`, image
+  `ghcr.io/home-assistant/home-assistant`, digest
+  `sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe`,
+  source class `REGISTRY_ATTESTED`.
+- [ ] `GET /api/v1/discovery/items/frigate/image-grounding`: pending response;
+  expected `no_deployment_binding`.
+- [ ] `GET` for a recorded known-absent item: pending sanitized 404 response.
+- [ ] **Mission Control visual acceptance:** pending Home Assistant grounded
+  advisory and Frigate no-deployment-binding advisory evidence.
+- [ ] **Explicit zero mutation/execution result:** pending proof that acceptance
+  caused no mutation, execution, proposal, candidate, approval, workflow,
+  provider, worker, or repository action.
+
+Registry-attested evidence is informational. It is not deployment approval,
+authorization, install readiness, or execution authority. Image grounding
+grants no deployment or execution authority, and no action controls were added.
+
+##### Production collector-inactivity evidence
+
+Prove inactivity without activating anything:
+
+- [ ] Production collector descriptor and adapter registries are empty.
+- [ ] Rendered configuration contains no collector enablement.
+- [ ] No startup acquisition occurred.
+- [ ] No scheduled or background acquisition occurred.
+- [ ] No request-time acquisition occurred.
+- [ ] No GHCR acquisition traffic correlates with the acceptance interval.
+- [ ] No runtime Sigstore verification occurred.
+- [ ] No collector invocation occurred.
+- [ ] No evidence refresh occurred.
+
+##### Rollback and release evidence
+
+The prior accepted release is `atlas-v0.14.0` at
+`4d2526e1b022c5c36eaced65bf5b71703da5d2d7`. Rollback uses its prior accepted
+image/configuration. It requires no data migration, no evidence rollback, no
+side-effect replay, no action/dispatch recreation, and no automated remediation.
+
+- [ ] **Rollback evidence:** pending proof of the contract above; do not execute
+  rollback merely to populate this field unless separately authorized.
+- [ ] **Release-evidence artifact checksum:** pending artifact identity and
+  checksum.
+- [ ] **Final tag identity:** pending; `atlas-v0.15.0` has not yet been created.
+  Record it only after the final tag actually exists and resolves to the
+  accepted final SHA.
 
 ## Atlas v0.14 final release — 2026-08-24
 

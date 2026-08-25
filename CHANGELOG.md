@@ -6,12 +6,12 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.15-P0 — Scope selection and boundary sign-off (documentation-only)
+#### v0.15-P0–P4 — Grounded image identity and provenance operator surface
 
 Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**.
-P0 is documentation-only: it selects the v0.15 scope and signs off the
-boundaries. It makes no runtime, configuration, script, Compose,
-authentication, execution, approval, provider, or mutation change.
+P0 through P4 are complete. P5 release validation and closure is in progress;
+v0.15 is not yet released. The current P4 HEAD is
+`864dee0274275b1c92847b82d1c3fa3fab427cfa`, not the final closure SHA.
 
 - The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5.
 - The selected surface is read-only and informational: it presents the
@@ -25,32 +25,40 @@ authentication, execution, approval, provider, or mutation change.
 - Capability parity remains exactly
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`; LXC remains unsupported.
-- P1 is specified as a deterministic, fail-closed, binding-driven read model
+- P1 implemented a deterministic, fail-closed, binding-driven local read-only
+  model
   reusing existing Compose observation, accepted evidence, and
   `ground_deployment_image`, with provenance preserved and no acquisition,
   persistence, mutation, or execution.
-- P2 is specified as an additive, bounded, redacted GET-only Core projection;
-  exact endpoint and route placement is selected during repository-grounded P2
-  implementation review. It has no mutation sibling, Agent dependency,
+- P2 implemented the additive, bounded, redacted GET-only Core projection at
+  `GET /api/v1/discovery/items/{item_id}/image-grounding`. It has no mutation
+  sibling, Agent dependency,
   provider mutation, persistence, or proposal/candidate/workflow creation;
   OpenAPI and route-isolation tests are required.
-- P3 is specified as an advisory Mission Control status/provenance surface
+- P3 implemented an advisory Mission Control status/provenance surface
   that distinguishes `REGISTRY_ATTESTED` from `CURATED`, displays fail-closed
   states, and offers no action or workflow conversion.
-- P4 is specified as security and isolation proof for absence of startup,
+- P4 completed the authoritative security/isolation/authority validation matrix,
+  including proof of absence of startup,
   scheduled, and request-time acquisition. A GET consumes only already-accepted
   local evidence and reviewed local readers and cannot trigger GHCR access,
   registry acquisition, Sigstore verification, collector execution, or
   evidence refresh. P4 also proves mutation/execution separation, redaction,
   source conflict handling, and all unchanged authority, approval, no-replay,
   worker, and maintenance contracts.
-- P5 is specified as focused/full component validation, capability parity,
+- P5 remains in progress and requires focused/full component validation,
+  capability parity,
   exact-SHA CI/container gates, read-only production acceptance,
   collector-inactivity verification, documentation reconciliation, rollback
   guidance, and recorded release evidence.
 
-These bullets define future implementation and exit criteria; P1 through P5
-remain unimplemented and are not release claims.
+The reviewed Home Assistant reference is release `2026.8.3`, image
+`ghcr.io/home-assistant/home-assistant`, digest
+`sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe`,
+source class `REGISTRY_ATTESTED`. Registry-attested evidence is informational;
+it is not deployment approval, authorization, install readiness, or execution
+authority. `atlas-v0.14.0` remains the latest released Atlas version;
+`atlas-v0.15.0` has not yet been created, and v0.15 is not yet released.
 
 ## atlas-v0.14.0 — Atlas v0.14.0 (2026-08-24)
 

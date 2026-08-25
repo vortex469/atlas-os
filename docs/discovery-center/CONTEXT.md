@@ -1,4 +1,4 @@
-# Discovery Center Current Context — v0.14
+# Discovery Center Current Context — v0.15 provisional closure
 
 Discovery Center is Atlas's provider-neutral, local-first, read-only knowledge
 and evidence surface. Its public API is GET-only and its Mission Control views
@@ -43,8 +43,11 @@ breadth limited to the accepted Home Assistant `2026.8.3` proof; it adds no
 collector, no scheduled collection, no authority of any kind, and no
 Discovery-to-dispatch coupling.
 
-V0.15 implementation is constrained to a binding-driven read model, a
-redacted GET-only Core projection, and an advisory Mission Control view. The
+V0.15 P0 through P4 are complete; P5 is in progress and v0.15 is not yet
+released. The implementation is a binding-driven local read-only model, the
+redacted GET-only Core projection at
+`GET /api/v1/discovery/items/{item_id}/image-grounding`, and an advisory Mission
+Control view. The
 model reuses `DeploymentBinding`, repository Compose observation, accepted
 evidence, and `ground_deployment_image`; it preserves fail-closed states and
 provenance, including the distinction between `REGISTRY_ATTESTED` and
@@ -52,10 +55,15 @@ provenance, including the distinction between `REGISTRY_ATTESTED` and
 scheduled, or request-time acquisition. A GET uses only already-accepted local
 evidence and reviewed local readers and cannot trigger GHCR access, registry
 acquisition, Sigstore verification, collector execution, or evidence refresh.
-The gates also prove no authority imports or mutation controls, unchanged
-capability and approval/no-replay contracts, exact-SHA validation, and
-read-only production acceptance. Home Assistant `2026.8.3` remains the only
-accepted proof.
+The completed P4 gates also prove no authority imports or mutation controls and
+unchanged capability and approval/no-replay contracts. Final exact-SHA
+validation and read-only production acceptance are pending P5 requirements.
+Home Assistant release `2026.8.3`, image
+`ghcr.io/home-assistant/home-assistant`, digest
+`sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe`,
+source class `REGISTRY_ATTESTED`, remains the only accepted proof. That source
+class is evidence, not deployment approval, authorization, install readiness,
+or execution authority.
 
 ## Historical D0 note
 

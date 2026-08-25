@@ -104,19 +104,23 @@ to their surface.
 - [Release checklist and evidence](docs/RELEASE_CHECKLIST.md)
 - [Deployment and historical upgrade notes](docs/DEPLOYMENT.md)
 
-## Roadmap link
+## v0.15 provisional closure state
 
-See the [Atlas roadmap](ROADMAP.md). The selected v0.15 theme is
+See the [Atlas roadmap](ROADMAP.md). The v0.15 theme is
 **Deployment Image Grounding Operator Surface**, a read-only operator-facing
 surface over released image grounding; remaining future directions are
 uncommitted.
 
-The decision-complete P1–P5 plan is in the roadmap: reuse the released
-binding/observation/evidence grounding chain, expose it through a redacted
-GET-only Core projection, render it as advisory Mission Control information,
-prove authority isolation and absence of startup, scheduled, and request-time
-acquisition, and close with exact-SHA release gates plus read-only production
-acceptance. A grounding/provenance GET uses only already-accepted local
-evidence and reviewed local readers; it cannot trigger GHCR access, registry
+P0 through P4 are complete and P5 is in progress. `atlas-v0.14.0` remains the
+latest released Atlas version; `atlas-v0.15.0` has not yet been created, and
+v0.15 is not yet released.
+The implemented chain reuses the released binding/observation/evidence grounding
+chain, exposes it at
+`GET /api/v1/discovery/items/{item_id}/image-grounding`, and renders it as
+advisory Mission Control information. The completed P4 matrix validated authority
+isolation and absence of startup, scheduled, and request-time acquisition. P5
+requires exact-closure-SHA gates and read-only production acceptance. The GET
+uses only already-accepted local evidence and reviewed local readers; it cannot
+trigger GHCR access, registry
 acquisition, Sigstore verification, collector execution, or evidence refresh.
 The plan adds no durable state, mutation, or execution authority.

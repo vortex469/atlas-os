@@ -1,4 +1,4 @@
-# Atlas OS Architecture — v0.14
+# Atlas OS Architecture — v0.15 candidate
 
 ## Released production topology
 
@@ -108,7 +108,7 @@ provided. The schema-v2 store then owns Proxmox QEMU monitoring expectations.
 Authority is limited to monitoring policy and requires the dedicated operator
 permission; operational and provider-action permissions do not imply it.
 
-## Discovery evidence and cache
+## Discovery evidence, cache, and v0.15 image-grounding projection
 
 Discovery's public API is GET-only. Curated catalog data remains authoritative;
 dynamic facts and the rebuildable cache are evidence with freshness, conflict,
@@ -116,6 +116,18 @@ and provenance semantics. V0.14 adds internal exact DeploymentBinding, Compose
 observation, grounding, and provenance composition. Image evidence is
 informational/read-only and has no operational authority. The generic image
 collector is shipped inactive with empty production registries.
+
+V0.15 P1–P3 add a binding-driven local read-only grounding service,
+`GET /api/v1/discovery/items/{item_id}/image-grounding`, and an advisory
+Mission Control panel. The bounded panel presents status, release, deployment
+binding, observed image, accepted evidence, source class, source identity, and
+attestation time. It has no action controls and grants no deployment or
+execution authority. P4's authoritative security/isolation/authority matrix is
+complete; P5 exact-SHA closure evidence remains pending.
+
+`atlas-v0.14.0` remains the latest released Atlas version. V0.15 P0–P4 are
+complete, P5 is in progress, `atlas-v0.15.0` has not yet been created, and
+v0.15 is not yet released.
 
 ## Backup and restore boundary
 

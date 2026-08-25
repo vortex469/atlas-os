@@ -1,6 +1,8 @@
-# Atlas v0.14 Production Deployment
+# Atlas Production Deployment and v0.15 Acceptance Plan
 
-This guide describes the released v0.14 Compose topology. It does not replace
+This guide describes the released v0.14 Compose topology and the read-only
+acceptance plan for the not-yet-released v0.15 closure candidate. It does not
+replace
 operator review of `.env.example`, the Compose files, runtime gates, or the
 backup manifests.
 
@@ -97,6 +99,9 @@ docker compose \
   informational and have no operational authority.
 - The generic image collector is inactive: production registries are empty and
   no startup or scheduled collection exists.
+- The v0.15 image-grounding GET and Mission Control panel are informational;
+  image grounding grants no deployment or execution authority and adds no
+  action controls.
 - Backup/restore is operator maintenance tooling, not an Agent intent.
 
 Atlas performs no automatic remediation, approval, update, deployment,
@@ -167,3 +172,37 @@ released tags and Git history. For v0.14, deploy the exact tag
 resolved Compose configuration before changing a running installation. This
 reconciliation does not invent a cross-environment upgrade or rollback
 procedure beyond the released tooling above.
+
+## v0.15 provisional closure validation
+
+P0 through P4 are complete; P5 is in progress. Validate only the eventual
+final closure SHA C. Required CI is Quality gates (`atlas-agent`, `atlas-core`,
+and `mission-control`) plus Container release gate
+(`Container integration (runc; no gVisor proof)`), with each workflow
+`headSha` exactly equal to C. Required local container commands are:
+
+```bash
+ATLAS_CONTAINER_GATE_MODE=github-integration ./scripts/container-release-gate
+./scripts/container-release-gate
+```
+
+The second invocation is the production runsc proof. These checks are pending;
+this plan does not claim that they passed for C.
+
+Production acceptance is read-only: GET Home Assistant image grounding and
+expect `grounded`; GET Frigate image grounding and expect
+`no_deployment_binding`; GET a recorded known-absent item and expect a
+sanitized 404; visually confirm both advisory states in Mission Control. Issue
+no `POST`, `PUT`, `PATCH`, or `DELETE`, and cause no mutation, execution,
+proposal, candidate, approval, workflow, provider, worker, or repository action.
+
+During the same recorded acceptance interval, prove collector inactivity
+without activating it: empty production registries; no enablement in rendered
+configuration; no startup, scheduled/background, or request-time acquisition;
+no correlated GHCR acquisition traffic; no runtime Sigstore verification; no
+collector invocation; and no evidence refresh.
+
+Rollback is to the prior accepted `atlas-v0.14.0` image/configuration at
+`4d2526e1b022c5c36eaced65bf5b71703da5d2d7`. No data migration, evidence
+rollback, side-effect replay, action/dispatch recreation, or automated
+remediation is required.

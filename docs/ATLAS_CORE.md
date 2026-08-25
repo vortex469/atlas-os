@@ -1,10 +1,18 @@
 # Atlas Core
 
-Atlas Core is the central Atlas OS API and control-plane service. In v0.14 it loads and normalizes provider and inventory state; evaluates policy, health, findings, and intelligence; owns operator sessions, Provider Intent, Discovery projections, and durable operational lifecycle state; and exposes typed API v1 contracts to Mission Control and Atlas Agent.
+Atlas Core is the central Atlas OS API and control-plane service. It loads and normalizes provider and inventory state; evaluates policy, health, findings, and intelligence; owns operator sessions, Provider Intent, Discovery projections, and durable operational lifecycle state; and exposes typed API v1 contracts to Mission Control and Atlas Agent.
 
 Provider Intent, when explicitly activated, is monitoring-policy authority only for identity-bound Proxmox QEMU resources. Discovery combines the curated catalog with dynamic read-only evidence and rebuildable cache projections. Core dispatches only the hardened operational tuple `restart-service / proxmox / qemu` across the Agent-facing boundary; legacy provider actions remain separate. `operational_dispatch.db` preserves durable safety/audit and no-replay state.
 
 Backup/restore format v3 is operator maintenance tooling over documented durable state. Restore invalidates existing operator sessions, and rebuildable Discovery cache data is not backup authority. Backup/restore is not an Agent execution intent.
+
+For the v0.15 provisional closure candidate, Core also exposes the implemented
+GET-only, bounded, read-only
+`/api/v1/discovery/items/{item_id}/image-grounding` projection. It preserves
+grounded and fail-closed statuses, returns sanitized 404/503 errors, performs no
+acquisition or mutation, and grants no deployment or execution authority. P0
+through P4 are complete; P5 exact-SHA release validation is in progress, and
+v0.15 is not yet released.
 
 ## Runtime and local development
 
