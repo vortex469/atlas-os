@@ -1,4 +1,4 @@
-# Discovery Center Current Context — v0.15 provisional closure
+# Discovery Center Current Context — v0.15 released
 
 Discovery Center is Atlas's provider-neutral, local-first, read-only knowledge
 and evidence surface. Its public API is GET-only and its Mission Control views
@@ -43,21 +43,22 @@ breadth limited to the accepted Home Assistant `2026.8.3` proof; it adds no
 collector, no scheduled collection, no authority of any kind, and no
 Discovery-to-dispatch coupling.
 
-V0.15 P0 through P4 are complete; P5 is in progress and v0.15 is not yet
-released. The implementation is a binding-driven local read-only model, the
+V0.15 P0 through P5 and production acceptance are complete. The release is
+`atlas-v0.15.0` at `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`. The
+implementation is a binding-driven local read-only model, the
 redacted GET-only Core projection at
 `GET /api/v1/discovery/items/{item_id}/image-grounding`, and an advisory Mission
 Control view. The
 model reuses `DeploymentBinding`, repository Compose observation, accepted
 evidence, and `ground_deployment_image`; it preserves fail-closed states and
 provenance, including the distinction between `REGISTRY_ATTESTED` and
-`CURATED`. Release gates must prove empty collector registries and no startup,
+`CURATED`. Release gates proved empty collector registries and no startup,
 scheduled, or request-time acquisition. A GET uses only already-accepted local
 evidence and reviewed local readers and cannot trigger GHCR access, registry
 acquisition, Sigstore verification, collector execution, or evidence refresh.
 The completed P4 gates also prove no authority imports or mutation controls and
-unchanged capability and approval/no-replay contracts. Final exact-SHA
-validation and read-only production acceptance are pending P5 requirements.
+unchanged capability and approval/no-replay contracts. P5 completed exact-SHA
+validation and read-only production acceptance.
 Home Assistant release `2026.8.3`, image
 `ghcr.io/home-assistant/home-assistant`, digest
 `sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe`,

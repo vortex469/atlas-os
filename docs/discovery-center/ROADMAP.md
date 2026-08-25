@@ -2,8 +2,8 @@
 
 ## Released baseline
 
-Atlas v0.14.0 is released as `atlas-v0.14.0` at
-`4d2526e1b022c5c36eaced65bf5b71703da5d2d7`.
+Atlas v0.15.0 is released as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 
 Discovery is GET-only/read-only. It never installs, configures, approves,
 executes, updates, deploys, rolls back, or publishes releases, and its evidence
@@ -22,7 +22,7 @@ authority.
 
 These tracks are historical/completed, not current checkpoints.
 
-## Released v0.12-v0.14 additions
+## Released v0.12-v0.15 additions
 
 - v0.12 released bounded dynamic Discovery refresh, deterministic curated plus
   dynamic projections, rebuildable cache, freshness/conflict handling, source
@@ -34,6 +34,7 @@ These tracks are historical/completed, not current checkpoints.
   accepted immutable image-release evidence, informational grounding, and
   provenance. The generic image collector remains inactive with empty
   production registries and no startup or scheduled activation.
+- v0.15 released the bounded Deployment Image Grounding Operator Surface.
 
 ## Future D11 — Semantic Discovery
 
@@ -47,7 +48,7 @@ An uncommitted direction is validated operator/community catalog extension
 with explicit provenance, versioning, migration, conflict, and trust rules.
 It must not enable unsandboxed third-party execution or secret distribution.
 
-## Selected v0.15 — Deployment Image Grounding Operator Surface
+## Released v0.15 — Deployment Image Grounding Operator Surface
 
 The selected v0.15 theme is **Deployment Image Grounding Operator Surface**.
 It is Discovery-facing: it presents the already-released read-only image
@@ -65,7 +66,7 @@ Discovery-facing boundaries:
 - Grounding, evidence, and provenance never create candidates, intents,
   approvals, action requests, or dispatches.
 - The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through
-  P4 are complete; P5 is in progress. V0.15 is not yet released.
+  P5 and production acceptance are complete.
 
 Implementation is fixed by phase:
 
@@ -94,10 +95,11 @@ Implementation is fixed by phase:
   mutation/execution, no silent precedence, redaction, and unchanged Provider
   Intent, capability, approval, no-replay, worker-default, and backup/restore
   contracts.
-- **P5 — closure (in progress):** run focused and full Core validation, Agent regressions,
+- **P5 — closure (complete):** focused and full Core validation, Agent regressions,
   Mission Control tests/lint/build, capability parity, and exact-SHA CI and
   container gates; then record read-only production acceptance,
   collector-inactivity evidence, documentation reconciliation, rollback, and
   release evidence.
 
-P5 evidence remains pending for the exact final closure SHA.
+P5 release closure is complete at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.

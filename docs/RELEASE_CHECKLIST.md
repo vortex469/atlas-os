@@ -29,14 +29,15 @@ permissions, gates, handlers, ACLs, or production execution.
   `operational=restart-service/proxmox/qemu` and
   `repository=update-compose-stack`; LXC remains unsupported.
 
-P0 is complete. P1 through P4 are complete; P5 final release-evidence closure
-is recorded below, with final tag identity and unperformed evidence still
-pending. Atlas v0.15 is not yet released.
+P0 through P5 and production acceptance are complete. Atlas v0.15.0 is
+released as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`. Unchecked evidence items below
+remain an accurate record of evidence not captured at the earlier candidate.
 
 ### Atlas v0.15 P1–P5 implementation and release gates
 
 Checked P1–P4 items record the implemented and validated P4 state. Checked P5
-items record evidence established for final closure SHA
+items record evidence established for pre-release closure SHA
 `1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`; an unchecked item is not implied
 to have passed.
 
@@ -222,15 +223,15 @@ Control execution authority. P5 final evidence closure is recorded below.
 #### P5 — release validation and closure
 
 P5 final release-evidence closure is recorded here and remains separate from
-the completed P4 validation matrix. Final closure candidate C is
-`1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`. The final tag does not exist, so
-this is not a claim that v0.15 is released. Results recorded for earlier SHAs
-remain attributed to those SHAs and are not silently promoted to exact-C
-evidence.
+the completed P4 validation matrix. The pre-release closure candidate C was
+`1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`. Results recorded for earlier SHAs
+remain attributed to those SHAs and are not silently promoted to release-commit
+evidence. The final release commit is
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 
-##### Exact-SHA and clean-tree evidence
+##### Pre-release exact-SHA and clean-tree evidence
 
-- [x] **Final closure SHA C:**
+- [x] **Pre-release closure SHA C:**
   `1eeb6d2bb195ea653faf9e7d19f1523982f8cbf0`; exact deployed source and
   `origin/main` at final evidence collection matched C. The self-contained
   production source checkout was `/opt/atlas-release-v015-final`.
@@ -323,7 +324,7 @@ is authorized. The conditional `grounded` contract remains available when the
 exact bound Compose artifact genuinely exists and matches accepted evidence;
 tests prove that path by synthesizing a temporary Home Assistant Compose
 artifact. No v0.15 contract requires shipping
-`compose/home-assistant.yaml`; v0.16 reserves its absence as the
+`compose/home-assistant.yaml`; its absence remains a future
 `missing_deployment_artifact` reference case.
 
 Registry-attested evidence is informational. It is not deployment approval,
@@ -379,11 +380,10 @@ side-effect replay, no action/dispatch recreation, and no automated remediation.
   `32797990417` and Container release gate run `32797990447` passed;
   capability parity, base/hardened Compose render, and running image
   inspection passed; and security findings were empty. A clean-tree
-  release-evidence run remains required after this documentation commit. No
-  artifact or checksum is invented here.
-- [ ] **Final tag identity:** pending; `atlas-v0.15.0` has not yet been created.
-  Record it only after the final tag actually exists and resolves to the
-  accepted final SHA.
+  release-evidence run was not recorded for that candidate. No artifact or
+  checksum is invented here.
+- [x] **Final tag identity:** `atlas-v0.15.0` exists and peels to
+  `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 
 ## Atlas v0.14 final release — 2026-08-24
 

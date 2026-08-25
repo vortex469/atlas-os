@@ -18,7 +18,9 @@ Mission Control presents and submits requests to authoritative backend contracts
 
 Released mutation authorities remain separate: Provider Intent is monitoring-policy only; legacy provider actions use their provider surface; repository execution is exactly `update-compose-stack`; hardened operational dispatch is exactly `restart-service / proxmox / qemu`. Discovery is GET-only/read-only. There is no automatic approval, remediation, update, deployment, rollback, or release publication.
 
-P0 through P4 of v0.15 are complete. P5 is in progress; v0.15 is not yet released.
+P0 through P5 and production acceptance are complete. Atlas v0.15.0 is released
+as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 
 ## Development
 

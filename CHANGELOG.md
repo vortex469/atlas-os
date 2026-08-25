@@ -6,12 +6,14 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.15-P0–P4 — Grounded image identity and provenance operator surface
+## atlas-v0.15.0 — Atlas v0.15.0 (2026-08-25)
+
+#### v0.15-P0–P5 — Grounded image identity and provenance operator surface
 
 Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**.
-P0 through P4 are complete. P5 release validation and closure is in progress;
-v0.15 is not yet released. The current P4 HEAD is
-`864dee0274275b1c92847b82d1c3fa3fab427cfa`, not the final closure SHA.
+P0 through P5 and production acceptance are complete. Atlas v0.15.0 is
+released as the immutable `atlas-v0.15.0` tag at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 
 - The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5.
 - The selected surface is read-only and informational: it presents the
@@ -46,19 +48,17 @@ v0.15 is not yet released. The current P4 HEAD is
   evidence refresh. P4 also proves mutation/execution separation, redaction,
   source conflict handling, and all unchanged authority, approval, no-replay,
   worker, and maintenance contracts.
-- P5 remains in progress and requires focused/full component validation,
-  capability parity,
+- P5 completed focused/full component validation, capability parity,
   exact-SHA CI/container gates, read-only production acceptance,
   collector-inactivity verification, documentation reconciliation, rollback
-  guidance, and recorded release evidence.
+  guidance, and release closure.
 
 The reviewed Home Assistant reference is release `2026.8.3`, image
 `ghcr.io/home-assistant/home-assistant`, digest
 `sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe`,
 source class `REGISTRY_ATTESTED`. Registry-attested evidence is informational;
 it is not deployment approval, authorization, install readiness, or execution
-authority. `atlas-v0.14.0` remains the latest released Atlas version;
-`atlas-v0.15.0` has not yet been created, and v0.15 is not yet released.
+authority.
 
 ## atlas-v0.14.0 — Atlas v0.14.0 (2026-08-24)
 

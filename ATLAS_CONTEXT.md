@@ -2,8 +2,8 @@
 
 ## Released baseline
 
-Atlas v0.14.0 is released as `atlas-v0.14.0` at
-`4d2526e1b022c5c36eaced65bf5b71703da5d2d7` (2026-08-24).
+Atlas v0.15.0 is released as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab` (2026-08-25).
 
 ## Production topology
 
@@ -61,7 +61,7 @@ compatibility/evidence, advisory proposals, operational review/history/
 recovery, and Atlas Agent workflow views. Browser mutations require their
 specific Core-owned authority and deployment gates.
 
-## v0.15 implementation and provisional closure state
+## v0.15 released state
 
 Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**: a
 bounded, read-only, informational operator-facing surface over the released
@@ -71,10 +71,8 @@ collector, no scheduled collection, and no execution, approval,
 provider-intent, or remediation authority, and no Discovery-to-dispatch
 coupling.
 
-P0, P1, P2, P3, and P4 are complete. P5 is in progress. `atlas-v0.14.0`
-remains the latest released Atlas version; `atlas-v0.15.0` has not yet been
-created, v0.15 is not yet released, and the current P4 HEAD is not the final
-closure SHA. P1 composes the existing
+P0 through P5 and production acceptance are complete. The release is
+`atlas-v0.15.0` at `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`. P1 composes the existing
 `DeploymentBinding`, repository Compose observation, accepted evidence, and
 `ground_deployment_image` semantics into a deterministic fail-closed local
 read-only model. P2 exposes the bounded, redacted GET-only projection at
@@ -87,7 +85,7 @@ uses only already-accepted local evidence and reviewed local readers, without
 triggering GHCR access, registry acquisition, Sigstore verification, collector
 execution, or evidence refresh. It also proves isolation, redaction, and
 unchanged authority contracts.
-P5 performs exact-SHA release validation and read-only production acceptance.
+P5 completed exact-SHA release validation and read-only production acceptance.
 No phase may add evidence or bindings, acquire or verify evidence at runtime,
 persist projection state, silently choose a source, or create a mutation or
 execution path.

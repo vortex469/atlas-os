@@ -6,8 +6,8 @@ recommendations, and tightly bounded approved actions.
 
 ## Current release
 
-The current release is **Atlas v0.14.0**, published as `atlas-v0.14.0` at
-`4d2526e1b022c5c36eaced65bf5b71703da5d2d7` on 2026-08-24.
+The current release is **Atlas v0.15.0**, published as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab` on 2026-08-25.
 
 ## What Atlas does today
 
@@ -104,22 +104,21 @@ to their surface.
 - [Release checklist and evidence](docs/RELEASE_CHECKLIST.md)
 - [Deployment and historical upgrade notes](docs/DEPLOYMENT.md)
 
-## v0.15 provisional closure state
+## v0.15 released state
 
 See the [Atlas roadmap](ROADMAP.md). The v0.15 theme is
 **Deployment Image Grounding Operator Surface**, a read-only operator-facing
 surface over released image grounding; remaining future directions are
 uncommitted.
 
-P0 through P4 are complete and P5 is in progress. `atlas-v0.14.0` remains the
-latest released Atlas version; `atlas-v0.15.0` has not yet been created, and
-v0.15 is not yet released.
+P0 through P5 and production acceptance are complete. The release is
+`atlas-v0.15.0` at `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 The implemented chain reuses the released binding/observation/evidence grounding
 chain, exposes it at
 `GET /api/v1/discovery/items/{item_id}/image-grounding`, and renders it as
 advisory Mission Control information. The completed P4 matrix validated authority
 isolation and absence of startup, scheduled, and request-time acquisition. P5
-requires exact-closure-SHA gates and read-only production acceptance. The GET
+completed exact-SHA gates and read-only production acceptance. The GET
 uses only already-accepted local evidence and reviewed local readers; it cannot
 trigger GHCR access, registry
 acquisition, Sigstore verification, collector execution, or evidence refresh.

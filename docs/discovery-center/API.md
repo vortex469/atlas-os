@@ -1,4 +1,4 @@
-# Discovery Center API — v0.15 provisional closure candidate
+# Discovery Center API — v0.15 released
 
 ## Public contract
 
@@ -21,7 +21,7 @@ Public GET endpoints are:
 
 List and search endpoints provide bounded pagination and typed filters. Missing
 items return 404, invalid queries 422, and unavailable catalog or compatibility
-context 503. Response models in the candidate code are authoritative for exact
+context 503. Response models in the released code are authoritative for exact
 fields and schemas.
 
 ## Image-grounding API
@@ -78,6 +78,7 @@ can be loaded without making collection a production capability.
 ## Release status
 
 Dynamic evidence/cache shipped in v0.12, compatibility/upgrade intelligence in
-v0.13, and trusted Compose image observation/grounding in v0.14. Atlas v0.14.0
-is released. The v0.15 API and operator-surface implementation through P4 is
-complete, P5 is in progress, and v0.15 is not yet released.
+v0.13, and trusted Compose image observation/grounding in v0.14. The v0.15 API
+and operator surface are released as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`; P0 through P5 and production
+acceptance are complete.

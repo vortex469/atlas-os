@@ -6,13 +6,14 @@ Provider Intent, when explicitly activated, is monitoring-policy authority only 
 
 Backup/restore format v3 is operator maintenance tooling over documented durable state. Restore invalidates existing operator sessions, and rebuildable Discovery cache data is not backup authority. Backup/restore is not an Agent execution intent.
 
-For the v0.15 provisional closure candidate, Core also exposes the implemented
+The v0.15 release also exposes the implemented
 GET-only, bounded, read-only
 `/api/v1/discovery/items/{item_id}/image-grounding` projection. It preserves
 grounded and fail-closed statuses, returns sanitized 404/503 errors, performs no
 acquisition or mutation, and grants no deployment or execution authority. P0
-through P4 are complete; P5 exact-SHA release validation is in progress, and
-v0.15 is not yet released.
+through P5 and production acceptance are complete. Atlas v0.15.0 is released
+as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 
 ## Runtime and local development
 

@@ -1,4 +1,4 @@
-# Atlas OS Architecture — v0.15 candidate
+# Atlas OS Architecture — v0.15.0 released baseline
 
 ## Released production topology
 
@@ -123,11 +123,9 @@ Mission Control panel. The bounded panel presents status, release, deployment
 binding, observed image, accepted evidence, source class, source identity, and
 attestation time. It has no action controls and grants no deployment or
 execution authority. P4's authoritative security/isolation/authority matrix is
-complete; P5 exact-SHA closure evidence remains pending.
-
-`atlas-v0.14.0` remains the latest released Atlas version. V0.15 P0–P4 are
-complete, P5 is in progress, `atlas-v0.15.0` has not yet been created, and
-v0.15 is not yet released.
+complete. P0 through P5 and production acceptance are complete. Atlas v0.15.0
+is released as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 
 ## Backup and restore boundary
 

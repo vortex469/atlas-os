@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.14
+## 1. Current released baseline — v0.15
 
-Atlas v0.14.0 is released as `atlas-v0.14.0` at
-`4d2526e1b022c5c36eaced65bf5b71703da5d2d7` (2026-08-24).
+Atlas v0.15.0 is released as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab` (2026-08-25).
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -43,12 +43,13 @@ image evidence, grounding, and provenance.
 - v0.13 released compatibility and upgrade intelligence.
 - v0.14 released trusted Compose image observation and informational image
   grounding/provenance while leaving the generic collector inactive.
+- v0.15 released the bounded Deployment Image Grounding Operator Surface.
 
-The detailed v0.6-v0.14 milestone plans are historical and completed. Their
+The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## 4. Selected v0.15 scope — Deployment Image Grounding Operator Surface
+## 4. Released v0.15 scope — Deployment Image Grounding Operator Surface
 
 Atlas v0.15 has the theme **Deployment Image Grounding Operator Surface**. It
 extends the released v0.14 read-only image grounding (exact repository Compose
@@ -58,10 +59,9 @@ grounding/provenance) into a bounded operator-facing presentation surface.
 The milestone dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is this
 documentation-only, decision-complete architecture and boundary sign-off,
 recorded in [CHANGELOG.md](CHANGELOG.md) and
-[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md). P0 through P4 are
-complete. P5 is in progress. `atlas-v0.14.0` remains the latest released Atlas
-version; `atlas-v0.15.0` has not yet been created, and v0.15 is not yet
-released.
+[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md). P0 through P5 and
+production acceptance are complete. The release is `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
 
 ### Scope
 
@@ -163,13 +163,13 @@ all of the following together:
 
 ### P5 — Release validation and closure
 
-P5 is in progress. Run and record focused Core grounding/API/isolation tests, the full Core suite,
+Completed focused Core grounding/API/isolation tests, the full Core suite,
 Agent regression tests, and Mission Control tests, lint, and production build.
-Prove capability parity and run CI and container release gates against the
-same recorded exact candidate SHA. Production acceptance is read-only: verify
-the projected Home Assistant proof and fail-closed states, verify collector
-registries remain empty and acquisition remains inactive, and verify no
-mutation/execution request occurs.
+Capability parity, CI, and container release gates were validated, and
+production acceptance remained read-only: it verified
+the projected Home Assistant proof and fail-closed states, verified that
+collector registries remained empty and acquisition remained inactive, and
+verified that no mutation/execution request occurred.
 
 Reconcile the roadmap, current context, README, changelog, Discovery docs, and
 release checklist to the observed result. Record commands, outcomes, exact

@@ -1,8 +1,7 @@
-# Atlas Production Deployment and v0.15 Acceptance Plan
+# Atlas Production Deployment and v0.15.0 Acceptance Record
 
-This guide describes the released v0.14 Compose topology and the read-only
-acceptance plan for the not-yet-released v0.15 closure candidate. It does not
-replace
+This guide describes the released v0.15.0 Compose topology and its read-only
+acceptance record. It does not replace
 operator review of `.env.example`, the Compose files, runtime gates, or the
 backup manifests.
 
@@ -173,23 +172,26 @@ resolved Compose configuration before changing a running installation. This
 reconciliation does not invent a cross-environment upgrade or rollback
 procedure beyond the released tooling above.
 
-## v0.15 provisional closure validation
+## v0.15 release validation
 
-P0 through P4 are complete; P5 is in progress. Validate only the eventual
-final closure SHA C. Required CI is Quality gates (`atlas-agent`, `atlas-core`,
-and `mission-control`) plus Container release gate
-(`Container integration (runc; no gVisor proof)`), with each workflow
-`headSha` exactly equal to C. Required local container commands are:
+P0 through P5 and production acceptance are complete. Atlas v0.15.0 is
+released as `atlas-v0.15.0` at
+`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`. Release validation required
+Quality gates (`atlas-agent`, `atlas-core`, and `mission-control`) plus Container
+release gate (`Container integration (runc; no gVisor proof)`), with each
+workflow `headSha` exactly equal to the validated candidate. The local container
+commands were:
 
 ```bash
 ATLAS_CONTAINER_GATE_MODE=github-integration ./scripts/container-release-gate
 ./scripts/container-release-gate
 ```
 
-The second invocation is the production runsc proof. These checks are pending;
-this plan does not claim that they passed for C.
+The second invocation is the production runsc proof. Detailed evidence and any
+items not captured for an earlier candidate remain recorded in the release
+checklist; release status does not retroactively complete missing evidence.
 
-Production acceptance is read-only: GET Home Assistant image grounding and
+The production-acceptance protocol is read-only: GET Home Assistant image grounding and
 expect `grounded`; GET Frigate image grounding and expect
 `no_deployment_binding`; GET a recorded known-absent item and expect a
 sanitized 404; visually confirm both advisory states in Mission Control. Issue
