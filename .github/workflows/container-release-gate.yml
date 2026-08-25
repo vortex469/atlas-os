@@ -21,6 +21,7 @@ on:
       - "services/atlas-agent/**"
       - "services/atlas-core/**"
       - "services/mission-control/**"
+      - "docs/RELEASE_CHECKLIST.md"
       - ".github/workflows/container-release-gate.yml"
   push:
     branches:
@@ -44,6 +45,7 @@ on:
       - "services/atlas-agent/**"
       - "services/atlas-core/**"
       - "services/mission-control/**"
+      - "docs/RELEASE_CHECKLIST.md"
       - ".github/workflows/container-release-gate.yml"
 
 permissions:
