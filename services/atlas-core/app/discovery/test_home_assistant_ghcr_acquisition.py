@@ -665,24 +665,63 @@ def test_final_mutation_after_multiple_artifacts_fails(
     assert caught.value.reason == acquisition._FailureReason.TAG_MUTATED
 
 
-def test_acquisition_deadline_is_global_and_stops_new_requests(monkeypatch) -> None:
-    class SlowTransport(_FakeTransport):
-        async def get(self, **kwargs) -> acquisition._Response:
-            self.calls.append(kwargs)
-            await asyncio.sleep(0.012)
-            if not self.responses:
-                raise AssertionError("unexpected request")
-            return self.responses.popleft()
+def test_expired_acquisition_budget_starts_no_request(monkeypatch) -> None:
+    async def run() -> None:
+        loop = asyncio.get_running_loop()
+        monkeypatch.setattr(loop, "time", lambda: 10.0)
+        transport = _FakeTransport([])
+        acquirer = acquisition._HomeAssistantGHCRAcquirer(transport=transport)
+        budget = acquisition._AcquisitionBudget(deadline=10.0)
 
-    base, _, _ = _scenario(monkeypatch)
-    slow = SlowTransport(list(base.responses))
-    monkeypatch.setattr(acquisition, "_TOTAL_TIMEOUT", 0.025)
-    with pytest.raises(acquisition._HomeAssistantGHCRAcquisitionError) as caught:
-        asyncio.run(acquisition._HomeAssistantGHCRAcquirer(transport=slow).acquire())
-    assert caught.value.reason == acquisition._FailureReason.TIMEOUT
-    assert len(slow.calls) == 3
-    assert slow.calls[1]["timeout"] < slow.calls[0]["timeout"]
-    assert slow.calls[2]["timeout"] < slow.calls[1]["timeout"]
+        with pytest.raises(acquisition._HomeAssistantGHCRAcquisitionError) as caught:
+            await acquirer._request(
+                budget,
+                host="ghcr.io",
+                path="/v2/test",
+                accept="application/json",
+                object_limit=1,
+            )
+
+        assert caught.value.reason == acquisition._FailureReason.TIMEOUT
+        assert transport.calls == []
+
+    asyncio.run(run())
+
+
+def test_request_timeout_decreases_and_exhausted_budget_starts_no_request(
+    monkeypatch,
+) -> None:
+    class ControlledClockTransport(_FakeTransport):
+        async def get(self, **kwargs) -> acquisition._Response:
+            response = await super().get(**kwargs)
+            clock[0] += advances.popleft()
+            return response
+
+    async def run() -> None:
+        loop = asyncio.get_running_loop()
+        monkeypatch.setattr(loop, "time", lambda: clock[0])
+        transport = ControlledClockTransport([_response(200), _response(200)])
+        acquirer = acquisition._HomeAssistantGHCRAcquirer(transport=transport)
+        budget = acquisition._AcquisitionBudget(deadline=15.0)
+        request = {
+            "host": "ghcr.io",
+            "path": "/v2/test",
+            "accept": "application/json",
+            "object_limit": 1,
+        }
+
+        await acquirer._request(budget, **request)
+        await acquirer._request(budget, **request)
+        with pytest.raises(acquisition._HomeAssistantGHCRAcquisitionError) as caught:
+            await acquirer._request(budget, **request)
+
+        assert [call["timeout"] for call in transport.calls] == [5.0, 3.0]
+        assert caught.value.reason == acquisition._FailureReason.TIMEOUT
+        assert len(transport.calls) == 2
+
+    clock = [10.0]
+    advances = deque([2.0, 3.0])
+    asyncio.run(run())
 
 
 def test_absolute_deadline_cancels_transport_ignoring_timeout(monkeypatch) -> None:
