@@ -23,6 +23,10 @@ release boundaries.
   canonical primitives and overflow-safe age range, exhaustive image and
   prerequisite projection, and typed assumption/confirmation production; no
   unreachable target-ambiguity runtime state remains.
+- Amended P0 to freeze the exact domain-separated `Fingerprint.value`
+  derivation, every prerequisite description template, and every confirmation
+  prompt template; all remain deterministic, presentation-only where
+  applicable, and non-authorizing.
 - P0 adds no plan implementation, API, UI, test, runtime configuration,
   persistence, approval, target, mutation, execution, or authority.
 

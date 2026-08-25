@@ -17,6 +17,9 @@ the decisions and validation matrix; P1–P5 implementation remains pending.
 - [x] Freeze canonical fingerprint inputs/serialization, provenance links,
   freshness windows/evaluation instant, and the complete status/freshness/
   conflict/blocker precedence table.
+- [x] Freeze the exact `Fingerprint.value` domain-separated byte derivation,
+  NUL framing, JCS/NFC input, SHA-256 encoding, exclusions, and non-authority
+  semantics so golden vectors require no implementation invention.
 - [x] Freeze the bounded `RawEvidenceObservation` adapter boundary, valid-only
   nullable `EvidenceDecisionInput`, and the exhaustive allowed disposition /
   eligibility / reason relation without invented malformed-record values.
@@ -27,8 +30,13 @@ the decisions and validation matrix; P1–P5 implementation remains pending.
   optional-unavailability fact, null rule, bound, and exact total array sort.
 - [x] Freeze catalog item/release-claim release projection, every image state,
   and every prerequisite category without target-capacity invention.
+- [x] Freeze the exact deterministic code-owned description template and typed
+  placeholder source for every v1 prerequisite producer.
 - [x] Freeze the only allowed assumption and confirmation producers, their
   blocker relations, and the reachability of every runtime blocker/state.
+- [x] Freeze the one exact non-authorizing human-review prompt template for
+  each v1 `prompt_template_id`, including normalized subject interpolation and
+  punctuation.
 - [x] Freeze the payload allowlist and require validation of prohibition and
   redaction of secrets,
   credentials, commands, shell/argv/scripts, environment, executable or opaque

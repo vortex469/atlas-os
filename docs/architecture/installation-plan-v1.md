@@ -171,8 +171,8 @@ All fields in these closed nested types are required:
   immutable_image_identity|accepted_evidence|prerequisite_fact|
   target_identity|compatibility_fact|source_fact,subject:Id[1..128]}`.
 * `Confirmation={code:accept_assumption|confirm_prerequisite|confirm_risk,
-  subject:Id[1..128],prompt:PlainText[1..256]}`; it is a question, never an
-  approval or response.
+  subject:Id[1..128],prompt:PlainText[1..256]}`; it is a human-review
+  instruction, never an approval or response.
 
 Null is allowed only above. Server-owned presentation text is escaped at every
 sink and excluded from decisions/fingerprinting; its typed ID/code is included.
@@ -577,7 +577,36 @@ Environmental rows use the exact table key and null relationship; application
 uses `requirement_key="relationship"` and the exact relationship.
 `prerequisite_id` is the first 64 lowercase hex characters (the whole digest)
 of the compound hash under `atlas:prerequisite-id:v1`. Description is fixed
-code-owned `PlainText` selected by descriptor kind and excluded from decisions.
+code-owned `PlainText` selected by the descriptor form and excluded from
+decisions. The exact description templates and placeholder sources are:
+
+| Descriptor form | Exact `description` template |
+|---|---|
+| `cpu:<value>` | `Requires at least {value} CPU cores.` |
+| `memory-mb:<value>` | `Requires at least {value} MB memory.` |
+| `storage-gb:<value>` | `Requires at least {value} GB storage.` |
+| `gpu-required` | `Requires a GPU.` |
+| `gpu-memory-gb:<value>` | `Requires at least {value} GB GPU memory.` |
+| `capability:<value>` | `Requires capability {value}.` |
+| `architecture:<value>` | `Requires architecture {value}.` |
+| `operating-system:<value>` | `Requires operating system {value}.` |
+| `runtime:<value>` | `Requires runtime {value}.` |
+| `device:<value>` | `Requires device {value}.` |
+| `port:<port>:<protocol>:<direction>:<required>` | `Requires port {port}/{protocol} in the {direction} direction (required: {required}).` |
+| `internet-required` | `Requires internet access.` |
+| `lan-required` | `Requires LAN access.` |
+| application relationship | `Requires application relationship {kind} with item {item_id}; minimum version {minimum}; maximum version {maximum}.` |
+
+`{value}`, `{port}`, `{protocol}`, `{direction}`, `{required}`, `{kind}`, and
+`{item_id}` are the corresponding normalized typed descriptor values.
+`{minimum}` and `{maximum}` are respectively the normalized relationship
+`minimum_version` and `maximum_version`, or the exact ASCII word `none` when
+that field is null. Numeric and Boolean placeholders use their canonical
+primitive spelling (`true` or `false` for Boolean); no locale formatting is
+permitted. These are the only v1 prerequisite descriptions. They contain no
+caller text, catalog prose, environment observation, Markdown, HTML, or
+newline; implementations MUST NOT invent or vary prose. Substitution of every
+allowed bounded value produces `PlainText[1..256]`.
 `PrerequisiteIdentityInputV1={descriptor:PrerequisiteDescriptorInputV1,
 prerequisite:PrerequisiteDecisionInputV1,catalog_identity:lowerhex[64]}`
 produces provenance under `atlas:prerequisite:v1`; source, descriptor and state
@@ -612,8 +641,24 @@ identity, or prerequisite satisfaction. With no producer, `assumptions=[]`.
 | `confirm_risk` | every high/critical risk and every compatibility-warning risk / risk subject | `atlas:prompt:confirm-risk:v1` | always required |
 
 The prompt is fixed code-owned text selected only by template identity and
-subject. `(code,subject)` is fingerprinted; prompt text is not. Duplicate pairs
-collapse. Other low/medium risks are informational. Every confirmation adds
+normalized subject. The mapping is exact and exhaustive:
+
+| `prompt_template_id` | Exact `prompt` template |
+|---|---|
+| `atlas:prompt:accept-assumption:v1` | `Review the informational assumption {subject}; this does not approve or authorize any action.` |
+| `atlas:prompt:confirm-prerequisite:v1` | `Review the informational prerequisite {subject}; this does not approve or authorize any action.` |
+| `atlas:prompt:confirm-risk:v1` | `Review the informational risk {subject}; this does not approve or authorize any action.` |
+
+`{subject}` is the unchanged normalized `Id[1..128]` subject. Punctuation is
+included exactly as shown. These are instructions for human review only, not
+requests or records of approval, execution, target authorization, or any
+action. They contain no command, secret, caller-controlled prose, Markdown,
+HTML, or newline, and every substitution satisfies `PlainText[1..256]`.
+There is exactly one prompt for each listed template identity and subject;
+implementations MUST NOT invent or vary prompt prose. `(code,subject)` and the
+corresponding `prompt_template_id` in `ConfirmationDecisionInputV1` are
+fingerprinted; prompt text is not. Duplicate pairs collapse. Other low/medium
+risks are informational. Every confirmation adds
 exactly one same-subject `required_operator_confirmation` blocker and therefore
 prevents `plan_ready_for_review`. V1 has no confirmation response or approval
 state. With no producer, `required_operator_confirmations=[]`.
@@ -1035,9 +1080,22 @@ wire schema and fingerprint is covered by this paragraph or its named type;
 duplicate total tuples are rejected.
 
 Apply RFC 8785 JCS after NFC, strict validation, duplicate rejection and these
-sorts. SHA-256 hashes UTF-8 canonical bytes to lowercase hex. Exclude the
-fingerprint object, derived status, display text, transport/correlation data.
-Equality is only a comparison hint, never authority or persistence/replay key.
+sorts. The one exact final derivation is
+`Fingerprint.value = SHA-256(UTF8("atlas:installation-plan-fingerprint:v1") ||
+0x00 || UTF8(RFC8785-JCS(normalized FingerprintInputV1)))`, rendered as exactly
+64 lowercase hexadecimal characters. The domain label is the exact ASCII
+string `atlas:installation-plan-fingerprint:v1` with no NUL; `0x00` is exactly
+one NUL byte separator. `normalized FingerprintInputV1` is the exact closed
+object defined above after NFC normalization, strict validation, duplicate
+rejection, and the frozen array ordering; RFC 8785 JCS produces the UTF-8
+canonical bytes hashed by SHA-256. The public object is exactly
+`Fingerprint={algorithm:"sha256",canonicalization:"atlas-jcs-nfc-v1",
+value:lowerhex[64]}` and is itself excluded from `FingerprintInputV1`.
+Derived status remains excluded, as do all presentation/display text
+(including prerequisite descriptions, assumption statements, and confirmation
+prompts), secrets, raw payloads, transport/correlation data, and no-plan
+failures. Fingerprint equality conveys comparison and integrity only, never
+approval, persistence, replay, execution, dispatch, or other authority.
 
 ## HTTP, dependency and legacy isolation
 
