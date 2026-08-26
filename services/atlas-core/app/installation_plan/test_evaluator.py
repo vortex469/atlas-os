@@ -18,6 +18,7 @@ from app.installation_plan.adapters import (
 from app.installation_plan.evaluator import (
     InstallationPlanAssembler,
     _catalog,
+    _collapse_risks,
     _plan_status,
     _prerequisites,
 )
@@ -624,6 +625,69 @@ def test_evidence_approaching_expiry_final_ten_percent_boundary(
     assert not {"artifact_content_change", "environment_variance"} & {
         r.code for r in plan.risks
     }
+
+
+def test_duplicate_approaching_expiry_risks_collapse_without_losing_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[contract.FingerprintInputV1] = []
+    monkeypatch.setattr(
+        evaluator, "fingerprint",
+        lambda value: (captured.append(value), contract.fingerprint(value))[1],
+    )
+    rows = (
+        _evidence(source_id="collector-a", attested_at="2026-07-28T00:00:00Z"),
+        _evidence(source_id="collector-b", attested_at="2026-07-28T00:00:01Z"),
+    )
+
+    plans = tuple(
+        _home_artifact(
+            _artifact(
+                reference="ghcr.io/home-assistant/home-assistant",
+                digest="sha256:" + "1" * 64,
+            ),
+            *observations,
+        )
+        for observations in (rows, tuple(reversed(rows)))
+    )
+
+    expected_risk = ("evidence_approaching_expiry", "low", "home-assistant")
+    for plan, fp_input in zip(plans, captured, strict=True):
+        assert len(plan.accepted_evidence) == 2
+        assert len({row.evidence_id for row in plan.accepted_evidence}) == 2
+        assert [(risk.code, risk.severity, risk.subject) for risk in plan.risks] == [
+            expected_risk
+        ]
+        assert not [
+            confirmation
+            for confirmation in plan.required_operator_confirmations
+            if confirmation.code == "confirm_risk"
+        ]
+        assert len([
+            row for row in plan.provenance
+            if row.source_class == "image_release_evidence"
+        ]) == 2
+        assert len([
+            row for row in plan.provenance
+            if row.claim == "freshness" and row.source_class == "policy_evaluation"
+        ]) == 2
+        assert len(fp_input.freshness_decisions) == 2
+        assert [(risk.code, risk.severity, risk.subject) for risk in fp_input.risks] == [
+            expected_risk
+        ]
+    assert plans[0].fingerprint == plans[1].fingerprint
+
+
+def test_risk_collapse_rejects_contradictory_severity() -> None:
+    with pytest.raises(ValueError, match="contradictory severity"):
+        _collapse_risks([
+            contract.Risk(
+                code="evidence_approaching_expiry", severity="low", subject="item"
+            ),
+            contract.Risk(
+                code="evidence_approaching_expiry", severity="high", subject="item"
+            ),
+        ])
 
 
 def test_status_precedence_matrix_retains_lower_ranked_blockers() -> None:

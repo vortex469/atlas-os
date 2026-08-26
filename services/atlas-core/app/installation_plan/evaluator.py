@@ -187,6 +187,17 @@ def _plan_status(blocker_codes: set[str]) -> str:
     return "plan_ready_for_review"
 
 
+def _collapse_risks(risks: list[Risk]) -> list[Risk]:
+    collapsed: dict[tuple[str, str], Risk] = {}
+    for risk in risks:
+        key = (risk.code, risk.subject)
+        existing = collapsed.get(key)
+        if existing is not None and existing.severity != risk.severity:
+            raise ValueError("duplicate risk has contradictory severity")
+        collapsed[key] = risk
+    return list(collapsed.values())
+
+
 def _catalog(snapshot: CatalogSnapshot) -> tuple[CatalogDecisionInputV1, str, str]:
     record, entry = snapshot.selected, snapshot.selected.entry
     if (
@@ -1136,7 +1147,7 @@ class InstallationPlanAssembler:
         )
         assumptions = sorted(assumptions, key=lambda a: (a.assumption_id, a.kind))
         risks = sorted(
-            risks,
+            _collapse_risks(risks),
             key=lambda r: (
                 {"critical": 0, "high": 1, "medium": 2, "low": 3}[r.severity],
                 _RISK_ORDER.index(r.code),
