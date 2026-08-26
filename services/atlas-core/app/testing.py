@@ -10,8 +10,10 @@ from fastapi import FastAPI
 class ASGITestClient:
     """Synchronous facade over HTTPX's thread-free ASGI transport."""
 
-    def __init__(self, app: FastAPI) -> None:
+    def __init__(self, app: FastAPI, *, base_url: str = "http://testserver") -> None:
         self._app = app
+        self._base_url = base_url
+        self.cookies = httpx.Cookies()
 
     def request(
         self,
@@ -34,13 +36,16 @@ class ASGITestClient:
             ):
                 async with httpx.AsyncClient(
                     transport=transport,
-                    base_url="http://testserver",
+                    base_url=self._base_url,
+                    cookies=self.cookies,
                 ) as client:
-                    return await client.request(
+                    response = await client.request(
                         method,
                         url,
                         **kwargs,
                     )
+                    self.cookies.update(client.cookies)
+                    return response
 
         return asyncio.run(send())
 

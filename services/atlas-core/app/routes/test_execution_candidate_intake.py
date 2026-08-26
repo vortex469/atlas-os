@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.execution_candidates.fingerprint import build_candidate_fingerprint
 from app.execution_candidates.intake import (
@@ -24,8 +23,9 @@ from app.execution_candidates.models import (
 from app.main import app
 from app.routes import execution_candidate_intake as route
 from app.services import execution_candidate_intake as service
+from app.testing import ASGITestClient
 
-client = TestClient(app)
+client = ASGITestClient(app)
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 

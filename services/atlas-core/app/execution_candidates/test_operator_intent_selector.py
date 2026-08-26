@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from app.execution_candidates.operator_intent_selector import (
     OperatorIntentResourceCollectionError,
@@ -36,6 +35,7 @@ from app.services.provider_resources import (
     ProviderResourceOperationError,
     ResolvedOperationalTarget,
 )
+from app.testing import ASGITestClient
 
 FINGERPRINT_A = "operational-target-fingerprint-v1:" + "a" * 64
 FINGERPRINT_B = "operational-target-fingerprint-v1:" + "b" * 64
@@ -295,7 +295,7 @@ def route_client(tmp_path: Path, *, permissions=(OPERATIONAL_INTENT_CREATE,)):
         )
     )
     app.include_router(routes.router, prefix="/api/v1")
-    client = TestClient(app, base_url="https://atlas.test")
+    client = ASGITestClient(app, base_url="https://atlas.test")
     client.cookies.set("atlas_operator_session", created.session_token)
     return client
 
