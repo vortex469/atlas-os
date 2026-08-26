@@ -6,6 +6,7 @@ EXPECTED_DISCOVERY_PATHS = {
     "/api/v1/discovery/items/{item_id}",
     "/api/v1/discovery/items/{item_id}/evidence",
     "/api/v1/discovery/items/{item_id}/image-grounding",
+    "/api/v1/discovery/items/{item_id}/installation-plan",
     "/api/v1/discovery/items/{item_id}/relationships",
     "/api/v1/discovery/items/{item_id}/compatibility",
     "/api/v1/discovery/proposals",

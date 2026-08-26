@@ -287,7 +287,7 @@ def test_collector_is_not_wired_into_any_production_module() -> None:
     app_dir = Path(__file__).parents[1]
     references = []
     for path in app_dir.rglob("*.py"):
-        if path.name in _OWNED_FILE_NAMES:
+        if path.name in _OWNED_FILE_NAMES or path.name.startswith("test_"):
             continue
         source = path.read_text(encoding="utf-8")
         if _COLLECTOR_MODULE in source or _TRANSPORT_MODULE in source:

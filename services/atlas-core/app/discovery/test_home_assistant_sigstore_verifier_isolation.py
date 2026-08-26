@@ -202,7 +202,7 @@ def test_no_production_import_consumer_or_wiring() -> None:
     root = Path(__file__).parents[4]
     references: set[str] = set()
     for path in root.rglob("*.py"):
-        if path.name in _OWNED:
+        if path.name in _OWNED or path.name.startswith("test_"):
             continue
         text = path.read_text(encoding="utf-8")
         if _MODULE_NAME in text or _FUNCTION_NAME in text:
