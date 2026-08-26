@@ -66,6 +66,7 @@ jobs:
         run: |
           sudo install --directory --mode=0755 /opt/atlas/config
           sudo install --mode=0644 config/atlas.yaml /opt/atlas/config/atlas.yaml
+          sudo install --directory --owner="$(id -u)" --group="$(id -g)" --mode=0755 /opt/atlas/data /opt/atlas/logs
 
       - name: Lint changed Atlas Core files
         run: ./scripts/rc1-python-ruff-gate services/atlas-core
