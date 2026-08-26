@@ -14,6 +14,7 @@ import type {
     DiscoverySearchPage,
     DiscoverySearchQuery,
 } from "../types/discovery";
+import type { InstallationPlan } from "../types/installationPlan";
 
 const DEFAULT_LIMIT = 25;
 
@@ -86,6 +87,13 @@ export async function getDiscoveryImageGrounding(
         `/discovery/items/${encodeURIComponent(itemId)}/image-grounding`,
     );
 
+    return response.data;
+}
+
+export async function getDiscoveryInstallationPlan(itemId: string): Promise<InstallationPlan> {
+    const response = await atlas.get<InstallationPlan>(
+        `/discovery/items/${encodeURIComponent(itemId)}/installation-plan`,
+    );
     return response.data;
 }
 

@@ -1,11 +1,12 @@
-import { render, screen, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, render, screen, within } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     getDiscoveryCompatibility,
     getDiscoveryItemEvidence,
     getDiscoveryImageGrounding,
+    getDiscoveryInstallationPlan,
     getDiscoveryItem,
     getDiscoveryRelationships,
     listDiscoveryProposals,
@@ -18,6 +19,7 @@ import type {
     DiscoveryRelationshipCollection,
     DiscoveryProposalNavigation,
 } from "../types/discovery";
+import type { InstallationPlan } from "../types/installationPlan";
 import { DiscoveryItemPage } from "./DiscoveryItemPage";
 
 vi.mock("../api/atlas", () => ({
@@ -31,6 +33,7 @@ vi.mock("../api/discovery", () => ({
     getDiscoveryCompatibility: vi.fn(),
     getDiscoveryItemEvidence: vi.fn(),
     getDiscoveryImageGrounding: vi.fn(),
+    getDiscoveryInstallationPlan: vi.fn(),
     listDiscoveryProposals: vi.fn(),
 }));
 
@@ -39,6 +42,7 @@ const mockedGetDiscoveryRelationships = vi.mocked(getDiscoveryRelationships);
 const mockedGetDiscoveryCompatibility = vi.mocked(getDiscoveryCompatibility);
 const mockedGetDiscoveryItemEvidence = vi.mocked(getDiscoveryItemEvidence);
 const mockedGetDiscoveryImageGrounding = vi.mocked(getDiscoveryImageGrounding);
+const mockedGetDiscoveryInstallationPlan = vi.mocked(getDiscoveryInstallationPlan);
 const mockedListDiscoveryProposals = vi.mocked(listDiscoveryProposals);
 
 const compatibilityAssessment = (
@@ -242,6 +246,48 @@ function renderPage(path = "/discovery/items/frigate") {
     );
 }
 
+function installationPlan(itemId: string): InstallationPlan {
+    return {
+        schema_version: "installation-plan-v1",
+        fingerprint: { algorithm: "sha256", canonicalization: "atlas-jcs-nfc-v1", value: itemId.padEnd(64, "0") },
+        application: { item_id: itemId, catalog_entry_id: `catalog-${itemId}`, display_name: `${itemId} plan details`, release_version: null },
+        status: "missing_deployment_artifact",
+        deployment_artifact: { state: "missing", kind: "docker-compose", repository_path: null, service: null, content_digest: null },
+        image: { state: "missing", reference: null, digest: null, release_version: null },
+        accepted_evidence: [],
+        provenance: [],
+        compatibility: [{ environment: "item-scoped", result: "unknown", reason_code: "compatibility_fact_missing" }],
+        prerequisites: [], relationships: [], assumptions: [],
+        blockers: [{ code: "missing_deployment_artifact", subject: itemId }],
+        risks: [], missing_facts: [{ code: "deployment_artifact", subject: itemId }],
+        required_operator_confirmations: [],
+    };
+}
+
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise;
+        reject = rejectPromise;
+    });
+    return { promise, resolve, reject };
+}
+
+function RouteDriver() {
+    const navigate = useNavigate();
+    return <button onClick={() => navigate("/discovery/items/item-b")}>Show item B</button>;
+}
+
+function renderNavigablePage() {
+    return render(
+        <MemoryRouter initialEntries={["/discovery/items/item-a"]}>
+            <RouteDriver />
+            <Routes><Route path="/discovery/items/:itemId" element={<DiscoveryItemPage />} /></Routes>
+        </MemoryRouter>,
+    );
+}
+
 function httpError(status: number, detail: string) {
     return {
         isAxiosError: true,
@@ -258,6 +304,7 @@ describe("DiscoveryItemPage", () => {
         mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment());
         mockedGetDiscoveryItemEvidence.mockResolvedValue(itemEvidence());
         mockedGetDiscoveryImageGrounding.mockResolvedValue(imageGrounding());
+        mockedGetDiscoveryInstallationPlan.mockRejectedValue(new Error("Plan unavailable"));
         mockedListDiscoveryProposals.mockResolvedValue({ proposals: [], total: 0, limit: 25 });
     });
 
@@ -288,6 +335,48 @@ describe("DiscoveryItemPage", () => {
         expect(await screen.findByRole("heading", { name: "Image grounding" })).toBeInTheDocument();
         expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledWith("frigate");
     });
+
+    it("shows loading and failure without plan details", async () => {
+        const request = deferred<InstallationPlan>();
+        mockedGetDiscoveryInstallationPlan.mockReturnValueOnce(request.promise);
+        renderPage();
+
+        expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
+        expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
+        await act(async () => request.reject(new Error("unavailable")));
+        expect(await screen.findByText("Installation plan is currently unavailable.")).toBeInTheDocument();
+        expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
+    });
+
+    it.each(["success", "failure"])(
+        "never presents item A's plan as item B's plan when B ends in %s",
+        async (outcome) => {
+            const itemARequest = deferred<InstallationPlan>();
+            const itemBRequest = deferred<InstallationPlan>();
+            mockedGetDiscoveryInstallationPlan.mockImplementation((itemId) =>
+                itemId === "item-a" ? itemARequest.promise : itemBRequest.promise,
+            );
+            renderNavigablePage();
+            expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-a");
+
+            await act(async () => screen.getByRole("button", { name: "Show item B" }).click());
+            expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
+            expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-b");
+
+            await act(async () => itemARequest.resolve(installationPlan("item-a")));
+            expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
+            expect(screen.getByText("Loading installation plan…")).toBeInTheDocument();
+
+            if (outcome === "success") {
+                await act(async () => itemBRequest.resolve(installationPlan("item-b")));
+                expect((await screen.findAllByText(/— item-b/)).length).toBeGreaterThan(0);
+            } else {
+                await act(async () => itemBRequest.reject(new Error("B unavailable")));
+                expect(await screen.findByText("Installation plan is currently unavailable.")).toBeInTheDocument();
+            }
+            expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
+        },
+    );
 
     it("loads a bounded related proposal section", async () => {
         mockedListDiscoveryProposals.mockResolvedValue({

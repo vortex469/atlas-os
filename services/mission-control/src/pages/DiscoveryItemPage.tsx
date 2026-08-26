@@ -7,6 +7,7 @@ import {
     getDiscoveryCompatibility,
     getDiscoveryItemEvidence,
     getDiscoveryImageGrounding,
+    getDiscoveryInstallationPlan,
     getDiscoveryItem,
     listDiscoveryProposals,
     getDiscoveryRelationships,
@@ -20,12 +21,14 @@ import type {
     DiscoveryRequirements,
     DiscoveryProposalNavigation,
 } from "../types/discovery";
+import type { InstallationPlan } from "../types/installationPlan";
 import { DiscoveryProposalCard } from "../features/discovery/DiscoveryProposalCard";
 import { DiscoveryEvidencePanel } from "../features/discovery/DiscoveryEvidencePanel";
 import {
     DiscoveryImageGroundingPanel,
     type ImageGroundingErrorKind,
 } from "../features/discovery/DiscoveryImageGroundingPanel";
+import { InstallationPlanReview } from "../features/discovery/InstallationPlanReview";
 
 type DetailState = {
     entry: DiscoveryCatalogEntry | null;
@@ -55,6 +58,12 @@ export function DiscoveryItemPage() {
     const [imageGroundingLoading, setImageGroundingLoading] = useState(true);
     const [imageGroundingError, setImageGroundingError] =
         useState<ImageGroundingErrorKind | null>(null);
+    const [installationPlanState, setInstallationPlanState] = useState<{
+        itemId: string;
+        plan: InstallationPlan | null;
+        loading: boolean;
+        unavailable: boolean;
+    }>({ itemId, plan: null, loading: true, unavailable: false });
     const [proposals, setProposals] = useState<DiscoveryProposalNavigation[]>([]);
     const [proposalsLoading, setProposalsLoading] = useState(true);
     const [proposalsError, setProposalsError] = useState<string | null>(null);
@@ -94,6 +103,31 @@ export function DiscoveryItemPage() {
                 setCompatibilityLoading(false);
             });
     }, [itemId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) {
+                setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false });
+            }
+        });
+        getDiscoveryInstallationPlan(itemId)
+            .then((plan) => {
+                if (!cancelled) {
+                    setInstallationPlanState({ itemId, plan, loading: false, unavailable: false });
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setInstallationPlanState({ itemId, plan: null, loading: false, unavailable: true });
+                }
+            });
+        return () => { cancelled = true; };
+    }, [itemId]);
+
+    const currentInstallationPlan = installationPlanState.itemId === itemId
+        ? installationPlanState
+        : { itemId, plan: null, loading: true, unavailable: false };
 
     useEffect(() => {
         let cancelled = false;
@@ -358,6 +392,12 @@ export function DiscoveryItemPage() {
                 projection={imageGrounding}
                 isLoading={imageGroundingLoading}
                 errorKind={imageGroundingError}
+            />
+
+            <InstallationPlanReview
+                plan={currentInstallationPlan.plan}
+                isLoading={currentInstallationPlan.loading}
+                unavailable={currentInstallationPlan.unavailable}
             />
 
             <CompatibilityPanel
