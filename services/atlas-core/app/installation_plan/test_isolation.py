@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ast
+import asyncio
 import builtins
+import importlib
 import importlib.abc
 import os
 import socket
@@ -10,12 +12,14 @@ import sys
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 
-from app.installation_plan.adapters import CatalogAdapter, RepositoryArtifactAdapter
-from app.installation_plan.evaluator import InstallationPlanAssembler
+from app.testing import ASGITestClient
 
 APP = Path(__file__).parents[1]
-ROOTS = ("app.installation_plan.contract", "app.installation_plan.adapters", "app.installation_plan.evaluator")
+ROOTS = (
+    "app.routes.installation_plan",
+)
 FORBIDDEN = (
     "app.actions", "app.deploy", "app.planning", "app.application",
     "app.execution_candidates", "app.provider_intents", "app.operational_dispatch",
@@ -123,11 +127,14 @@ def test_import_graph_hostile_synthetic_cases(
 
 
 def test_runtime_side_effect_sentinels(monkeypatch: pytest.MonkeyPatch) -> None:
-    catalog = CatalogAdapter().read("home-assistant")
-    artifact = RepositoryArtifactAdapter(Path("/opt/atlas")).observe(catalog.selected.entry)
-
     def forbidden(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("side effect attempted")
+
+    # Event-loop and ASGI transport construction may legitimately allocate an
+    # internal wakeup socket.  Complete that framework setup before arming the
+    # production request sentinels.
+    event_loop = asyncio.new_event_loop()
+    test_app = FastAPI()
 
     real_open = builtins.open
 
@@ -146,6 +153,8 @@ def test_runtime_side_effect_sentinels(monkeypatch: pytest.MonkeyPatch) -> None:
         return real_os_open(path, flags, *args, **kwargs)
 
     monkeypatch.setattr(os, "open", guarded_os_open)
+    real_socket = socket.socket
+    monkeypatch.setattr(real_socket, "connect", forbidden)
     monkeypatch.setattr(socket, "socket", forbidden)
     monkeypatch.setattr(socket, "create_connection", forbidden)
     for name in ("Popen", "run", "call", "check_call", "check_output"):
@@ -164,11 +173,28 @@ def test_runtime_side_effect_sentinels(monkeypatch: pytest.MonkeyPatch) -> None:
     finder = ForbiddenAuthorityFinder()
     monkeypatch.setattr(sys, "meta_path", [finder, *sys.meta_path])
 
+    # Resolve first, then evict the complete production graph only after every
+    # runtime sentinel is armed.  The following import therefore exercises
+    # import-time as well as request-time reachability through fresh modules.
+    scoped_graph = _analyze_import_graph(ROOTS, _module_path)
+    for module_name in sorted(scoped_graph, key=lambda value: value.count("."), reverse=True):
+        sys.modules.pop(module_name, None)
+    route_module = importlib.import_module("app.routes.installation_plan")
+    assembly = importlib.import_module("app.installation_plan.assembly")
+    datetime_module = importlib.import_module("datetime")
+    dependency = assembly.default_installation_plan_dependency(
+        repository_root=Path("/opt/atlas"),
+        clock=lambda: datetime_module.datetime(
+            2026, 8, 25, tzinfo=datetime_module.UTC
+        ),
+    )
+
     # These authority families are unreachable from the transitive production
     # graph.  The import trap remains armed during a real assembly so a lazy
     # collector, persistence, approval, action, workflow, queue, repository,
     # dispatch, execution-candidate, Provider Intent, or worker import fails.
     visited = _analyze_import_graph(ROOTS, _module_path)
+    assert visited == scoped_graph
     assert not {
         module for module in visited
         if any(module == prefix or module.startswith(prefix + ".") for prefix in FORBIDDEN)
@@ -179,8 +205,21 @@ def test_runtime_side_effect_sentinels(monkeypatch: pytest.MonkeyPatch) -> None:
         "app.workflow", "atlas_execution_worker",
     } <= set(FORBIDDEN)
 
-    plan = InstallationPlanAssembler().assemble(
-        catalog=catalog, artifact_observation=artifact, evidence_observations=(),
-        evaluation_instant="2026-08-25T00:00:00Z",
+    monkeypatch.setattr(
+        route_module,
+        "get_installation_plan_read_dependency",
+        lambda: dependency,
     )
-    assert plan.application.item_id == "home-assistant"
+    test_app.include_router(route_module.router, prefix="/api/v1")
+    client = ASGITestClient(test_app)
+    original_run = asyncio.run
+    monkeypatch.setattr(asyncio, "run", event_loop.run_until_complete)
+    try:
+        response = client.get(
+            "/api/v1/discovery/items/home-assistant/installation-plan"
+        )
+    finally:
+        monkeypatch.setattr(asyncio, "run", original_run)
+        event_loop.close()
+    assert response.status_code == 200
+    assert response.json()["application"]["item_id"] == "home-assistant"

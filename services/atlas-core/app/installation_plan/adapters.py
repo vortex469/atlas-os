@@ -47,6 +47,10 @@ class InstallationPlanAdapterError(RuntimeError):
     pass
 
 
+class CatalogItemNotFoundError(InstallationPlanAdapterError):
+    """The complete catalog was readable but contained no selected item."""
+
+
 @dataclass(frozen=True)
 class CatalogRecord:
     entry: CatalogEntry
@@ -171,9 +175,9 @@ def _bounded_regular_bytes(path: Path, maximum: int) -> bytes:
             # A regular file changing underneath the read is uncertain, not a fact.
             after = os.fstat(descriptor)
             if (after.st_dev, after.st_ino) != (info.st_dev, info.st_ino):
-                raise InstallationPlanAdapterError("unavailable")
+                raise InstallationPlanAdapterError("changed")
             if after.st_size != len(result):
-                raise InstallationPlanAdapterError("unavailable")
+                raise InstallationPlanAdapterError("changed")
             return result
         finally:
             os.close(descriptor)
@@ -184,12 +188,31 @@ def _bounded_regular_bytes(path: Path, maximum: int) -> bytes:
 def _bounded_relative_regular_bytes(
     root: Path, repository_path: str, maximum: int
 ) -> bytes:
-    """Open a repository file without path prechecks or symlink traversal."""
+    """Read one descriptor-backed snapshot through a no-follow path traversal.
+
+    The successful final ``openat`` is the namespace linearization point: the
+    returned bytes come from that exact descriptor.  Namespace changes after
+    the open do not change the snapshot; mutation of the opened file while it
+    is read is detected and fails closed.
+    """
     nofollow = getattr(os, "O_NOFOLLOW", None)
     directory = getattr(os, "O_DIRECTORY", None)
     if nofollow is None or directory is None:
         raise InstallationPlanAdapterError("unavailable")
     descriptors: list[int] = []
+    def identity(info: os.stat_result) -> tuple[int, int, int]:
+        return info.st_dev, info.st_ino, info.st_mode
+
+    def snapshot(info: os.stat_result) -> tuple[int, int, int, int, int, int]:
+        return (
+            info.st_dev,
+            info.st_ino,
+            info.st_mode,
+            info.st_size,
+            info.st_mtime_ns,
+            info.st_ctime_ns,
+        )
+
     try:
         descriptors.append(os.open(root, os.O_RDONLY | directory | nofollow))
         root_info = os.fstat(descriptors[0])
@@ -202,16 +225,20 @@ def _bounded_relative_regular_bytes(
             )
             if stat.S_ISLNK(component_info.st_mode):
                 raise InstallationPlanAdapterError("symlink")
-            descriptors.append(
-                os.open(
-                    component,
-                    os.O_RDONLY | directory | nofollow,
-                    dir_fd=descriptors[-1],
-                )
+            component_descriptor = os.open(
+                component,
+                os.O_RDONLY | directory | nofollow,
+                dir_fd=descriptors[-1],
             )
-            if not stat.S_ISDIR(os.fstat(descriptors[-1]).st_mode):
+            descriptors.append(component_descriptor)
+            opened_info = os.fstat(component_descriptor)
+            if not stat.S_ISDIR(opened_info.st_mode):
                 raise InstallationPlanAdapterError("non_regular")
+            if identity(component_info) != identity(opened_info):
+                raise InstallationPlanAdapterError("changed")
         try:
+            # Linearization point: this single descriptor-relative, no-follow
+            # open selects the only file whose bytes may cross the boundary.
             descriptor = os.open(
                 components[-1], os.O_RDONLY | nofollow, dir_fd=descriptors[-1]
             )
@@ -234,16 +261,10 @@ def _bounded_relative_regular_bytes(
         if total > maximum:
             raise InstallationPlanAdapterError("content_size")
         after = os.fstat(descriptor)
-        if (
-            (before.st_dev, before.st_ino, before.st_mode)
-            != (after.st_dev, after.st_ino, after.st_mode)
-            or before.st_size != after.st_size
-            or before.st_mtime_ns != after.st_mtime_ns
-            or before.st_ctime_ns != after.st_ctime_ns
-            or after.st_size != total
-        ):
-            raise InstallationPlanAdapterError("unavailable")
-        return b"".join(chunks)
+        result = b"".join(chunks)
+        if snapshot(before) != snapshot(after) or after.st_size != total:
+            raise InstallationPlanAdapterError("changed")
+        return result
     except InstallationPlanAdapterError:
         raise
     except OSError as error:
@@ -274,7 +295,10 @@ class CatalogAdapter:
         records: list[CatalogRecord] = []
         for path in sorted((*self._root.rglob("*.yaml"), *self._root.rglob("*.yml"))):
             try:
-                raw = _bounded_regular_bytes(path, 1024 * 1024)
+                repository_path = path.relative_to(self._root).as_posix()
+                raw = _bounded_relative_regular_bytes(
+                    self._root, repository_path, 1024 * 1024
+                )
                 raw.decode("utf-8")
                 entry = YamlCatalogLoader().load_text(
                     raw.decode(), source="catalog-loader"
@@ -287,8 +311,10 @@ class CatalogAdapter:
         entry_ids = [record.entry.provenance.entry_id for record in records]
         if len(set(item_ids)) != len(item_ids) or len(set(entry_ids)) != len(entry_ids):
             raise InstallationPlanAdapterError("catalog duplicate")
+        if not matches:
+            raise CatalogItemNotFoundError("catalog item not found")
         if len(matches) != 1:
-            raise InstallationPlanAdapterError("catalog item not found or ambiguous")
+            raise InstallationPlanAdapterError("catalog ambiguous")
         return CatalogSnapshot(matches[0], tuple(records))
 
 
