@@ -1,4 +1,4 @@
-# Discovery Center Current Context — v0.15 released, v0.16 P0–P4 complete
+# Discovery Center Current Context — v0.15 released, v0.16 P0–P5 complete
 
 Discovery Center is Atlas's provider-neutral, local-first, read-only knowledge
 and evidence surface. Its public API is GET-only and its Mission Control views
@@ -99,8 +99,11 @@ preserves the complete plan and fingerprint in a pure projection but refuses
 candidate creation because the approved target and supported Agent installation
 intent contracts do not exist.
 
-Current P4 closure validation passes Ruff; 16 projection tests; 343
+Historical P4 closure validation passed Ruff; 16 projection tests; 343
 InstallationPlan tests; 90 discovery/parity regressions; 78 execution-candidate
 model/projection/eligibility tests; 31 execution-candidate service tests; 60
 Core route/operator-intent tests; and 434 Atlas Agent
-candidate-planning/approval/workflow tests. P5 is next.
+candidate-planning/approval/workflow tests. P5 release validation and
+documentation closure are complete. V0.16.0 is ready for a separate explicit
+release commit and tag; install execution, approved installation targets, and a
+supported Agent installation intent remain future work.

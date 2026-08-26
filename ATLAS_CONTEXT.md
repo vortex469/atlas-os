@@ -102,7 +102,8 @@ V0.16 is **Grounded Installation Planning**. P0's normative
 [InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md) is
 frozen. The deterministic assembler/evaluator, bounded GET API, read-only
 Mission Control review, and fail-closed P4 candidate-admission projection are
-complete. P5 release closure remains future work. V1 is item-scoped
+complete. P5 release validation and documentation closure are complete, and
+v0.16.0 is ready for the separate explicit release procedure. V1 is item-scoped
 only and has no target selector. Plans are ephemeral, immutable,
 provenance-linked informational read models assembled on read, never durably
 stored, and authorize nothing.
@@ -115,7 +116,7 @@ The current Home Assistant binding names exactly
 must fail closed as `missing_deployment_artifact`. Existing image grounding
 does not establish deployment readiness. Its accepted golden fingerprint is
 `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
-Current P4 closure validation passes Ruff; 16 projection tests; 343
+Historical P4 closure validation passed Ruff; 16 projection tests; 343
 InstallationPlan tests; 90 required discovery/parity regressions; 78
 execution-candidate model/projection/eligibility tests; 31 execution-candidate
 service tests; 60 Core route/operator-intent tests; and 434 Atlas Agent
@@ -127,6 +128,12 @@ fingerprint in a pure projection but creates no candidate: v1 lacks approved
 target identity and Atlas Agent lacks a supported installation intent. The
 projection is non-persistent and cannot create a planning session, workflow,
 approval, dispatch, queue item, or execution authority.
+
+P5 reconfirmed the exact Home Assistant golden, all focused Core gates, full
+Atlas Agent validation, Mission Control tests/lint/build, and exact operational
+and repository capability parity. No install, execution, approval, dispatch,
+Provider Intent, workflow, persistence, target-synthesis, or
+installation-intent authority was introduced.
 
 Execution candidates, install-container execution, installation intents,
 approved targets, conversational installation, generic image collection, D11,

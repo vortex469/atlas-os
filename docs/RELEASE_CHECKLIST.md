@@ -3,13 +3,15 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.16 P0–P2 contract/evaluator gate — complete
+## Atlas v0.16 P0–P5 release validation and closure — complete
 
 Atlas v0.16 is **Grounded Installation Planning**. The normative
 [InstallationPlan v1 contract](architecture/installation-plan-v1.md) remains
-frozen. P1's deterministic assembler and P2's readiness/blocker/risk evaluator
-are implemented and accepted; P3 is the next implementation milestone and
-P4–P5 remain pending.
+frozen. P1's deterministic assembler, P2's readiness/blocker/risk evaluator,
+P3's bounded GET API and read-only Mission Control review, P4's fail-closed
+candidate-admission projection, and P5 release validation are complete.
+V0.16.0 is ready for a separate explicit release commit and annotated
+`atlas-v0.16.0` tag.
 
 - [x] Freeze the exact schema version, immutable closed field set, field types,
   required/optional classification, bounds, normalization, compatibility and
@@ -90,10 +92,56 @@ P4–P5 remain pending.
   records.
 - [x] Pass 254 InstallationPlan tests and 90 required discovery/parity
   regressions (344 combined).
-- [ ] P3 — expose the bounded, read-only InstallationPlan GET API without a
+- [x] P3 — expose the bounded, read-only InstallationPlan GET API without a
   mutation sibling, persistence writer, or new authority.
-- [ ] P4 — Mission Control read-only review.
-- [ ] P5 — final isolation, release validation, and closure.
+- [x] P4 — Mission Control read-only review and pure fail-closed projection
+  toward existing ExecutionCandidate admission; create no candidate.
+- [x] P5 — final isolation, release validation, and documentation closure.
+
+### Atlas v0.16 P5 observed validation evidence
+
+Validated from clean baseline
+`4f5de974674090cd4ad65cccb834a28b2798cad8` with only the known untracked
+`compose.execution-smoke.override.yaml` present. P5 changed no production
+behavior; three Core integration tests were closed so stable endpoint and
+production-wiring scanners account for the v0.16 read-only route and structural
+forbidden-import tests.
+
+- [x] Ruff passed for every Python production/test file changed by v0.16.
+- [x] InstallationPlan contract, evaluator, descriptor-snapshot reads, route
+  guards, isolation, fingerprint, and Home Assistant golden: 343 passed.
+- [x] InstallationPlan candidate-admission projection: 16 passed.
+- [x] Required catalog/binding/Compose-observation/image-evidence/parity group:
+  90 passed.
+- [x] Directly affected execution-candidate model/service/route/operator-intent
+  group, using the thread-free harness: 156 passed.
+- [x] Full Atlas Agent candidate-planning, approval, workflow, planning-engine,
+  and worker-journal regression suite with isolated state: 911 passed, one
+  accepted dependency deprecation warning.
+- [x] Mission Control: 54 files and 440 tests passed; lint passed with one
+  existing non-blocking React hook warning; production build passed with the
+  existing bundle-size advisory.
+- [x] Operational capability parity passed exactly
+  `operational=restart-service/proxmox/qemu` and
+  `repository=update-compose-stack`.
+- [x] Broader Core validation was attempted in the repository-compatible form.
+  After closing three integration-test omissions, more than 1,500 tests passed
+  without failure before the managed sandbox reached its restricted-thread
+  limitation. The ownership-transition test also cannot call `chown` in this
+  sandbox. Neither limitation is a production defect or a v0.16 authority
+  widening; the directly affected thread-free and required suites pass.
+- [x] Home Assistant at fixed clock `2026-08-25T00:00:00Z` remains
+  `missing_deployment_artifact` with fingerprint
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+- [x] Mission Control review contains no install, execute, approve, deploy,
+  dispatch, candidate-creation, or confirmation-acceptance control.
+- [x] Structural and behavioral isolation proves no InstallationPlan path to
+  Docker execution, subprocess, outbound network mutation, worker execution,
+  queue publication, operational dispatch, automatic approval, Provider Intent
+  mutation, workflow mutation, hidden persistence, synthesized approved
+  targets, or synthesized installation intents.
+- [x] No staging, commit, tag, push, or release publication occurred during P5.
+  The final tree is intended for a separate explicit release commit/tag step.
 
 ## Atlas v0.15-P0 scope-selection and boundary sign-off
 

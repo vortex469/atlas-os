@@ -184,8 +184,9 @@ to perform because v0.15 adds no durable state or execution authority.
 Atlas v0.16 is **Grounded Installation Planning**. It creates
 deterministic, immutable, provenance-linked, ephemeral `InstallationPlan` read
 models answering: “What would be required to install this application here?”
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P4 are
-complete. P5 authority-isolation, release-validation, and closure work is next.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P5 are
+complete, and v0.16.0 is ready for the separate explicit release commit and
+tag procedure.
 
 ### Binding scope and authority boundary
 
@@ -287,12 +288,21 @@ model/projection/eligibility tests; 31 execution-candidate service tests; 60
 Core route/operator-intent tests; and 434 Atlas Agent
 candidate-planning/approval/workflow tests.
 
-### P5 — Authority isolation, release validation, and closure
+### P5 — Authority isolation, release validation, and closure — complete
 
-Validate the complete P0 matrix, exact authority/capability parity, GET-only
-behavior, absence of persistence and side effects, and the Home Assistant
-fail-closed result. Release closure remains a future explicit operator action;
-v0.16 performs no automatic push, tag, or publication.
+Completed the P0–P4 integration matrix, exact authority/capability parity,
+GET-only behavior, absence of persistence and side effects, and the exact Home
+Assistant fail-closed golden. Focused Core, full Agent, and Mission Control
+test/lint/build gates pass. The broader Core suite was also exercised through
+the practical managed-sandbox boundary; ownership-transition and restricted
+thread behavior remain environment limitations, not v0.16 authority or
+production defects.
+
+V0.16.0 is ready for a separate explicit release commit and annotated
+`atlas-v0.16.0` tag. This milestone performs no automatic commit, push, tag, or
+publication. The next future release must separately contract approved target
+identity and a supported installation intent before candidate creation or
+installation execution can be considered.
 
 ## 6. Explicitly deferred work
 

@@ -106,11 +106,9 @@ P5 release closure is complete at
 
 ## Selected v0.16 — Grounded Installation Planning
 
-V0.16 is a bounded read-side consumer of released Discovery facts. P0 is
-complete in the normative
-[InstallationPlan v1 contract](../architecture/installation-plan-v1.md), and
-the P1 assembler/P2 evaluator are complete and accepted. P3 is the next
-implementation milestone; P4–P5 remain future work. It provides deterministic,
+V0.16 is a bounded read-side consumer of released Discovery facts. P0 through
+P5 are complete under the normative
+[InstallationPlan v1 contract](../architecture/installation-plan-v1.md). It provides deterministic,
 immutable, provenance-linked, ephemeral
 `InstallationPlan` views answering what would be required to install an
 application here.
@@ -132,11 +130,13 @@ application here.
 - P2 (complete) evaluates readiness, blockers, risks, assumptions, missing
   facts, prerequisites, relationships, and confirmations without creating
   authority.
-- P3 (next) exposes only a bounded GET read; it does not reuse or expand legacy
+- P3 (complete) exposes only a bounded GET read; it does not reuse or expand legacy
   `POST /analysis/deployments` or `POST /api/v1/analysis/deployments`, accept
   caller deployment documents, or persist.
-- P4 presents read-only Mission Control review with no action or conversion
-  controls. P5 validates isolation, authority parity, and release closure.
+- P4 (complete) presents read-only Mission Control review and the fail-closed
+  candidate-admission projection with no action or conversion controls.
+- P5 (complete) validates isolation, authority parity, and release closure.
+  V0.16.0 is ready for a separate explicit release commit and tag.
 
 The exact v0.16 statuses are `plan_ready_for_review`,
 `insufficient_information`, `incompatible`, `conflicted`, `stale_evidence`,

@@ -124,14 +124,15 @@ trigger GHCR access, registry
 acquisition, Sigstore verification, collector execution, or evidence refresh.
 The plan adds no durable state, mutation, or execution authority.
 
-## Current v0.16 plan
+## Atlas v0.16 release candidate
 
 The current theme is **Grounded Installation Planning**: deterministic,
 immutable, provenance-linked, ephemeral read models answering what would be
-required to install an application here. P0 is complete under the normative
-[InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md), and
-the P1 assembler/P2 evaluator are complete and accepted. P3, the bounded
-read-only InstallationPlan GET API, is next; P4–P5 remain future work. An
+required to install an application here. P0 through P5 are complete under the
+normative [InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md).
+The deterministic assembler/evaluator, bounded read-only InstallationPlan GET
+API, Mission Control read-only review, and fail-closed candidate-admission
+projection are implemented and release-validated. An
 `InstallationPlan` is informational and
 cannot
 approve, execute, deploy, persist, create candidates/intents/workflows, invoke
@@ -143,4 +144,8 @@ The current Home Assistant binding points to absent
 `missing_deployment_artifact`. Legacy `POST /analysis/deployments` and
 `POST /api/v1/analysis/deployments` remain isolated; the intended v0.16
 operator path is GET-only/read-only. See
-the [Atlas roadmap](ROADMAP.md) for the P0–P5 contract and deferrals.
+the [Atlas roadmap](ROADMAP.md) for the completed P0–P5 contract and deferrals.
+V0.16.0 is ready for a separate explicit release commit and annotated
+`atlas-v0.16.0` tag. It does not mean Atlas can install Home Assistant; approved
+target identity, a supported Agent installation intent, and installation
+execution authority remain future-release work.

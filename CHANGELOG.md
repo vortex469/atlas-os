@@ -6,6 +6,37 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.16.0 — Grounded Installation Planning release closure
+
+- Completed P0 through P5 for deterministic, immutable, provenance-linked,
+  ephemeral `InstallationPlan v1` reads answering what would be required to
+  install an item at the current item-scoped boundary.
+- Preserved deterministic JCS/NFC SHA-256 fingerprints, evidence provenance,
+  freshness, compatibility, prerequisites, blockers, risks, missing facts, and
+  required operator confirmations. The fixed-clock Home Assistant golden
+  remains `missing_deployment_artifact` at
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+- Released only the bounded server-owned read path at
+  `GET /api/v1/discovery/items/{item_id}/installation-plan` and a complete
+  read-only Mission Control review. Neither surface has an install, execute,
+  approve, deploy, dispatch, candidate-creation, or confirmation-acceptance
+  control.
+- Completed the pure fail-closed projection toward existing
+  `ExecutionCandidate` admission. It preserves the complete plan and exact
+  fingerprint but creates no candidate because v1 has no approved target
+  identity and Atlas Agent has no supported installation intent.
+- P5 validation passed focused Core Ruff and pytest gates, 156 directly
+  affected Core candidate/route tests, the full 911-test Atlas Agent suite,
+  Mission Control's 54-file/440-test suite, lint, build, and exact operational
+  capability parity. Broad Core validation was exercised through the practical
+  managed-sandbox boundary; restricted ownership/thread behavior was not
+  treated as a production defect.
+- V0.16 adds no Docker/subprocess/network mutation, worker or queue execution,
+  operational dispatch, automatic approval, Provider Intent/workflow mutation,
+  hidden persistence, synthesized approved target, or synthesized installation
+  intent. Atlas v0.16 does not install Home Assistant; that authority remains a
+  future-release contract.
+
 #### v0.16-P3/P4 — Read-only review and fail-closed candidate projection
 
 - Completed the bounded InstallationPlan GET API and read-only Mission Control

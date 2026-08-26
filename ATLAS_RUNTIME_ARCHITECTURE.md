@@ -40,7 +40,7 @@ Needs Review and status are derived from observed resource identity plus stored 
 
 ## 5. Discovery runtime evidence
 
-The curated catalog remains authoritative. Dynamic Frigate evidence is stored in a rebuildable cache with explicit freshness, health, conflict, and provenance semantics. Dynamic facts supplement but never silently replace curated facts. Compatibility, installed-version evidence, release evaluation, proposals, Compose observation, image grounding, and provenance are read-only derivations and add no operational authority.
+The curated catalog remains authoritative. Dynamic Frigate evidence is stored in a rebuildable cache with explicit freshness, health, conflict, and provenance semantics. Dynamic facts supplement but never silently replace curated facts. Compatibility, installed-version evidence, release evaluation, proposals, Compose observation, image grounding, provenance, and v0.16 InstallationPlans are read-only derivations and add no operational authority. InstallationPlans are assembled ephemerally and have no durable store, replay identity, queue, approval, target, or installation-intent authority.
 
 Private and community catalogs are future work. If introduced, they require explicit trust, provenance, validation, migration, and backup decisions; they must not be inferred from the current dynamic cache.
 

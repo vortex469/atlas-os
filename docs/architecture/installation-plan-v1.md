@@ -1,6 +1,6 @@
 # InstallationPlan v1 contract and threat model
 
-Status: **v0.16 P0–P4 complete; P5 release closure next**.
+Status: **v0.16 P0–P5 complete; v0.16.0 ready for release**.
 This normative contract grants no runtime authority.
 
 ## Authority and lifetime
@@ -1207,8 +1207,8 @@ goldens/permutations; OCI host/path/port/default/tag/digest/rejections; exact
 HTTP query/body/item behavior; transitive dependency and both legacy mounts;
 no persistence/network/mutation; escaped read-only UI; and authority
 regressions. The accepted P1/P2 coverage satisfies the applicable contract and
-evaluator portions; P3–P5 must retain those gates while completing their API,
-UI, and release portions.
+evaluator portions; P3–P5 retained those gates while completing the API, UI,
+candidate-admission projection, authority-isolation, and release portions.
 
 For released Home Assistant, item `home-assistant`, catalog entry
 `d5-home-assistant`, binding `compose/home-assistant.yaml`, and service
@@ -1226,9 +1226,11 @@ admission boundary. It deterministically refuses candidate creation because v1
 has no approved target identity and Atlas Agent has no supported installation
 intent. The projection preserves the complete plan and exact fingerprint; it
 creates no route, session, workflow, approval, queue, dispatch, replay identity,
-or execution authority. P5 release closure remains future work.
+or execution authority. P5 release validation and documentation closure are
+complete. Candidate creation remains refused, and installation execution
+remains outside v0.16.
 
-Current P4 closure validation passes Ruff; 16 projection tests; 343
+Historical P4 closure validation passed Ruff; 16 projection tests; 343
 InstallationPlan tests; 90 discovery/parity regressions; 78 execution-candidate
 model/projection/eligibility tests; 31 execution-candidate service tests; 60
 Core route/operator-intent tests; and 434 Atlas Agent

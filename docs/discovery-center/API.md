@@ -1,4 +1,4 @@
-# Discovery Center API — v0.15 released
+# Discovery Center API — v0.16 release candidate
 
 ## Public contract
 
@@ -85,10 +85,14 @@ acceptance are complete.
 
 ## V0.16 InstallationPlan API status
 
-P0's contract is frozen, and the P1 assembler/P2 evaluator are implemented and
-accepted. The normative
+P0 through P5 are complete. The normative
 [InstallationPlan v1 contract](../architecture/installation-plan-v1.md) freezes
-the exact future GET path and projection, failure behavior, GET-only isolation,
-and item-scoped-only request contract. P3 is the next implementation milestone;
-the endpoint is not yet implemented and the public endpoint list above remains
-the released v0.15 surface.
+the exact GET path and projection, failure behavior, GET-only isolation, and
+item-scoped-only request contract. The endpoint is implemented exactly at
+`GET /api/v1/discovery/items/{item_id}/installation-plan`; it accepts no query
+parameters or body, has no mutation sibling, and returns a server-assembled
+ephemeral plan. Mission Control consumes it read-only. The fail-closed
+candidate-admission projection preserves the complete plan and fingerprint but
+creates no candidate because approved target identity and a supported Agent
+installation intent are absent. V0.16.0 is ready for the separate explicit
+release procedure and grants no installation or execution authority.

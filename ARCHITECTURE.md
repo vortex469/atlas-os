@@ -134,15 +134,19 @@ state. It is not an Agent execution intent. Rebuildable Discovery cache is not
 durable backup authority, and restore compatibility is validated rather than
 inferred from prose.
 
-## Current v0.16 read-side contract
+## V0.16 Grounded Installation Planning release contract
 
-V0.16 P0 is contract-complete. The normative
+V0.16 P0 through P5 are complete. The normative
 [InstallationPlan v1 contract and threat model](docs/architecture/installation-plan-v1.md)
 freezes an ephemeral, item-scoped, GET-oriented and non-authorizing read model,
 its isolation from every side-effect surface and the legacy deployment-analysis
-planner, and the P1–P5 validation matrix. The P1 assembler/P2 evaluator are
-implemented and accepted. P3's bounded read-only GET API is next. No target
-authority, persistence writer, mutation, or execution path is introduced.
+planner, and the P1–P5 validation matrix. The deterministic assembler/evaluator,
+bounded read-only GET API, Mission Control review, and pure fail-closed
+ExecutionCandidate admission projection are implemented and validated. No
+candidate is created because v1 has no approved target identity and Atlas Agent
+has no supported installation intent. No target authority, persistence writer,
+mutation, queue, dispatch, worker, or execution path is introduced. V0.16.0 is
+ready for a separate explicit release commit and tag.
 
 ## Historical note
 
