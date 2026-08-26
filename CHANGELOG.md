@@ -6,6 +6,25 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.16-P3/P4 — Read-only review and fail-closed candidate projection
+
+- Completed the bounded InstallationPlan GET API and read-only Mission Control
+  review without action controls.
+- Added a deterministic, non-persistent projection toward the existing
+  `ExecutionCandidate` admission boundary. It preserves the complete plan and
+  exact fingerprint but creates no candidate because InstallationPlan v1 has no
+  approved target and Atlas Agent has no supported installation intent.
+- The projection creates no session, workflow, approval, queue item, dispatch,
+  replay identity, Provider Intent mutation, or execution authority. Home
+  Assistant remains `missing_deployment_artifact` at fingerprint
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+- Closure validation passed Ruff; 16 projection tests; 343 InstallationPlan
+  tests; 90 discovery/parity regressions; 78 execution-candidate
+  model/projection/eligibility tests; 31 execution-candidate service tests; 60
+  Core route/operator-intent tests; and 434 Atlas Agent
+  candidate-planning/approval/workflow tests. P0 through P4 are complete; P5 is
+  next.
+
 #### v0.16-P1/P2 — InstallationPlan contract and evaluator
 
 - Implemented and accepted the deterministic, immutable InstallationPlan
@@ -16,9 +35,9 @@ release boundaries.
 - Accepted the Home Assistant golden fingerprint
   `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a` and
   fixed duplicate risks produced from multiple qualifying evidence records.
-- Validated 254 InstallationPlan tests and 90 required discovery/parity
-  regressions (344 combined). P3, the bounded read-only InstallationPlan GET
-  API, is next; P4–P5 remain future work.
+- Historical P1/P2 acceptance validated 254 InstallationPlan tests and 90
+  required discovery/parity regressions (344 combined). At that historical
+  milestone, P3 was next and P4–P5 remained future work.
 - InstallationPlan grants no execution, mutation, approval, dispatch,
   persistence-writer, workflow-mutation, Provider Intent mutation,
   acquisition, queue, worker, or network authority.

@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.execution_candidates.intake import CandidatePlanningIntakeRequest
@@ -39,6 +38,7 @@ from app.services.provider_resources import (
     ProviderResourceOperationError,
     ResolvedOperationalTarget,
 )
+from app.testing import ASGITestClient
 
 
 def target(
@@ -330,7 +330,7 @@ def _route_client(tmp_path: Path, *, permissions=(OPERATIONAL_INTENT_CREATE,), l
         )
     )
     app.include_router(routes.router, prefix="/api/v1")
-    client = TestClient(app, base_url="https://atlas.test")
+    client = ASGITestClient(app, base_url="https://atlas.test")
     client.cookies.set("atlas_operator_session", created.session_token)
     headers = {"Origin": "https://atlas.test", "X-Atlas-CSRF-Token": created.csrf_token}
     return client, headers

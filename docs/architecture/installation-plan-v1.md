@@ -1,6 +1,6 @@
 # InstallationPlan v1 contract and threat model
 
-Status: **v0.16 P0 contract frozen; P1/P2 implementation accepted; P3 next**.
+Status: **v0.16 P0–P4 complete; P5 release closure next**.
 This normative contract grants no runtime authority.
 
 ## Authority and lifetime
@@ -1216,9 +1216,20 @@ For released Home Assistant, item `home-assistant`, catalog entry
 is `missing_deployment_artifact` with that blocker regardless of grounding. An
 absent file is not parsed, substituted or synthesized.
 
-P0's decisions remain frozen. P1/P2 implementation is accepted with 254
+P0's decisions remain frozen. Historical P1/P2 acceptance covered 254
 InstallationPlan tests and 90 required discovery/parity regressions (344
 combined), including the Home Assistant golden fingerprint
 `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
-P3, the bounded read-only GET API, is the next implementation milestone;
-P4–P5 remain future work.
+P3 completed the bounded read-only GET API and Mission Control review. P4 adds
+only a pure, non-persistent projection toward the existing `ExecutionCandidate`
+admission boundary. It deterministically refuses candidate creation because v1
+has no approved target identity and Atlas Agent has no supported installation
+intent. The projection preserves the complete plan and exact fingerprint; it
+creates no route, session, workflow, approval, queue, dispatch, replay identity,
+or execution authority. P5 release closure remains future work.
+
+Current P4 closure validation passes Ruff; 16 projection tests; 343
+InstallationPlan tests; 90 discovery/parity regressions; 78 execution-candidate
+model/projection/eligibility tests; 31 execution-candidate service tests; 60
+Core route/operator-intent tests; and 434 Atlas Agent
+candidate-planning/approval/workflow tests.

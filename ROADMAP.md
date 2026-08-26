@@ -184,9 +184,8 @@ to perform because v0.15 adds no durable state or execution authority.
 Atlas v0.16 is **Grounded Installation Planning**. It creates
 deterministic, immutable, provenance-linked, ephemeral `InstallationPlan` read
 models answering: “What would be required to install this application here?”
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0's frozen contract and
-the P1 assembler/P2 evaluator are complete and accepted. P3 is the next
-implementation milestone; P4–P5 remain future work.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P4 are
+complete. P5 authority-isolation, release-validation, and closure work is next.
 
 ### Binding scope and authority boundary
 
@@ -257,23 +256,36 @@ The evaluator implements the P0-frozen status/blocker vocabulary, risks,
 missing facts, assumptions, prerequisite relationships, freshness, conflicts,
 compatibility, and required confirmations deterministically. Hostile contract coverage and
 multi-evidence risk deduplication are accepted. Evaluation remains descriptive;
-it creates no approval or execution eligibility. Validation covers 254
-InstallationPlan tests plus 90 required discovery/parity regressions (344
-combined).
+it creates no approval or execution eligibility. Historical P1/P2 acceptance
+covered 254 InstallationPlan tests plus 90 required discovery/parity
+regressions (344 combined).
 
-### P3 — GET-only Installation-Plan API
+### P3 — GET-only API and Mission Control review — complete
 
-Next, add only a bounded, redacted GET projection for server-assembled plans,
+Implemented a bounded, redacted GET projection for server-assembled plans,
 with no POST/PUT/PATCH/DELETE sibling and no caller-supplied deployment document. It
 must not persist a plan or reach the legacy analysis route, Agent, candidates,
 approvals, providers, dispatch, repository execution, or workers.
 
-### P4 — Mission Control Installation-Plan review
+Mission Control presents the complete plan as read-only review information with
+no action or conversion controls.
 
-Present status, provenance, prerequisites, assumptions, blockers, risks,
-missing facts, and confirmations as read-only review information. Provide no
-approve, install, deploy, execute, convert, remediate, restart, or rollback
-control, and never render unsafe opaque content.
+### P4 — Fail-closed execution-candidate admission projection — complete
+
+The pure projection preserves the complete InstallationPlan and exact
+fingerprint linkage while refusing candidate creation. InstallationPlan v1 has
+no approved target identity, the existing `ExecutionCandidate` contract
+requires one, and Atlas Agent does not support installation planning or
+execution. Every status therefore remains non-authoritative; blocked statuses
+also retain an explicit plan-blocked reason. The projection has no route,
+control, persistence, idempotency key, workflow, approval, queue, dispatch, or
+side effect. Repeated projection is deterministic recomputation.
+
+P4 closure validation passed Ruff; 16 projection tests; 343 InstallationPlan
+tests; 90 discovery/parity regressions; 78 execution-candidate
+model/projection/eligibility tests; 31 execution-candidate service tests; 60
+Core route/operator-intent tests; and 434 Atlas Agent
+candidate-planning/approval/workflow tests.
 
 ### P5 — Authority isolation, release validation, and closure
 

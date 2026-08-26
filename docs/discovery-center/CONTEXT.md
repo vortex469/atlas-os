@@ -1,4 +1,4 @@
-# Discovery Center Current Context — v0.15 released, v0.16 P1/P2 complete
+# Discovery Center Current Context — v0.15 released, v0.16 P0–P4 complete
 
 Discovery Center is Atlas's provider-neutral, local-first, read-only knowledge
 and evidence surface. Its public API is GET-only and its Mission Control views
@@ -76,7 +76,8 @@ must not be read as current future-tense scope.
 
 **Grounded Installation Planning** P0 is contract-complete under the normative
 [InstallationPlan v1 contract](../architecture/installation-plan-v1.md). The P1
-assembler/P2 evaluator are complete and accepted. They consume reviewed
+assembler/P2 evaluator, GET API, Mission Control review, and fail-closed P4
+candidate-admission projection are complete. They consume reviewed
 Discovery/catalog,
 binding, compatibility, evidence, grounding, and provenance facts to assemble
 ephemeral informational `InstallationPlan` reads. Consumption grants no new
@@ -88,9 +89,18 @@ Home Assistant currently binds exactly to absent
 `missing_deployment_artifact`; the accepted immutable image proof cannot turn
 that absence into readiness. Its accepted golden fingerprint is
 `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
-No artifact, mutable image, or target identity may be synthesized. P3 is next:
-the bounded read-only GET API. The future endpoint and UI remain
+No artifact, mutable image, or target identity may be synthesized. The endpoint
+and UI remain
 isolated from legacy `POST /analysis/deployments` and
 `POST /api/v1/analysis/deployments` caller-document proposal mounts. P1/P2
 introduce no durable plan store, approved
-target, candidate, intent, workflow, approval, dispatch, or execution path.
+target, candidate, intent, workflow, approval, dispatch, or execution path. P4
+preserves the complete plan and fingerprint in a pure projection but refuses
+candidate creation because the approved target and supported Agent installation
+intent contracts do not exist.
+
+Current P4 closure validation passes Ruff; 16 projection tests; 343
+InstallationPlan tests; 90 discovery/parity regressions; 78 execution-candidate
+model/projection/eligibility tests; 31 execution-candidate service tests; 60
+Core route/operator-intent tests; and 434 Atlas Agent
+candidate-planning/approval/workflow tests. P5 is next.
