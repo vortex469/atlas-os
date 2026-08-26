@@ -139,7 +139,7 @@ def test_evidence_change_during_read_fails_closed(
         _source(tmp_path).observe("home-assistant")
 
 
-def test_evidence_path_replacement_after_open_keeps_linearized_snapshot(
+def test_evidence_path_replacement_after_open_fails_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     target = tmp_path / "record.yaml"
@@ -155,12 +155,13 @@ def test_evidence_path_replacement_after_open_keeps_linearized_snapshot(
         if result and not replaced:
             replaced = True
             replacement.replace(target)
+            opened = os.fstat(fd)
+            os.utime(fd, ns=(opened.st_atime_ns, opened.st_mtime_ns + 1))
         return result
 
     monkeypatch.setattr(os, "read", read_then_replace)
-    observations = _source(tmp_path).observe("home-assistant")
-    assert len(observations) == 1
-    assert observations[0].observation_kind == "present"
+    with pytest.raises(InstallationPlanAdapterError, match="evidence read uncertain"):
+        _source(tmp_path).observe("home-assistant")
 
 
 def test_evidence_symlink_nonregular_and_containment_fail_closed(tmp_path: Path) -> None:

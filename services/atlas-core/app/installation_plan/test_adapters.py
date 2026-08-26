@@ -240,7 +240,7 @@ def test_relative_read_closes_every_opened_descriptor(
 
 
 @pytest.mark.parametrize("mutation", ["replace", "metadata"])
-def test_catalog_read_uses_opened_snapshot_and_detects_inode_mutation(
+def test_catalog_read_fails_closed_on_opened_file_uncertainty(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str
 ) -> None:
     source = (
@@ -266,6 +266,11 @@ def test_catalog_read_uses_opened_snapshot_and_detects_inode_mutation(
                 replacement = catalog_root / "replacement.yaml"
                 replacement.write_bytes(target.read_bytes())
                 replacement.replace(target)
+                opened = os.fstat(descriptor)
+                os.utime(
+                    descriptor,
+                    ns=(opened.st_atime_ns, opened.st_mtime_ns + 1),
+                )
             else:
                 os.utime(target, ns=(target.stat().st_atime_ns, target.stat().st_mtime_ns + 1))
         return chunk
@@ -276,12 +281,9 @@ def test_catalog_read_uses_opened_snapshot_and_detects_inode_mutation(
         clock=lambda: datetime(2026, 8, 25, tzinfo=timezone.utc),
     )
     dependency._catalog = CatalogAdapter(catalog_root)  # type: ignore[assignment]
-    if mutation == "replace":
-        assert dependency.assemble("home-assistant").application.item_id == "home-assistant"
-    else:
-        with pytest.raises(InstallationPlanSourceUnavailable) as caught:
-            dependency.assemble("home-assistant")
-        assert str(caught.value) == "installation plan required source unavailable"
+    with pytest.raises(InstallationPlanSourceUnavailable) as caught:
+        dependency.assemble("home-assistant")
+    assert str(caught.value) == "installation plan required source unavailable"
 
 
 def test_catalog_parent_replacement_after_open_keeps_linearized_snapshot(

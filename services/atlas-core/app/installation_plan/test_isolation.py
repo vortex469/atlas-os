@@ -178,7 +178,7 @@ def test_runtime_side_effect_sentinels(monkeypatch: pytest.MonkeyPatch) -> None:
     # import-time as well as request-time reachability through fresh modules.
     scoped_graph = _analyze_import_graph(ROOTS, _module_path)
     for module_name in sorted(scoped_graph, key=lambda value: value.count("."), reverse=True):
-        sys.modules.pop(module_name, None)
+        monkeypatch.delitem(sys.modules, module_name, raising=False)
     route_module = importlib.import_module("app.routes.installation_plan")
     assembly = importlib.import_module("app.installation_plan.assembly")
     datetime_module = importlib.import_module("datetime")
