@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from app.installation_plan import contract, evaluator
 from app.installation_plan.adapters import (
@@ -377,7 +378,7 @@ def test_immutable_identity_collision_is_total_and_permutation_invariant(
     first, second = _home(left, right), _home(right, left)
     assert first.fingerprint == second.fingerprint
     assert not first.accepted_evidence
-    assert first.image.state == "conflicted"
+    assert first.image.state == "missing"
     assert first.status == "conflicted"
     assert "provenance_conflict" in {b.code for b in first.blockers}
     assert "source_fact" in {m.code for m in first.missing_facts}
@@ -403,6 +404,33 @@ def test_immutable_identity_collision_is_total_and_permutation_invariant(
         }
 
 
+def test_provenance_identity_conflict_does_not_select_conflicted_image() -> None:
+    fresh = _evidence(source_id="same", attested_at="2026-08-24T00:00:00Z")
+    stale = _evidence(source_id="same", attested_at="2026-01-01T00:00:00Z")
+    plan = _home(fresh, stale)
+    assert plan.status == "conflicted"
+    assert plan.image.state == "missing"
+    assert "provenance_conflict" in {blocker.code for blocker in plan.blockers}
+
+
+def test_image_claim_conflict_selects_conflicted_image() -> None:
+    plan = _home(
+        _evidence(source_id="a", digest="sha256:" + "1" * 64),
+        _evidence(source_id="b", digest="sha256:" + "2" * 64),
+    )
+    assert plan.image.state == "conflicted"
+    assert plan.status == "conflicted"
+    assert "image_conflict" in {blocker.code for blocker in plan.blockers}
+
+
+def test_installation_plan_rejects_status_inconsistent_with_blockers() -> None:
+    plan = _home()
+    values = plan.model_dump(mode="python")
+    values["status"] = "plan_ready_for_review"
+    with pytest.raises(ValidationError):
+        contract.InstallationPlan(**values)
+
+
 def _finding(severity: str, status: str):
     return contract.CompatibilityFindingInputV1(
         id=f"finding-{severity}", check_type="catalog", severity=severity,
@@ -420,6 +448,15 @@ def _finding(severity: str, status: str):
         (False, "compatible", (), (), "compatible", "target_free_catalog_compatible"),
         (False, "compatible_with_warnings", (_finding("warning", "compatible_with_warnings"),), (), "compatible_with_warnings", "target_free_catalog_warning"),
         (False, "incompatible", (_finding("blocker", "incompatible"),), (), "incompatible", "target_free_catalog_incompatible"),
+        (False, "incompatible", (
+            _finding("blocker", "compatible"),
+            _finding("warning", "compatible"),
+        ), (), "incompatible", "target_free_catalog_incompatible"),
+        (False, "incompatible", (
+            _finding("blocker", "compatible"),
+            _finding("info", "compatible"),
+            _finding("warning", "compatible"),
+        ), (), "incompatible", "target_free_catalog_incompatible"),
         (False, "insufficient_information", (), ("missing-fact",), "unknown", "compatibility_fact_missing"),
     ],
 )
@@ -455,6 +492,29 @@ def test_optional_compatibility_source_states(
     assert _home_compat(observation).compatibility[0].reason_code == reason
 
 
+@pytest.mark.parametrize(
+    ("source_kind", "status", "findings", "unknown"),
+    [
+        ("absent", "not_available", (_finding("info", "compatible"),), ()),
+        ("absent", "not_available", (), ("forbidden",)),
+        ("malformed_optional", "insufficient_information",
+         (_finding("unknown", "insufficient_information"),),
+         ("malformed_optional_compatibility_fact",)),
+        ("malformed_optional", "insufficient_information", (), ("wrong",)),
+    ],
+)
+def test_optional_compatibility_sources_reject_retained_payload(
+    source_kind: str, status: str, findings: tuple[object, ...],
+    unknown: tuple[str, ...],
+) -> None:
+    with pytest.raises(ValidationError):
+        CompatibilityAdapterInput(
+            source_kind=source_kind, item_id="home-assistant",
+            target_type_present=False, status=status, findings=findings,
+            unknown_fact_codes=unknown,
+        )
+
+
 def test_compatibility_warning_consequences_exactly_once() -> None:
     plan = _home_compat(CompatibilityAdapterInput(
         source_kind="released", item_id="home-assistant",
@@ -478,12 +538,13 @@ def test_compatibility_warning_consequences_exactly_once() -> None:
 def _artifact(
     *, state: str = "present", reference: str | None = None,
     digest: str | None = None, mutable: bool = False,
+    reason: str | None = None,
 ) -> ArtifactObservation:
     return ArtifactObservation(
         state=state, repository_path="compose/home-assistant.yaml",
         service="home-assistant",
         content_digest="sha256:" + "f" * 64 if state == "present" else None,
-        reason_code=None, image_reference=reference, image_digest=digest,
+        reason_code=reason, image_reference=reference, image_digest=digest,
         image_mutable=mutable,
     )
 
@@ -612,6 +673,261 @@ def test_status_precedence_matrix_retains_lower_ranked_blockers() -> None:
 )
 def test_complete_status_matrix(codes: set[str], status: str) -> None:
     assert _plan_status(codes) == status
+
+
+def _reject_public_plan(plan: contract.InstallationPlan, **changes: object) -> None:
+    values = plan.model_dump(mode="python")
+    values.update(changes)
+    with pytest.raises(ValidationError):
+        contract.InstallationPlan(**values)
+
+
+def _with_blockers(
+    plan: contract.InstallationPlan,
+    *, add: tuple[contract.Blocker, ...] = (), remove: frozenset[str] = frozenset(),
+) -> tuple[tuple[contract.Blocker, ...], str]:
+    rows = tuple(blocker for blocker in plan.blockers if blocker.code not in remove) + add
+    rows = tuple(sorted(rows, key=lambda row: (contract._BLOCKER_RANK[row.code], row.subject)))
+    return rows, _plan_status({row.code for row in rows})
+
+
+@pytest.mark.parametrize(
+    ("base", "extra_code"),
+    [
+        ("missing", "image_conflict"),
+        ("grounded", "image_conflict"),
+        ("mismatched", "image_conflict"),
+        ("mutable", "image_mismatch"),
+        ("grounded", "unknown_image_state"),
+        ("grounded", "missing_immutable_image_identity"),
+    ],
+)
+def test_public_plan_rejects_contradictory_image_blocker(
+    base: str, extra_code: str,
+) -> None:
+    ref = "ghcr.io/home-assistant/home-assistant"
+    digest = "sha256:" + "1" * 64
+    plans = {
+        "missing": lambda: _home(),
+        "grounded": lambda: _home_artifact(
+            _artifact(reference=ref, digest=digest), _evidence()
+        ),
+        "mismatched": lambda: _home_artifact(
+            _artifact(reference=ref, digest=digest),
+            _evidence(digest="sha256:" + "2" * 64),
+        ),
+        "mutable": lambda: _home_artifact(
+            _artifact(reference=ref, mutable=True), _evidence()
+        ),
+    }
+    plan = plans[base]()
+    blockers, status = _with_blockers(
+        plan, add=(contract.Blocker(code=extra_code, subject="home-assistant"),)
+    )
+    _reject_public_plan(plan, blockers=blockers, status=status)
+
+
+def test_public_plan_rejects_missing_or_wrong_subject_image_conflict() -> None:
+    plan = _home_artifact(
+        _artifact(),
+        _evidence(source_id="a", digest="sha256:" + "1" * 64),
+        _evidence(source_id="b", digest="sha256:" + "2" * 64),
+    )
+    blockers, status = _with_blockers(plan, remove=frozenset({"image_conflict"}))
+    _reject_public_plan(plan, blockers=blockers, status=status)
+    blockers, status = _with_blockers(
+        plan,
+        add=(contract.Blocker(code="image_conflict", subject="other"),),
+        remove=frozenset({"image_conflict"}),
+    )
+    _reject_public_plan(plan, blockers=blockers, status=status)
+
+
+def test_public_plan_rejects_mismatch_replaced_by_image_conflict() -> None:
+    plan = _home_artifact(
+        _artifact(
+            reference="ghcr.io/home-assistant/home-assistant",
+            digest="sha256:" + "1" * 64,
+        ),
+        _evidence(digest="sha256:" + "2" * 64),
+    )
+    blockers, status = _with_blockers(
+        plan,
+        add=(contract.Blocker(code="image_conflict", subject="home-assistant"),),
+        remove=frozenset({"image_mismatch"}),
+    )
+    _reject_public_plan(plan, blockers=blockers, status=status)
+
+
+@pytest.mark.parametrize(
+    ("state", "wrong_code"),
+    [
+        ("present", "missing_deployment_artifact"),
+        ("missing", "invalid_deployment_artifact"),
+        ("invalid", "unsafe_deployment_artifact"),
+        ("unsafe", "unknown_deployment_artifact"),
+    ],
+)
+def test_public_plan_rejects_contradictory_artifact_blocker(
+    state: str, wrong_code: str,
+) -> None:
+    reasons = {"invalid": "invalid_yaml", "unsafe": "symlink"}
+    plan = _home_artifact(_artifact(state=state, reason=reasons.get(state)))
+    blockers, status = _with_blockers(
+        plan, add=(contract.Blocker(code=wrong_code, subject="home-assistant"),)
+    )
+    _reject_public_plan(plan, blockers=blockers, status=status)
+
+
+def test_public_plan_rejects_artifact_blocker_wrong_subject() -> None:
+    plan = _home()
+    blockers, status = _with_blockers(
+        plan,
+        add=(contract.Blocker(code="missing_deployment_artifact", subject="other"),),
+        remove=frozenset({"missing_deployment_artifact"}),
+    )
+    _reject_public_plan(plan, blockers=blockers, status=status)
+
+
+def test_public_plan_unbound_unknown_artifact_has_no_catalog_subject_fallback() -> None:
+    plan = _home()
+    blockers, status = _with_blockers(
+        plan,
+        add=(contract.Blocker(
+            code="unknown_deployment_artifact", subject="unbound-artifact",
+        ),),
+        remove=frozenset({"missing_deployment_artifact"}),
+    )
+    missing_facts = tuple(sorted(
+        (
+            fact for fact in plan.missing_facts
+            if not (
+                fact.code == "deployment_artifact"
+                and fact.subject == "home-assistant"
+            )
+        ),
+        key=lambda fact: (contract._MISSING_RANK[fact.code], fact.subject),
+    )) + (contract.MissingFact(
+        code="deployment_artifact", subject="unbound-artifact",
+    ),)
+    missing_facts = tuple(sorted(
+        missing_facts,
+        key=lambda fact: (contract._MISSING_RANK[fact.code], fact.subject),
+    ))
+    values = plan.model_dump(mode="python")
+    values.update(
+        deployment_artifact={
+            "state": "unknown", "kind": "docker-compose",
+            "repository_path": None, "service": None, "content_digest": None,
+        },
+        blockers=blockers, missing_facts=missing_facts, status=status,
+    )
+    contract.InstallationPlan(**values)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("claim", "different_claim"),
+        ("source_id", "different-source"),
+        ("immutable_identity", "0" * 64),
+        ("attested_at", "2026-08-20T00:00:00Z"),
+        ("source_class", "policy_evaluation"),
+    ],
+)
+def test_public_plan_rejects_inexact_accepted_evidence_provenance(
+    field: str, value: str,
+) -> None:
+    plan = _home(_evidence())
+    evidence = plan.accepted_evidence[0]
+    rows = list(plan.provenance)
+    index = next(
+        index for index, row in enumerate(rows)
+        if row.source_class == "image_release_evidence"
+        and row.immutable_identity == evidence.immutable_identity
+    )
+    rows[index] = rows[index].model_copy(update={field: value})
+    rows.sort(key=lambda row: (
+        row.claim, contract._PROVENANCE_RANK[row.source_class], row.source_id,
+        row.immutable_identity, row.observed_at or "", row.attested_at or "",
+    ))
+    _reject_public_plan(plan, provenance=tuple(rows))
+
+
+def test_public_plan_accepts_exact_accepted_evidence_provenance() -> None:
+    plan = _home(_evidence())
+    evidence = plan.accepted_evidence[0]
+    assert any(
+        row.source_class == "image_release_evidence"
+        and row.claim == evidence.claim
+        and row.source_id == evidence.source_id
+        and row.immutable_identity == evidence.immutable_identity
+        and row.attested_at == evidence.attested_at
+        for row in plan.provenance
+    )
+    contract.InstallationPlan(**plan.model_dump(mode="python"))
+
+
+def test_public_plan_rejects_cross_satisfied_evidence_provenance() -> None:
+    plan = _home(
+        _evidence(source_id="shared", attested_at="2026-08-24T00:00:00Z"),
+        _evidence(source_id="shared", attested_at="2026-08-23T00:00:00Z"),
+    )
+    evidence = plan.accepted_evidence
+    rows = list(plan.provenance)
+    indexes = [
+        index for index, row in enumerate(rows)
+        if row.source_class == "image_release_evidence"
+    ]
+    rows[indexes[0]] = rows[indexes[0]].model_copy(
+        update={"immutable_identity": evidence[1].immutable_identity}
+    )
+    rows[indexes[1]] = rows[indexes[1]].model_copy(
+        update={"immutable_identity": evidence[0].immutable_identity}
+    )
+    rows.sort(key=lambda row: (
+        row.claim, contract._PROVENANCE_RANK[row.source_class], row.source_id,
+        row.immutable_identity, row.observed_at or "", row.attested_at or "",
+    ))
+    _reject_public_plan(plan, provenance=tuple(rows))
+
+
+def test_public_plan_rejects_compatibility_contradictions() -> None:
+    compatible = _home_compat(CompatibilityAdapterInput(
+        source_kind="released", item_id="home-assistant",
+        target_type_present=False, status="compatible", findings=(),
+        unknown_fact_codes=(),
+    ))
+    blockers, status = _with_blockers(
+        compatible,
+        add=(contract.Blocker(
+            code="incompatible_application_environment", subject="home-assistant"
+        ),),
+    )
+    _reject_public_plan(compatible, blockers=blockers, status=status)
+
+    incompatible = _home_compat(CompatibilityAdapterInput(
+        source_kind="released", item_id="home-assistant",
+        target_type_present=False, status="incompatible",
+        findings=(_finding("blocker", "incompatible"),), unknown_fact_codes=(),
+    ))
+    blockers, status = _with_blockers(
+        incompatible, remove=frozenset({"incompatible_application_environment"})
+    )
+    _reject_public_plan(incompatible, blockers=blockers, status=status)
+
+    target_required = _home_compat(CompatibilityAdapterInput(
+        source_kind="released", item_id="home-assistant",
+        target_type_present=True, status="compatible", findings=(),
+        unknown_fact_codes=(),
+    ))
+    blockers, status = _with_blockers(
+        target_required,
+        add=(contract.Blocker(
+            code="incompatible_application_environment", subject="home-assistant"
+        ),),
+    )
+    _reject_public_plan(target_required, blockers=blockers, status=status)
 
 
 def test_complete_prerequisite_producer_matrix_and_exact_descriptions() -> None:

@@ -35,6 +35,8 @@ from app.installation_plan.contract import (
     Sha256Digest,
     UtcSecond,
     Version,
+    _compatibility_source_relation,
+    _ordered_unique,
     bounded_id,
     content_digest,
     normalize_oci_reference,
@@ -128,7 +130,18 @@ class CompatibilityAdapterInput(ContractModel):
                 == ("malformed_optional_compatibility_fact",)
             )
         else:
-            valid = self.status != "not_available"
+            finding_keys = tuple(
+                (f.id, f.check_type, f.severity, f.status, f.subject, f.evidence_ids)
+                for f in self.findings
+            )
+            _ordered_unique(finding_keys, "compatibility findings")
+            _ordered_unique(
+                tuple((code,) for code in self.unknown_fact_codes),
+                "compatibility unknown fact codes",
+            )
+            valid = self.status != "not_available" and _compatibility_source_relation(
+                self.status, self.findings, self.unknown_fact_codes
+            )
         if not valid:
             raise ValueError("invalid compatibility adapter relation")
         return self

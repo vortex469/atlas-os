@@ -420,14 +420,17 @@ class DeploymentArtifact(ContractModel):
                 value is not None
                 for value in (self.repository_path, self.service, self.content_digest)
             )
-        elif self.state == "missing":
+        elif self.state in {"missing", "invalid", "unsafe"}:
             valid = (
                 self.repository_path is not None
                 and self.service is not None
                 and self.content_digest is None
             )
         else:
-            valid = self.content_digest is None
+            valid = (
+                self.content_digest is None
+                and (self.repository_path is None) == (self.service is None)
+            )
         if not valid:
             raise ValueError("invalid deployment artifact relation")
         return self
@@ -455,15 +458,22 @@ class Image(ContractModel):
                 for value in (self.reference, self.digest, self.release_version)
             )
         elif self.state == "conflicted":
-            valid = self.reference is None and self.digest is None
+            valid = (
+                self.reference is None
+                and self.digest is None
+                and self.release_version is not None
+            )
         elif self.state == "missing":
             valid = self.digest is None
         elif self.state == "mutable":
             valid = self.reference is not None and self.digest is None
-        elif self.state in {"untrusted", "mismatched"}:
-            valid = self.release_version is not None
-        elif self.state == "unknown":
-            valid = True
+        elif self.state == "untrusted":
+            valid = all(
+                value is not None
+                for value in (self.reference, self.digest, self.release_version)
+            )
+        elif self.state in {"mismatched", "unknown"}:
+            valid = (self.reference is None) == (self.digest is None)
         else:
             valid = True
         if not valid:
@@ -637,6 +647,193 @@ class InstallationPlan(ContractModel):
         )
         for keys, name in arrays:
             _ordered_unique(keys, name)
+        blocker_codes = {blocker.code for blocker in self.blockers}
+        if blocker_codes & {"provenance_conflict", "image_conflict"}:
+            expected_status = "conflicted"
+        elif "missing_deployment_artifact" in blocker_codes:
+            expected_status = "missing_deployment_artifact"
+        elif "incompatible_application_environment" in blocker_codes:
+            expected_status = "incompatible"
+        elif "stale_evidence" in blocker_codes:
+            expected_status = "stale_evidence"
+        elif blocker_codes:
+            expected_status = "insufficient_information"
+        else:
+            expected_status = "plan_ready_for_review"
+        if self.status != expected_status:
+            raise ValueError("plan status does not match blockers")
+
+        provenance_rows = {
+            (
+                row.source_class,
+                row.claim,
+                row.source_id,
+                row.immutable_identity,
+                row.attested_at,
+            )
+            for row in self.provenance
+        }
+        for evidence in self.accepted_evidence:
+            if (
+                "image_release_evidence",
+                evidence.claim,
+                evidence.source_id,
+                evidence.immutable_identity,
+                evidence.attested_at,
+            ) not in provenance_rows:
+                raise ValueError("accepted evidence lacks provenance")
+        # Evidence intentionally has no public image/release values, so the
+        # stronger value match remains enforced by FingerprintInputV1.
+        if self.image.state == "grounded" and not self.accepted_evidence:
+            raise ValueError("grounded image lacks accepted evidence")
+        consequences = {
+            "missing": ("missing_immutable_image_identity", "immutable_image_identity"),
+            "mutable": ("mutable_image_reference", "immutable_image_identity"),
+            "untrusted": ("untrusted_evidence", "accepted_evidence"),
+            "conflicted": ("image_conflict", "source_fact"),
+            "mismatched": ("image_mismatch", "accepted_evidence"),
+            "unknown": ("unknown_image_state", "immutable_image_identity"),
+        }
+        image_subject = self.application.item_id
+        if self.image.state in consequences:
+            blocker, missing_fact = consequences[self.image.state]
+            blocker_subject = (
+                image_subject
+                if self.image.state in {"missing", "mutable", "conflicted", "unknown"}
+                else None
+            )
+            if not any(
+                row.code == blocker
+                and (blocker_subject is None or row.subject == blocker_subject)
+                for row in self.blockers
+            ) or not any(
+                fact.code == missing_fact
+                and (blocker_subject is None or fact.subject == blocker_subject)
+                for fact in self.missing_facts
+            ):
+                raise ValueError("image state lacks mandatory consequence")
+        deterministic_image_blockers = {
+            "missing_immutable_image_identity": "missing",
+            "mutable_image_reference": "mutable",
+            "image_conflict": "conflicted",
+            "image_mismatch": "mismatched",
+            "unknown_image_state": "unknown",
+        }
+        if any(
+            blocker.code in deterministic_image_blockers
+            and (
+                (
+                    blocker.code != "image_mismatch"
+                    and blocker.subject != image_subject
+                )
+                or self.image.state != deterministic_image_blockers[blocker.code]
+            )
+            for blocker in self.blockers
+        ):
+            raise ValueError("image blocker contradicts image state")
+        artifact_consequences = {
+            "missing": ("missing_deployment_artifact", "deployment_artifact"),
+            "invalid": ("invalid_deployment_artifact", "source_fact"),
+            "unsafe": ("unsafe_deployment_artifact", "source_fact"),
+            "unknown": ("unknown_deployment_artifact", "deployment_artifact"),
+        }
+        artifact_subject = self.deployment_artifact.service
+        if self.deployment_artifact.state in artifact_consequences:
+            blocker, missing_fact = artifact_consequences[
+                self.deployment_artifact.state
+            ]
+            if not any(
+                row.code == blocker
+                and (artifact_subject is None or row.subject == artifact_subject)
+                for row in self.blockers
+            ) or not any(
+                fact.code == missing_fact
+                and (artifact_subject is None or fact.subject == artifact_subject)
+                for fact in self.missing_facts
+            ):
+                raise ValueError("artifact state lacks mandatory consequence")
+        deterministic_artifact_blockers = {
+            "missing_deployment_artifact": "missing",
+            "invalid_deployment_artifact": "invalid",
+            "unsafe_deployment_artifact": "unsafe",
+            "unknown_deployment_artifact": "unknown",
+        }
+        if any(
+            blocker.code in deterministic_artifact_blockers
+            and (
+                (artifact_subject is not None and blocker.subject != artifact_subject)
+                or self.deployment_artifact.state
+                != deterministic_artifact_blockers[blocker.code]
+            )
+            for blocker in self.blockers
+        ):
+            raise ValueError("artifact blocker contradicts artifact state")
+        compatibility = self.compatibility[0]
+        if compatibility.result == "incompatible" and not any(
+            blocker.code == "incompatible_application_environment"
+            and blocker.subject == image_subject
+            for blocker in self.blockers
+        ):
+            raise ValueError("incompatible result lacks blocker")
+        if compatibility.result == "unknown" and not (
+            any(
+                blocker.code == "unknown_compatibility"
+                and blocker.subject == image_subject
+                for blocker in self.blockers
+            )
+            and any(
+                fact.code == "compatibility_fact"
+                and fact.subject == image_subject
+                for fact in self.missing_facts
+            )
+        ):
+            raise ValueError("unknown compatibility lacks mandatory consequence")
+        if compatibility.reason_code == "target_required" and not (
+            any(
+                blocker.code == "missing_target_identity"
+                and blocker.subject == image_subject
+                for blocker in self.blockers
+            )
+            and any(
+                fact.code == "target_identity" and fact.subject == image_subject
+                for fact in self.missing_facts
+            )
+        ):
+            raise ValueError("target-required result lacks mandatory consequence")
+        if any(
+            blocker.subject != image_subject
+            or compatibility.result != "incompatible"
+            for blocker in self.blockers
+            if blocker.code == "incompatible_application_environment"
+        ):
+            raise ValueError("incompatible blocker contradicts compatibility")
+        if any(
+            blocker.subject != image_subject or compatibility.result != "unknown"
+            for blocker in self.blockers
+            if blocker.code == "unknown_compatibility"
+        ):
+            raise ValueError("unknown blocker contradicts compatibility")
+        if any(
+            blocker.subject != image_subject
+            or compatibility.reason_code != "target_required"
+            for blocker in self.blockers
+            if blocker.code == "missing_target_identity"
+        ) or any(
+            fact.subject != image_subject
+            or compatibility.reason_code != "target_required"
+            for fact in self.missing_facts
+            if fact.code == "target_identity"
+        ):
+            raise ValueError("target identity consequence contradicts compatibility")
+        if any(
+            not any(
+                blocker.code == "required_operator_confirmation"
+                and blocker.subject == confirmation.subject
+                for blocker in self.blockers
+            )
+            for confirmation in self.required_operator_confirmations
+        ):
+            raise ValueError("confirmation lacks mandatory blocker")
         return self
 
 
@@ -1088,6 +1285,14 @@ class ArtifactDecisionInputV1(ContractModel):
             and self.content_digest is not None
         ):
             raise ValueError("rejected artifact cannot have digest")
+        if self.state in {"invalid", "unsafe"} and (
+            self.repository_path is None or self.service is None
+        ):
+            raise ValueError("rejected bound artifact must retain binding")
+        if self.state == "unknown" and (
+            (self.repository_path is None) != (self.service is None)
+        ):
+            raise ValueError("unknown artifact has partial binding")
         return self
 
 
@@ -1104,6 +1309,34 @@ class ImageDecisionInputV1(ContractModel):
     reference: OciRepository | None
     digest: Sha256Digest | None
     release_version: Version | None
+
+    @model_validator(mode="after")
+    def relation(self) -> ImageDecisionInputV1:
+        if self.state == "grounded":
+            valid = all(
+                value is not None
+                for value in (self.reference, self.digest, self.release_version)
+            )
+        elif self.state == "conflicted":
+            valid = (
+                self.reference is None
+                and self.digest is None
+                and self.release_version is not None
+            )
+        elif self.state == "mutable":
+            valid = self.reference is not None and self.digest is None
+        elif self.state == "missing":
+            valid = self.digest is None
+        elif self.state == "untrusted":
+            valid = all(
+                value is not None
+                for value in (self.reference, self.digest, self.release_version)
+            )
+        else:
+            valid = (self.reference is None) == (self.digest is None)
+        if not valid:
+            raise ValueError("invalid image decision relation")
+        return self
 
 
 class ProvenanceDecisionInputV1(ContractModel):
@@ -1141,6 +1374,28 @@ class CompatibilityFindingInputV1(ContractModel):
         if tuple(sorted(self.evidence_ids)) != self.evidence_ids or len(set(self.evidence_ids)) != len(self.evidence_ids):
             raise ValueError("evidence IDs must be sorted and unique")
         return self
+
+
+def _compatibility_source_relation(
+    status: str,
+    findings: tuple[CompatibilityFindingInputV1, ...],
+    unknown_fact_codes: tuple[str, ...],
+) -> bool:
+    """Validate the frozen aggregate/finding relation of a released result."""
+    warning_basis = any(finding.severity == "warning" for finding in findings)
+    blocker_basis = any(finding.severity == "blocker" for finding in findings)
+    unknown_basis = bool(unknown_fact_codes) or any(
+        finding.severity == "unknown" for finding in findings
+    )
+    if status == "compatible":
+        return not warning_basis and not blocker_basis and not unknown_basis
+    if status == "compatible_with_warnings":
+        return warning_basis and not blocker_basis and not unknown_basis
+    if status == "incompatible":
+        return blocker_basis and not unknown_basis
+    if status == "insufficient_information":
+        return unknown_basis
+    return False
 
 
 class CompatibilityDecisionInputV1(ContractModel):
@@ -1186,9 +1441,14 @@ class CompatibilityDecisionInputV1(ContractModel):
         warnings = any(f.severity == "warning" for f in self.findings)
         blockers = any(f.severity == "blocker" for f in self.findings)
         unknown = bool(self.unknown_fact_codes)
+        source_valid = self.source_result == "not_available" or _compatibility_source_relation(
+            self.source_result, self.findings, self.unknown_fact_codes
+        )
         if self.source_target_type_present:
             valid = (
-                self.projected_result == "unknown"
+                self.source_result != "not_available"
+                and source_valid
+                and self.projected_result == "unknown"
                 and self.projected_reason == "target_required"
                 and not self.warning_projection
                 and self.target_required_projection
@@ -1214,25 +1474,30 @@ class CompatibilityDecisionInputV1(ContractModel):
             )
         elif self.source_result == "compatible":
             valid = (
-                self.projected_result == "compatible"
+                source_valid
+                and self.projected_result == "compatible"
                 and self.projected_reason == "target_free_catalog_compatible"
                 and not warnings
+                and not blockers
                 and not unknown
                 and not self.warning_projection
                 and not self.target_required_projection
             )
         elif self.source_result == "compatible_with_warnings":
             valid = (
-                self.projected_result == "compatible_with_warnings"
+                source_valid
+                and self.projected_result == "compatible_with_warnings"
                 and self.projected_reason == "target_free_catalog_warning"
                 and warnings
+                and not blockers
                 and not unknown
                 and self.warning_projection
                 and not self.target_required_projection
             )
         elif self.source_result == "incompatible":
             valid = (
-                self.projected_result == "incompatible"
+                source_valid
+                and self.projected_result == "incompatible"
                 and self.projected_reason == "target_free_catalog_incompatible"
                 and blockers
                 and not unknown
@@ -1241,7 +1506,8 @@ class CompatibilityDecisionInputV1(ContractModel):
             )
         else:
             valid = (
-                self.source_result == "insufficient_information"
+                source_valid
+                and self.source_result == "insufficient_information"
                 and self.projected_result == "unknown"
                 and self.projected_reason == "compatibility_fact_missing"
                 and not self.warning_projection
@@ -1260,6 +1526,20 @@ class CompatibilityReleasedInputV1(ContractModel):
     ]
     findings: tuple[CompatibilityFindingInputV1, ...] = Field(max_length=128)
     unknown_fact_codes: tuple[Id128, ...] = Field(max_length=128)
+
+    @model_validator(mode="after")
+    def relation(self) -> CompatibilityReleasedInputV1:
+        finding_keys = tuple(
+            (f.id, f.check_type, f.severity, f.status, f.subject, f.evidence_ids)
+            for f in self.findings
+        )
+        _ordered_unique(finding_keys, "compatibility findings")
+        _ordered_unique(tuple((code,) for code in self.unknown_fact_codes), "compatibility unknown fact codes")
+        if not _compatibility_source_relation(
+            self.status, self.findings, self.unknown_fact_codes
+        ):
+            raise ValueError("invalid released compatibility relation")
+        return self
 
 
 class CompatibilityAbsentInputV1(ContractModel):
@@ -1503,6 +1783,11 @@ class FingerprintInputV1(ContractModel):
         )
         for keys, name in arrays:
             _ordered_unique(keys, name)
+        has_image_claim = any(
+            fact.kind == "image_claim" for fact in self.conflict_facts
+        )
+        if (self.image.state == "conflicted") != has_image_claim:
+            raise ValueError("fingerprint image conflict relation is invalid")
         return self
 
 

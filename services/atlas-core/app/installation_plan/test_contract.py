@@ -290,6 +290,66 @@ def test_complete_model_relations(model: object, valid: dict[str, object], inval
         model(**invalid)  # type: ignore[operator]
 
 
+@pytest.mark.parametrize(
+    ("state", "reference", "digest", "release"),
+    [
+        ("grounded", "ghcr.io/a/b", "sha256:" + "1" * 64, "1.0.0"),
+        ("conflicted", None, None, "1.0.0"),
+        ("mismatched", "ghcr.io/a/b", "sha256:" + "1" * 64, "1.0.0"),
+        ("mutable", "ghcr.io/a/b", None, "1.0.0"),
+        ("missing", None, None, "1.0.0"),
+        ("untrusted", "ghcr.io/a/b", "sha256:" + "1" * 64, "1.0.0"),
+        ("unknown", None, None, "1.0.0"),
+    ],
+)
+def test_public_and_fingerprint_image_state_matrix(
+    state: str, reference: str | None, digest: str | None, release: str | None,
+) -> None:
+    values = {
+        "state": state, "reference": reference, "digest": digest,
+        "release_version": release,
+    }
+    contract.Image(**values)
+    contract.ImageDecisionInputV1(**values)
+
+
+@pytest.mark.parametrize(
+    ("state", "change"),
+    [
+        ("grounded", {"reference": None}),
+        ("grounded", {"digest": None}),
+        ("grounded", {"release_version": None}),
+        ("conflicted", {"reference": "ghcr.io/a/b"}),
+        ("conflicted", {"digest": "sha256:" + "1" * 64}),
+        ("conflicted", {"release_version": None}),
+        ("mismatched", {"reference": None}),
+        ("mutable", {"reference": None}),
+        ("mutable", {"digest": "sha256:" + "1" * 64}),
+        ("missing", {"digest": "sha256:" + "1" * 64}),
+        ("untrusted", {"digest": None}),
+        ("unknown", {"reference": "ghcr.io/a/b", "digest": None}),
+    ],
+)
+def test_public_and_fingerprint_image_forbidden_relations(
+    state: str, change: dict[str, object],
+) -> None:
+    bases = {
+        "grounded": ["ghcr.io/a/b", "sha256:" + "1" * 64, "1.0.0"],
+        "conflicted": [None, None, "1.0.0"],
+        "mismatched": ["ghcr.io/a/b", "sha256:" + "1" * 64, "1.0.0"],
+        "mutable": ["ghcr.io/a/b", None, "1.0.0"],
+        "missing": [None, None, "1.0.0"],
+        "untrusted": ["ghcr.io/a/b", "sha256:" + "1" * 64, "1.0.0"],
+        "unknown": [None, None, "1.0.0"],
+    }
+    reference, digest, release = bases[state]
+    values = {"state": state, "reference": reference, "digest": digest, "release_version": release}
+    values.update(change)
+    for model in (contract.Image, contract.ImageDecisionInputV1):
+        with pytest.raises(ValidationError):
+            model(**values)
+
+
 @pytest.mark.parametrize("model", [contract.Relationship, contract.RelationshipDecisionInputV1])
 def test_relationship_bounds_use_numeric_components(model: object) -> None:
     model(kind="depends_on", item_id="app", required=True,
@@ -365,3 +425,148 @@ def test_compatibility_projection_contradictions(field: str, value: object) -> N
     values[field] = value
     with pytest.raises(ValidationError):
         contract.CompatibilityDecisionInputV1(**values)
+
+
+@pytest.mark.parametrize(
+    ("source_result", "findings", "unknown_codes"),
+    [
+        ("compatible", (_compat_finding(severity="blocker", status="incompatible"),), ()),
+        ("compatible", (_compat_finding(severity="warning", status="compatible_with_warnings"),), ()),
+        ("compatible_with_warnings", (), ()),
+        ("compatible_with_warnings", (_compat_finding(severity="blocker", status="incompatible"),), ()),
+        ("incompatible", (), ()),
+        ("incompatible", (_compat_finding(severity="warning", status="compatible_with_warnings"),), ()),
+        ("incompatible", (_compat_finding(severity="blocker", status="incompatible"),), ("unknown",)),
+        ("insufficient_information", (_compat_finding(),), ()),
+    ],
+)
+def test_compatibility_released_matrix_rejects_contradictions(
+    source_result: str,
+    findings: tuple[contract.CompatibilityFindingInputV1, ...],
+    unknown_codes: tuple[str, ...],
+) -> None:
+    with pytest.raises(ValidationError):
+        contract.CompatibilityReleasedInputV1(
+            item_id="app", target_type_present=False, status=source_result,
+            findings=findings, unknown_fact_codes=unknown_codes,
+        )
+
+
+@pytest.mark.parametrize(
+    ("source_result", "severity", "finding_status"),
+    [
+        ("incompatible", "warning", "incompatible"),
+        ("incompatible", "info", "incompatible"),
+        ("compatible_with_warnings", "blocker", "compatible"),
+    ],
+)
+def test_compatibility_aggregate_basis_never_comes_from_finding_status(
+    source_result: str, severity: str, finding_status: str,
+) -> None:
+    with pytest.raises(ValidationError):
+        contract.CompatibilityReleasedInputV1(
+            item_id="app", target_type_present=False, status=source_result,
+            findings=(_compat_finding(
+                severity=severity, status=finding_status,
+            ),),
+            unknown_fact_codes=(),
+        )
+
+
+@pytest.mark.parametrize(
+    "severities",
+    [("blocker", "warning"), ("blocker", "info"),
+     ("blocker", "warning", "info")],
+)
+def test_incompatible_accepts_blocker_with_accompanying_findings(
+    severities: tuple[str, ...],
+) -> None:
+    findings = tuple(
+        _compat_finding(
+            chr(ord("a") + index), severity=severity, status="compatible",
+        )
+        for index, severity in enumerate(severities)
+    )
+    contract.CompatibilityReleasedInputV1(
+        item_id="app", target_type_present=False, status="incompatible",
+        findings=findings, unknown_fact_codes=(),
+    )
+
+
+@pytest.mark.parametrize(
+    ("findings", "unknown_codes"),
+    [
+        ((_compat_finding(severity="unknown", status="compatible"),), ()),
+        ((_compat_finding(status="insufficient_information"),), ("missing",)),
+        ((_compat_finding(severity="blocker", status="compatible"),), ("missing",)),
+    ],
+)
+def test_insufficient_information_accepts_p0_unknown_basis_without_status_coupling(
+    findings: tuple[contract.CompatibilityFindingInputV1, ...],
+    unknown_codes: tuple[str, ...],
+) -> None:
+    contract.CompatibilityReleasedInputV1(
+        item_id="app", target_type_present=False,
+        status="insufficient_information", findings=findings,
+        unknown_fact_codes=unknown_codes,
+    )
+
+
+def test_insufficient_information_rejects_status_only_unknown_basis() -> None:
+    with pytest.raises(ValidationError):
+        contract.CompatibilityReleasedInputV1(
+            item_id="app", target_type_present=False,
+            status="insufficient_information",
+            findings=(_compat_finding(status="insufficient_information"),),
+            unknown_fact_codes=(),
+        )
+
+
+@pytest.mark.parametrize(
+    ("state", "path", "service", "digest", "reason"),
+    [
+        ("present", "compose/a.yaml", "a", "sha256:" + "1" * 64, None),
+        ("missing", "compose/a.yaml", "a", None, None),
+        ("invalid", "compose/a.yaml", "a", None, "invalid_yaml"),
+        ("unsafe", "compose/a.yaml", "a", None, "symlink"),
+        ("unknown", None, None, None, "observation_unknown"),
+        ("unknown", "compose/a.yaml", "a", None, "observation_unknown"),
+    ],
+)
+def test_artifact_public_and_fingerprint_positive_matrix(
+    state: str, path: str | None, service: str | None,
+    digest: str | None, reason: str | None,
+) -> None:
+    contract.DeploymentArtifact(
+        state=state, repository_path=path, service=service, content_digest=digest,
+    )
+    contract.ArtifactDecisionInputV1(
+        state=state, repository_path=path, service=service, content_digest=digest,
+        reason_code=reason, identity="1" * 64,
+    )
+
+
+@pytest.mark.parametrize(
+    ("state", "path", "service", "digest", "reason"),
+    [
+        ("present", "compose/a.yaml", "a", None, None),
+        ("missing", None, None, None, None),
+        ("invalid", None, None, None, "invalid_yaml"),
+        ("unsafe", "compose/a.yaml", None, None, "symlink"),
+        ("unknown", "compose/a.yaml", None, None, "observation_unknown"),
+        ("unknown", None, None, "sha256:" + "1" * 64, "observation_unknown"),
+    ],
+)
+def test_artifact_public_and_fingerprint_negative_matrix(
+    state: str, path: str | None, service: str | None,
+    digest: str | None, reason: str | None,
+) -> None:
+    with pytest.raises(ValidationError):
+        contract.DeploymentArtifact(
+            state=state, repository_path=path, service=service, content_digest=digest,
+        )
+    with pytest.raises(ValidationError):
+        contract.ArtifactDecisionInputV1(
+            state=state, repository_path=path, service=service,
+            content_digest=digest, reason_code=reason, identity="1" * 64,
+        )

@@ -789,7 +789,7 @@ class InstallationPlanAssembler:
                 )
             identity = (
                 immutable
-                if eligibility == "eligible"
+                if disposition == "accepted"
                 else compound_hash("atlas:evidence-decision:v1", decision)
             )
             provenance.append(
@@ -1050,7 +1050,7 @@ class InstallationPlanAssembler:
                 )
         for confirmation in confirmations:
             consequence("required_operator_confirmation", confirmation.subject)
-        if conflicts:
+        if any(fact.kind == "image_claim" for fact in conflicts):
             image_state = "conflicted"
         elif any(
             d.reason_code == "release_identity_mismatch" for d in evidence_decisions

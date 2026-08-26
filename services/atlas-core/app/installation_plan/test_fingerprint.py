@@ -110,6 +110,11 @@ def test_every_fingerprint_array_accepts_sorted_and_rejects_swap_and_duplicate(
 ) -> None:
     left, right = _pairs()[field]
     values = base_fingerprint_input.model_dump(mode="python")
+    if field == "conflict_facts":
+        values["image"] = {
+            "state": "conflicted", "reference": None, "digest": None,
+            "release_version": "2026.8.3",
+        }
     values[field] = (left, right)
     contract.FingerprintInputV1(**values)
     values[field] = (right, left)
@@ -155,3 +160,37 @@ def test_fingerprint_prerequisite_cardinality_64_then_65(
     values["prerequisites"] = rows
     with pytest.raises(ValidationError):
         contract.FingerprintInputV1(**values)
+
+
+@pytest.mark.parametrize(
+    ("image_state", "conflict_kind", "accepted"),
+    [
+        ("conflicted", None, False),
+        ("conflicted", "provenance_identity", False),
+        ("conflicted", "immutable_identity", False),
+        ("conflicted", "image_claim", True),
+        ("missing", "image_claim", False),
+        ("missing", "provenance_identity", True),
+        ("missing", "immutable_identity", True),
+    ],
+)
+def test_fingerprint_image_conflict_cross_relation(
+    base_fingerprint_input: contract.FingerprintInputV1,
+    image_state: str, conflict_kind: str | None, accepted: bool,
+) -> None:
+    values = base_fingerprint_input.model_dump(mode="python")
+    values["image"] = {
+        "state": image_state, "reference": None, "digest": None,
+        "release_version": "2026.8.3",
+    }
+    values["conflict_facts"] = () if conflict_kind is None else (
+        contract.ConflictFactInputV1(
+            kind=conflict_kind, subject="home-assistant",
+            left_identity="1" * 64, right_identity="2" * 64,
+        ),
+    )
+    if accepted:
+        contract.FingerprintInputV1(**values)
+    else:
+        with pytest.raises(ValidationError):
+            contract.FingerprintInputV1(**values)
