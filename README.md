@@ -124,14 +124,15 @@ trigger GHCR access, registry
 acquisition, Sigstore verification, collector execution, or evidence refresh.
 The plan adds no durable state, mutation, or execution authority.
 
-## Selected v0.16 plan
+## Current v0.16 plan
 
-The next selected theme is **Grounded Installation Planning**: deterministic,
+The current theme is **Grounded Installation Planning**: deterministic,
 immutable, provenance-linked, ephemeral read models answering what would be
-required to install an application here. P0 is complete as documentation and
-architecture under the normative
-[InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md);
-P1–P5 implementation is pending. An `InstallationPlan` is informational and
+required to install an application here. P0 is complete under the normative
+[InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md), and
+the P1 assembler/P2 evaluator are complete and accepted. P3, the bounded
+read-only InstallationPlan GET API, is next; P4–P5 remain future work. An
+`InstallationPlan` is informational and
 cannot
 approve, execute, deploy, persist, create candidates/intents/workflows, invoke
 workers, or contain commands, executable payloads, secrets, or credentials.

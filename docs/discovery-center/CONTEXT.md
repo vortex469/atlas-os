@@ -1,4 +1,4 @@
-# Discovery Center Current Context — v0.15 released, v0.16 selected
+# Discovery Center Current Context — v0.15 released, v0.16 P1/P2 complete
 
 Discovery Center is Atlas's provider-neutral, local-first, read-only knowledge
 and evidence surface. Its public API is GET-only and its Mission Control views
@@ -72,11 +72,12 @@ The original D0 plan described only a future curated catalog. That material is
 historical: the catalog and subsequent D1-D10 capabilities have shipped and
 must not be read as current future-tense scope.
 
-## V0.16 selected planning boundary
+## V0.16 current implementation boundary
 
-**Grounded Installation Planning** P0 is documentation-complete under the
-normative [InstallationPlan v1 contract](../architecture/installation-plan-v1.md).
-P1–P5 remain pending. It will consume reviewed Discovery/catalog,
+**Grounded Installation Planning** P0 is contract-complete under the normative
+[InstallationPlan v1 contract](../architecture/installation-plan-v1.md). The P1
+assembler/P2 evaluator are complete and accepted. They consume reviewed
+Discovery/catalog,
 binding, compatibility, evidence, grounding, and provenance facts to assemble
 ephemeral informational `InstallationPlan` reads. Consumption grants no new
 Discovery authority: evidence and grounding cannot approve or execute, and a
@@ -85,9 +86,11 @@ plan ready for review is neither approved, executable, nor deployable.
 Home Assistant currently binds exactly to absent
 `compose/home-assistant.yaml`, so its plan must be
 `missing_deployment_artifact`; the accepted immutable image proof cannot turn
-that absence into readiness. No artifact, mutable image, or target identity may
-be synthesized. The planned endpoint and UI are GET-only/read-only and remain
+that absence into readiness. Its accepted golden fingerprint is
+`34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+No artifact, mutable image, or target identity may be synthesized. P3 is next:
+the bounded read-only GET API. The future endpoint and UI remain
 isolated from legacy `POST /analysis/deployments` and
-`POST /api/v1/analysis/deployments` caller-document proposal mounts. P0 adds no
-implementation and v0.16 introduces no durable plan store, approved
+`POST /api/v1/analysis/deployments` caller-document proposal mounts. P1/P2
+introduce no durable plan store, approved
 target, candidate, intent, workflow, approval, dispatch, or execution path.

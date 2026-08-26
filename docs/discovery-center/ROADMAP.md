@@ -106,13 +106,14 @@ P5 release closure is complete at
 
 ## Selected v0.16 — Grounded Installation Planning
 
-V0.16 selects a bounded read-side consumer of released Discovery facts. P0 is
-complete as documentation/architecture in the normative
-[InstallationPlan v1 contract](../architecture/installation-plan-v1.md); P1–P5
-remain pending. It
-plans deterministic, immutable, provenance-linked, ephemeral
+V0.16 is a bounded read-side consumer of released Discovery facts. P0 is
+complete in the normative
+[InstallationPlan v1 contract](../architecture/installation-plan-v1.md), and
+the P1 assembler/P2 evaluator are complete and accepted. P3 is the next
+implementation milestone; P4–P5 remain future work. It provides deterministic,
+immutable, provenance-linked, ephemeral
 `InstallationPlan` views answering what would be required to install an
-application here. P0 adds no implementation.
+application here.
 
 - P0 freezes the exact closed schema/status/blocker vocabularies and total
   mapping, exact-time freshness, typed fingerprint, released-data evidence and
@@ -122,13 +123,16 @@ application here. P0 adds no implementation.
   evidence disposition/eligibility/reason relation, and closed typed catalog,
   compatibility, provenance, fingerprint, absence/conflict/unavailability,
   sorting, and identity inputs without invented malformed-record values.
-- P1 assembles the Home Assistant reference deterministically. Its exact
+- P1 (complete) assembles the Home Assistant reference deterministically. Its
+  exact
   `compose/home-assistant.yaml` artifact is absent, so the only valid current
   outcome is `missing_deployment_artifact`—never a substitute artifact,
-  mutable-image inference, or grounding-derived readiness.
-- P2 evaluates readiness, blockers, risks, assumptions, missing facts,
-  prerequisites, relationships, and confirmations without creating authority.
-- P3 exposes only a bounded GET read; it does not reuse or expand legacy
+  mutable-image inference, or grounding-derived readiness. The accepted golden
+  fingerprint is `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+- P2 (complete) evaluates readiness, blockers, risks, assumptions, missing
+  facts, prerequisites, relationships, and confirmations without creating
+  authority.
+- P3 (next) exposes only a bounded GET read; it does not reuse or expand legacy
   `POST /analysis/deployments` or `POST /api/v1/analysis/deployments`, accept
   caller deployment documents, or persist.
 - P4 presents read-only Mission Control review with no action or conversion

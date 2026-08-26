@@ -1,7 +1,7 @@
 # InstallationPlan v1 contract and threat model
 
-Status: **v0.16 P0 decision-complete; implementation pending**. This
-normative P1–P5 contract adds no runtime behavior or authority.
+Status: **v0.16 P0 contract frozen; P1/P2 implementation accepted; P3 next**.
+This normative contract grants no runtime authority.
 
 ## Authority and lifetime
 
@@ -1197,14 +1197,18 @@ forbidden. Classification occurs before model/fingerprint/log/UI. Errors/logs
 contain fixed codes, sanitized IDs and correlation ID only. UI uses escaped
 text nodes, no HTML/Markdown/link/action controls.
 
-P1–P5 tests must cover every total-mapping row and blocker/status precedence;
+The frozen P1–P5 validation matrix requires every total-mapping row and
+blocker/status precedence;
 schema/bounds/null/order; derivation golden vectors; all source classes/no trust
 promotion; raw/no-plan boundary; provenance domains; every relationship;
 target-scoped compatibility refusal and all target-free results; freshness age
 0/boundary/+1/future 0..300/>300/null/malformed/both timestamps; fingerprint
 goldens/permutations; OCI host/path/port/default/tag/digest/rejections; exact
 HTTP query/body/item behavior; transitive dependency and both legacy mounts;
-no persistence/network/mutation; escaped read-only UI; authority regressions.
+no persistence/network/mutation; escaped read-only UI; and authority
+regressions. The accepted P1/P2 coverage satisfies the applicable contract and
+evaluator portions; P3–P5 must retain those gates while completing their API,
+UI, and release portions.
 
 For released Home Assistant, item `home-assistant`, catalog entry
 `d5-home-assistant`, binding `compose/home-assistant.yaml`, and service
@@ -1212,4 +1216,9 @@ For released Home Assistant, item `home-assistant`, catalog entry
 is `missing_deployment_artifact` with that blocker regardless of grounding. An
 absent file is not parsed, substituted or synthesized.
 
-P0 completion freezes decisions only. P1–P5 implementation remains pending.
+P0's decisions remain frozen. P1/P2 implementation is accepted with 254
+InstallationPlan tests and 90 required discovery/parity regressions (344
+combined), including the Home Assistant golden fingerprint
+`34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+P3, the bounded read-only GET API, is the next implementation milestone;
+P4–P5 remain future work.

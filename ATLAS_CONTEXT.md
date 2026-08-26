@@ -96,15 +96,16 @@ Semantic Discovery (D11), private/community catalogs (D12), additional
 operational and repository intents, broader Provider Intent domains, generic
 image collection, and distributed orchestration remain uncommitted.
 
-## Selected v0.16 planning state
+## Current v0.16 implementation state
 
-V0.16 is selected as **Grounded Installation Planning**. P0 is complete as
-documentation/architecture under the normative
-[InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md);
-P1–P5 remain pending. V1 is item-scoped only and has no target selector. This
-selection plans ephemeral, immutable, provenance-linked informational
-`InstallationPlan` read models; it implements no production behavior. Plans
-are assembled on read, never durably stored, and authorize nothing.
+V0.16 is **Grounded Installation Planning**. P0's normative
+[InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md) is
+frozen, and the deterministic P1 assembler/P2 evaluator implementation is
+complete and accepted. P3, the bounded read-only InstallationPlan GET API, is
+the next implementation milestone; P4–P5 remain future work. V1 is item-scoped
+only and has no target selector. Plans are ephemeral, immutable,
+provenance-linked informational read models assembled on read, never durably
+stored, and authorize nothing.
 `plan_ready_for_review` is not
 approved, executable, or deployable. No approved installation-target contract
 is introduced; v1 has no target-context field.
@@ -112,7 +113,11 @@ is introduced; v1 has no target-context field.
 The current Home Assistant binding names exactly
 `compose/home-assistant.yaml`; that artifact is absent, so current planning
 must fail closed as `missing_deployment_artifact`. Existing image grounding
-does not establish deployment readiness. Legacy caller-document mounts
+does not establish deployment readiness. Its accepted golden fingerprint is
+`34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+Validation covers 254 InstallationPlan tests plus 90 required discovery/parity
+regressions (344 combined), including hostile inputs and deduplicated
+multi-evidence risks. Legacy caller-document mounts
 `POST /analysis/deployments` and `POST /api/v1/analysis/deployments` remain
 separate and are not reused or expanded for v0.16. The intended v0.16 API and
 Mission Control surface are GET-only/read-only.

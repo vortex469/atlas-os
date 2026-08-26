@@ -181,12 +181,12 @@ to perform because v0.15 adds no durable state or execution authority.
 
 ## 5. Selected v0.16 plan — Grounded Installation Planning
 
-Atlas v0.16 is selected as **Grounded Installation Planning**. It will create
+Atlas v0.16 is **Grounded Installation Planning**. It creates
 deterministic, immutable, provenance-linked, ephemeral `InstallationPlan` read
 models answering: “What would be required to install this application here?”
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. This is a planning-only
-selection: P0 is complete as documentation/architecture only; no v0.16
-production implementation exists and P1–P5 remain pending.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0's frozen contract and
+the P1 assembler/P2 evaluator are complete and accepted. P3 is the next
+implementation milestone; P4–P5 remain future work.
 
 ### Binding scope and authority boundary
 
@@ -240,26 +240,31 @@ Assistant missing-artifact behavior; UI rendering/accessibility/no controls;
 authority/capability/no-replay/worker/backup regressions; and explicit tests
 that ready-for-review is neither approval, executable, nor deployable.
 
-### P1 — Deterministic Home Assistant Installation-Plan assembler
+### P1 — Deterministic Home Assistant Installation-Plan assembler — complete
 
-Implement a pure, local, deterministic assembler over reviewed read-side
-inputs only. The current Home Assistant `DeploymentBinding` refers exactly to
+The pure, local, deterministic assembler consumes reviewed read-side inputs
+only. The current Home Assistant `DeploymentBinding` refers exactly to
 `compose/home-assistant.yaml`, which is absent. Therefore its current plan must
 fail closed as `missing_deployment_artifact`. Do not fabricate the artifact,
 substitute another Compose file, infer a mutable image, or treat image
-grounding as deployment readiness.
+grounding as deployment readiness. The accepted Home Assistant golden
+fingerprint is
+`34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
 
-### P2 — Readiness, blocker, and risk evaluation
+### P2 — Readiness, blocker, and risk evaluation — complete
 
-Evaluate the P0-frozen status/blocker vocabulary, risks, missing facts,
-assumptions, prerequisite relationships, freshness, conflicts, compatibility,
-and required confirmations deterministically. Evaluation remains descriptive;
-it creates no approval or execution eligibility.
+The evaluator implements the P0-frozen status/blocker vocabulary, risks,
+missing facts, assumptions, prerequisite relationships, freshness, conflicts,
+compatibility, and required confirmations deterministically. Hostile contract coverage and
+multi-evidence risk deduplication are accepted. Evaluation remains descriptive;
+it creates no approval or execution eligibility. Validation covers 254
+InstallationPlan tests plus 90 required discovery/parity regressions (344
+combined).
 
 ### P3 — GET-only Installation-Plan API
 
-Add only a bounded, redacted GET projection for server-assembled plans, with no
-POST/PUT/PATCH/DELETE sibling and no caller-supplied deployment document. It
+Next, add only a bounded, redacted GET projection for server-assembled plans,
+with no POST/PUT/PATCH/DELETE sibling and no caller-supplied deployment document. It
 must not persist a plan or reach the legacy analysis route, Agent, candidates,
 approvals, providers, dispatch, repository execution, or workers.
 

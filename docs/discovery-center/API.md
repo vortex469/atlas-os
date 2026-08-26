@@ -85,8 +85,10 @@ acceptance are complete.
 
 ## V0.16 InstallationPlan API status
 
-P0 is documentation/architecture complete. The normative
+P0's contract is frozen, and the P1 assembler/P2 evaluator are implemented and
+accepted. The normative
 [InstallationPlan v1 contract](../architecture/installation-plan-v1.md) freezes
-the future exact GET path and projection, failure behavior, GET-only isolation,
-and item-scoped-only request contract. The endpoint is not implemented; the
-public endpoint list above remains the released v0.15 surface.
+the exact future GET path and projection, failure behavior, GET-only isolation,
+and item-scoped-only request contract. P3 is the next implementation milestone;
+the endpoint is not yet implemented and the public endpoint list above remains
+the released v0.15 surface.

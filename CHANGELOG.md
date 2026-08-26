@@ -6,6 +6,23 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.16-P1/P2 — InstallationPlan contract and evaluator
+
+- Implemented and accepted the deterministic, immutable InstallationPlan
+  contract, assembler, and evaluator while preserving the frozen P0 relations.
+  Coverage closes evidence precedence and freshness, provenance, compatibility,
+  prerequisite and image projection, status precedence, hostile inputs,
+  isolation, and authority boundaries.
+- Accepted the Home Assistant golden fingerprint
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a` and
+  fixed duplicate risks produced from multiple qualifying evidence records.
+- Validated 254 InstallationPlan tests and 90 required discovery/parity
+  regressions (344 combined). P3, the bounded read-only InstallationPlan GET
+  API, is next; P4–P5 remain future work.
+- InstallationPlan grants no execution, mutation, approval, dispatch,
+  persistence-writer, workflow-mutation, Provider Intent mutation,
+  acquisition, queue, worker, or network authority.
+
 #### v0.16-P0 — InstallationPlan contract and threat model
 
 - Completed documentation-only P0 and froze the normative
@@ -39,7 +56,8 @@ release boundaries.
 
 - Selected P0 → P5 planning for deterministic, immutable,
   provenance-linked, ephemeral informational `InstallationPlan` read models.
-  P0 is now complete as documentation/architecture; P1–P5 remain pending.
+  This records the historical selection-time state: P0 was then complete as
+  documentation/architecture and P1–P5 were pending.
 - Froze `plan_ready_for_review`, `insufficient_information`, `incompatible`,
   `conflicted`, `stale_evidence`, and `missing_deployment_artifact` as the exact
   closed v1 status vocabulary and froze the total blocker mapping.

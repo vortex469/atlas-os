@@ -3,12 +3,13 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.16-P0 contract and boundary gate — complete
+## Atlas v0.16 P0–P2 contract/evaluator gate — complete
 
-Atlas v0.16 is selected as **Grounded Installation Planning**. P0 is complete
-as documentation/architecture only. The normative
-[InstallationPlan v1 contract](architecture/installation-plan-v1.md) freezes
-the decisions and validation matrix; P1–P5 implementation remains pending.
+Atlas v0.16 is **Grounded Installation Planning**. The normative
+[InstallationPlan v1 contract](architecture/installation-plan-v1.md) remains
+frozen. P1's deterministic assembler and P2's readiness/blocker/risk evaluator
+are implemented and accepted; P3 is the next implementation milestone and
+P4–P5 remain pending.
 
 - [x] Freeze the exact schema version, immutable closed field set, field types,
   required/optional classification, bounds, normalization, compatibility and
@@ -80,9 +81,19 @@ the decisions and validation matrix; P1–P5 implementation remains pending.
   backup/restore ownership, inactive generic collector, and no autonomous
   mutation or release publication.
 
-Planned milestones remain P0 contract/threat model; P1 deterministic Home
-Assistant assembler; P2 readiness/blocker/risk evaluation; P3 GET-only API; P4
-Mission Control review; and P5 isolation, validation, and closure.
+- [x] Validate exact P0 relations, deterministic fingerprinting, evidence
+  precedence/freshness, provenance, compatibility, prerequisites, image/status
+  projection, hostile inputs, isolation, and authority boundaries.
+- [x] Accept the Home Assistant golden fingerprint
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+- [x] Close duplicate-risk handling across multiple qualifying evidence
+  records.
+- [x] Pass 254 InstallationPlan tests and 90 required discovery/parity
+  regressions (344 combined).
+- [ ] P3 — expose the bounded, read-only InstallationPlan GET API without a
+  mutation sibling, persistence writer, or new authority.
+- [ ] P4 — Mission Control read-only review.
+- [ ] P5 — final isolation, release validation, and closure.
 
 ## Atlas v0.15-P0 scope-selection and boundary sign-off
 
