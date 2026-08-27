@@ -18,7 +18,7 @@ from app.operational_dispatch.models import (
 )
 from app.providers import ProviderNotFoundError
 from app.providers.proxmox_identity import build_proxmox_qemu_identity
-from app.services.provider_resources import (
+from app.services.provider_resource_identity import (
     OperationalTargetResolutionError,
     ProviderResourceOperationError,
     ProviderResourcesNotSupportedError,

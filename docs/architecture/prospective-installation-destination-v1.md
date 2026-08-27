@@ -1,12 +1,27 @@
 # Prospective Installation Destination Assessment v1
 
-Status: **Atlas v0.17 P0 frozen; documentation/architecture only**.
+Status: **Atlas v0.17 P0 frozen, with the explicit P1 conformance amendment below**.
 
 This is the normative v0.17 contract. It grants no installation, planning,
 approval, candidate, workflow, provider, repository, dispatch, Agent, worker,
 or execution authority. The release baseline is `atlas-v0.16.0` at
 `538a70cd34ce758bda40c5a200acdbdc837694a5`; this P0 was prepared from
 `6ddb87234dae37c859216ff9c4faa564f0df7dd8`.
+
+## P0 normative amendment — P1 conformance correction
+
+The historical P0 contract remains frozen at commit
+`20357ad1a6eb12721556ee1183fc753fa82d119d`. P1 implementation review exposed
+three places where the runtime could not be made unambiguous without recording
+an explicit normative correction: the immutable selection tuple and selection
+fingerprint include the exact QEMU `resource_id`; every terminal timestamp is
+at or after `selected_at`; and fingerprint canonicalization is the documented
+restricted JCS subset (fixed ASCII object keys, NFC strings, null, booleans,
+IEEE-754 safe integers, lists, and objects), not a general-purpose JCS API.
+
+These corrections add no authority and do not rewrite the historical P0
+commit. This amendment must be committed explicitly with P1, or as a separate
+documentation commit before the P1 runtime commit.
 
 ## Release boundary and terminology
 
@@ -72,7 +87,8 @@ The closed record contains:
 
 - `schema_version`, literal `installation-destination-selection-v1`;
 - `selection_id`, a server-generated opaque UUID;
-- the literal provider/resource/placement tuple above;
+- the literal provider/resource/placement tuple above, including the exact
+  QEMU `resource_id`;
 - `selected_destination_fingerprint`, an opaque lowercase SHA-256 value;
 - `selected_at` and `expires_at`, server-owned UTC whole-second timestamps;
 - `selected_by`, a stable, sanitized authenticated-principal ID (never a
@@ -95,6 +111,8 @@ An active selection expires at the half-open boundary
 terminal states. DELETE is idempotent: it changes an active record to
 `cancelled`, preserves an immutable tombstone, and does not delete audit
 identity. Cancelling a terminal record returns its existing terminal state.
+Every terminal transition uses a UTC whole-second `terminated_at` that is not
+before `selected_at`.
 Reselection always creates a new selection ID, digest, timestamps, and identity
 comparison; it never reactivates or edits the old record. Multiple active
 selections by one operator are permitted, bounded to 16; selection is never an
@@ -192,13 +210,17 @@ All three fingerprints use SHA-256 over UTF-8 RFC 8785 JCS of a closed object
 whose strings are already Unicode NFC, prefixed by the ASCII domain and one NUL
 byte. Digest output is lowercase hexadecimal. Unknown fields, duplicate keys,
 non-NFC text, invalid UTF-8, and non-canonical values fail before hashing.
+The implementation is the frozen restricted JCS subset needed by these closed
+domains: fixed ASCII object keys, NFC strings, null, booleans, IEEE-754 safe
+integers, lists, and objects; it is not a general-purpose RFC 8785 API.
 Timestamps use exact UTC whole seconds (`YYYY-MM-DDTHH:MM:SSZ`); no rounding,
 offset, fraction, or local time is accepted. Null is the JSON literal `null`,
 distinct from absence; closed fingerprint objects contain every specified key.
 
 - Selection fingerprint domain
   `atlas:installation-destination-selection:v1` includes
-  schema, selection ID, tuple, selected fingerprint, timestamps, selecting
+  schema, selection ID, tuple including `resource_id`, selected fingerprint,
+  timestamps, selecting
   principal ID, and request digest. It excludes status and
   termination time so lifecycle updates do not rewrite immutable identity,
   and excludes labels, raw identity, provider payload, display data, and

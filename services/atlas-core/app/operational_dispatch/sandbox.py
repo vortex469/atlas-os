@@ -29,7 +29,7 @@ from app.providers.proxmox_operational import (
     ProxmoxQemuVerificationService,
 )
 from app.providers.registry import provider_registry
-from app.services.provider_resources import resolve_operational_target
+from app.services.provider_resource_identity import resolve_operational_target
 
 _PRODUCTION_LEDGER = Path("/opt/atlas/data/operational_dispatch.db")
 

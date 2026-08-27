@@ -3,6 +3,16 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.17 P1 conformance correction
+
+- [x] Record the P0 normative amendment explicitly rather than rewriting the
+  historical P0 contract: exact `resource_id` fingerprint participation,
+  non-retrograde terminal timestamps, and the restricted JCS subset.
+- [x] Confirm the amendment adds no installation, mutation, workflow,
+  candidate, dispatch, worker, provisioning, or execution authority.
+- [ ] Commit the amendment with P1, or in an explicit documentation commit
+  before the P1 runtime commit.
+
 ## Atlas v0.17 P0 architecture freeze — complete
 
 Atlas v0.17 is **Prospective Installation Destination Assessment**. P0 is

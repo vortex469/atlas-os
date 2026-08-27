@@ -6,6 +6,13 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.17-P1 conformance correction
+
+- Recorded an explicit P0 normative amendment for exact `resource_id`
+  participation in immutable selection identity, non-retrograde terminal
+  timestamps, and the closed restricted-JCS fingerprint subset. The historical
+  P0 commit remains unchanged and the amendment grants no new authority.
+
 #### v0.17-P0 — Prospective Installation Destination Assessment architecture
 
 - Froze the documentation-only, decision-complete

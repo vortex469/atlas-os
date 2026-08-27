@@ -23,7 +23,7 @@ from app.operational_dispatch.registry import (
     production_operational_handler_registry,
 )
 from app.providers import ProviderNotFoundError
-from app.services.provider_resources import (
+from app.services.provider_resource_identity import (
     OperationalTargetResolutionError,
     ProviderResourceOperationError,
     ProviderResourcesNotSupportedError,
