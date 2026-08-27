@@ -3,6 +3,63 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.19 P0–P5 release closure
+
+Atlas v0.19 is **Installation Candidate Admission**. P0–P5 are complete; the
+reviewed implementation and validation head after P5 review is
+`c23f4c405b4c7261c59a6cff36bee145527c1b51`.
+
+### Authority, isolation, and golden gates
+
+- [x] V0.16 InstallationPlan, v0.17 prospective destination, v0.18 capability
+  assessment, and v0.19 candidate admission remain non-authorizing.
+- [x] No ExecutionCandidate creation, approval, workflow, dispatch, Agent,
+  worker, provider, repository, deployment, or in-guest mutation production
+  path consumes a v0.19 admission or candidate record.
+- [x] Integrated OpenAPI exposes only
+  `GET /api/v1/installation/candidate-admissions/{item_id}/{selection_id}` for
+  v0.19 and no mutation sibling.
+- [x] Mission Control uses only the authenticated GET projection and exposes no
+  admission action control, authority navigation, or mutation call.
+- [x] Home Assistant remains exactly `not_admitted` with no candidate because
+  `compose/home-assistant.yaml` is absent and Agent `install-container` remains
+  unsupported.
+- [x] Existing approval separation, no-replay, default-disabled worker,
+  provider/repository/in-guest mutation, and backup-format boundaries remain
+  unchanged.
+
+### P5 validation evidence
+
+- [x] P5 validation closure commit:
+  `c23f4c4 test(v0.19): close installation candidate admission validation`.
+- [x] Atlas Core and Atlas Agent baseline-aware Ruff gates passed.
+- [x] Focused v0.16–v0.19 Core and release-isolation matrix passed: `151
+  passed, 17 warnings in 12.55s`.
+- [x] Full Atlas Core suite passed in the latest clean-environment run:
+  `2813 passed`.
+- [x] Full Atlas Agent suite passed: `912 passed, 1 warning in 8.54s`.
+- [x] Mission Control passed: `61 files, 471 tests`; lint completed with one
+  existing non-blocking React hook warning, and the production build completed
+  with the existing bundle-size advisory.
+- [x] The focused Core command used `ATLAS_PROVIDER_SECRET_FILE` at a writable
+  temporary path because the managed sandbox makes the legacy
+  `/opt/atlas/data/secrets` fixture read-only. The Agent process-isolation
+  suite used its established writable temporary `XDG_STATE_HOME` and approved
+  validation boundary. Neither changed tracked runtime behavior.
+- [x] `git diff --check` passed; closure contains tests and documentation only.
+- [x] No migration, tag, push, publication, deployment, or release action
+  occurred.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `c23f4c405b4c7261c59a6cff36bee145527c1b51`.
+- [ ] Confirm the tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.19.0` tag at the reviewed
+  implementation/validation commit.
+- [ ] Push the final release commit and tag.
+- [ ] Publish the Atlas v0.19 release.
+
 ## Atlas v0.18 P0–P5 release closure
 
 Atlas v0.18 is **Installation Capability Assessment**. P0–P5 are complete on

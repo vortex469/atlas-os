@@ -17,6 +17,12 @@ from app.core.middleware import RequestLoggingMiddleware
 from app.core.restore_interlock import assert_restore_state_clean
 from app.execution_candidates.operator_intents import OperatorIntentStore
 from app.installation_assessment.cache import EphemeralAssessmentRetryCache
+from app.installation_candidate_admission.assembly import (
+    InstallationCandidateAdmissionReadDependency,
+)
+from app.installation_capability.assembly import (
+    InstallationCapabilityAssessmentReadDependency,
+)
 from app.installation_targets.resolver import (
     enumerate_destinations,
     resolve_operational_target,
@@ -140,6 +146,17 @@ async def lifespan(app: FastAPI):
     app.state.installation_capability_target_resolver = resolve_operational_target
     app.state.installation_plan_read_dependency = (
         get_installation_plan_read_dependency()
+    )
+    app.state.installation_candidate_admission_read_dependency = (
+        InstallationCandidateAdmissionReadDependency(
+            plans=app.state.installation_plan_read_dependency,
+            selections=app.state.installation_destination_selection_store,
+            capabilities=InstallationCapabilityAssessmentReadDependency(
+                target_resolver=resolve_operational_target,
+                clock=assessment_clock,
+            ),
+            clock=assessment_clock,
+        )
     )
 
     operational_ledger = OperationalDispatchLedger(
