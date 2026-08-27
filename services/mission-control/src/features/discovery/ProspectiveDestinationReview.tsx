@@ -123,7 +123,7 @@ export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: Instal
         {mutation === "assessment" && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-400">Assessing installation admission…</p>}
         {assessment && <AssessmentSummary assessment={assessment} />}
         <InstallationCapabilityAssessment itemId={plan.application.item_id} selectionId={selection?.selection_id ?? null} />
-        <InstallationCandidateAdmission itemId={plan.application.item_id} selectionId={selection?.selection_id ?? null} />
+        <InstallationCandidateAdmission itemId={plan.application.item_id} selectionId={selection?.selection_id ?? null} csrfToken={csrfToken} />
     </section>;
 }
 

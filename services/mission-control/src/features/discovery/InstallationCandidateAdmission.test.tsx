@@ -6,6 +6,11 @@ import type { InstallationCandidateAdmissionV1 } from "../../types/installationC
 import { InstallationCandidateAdmission } from "./InstallationCandidateAdmission";
 
 vi.mock("../../api/installationCandidateAdmission", () => ({ getInstallationCandidateAdmission: vi.fn() }));
+vi.mock("../../api/installationCandidateLifecycle", () => ({
+    listInstallationCandidateRecords: vi.fn(() => Promise.resolve([])),
+    getInstallationCandidateRecord: vi.fn(), preserveInstallationCandidateRecord: vi.fn(),
+    deleteInstallationCandidateRecord: vi.fn(), candidateRecordIdempotencyKey: vi.fn(() => "key"),
+}));
 
 function fixture(admitted = false): InstallationCandidateAdmissionV1 {
     const candidate_record = admitted ? {

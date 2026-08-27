@@ -7,6 +7,7 @@ import type {
     InstallationCandidateAdmissionV1,
     InstallationCandidateRecordV1,
 } from "../../types/installationCandidateAdmission";
+import { InstallationCandidateLifecycle } from "./InstallationCandidateLifecycle";
 
 const REASON_LABELS: Record<InstallationCandidateAdmissionReason, string> = {
     input_invalid: "A required admission input is invalid.",
@@ -22,7 +23,7 @@ const REASON_LABELS: Record<InstallationCandidateAdmissionReason, string> = {
     authority_invariant_violated: "A fixed non-authority invariant was violated.",
 };
 
-export function InstallationCandidateAdmission({ itemId, selectionId }: { itemId: string; selectionId: string | null }) {
+export function InstallationCandidateAdmission({ itemId, selectionId, csrfToken = null }: { itemId: string; selectionId: string | null; csrfToken?: string | null }) {
     const [admission, setAdmission] = useState<InstallationCandidateAdmissionV1 | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export function InstallationCandidateAdmission({ itemId, selectionId }: { itemId
         {selectionId && !loading && error && <p role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
         {selectionId && !loading && !error && !admission && <p className="mt-3 text-sm text-slate-400">No installation candidate admission was returned.</p>}
         {selectionId && admission && !loading && !error && <Admission admission={admission} />}
+        {admission && <InstallationCandidateLifecycle admission={admission} itemId={itemId} selectionId={selectionId} csrfToken={csrfToken} />}
     </section>;
 }
 

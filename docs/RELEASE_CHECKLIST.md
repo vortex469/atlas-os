@@ -3,6 +3,53 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.20 P0–P5 release closure
+
+Atlas v0.20 is **Installation Candidate Record Lifecycle**. P0–P5 are
+complete. P5 validation started from `e198f4870f0b2517c1dda3fcc5301aa7745f7473`.
+
+### Authority, isolation, and golden gates
+
+- [x] Durable records retain the exact v0.19 candidate and all five false
+  authority fields; `active` is only a passive unexpired-facts projection.
+- [x] No Core or Agent approval, execution, dispatch, install-container,
+  worker, provider, repository, in-guest, workflow, deployment, rollback, or
+  no-replay path consumes a v0.20 envelope.
+- [x] Integrated OpenAPI exposes only list/preserve and item get/delete under
+  `/api/v1/installation/candidate-records`; it exposes no approval, execution,
+  dispatch, install, deployment, or rollback route.
+- [x] Mission Control contains only preserve, review, and delete controls and
+  only list/get/preserve/delete calls for the v0.20 surface, with no authority
+  navigation or mutation call.
+- [x] Home Assistant remains v0.19 `not_admitted` with no candidate and is
+  rejected by the v0.20 preservation boundary.
+- [x] Backup v3 remains closed and intentionally excludes
+  `installation_candidate_records.db`; explicit operator maintenance is
+  required and older releases cannot consume the store.
+
+### P5 observed validation evidence
+
+- [x] Atlas Core and Atlas Agent baseline-aware Ruff gates passed.
+- [x] Focused lifecycle/admission/capability/route/release-isolation suite
+  passed.
+- [x] Full Core clean-environment result after fixture update:
+  `2859 passed, 104 warnings in 162.46s (0:02:42)`.
+- [x] P5 needed the follow-up fixture commit:
+  `8fbba9f test(v0.20): update lifespan settings fixture`.
+- [x] Full Atlas Agent suite passed.
+- [x] Mission Control tests, lint, and production build passed.
+- [x] `git diff --check` passed; closure contains tests and documentation only.
+- [x] No migration, tag, push, publication, deployment, or release action
+  occurred.
+
+### Final release actions
+
+- [ ] Record the exact reviewed implementation/validation SHA after P5 review.
+- [ ] Confirm the tracked worktree is clean at the final release commit.
+- [ ] Create and push an immutable v0.20 release tag through the separate
+  authorized release procedure.
+- [ ] Publish and deploy only through separate explicit authorization.
+
 ## Atlas v0.19 P0–P5 release closure
 
 Atlas v0.19 is **Installation Candidate Admission**. P0–P5 are complete; the

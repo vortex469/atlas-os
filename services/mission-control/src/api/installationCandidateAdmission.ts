@@ -2,6 +2,7 @@ import { atlas } from "./atlas";
 import type {
     InstallationCandidateAdmissionReason,
     InstallationCandidateAdmissionV1,
+    InstallationCandidateRecordV1,
 } from "../types/installationCandidateAdmission";
 
 const REASONS: readonly InstallationCandidateAdmissionReason[] = [
@@ -32,6 +33,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export function parseInstallationCandidateRecord(value: unknown): InstallationCandidateRecordV1 {
+    if (!isRecord(value) || !hasExactKeys(value, RECORD_KEYS) || value.schema !== "installation-candidate-record-v1" ||
+        !strings(value, RECORD_KEYS.filter((key) => !FALSE_FLAGS.includes(key as typeof FALSE_FLAGS[number]))) ||
+        FALSE_FLAGS.some((flag) => value[flag] !== false)) {
+        throw new Error("Invalid non-executable installation candidate record response.");
+    }
+    return value as unknown as InstallationCandidateRecordV1;
+}
+
 function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
     return Object.keys(value).length === keys.length && keys.every((key) => key in value);
 }
@@ -59,11 +69,7 @@ export function parseInstallationCandidateAdmission(value: unknown): Installatio
     }
     const candidate = value.candidate_record;
     if (candidate !== null) {
-        if (!isRecord(candidate) || !hasExactKeys(candidate, RECORD_KEYS) || candidate.schema !== "installation-candidate-record-v1" ||
-            !strings(candidate, RECORD_KEYS.filter((key) => !FALSE_FLAGS.includes(key as typeof FALSE_FLAGS[number]))) ||
-            FALSE_FLAGS.some((flag) => candidate[flag] !== false)) {
-            throw new Error("Invalid non-executable installation candidate record response.");
-        }
+        parseInstallationCandidateRecord(candidate);
     }
     const admitted = value.status === "admitted_but_non_executable";
     if (admitted !== (reasons.length === 0 && candidate !== null)) {

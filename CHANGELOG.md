@@ -6,6 +6,23 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.20 P0–P5 — Installation Candidate Record Lifecycle
+
+- Completed the closed immutable envelope, bounded operator-scoped durable
+  store, authenticated preserve/list/get/delete API, and Mission Control
+  lifecycle review. `active` means only unexpired source facts; every stored
+  authority field remains false.
+- Added P5 isolation locks proving no v0.20 envelope is consumed by Core or
+  Agent approval, execution, dispatch, worker, workflow, provider, repository,
+  in-guest, deployment, rollback, or replay paths. OpenAPI exposes only the
+  intended lifecycle routes, and Mission Control is limited to preserve,
+  review, and delete.
+- Home Assistant remains v0.19 `not_admitted` and cannot be preserved. Backup
+  v3 remains closed and excludes the independent advisory database; explicit
+  operator maintenance is required.
+- Added no runtime authority, migration, backup widening, Agent
+  `install-container`, tag, push, publication, deployment, or release action.
+
 #### v0.19 P0–P5 — Installation Candidate Admission
 
 - Completed the pure fail-closed admission evaluator, bounded ephemeral
