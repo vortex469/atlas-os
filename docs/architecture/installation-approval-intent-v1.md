@@ -1,6 +1,6 @@
 # Installation Approval Intent v1 planning contract
 
-Status: **Atlas v0.21 P0 complete; documentation only**.
+Status: **Atlas v0.21 P0–P5 complete; release validation closed**.
 
 This document freezes the narrowest explicit operator approval-intent boundary
 for Atlas v0.21, **Installation Approval Intent**. An authenticated operator may
@@ -9,10 +9,11 @@ v0.20 durable non-executable installation candidate identity. The record is
 evidence of that statement only. It is not permission and no production
 subsystem may consume it to perform work.
 
-P0 changes planning documentation only. It adds no runtime model, route, UI,
-test, store, migration, worker, Agent capability, provider or repository
-mutation, guest access, workflow, deployment, rollback, commit, tag, push,
-publication, or release behavior.
+P1–P4 implement only the closed evidence contract, isolated append-only store,
+authenticated append/list/get routes, and explicit Mission Control evidence
+review. P5 adds structural release locks and documentation only. The milestone
+adds no migration, execution consumer, worker or Agent capability, provider or
+repository mutation, guest access, workflow, deployment, or rollback behavior.
 
 ## Repository inspection baseline
 
@@ -102,11 +103,18 @@ sanitized unavailable result and is never repaired, partially projected, or
 treated as authority. Concurrent creation for the same exact subject produces
 one record and no duplicate statement.
 
-Backup v3 remains closed and is not widened implicitly. Before P5, explicit
-operator maintenance, backup/restore compatibility, retention, export if any,
-and safe store removal must be documented. Older releases must be unable to
-consume the store. There is no migration or approval inference from v0.20
-records and no startup, scheduled, background, or bulk creation.
+Backup v3 remains closed and is not widened implicitly. Explicit operator
+maintenance, backup/restore compatibility, retention, export if any, and safe
+store removal are documented below. Older releases must be unable to consume
+the store. There is no migration or approval inference from v0.20 records and
+no startup, scheduled, background, or bulk creation.
+
+P5 retains that exclusion. `installation_approval_intents.db` is independent
+operator-maintained state and is not part of backup v3. Any file-level copy,
+restore, retention, or removal requires Atlas Core to be stopped and remains an
+explicit operator procedure; no runtime export, restore, deletion, downgrade
+conversion, or automatic migration is introduced. Older releases ignore the
+database and cannot consume it as authority.
 
 ## API and presentation boundary
 
@@ -165,7 +173,7 @@ presentation, failures, threats, backup posture, and goldens. Acceptance is a
 decision-complete documentation diff only. No runtime or test implementation
 is included.
 
-### P1 — Closed intent contract and pure validation
+### P1 — Closed intent contract and pure validation — complete
 
 Implement the closed model, canonical domain-separated fingerprint, approved-
 subject tuple, exact actor binding, and pure validation of a complete active
@@ -173,28 +181,28 @@ v0.20 envelope at server-owned time. Tests exhaust unknown fields, bounds,
 fingerprint sensitivity, identity substitution, expiry boundary, hostile
 input, and determinism. P1 performs no I/O and derives no authority.
 
-### P2 — Bounded append-only store
+### P2 — Bounded append-only store — complete
 
 Implement the independent operator-scoped store, atomic unique creation,
 conflict-safe idempotency, quotas, restart durability, reads, and fail-closed
 corruption handling. Add no runtime delete, update, expiry task, event, queue,
 audit bridge, worker job, or consumer. Document explicit maintenance.
 
-### P3 — Authenticated intent API
+### P3 — Authenticated intent API — complete
 
 Implement only the create/list/item routes frozen above. Creation re-resolves
 the owned v0.20 record and accepts it only while active; clients cannot submit
 identity proofs or authority fields. Lock ownership, mutation defenses,
 bounds, redaction, OpenAPI, unsupported methods, and dependency isolation.
 
-### P4 — Mission Control explicit statement and review
+### P4 — Mission Control explicit statement and review — complete
 
 Implement deliberate exact-record confirmation and immutable evidence review
 with conspicuous non-execution language and source-availability distinctions.
 Prove accessibility, fail-closed/error rendering, exact identity presentation,
 and absence of every prohibited control, navigation, field, and network call.
 
-### P5 — Isolation, regression, and release closure
+### P5 — Isolation, regression, and release closure — complete
 
 Validate exact v0.20 linkage, actor proof, uniqueness, concurrency, restart,
 quota and corruption behavior, API/UI contracts, and zero-consumer structural
@@ -202,6 +210,13 @@ scans. Reconfirm v0.16–v0.20 goldens, capability parity, existing approval
 separation, no-replay, worker default, backup isolation, and full regression
 gates. P5 does not automatically migrate, commit, tag, push, publish, deploy,
 or release.
+
+Observed closure: Core/Agent Ruff passed; the focused approval-intent/API/
+release-isolation suite passed 38 tests; the full Agent suite passed 912 tests;
+Mission Control passed 485 tests plus lint and production build. Structural
+tests lock zero Core/Agent consumers, the exact three intended OpenAPI routes,
+append/list/get-only Mission Control calls, and the Home Assistant negative
+golden. `git diff --check` is clean.
 
 ## Must-not-change contracts for P0–P5
 

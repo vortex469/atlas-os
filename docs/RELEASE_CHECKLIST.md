@@ -3,10 +3,10 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.21 P0 planning gate
+## Atlas v0.21 P0–P5 release closure
 
-Atlas v0.21 is **Installation Approval Intent**. P0 is documentation-only;
-P1–P5 are not implemented.
+Atlas v0.21 is **Installation Approval Intent**. P0–P5 are complete. P5
+validation started from `1d84187aea2f187e9b408324ecc6c31bc9882499`.
 
 ### P0 authority and scope gates
 
@@ -24,16 +24,43 @@ P1–P5 are not implemented.
 - [x] P0 changes only `ROADMAP.md`, `CHANGELOG.md`, this checklist, and the
   normative v0.21 architecture contract. It adds no runtime behavior or tests.
 
-### Future P1–P5 release gates
+### P1–P5 authority and release gates
 
-- [ ] Complete closed-contract, store, API, Mission Control, isolation, and
+- [x] Complete closed-contract, store, API, Mission Control, isolation, and
   full regression acceptance defined in the normative v0.21 contract.
-- [ ] Prove no Core or Agent authority/mutation consumer recognizes a v0.21
+- [x] Prove no Core or Agent authority/mutation consumer recognizes a v0.21
   schema, intent ID, statement, or fingerprint.
-- [ ] Lock OpenAPI to create/list/item-read only and Mission Control to exact-
+- [x] Lock OpenAPI to create/list/item-read only and Mission Control to exact-
   record confirmation and evidence review only.
-- [ ] Record exact validation commands, outcomes, reviewed SHA, maintenance
-  guidance, and release evidence without automatically tagging or publishing.
+- [x] Reconfirm Home Assistant cannot cross the v0.19 admission or v0.20
+  preservation boundary and therefore cannot be approved or executed.
+- [x] Preserve approval, execution, dispatch, Agent install-container, worker,
+  provider/repository/in-guest mutation, workflow, deployment, rollback,
+  eligibility, and no-replay boundaries with no v0.21 consumer.
+- [x] Keep backup v3 unchanged. The independent approval-intent database is
+  excluded and requires explicit operator maintenance with Atlas Core stopped;
+  older releases do not consume it.
+
+### P5 observed validation evidence
+
+- [x] Core and Agent baseline-aware Ruff gates passed.
+- [x] Focused approval-intent, route, and release-isolation suite passed:
+  `38 passed, 25 warnings in 6.76s`.
+- [x] Full Atlas Agent suite passed outside the managed sandbox (required for
+  TestClient threading), using a temporary `XDG_STATE_HOME`:
+  `912 passed, 1 warning in 6.84s`.
+- [x] Mission Control passed 65 files / 485 tests; lint completed with one
+  pre-existing `WorkflowShellPage.tsx` hook-dependency warning and no errors;
+  production build completed successfully.
+- [x] `git diff --check` passed; P5 adds tests and release documentation only.
+- [x] No migration, tag, push, publication, deployment, or release action
+  occurred.
+
+### Final release actions
+
+- [ ] Record the reviewed closure commit SHA after commit/review.
+- [ ] Confirm the tracked worktree is clean at the final release commit.
+- [ ] Tag, publish, and deploy only through separate explicit authorization.
 
 ## Atlas v0.20 P0–P5 release closure
 

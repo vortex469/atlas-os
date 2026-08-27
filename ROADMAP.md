@@ -753,9 +753,9 @@ has no approval state machine, revocation semantics, execution authorization,
 consumer, or conversion path. Candidate expiry or deletion creates no work and
 does not turn the historical statement into permission.
 
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is
-selected and complete as documentation-only planning. P1 through P5 remain
-unimplemented.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P5 are
+complete on the v0.21 release-candidate branch. The resulting surface records
+operator-scoped evidence only and adds no execution authority or consumer.
 
 ### P0 — Approval-intent contract and threat model — complete
 
@@ -766,20 +766,20 @@ Acceptance is this decision-complete documentation diff only; it adds no
 runtime, route, UI, test, store, migration, Agent, worker, provider,
 repository, guest, execution, workflow, commit, tag, push, or release behavior.
 
-### P1 — Closed intent contract and pure validation
+### P1 — Closed intent contract and pure validation — complete
 
 Implement the closed model, domain-separated fingerprint, exact actor and
 subject binding, and pure validation over a complete active v0.20 envelope at
 server-owned time. It performs no I/O and grants no authority.
 
-### P2 — Bounded append-only store
+### P2 — Bounded append-only store — complete
 
 Implement one independent operator-scoped store with atomic unique creation,
 conflict-safe idempotency, closed count/size bounds, restart durability,
 reads, and fail-closed corruption behavior. Add no runtime delete/update,
 background task, event, queue, audit bridge, worker job, or consumer.
 
-### P3 — Authenticated intent API
+### P3 — Authenticated intent API — complete
 
 Implement only create, bounded list, and item read routes under the new
 candidate-approval-intent namespace. Creation accepts a candidate-record ID,
@@ -787,14 +787,14 @@ re-resolves ownership and active state server-side, and accepts no caller proof
 or authority field. Freeze hardened mutation defenses, redaction, OpenAPI,
 unsupported methods, and dependency isolation.
 
-### P4 — Mission Control explicit statement and review
+### P4 — Mission Control explicit statement and review — complete
 
 Implement deliberate exact-record confirmation and immutable evidence review
 with conspicuous language that recording approval neither starts nor permits
 installation. Add no execute, install, dispatch, deploy, workflow, convert,
 attach, retry, revoke, or rollback control, navigation, or request.
 
-### P5 — Isolation, regression, and release closure
+### P5 — Isolation, regression, and release closure — complete
 
 Prove exact v0.20 linkage, authenticated actor proof, uniqueness, concurrency,
 restart durability, quotas, corruption handling, API/UI contracts, and absence
@@ -802,6 +802,13 @@ of production consumers. Reconfirm v0.16–v0.20 goldens, capability parity,
 approval separation, no-replay, worker default, backup isolation, and full
 regression gates. Do not automatically migrate, commit, tag, push, publish,
 deploy, or release.
+
+P5 structurally locks the append-only store and operator-scoped service, zero
+Core/Agent production consumers, the exact create/list/item-read OpenAPI
+surface, and Mission Control's matching three calls with no authority control
+or navigation. Home Assistant remains `not_admitted`, cannot be preserved, and
+therefore cannot be approved or executed. Focused Core, full Agent, and Mission
+Control test/lint/build gates pass; backup v3 remains intentionally unchanged.
 
 ### Must-not-change contracts for P0–P5
 
