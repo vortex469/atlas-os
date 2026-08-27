@@ -136,6 +136,8 @@ async def lifespan(app: FastAPI):
     app.state.installation_destination_enumerator = enumerate_destinations
     app.state.installation_assessment_retry_cache = EphemeralAssessmentRetryCache()
     app.state.installation_assessment_clock = assessment_clock
+    app.state.installation_capability_clock = assessment_clock
+    app.state.installation_capability_target_resolver = resolve_operational_target
     app.state.installation_plan_read_dependency = (
         get_installation_plan_read_dependency()
     )
