@@ -1,6 +1,6 @@
 # Installation Candidate Admission v1 planning contract
 
-Status: **Atlas v0.19 P0 documentation-only planning**.
+Status: **Atlas v0.19 P0–P5 complete; release-validation boundary closed**.
 
 This document freezes the proposed boundary for Atlas v0.19, **Installation
 Candidate Admission**. It introduces no runtime behavior. It grants no
@@ -201,3 +201,18 @@ assessment remains blocked and its v0.19 result is therefore exactly
 - Independent approvals, interrupted-side-effect no-replay, the optional
   default-disabled worker, and operator-maintenance-only backup/restore remain
   unchanged.
+
+## P5 closure evidence
+
+Release validation structurally locks v0.16 through v0.19 as non-authorizing,
+scans all Core and Agent production Python for v0.19 record consumption, and
+locks the integrated OpenAPI to the sole intended candidate-admission GET.
+Mission Control tests and source guards prohibit action controls, navigation,
+and POST/PUT/PATCH/DELETE admission calls. The Home Assistant golden remains
+exactly `not_admitted` with `candidate_record=null` because the deployment
+artifact is missing and Agent `install-container` support remains absent.
+
+The focused Core matrix, complete Agent suite, both baseline-aware Ruff gates,
+Mission Control test/lint/build gates, and `git diff --check` are the required
+P5 validation set. Closure adds tests and documentation only and performs no
+migration, tag, push, publication, deployment, or release action.

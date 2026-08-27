@@ -6,6 +6,21 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.19 P0–P5 — Installation Candidate Admission
+
+- Completed the pure fail-closed admission evaluator, bounded ephemeral
+  candidate record, authenticated GET-only Core projection, and read-only
+  Mission Control review. The sole positive result remains
+  `admitted_but_non_executable` with every authority field false.
+- Added P5 isolation locks across v0.16–v0.19 and every Core/Agent production
+  consumer, plus OpenAPI and Mission Control source locks against candidate
+  creation, approval, workflow, dispatch, execution, worker, provider,
+  repository, or in-guest mutation consumption.
+- Home Assistant remains `not_admitted`: `compose/home-assistant.yaml` is absent
+  and Atlas Agent does not support `install-container`.
+- Added no runtime authority, migration, backup widening, tag, push,
+  publication, deployment, or release action.
+
 #### v0.18 P0–P5 — Installation Capability Assessment
 
 - Completed the bounded Proxmox/QEMU provider-fact adapter, deterministic

@@ -527,10 +527,10 @@ candidate is created, no existing `ExecutionCandidate` is created or changed,
 and no subsystem may consume the record. The only positive status is
 `admitted_but_non_executable`; every incomplete, stale, mismatched, blocked,
 unknown, or weaker input returns `not_admitted` with `candidate_record=null`.
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. Only P0 planning is
-selected now; runtime work must not begin until the contract is frozen.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through
+P5 are complete; the resulting surface remains read-only and non-authorizing.
 
-### P0 — Admission contract and threat model — documentation only
+### P0 — Admission contract and threat model — complete
 
 Freeze the exact closed input linkage, status/reason precedence, candidate
 record schema, fingerprint, freshness/identity rules, GET-only API and
@@ -539,7 +539,7 @@ Acceptance requires a decision-complete contract with no runtime, route, UI,
 test, store, migration, candidate, Agent, worker, provider, repository,
 in-guest, execution, commit, tag, push, or release behavior. Authority: none.
 
-### P1 — Pure fail-closed admission evaluator — planned
+### P1 — Pure fail-closed admission evaluator — complete
 
 Implement a local deterministic function over complete server-owned v0.16,
 v0.17, and v0.18 records. It may emit a record only for exact item, catalog,
@@ -550,7 +550,7 @@ active/current, and the assessment is
 nothing. Tests cover every reason, precedence, mismatch, freshness boundary,
 fingerprint, hostile input, determinism, and zero side effects.
 
-### P2 — Bounded candidate record projection — planned
+### P2 — Bounded candidate record projection — complete
 
 Freeze and implement the minimal sanitized `InstallationCandidateRecordV1`:
 schema/version, exact source fingerprints and destination identity
@@ -560,7 +560,7 @@ artifact body, credential, address, provider payload, approval, intent,
 workflow/action/dispatch identifier, retry/replay token, or mutation recipe.
 It is ephemeral and has no create/update/delete lifecycle or consumer.
 
-### P3 — Authenticated GET-only Core projection — planned
+### P3 — Authenticated GET-only Core projection — complete
 
 Expose one bounded server-assembled GET projection only after its path and wire
 schema are frozen. It accepts identifiers only, never caller facts or record
@@ -568,7 +568,7 @@ bodies; mutation siblings are absent and rejected. Authentication, ownership,
 current re-resolution, bounds, redaction, OpenAPI, dependency isolation, and
 zero-mutation tests are required. Transport adds no approval or authority.
 
-### P4 — Mission Control read-only admission review — planned
+### P4 — Mission Control read-only admission review — complete
 
 Present exact source linkage, reasons, the nullable record, expiry/freshness,
 and conspicuous non-executable semantics. There is no Admit, Create, Approve,
@@ -577,7 +577,7 @@ Rollback, or equivalent control or authority-suggesting navigation. Tests
 cover every state, accessibility, redaction, error handling, and absence of
 prohibited controls and requests.
 
-### P5 — Isolation, regression, and release closure — planned
+### P5 — Isolation, regression, and release closure — complete
 
 Prove no admission assessment or candidate record is persisted or consumed by
 existing candidate, approval, workflow, dispatch, Agent, worker, provider,
