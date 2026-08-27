@@ -6,10 +6,12 @@ from app.installation_approval_intent.contract import (
     InstallationApprovalSubjectV1,
     validate_approval_subject,
 )
+from app.installation_approval_intent.service import InstallationApprovalIntentService
 from app.installation_approval_intent.store import InstallationApprovalIntentStore
 
 __all__ = [
     "APPROVAL_STATEMENT",
+    "InstallationApprovalIntentService",
     "InstallationApprovalIntentStore",
     "InstallationApprovalIntentV1",
     "InstallationApprovalSubjectV1",
