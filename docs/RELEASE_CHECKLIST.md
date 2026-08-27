@@ -32,6 +32,10 @@ complete. P5 validation started from `e198f4870f0b2517c1dda3fcc5301aa7745f7473`.
 - [x] Atlas Core and Atlas Agent baseline-aware Ruff gates passed.
 - [x] Focused lifecycle/admission/capability/route/release-isolation suite
   passed.
+- [x] Full Core clean-environment result after fixture update:
+  `2859 passed, 104 warnings in 162.46s (0:02:42)`.
+- [x] P5 needed the follow-up fixture commit:
+  `8fbba9f test(v0.20): update lifespan settings fixture`.
 - [x] Full Atlas Agent suite passed.
 - [x] Mission Control tests, lint, and production build passed.
 - [x] `git diff --check` passed; closure contains tests and documentation only.
