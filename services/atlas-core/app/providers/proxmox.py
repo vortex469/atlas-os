@@ -254,6 +254,9 @@ class ProxmoxProvider(Provider):
                         "template": guest.get("template"),
                         "lock": guest.get("lock"),
                         "migrating": guest.get("migrating"),
+                        "installation_capability": guest.get(
+                            "capability_observation", {}
+                        ),
                     },
                 )
             )
