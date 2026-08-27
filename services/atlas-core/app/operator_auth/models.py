@@ -7,8 +7,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 OPERATIONAL_INTENT_CREATE = "operational_intent:create"
 PROVIDER_INTENT_UPDATE = "provider_intent:update"
+INSTALLATION_DESTINATION_SELECT = "installation_destination:select"
 SUPPORTED_OPERATOR_PERMISSIONS = frozenset(
-    {OPERATIONAL_INTENT_CREATE, PROVIDER_INTENT_UPDATE}
+    {
+        OPERATIONAL_INTENT_CREATE,
+        PROVIDER_INTENT_UPDATE,
+        INSTALLATION_DESTINATION_SELECT,
+    }
 )
 
 

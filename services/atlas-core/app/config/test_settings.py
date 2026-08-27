@@ -49,6 +49,17 @@ def test_provider_intelligence_history_is_bounded(
 def test_operator_auth_is_disabled_safely_by_default() -> None:
     assert OperatorAuthSettings().enabled is False
     assert OperatorAuthSettings().trusted_origins == ()
+    assert OperatorAuthSettings().installation_selection_database == (
+        "/opt/atlas/data/installation_destination_selections.db"
+    )
+
+
+@pytest.mark.parametrize("database", [":memory:", "relative/selections.db", ""])
+def test_installation_selection_database_requires_durable_absolute_path(
+    database: str,
+) -> None:
+    with pytest.raises(ValidationError, match="absolute"):
+        OperatorAuthSettings(installation_selection_database=database)
 
 
 def test_dynamic_discovery_refresh_is_disabled_safely_by_default() -> None:

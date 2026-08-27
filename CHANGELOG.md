@@ -6,6 +6,54 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.17 P0–P5 — Prospective Installation Destination Assessment
+
+- Completed authenticated enumeration and immutable, operator-scoped selection
+  of one exact server-observed Proxmox QEMU existing-guest incarnation, with
+  exact re-resolution, 24-hour expiry, terminal cancellation/staleness, bounded
+  concurrency, and sanitized durable tombstones.
+- Added one five-minute, non-durable `install-container-assessment` interest and
+  a deterministic non-authorizing Core assessment. The exact routes are
+  `GET /api/v1/installation/destinations`, `POST /api/v1/installation/destination-selections`,
+  `GET` and `DELETE /api/v1/installation/destination-selections/{selection_id}`,
+  and `POST /api/v1/installation/admission-assessments`.
+- Added the Mission Control prospective-destination selection and assessment
+  review surface. Its copy explicitly denies install/planning authority and it
+  exposes no candidate, workflow, Agent, approval, or dispatch control.
+- Locked the Home Assistant golden as blocked: the absent
+  `compose/home-assistant.yaml` keeps InstallationPlan status
+  `missing_deployment_artifact` and fingerprint
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`,
+  followed by destination-capability-unknown and Agent-unsupported reasons.
+- Preserved `candidate_created=false`, `planning_allowed=false`, `candidate=null`;
+  Agent still does not support `install-container`; no provider, repository,
+  workflow, approval, operational action, dispatch, worker, or execution
+  authority was added.
+
+#### v0.17-P1 conformance correction
+
+- Recorded an explicit P0 normative amendment for exact `resource_id`
+  participation in immutable selection identity, non-retrograde terminal
+  timestamps, and the closed restricted-JCS fingerprint subset. The historical
+  P0 commit remains unchanged and the amendment grants no new authority.
+
+#### v0.17-P0 — Prospective Installation Destination Assessment architecture
+
+- Froze the documentation-only, decision-complete
+  [v1 contract](docs/architecture/prospective-installation-destination-v1.md)
+  for an operator-scoped, immutable, expiring selection of one exact observed
+  Proxmox QEMU guest incarnation and an ephemeral non-authorizing admission
+  assessment.
+- Froze exact identity/re-resolution, movement invalidation, lifecycle,
+  idempotency, deterministic fingerprints, reason precedence, guarded future
+  API, Mission Control terminology, storage/restore, dependency isolation, and
+  P0–P5 acceptance boundaries.
+- Home Assistant remains `missing_deployment_artifact` at
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`;
+  candidate projection remains false/false/null. No runtime, route, store, UI,
+  test, migration, persistence implementation, Agent, candidate, workflow,
+  provider, worker, execution, commit, tag, or push change is included.
+
 #### v0.16.0 — Grounded Installation Planning release closure
 
 - Completed P0 through P5 for deterministic, immutable, provenance-linked,

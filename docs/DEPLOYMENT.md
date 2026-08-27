@@ -124,7 +124,7 @@ end-to-end by the worker. Do not replace runsc, network segmentation, the
 read-only source, or the named workspace permission profile with root,
 `CAP_SYS_ADMIN`, unconfined policies, or `danger-full-access`.
 
-## Backup and restore through v0.14
+## Backup and restore through v0.17
 
 Create a consistent online backup with:
 
@@ -132,8 +132,8 @@ Create a consistent online backup with:
 ./scripts/atlas-data-backup
 ```
 
-Format v3 is the current complete Atlas Core managed-state format through
-v0.14. It includes `operational_dispatch.db` as safety-authoritative no-replay
+Format v3 remains the current closed Atlas Core managed-state format through
+v0.17. It includes `operational_dispatch.db` as safety-authoritative no-replay
 state. “Complete” covers the declared Core boundary, not the repository or
 worktree, Agent state, external provider state, remote infrastructure, images,
 host state, or rebuildable Discovery cache. Activated Provider Intent requires
@@ -141,6 +141,13 @@ its database and exact activation/import semantics; a not-activated generation
 requires that managed database absent. Formats v1/v2 remain legacy-partial
 inputs and require the restore tool's explicit new-lineage acknowledgement on
 a managed-empty target.
+
+The independent v0.17 `installation_destination_selections.db` store is
+operator-maintenance metadata and is not automatically included in backup
+format v3. Preserve or remove it by an explicit maintenance procedure during a
+downgrade; older code does not consume it. Do not restore it as installation,
+approval, candidate, or execution authority. Ephemeral installation interests
+and the assessment retry cache are process memory and are never restored.
 
 Restore requires every container attached to the target volume to be removed:
 

@@ -123,9 +123,23 @@ class OperatorAuthSettings(BaseModel):
     session_database: str = "/opt/atlas/data/operator_sessions.db"
     audit_database: str = "/opt/atlas/data/operator_security_audit.db"
     intent_database: str = "/opt/atlas/data/operator_intents.db"
+    installation_selection_database: str = (
+        "/opt/atlas/data/installation_destination_selections.db"
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
+        selection_database = Path(self.installation_selection_database)
+        if (
+            not self.installation_selection_database
+            or self.installation_selection_database
+            != self.installation_selection_database.strip()
+            or not selection_database.is_absolute()
+            or self.installation_selection_database == ":memory:"
+        ):
+            raise ValueError(
+                "installation selection database must be an absolute path"
+            )
         if not self.enabled:
             return self
         if not self.verifier_file.strip():
@@ -205,6 +219,9 @@ def load_settings() -> Settings:
             "session_database": os.getenv("ATLAS_OPERATOR_AUTH_SESSION_DATABASE"),
             "audit_database": os.getenv("ATLAS_OPERATOR_AUTH_AUDIT_DATABASE"),
             "intent_database": os.getenv("ATLAS_OPERATOR_INTENT_DATABASE"),
+            "installation_selection_database": os.getenv(
+                "ATLAS_OPERATOR_AUTH_INSTALLATION_SELECTION_DATABASE"
+            ),
         }
         for key, value in environment_overrides.items():
             if value is None:

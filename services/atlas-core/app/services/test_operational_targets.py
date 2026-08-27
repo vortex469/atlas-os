@@ -40,6 +40,37 @@ from app.services.provider_resources import (
 )
 
 
+def test_provider_resources_preserves_released_mutation_surface() -> None:
+    import app.services.provider_resources as facade
+
+    assert not hasattr(facade, "__all__")
+    for name in (
+        "RESOURCE_EXPECTATION_ACTION_ID",
+        "RESOURCE_EXPECTATION_ACTION_LABEL",
+        "ProviderResourceConfirmationRequiredError",
+        "ProviderResourceInvalidExpectationError",
+        "ProviderResourcePolicyWriteError",
+        "list_provider_resources",
+        "refresh_provider_resources",
+        "update_provider_resource_expectation",
+    ):
+        assert hasattr(facade, name)
+
+
+def test_read_only_facade_reexports_preserve_class_identity() -> None:
+    import app.services.provider_resource_identity as identity
+    import app.services.provider_resources as facade
+
+    for name in (
+        "ProviderResourceError",
+        "ProviderResourceOperationError",
+        "ProviderResourcesNotSupportedError",
+        "OperationalTargetResolutionError",
+        "ResolvedOperationalTarget",
+    ):
+        assert getattr(facade, name) is getattr(identity, name)
+
+
 def make_resource(**changes: object) -> ProviderResource:
     values: dict[str, object] = {
         "provider_id": "resource-provider",

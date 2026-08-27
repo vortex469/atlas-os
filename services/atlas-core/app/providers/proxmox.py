@@ -251,8 +251,9 @@ class ProxmoxProvider(Provider):
                         "memory_used_gib": guest.get("memory_used_gib"),
                         "memory_total_gib": guest.get("memory_total_gib"),
                         "uptime_seconds": guest.get("uptime_seconds"),
-                        "template": bool(guest.get("template", False)),
+                        "template": guest.get("template"),
                         "lock": guest.get("lock"),
+                        "migrating": guest.get("migrating"),
                     },
                 )
             )

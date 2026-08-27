@@ -3,6 +3,159 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.17 P0–P5 release closure
+
+Atlas v0.17 is **Prospective Installation Destination Assessment**. P0–P5 are
+implemented. P5 began from `beb427dd9b77ed5c0442e8521b83ac90b01a7c41`;
+the reviewed v0.17 implementation and validation head is
+`78094ebf2cdbe2546a3b658aaee9abd05fa73883`.
+
+### Decision-complete authority and golden gates
+
+- [x] The only installation routes are `GET /api/v1/installation/destinations`,
+  `POST /api/v1/installation/destination-selections`, `GET` and `DELETE
+  /api/v1/installation/destination-selections/{selection_id}`, and `POST
+  /api/v1/installation/admission-assessments`; OpenAPI exposes no broader
+  installation route or method.
+- [x] Every route requires authenticated operator identity; mutation routes
+  retain CSRF, trusted-origin, permission, rate-limit, 8 KiB body, nesting,
+  duplicate-key, visible-ASCII idempotency-key, and sanitized-error controls.
+- [x] Cross-operator selection lookup is indistinguishable `404`; exact
+  provider identity is re-resolved without exposing raw identity, secrets,
+  provider payload, addresses, or internal paths.
+- [x] Selection remains immutable, operator-scoped, bounded to 16 active
+  records, and exactly 24 hours at a half-open boundary. Cancellation, expiry,
+  and staleness are terminal; reselection creates a new identity; movement or
+  replacement cannot rebind an old selection.
+- [x] Interest remains exactly five minutes, process-local and non-durable;
+  retry replay is bounded and deterministic, conflicts fail `409`, restart
+  clears cache, and no execution consumer or work queue exists.
+- [x] Home Assistant remains `missing_deployment_artifact`; the deployment
+  artifact `compose/home-assistant.yaml` remains absent and the exact plan
+  fingerprint is
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`.
+- [x] With exact current selection and interest, Home Assistant assessment is
+  `blocked` with ordered reasons `installation_plan_missing_deployment_artifact`,
+  `destination_installation_capability_unknown`, and
+  `agent_install_container_unsupported`; candidate eligibility is false.
+- [x] Existing projection remains `candidate_created=false`,
+  `planning_allowed=false`, `candidate=null`; no candidate creation or
+  eligibility path consumes v0.17 records.
+- [x] Atlas Agent supported repository intent remains exactly
+  `update-compose-stack`; `install-container` remains unsupported; operational
+  planning/handling remains exactly `restart-service`.
+- [x] Provider Intent remains identity-bound Proxmox QEMU `monitoring-policy`;
+  operational production capability remains exactly
+  `restart-service/proxmox/qemu`; the provider identity facade remains
+  read-only and prospective selection cannot update or dispatch either path.
+- [x] Discovery remains GET-only/non-authoritative; target facts cannot mutate
+  or repair InstallationPlan blockers. Repository execution remains exactly
+  `update-compose-stack` and worker default-disabled behavior is unchanged.
+- [x] Mission Control explicitly says selection cannot install or plan, renders
+  every ordered blocker and explicit false candidate eligibility, and contains
+  no candidate, Agent, workflow, approval, dispatch, or prohibited action
+  control/navigation.
+- [x] Backup v3 uses a closed managed-state inventory and does not automatically
+  include the independent `installation_destination_selections.db`. V0.17
+  documents separate maintenance retention/removal instead of widening v3;
+  interests/cache are never restored and older code cannot consume the store.
+
+### Validation and release-preparation gates
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `78094ebf2cdbe2546a3b658aaee9abd05fa73883`.
+- [x] Full Atlas Core pytest passes in the CI-like environment.
+- [x] Atlas Core Ruff gate passes according to repository convention.
+- [x] Full Atlas Agent tests pass.
+- [x] Atlas Agent Ruff passes.
+- [x] Mission Control `npm test` passes.
+- [x] Mission Control `npm run lint` passes.
+- [x] Mission Control `npm run build` passes.
+- [x] `git diff --check` passes.
+- [x] Tracked worktree is clean after the separate reviewed release commit.
+- [x] Only an intentionally untracked local smoke override outside the tracked
+  release tree is present, if applicable.
+- [x] Final release commit, annotated tag, and push are performed in the
+  separate release step.
+
+### P5 observed local evidence
+
+- Required Core installation/assessment/isolation/candidate boundary group:
+  `154 passed`, with 22 existing HTTPX cookie deprecation warnings and two
+  sandbox cleanup warnings.
+- Additional focused destination/assessment group: `120 passed, 1 deselected`;
+  the deselection is the production-root permission case described below.
+- Full Core: `2780 passed, 63 warnings in 155.05s (0:02:35)` in the clean
+  CI-like environment with `PYTHON_DOTENV_DISABLED=true`. The production
+  `/opt/atlas/.env` had leaked Provider Intent legacy-import activation
+  overrides into the local test process; the earlier collection failure was
+  local environment contamination, not a v0.17 defect.
+- Full Agent: `912 passed, 1 warning in 6.70s`.
+- Mission Control: `57 files, 456 tests` passed; lint passed with one existing
+  non-blocking React hook warning; production build passed with the existing
+  bundle-size advisory.
+- Changed-file Core and Agent Ruff gates passed; `git diff --check` passed.
+
+## Atlas v0.17 P1 conformance correction
+
+- [x] Record the P0 normative amendment explicitly rather than rewriting the
+  historical P0 contract: exact `resource_id` fingerprint participation,
+  non-retrograde terminal timestamps, and the restricted JCS subset.
+- [x] Confirm the amendment adds no installation, mutation, workflow,
+  candidate, dispatch, worker, provisioning, or execution authority.
+- [ ] Commit the amendment with P1, or in an explicit documentation commit
+  before the P1 runtime commit.
+
+## Atlas v0.17 P0 architecture freeze — complete
+
+Atlas v0.17 is **Prospective Installation Destination Assessment**. P0 is
+documentation-only; P1–P5 are not implemented. The normative
+[v1 contract](architecture/prospective-installation-destination-v1.md) is
+decision-complete.
+
+- [x] Confirm baseline `atlas-v0.16.0` at
+  `538a70cd34ce758bda40c5a200acdbdc837694a5` and P0 branch baseline
+  `6ddb87234dae37c859216ff9c4faa564f0df7dd8`.
+- [x] Freeze existing-guest versus VM-provisioning semantics and deny every
+  unobserved in-guest capability, compatibility, readiness, and permission.
+- [x] Freeze the exact Proxmox/QEMU/existing-guest tuple, opaque fingerprint,
+  exact re-resolution, node-movement invalidation, selectable states, and no
+  raw `vmgenid`, wildcard, rebinding, or in-place refresh.
+- [x] Freeze durable operator-scoped immutable selection, 24-hour expiry,
+  cancellation/tombstone, reselection, retention, concurrency, backup/restore,
+  downgrade, migration, and irreversible terminal semantics.
+- [x] Freeze one-request ephemeral interest with exact plan/item/catalog/
+  selection linkage, five-minute expiry, retry/conflict semantics, bounded
+  audit, and no durable intent, queue, Agent, candidate, or grandfathering.
+- [x] Freeze the pure assessment inputs/output, two statuses, all-applicable
+  canonical 16-reason precedence, fixed unsupported Agent fact,
+  `candidate_eligibility_evaluated=false`, and narrow unsupported status rule.
+- [x] Freeze domain-separated JCS/NFC SHA-256 selection, interest, and
+  assessment fingerprints, exact null/timestamp/order/linkage semantics, and
+  exclusions.
+- [x] Freeze Home Assistant as `missing_deployment_artifact` at fingerprint
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`,
+  with missing artifact ahead of capability-unknown and Agent-unsupported.
+- [x] Preserve candidate projection exactly `candidate_created=false`,
+  `planning_allowed=false`, `candidate=null`.
+- [x] Freeze forbidden dependencies, sanitized UI boundary, and the rule that
+  no execution subsystem consumes any v0.17 record.
+- [x] Freeze future guarded API methods, auth, CSRF/trusted-origin, bounds,
+  server enumeration, idempotency, sanitized errors, and no-authority routes.
+- [x] Freeze future Mission Control label/copy/blockers and prohibit Install,
+  Execute, Plan, Approve, Convert, Dispatch, and authority-suggesting workflow
+  navigation.
+- [x] Select P0 → P1 → P2 → P3 → P4 → P5 with scope, acceptance, non-goals,
+  authority boundaries, and later expected tests in `ROADMAP.md`.
+- [x] Preserve repository execution `update-compose-stack`, operational
+  `restart-service/proxmox/qemu`, Provider Intent Proxmox QEMU
+  `monitoring-policy`, GET-only Discovery, unchanged approvals,
+  default-disabled optional worker, maintenance-only backup/restore,
+  no automatic remediation/conversational execution/release publication, and
+  conservative interrupted-side-effect no-replay.
+- [x] Confirm P0 changed documentation only and performed no commit, tag, push,
+  or release publication.
+
 ## Atlas v0.16 P0–P5 release validation and closure — complete
 
 Atlas v0.16 is **Grounded Installation Planning**. The normative
