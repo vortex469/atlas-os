@@ -29,6 +29,7 @@ import {
     type ImageGroundingErrorKind,
 } from "../features/discovery/DiscoveryImageGroundingPanel";
 import { InstallationPlanReview } from "../features/discovery/InstallationPlanReview";
+import { useOptionalOperatorSession } from "../hooks/operatorSessionContext";
 
 type DetailState = {
     entry: DiscoveryCatalogEntry | null;
@@ -37,6 +38,7 @@ type DetailState = {
 };
 
 export function DiscoveryItemPage() {
+    const operatorSession = useOptionalOperatorSession();
     const { itemId = "" } = useParams<{ itemId: string }>();
     const [state, setState] = useState<DetailState>({
         entry: null,
@@ -398,6 +400,7 @@ export function DiscoveryItemPage() {
                 plan={currentInstallationPlan.plan}
                 isLoading={currentInstallationPlan.loading}
                 unavailable={currentInstallationPlan.unavailable}
+                csrfToken={operatorSession?.csrfToken ?? null}
             />
 
             <CompatibilityPanel

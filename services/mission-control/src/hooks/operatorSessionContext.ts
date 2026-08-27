@@ -22,3 +22,7 @@ export function useOperatorSession(): OperatorSessionContextValue {
     }
     return value;
 }
+
+export function useOptionalOperatorSession(): OperatorSessionContextValue | null {
+    return useContext(OperatorSessionContext);
+}

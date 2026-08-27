@@ -1,4 +1,5 @@
 import type { InstallationPlan } from "../../types/installationPlan";
+import { ProspectiveDestinationReview } from "./ProspectiveDestinationReview";
 
 const label = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -6,10 +7,12 @@ export function InstallationPlanReview({
     plan,
     isLoading,
     unavailable,
+    csrfToken = null,
 }: {
     plan: InstallationPlan | null;
     isLoading: boolean;
     unavailable: boolean;
+    csrfToken?: string | null;
 }) {
     return (
         <section aria-labelledby="installation-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -19,7 +22,7 @@ export function InstallationPlanReview({
             </p>
             {isLoading && <p className="mt-4 text-sm text-slate-400">Loading installation plan…</p>}
             {!isLoading && unavailable && <p role="status" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">Installation plan is currently unavailable.</p>}
-            {!isLoading && !unavailable && plan && <PlanDetails plan={plan} />}
+            {!isLoading && !unavailable && plan && <><PlanDetails plan={plan} /><ProspectiveDestinationReview plan={plan} csrfToken={csrfToken} /></>}
         </section>
     );
 }
