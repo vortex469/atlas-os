@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.18
+## 1. Current released baseline — v0.19
 
-Atlas v0.18.0 is released as `atlas-v0.18.0` at `f12a89c` and is merged to
-current `main` at `a21154b`.
+Atlas v0.19.0 is released as `atlas-v0.19.0` at `c23f4c4` and is merged to
+current `main` at `0344172`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -44,6 +44,13 @@ image evidence, grounding, and provenance.
 - v0.14 released trusted Compose image observation and informational image
   grounding/provenance while leaving the generic collector inactive.
 - v0.15 released the bounded Deployment Image Grounding Operator Surface.
+- v0.16 released immutable, target-free Grounded Installation Planning.
+- v0.17 released operator-owned Prospective Installation Destination
+  Assessment.
+- v0.18 released ephemeral, non-authorizing Installation Capability
+  Assessment.
+- v0.19 released ephemeral Installation Candidate Admission whose strongest
+  result is `admitted_but_non_executable`.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -621,7 +628,107 @@ and exact-source validation. P5 validates the boundary and grants no authority.
   optional default-disabled worker, and operator-maintenance-only
   backup/restore remain unchanged.
 
-## 9. Explicitly deferred work
+## 9. Selected v0.20 plan — Installation Candidate Record Lifecycle
+
+Atlas v0.20 is **Installation Candidate Record Lifecycle**. It adds the
+narrowest durable, non-executable preservation boundary for one exact v0.19
+`admitted_but_non_executable` result. The normative planning boundary is
+[Installation Candidate Record Lifecycle
+v1](docs/architecture/installation-candidate-record-lifecycle-v1.md).
+
+Preservation is an explicit operator request, not approval or admission. It
+stores the exact closed v0.19 candidate record and admission fingerprint under
+an operator-scoped opaque identity. The stored snapshot is immutable and has
+only `active` and `expired` derived lifecycle states. It cannot outlive the
+v0.19 record's existing `valid_until`; expiration is passive and triggers no
+work. Deletion removes only this advisory record. No state transition can make
+the record approved, executable, deployable, dispatchable, or Agent-supported.
+
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. Only P0
+planning is selected now; P1–P5 are proposed implementation milestones and do
+not authorize runtime work in the current change.
+
+### P0 — Lifecycle contract and threat model — selected, documentation only
+
+Freeze the closed durable envelope, exact v0.19 snapshot linkage, ownership,
+state derivation, expiry boundary, idempotency, quotas, retention/deletion,
+routes, presentation, storage isolation, failure behavior, threats, and golden
+cases. Acceptance is a decision-complete planning contract and documentation
+diff only: no runtime, route, UI, test, schema migration, database, worker,
+Agent, provider, repository, in-guest, execution, commit, tag, or release
+behavior.
+
+### P1 — Closed preservation contract and pure lifecycle derivation — proposed
+
+Define an immutable operator-owned envelope around the exact complete closed
+v0.19 candidate record and its exact admission fingerprint. Pure validation
+accepts only a complete positive v0.19 result whose record is still valid at a
+server-owned whole-second UTC time. Pure state derivation returns `active`
+before `valid_until` and `expired` at or after it. It performs no I/O, refresh,
+re-admission, repair, approval, or eligibility evaluation.
+
+### P2 — Bounded durable store — proposed
+
+Persist the immutable envelope in one independent store with authenticated
+operator ownership, conflict-safe idempotency, closed record-size and count
+limits, atomic create/read/delete behavior, and fail-closed corruption
+handling. The store must not persist upstream provider payloads, plans,
+selections, capability facts, credentials, artifacts, commands, or executable
+material. No background expiry, queue, event, audit-to-execution bridge, or
+consumer is added; state is derived on read.
+
+### P3 — Authenticated lifecycle API — proposed
+
+Add only an explicit preserve operation, bounded list/item reads, and deletion
+under a separately frozen installation-candidate-record namespace. Preserve
+re-evaluates current server-owned v0.19 inputs and stores only the exact still-
+valid positive result; callers cannot submit a candidate body or authority
+fields. Cross-operator lookup remains indistinguishable, mutation defenses and
+idempotency are mandatory, and no approve/execute/convert endpoint exists.
+
+### P4 — Mission Control record review — proposed
+
+Present saved linkage, fingerprint, creation time, fixed expiry, and explicit
+active/expired non-executable state. The only mutation control is deletion of
+the advisory saved record. There is no Approve, Install, Prepare, Execute,
+Convert, Dispatch, Deploy, Retry, Reactivate, Extend, Refresh, or equivalent
+control, navigation, or request.
+
+### P5 — Isolation, regression, and release closure — proposed
+
+Prove exact v0.19 snapshot preservation, ownership, bounds, expiry, corruption
+handling, restart durability, API/UI behavior, and absence of production
+consumers. Reconfirm v0.16–v0.19 goldens, capability parity, approval
+separation, no-replay, worker default, backup isolation, and full regression
+gates. P5 grants no execution authority and does not automatically migrate,
+commit, tag, push, publish, deploy, or release.
+
+### Must-not-change contracts for P0–P5
+
+- V0.16–v0.18 schemas, fingerprints, routes, ownership, freshness, lifecycle,
+  golden cases, and non-authority semantics remain exact.
+- V0.19 admission remains ephemeral recomputation. Its schema, reason
+  precedence, fingerprints, route, `valid_until`, fixed-false fields, and lack
+  of consumers do not change. V0.20 stores only its exact positive output and
+  does not create a second admission rule.
+- A saved record is not an existing `ExecutionCandidate`, approved target,
+  installation intent, proposal, approval, workflow, action request, dispatch,
+  deployment specification, executable plan, or permission. `active` means
+  only that the captured v0.19 validity deadline has not passed.
+- Atlas Agent support stays exactly `update-compose-stack` for repository work
+  and `restart-service` for operational handling; `install-container` remains
+  unsupported. Production operational capability stays exactly
+  `restart-service/proxmox/qemu`; Provider Intent stays identity-bound Proxmox
+  QEMU `monitoring-policy`; Discovery stays GET-only/non-authoritative.
+- No approval, execution, dispatch, Agent install-container support, worker
+  invocation, provider mutation, repository mutation, in-guest read or
+  mutation, installation, deployment, rollback, remediation, replay,
+  background refresh, or automatic preservation is introduced.
+- Existing ExecutionCandidate behavior, independent approval stages,
+  interrupted-side-effect no-replay behavior, optional default-disabled
+  worker, and operator-maintenance-only backup/restore remain unchanged.
+
+## 10. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - installation-intent lifecycle and approved installation targets;
@@ -631,7 +738,7 @@ and exact-source validation. P5 validates the boundary and grants no authority.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 10. Uncommitted future directions
+## 11. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 
