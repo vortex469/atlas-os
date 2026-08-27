@@ -644,11 +644,10 @@ v0.19 record's existing `valid_until`; expiration is passive and triggers no
 work. Deletion removes only this advisory record. No state transition can make
 the record approved, executable, deployable, dispatchable, or Agent-supported.
 
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. Only P0
-planning is selected now; P1–P5 are proposed implementation milestones and do
-not authorize runtime work in the current change.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P5 are
+complete, and v0.20 is ready for the separate explicit release procedure.
 
-### P0 — Lifecycle contract and threat model — selected, documentation only
+### P0 — Lifecycle contract and threat model — complete
 
 Freeze the closed durable envelope, exact v0.19 snapshot linkage, ownership,
 state derivation, expiry boundary, idempotency, quotas, retention/deletion,
@@ -658,7 +657,7 @@ diff only: no runtime, route, UI, test, schema migration, database, worker,
 Agent, provider, repository, in-guest, execution, commit, tag, or release
 behavior.
 
-### P1 — Closed preservation contract and pure lifecycle derivation — proposed
+### P1 — Closed preservation contract and pure lifecycle derivation — complete
 
 Define an immutable operator-owned envelope around the exact complete closed
 v0.19 candidate record and its exact admission fingerprint. Pure validation
@@ -667,7 +666,7 @@ server-owned whole-second UTC time. Pure state derivation returns `active`
 before `valid_until` and `expired` at or after it. It performs no I/O, refresh,
 re-admission, repair, approval, or eligibility evaluation.
 
-### P2 — Bounded durable store — proposed
+### P2 — Bounded durable store — complete
 
 Persist the immutable envelope in one independent store with authenticated
 operator ownership, conflict-safe idempotency, closed record-size and count
@@ -677,7 +676,7 @@ selections, capability facts, credentials, artifacts, commands, or executable
 material. No background expiry, queue, event, audit-to-execution bridge, or
 consumer is added; state is derived on read.
 
-### P3 — Authenticated lifecycle API — proposed
+### P3 — Authenticated lifecycle API — complete
 
 Add only an explicit preserve operation, bounded list/item reads, and deletion
 under a separately frozen installation-candidate-record namespace. Preserve
@@ -686,7 +685,7 @@ valid positive result; callers cannot submit a candidate body or authority
 fields. Cross-operator lookup remains indistinguishable, mutation defenses and
 idempotency are mandatory, and no approve/execute/convert endpoint exists.
 
-### P4 — Mission Control record review — proposed
+### P4 — Mission Control record review — complete
 
 Present saved linkage, fingerprint, creation time, fixed expiry, and explicit
 active/expired non-executable state. The only mutation control is deletion of
@@ -694,7 +693,7 @@ the advisory saved record. There is no Approve, Install, Prepare, Execute,
 Convert, Dispatch, Deploy, Retry, Reactivate, Extend, Refresh, or equivalent
 control, navigation, or request.
 
-### P5 — Isolation, regression, and release closure — proposed
+### P5 — Isolation, regression, and release closure — complete
 
 Prove exact v0.19 snapshot preservation, ownership, bounds, expiry, corruption
 handling, restart durability, API/UI behavior, and absence of production
@@ -702,6 +701,13 @@ consumers. Reconfirm v0.16–v0.19 goldens, capability parity, approval
 separation, no-replay, worker default, backup isolation, and full regression
 gates. P5 grants no execution authority and does not automatically migrate,
 commit, tag, push, publish, deploy, or release.
+
+Release validation locks the durable envelope out of every Core and Agent
+authority or mutation consumer, freezes the lifecycle-only OpenAPI surface,
+and limits Mission Control to preserve, review, and delete. Home Assistant
+remains `not_admitted` and cannot cross the preservation boundary. Backup v3
+is intentionally unchanged: the independent advisory database is excluded
+and must be handled through explicit operator maintenance.
 
 ### Must-not-change contracts for P0–P5
 

@@ -1,4 +1,4 @@
-"""Atlas v0.16-v0.19 release-surface and authority-isolation locks."""
+"""Atlas v0.16-v0.20 release-surface and authority-isolation locks."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import ast
 import re
 from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 
 from app.routes.installation import router
@@ -26,6 +27,10 @@ V018_ROOTS = (
 V019_ROOTS = (
     APP_ROOT / "installation_candidate_admission",
     APP_ROOT / "routes" / "installation_candidate_admission.py",
+)
+V020_ROOTS = (
+    APP_ROOT / "installation_candidate_lifecycle",
+    APP_ROOT / "routes" / "installation_candidate_lifecycle.py",
 )
 
 # These are the production subsystems that could turn an advisory record into
@@ -67,6 +72,20 @@ V019_RECORD_MARKERS = (
     "installation-candidate-record-v1",
     "candidate-admissions/",
 )
+V020_RECORD_MARKERS = (
+    "app.installation_candidate_lifecycle",
+    "InstallationCandidateRecordEnvelopeV1",
+    "installation-candidate-record-envelope-v1",
+)
+V020_ALLOWED_CONSUMERS = {
+    APP_ROOT / "api" / "v1" / "router.py",
+    APP_ROOT / "installation_candidate_lifecycle" / "__init__.py",
+    APP_ROOT / "installation_candidate_lifecycle" / "contract.py",
+    APP_ROOT / "installation_candidate_lifecycle" / "service.py",
+    APP_ROOT / "installation_candidate_lifecycle" / "store.py",
+    APP_ROOT / "main.py",
+    APP_ROOT / "routes" / "installation_candidate_lifecycle.py",
+}
 
 FORBIDDEN_DEPENDENCIES = (
     "approval",
@@ -256,6 +275,128 @@ def test_no_authority_or_mutation_subsystem_consumes_v019_records() -> None:
             if marker in source:
                 violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
     assert violations == []
+
+
+def test_v020_is_non_authorizing_and_older_installation_packages_do_not_import_it() -> None:
+    violations: list[str] = []
+    for root in V020_ROOTS:
+        paths = (root,) if root.is_file() else _production_python_files(root)
+        for path in paths:
+            for imported in _imports(path):
+                if any(term in imported for term in FORBIDDEN_DEPENDENCIES):
+                    violations.append(f"{path.relative_to(APP_ROOT)} -> {imported}")
+    for root in (*V016_ROOTS, *V017_ROOTS, *V018_ROOTS, *V019_ROOTS):
+        paths = (root,) if root.is_file() else _production_python_files(root)
+        for path in paths:
+            for imported in _imports(path):
+                if imported.startswith("app.installation_candidate_lifecycle"):
+                    violations.append(f"{path.relative_to(APP_ROOT)} -> {imported}")
+    assert violations == []
+
+
+def test_no_core_or_agent_authority_or_mutation_path_consumes_v020_records() -> None:
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        if path in V020_ALLOWED_CONSUMERS:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in V020_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
+
+    agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
+    for path in _production_python_files(agent_root):
+        source = path.read_text(encoding="utf-8")
+        for marker in V020_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+    assert violations == []
+
+
+def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    paths = {
+        path: set(methods)
+        for path, methods in application.openapi()["paths"].items()
+        if "candidate-records" in path
+    }
+    assert paths == {
+        "/api/v1/installation/candidate-records": {"get", "post"},
+        "/api/v1/installation/candidate-records/{candidate_record_id}": {
+            "delete",
+            "get",
+        },
+    }
+    prohibited = ("approve", "execute", "dispatch", "install", "deploy", "rollback")
+    assert not any(
+        token in path.removeprefix("/api/v1/installation/candidate-records")
+        for path in paths
+        for token in prohibited
+    )
+
+
+def test_mission_control_v020_surface_is_preserve_review_delete_only() -> None:
+    mission_control = APP_ROOT.parents[1] / "mission-control" / "src"
+    api_source = (
+        mission_control / "api" / "installationCandidateLifecycle.ts"
+    ).read_text(encoding="utf-8")
+    component_source = (
+        mission_control
+        / "features"
+        / "discovery"
+        / "InstallationCandidateLifecycle.tsx"
+    ).read_text(encoding="utf-8")
+
+    route_consumers = {
+        path.relative_to(mission_control)
+        for path in mission_control.rglob("*.ts*")
+        if ".test." not in path.name
+        and "/installation/candidate-records" in path.read_text(encoding="utf-8")
+    }
+    assert route_consumers == {
+        Path("api/installationCandidateLifecycle.ts"),
+    }
+
+    assert len(re.findall(r"atlas\s*\.\s*get(?:<[^>]+>)?\s*\(", api_source)) == 2
+    assert len(re.findall(r"atlas\s*\.\s*post(?:<[^>]+>)?\s*\(", api_source)) == 1
+    assert len(re.findall(r"atlas\s*\.\s*delete(?:<[^>]+>)?\s*\(", api_source)) == 1
+    assert not any(
+        re.search(rf"atlas\s*\.\s*{method}(?:<[^>]+>)?\s*\(", api_source)
+        for method in ("put", "patch")
+    )
+    assert set(re.findall(r"\b(?:preserve|get|list|delete)InstallationCandidateRecord(?:s)?\b", component_source)) == {
+        "deleteInstallationCandidateRecord",
+        "getInstallationCandidateRecord",
+        "listInstallationCandidateRecords",
+        "preserveInstallationCandidateRecord",
+    }
+    assert not any(token in component_source for token in ("<a ", "<Link", "<form", "navigate(", "href="))
+    button_labels = set(re.findall(r">([^<>]+)</button>", component_source))
+    assert button_labels == {
+        "Delete saved record",
+        "Preserve candidate record",
+        "Review saved record",
+    }
+
+
+def test_home_assistant_v019_result_cannot_cross_v020_preservation_boundary() -> None:
+    from app.installation_candidate_admission.test_admission import admit
+    from app.installation_candidate_lifecycle.contract import (
+        validate_preservable_admission,
+    )
+    from app.installation_capability.test_assessment import assess, plan
+
+    home_plan = plan(ready=False)
+    admission = admit(plan=home_plan, capability_assessment=assess(home_plan))
+    assert admission.status == "not_admitted"
+    assert admission.candidate_record is None
+    with pytest.raises(ValueError, match="not currently preservable"):
+        validate_preservable_admission(
+            admission, created_at="2026-08-27T12:00:01Z"
+        )
 
 
 def test_mission_control_v019_surface_is_get_only_and_has_no_actions() -> None:

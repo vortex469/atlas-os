@@ -1,6 +1,6 @@
 # Installation Candidate Record Lifecycle v1 planning contract
 
-Status: **Atlas v0.20 P0 planning only; no runtime implementation authorized**.
+Status: **Atlas v0.20 P0–P5 implemented and release validation complete**.
 
 This document freezes the selected planning boundary for Atlas v0.20,
 **Installation Candidate Record Lifecycle**. V0.20 may preserve one exact,
@@ -11,8 +11,9 @@ deployment, rollback, remediation, or release authority.
 
 ## Repository inspection baseline
 
-Planning starts from current `main` at `0344172`, after released tag
-`atlas-v0.19.0` at `c23f4c4`. V0.19 already produces a closed immutable
+Planning started from `main` at `0344172`, after released tag
+`atlas-v0.19.0` at `c23f4c4`; P5 validation started at `e198f48`. V0.19
+already produces a closed immutable
 `InstallationCandidateRecordV1` with exact upstream fingerprints,
 `evaluated_at`, `valid_until`, five fixed-false authority fields, and a
 domain-separated fingerprint. Its authenticated GET recomputes the admission;
@@ -204,3 +205,29 @@ P5 must scan Core and Agent production code for v0.20 consumers, lock OpenAPI
 to the selected lifecycle surface, and verify Mission Control has only
 preserve/review/delete behavior. The full Core, Agent, Mission Control,
 baseline-aware lint/build, and `git diff --check` gates remain required.
+
+## P5 closure evidence
+
+P1 through P4 implemented the frozen contract without widening its authority.
+P5 adds only regression, isolation, and release-validation tests plus this
+documentation closure. Structural scans cover all Core and Agent production
+Python files and reject recognition of the v0.20 module, envelope type, or
+schema outside lifecycle storage/transport wiring. These locks include the
+existing approval, execution, operational dispatch, Agent candidate/workflow,
+worker, provider, repository, in-guest, deployment, rollback, and interrupted-
+side-effect no-replay boundaries.
+
+Integrated OpenAPI is frozen to `GET`/`POST
+/api/v1/installation/candidate-records` and `GET`/`DELETE
+/api/v1/installation/candidate-records/{candidate_record_id}`. Mission Control
+may call only list, get, preserve, and delete and contains only Preserve,
+Review, and Delete controls for this surface. The Home Assistant v0.19 golden
+remains `not_admitted` with no candidate, and contract validation rejects it at
+the v0.20 preservation boundary.
+
+Backup v3 is deliberately not widened to include
+`installation_candidate_records.db`. Operators must explicitly preserve or
+remove that independent advisory store during maintenance; older releases do
+not recognize or consume it. No automatic migration or restore behavior is
+introduced. The exact validation commands and observed outcomes are recorded
+in `docs/RELEASE_CHECKLIST.md`.
