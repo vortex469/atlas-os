@@ -38,6 +38,16 @@ def test_supported_intent_policy_is_narrow() -> None:
     assert is_operational_execution_enabled("stop-service") is False
 
 
+def test_v017_install_container_remains_unsupported() -> None:
+    """Prospective destination assessment must not widen Agent authority."""
+    assert "install-container" not in SUPPORTED_EXECUTION_INTENTS
+    assert "install-container" not in OPERATIONAL_PLANNING_INTENTS
+    assert "install-container" not in OPERATIONAL_EXECUTION_INTENTS
+    assert is_supported_execution_intent("install-container") is False
+    assert is_operational_planning_intent("install-container") is False
+    assert is_operational_execution_enabled("install-container") is False
+
+
 def test_rc1_smoke_intent_requires_explicit_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ATLAS_ENABLE_RC1_VALIDATION_SMOKE", raising=False)
     assert is_supported_execution_intent("rc1-validation-smoke") is False

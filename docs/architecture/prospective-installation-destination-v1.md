@@ -1,6 +1,7 @@
 # Prospective Installation Destination Assessment v1
 
-Status: **Atlas v0.17 P0 frozen, with the explicit P1 conformance amendment below**.
+Status: **Atlas v0.17 P0–P5 implemented and release-closure validated, with the
+explicit P1 conformance amendment below**.
 
 This is the normative v0.17 contract. It grants no installation, planning,
 approval, candidate, workflow, provider, repository, dispatch, Agent, worker,
@@ -290,9 +291,9 @@ default-disabled; backup/restore remains operator-maintenance tooling. There
 is no automatic remediation, conversational execution, automatic
 commit/push/tag/release, or replay after an interrupted side effect.
 
-## Future guarded API boundary (P3)
+## Guarded API boundary (P3)
 
-The conceptual routes are:
+The implemented routes are:
 
 - `GET /api/v1/installation/destinations` enumerates only bounded,
   server-observed selectable destinations;
@@ -322,7 +323,7 @@ selector. Targets are server-enumerated and re-resolved. No route creates a
 candidate, permits planning, creates a workflow/approval/action/dispatch,
 invokes Agent/worker, or mutates a provider or repository.
 
-## Future Mission Control boundary (P4)
+## Mission Control boundary (P4)
 
 The primary label is exactly **Select as prospective installation
 destination**. Adjacent copy must say that selection is not approval, does not
@@ -350,6 +351,16 @@ removal; older code must not interpret them. Schema migration is additive and
 identity-preserving; it cannot refresh fingerprints, extend expiry, or change
 scope. Proxmox guest migration/node movement invalidates v1 selection.
 
+P5 repository review found that backup format v3 intentionally enumerates a
+closed Atlas Core managed-state set and does not automatically include new,
+independent SQLite stores. `installation_destination_selections.db` is therefore
+not included by the released v3 backup/restore machinery. V0.17 does not widen
+that established format in place: operators must retain or remove this
+maintenance database separately during downgrade, and must not copy it as a
+way to create or revive authority. Interests and assessment retry-cache entries
+are never backed up. A future backup-format contract may add the selection
+store only with identity-preserving validation and terminal-state handling.
+
 Creation, cancellation, expiry, and stale transition use compare-and-swap on
 record version. At most one concurrent transition wins; retries observe the
 same terminal state. Same-key equivalent concurrent POSTs converge on one
@@ -357,9 +368,9 @@ selection/assessment result, and same-key conflicts return `409`. No expired,
 cancelled, stale, restored, migrated, or superseded record is grandfathered
 or reactivated.
 
-## Threats and later validation
+## Threats and P5 validation
 
-Later implementation must test closed schemas and bounds; exact identity and
+P5 validates closed schemas and bounds; exact identity and
 node movement; state eligibility; expiry boundaries; cancellation/reselection;
 operator isolation; idempotency convergence/conflict; stale plan/destination
 linkage; canonical fingerprints; complete reason ordering and status

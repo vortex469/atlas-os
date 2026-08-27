@@ -12,4 +12,17 @@ describe("prospective destination authority isolation", () => {
         expect(api).toContain("/installation/destination-selections");
         expect(api).toContain("/installation/admission-assessments");
     });
+
+    it("contains no execution, candidate, workflow, Agent, or approval control", () => {
+        const prohibited = [
+            "Install", "Execute", "Deploy", "Approve", "Plan", "Convert",
+            "Dispatch", "Apply", "Run", "Create candidate", "Send to Agent",
+            "Continue to execution",
+        ];
+        for (const label of prohibited) {
+            expect(ui).not.toContain(`>${label}<`);
+            expect(ui).not.toContain(`"${label}"`);
+        }
+        expect(ui).not.toMatch(/execution-candidates|candidatePlanning|createWorkflow|createApproval|operationalDispatch|href=|<Link|navigate\(/i);
+    });
 });
