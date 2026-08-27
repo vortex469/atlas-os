@@ -20,6 +20,12 @@ from app.installation_assessment.cache import EphemeralAssessmentRetryCache
 from app.installation_candidate_admission.assembly import (
     InstallationCandidateAdmissionReadDependency,
 )
+from app.installation_candidate_lifecycle.service import (
+    InstallationCandidateLifecycleService,
+)
+from app.installation_candidate_lifecycle.store import (
+    InstallationCandidateRecordStore,
+)
 from app.installation_capability.assembly import (
     InstallationCapabilityAssessmentReadDependency,
 )
@@ -156,6 +162,15 @@ async def lifespan(app: FastAPI):
                 clock=assessment_clock,
             ),
             clock=assessment_clock,
+        )
+    )
+    app.state.installation_candidate_record_store = InstallationCandidateRecordStore(
+        operator_settings.installation_candidate_record_database
+    )
+    app.state.installation_candidate_lifecycle_service = (
+        InstallationCandidateLifecycleService(
+            store=app.state.installation_candidate_record_store,
+            admissions=app.state.installation_candidate_admission_read_dependency,
         )
     )
 

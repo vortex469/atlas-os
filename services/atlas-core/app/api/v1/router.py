@@ -18,6 +18,9 @@ from app.routes.installation import router as installation_router
 from app.routes.installation_candidate_admission import (
     router as installation_candidate_admission_router,
 )
+from app.routes.installation_candidate_lifecycle import (
+    router as installation_candidate_lifecycle_router,
+)
 from app.routes.installation_capability import router as installation_capability_router
 from app.routes.installation_plan import router as installation_plan_router
 from app.routes.intelligence import router as intelligence_router
@@ -85,6 +88,7 @@ router.include_router(installation_plan_router)
 router.include_router(installation_router)
 router.include_router(installation_capability_router)
 router.include_router(installation_candidate_admission_router)
+router.include_router(installation_candidate_lifecycle_router)
 router.include_router(execution_candidates_router)
 router.include_router(execution_candidate_intake_router)
 router.include_router(ops_router)

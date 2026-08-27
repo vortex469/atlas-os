@@ -45,6 +45,11 @@ V019_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_candidate_admission" / "evaluation.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_candidate_admission.py",
+    APP_ROOT / "installation_candidate_lifecycle" / "__init__.py",
+    APP_ROOT / "installation_candidate_lifecycle" / "contract.py",
+    APP_ROOT / "installation_candidate_lifecycle" / "service.py",
+    APP_ROOT / "installation_candidate_lifecycle" / "store.py",
+    APP_ROOT / "routes" / "installation_candidate_lifecycle.py",
 }
 V018_RECORD_MARKERS = (
     "app.installation_capability",
