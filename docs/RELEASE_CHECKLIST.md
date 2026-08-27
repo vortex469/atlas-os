@@ -43,9 +43,15 @@ validation started from `1d84187aea2f187e9b408324ecc6c31bc9882499`.
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `de5f751 test(v0.21): close installation approval intent validation`.
+- [x] Stabilization commit:
+  `ea58c31 test(v0.21): stabilize image grounding consumer check`.
 - [x] Core and Agent baseline-aware Ruff gates passed.
 - [x] Focused approval-intent, route, and release-isolation suite passed:
   `38 passed, 25 warnings in 6.76s`.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2882 passed, 121 warnings in 168.98s (0:02:48)`.
 - [x] Full Atlas Agent suite passed outside the managed sandbox (required for
   TestClient threading), using a temporary `XDG_STATE_HOME`:
   `912 passed, 1 warning in 6.84s`.
@@ -58,9 +64,13 @@ validation started from `1d84187aea2f187e9b408324ecc6c31bc9882499`.
 
 ### Final release actions
 
-- [ ] Record the reviewed closure commit SHA after commit/review.
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `ea58c31927dcb685f66f542f5ec6cdc3d5603ca0`.
 - [ ] Confirm the tracked worktree is clean at the final release commit.
-- [ ] Tag, publish, and deploy only through separate explicit authorization.
+- [ ] Create the immutable annotated `atlas-v0.21.0` tag at the reviewed
+  implementation/validation commit.
+- [ ] Push the final release commit and tag.
+- [ ] Publish the Atlas v0.21 release.
 
 ## Atlas v0.20 P0–P5 release closure
 
