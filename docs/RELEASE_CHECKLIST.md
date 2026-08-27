@@ -5,8 +5,9 @@ unchecked item is not implied to have passed.
 
 ## Atlas v0.19 P0–P5 release closure
 
-Atlas v0.19 is **Installation Candidate Admission**. P0–P5 are complete on the
-release-validation branch based at `41c322f406d79716225fc55e9423d329cadd4c6b`.
+Atlas v0.19 is **Installation Candidate Admission**. P0–P5 are complete; the
+reviewed implementation and validation head after P5 review is
+`c23f4c405b4c7261c59a6cff36bee145527c1b51`.
 
 ### Authority, isolation, and golden gates
 
@@ -29,9 +30,13 @@ release-validation branch based at `41c322f406d79716225fc55e9423d329cadd4c6b`.
 
 ### P5 validation evidence
 
+- [x] P5 validation closure commit:
+  `c23f4c4 test(v0.19): close installation candidate admission validation`.
 - [x] Atlas Core and Atlas Agent baseline-aware Ruff gates passed.
 - [x] Focused v0.16–v0.19 Core and release-isolation matrix passed: `151
   passed, 17 warnings in 12.55s`.
+- [x] Full Atlas Core suite passed in the latest clean-environment run:
+  `2813 passed`.
 - [x] Full Atlas Agent suite passed: `912 passed, 1 warning in 8.54s`.
 - [x] Mission Control passed: `61 files, 471 tests`; lint completed with one
   existing non-blocking React hook warning, and the production build completed
@@ -47,10 +52,13 @@ release-validation branch based at `41c322f406d79716225fc55e9423d329cadd4c6b`.
 
 ### Final release actions
 
-- [ ] Record the final reviewed release commit SHA.
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `c23f4c405b4c7261c59a6cff36bee145527c1b51`.
 - [ ] Confirm the tracked worktree is clean at the final release commit.
-- [ ] Create and push an immutable release tag only under separate authority.
-- [ ] Publish Atlas v0.19 only under separate authority.
+- [ ] Create the immutable annotated `atlas-v0.19.0` tag at the reviewed
+  implementation/validation commit.
+- [ ] Push the final release commit and tag.
+- [ ] Publish the Atlas v0.19 release.
 
 ## Atlas v0.18 P0–P5 release closure
 
