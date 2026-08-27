@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.17
+## 1. Current released baseline — v0.18
 
-Atlas v0.17.0 is released as `atlas-v0.17.0` at
-`5e000ef` and is merged to current `main` at `5731b9f`.
+Atlas v0.18.0 is released as `atlas-v0.18.0` at `f12a89c` and is merged to
+current `main` at `a21154b`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -513,9 +513,117 @@ deployment artifact and unsupported `install-container` Agent intent.
 - Existing independent approvals, optional default-disabled worker, and
   operator-maintenance-only backup/restore remain unchanged.
 
-## 8. Explicitly deferred work
+## 8. Selected v0.19 plan — Installation Candidate Admission
 
-- execution candidate generation and install-container execution;
+Atlas v0.19 is **Installation Candidate Admission**. It defines the narrowest
+non-executing boundary that may combine one exact v0.16 `InstallationPlan`, one
+exact active/current v0.17 prospective destination selection, and one exact
+v0.18 capability assessment into a bounded, ephemeral, immutable
+`InstallationCandidateRecordV1`. The normative planning boundary is
+[Installation Candidate Admission v1](docs/architecture/installation-candidate-admission-v1.md).
+
+This is admission to a read model, not admission to execution. No durable
+candidate is created, no existing `ExecutionCandidate` is created or changed,
+and no subsystem may consume the record. The only positive status is
+`admitted_but_non_executable`; every incomplete, stale, mismatched, blocked,
+unknown, or weaker input returns `not_admitted` with `candidate_record=null`.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. Only P0 planning is
+selected now; runtime work must not begin until the contract is frozen.
+
+### P0 — Admission contract and threat model — documentation only
+
+Freeze the exact closed input linkage, status/reason precedence, candidate
+record schema, fingerprint, freshness/identity rules, GET-only API and
+read-only presentation shape, dependency isolation, threats, and golden cases.
+Acceptance requires a decision-complete contract with no runtime, route, UI,
+test, store, migration, candidate, Agent, worker, provider, repository,
+in-guest, execution, commit, tag, push, or release behavior. Authority: none.
+
+### P1 — Pure fail-closed admission evaluator — planned
+
+Implement a local deterministic function over complete server-owned v0.16,
+v0.17, and v0.18 records. It may emit a record only for exact item, catalog,
+plan fingerprint, selection ID/fingerprint/current identity, and capability
+assessment linkage when the plan is `plan_ready_for_review`, the selection is
+active/current, and the assessment is
+`requirements_satisfied_but_non_authorizing`. It persists nothing and invokes
+nothing. Tests cover every reason, precedence, mismatch, freshness boundary,
+fingerprint, hostile input, determinism, and zero side effects.
+
+### P2 — Bounded candidate record projection — planned
+
+Freeze and implement the minimal sanitized `InstallationCandidateRecordV1`:
+schema/version, exact source fingerprints and destination identity
+fingerprints, evaluation time, fixed non-authority invariants, and its own
+domain-separated fingerprint. It contains no command, executable payload,
+artifact body, credential, address, provider payload, approval, intent,
+workflow/action/dispatch identifier, retry/replay token, or mutation recipe.
+It is ephemeral and has no create/update/delete lifecycle or consumer.
+
+### P3 — Authenticated GET-only Core projection — planned
+
+Expose one bounded server-assembled GET projection only after its path and wire
+schema are frozen. It accepts identifiers only, never caller facts or record
+bodies; mutation siblings are absent and rejected. Authentication, ownership,
+current re-resolution, bounds, redaction, OpenAPI, dependency isolation, and
+zero-mutation tests are required. Transport adds no approval or authority.
+
+### P4 — Mission Control read-only admission review — planned
+
+Present exact source linkage, reasons, the nullable record, expiry/freshness,
+and conspicuous non-executable semantics. There is no Admit, Create, Approve,
+Install, Prepare, Execute, Convert, Start workflow, Dispatch, Deploy, Retry,
+Rollback, or equivalent control or authority-suggesting navigation. Tests
+cover every state, accessibility, redaction, error handling, and absence of
+prohibited controls and requests.
+
+### P5 — Isolation, regression, and release closure — planned
+
+Prove no admission assessment or candidate record is persisted or consumed by
+existing candidate, approval, workflow, dispatch, Agent, worker, provider,
+repository, in-guest, deployment, rollback, tag, push, or release paths.
+Reconfirm v0.16-v0.18 golden cases, capability parity, independent approvals,
+no-replay, default-disabled worker, backup/restore, OpenAPI, UI, full regression,
+and exact-source validation. P5 validates the boundary and grants no authority.
+
+### Must-not-change contracts for P0-P5
+
+- V0.16 `InstallationPlan v1` remains target-free, immutable, ephemeral, and
+  non-authorizing; its schema, fingerprint, precedence, blockers, Home
+  Assistant golden, and existing fail-closed candidate projection do not
+  change.
+- V0.17 selection, interest, and admission-assessment schemas, identity,
+  ownership, lifecycle, expiry, storage, fingerprints, routes, and
+  non-authority semantics do not change. A selection is not an approved target.
+- V0.18 provider facts and capability assessment remain ephemeral read-side
+  observations. Their schemas, comparison semantics, routes, strongest
+  non-authorizing status, fixed-false authority fields, and lack of consumers
+  do not change.
+- `InstallationCandidateRecordV1` is not an existing `ExecutionCandidate`,
+  approved target, installation intent, proposal, workflow, approval, action
+  request, dispatch, deployment specification, executable plan, or permission.
+  `admitted_but_non_executable` implies none of those things.
+- No automatic admission or approval occurs. A read request may evaluate the
+  closed boundary; it cannot accept confirmation, persist a decision, or
+  trigger another request.
+- Atlas Agent keeps repository support exactly `update-compose-stack` and
+  operational handling exactly `restart-service`; `install-container` remains
+  unsupported. Production operational capability remains exactly
+  `restart-service/proxmox/qemu`, Provider Intent remains identity-bound
+  Proxmox QEMU `monitoring-policy`, and Discovery remains GET-only and
+  non-authoritative.
+- No candidate execution, Agent install-container execution, worker invocation,
+  provider mutation, repository mutation, in-guest read or mutation, automatic
+  approval, workflow, action request, dispatch, installation, deployment,
+  rollback, remediation, replay, migration, background probe, commit, tag,
+  push, publication, or release is added.
+- Existing independent approvals, interrupted-side-effect no-replay behavior,
+  optional default-disabled worker, and operator-maintenance-only
+  backup/restore remain unchanged.
+
+## 9. Explicitly deferred work
+
+- durable execution-candidate generation and install-container execution;
 - installation-intent lifecycle and approved installation targets;
 - conversational execution or installation;
 - generic image collection;
@@ -523,7 +631,7 @@ deployment artifact and unsupported `install-container` Agent intent.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 9. Uncommitted future directions
+## 10. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 
