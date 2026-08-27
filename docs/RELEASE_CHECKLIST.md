@@ -39,9 +39,13 @@ the release-validation branch based at
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `b7c0b15 test(v0.18): close installation capability validation`.
 - [x] Atlas Core and Atlas Agent Ruff gates passed.
 - [x] Focused Core installation/capability/release-isolation matrix passed:
   `130 passed, 12 warnings in 12.11s`.
+- [x] Full Atlas Core suite passed in the latest clean-environment run:
+  `2813 passed`.
 - [x] Full Atlas Agent suite passed: `912 passed, 1 warning in 7.01s`.
 - [x] Mission Control passed: `59 files, 465 tests`; lint completed with one
   existing non-blocking React hook warning; production build completed with
@@ -55,6 +59,14 @@ the release-validation branch based at
 - [x] `git diff --check` passed and the closure contains tests/docs only.
 - [x] No migration, backup widening, tag, push, publication, deployment, or
   release action occurred.
+
+### Final release actions
+
+- [ ] Record the final reviewed release commit SHA.
+- [ ] Confirm the tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.18.0` tag at that commit.
+- [ ] Push the final release commit and tag.
+- [ ] Publish the Atlas v0.18 release.
 
 ## Atlas v0.17 P0–P5 release closure
 
