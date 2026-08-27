@@ -73,7 +73,21 @@ def validate_preservable_admission(
         or exact.candidate_record.valid_until <= created_at
     ):
         raise ValueError("admission is not currently preservable")
-    return exact.candidate_record
+    record = exact.candidate_record
+    if (
+        exact.plan_fingerprint != record.plan_fingerprint
+        or exact.selected_destination_fingerprint
+        != record.selected_destination_fingerprint
+        or exact.current_destination_fingerprint
+        != record.current_destination_fingerprint
+        or exact.capability_assessment_fingerprint
+        != record.capability_assessment_fingerprint
+        or exact.provider_fact_set_fingerprint
+        != record.provider_fact_set_fingerprint
+        or exact.evaluated_at != record.evaluated_at
+    ):
+        raise ValueError("admission and candidate record identity disagree")
+    return record
 
 
 def candidate_record_state(

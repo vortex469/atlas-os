@@ -4,11 +4,15 @@ from app.installation_candidate_lifecycle.contract import (
     InstallationCandidateRecordEnvelopeV1,
     candidate_record_state,
 )
+from app.installation_candidate_lifecycle.service import (
+    InstallationCandidateLifecycleService,
+)
 from app.installation_candidate_lifecycle.store import (
     InstallationCandidateRecordStore,
 )
 
 __all__ = [
+    "InstallationCandidateLifecycleService",
     "InstallationCandidateRecordEnvelopeV1",
     "InstallationCandidateRecordStore",
     "candidate_record_state",

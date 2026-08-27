@@ -215,7 +215,10 @@ def test_visible_ascii_idempotency_bounds(tmp_path: Path) -> None:
 
 def test_no_authority_or_side_effect_imports_and_calls() -> None:
     package = Path(__file__).parent
-    trees = [ast.parse(path.read_text()) for path in (package / "contract.py", package / "store.py")]
+    trees = [
+        ast.parse(path.read_text())
+        for path in (package / "contract.py", package / "service.py", package / "store.py")
+    ]
     names = {
         alias.name
         for tree in trees
