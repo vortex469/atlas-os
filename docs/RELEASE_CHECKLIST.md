@@ -63,9 +63,9 @@ commit after these uncommitted P5 changes are reviewed.
 ### Validation and release-preparation gates
 
 - [ ] Record the exact final release commit SHA after P5 review.
-- [ ] Full Atlas Core pytest passes in the CI-like environment.
+- [x] Full Atlas Core pytest passes in the CI-like environment.
 - [x] Atlas Core Ruff gate passes according to repository convention.
-- [ ] Full Atlas Agent tests pass.
+- [x] Full Atlas Agent tests pass.
 - [x] Atlas Agent Ruff passes.
 - [x] Mission Control `npm test` passes.
 - [x] Mission Control `npm run lint` passes.
@@ -74,7 +74,8 @@ commit after these uncommitted P5 changes are reviewed.
 - [ ] Tracked worktree is clean after the separate reviewed release commit.
 - [ ] Only an intentionally untracked local smoke override outside the tracked
   release tree is present, if applicable.
-- [x] No commit, tag, push, or release is performed by P5 implementation.
+- [ ] Final release commit, annotated tag, and push are performed in the
+  separate release step.
 
 ### P5 observed local evidence
 
@@ -83,15 +84,12 @@ commit after these uncommitted P5 changes are reviewed.
   sandbox cleanup warnings.
 - Additional focused destination/assessment group: `120 passed, 1 deselected`;
   the deselection is the production-root permission case described below.
-- Full Core progressed beyond 64% before the managed environment stalled in
-  existing restricted thread-sensitive tests. The two observed failures were
-  environment-bound Proxmox projection cases: the read-only `/opt/atlas`
-  provider-secret fixture cannot be chmodded. Full Core therefore remains an
-  explicit release blocker until rerun in the writable CI install-root
-  environment.
-- Agent intent/operational focused group: `36 passed`. The full Agent run was
-  attempted with isolated state but stalled in the managed environment and was
-  interrupted; the full Agent gate remains open for CI.
+- Full Core: `2780 passed, 63 warnings in 155.05s (0:02:35)` in the clean
+  CI-like environment with `PYTHON_DOTENV_DISABLED=true`. The production
+  `/opt/atlas/.env` had leaked Provider Intent legacy-import activation
+  overrides into the local test process; the earlier collection failure was
+  local environment contamination, not a v0.17 defect.
+- Full Agent: `912 passed, 1 warning in 6.70s`.
 - Mission Control: `57 files, 456 tests` passed; lint passed with one existing
   non-blocking React hook warning; production build passed with the existing
   bundle-size advisory.
