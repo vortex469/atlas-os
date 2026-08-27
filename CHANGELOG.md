@@ -6,6 +6,22 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.21-P0 — Installation Approval Intent architecture
+
+- Froze the documentation-only, decision-complete
+  [v1 contract](docs/architecture/installation-approval-intent-v1.md) for one
+  authenticated operator to record one immutable approval statement bound to
+  the exact identity tuple of one owned, active v0.20 non-executable candidate.
+- Selected an isolated append-only evidence record, fixed statement,
+  actor/time binding, uniqueness and idempotency rules, conservative bounds,
+  create/list/item-read surface, explicit confirmation UX, threat model,
+  backup posture, goldens, and P1–P5 validation gates.
+- Approval intent remains evidence only: it is not execution authorization and
+  has no consumer, state transition, revocation, workflow, dispatch, Agent,
+  worker, provider, repository, guest, deployment, rollback, or replay path.
+- Added no runtime code, route, UI, test, store, migration, commit, tag, push,
+  publication, deployment, or release behavior.
+
 #### v0.20 P0–P5 — Installation Candidate Record Lifecycle
 
 - Completed the closed immutable envelope, bounded operator-scoped durable

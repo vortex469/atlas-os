@@ -3,6 +3,38 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.21 P0 planning gate
+
+Atlas v0.21 is **Installation Approval Intent**. P0 is documentation-only;
+P1–P5 are not implemented.
+
+### P0 authority and scope gates
+
+- [x] The approved subject is exactly the v0.20 candidate-record ID, envelope
+  fingerprint, admission fingerprint, and embedded candidate-record
+  fingerprint; aliases and partial identities are forbidden.
+- [x] Creation is an explicit authenticated owner action over a complete active
+  v0.20 record and binds one fixed statement plus server-owned recording time.
+- [x] The intent is immutable append-only evidence, not execution
+  authorization, and has no state machine, runtime deletion, consumer,
+  conversion, event, queue, workflow, dispatch, or replay path.
+- [x] V0.16–v0.20 contracts, Home Assistant golden, five false authority fields,
+  v0.20 deletion, existing approvals, no-replay, capability parity,
+  default-disabled worker, and backup v3 exclusion remain unchanged.
+- [x] P0 changes only `ROADMAP.md`, `CHANGELOG.md`, this checklist, and the
+  normative v0.21 architecture contract. It adds no runtime behavior or tests.
+
+### Future P1–P5 release gates
+
+- [ ] Complete closed-contract, store, API, Mission Control, isolation, and
+  full regression acceptance defined in the normative v0.21 contract.
+- [ ] Prove no Core or Agent authority/mutation consumer recognizes a v0.21
+  schema, intent ID, statement, or fingerprint.
+- [ ] Lock OpenAPI to create/list/item-read only and Mission Control to exact-
+  record confirmation and evidence review only.
+- [ ] Record exact validation commands, outcomes, reviewed SHA, maintenance
+  guidance, and release evidence without automatically tagging or publishing.
+
 ## Atlas v0.20 P0–P5 release closure
 
 Atlas v0.20 is **Installation Candidate Record Lifecycle**. P0–P5 are
