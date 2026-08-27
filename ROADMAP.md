@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.16
+## 1. Current released baseline — v0.17
 
-Atlas v0.16.0 is released as `atlas-v0.16.0` at
-`538a70cd34ce758bda40c5a200acdbdc837694a5`.
+Atlas v0.17.0 is released as `atlas-v0.17.0` at
+`5e000ef` and is merged to current `main` at `5731b9f`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -388,7 +388,132 @@ in-guest capability and identity contract for transport, runtime, privileges,
 target-scoped compatibility, and independent Agent support before durable
 installation intent or candidate creation.
 
-## 7. Explicitly deferred work
+## 7. Selected v0.18 plan — Installation Capability Assessment
+
+Atlas v0.18 is **Installation Capability Assessment**. It combines the
+complete v0.16 `InstallationPlan`, the exact current v0.17 prospective
+destination selection, and bounded sanitized provider capability facts into
+one ephemeral deterministic read model. The normative planning boundary is
+[Installation Capability Assessment v1](docs/architecture/installation-capability-assessment-v1.md).
+
+This release remains read-only and non-authorizing. Even the strongest outcome
+is `requirements_satisfied_but_non_authorizing`; it creates no candidate,
+approval, workflow, action request, dispatch, Agent execution, worker
+invocation, provider or repository mutation, installation, or deployment.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P5 are
+complete; the release remains read-only and non-authorizing.
+
+### P0 — Capability fact and non-authority contract — complete
+
+Scope: freeze the closed provider-fact schema and provenance, exact allowed
+Proxmox/QEMU control-plane fact vocabulary, freshness/conflict/unknown rules,
+requirement-comparison table, assessment statuses and fingerprint, API/UI
+shape, dependency isolation, threat model, and golden cases. Acceptance: no
+runtime ambiguity remains; configured guest-agent state is explicitly not
+reachability; every positive comparison is evidence-bound; the strongest
+status remains non-authorizing. Non-goals: every runtime, route, UI, test,
+store, migration, provider call, Agent, candidate, workflow, worker, execution,
+commit, tag, and push change. Authority: none. Expected later tests:
+documentation/schema traceability, exhaustive tables, and forbidden-authority
+structure.
+
+Inspection constraint: the released destination projection does not currently
+publish configured CPU, configured disk capacity, or the QEMU guest-agent
+configuration bit. P0 treats them as prospective P1 facts, never as already
+available evidence. Utilization is not capacity, and no guest-agent or
+in-guest read is permitted.
+
+### P1 — Pure provider capability fact adapter — complete
+
+Scope: add a bounded, local, read-only adapter over existing permitted Proxmox
+QEMU control-plane reads, bound to exact current destination identity.
+Acceptance: typed sanitized facts preserve source, observation time, identity,
+absence, malformed, unavailable, stale, and conflict distinctions; no raw
+payload enters the model. Non-goals: guest-agent calls, SSH, probing, scanning,
+credentials, in-guest/runtime/filesystem inspection, persistence, caching that
+becomes evidence, or mutation. Authority: facts are observations only. Tests:
+complete adapter table, bounds/redaction, identity/freshness, determinism,
+failure isolation, zero mutation, and forbidden imports/calls.
+
+### P2 — Deterministic capability comparison and assessment — complete
+
+Scope: purely combine the exact InstallationPlan, active/current selection,
+current identity, and provider facts; map only explicit comparable plan
+requirements to `satisfied`, `not_satisfied`, `unknown`, or `not_assessable`.
+Acceptance: total precedence, canonical reasons and fingerprint, unchanged plan
+blockers/provenance, fixed false authority invariants, and Home Assistant
+remains blocked. Non-goals: plan repair, target-scoped compatibility invention,
+installability/readiness claims, durable intent, candidate eligibility, queue,
+or consumer. Authority: none. Tests: every status/reason combination,
+fingerprint stability/sensitivity, stale/moved/conflicting inputs, hostile
+facts, golden cases, and no side effects.
+
+V1 comparable requirements are limited to CPU cores, memory, and storage
+minimums against exact like-unit configured-capacity facts. GPU, architecture,
+OS, runtime, device, port, network, relationship, capability-ID, and all
+in-guest requirements remain `not_assessable`; configured guest-agent state
+does not satisfy any of them.
+
+### P3 — Authenticated GET-only Core projection — complete
+
+Scope: expose one bounded redacted server-assembled capability assessment after
+freezing its final route and closed wire schema. Acceptance: authenticated
+GET-only/OpenAPI behavior, server-owned inputs and evaluation time, exact
+selection ownership/current-identity checks, sanitized errors, and no mutation
+sibling. Non-goals: caller facts, plan bodies, target selectors, provider
+payloads, addresses, credentials, commands, POST assessment, candidate,
+approval, workflow, dispatch, or Agent routes. Authority: transport grants
+none. Tests: auth, methods/OpenAPI, bounds, ownership, redaction, error mapping,
+dependency isolation, and zero provider mutation.
+
+### P4 — Mission Control read-only capability review — complete
+
+Scope: present plan/destination linkage, sanitized provider facts,
+comparisons, unknowns, contradictions, freshness, and explicit non-authorizing
+status. Acceptance: accessible fail-closed rendering and language that
+distinguishes configuration from observed capability and capability facts from
+permission. Non-goals: Install, Prepare, Approve, Execute, Convert, Create
+candidate, Start workflow, Dispatch, Retry action, or authority-suggesting
+navigation/network calls. Authority: presentation adds none. Tests: all states,
+ordering, provenance/freshness, missing/error behavior, accessibility,
+redaction, and absence of prohibited controls and requests.
+
+### P5 — Isolation, regression, and release closure — complete
+
+Scope: close the structural, behavioral, API/UI, golden, security, and release
+evidence matrix. Acceptance: v0.16 and v0.17 contracts remain exact; capability
+parity, Agent unsupported facts, approvals, no-replay, worker default, backup,
+and Discovery boundaries are unchanged; full focused and regression gates
+pass. Non-goals: adding capability or automatically committing, tagging,
+pushing, publishing, migrating, or deploying. Authority: no v0.18 record is
+consumed by an execution subsystem. Tests: full isolation/parity, Home
+Assistant golden, provider-read-only proofs, candidate/Agent/workflow/dispatch
+regressions, UI/API gates, and absence of persistence and side effects.
+
+P5 locks the exact single-GET v0.18 OpenAPI surface, Mission Control's absence
+of mutation controls/calls, and the absence of any v0.18 record consumer in
+candidate, approval, workflow, dispatch, Agent, worker, provider, repository,
+or in-guest execution paths. Home Assistant remains blocked by the missing
+deployment artifact and unsupported `install-container` Agent intent.
+
+### Must-not-change contracts for P0-P5
+
+- `InstallationPlan v1` stays target-free, immutable, ephemeral,
+  non-authorizing, and unchanged; provider facts never repair plan blockers.
+- V0.17 selection, interest, and admission assessment stay unchanged and do
+  not become an approved target, durable installation intent, or authority.
+- Candidate creation and eligibility remain false; `install-container`
+  remains unsupported by Atlas Agent.
+- Repository execution remains `update-compose-stack`; operational capability
+  remains `restart-service/proxmox/qemu`; Provider Intent remains Proxmox QEMU
+  `monitoring-policy`; Discovery remains GET-only/non-authoritative.
+- No approval, workflow, action request, dispatch, Agent execution, worker
+  invocation, provider/repository mutation, install, update, restart, deploy,
+  rollback, remediation, or interrupted-side-effect replay is added.
+- Existing independent approvals, optional default-disabled worker, and
+  operator-maintenance-only backup/restore remain unchanged.
+
+## 8. Explicitly deferred work
 
 - execution candidate generation and install-container execution;
 - installation-intent lifecycle and approved installation targets;
@@ -398,7 +523,7 @@ installation intent or candidate creation.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 8. Uncommitted future directions
+## 9. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

@@ -14,6 +14,7 @@ import type {
     InstallationDestinationSelectionV1,
     ProspectiveInstallationDestinationV1,
 } from "../../types/installationDestination";
+import { InstallationCapabilityAssessment } from "./InstallationCapabilityAssessment";
 
 const REASON_LABELS: Record<InstallationAdmissionReasonCode, { title: string; detail: string }> = {
     installation_plan_conflicted: { title: "Installation plan conflicted", detail: "The reviewed plan contains conflicting evidence or facts." },
@@ -120,6 +121,7 @@ export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: Instal
         </div>}
         {mutation === "assessment" && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-400">Assessing installation admission…</p>}
         {assessment && <AssessmentSummary assessment={assessment} />}
+        <InstallationCapabilityAssessment itemId={plan.application.item_id} selectionId={selection?.selection_id ?? null} />
     </section>;
 }
 

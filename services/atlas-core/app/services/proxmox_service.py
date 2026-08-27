@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.clients.proxmox_client import get_proxmox_client
@@ -8,6 +9,8 @@ from app.services.atlas_contexts import LegacyAtlasContextResolver
 
 _UNAVAILABLE = object()
 _UNKNOWN = object()
+_DISK_KEY = re.compile(r"^(?:ide|sata|scsi|virtio)[0-9]+$")
+_DISK_SIZE = re.compile(r"^(?P<amount>[1-9][0-9]*)(?P<unit>[KMGT])$")
 
 
 def bytes_to_gib(value: float) -> float:
@@ -76,6 +79,7 @@ def get_proxmox_guests(
                 "memory_used_gib": bytes_to_gib(vm.get("mem", 0)),
                 "memory_total_gib": bytes_to_gib(vm.get("maxmem", 0)),
                 "uptime_seconds": vm.get("uptime", 0),
+                "capability_observation": _capability_observation(config, vm),
             }
         )
 
@@ -114,6 +118,104 @@ def get_proxmox_guests(
         ),
         "guests": guests,
     }
+
+
+def _capability_observation(config: dict | None, inventory: dict) -> dict:
+    """Project only bounded configuration facts; never return provider payloads."""
+    if config is None:
+        return {
+            "cpu_cores": _fact("unavailable"),
+            "memory_bytes": _fact("unavailable"),
+            "disk_capacity_bytes": _fact("unavailable"),
+            "guest_agent_configured": _fact("unavailable"),
+        }
+    return {
+        "cpu_cores": _reconciled_positive_integer(
+            config, "cores", inventory, "maxcpu"
+        ),
+        "memory_bytes": _reconciled_memory(config, inventory),
+        "disk_capacity_bytes": _configured_disk_capacity(config),
+        "guest_agent_configured": _configured_guest_agent(config),
+    }
+
+
+def _fact(state: str, value: int | bool | str | None = None) -> dict:
+    return {"state": state, "value": value}
+
+
+def _positive_integer(source: dict, key: str) -> tuple[str, int | None]:
+    if key not in source:
+        return "not_observed", None
+    value = source[key]
+    if type(value) is not int or value <= 0:
+        return "malformed", None
+    return "observed", value
+
+
+def _reconciled_positive_integer(
+    primary: dict, primary_key: str, corroborating: dict, corroborating_key: str
+) -> dict:
+    primary_state, primary_value = _positive_integer(primary, primary_key)
+    secondary_state, secondary_value = _positive_integer(
+        corroborating, corroborating_key
+    )
+    if "malformed" in {primary_state, secondary_state}:
+        return _fact("malformed")
+    if primary_state == "not_observed":
+        return _fact("not_observed")
+    if secondary_state == "observed" and secondary_value != primary_value:
+        return _fact("conflicted")
+    return _fact("observed", primary_value)
+
+
+def _reconciled_memory(config: dict, inventory: dict) -> dict:
+    state, memory_mib = _positive_integer(config, "memory")
+    inventory_state, maxmem = _positive_integer(inventory, "maxmem")
+    if "malformed" in {state, inventory_state}:
+        return _fact("malformed")
+    if state == "not_observed":
+        return _fact("not_observed")
+    value = memory_mib * 1024 * 1024 if memory_mib is not None else None
+    if inventory_state == "observed" and maxmem != value:
+        return _fact("conflicted")
+    return _fact("observed", value)
+
+
+def _configured_disk_capacity(config: dict) -> dict:
+    disks = [(key, value) for key, value in config.items() if _DISK_KEY.fullmatch(key)]
+    if not disks:
+        return _fact("not_observed")
+    total = 0
+    for _, value in sorted(disks):
+        if not isinstance(value, str):
+            return _fact("malformed")
+        parts = value.split(",")
+        if "cloudinit" in parts[0] or "media=cdrom" in parts:
+            continue
+        sizes = [part[5:] for part in parts if part.startswith("size=")]
+        if len(sizes) != 1:
+            return _fact("malformed")
+        match = _DISK_SIZE.fullmatch(sizes[0])
+        if match is None:
+            return _fact("malformed")
+        multiplier = {"K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4}
+        total += int(match.group("amount")) * multiplier[match.group("unit")]
+    return _fact("observed", total) if total else _fact("not_observed")
+
+
+def _configured_guest_agent(config: dict) -> dict:
+    if "agent" not in config:
+        return _fact("not_observed")
+    value = config["agent"]
+    if type(value) is bool or (type(value) is int and value in {0, 1}):
+        return _fact("observed", bool(value))
+    if isinstance(value, str):
+        enabled = [part for part in value.split(",") if part.startswith("enabled=")]
+        if value in {"0", "1"}:
+            return _fact("observed", value == "1")
+        if len(enabled) == 1 and enabled[0] in {"enabled=0", "enabled=1"}:
+            return _fact("observed", enabled[0] == "enabled=1")
+    return _fact("malformed")
 
 
 def _source_value(source: dict | None, key: str, validator) -> object:
