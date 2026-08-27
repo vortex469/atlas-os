@@ -1,6 +1,6 @@
 # Installation Capability Assessment v1 planning contract
 
-Status: **Atlas v0.18 P0 planning selected; no implementation exists**.
+Status: **Atlas v0.18 P0–P5 implemented and release validation complete**.
 
 This document is the planning boundary for Atlas v0.18, **Installation
 Capability Assessment**. It grants no installation, target approval,
@@ -210,3 +210,19 @@ Provider facts cannot repair that blocker. Its v0.18 assessment therefore
 remains `blocked`, candidate eligibility is not evaluated, and all candidate,
 Agent, workflow, dispatch, worker, repository, and provider mutation fields
 remain false or absent.
+
+## P5 closure evidence
+
+Release-isolation tests inspect the v0.18 production packages and every Core
+candidate, dispatch, provider-intent, and deploy consumer, plus the complete
+Atlas Agent production tree. They reject imports or record markers that would
+allow capability assessments or provider fact records to cross into an
+authorizing or mutating subsystem. Integrated OpenAPI inspection permits only
+the single GET capability-assessment route and no mutation sibling.
+
+Mission Control tests lock the sole authenticated GET call, reject malformed
+or authority-bearing responses, render all fail-closed states, and prove the
+surface contains no action control or authority navigation. The Home Assistant
+golden remains anchored to the missing deployment artifact and Agent's exact
+`update-compose-stack` repository support, with `install-container`
+unsupported. These tests validate the boundary; they grant no new authority.

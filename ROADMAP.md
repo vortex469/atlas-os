@@ -400,9 +400,10 @@ This release remains read-only and non-authorizing. Even the strongest outcome
 is `requirements_satisfied_but_non_authorizing`; it creates no candidate,
 approval, workflow, action request, dispatch, Agent execution, worker
 invocation, provider or repository mutation, installation, or deployment.
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P5 are
+complete; the release remains read-only and non-authorizing.
 
-### P0 — Capability fact and non-authority contract — planning
+### P0 — Capability fact and non-authority contract — complete
 
 Scope: freeze the closed provider-fact schema and provenance, exact allowed
 Proxmox/QEMU control-plane fact vocabulary, freshness/conflict/unknown rules,
@@ -422,7 +423,7 @@ configuration bit. P0 treats them as prospective P1 facts, never as already
 available evidence. Utilization is not capacity, and no guest-agent or
 in-guest read is permitted.
 
-### P1 — Pure provider capability fact adapter
+### P1 — Pure provider capability fact adapter — complete
 
 Scope: add a bounded, local, read-only adapter over existing permitted Proxmox
 QEMU control-plane reads, bound to exact current destination identity.
@@ -434,7 +435,7 @@ becomes evidence, or mutation. Authority: facts are observations only. Tests:
 complete adapter table, bounds/redaction, identity/freshness, determinism,
 failure isolation, zero mutation, and forbidden imports/calls.
 
-### P2 — Deterministic capability comparison and assessment
+### P2 — Deterministic capability comparison and assessment — complete
 
 Scope: purely combine the exact InstallationPlan, active/current selection,
 current identity, and provider facts; map only explicit comparable plan
@@ -453,7 +454,7 @@ OS, runtime, device, port, network, relationship, capability-ID, and all
 in-guest requirements remain `not_assessable`; configured guest-agent state
 does not satisfy any of them.
 
-### P3 — Authenticated GET-only Core projection
+### P3 — Authenticated GET-only Core projection — complete
 
 Scope: expose one bounded redacted server-assembled capability assessment after
 freezing its final route and closed wire schema. Acceptance: authenticated
@@ -465,7 +466,7 @@ approval, workflow, dispatch, or Agent routes. Authority: transport grants
 none. Tests: auth, methods/OpenAPI, bounds, ownership, redaction, error mapping,
 dependency isolation, and zero provider mutation.
 
-### P4 — Mission Control read-only capability review
+### P4 — Mission Control read-only capability review — complete
 
 Scope: present plan/destination linkage, sanitized provider facts,
 comparisons, unknowns, contradictions, freshness, and explicit non-authorizing
@@ -477,7 +478,7 @@ navigation/network calls. Authority: presentation adds none. Tests: all states,
 ordering, provenance/freshness, missing/error behavior, accessibility,
 redaction, and absence of prohibited controls and requests.
 
-### P5 — Isolation, regression, and release closure
+### P5 — Isolation, regression, and release closure — complete
 
 Scope: close the structural, behavioral, API/UI, golden, security, and release
 evidence matrix. Acceptance: v0.16 and v0.17 contracts remain exact; capability
@@ -488,6 +489,12 @@ pushing, publishing, migrating, or deploying. Authority: no v0.18 record is
 consumed by an execution subsystem. Tests: full isolation/parity, Home
 Assistant golden, provider-read-only proofs, candidate/Agent/workflow/dispatch
 regressions, UI/API gates, and absence of persistence and side effects.
+
+P5 locks the exact single-GET v0.18 OpenAPI surface, Mission Control's absence
+of mutation controls/calls, and the absence of any v0.18 record consumer in
+candidate, approval, workflow, dispatch, Agent, worker, provider, repository,
+or in-guest execution paths. Home Assistant remains blocked by the missing
+deployment artifact and unsupported `install-container` Agent intent.
 
 ### Must-not-change contracts for P0-P5
 

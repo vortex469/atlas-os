@@ -6,6 +6,22 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.18 P0–P5 — Installation Capability Assessment
+
+- Completed the bounded Proxmox/QEMU provider-fact adapter, deterministic
+  comparison, authenticated GET-only Core assessment, and read-only Mission
+  Control review. Even the strongest assessment remains non-authorizing.
+- Added P5 isolation locks proving the v0.16 InstallationPlan and v0.17
+  selection/admission contracts remain non-authorizing and no v0.18 record is
+  consumed by candidate, approval, workflow, dispatch, Agent, worker,
+  provider, repository, or in-guest mutation paths.
+- Froze OpenAPI to the sole v0.18 route
+  `GET /api/v1/installation/capability-assessments/{item_id}/{selection_id}`;
+  Mission Control exposes no prohibited control, navigation, or mutation call.
+- Home Assistant remains blocked by absent `compose/home-assistant.yaml`, and
+  Atlas Agent continues to reject unsupported `install-container`; no runtime
+  authority, migration, backup widening, tag, push, or release was added.
+
 #### v0.17 P0–P5 — Prospective Installation Destination Assessment
 
 - Completed authenticated enumeration and immutable, operator-scoped selection

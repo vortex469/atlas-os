@@ -3,6 +3,59 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.18 P0–P5 release closure
+
+Atlas v0.18 is **Installation Capability Assessment**. P0–P5 are complete on
+the release-validation branch based at
+`5ac32ecedc845ac6b1614b112b48325014aa527a`.
+
+### Authority, isolation, and golden gates
+
+- [x] V0.16 `InstallationPlan v1` remains immutable, target-free, ephemeral,
+  and non-authorizing; provider facts cannot repair its blockers or enable its
+  fail-closed candidate projection.
+- [x] V0.17 destination selection, interest, and admission assessment retain
+  their exact ownership, lifecycle, route, storage, and non-authority
+  contracts; no v0.18 grandfathering or conversion exists.
+- [x] No candidate creation, approval, workflow, action request, dispatch,
+  Atlas Agent execution, worker invocation, provider mutation, repository
+  mutation, or in-guest mutation subsystem consumes a v0.18 assessment or
+  provider-fact record.
+- [x] Integrated OpenAPI exposes exactly
+  `GET /api/v1/installation/capability-assessments/{item_id}/{selection_id}`
+  for v0.18 and has no POST, PUT, PATCH, DELETE, or other mutation sibling.
+- [x] Mission Control uses only the authenticated GET projection, rejects
+  authority-bearing or open-schema responses, and contains no Install,
+  Prepare, Approve, Execute, Convert, candidate, workflow, dispatch, retry, or
+  equivalent control/navigation/mutation call.
+- [x] Home Assistant remains `blocked`: `compose/home-assistant.yaml` is absent,
+  provider facts do not repair that deployment-artifact blocker, Atlas Agent
+  repository support remains exactly `update-compose-stack`, and
+  `install-container` remains unsupported.
+- [x] Existing approval separation, conservative interrupted-side-effect
+  no-replay, default-disabled worker, closed backup format, GET-only Discovery,
+  Provider Intent, operational capability, and repository execution boundaries
+  remain unchanged.
+
+### P5 observed validation evidence
+
+- [x] Atlas Core and Atlas Agent Ruff gates passed.
+- [x] Focused Core installation/capability/release-isolation matrix passed:
+  `130 passed, 12 warnings in 12.11s`.
+- [x] Full Atlas Agent suite passed: `912 passed, 1 warning in 7.01s`.
+- [x] Mission Control passed: `59 files, 465 tests`; lint completed with one
+  existing non-blocking React hook warning; production build completed with
+  the existing bundle-size advisory.
+- [x] The focused Core command was rerun with
+  `ATLAS_PROVIDER_SECRET_FILE` directed to a writable temporary file because
+  the managed validation sandbox makes `/opt/atlas/data/secrets` read-only.
+  The Agent suite used the repository's established writable temporary
+  `XDG_STATE_HOME` for the same reason. Neither workaround changed tracked
+  files or runtime behavior.
+- [x] `git diff --check` passed and the closure contains tests/docs only.
+- [x] No migration, backup widening, tag, push, publication, deployment, or
+  release action occurred.
+
 ## Atlas v0.17 P0–P5 release closure
 
 Atlas v0.17 is **Prospective Installation Destination Assessment**. P0–P5 are
