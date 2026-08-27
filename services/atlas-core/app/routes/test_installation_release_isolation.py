@@ -19,6 +19,10 @@ V018_ROOTS = (
     APP_ROOT / "installation_capability",
     APP_ROOT / "routes" / "installation_capability.py",
 )
+V019_ROOTS = (
+    APP_ROOT / "installation_candidate_admission",
+    APP_ROOT / "routes" / "installation_candidate_admission.py",
+)
 
 # These are the production subsystems that could turn an advisory record into
 # authority or an external side effect.  Application/router wiring is
@@ -37,6 +41,14 @@ V018_RECORD_MARKERS = (
     "installation-capability-assessment-v1",
     "provider-installation-capability-facts-v1",
     "capability-assessments/",
+)
+V019_RECORD_MARKERS = (
+    "app.installation_candidate_admission",
+    "InstallationCandidateAdmissionV1",
+    "InstallationCandidateRecordV1",
+    "installation-candidate-admission-v1",
+    "installation-candidate-record-v1",
+    "candidate-admissions/",
 )
 
 FORBIDDEN_DEPENDENCIES = (
@@ -181,6 +193,35 @@ def test_no_authority_or_mutation_subsystem_consumes_v018_records() -> None:
     assert violations == []
 
 
+def test_v019_is_read_only_and_has_no_authority_dependency() -> None:
+    violations: list[str] = []
+    for root in V019_ROOTS:
+        paths = (root,) if root.is_file() else _production_python_files(root)
+        for path in paths:
+            for imported in _imports(path):
+                if any(term in imported for term in FORBIDDEN_DEPENDENCIES):
+                    violations.append(f"{path.relative_to(APP_ROOT)} -> {imported}")
+    assert violations == []
+
+
+def test_no_authority_or_mutation_subsystem_consumes_v019_records() -> None:
+    violations: list[str] = []
+    for root in AUTHORITY_CONSUMER_ROOTS:
+        for path in _production_python_files(root):
+            source = path.read_text(encoding="utf-8")
+            for marker in V019_RECORD_MARKERS:
+                if marker in source:
+                    violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
+
+    agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
+    for path in _production_python_files(agent_root):
+        source = path.read_text(encoding="utf-8")
+        for marker in V019_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+    assert violations == []
+
+
 def test_v018_openapi_has_exactly_one_get_and_no_mutation_sibling() -> None:
     from app.api.v1.router import router as api_v1_router
 
@@ -193,6 +234,23 @@ def test_v018_openapi_has_exactly_one_get_and_no_mutation_sibling() -> None:
     }
     assert paths == {
         "/api/v1/installation/capability-assessments/{item_id}/{selection_id}": {
+            "get"
+        }
+    }
+
+
+def test_v019_openapi_has_exactly_one_get_and_no_mutation_sibling() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    paths = {
+        path: set(methods)
+        for path, methods in application.openapi()["paths"].items()
+        if "candidate-admissions" in path
+    }
+    assert paths == {
+        "/api/v1/installation/candidate-admissions/{item_id}/{selection_id}": {
             "get"
         }
     }
