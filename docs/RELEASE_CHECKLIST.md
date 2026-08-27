@@ -72,10 +72,10 @@ the reviewed v0.17 implementation and validation head is
 - [x] Mission Control `npm run lint` passes.
 - [x] Mission Control `npm run build` passes.
 - [x] `git diff --check` passes.
-- [ ] Tracked worktree is clean after the separate reviewed release commit.
-- [ ] Only an intentionally untracked local smoke override outside the tracked
+- [x] Tracked worktree is clean after the separate reviewed release commit.
+- [x] Only an intentionally untracked local smoke override outside the tracked
   release tree is present, if applicable.
-- [ ] Final release commit, annotated tag, and push are performed in the
+- [x] Final release commit, annotated tag, and push are performed in the
   separate release step.
 
 ### P5 observed local evidence
