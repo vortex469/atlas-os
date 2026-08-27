@@ -7,8 +7,8 @@ unchecked item is not implied to have passed.
 
 Atlas v0.17 is **Prospective Installation Destination Assessment**. P0–P5 are
 implemented. P5 began from `beb427dd9b77ed5c0442e8521b83ac90b01a7c41`;
-the separate release-preparation step must record and validate the exact final
-commit after these uncommitted P5 changes are reviewed.
+the reviewed v0.17 implementation and validation head is
+`78094ebf2cdbe2546a3b658aaee9abd05fa73883`.
 
 ### Decision-complete authority and golden gates
 
@@ -62,7 +62,8 @@ commit after these uncommitted P5 changes are reviewed.
 
 ### Validation and release-preparation gates
 
-- [ ] Record the exact final release commit SHA after P5 review.
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `78094ebf2cdbe2546a3b658aaee9abd05fa73883`.
 - [x] Full Atlas Core pytest passes in the CI-like environment.
 - [x] Atlas Core Ruff gate passes according to repository convention.
 - [x] Full Atlas Agent tests pass.
