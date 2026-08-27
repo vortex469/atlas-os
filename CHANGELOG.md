@@ -6,6 +6,23 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.17-P0 — Prospective Installation Destination Assessment architecture
+
+- Froze the documentation-only, decision-complete
+  [v1 contract](docs/architecture/prospective-installation-destination-v1.md)
+  for an operator-scoped, immutable, expiring selection of one exact observed
+  Proxmox QEMU guest incarnation and an ephemeral non-authorizing admission
+  assessment.
+- Froze exact identity/re-resolution, movement invalidation, lifecycle,
+  idempotency, deterministic fingerprints, reason precedence, guarded future
+  API, Mission Control terminology, storage/restore, dependency isolation, and
+  P0–P5 acceptance boundaries.
+- Home Assistant remains `missing_deployment_artifact` at
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`;
+  candidate projection remains false/false/null. No runtime, route, store, UI,
+  test, migration, persistence implementation, Agent, candidate, workflow,
+  provider, worker, execution, commit, tag, or push change is included.
+
 #### v0.16.0 — Grounded Installation Planning release closure
 
 - Completed P0 through P5 for deterministic, immutable, provenance-linked,

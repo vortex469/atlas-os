@@ -3,6 +3,56 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.17 P0 architecture freeze — complete
+
+Atlas v0.17 is **Prospective Installation Destination Assessment**. P0 is
+documentation-only; P1–P5 are not implemented. The normative
+[v1 contract](architecture/prospective-installation-destination-v1.md) is
+decision-complete.
+
+- [x] Confirm baseline `atlas-v0.16.0` at
+  `538a70cd34ce758bda40c5a200acdbdc837694a5` and P0 branch baseline
+  `6ddb87234dae37c859216ff9c4faa564f0df7dd8`.
+- [x] Freeze existing-guest versus VM-provisioning semantics and deny every
+  unobserved in-guest capability, compatibility, readiness, and permission.
+- [x] Freeze the exact Proxmox/QEMU/existing-guest tuple, opaque fingerprint,
+  exact re-resolution, node-movement invalidation, selectable states, and no
+  raw `vmgenid`, wildcard, rebinding, or in-place refresh.
+- [x] Freeze durable operator-scoped immutable selection, 24-hour expiry,
+  cancellation/tombstone, reselection, retention, concurrency, backup/restore,
+  downgrade, migration, and irreversible terminal semantics.
+- [x] Freeze one-request ephemeral interest with exact plan/item/catalog/
+  selection linkage, five-minute expiry, retry/conflict semantics, bounded
+  audit, and no durable intent, queue, Agent, candidate, or grandfathering.
+- [x] Freeze the pure assessment inputs/output, two statuses, all-applicable
+  canonical 16-reason precedence, fixed unsupported Agent fact,
+  `candidate_eligibility_evaluated=false`, and narrow unsupported status rule.
+- [x] Freeze domain-separated JCS/NFC SHA-256 selection, interest, and
+  assessment fingerprints, exact null/timestamp/order/linkage semantics, and
+  exclusions.
+- [x] Freeze Home Assistant as `missing_deployment_artifact` at fingerprint
+  `34b55477f84fc03fa4b31c57ffc8213ba884b61791f3e6adb8f484fb67d0771a`,
+  with missing artifact ahead of capability-unknown and Agent-unsupported.
+- [x] Preserve candidate projection exactly `candidate_created=false`,
+  `planning_allowed=false`, `candidate=null`.
+- [x] Freeze forbidden dependencies, sanitized UI boundary, and the rule that
+  no execution subsystem consumes any v0.17 record.
+- [x] Freeze future guarded API methods, auth, CSRF/trusted-origin, bounds,
+  server enumeration, idempotency, sanitized errors, and no-authority routes.
+- [x] Freeze future Mission Control label/copy/blockers and prohibit Install,
+  Execute, Plan, Approve, Convert, Dispatch, and authority-suggesting workflow
+  navigation.
+- [x] Select P0 → P1 → P2 → P3 → P4 → P5 with scope, acceptance, non-goals,
+  authority boundaries, and later expected tests in `ROADMAP.md`.
+- [x] Preserve repository execution `update-compose-stack`, operational
+  `restart-service/proxmox/qemu`, Provider Intent Proxmox QEMU
+  `monitoring-policy`, GET-only Discovery, unchanged approvals,
+  default-disabled optional worker, maintenance-only backup/restore,
+  no automatic remediation/conversational execution/release publication, and
+  conservative interrupted-side-effect no-replay.
+- [x] Confirm P0 changed documentation only and performed no commit, tag, push,
+  or release publication.
+
 ## Atlas v0.16 P0–P5 release validation and closure — complete
 
 Atlas v0.16 is **Grounded Installation Planning**. The normative

@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.15
+## 1. Current released baseline — v0.16
 
-Atlas v0.15.0 is released as `atlas-v0.15.0` at
-`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab` (2026-08-25).
+Atlas v0.16.0 is released as `atlas-v0.16.0` at
+`538a70cd34ce758bda40c5a200acdbdc837694a5`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -304,7 +304,90 @@ publication. The next future release must separately contract approved target
 identity and a supported installation intent before candidate creation or
 installation execution can be considered.
 
-## 6. Explicitly deferred work
+## 6. Selected v0.17 plan — Prospective Installation Destination Assessment
+
+Atlas v0.17 ends after an authenticated operator can select one exact,
+currently observed Proxmox QEMU guest incarnation as a bounded prospective
+installation destination and request an ephemeral, deterministic,
+non-authorizing assessment. The normative, decision-complete
+[v1 architecture](docs/architecture/prospective-installation-destination-v1.md)
+freezes identity, lifecycle, fingerprint, API/UI, isolation, and test
+contracts. P0 is documentation-only and complete at branch baseline
+`6ddb87234dae37c859216ff9c4faa564f0df7dd8`; P1–P5 remain future work.
+
+### P0 — Prospective Destination and Non-Authority Contract — complete
+
+Scope: freeze the exact existing-guest identity, operator-scoped durable
+selection, ephemeral interest, deterministic assessment, lifecycle, API/UI,
+fingerprint, and dependency boundaries. Acceptance: every required decision is
+normative, the Home Assistant golden remains blocked, and all enduring
+capability/authority contracts are explicitly preserved. Non-goals: every
+runtime, route, store, UI, test, migration, candidate, Agent, workflow,
+provider, worker, execution, commit, tag, and push change. Authority: the only
+new statement is that Atlas may remember one exact prospective selection.
+Later tests: documentation-to-schema traceability and structural no-authority
+checks.
+
+### P1 — Immutable Destination Selection
+
+Scope: later implement authenticated enumeration, exact re-resolution, opaque
+identity, durable operator-scoped selection, expiry, cancellation, tombstones,
+and concurrency. Acceptance: exact current fingerprint and state gates,
+24-hour expiry, no rebinding/reactivation, and restore/downgrade invariants.
+Non-goals: guest inspection, capability claims, interests, assessments, plans,
+or execution. Authority: selection records only prospective operator choice.
+Tests: state/identity/movement, bounds, expiry, cancellation, reselection,
+idempotency, concurrency, principal isolation, persistence, and restore.
+
+### P2 — Ephemeral Installation Interest and Blocked Assessment
+
+Scope: later implement one-request ephemeral interest and the pure assessment
+read model with fixed Agent unsupported fact. Acceptance: exact linkage,
+canonical ordered reasons/fingerprints, status precedence, no candidate
+evaluation, and Home Assistant remains blocked. Non-goals: durable intent,
+queue, consumer, candidate creation, compatibility probing, or mutation.
+Authority: neither object grants any. Tests: replay/conflict, expiry/staleness,
+all reason combinations, deterministic fingerprints, golden case, and absence
+of consumers/side effects.
+
+### P3 — Guarded Core API
+
+Scope: later expose only the frozen authenticated bounded routes. Acceptance:
+CSRF/trusted-origin enforcement, server-enumerated targets, closed 8 KiB
+bodies, precise method/idempotency behavior, sanitized errors, and exact
+re-resolution. Non-goals: caller URLs/addresses/provider payloads/raw identity
+or any candidate/planning/workflow/approval/action/dispatch route. Authority:
+transport exposes only selection and assessment semantics. Tests: auth, CSRF,
+origin, OpenAPI, bounds, methods, enumeration, redaction, isolation, and error
+mapping.
+
+### P4 — Mission Control Prospective Destination UI
+
+Scope: later present “Select as prospective installation destination”, explicit
+non-approval/non-installability copy, lifecycle, and ordered assessment
+blockers. Acceptance: sanitized models only and accessible fail-closed
+rendering. Non-goals: Install, Execute, Plan, Approve, Convert, Dispatch, or
+authority-suggesting workflow navigation. Authority: presentation creates no
+new authority. Tests: labels/copy, blocker order/states, accessibility,
+redaction, and absence of prohibited controls/network calls.
+
+### P5 — Isolation, Golden Cases, and Release Closure
+
+Scope: later close structural, behavioral, lifecycle, golden, documentation,
+and release evidence. Acceptance: exact unchanged repository/operational/
+Provider Intent/Discovery/approval/worker/backup/no-replay contracts and all
+focused suites pass. Non-goals: expanding capability or publishing a release
+without a separate operator procedure. Authority: no v0.17 record is consumed
+by execution and no v0.18 grandfathering. Tests: full isolation/parity,
+Home Assistant golden, persistence/restore/downgrade, UI/API, Agent/candidate/
+workflow regressions, and no side effects.
+
+The first subject v0.18 may consider is a separately frozen authoritative
+in-guest capability and identity contract for transport, runtime, privileges,
+target-scoped compatibility, and independent Agent support before durable
+installation intent or candidate creation.
+
+## 7. Explicitly deferred work
 
 - execution candidate generation and install-container execution;
 - installation-intent lifecycle and approved installation targets;
@@ -314,7 +397,7 @@ installation execution can be considered.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 7. Uncommitted future directions
+## 8. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 
