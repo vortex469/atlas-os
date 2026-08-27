@@ -16,6 +16,18 @@ from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware
 from app.core.restore_interlock import assert_restore_state_clean
 from app.execution_candidates.operator_intents import OperatorIntentStore
+from app.installation_assessment.cache import EphemeralAssessmentRetryCache
+from app.installation_targets.resolver import (
+    enumerate_destinations,
+    resolve_operational_target,
+)
+from app.installation_targets.service import (
+    InstallationDestinationSelectionService,
+)
+from app.installation_targets.service import (
+    utc_server_clock as assessment_clock,
+)
+from app.installation_targets.store import InstallationDestinationSelectionStore
 from app.intelligence.development_fixture import (
     development_fixture_enabled_and_validated,
 )
@@ -53,6 +65,7 @@ from app.routes.policies import router as policies_router
 from app.routes.providers import router as providers_router
 from app.routes.proxmox import router as proxmox_router
 from app.services.discovery_dynamic_activation import DynamicDiscoveryActivation
+from app.services.installation_plan import get_installation_plan_read_dependency
 
 configure_logging()
 logger = get_logger("atlas")
@@ -108,6 +121,24 @@ async def lifespan(app: FastAPI):
 
     load_provider_registry()
     logger.info("Provider registry initialized")
+
+    app.state.installation_destination_selection_store = (
+        InstallationDestinationSelectionStore(
+            operator_settings.installation_selection_database
+        )
+    )
+    app.state.installation_destination_selection_service = (
+        InstallationDestinationSelectionService(
+            store=app.state.installation_destination_selection_store,
+            resolver=resolve_operational_target,
+        )
+    )
+    app.state.installation_destination_enumerator = enumerate_destinations
+    app.state.installation_assessment_retry_cache = EphemeralAssessmentRetryCache()
+    app.state.installation_assessment_clock = assessment_clock
+    app.state.installation_plan_read_dependency = (
+        get_installation_plan_read_dependency()
+    )
 
     operational_ledger = OperationalDispatchLedger(
         settings.operational_dispatch.database

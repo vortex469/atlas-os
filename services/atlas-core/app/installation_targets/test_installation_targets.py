@@ -24,8 +24,10 @@ from app.installation_targets.fingerprint import (
     build_selection_fingerprint,
 )
 from app.installation_targets.resolver import (
+    CurrentDestinationIdentity,
     DestinationNotSelectableError,
     DestinationResolutionError,
+    observe_destination_identity,
     project_destination,
 )
 from app.installation_targets.service import (
@@ -51,7 +53,12 @@ from app.providers.proxmox import ProxmoxProvider
 from app.services.operational_target_fingerprint import (
     build_operational_target_fingerprint,
 )
-from app.services.provider_resource_identity import ResolvedOperationalTarget
+from app.services.provider_resource_identity import (
+    OperationalTargetIdentityUnavailableError,
+    OperationalTargetResourceNotFoundError,
+    ProviderResourceOperationError,
+    ResolvedOperationalTarget,
+)
 
 NOW = datetime(2026, 8, 27, 12, 0, 0, tzinfo=UTC)
 UUIDS = iter(UUID(f"00000000-0000-4000-8000-{value:012x}") for value in range(1, 100))
@@ -490,6 +497,44 @@ def test_stale_enumeration_and_provider_unavailable_fail_closed(tmp_path: Path) 
     assert "native secret" not in str(captured.value)
 
 
+def test_current_identity_observation_distinguishes_exact_identity_states() -> None:
+    exact = asyncio.run(
+        observe_destination_identity("110", resolver=MutableResolver(target()))
+    )
+    assert exact.destination_available is True
+    assert exact.destination_identity_available is True
+    assert exact.current_destination_fingerprint is not None
+
+    identity_unknown = asyncio.run(
+        observe_destination_identity(
+            "110",
+            resolver=MutableResolver(
+                OperationalTargetIdentityUnavailableError("raw identity detail")
+            ),
+        )
+    )
+    assert identity_unknown == CurrentDestinationIdentity(True, False, None)
+
+    unavailable = asyncio.run(
+        observe_destination_identity(
+            "110",
+            resolver=MutableResolver(
+                OperationalTargetResourceNotFoundError("raw provider detail")
+            ),
+        )
+    )
+    assert unavailable == CurrentDestinationIdentity(False, False, None)
+
+    with pytest.raises(DestinationResolutionError, match="observation failed") as captured:
+        asyncio.run(
+            observe_destination_identity(
+                "110",
+                resolver=MutableResolver(ProviderResourceOperationError("adapter secret")),
+            )
+        )
+    assert "adapter secret" not in str(captured.value)
+
+
 def test_persistence_round_trip_preserves_tombstone(tmp_path: Path) -> None:
     resolver = MutableResolver(target())
     svc = service(tmp_path, resolver)
@@ -800,6 +845,11 @@ def test_provider_resource_dependency_uses_read_only_facade() -> None:
         for alias in node.names
     }
     assert imports == {
+        "OperationalTargetIdentityUnavailableError",
+        "OperationalTargetMarkedMissingError",
+        "OperationalTargetResolutionError",
+        "OperationalTargetResourceNotFoundError",
+        "ProviderResourceError",
         "ResolvedOperationalTarget",
         "get_provider",
         "list_provider_resource_identities",

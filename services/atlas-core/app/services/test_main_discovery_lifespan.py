@@ -43,11 +43,12 @@ def test_application_lifespan_honors_dynamic_discovery_activation(
     settings = SimpleNamespace(
         dynamic_discovery=SimpleNamespace(enabled=enabled),
         provider_intents=SimpleNamespace(),
-        operator_auth=SimpleNamespace(
-            enabled=False,
-            intent_database=str(tmp_path / "intents.db"),
-            trusted_origins=(),
-        ),
+            operator_auth=SimpleNamespace(
+                enabled=False,
+                intent_database=str(tmp_path / "intents.db"),
+                installation_selection_database=str(tmp_path / "selections.db"),
+                trusted_origins=(),
+            ),
         operational_dispatch=SimpleNamespace(
             database=str(tmp_path / "dispatch.db"),
             agent_auth_file=str(tmp_path / "agent-token"),

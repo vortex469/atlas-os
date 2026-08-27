@@ -19,7 +19,9 @@ from app.installation_targets.fingerprint import (
     build_selection_fingerprint,
 )
 from app.installation_targets.resolver import (
+    CurrentDestinationIdentity,
     TargetResolver,
+    observe_destination_identity,
     resolve_destination,
     resolve_destination_identity,
 )
@@ -168,6 +170,32 @@ class InstallationDestinationSelectionService:
                 terminated_at=instant,
             ).record
         return record
+
+    def get_for_assessment(
+        self, *, selection_id: str, selected_by: str
+    ) -> InstallationDestinationSelectionV1:
+        """Load caller-owned state and lazily expire it without live rebinding."""
+        now, instant = _instant(self._clock)
+        stored = self._store.get(selection_id, selected_by)
+        record = stored.record
+        if record.status != "active":
+            return record
+        expires = datetime.strptime(record.expires_at, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=UTC
+        )
+        if now >= expires:
+            return self._store.transition(
+                selection_id=selection_id,
+                selected_by=selected_by,
+                status="expired",
+                terminated_at=instant,
+            ).record
+        return record
+
+    async def observe_current_identity(
+        self, resource_id: str
+    ) -> CurrentDestinationIdentity:
+        return await observe_destination_identity(resource_id, resolver=self._resolver)
 
     def cancel(
         self, *, selection_id: str, selected_by: str

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
 from app.installation_targets.contract import ProspectiveInstallationDestinationV1
 from app.installation_targets.fingerprint import (
@@ -11,10 +12,19 @@ from app.installation_targets.fingerprint import (
     build_enumeration_token,
 )
 from app.services.operational_target_fingerprint import (
-    OperationalTargetIdentityUnavailableError,
+    OperationalTargetIdentityUnavailableError as FingerprintIdentityUnavailableError,
+)
+from app.services.operational_target_fingerprint import (
     build_operational_target_fingerprint,
 )
 from app.services.provider_resource_identity import (
+    OperationalTargetIdentityUnavailableError as ResolvedIdentityUnavailableError,
+)
+from app.services.provider_resource_identity import (
+    OperationalTargetMarkedMissingError,
+    OperationalTargetResolutionError,
+    OperationalTargetResourceNotFoundError,
+    ProviderResourceError,
     ResolvedOperationalTarget,
     get_provider,
     list_provider_resource_identities,
@@ -31,6 +41,15 @@ class DestinationNotSelectableError(DestinationResolutionError):
 
 
 TargetResolver = Callable[[str, str, str], Awaitable[ResolvedOperationalTarget]]
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentDestinationIdentity:
+    """Current read-only facts kept distinct from stored selection identity."""
+
+    destination_available: bool
+    destination_identity_available: bool
+    current_destination_fingerprint: str | None
 
 
 def project_destination(
@@ -111,6 +130,40 @@ async def resolve_destination_identity(
         raise DestinationResolutionError("destination identity unavailable") from error
 
 
+async def observe_destination_identity(
+    resource_id: str, *, resolver: TargetResolver = resolve_operational_target
+) -> CurrentDestinationIdentity:
+    """Observe exact current identity without changing selection lifecycle state."""
+    try:
+        target = await resolver("proxmox", resource_id, "qemu")
+        resource = target.resource
+        if (
+            target.provider.id != "proxmox"
+            or resource.provider_id != "proxmox"
+            or resource.resource_type != "qemu"
+        ):
+            return CurrentDestinationIdentity(False, False, None)
+        return CurrentDestinationIdentity(
+            True,
+            True,
+            build_destination_fingerprint(
+                resource_id=resource.resource_id,
+                operational_fingerprint=target.resource_fingerprint,
+            ),
+        )
+    except ResolvedIdentityUnavailableError:
+        return CurrentDestinationIdentity(True, False, None)
+    except (
+        OperationalTargetMarkedMissingError,
+        OperationalTargetResourceNotFoundError,
+    ):
+        return CurrentDestinationIdentity(False, False, None)
+    except (OperationalTargetResolutionError, ProviderResourceError) as error:
+        raise DestinationResolutionError("destination observation failed") from error
+    except Exception as error:
+        raise DestinationResolutionError("destination observation failed") from error
+
+
 async def enumerate_destinations() -> tuple[ProspectiveInstallationDestinationV1, ...]:
     """Enumerate only selectable guests from the existing provider read path."""
     try:
@@ -149,7 +202,7 @@ async def enumerate_destinations() -> tuple[ProspectiveInstallationDestinationV1
                 )
             except (
                 DestinationNotSelectableError,
-                OperationalTargetIdentityUnavailableError,
+                FingerprintIdentityUnavailableError,
             ):
                 continue
         return tuple(sorted(destinations, key=lambda item: int(item.resource_id)))
