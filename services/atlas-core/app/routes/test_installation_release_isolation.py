@@ -85,6 +85,14 @@ V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_candidate_lifecycle" / "store.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_candidate_lifecycle.py",
+    APP_ROOT / "installation_approval_intent" / "contract.py",
+    APP_ROOT / "installation_approval_intent" / "service.py",
+    APP_ROOT / "installation_approval_intent" / "store.py",
+}
+
+V021_V019_ALLOWED_CONSUMERS = {
+    APP_ROOT / "installation_approval_intent" / "contract.py",
+    APP_ROOT / "installation_approval_intent" / "store.py",
 }
 
 FORBIDDEN_DEPENDENCIES = (
@@ -261,7 +269,7 @@ def test_v019_is_read_only_and_has_no_authority_dependency() -> None:
 def test_no_authority_or_mutation_subsystem_consumes_v019_records() -> None:
     violations: list[str] = []
     for path in _production_python_files(APP_ROOT):
-        if path in V019_ALLOWED_CONSUMERS:
+        if path in V019_ALLOWED_CONSUMERS | V021_V019_ALLOWED_CONSUMERS:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V019_RECORD_MARKERS:
