@@ -75,8 +75,9 @@ def test_no_production_module_consumes_or_registers_simulation() -> None:
         "agent-installation-intake-simulation",
     )
     violations: list[str] = []
+    delivery_model_root = APP_ROOT / "installation_handoff_simulated_delivery"
     for path in sorted(APP_ROOT.rglob("*.py")):
-        if PACKAGE_ROOT in path.parents:
+        if PACKAGE_ROOT in path.parents or delivery_model_root in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in markers:

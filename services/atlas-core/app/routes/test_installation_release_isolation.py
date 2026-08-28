@@ -118,6 +118,8 @@ V024_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_dispatch_handoff" / "store.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_dispatch_handoff.py",
+    APP_ROOT / "installation_handoff_simulated_delivery" / "__init__.py",
+    APP_ROOT / "installation_handoff_simulated_delivery" / "contract.py",
 }
 V025_RECORD_MARKERS = (
     "app.agent_intake_simulation",
@@ -885,8 +887,9 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
 
     agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
     simulation_root = agent_root / "agent_intake_simulation"
+    delivery_model_root = agent_root / "installation_handoff_simulated_delivery"
     for path in _production_python_files(agent_root):
-        if simulation_root in path.parents:
+        if simulation_root in path.parents or delivery_model_root in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V024_RECORD_MARKERS:
@@ -1014,20 +1017,24 @@ def test_v024_home_assistant_remains_non_installable_and_non_executable() -> Non
 
 
 def test_v025_simulation_has_no_core_or_agent_production_consumer() -> None:
-    """Only the isolated Agent package may recognize simulation records."""
+    """Only isolated v0.25/v0.26 model packages may recognize simulation records."""
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     simulation_root = agent_root / "agent_intake_simulation"
+    delivery_core_root = APP_ROOT / "installation_handoff_simulated_delivery"
+    delivery_agent_root = agent_root / "installation_handoff_simulated_delivery"
     violations: list[str] = []
 
     for path in _production_python_files(APP_ROOT):
+        if delivery_core_root in path.parents:
+            continue
         source = path.read_text(encoding="utf-8")
         for marker in V025_RECORD_MARKERS:
             if marker in source:
                 violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
 
     for path in _production_python_files(agent_root):
-        if simulation_root in path.parents:
+        if simulation_root in path.parents or delivery_agent_root in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V025_RECORD_MARKERS:
