@@ -1,10 +1,11 @@
-"""Atlas v0.16-v0.22 release-surface and authority-isolation locks."""
+"""Atlas v0.16-v0.23 release-surface and authority-isolation locks."""
 
 from __future__ import annotations
 
 import ast
 import re
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from fastapi import FastAPI
@@ -94,6 +95,22 @@ V022_RECORD_MARKERS = (
     "agent-install-container-validation-v1",
     "agent-install-container-audit-evidence-v1",
 )
+V023_RECORD_MARKERS = (
+    "app.installation_execution_request",
+    "InstallationExecutionRequestV1",
+    "installation-execution-request-v1",
+    "installation/execution-requests",
+)
+V023_ALLOWED_CONSUMERS = {
+    APP_ROOT / "api" / "v1" / "router.py",
+    APP_ROOT / "config" / "settings.py",
+    APP_ROOT / "installation_execution_request" / "__init__.py",
+    APP_ROOT / "installation_execution_request" / "contract.py",
+    APP_ROOT / "installation_execution_request" / "service.py",
+    APP_ROOT / "installation_execution_request" / "store.py",
+    APP_ROOT / "main.py",
+    APP_ROOT / "routes" / "installation_execution_request.py",
+}
 V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
     APP_ROOT / "installation_candidate_lifecycle" / "__init__.py",
@@ -105,6 +122,10 @@ V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_approval_intent" / "contract.py",
     APP_ROOT / "installation_approval_intent" / "service.py",
     APP_ROOT / "installation_approval_intent" / "store.py",
+    APP_ROOT / "installation_execution_request" / "contract.py",
+    APP_ROOT / "installation_execution_request" / "service.py",
+    APP_ROOT / "installation_execution_request" / "store.py",
+    APP_ROOT / "routes" / "installation_execution_request.py",
 }
 V021_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
@@ -113,8 +134,16 @@ V021_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_approval_intent" / "contract.py",
     APP_ROOT / "installation_approval_intent" / "service.py",
     APP_ROOT / "installation_approval_intent" / "store.py",
+    APP_ROOT / "installation_execution_request" / "contract.py",
+    APP_ROOT / "installation_execution_request" / "service.py",
+    APP_ROOT / "installation_execution_request" / "store.py",
+    APP_ROOT / "routes" / "installation_execution_request.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_approval_intent.py",
+}
+V022_ALLOWED_CONSUMERS = {
+    APP_ROOT / "installation_execution_request" / "__init__.py",
+    APP_ROOT / "installation_execution_request" / "contract.py",
 }
 
 V021_V019_ALLOWED_CONSUMERS = {
@@ -660,6 +689,8 @@ def test_home_assistant_cannot_be_preserved_or_approved_in_v021() -> None:
 def test_no_core_production_path_consumes_v022_validation_records() -> None:
     violations: list[str] = []
     for path in _production_python_files(APP_ROOT):
+        if path in V022_ALLOWED_CONSUMERS:
+            continue
         source = path.read_text(encoding="utf-8")
         for marker in V022_RECORD_MARKERS:
             if marker in source:
@@ -713,3 +744,97 @@ def test_v022_adds_no_core_route_or_core_to_agent_bridge() -> None:
             if "install_container_contract" in source:
                 violations.append(str(path.relative_to(APP_ROOT)))
     assert violations == []
+
+
+def test_v023_records_have_no_authority_or_external_mutation_consumer() -> None:
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        if path in V023_ALLOWED_CONSUMERS:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in V023_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
+
+    agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
+    for path in _production_python_files(agent_root):
+        source = path.read_text(encoding="utf-8")
+        for marker in V023_RECORD_MARKERS:
+            if marker in source:
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
+    assert violations == []
+
+
+def test_v023_is_record_only_default_disabled_and_non_authorizing() -> None:
+    from app.config.settings import OperatorAuthSettings
+    from app.installation_execution_request.contract import (
+        InstallationExecutionRequestV1,
+    )
+    from app.installation_execution_request.service import (
+        InstallationExecutionRequestService,
+    )
+
+    assert OperatorAuthSettings().installation_execution_request_enabled is False
+    assert InstallationExecutionRequestService.__init__.__kwdefaults__ == {
+        "enabled": False
+    }
+    authority_fields = {
+        "execution_authorized",
+        "dispatch_allowed",
+        "agent_invocation_allowed",
+        "mutation_allowed",
+        "replay_allowed",
+    }
+    for field in authority_fields:
+        annotation = InstallationExecutionRequestV1.model_fields[field].annotation
+        assert annotation == Literal[False]
+
+    package = APP_ROOT / "installation_execution_request"
+    forbidden_runtime_dependencies = tuple(
+        dependency for dependency in FORBIDDEN_DEPENDENCIES if dependency != "approval"
+    )
+    imports: list[str] = []
+    for path in _production_python_files(package):
+        imports.extend(
+            f"{path.relative_to(APP_ROOT)} -> {imported}"
+            for imported in _imports(path)
+            if any(term in imported for term in forbidden_runtime_dependencies)
+        )
+    assert imports == []
+
+
+def test_v023_route_has_only_create_list_and_owned_item_read() -> None:
+    from app.routes.installation_execution_request import (
+        router as execution_request_router,
+    )
+
+    application = FastAPI()
+    application.include_router(execution_request_router, prefix="/api/v1")
+    paths = {
+        path: set(methods)
+        for path, methods in application.openapi()["paths"].items()
+    }
+    assert paths == {
+        "/api/v1/installation/execution-requests": {"get", "post"},
+        "/api/v1/installation/execution-requests/{execution_request_id}": {
+            "get"
+        },
+    }
+    prohibited = (
+        "install",
+        "execute",
+        "deploy",
+        "dispatch",
+        "send-to-agent",
+        "start-workflow",
+        "rollback",
+    )
+    assert not any(
+        segment in prohibited
+        for path in paths
+        for segment in path.removeprefix(
+            "/api/v1/installation/execution-requests"
+        ).split("/")
+    )

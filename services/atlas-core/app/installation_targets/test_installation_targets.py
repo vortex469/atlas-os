@@ -765,9 +765,9 @@ def test_store_normalizes_decode_and_idempotency_corruption(
         connection.execute(
             f"UPDATE installation_destination_selections SET {column}=?", (bad_value,)
         )
-    restored = InstallationDestinationSelectionStore(database)
-    with pytest.raises(SelectionStoreError):
-        restored.list_for_principal("operator-a")
+    with pytest.raises(SelectionStoreError) as exc_info:
+        InstallationDestinationSelectionStore(database)
+    assert str(exc_info.value) == "selection store initialization failed"
 
 
 def test_atomic_expiry_cleanup_frees_capacity_at_exact_boundary(tmp_path: Path) -> None:

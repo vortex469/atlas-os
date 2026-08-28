@@ -3,6 +3,113 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.23 P0–P5 release validation and closure — complete
+
+Atlas v0.23 is **Installation Execution Request Boundary**. P0–P5 are complete.
+P5 validation started from `b6148294039c295b9e781ac13079403c4deee69b`.
+
+- [x] Start from current `main` after v0.22.0 and freeze the documentation-only
+  [v1 planning contract](architecture/installation-execution-request-v1.md).
+- [x] Define the exact closed create and durable record schemas, all mandatory
+  v0.20/v0.21/v0.22 IDs and fingerprints, same-owner linkage, and Core
+  domain-separated fingerprint.
+- [x] Freeze `recorded`/terminal `expired` lifecycle, exact 60-second evidence
+  intake freshness, five-minute maximum record lifetime, and fail-closed clock
+  behavior.
+- [x] Freeze atomic reservation of the idempotency key, approval intent, Agent
+  request ID/fingerprint, validation fingerprint, and Core fingerprint; exact
+  replay returns the original without revalidation or work.
+- [x] Define operator-scoped append-only ownership, quotas, corruption and
+  ambiguity behavior, redaction, closed errors, audit evidence, and unchanged
+  backup-v3 posture.
+- [x] Limit future API scope to authenticated create/list/item-read and UI scope
+  to explicit non-executing submission/review with operator-submitted evidence
+  provenance and no authority controls.
+- [x] Keep the feature default-disabled through release closure and keep
+  `install-container` unsupported with no execution consumer or enable switch.
+- [x] Preserve all v0.16–v0.22 and existing approval/audit/workflow/dispatch/
+  execution/no-replay/capability contracts unchanged.
+- [x] Confirm P0 adds planning documentation only: no runtime, test, route,
+  store, UI, Agent/worker invocation, Core-to-Agent dispatch, process/shell/
+  Docker/Podman command, provider/repository/guest mutation, workflow, install,
+  deployment, rollback, migration, tag, push, publication, or release.
+- [x] P1 — implement closed Core models and pure validation.
+- [x] P2 — implement the bounded append-only request store.
+- [x] P3 — implement the authenticated record-only Core API.
+- [x] P4 — implement Mission Control evidence submission and review.
+- [x] P5 — close isolation, no-replay, goldens, regressions, and release gates.
+
+### P0 authority and golden gates
+
+- [x] `recorded request != execution approval != dispatch != execution`; all
+  five authority fields are fixed false in every lifecycle state.
+- [x] Core performs only local owned-record reads, pure validation, and a
+  future append; v0.23 never calls Agent or any mutation/authority subsystem.
+- [x] V0.22 evidence is explicitly operator-submitted and fingerprint-checked,
+  not promoted into trusted Agent attestation, liveness, or runtime readiness.
+- [x] One approval intent can create at most one request. Expiry, restart,
+  timeout, lost response, or source deletion cannot open a replay path.
+- [x] Home Assistant remains blocked before v0.20 and by v0.22 artifact policy;
+  no deployment artifact or golden exception is added.
+- [x] What remains blocked is explicit: independent execution approval,
+  trusted Agent transport, execution-time proof, consumption/dispatch, worker/
+  runtime, recovery/audit, image acquisition, deployment, and rollback.
+
+### P5 authority and isolation gates
+
+- [x] The service constructor and configuration default remain disabled;
+  durable records are `record-only`, and all five authority fields remain
+  schema-fixed false.
+- [x] Every Core and Agent production Python module is scanned: only the
+  v0.23 contract/store/service, guarded route, configuration, and application
+  wiring recognize execution-request records. No invocation, dispatch,
+  worker, workflow, provider/repository/in-guest mutation, deployment,
+  rollback, candidate execution, or replay-bypass consumer exists.
+- [x] Core OpenAPI exposes only guarded POST/list/item-read under
+  `/api/v1/installation/execution-requests`; it exposes no install, execute,
+  deploy, dispatch, send-to-Agent, start-workflow, or rollback sibling.
+- [x] Mission Control confines endpoint calls to the dedicated adapter's two
+  guarded reads and one explicit record-only create. The view has no
+  prohibited control, label, navigation, Agent bridge, or other mutation.
+- [x] Home Assistant remains blocked before candidate preservation and by the
+  v0.22 artifact policy; no deployment artifact was added.
+
+### P5 observed validation evidence
+
+- [x] P5 validation closure commit:
+  `c387d0d test(v0.23): close installation execution request`.
+- [x] Gate-alignment commit included in the reviewed release branch:
+  `c47ee20 test(v0.23): align selection corruption fail-closed gate`.
+- [x] Both requested `rc1-python-ruff-gate` commands passed.
+- [x] Focused Core release-isolation, route, and service validation passed:
+  233 tests. The suite was run from `services/atlas-core`, its expected
+  working directory, because one pre-existing structural test uses an
+  `app/...` relative path; host access was needed only for the existing
+  provider-secret permission check.
+- [x] Full Atlas Core suite passed in a clean environment: `2,907 passed`.
+- [x] Full Agent validation passed: 948 tests, using the established isolated
+  `/tmp` XDG state directory because the sandboxed default state directory is
+  read-only.
+- [x] Mission Control passed 499 tests, lint with zero errors (one pre-existing
+  hook-dependency warning), and production build (with the existing chunk-size
+  advisory).
+- [x] P5 changes only release-isolation/authority tests and these release
+  documents. No runtime behavior, migration, tag, push, release, installation,
+  execution, deployment, rollback, or external mutation was added or run.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after full
+  clean-environment review:
+  `c47ee204b72563dc471ef06c589b820a3b87d415`.
+- [x] Final release-preparation commit:
+  `2e69785 docs(v0.23): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release commit.
+- [x] Created the immutable annotated `atlas-v0.23.0` tag at
+  `2e69785049ce863d36e1007bf67ae8da69ca1f86` (`2e69785`).
+- [x] Pushed the final release branch and `atlas-v0.23.0` tag to `origin`.
+- [ ] Publish the Atlas v0.23 release as `atlas-v0.23.0`.
+
 ## Atlas v0.22 P0–P5 release validation and closure — complete
 
 Atlas v0.22 is **Agent Install-Container Contract**. P0–P5 are complete. P5
