@@ -1034,11 +1034,10 @@ and v0.23 execution request. It does not send the envelope. The only Agent
 shape is a contract-only parser result, `valid_but_not_admitted`, with every
 authority field false and no route or consumer.
 
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is selected and
-documentation-only. P1–P5 are planned and unimplemented: isolated models and
-pure assembly; a bounded append-only Core store; preparation-only create/list/
-read API; Mission Control evidence review; then isolation/no-replay release
-closure.
+The dependency order P0 → P1 → P2 → P3 → P4 → P5 is complete: the frozen
+contract, isolated models and pure assembly, bounded append-only Core store,
+preparation-only create/list/read API, Mission Control evidence review, and
+isolation/no-replay release closure are implemented and validated.
 
 The exact authority boundary is local owned-record resolution, pure validation,
 and preparation of one evidence envelope. No live Core-to-Agent invocation,
@@ -1051,6 +1050,12 @@ and frozen Agent intake vocabulary. Trusted transport, fresh execution
 approval, live Agent intake, atomic consume/no-redelivery, execution-time
 proof, worker/runtime behavior, recovery, side-effect audit, deployment,
 rollback, and Home Assistant installation remain blocked.
+
+P5 locks the release boundary structurally across Core, Agent, and Mission
+Control. Handoff records have no live invocation, HTTP, delivery, worker,
+workflow, provider/repository/guest mutation, candidate execution, deployment,
+rollback, or replay-bypass consumer. The feature remains default-disabled and
+record-only, and Home Assistant remains non-installable and non-executable.
 
 ## 14. Explicitly deferred work
 

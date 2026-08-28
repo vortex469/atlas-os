@@ -1,6 +1,6 @@
 # Installation Dispatch Handoff v1 planning contract
 
-Status: **Atlas v0.24 P0 selected; documentation-only contract freeze**.
+Status: **Atlas v0.24 P0–P5 complete; release boundary validated**.
 
 This document freezes the narrowest non-executing **Installation Dispatch
 Handoff** boundary. Core may prepare one immutable, operator-owned dispatch
@@ -15,8 +15,9 @@ The authority equation for every v0.24 phase is:
 
 ## Repository inspection baseline
 
-Planning starts from current `main` at `d51d91e`, after the v0.23.0 release
-and merge. V0.20 supplies an owned durable non-executable candidate; v0.21 an
+Planning started from `main` at `d51d91e`; P5 release validation started from
+`c50c09c850451f68a4b267d99d3e95b8a6197a52`. V0.20 supplies an owned durable
+non-executable candidate; v0.21 an
 immutable approval statement; v0.22 a validation-only Agent contract and
 operator-submitted evidence; and v0.23 an owned, freshness-bounded,
 non-executing execution-request record. V0.23 explicitly leaves consumption,
@@ -266,38 +267,45 @@ lifecycle, idempotency/no-replay, contract-only Agent shape, redaction/audit,
 default-disabled API/UI, goldens, threats, and must-not-change contracts. P0
 changes planning documentation only.
 
-### P1 — Closed models and pure assembly/admission validation — planned
+### P1 — Closed models and pure assembly/admission validation — complete
 
 Implement isolated immutable Core envelope and Agent intake/admission models,
 canonical fingerprints, exact linkage, freshness, derived lifecycle, pure
 assembly over injected authoritative values, redacted failures, and hostile
 input tests. Perform no I/O, persistence, registration, or invocation.
 
-### P2 — Bounded append-only handoff store — planned
+### P2 — Bounded append-only handoff store — complete
 
 Implement only the independent Core store, atomic reservations, idempotency,
 quotas, restart durability, reads, and fail-closed corruption/ambiguity. Add no
 Agent store, delivery attempt, receipt, event, queue, worker, or consumer.
 
-### P3 — Authenticated preparation-only Core API — planned
+### P3 — Authenticated preparation-only Core API — complete
 
 Implement create/list/item-read only, resolve the complete owned chain locally,
 and lock methods, OpenAPI, redaction, freshness, and dependency isolation. Do
 not expose or call the contract-only Agent intake.
 
-### P4 — Mission Control handoff-evidence review — planned
+### P4 — Mission Control handoff-evidence review — complete
 
 Implement explicit preparation confirmation and immutable review with clear
 not-delivered language, ownership isolation, accessibility, and no prohibited
 controls, navigation, or requests.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage, lifecycle boundaries, one-envelope-per-request,
 concurrency/restart/timeout ambiguity, quotas, corruption, redaction, API/UI
 contracts, zero Core/Agent consumers, default-disabled posture, all prior
 goldens, capability parity, and full regression gates. P5 does not migrate,
 tag, push, publish, deploy, or release automatically.
+
+Release-isolation tests scan every Core and Agent production Python module and
+lock the exact Core OpenAPI and Mission Control adapter/view surfaces. They
+prove the prepared record remains default-disabled, record-only,
+non-delivering, non-invoking, non-executing, non-authorizing, and unconsumed by
+live Agent HTTP/invocation, dispatch, worker, workflow, provider/repository/
+guest mutation, candidate execution, deployment, rollback, or replay paths.
 
 ## Must-not-change contracts for P0–P5
 

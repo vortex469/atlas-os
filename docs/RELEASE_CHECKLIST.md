@@ -3,10 +3,10 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.24 P0 — Installation Dispatch Handoff planning
+## Atlas v0.24 P0–P5 release validation and closure — complete
 
-Atlas v0.24 is **Installation Dispatch Handoff**. Only P0 planning is selected;
-P1–P5 remain unimplemented.
+Atlas v0.24 is **Installation Dispatch Handoff**. P0–P5 are complete. P5
+validation started from `c50c09c850451f68a4b267d99d3e95b8a6197a52`.
 
 - [x] Start from current `main` after v0.23.0 and freeze the documentation-only
   [v1 planning contract](architecture/installation-dispatch-handoff-v1.md).
@@ -28,11 +28,11 @@ P1–P5 remain unimplemented.
   route, store, UI, Agent/worker invocation, network delivery, Docker/Podman/
   shell/process execution, provider/repository/guest mutation, workflow,
   installation, deployment, rollback, tag, push, publication, or release.
-- [ ] P1 — implement closed models and pure assembly/admission validation.
-- [ ] P2 — implement the bounded append-only Core handoff store.
-- [ ] P3 — implement the authenticated preparation-only Core API.
-- [ ] P4 — implement Mission Control handoff evidence review.
-- [ ] P5 — close isolation, no-replay, goldens, regressions, and release gates.
+- [x] P1 — implement closed models and pure assembly/admission validation.
+- [x] P2 — implement the bounded append-only Core handoff store.
+- [x] P3 — implement the authenticated preparation-only Core API.
+- [x] P4 — implement Mission Control handoff evidence review.
+- [x] P5 — close isolation, no-replay, goldens, regressions, and release gates.
 
 ### P0 authority and blocked-work gates
 
@@ -44,6 +44,43 @@ P1–P5 remain unimplemented.
 - [x] Trusted transport, independent execution approval, live intake, atomic
   consume/no-redelivery, execution-time proof, worker/runtime execution,
   recovery, side-effect audit, deployment, and rollback remain blocked.
+
+### P5 authority and isolation gates
+
+- [x] The service constructor and configuration default remain disabled;
+  envelopes are record-only and both Core and contract-only Agent authority
+  field sets remain schema-fixed false.
+- [x] Every Core and Agent production Python module is scanned: only the
+  isolated handoff contract/store/service, guarded route, router, and
+  application wiring recognize v0.24 records. No live Agent invocation or
+  HTTP call, delivery, worker, workflow, provider/repository/in-guest mutation,
+  candidate execution, deployment, rollback, or replay-bypass consumer exists.
+- [x] Core OpenAPI exposes only guarded POST/list/item-read under
+  `/api/v1/installation/dispatch-handoffs`; it exposes no install, execute,
+  dispatch, deliver, deploy, send-to-Agent, start-workflow, rollback, or replay
+  route.
+- [x] Mission Control confines endpoint calls to the dedicated adapter's two
+  guarded reads and one explicit record-only create. The view has no prohibited
+  authority control, navigation, label, Agent bridge, or other mutation.
+- [x] Home Assistant remains blocked before candidate preservation and by the
+  v0.22 artifact policy; no deployment artifact was added.
+
+### P5 observed validation evidence
+
+- [x] Both requested `rc1-python-ruff-gate` commands passed.
+- [x] Focused Core release-isolation, route, and service validation passed:
+  237 tests. It ran from `services/atlas-core`, the expected working directory;
+  host access was needed only for the existing provider-secret permission
+  check.
+- [x] Full Agent validation passed: 948 tests, using isolated `/tmp` XDG state
+  and host execution for the existing local integration-test boundary.
+- [x] Mission Control passed 506 tests, lint with zero errors (one pre-existing
+  hook-dependency warning), and production build (with the existing chunk-size
+  advisory).
+- [x] `git diff --check` passed.
+- [x] P5 changes only release-isolation/authority tests and these release
+  documents. No runtime behavior, migration, tag, push, release, installation,
+  execution, deployment, rollback, or external mutation was added or run.
 
 ## Atlas v0.23 P0–P5 release validation and closure — complete
 
