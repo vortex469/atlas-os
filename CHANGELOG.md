@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.25 P0–P4 — Agent Intake Simulation
+#### v0.25 P0–P5 — Agent Intake Simulation
 
 - Selected Atlas v0.25 **Agent Intake Simulation** and froze the
   documentation-only [v1 planning
@@ -45,6 +45,22 @@ release boundaries.
 - P4 validation passed 509 Mission Control tests, Mission Control lint/build,
   the Agent Ruff gate, 968 Agent tests, and `git diff --check`; lint reported
   one pre-existing exhaustive-deps warning and no errors.
+- P5 closes the release with release-wide isolation, regression, authority,
+  no-replay, owned-readback, capability-parity, and Home Assistant blocked-
+  golden tests. Production Core and Agent paths cannot consume v0.25 records;
+  Agent HTTP/OpenAPI, CLI/shell, container/settings registration, worker,
+  workflow, runtime, provider/repository/guest mutation, candidate execution,
+  deployment, rollback, and replay-bypass surfaces remain absent.
+- Mission Control remains free of v0.25 API clients, mutations, routes,
+  navigation, controls, prohibited action labels, and evidence rendering.
+  `install-container` remains unsupported and default-disabled, and Home
+  Assistant remains blocked with no deployment artifact. P5 adds no runtime
+  behavior, authority, migration, tag, push, release, or deployment.
+- P5 validation passed both Core and Agent Ruff gates, 35 focused Core
+  release-isolation tests, 969 Agent tests, 509 Mission Control tests, Mission
+  Control lint/build, and `git diff --check`. Lint retained one pre-existing
+  exhaustive-deps warning and the build retained its existing chunk-size
+  advisory; neither reported an error.
 
 #### v0.24 P0–P5 — Installation Dispatch Handoff
 

@@ -3,11 +3,11 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.25 P0–P4 Agent Intake Simulation — P4 complete
+## Atlas v0.25 P0–P5 Agent Intake Simulation — complete
 
-Atlas v0.25 is **Agent Intake Simulation**. P0–P4 are complete from the frozen
-[v1 contract](architecture/agent-intake-simulation-v1.md); P5 remains future
-work.
+Atlas v0.25 is **Agent Intake Simulation**. P0–P5 are complete from the frozen
+[v1 contract](architecture/agent-intake-simulation-v1.md). P5 validation
+started from `978bbc4110ca108621d3fe794b6969d750932c19`.
 
 - [x] P1 — implement closed immutable models, strict parsing, canonical
   fingerprints, lifecycle derivation, and hostile-input bounds without I/O.
@@ -18,6 +18,8 @@ work.
   durability, owned reads, and fail-closed corruption behavior.
 - [x] P4 — lock Mission Control to no v0.25 presentation because the frozen
   contract exposes no UI-facing read model.
+- [x] P5 — close release isolation, regression, authority, no-replay,
+  owned-readback, capability-parity, and Home Assistant blocked-golden gates.
 - [x] Prove there is no v0.25 Mission Control API client, hook, type, component,
   page, route, navigation, or mutation call.
 - [x] Prove there is no install/run/execute/deploy/dispatch/deliver/send-to-
@@ -40,11 +42,45 @@ work.
 - [x] Keep Home Assistant blocked, non-installable, and non-executable; confirm
   `compose/home-assistant.yaml` remains absent.
 
+### P5 authority and isolation gates
+
+- [x] Scan all production Core modules and every Agent module outside the
+  isolated package; no v0.25 record consumer, Core-to-Agent delivery bridge,
+  candidate execution, replay bypass, or authority expansion exists.
+- [x] Keep the service default-disabled and simulation-only with delivery,
+  admission, execution, worker, mutation, and replay authority fixed false.
+- [x] Keep Agent HTTP/OpenAPI, CLI/shell commands, app/container registration,
+  settings enablement, worker, workflow, provider, repository, in-guest,
+  deployment, and rollback surfaces absent.
+- [x] Constrain readback to direct operator-owned `get` and lifecycle calls on
+  the explicitly constructed in-process store; no public list/API/UI surface
+  exists.
+- [x] Lock Mission Control to no v0.25 API client, mutation, component, page,
+  route, navigation, control, prohibited action label, or evidence rendering.
+- [x] Preserve `install-container` as unsupported and outside executable Agent
+  intent sets.
+- [x] Preserve the Home Assistant blocked golden as non-installable and
+  non-executable; no `.yaml` or `.yml` deployment artifact exists.
+- [x] Add no runtime behavior, API route, command, registration, authority,
+  migration, tag, push, release, or deployment.
+
 P4 validation passed 509 Mission Control tests, Mission Control lint and build,
 the Agent Ruff gate, and 968 Agent tests. Mission Control lint retained one
 pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning; there were no
 lint errors. `git diff --check` passed. No runtime surface, tag, push, release,
 or deployment was added or performed.
+
+### P5 observed validation evidence
+
+- [x] Both requested Core and Agent `rc1-python-ruff-gate` commands passed.
+- [x] Focused Core release-isolation validation passed: 35 tests.
+- [x] Full Agent regression validation passed: 969 tests.
+- [x] Mission Control passed 509 tests, lint, and production build. Lint
+  retained the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning
+  and reported no errors; the build retained only its existing chunk-size
+  advisory.
+- [x] `git diff --check` passed before the closure commit.
+- [x] No migration, tag, push, release, deployment, or rollback was performed.
 
 ## Atlas v0.24 P0–P5 release validation and closure — complete
 

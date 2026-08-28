@@ -37,11 +37,11 @@ describe("v0.25 Agent intake simulation presentation boundary", () => {
         expect(source).not.toMatch(/(?:href|to|navigate\()[^\n]*simulation/i);
 
         for (const label of [
-            "Install", "Run", "Execute", "Deploy", "Dispatch", "Deliver",
-            "Send to Agent", "Start workflow", "Rollback",
+            "install", "run", "execute", "deploy", "dispatch", "deliver",
+            "send(?:-|\\s+)to(?:-|\\s+)agent", "start(?:-|\\s+)workflow", "rollback",
         ]) {
             expect(source).not.toMatch(new RegExp(
-                `(?:intake|simulation)[^\\n]{0,120}>\\s*${label}(?:\\s+now)?\\s*<`,
+                `(?:intake|simulation)[^\\n]{0,160}(?:>|aria-label=["'])\\s*${label}(?:\\s+now)?(?:\\s*<|["'])`,
                 "i",
             ));
         }

@@ -100,10 +100,12 @@ def test_simulation_package_has_no_effect_or_external_io_dependency() -> None:
         "app.workflow",
         "asyncio",
         "docker",
+        "os",
         "http.client",
         "httpx",
         "podman",
         "requests",
+        "shlex",
         "socket",
         "subprocess",
         "urllib",
@@ -125,3 +127,35 @@ def test_only_store_owns_a_filesystem_dependency() -> None:
     }
 
     assert filesystem_importers == {"store.py"}
+
+
+def test_readback_is_only_an_owned_in_process_store_operation() -> None:
+    service_tree = ast.parse(
+        (PACKAGE_ROOT / "service.py").read_text(encoding="utf-8"),
+        filename="service.py",
+    )
+    public_methods = {
+        node.name
+        for node in ast.walk(service_tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and not node.name.startswith("_")
+    }
+    assert public_methods == {"simulate", "get", "lifecycle"}
+
+    for method_name, store_method in (("get", "get"), ("lifecycle", "lifecycle")):
+        method = next(
+            node
+            for node in ast.walk(service_tree)
+            if isinstance(node, ast.FunctionDef) and node.name == method_name
+        )
+        calls = [node for node in ast.walk(method) if isinstance(node, ast.Call)]
+        assert len(calls) == 1
+        call = calls[0]
+        assert isinstance(call.func, ast.Attribute)
+        assert call.func.attr == store_method
+        assert isinstance(call.func.value, ast.Attribute)
+        assert call.func.value.attr == "_store"
+        assert {keyword.arg for keyword in call.keywords} == {
+            "operator_id",
+            "intake_record_id",
+        }

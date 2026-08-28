@@ -25,6 +25,7 @@ def _production_sources(root: Path, suffixes: tuple[str, ...]) -> list[Path]:
         if path.is_file()
         and path.suffix in suffixes
         and ".test." not in path.name
+        and not path.name.startswith("test_")
         and "__pycache__" not in path.parts
     ]
 

@@ -1,6 +1,6 @@
 # Agent Intake Simulation v1 planning contract
 
-Status: **Atlas v0.25 P0–P4 complete; P5 planned**.
+Status: **Atlas v0.25 P0–P5 complete**.
 
 This document freezes the narrowest simulation-only Agent intake boundary that
 can bind the released v0.20 durable installation candidate, v0.21 approval
@@ -285,7 +285,7 @@ mutation calls and action navigation, and prove that no simulation evidence or
 sensitive intake detail can be rendered. Home Assistant remains blocked by the
 absent deployment artifact and is non-installable and non-executable.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove lifecycle boundaries, one-simulation-per-envelope behavior,
 concurrency/restart/timeout ambiguity, quotas, corruption, ownership,
@@ -293,6 +293,17 @@ redaction, zero route/command/UI/consumer registration, default-disabled
 capability parity, v0.20–v0.24 contract goldens, Home Assistant blocked golden,
 and full regression gates. P5 does not migrate, tag, push, publish, deploy, or
 release automatically.
+
+Release-isolation tests scan Core and Agent production modules and permit the
+v0.25 vocabulary only inside the isolated Agent package. They lock out live
+Core-to-Agent delivery, HTTP/OpenAPI, CLI/shell commands, production container
+registration, settings enablement, worker/workflow/runtime adapters,
+provider/repository/guest mutation, candidate execution, deployment,
+rollback, and replay bypass. Readback is limited to direct operator-owned
+`get` and lifecycle calls on the in-process store. Mission Control structural
+tests lock out every v0.25 API client, mutation, route, navigation, control,
+action label, and evidence rendering path. `install-container` remains
+unsupported and Home Assistant remains blocked with no deployment artifact.
 
 ## Exact authority boundary
 
