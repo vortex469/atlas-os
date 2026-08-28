@@ -9,6 +9,7 @@ import {
 } from "../../api/installationApprovalIntent";
 import type { InstallationApprovalIntentV1 } from "../../types/installationApprovalIntent";
 import type { InstallationCandidateRecordEnvelopeV1 } from "../../types/installationCandidateLifecycle";
+import { InstallationExecutionRequests } from "./InstallationExecutionRequests";
 
 export function InstallationApprovalIntents({ records, csrfToken }: {
     records: InstallationCandidateRecordEnvelopeV1[];
@@ -91,6 +92,7 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
             {recording && <p role="status" className="mt-2 text-sm text-slate-400">Recording immutable approval evidence…</p>}
         </section>}
         {reviewed && <IntentDetails intent={reviewed} sourcePresent={records.some((recordValue) => recordValue.candidate_record_id === reviewed.approved_subject.candidate_record_id)} />}
+        <InstallationExecutionRequests intents={intents} csrfToken={csrfToken} />
     </section>;
 }
 
