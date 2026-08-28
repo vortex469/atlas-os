@@ -102,10 +102,12 @@ P5 validation started from `b6148294039c295b9e781ac13079403c4deee69b`.
 - [x] Record the exact reviewed implementation/validation SHA after full
   clean-environment review:
   `c47ee204b72563dc471ef06c589b820a3b87d415`.
-- [ ] Confirm the tracked worktree is clean at the final release commit.
-- [ ] Create the immutable annotated `atlas-v0.23.0` tag at the final release
-  commit.
-- [ ] Push the final release branch and `atlas-v0.23.0` tag to `origin`.
+- [x] Final release-preparation commit:
+  `2e69785 docs(v0.23): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release commit.
+- [x] Created the immutable annotated `atlas-v0.23.0` tag at
+  `2e69785049ce863d36e1007bf67ae8da69ca1f86` (`2e69785`).
+- [x] Pushed the final release branch and `atlas-v0.23.0` tag to `origin`.
 - [ ] Publish the Atlas v0.23 release as `atlas-v0.23.0`.
 
 ## Atlas v0.22 P0–P5 release validation and closure — complete
