@@ -6,6 +6,53 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.26 P0–P5 — Simulated Core-to-Agent Handoff Delivery
+
+- Selected Atlas v0.26 **Simulated Core-to-Agent Handoff Delivery** and froze
+  the documentation-only [v1 planning
+  contract](docs/architecture/simulated-handoff-delivery-v1.md).
+- Defined exact closed Core simulated-delivery, immutable attempt-evidence,
+  and Agent simulated-acknowledgement schemas binding the same-owner v0.20
+  candidate, v0.21 intent, v0.22 validation evidence, v0.23 request, v0.24
+  envelope, and v0.25 intake record by exact IDs and fingerprints.
+- Froze freshness and lifecycle, one-delivery/one-intake/one-acknowledgement
+  idempotency and no-replay, ambiguous-copy reconciliation, operator ownership,
+  request identities, redaction/audit evidence, default-disabled no-surface
+  posture, authority limits, P0–P5 scope, and must-not-change contracts.
+- V0.26 P0 changes planning documentation only. It adds no runtime behavior,
+  route, command, UI, store, transport, Docker/Podman/container-runtime call,
+  shell/process execution, provider/repository/in-guest mutation, workflow,
+  worker execution, installation, deployment, rollback, Home Assistant
+  artifact, migration, tag, push, publication, or release.
+- The release may later simulate delivery only through an explicitly
+  constructed in-process coordinator and preserve non-authorizing evidence.
+  Live authenticated transport, receipt/admission, atomic consumption,
+  execution authority, runtime work, and all target mutation remain blocked.
+- Completed the closed models, canonical fingerprints, lifecycle derivation,
+  bounded Core attempt/acknowledgement-copy stores, explicit coordinator,
+  Agent acknowledgement adapter, exact v0.25 intake reuse, restart durability,
+  quotas, ownership, exact retry/no-replay, reconciliation, redaction, and
+  offline synthetic goldens.
+- P4 keeps Mission Control absent because the frozen contract defines no
+  production UI-facing route or read model. Structural tests lock out every
+  v0.26 client, mutation, page, route, navigation, control, evidence rendering,
+  and prohibited install/run/execute/deploy/dispatch/deliver/send-to-Agent/
+  start-workflow/rollback label.
+- P5 closes production isolation across Core and Agent. V0.26 evidence is not
+  consumed by HTTP/OpenAPI, commands, app/container registration, settings,
+  network transport, workers, workflows, candidate execution, provider/
+  repository/in-guest mutation, deployment, rollback, or replay bypass. All
+  authority remains fixed false and readback remains direct, owned, in-process
+  store access.
+- Home Assistant remains blocked, non-installable, and non-executable with no
+  deployment artifact. P5 adds no runtime behavior, authority, migration, tag,
+  push, release, or deployment.
+- P5 validation passed both Ruff gates, 43 focused Core isolation/closure
+  tests, 983 Agent tests, 513 Mission Control tests, Mission Control lint/build,
+  and `git diff --check`. Lint retained one pre-existing exhaustive-deps
+  warning and the build retained its existing chunk-size advisory; neither was
+  an error.
+
 #### v0.25 P0–P5 — Agent Intake Simulation
 
 - Selected Atlas v0.25 **Agent Intake Simulation** and froze the

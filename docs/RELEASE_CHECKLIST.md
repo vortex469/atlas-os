@@ -3,6 +3,73 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.26 P0–P5 Simulated Handoff Delivery — complete
+
+Atlas v0.26 is **Simulated Core-to-Agent Handoff Delivery**. P0–P5 are complete
+from the frozen [v1 contract](architecture/simulated-handoff-delivery-v1.md).
+P5 validation started from `696c98e773823e054ce86ce11f64d4ccbd57fba9`.
+
+- [x] P1 — implement closed immutable Core and Agent models, strict parsing,
+  canonical fingerprints, lifecycle derivation, and hostile-input bounds.
+- [x] P2 — implement bounded append-only Core attempt and acknowledgement-copy
+  stores plus an explicit default-disabled coordinator with an injected port.
+- [x] P3 — implement the explicit default-disabled Agent acknowledgement
+  adapter, reuse the unchanged v0.25 simulation path, and preserve one closed
+  acknowledgement without registration or transport.
+- [x] P4 — exercise synthetic same-owner v0.20–v0.26 delivery goldens entirely
+  in process and lock Mission Control to no v0.26 presentation surface.
+- [x] P5 — close isolation, regression, authority, no-replay, owned-readback,
+  capability-parity, and Home Assistant blocked-golden gates.
+
+### P5 authority and isolation gates
+
+- [x] Scan production Core and Agent modules outside the isolated packages;
+  no v0.26 evidence consumer, live Agent invocation, transport delivery,
+  candidate execution, or replay bypass exists.
+- [x] Keep both services explicitly constructed, default-disabled,
+  simulation-only, in-process, and fixed false for delivery/receipt,
+  admission, execution, worker, mutation, and replay authority.
+- [x] Keep Core and Agent HTTP/OpenAPI, CLI/shell, app/container registration,
+  settings enablement, worker, workflow, provider, repository, in-guest,
+  deployment, and rollback surfaces absent.
+- [x] Constrain Core and Agent readback to direct operator-owned store calls;
+  expose no public list, route, API client, or UI surface.
+- [x] Lock Mission Control to no v0.26 type, API client, mutation, component,
+  page, route, navigation, control, prohibited action label, or evidence
+  rendering.
+- [x] Preserve `install-container` as unsupported and outside executable Agent
+  intent sets.
+- [x] Preserve Home Assistant as blocked, non-installable, and non-executable;
+  no `.yaml` or `.yml` deployment artifact exists.
+- [x] Add no runtime behavior, authority, migration, tag, push, release,
+  deployment, or rollback.
+
+### P5 observed validation evidence
+
+- [x] P5 validation closure commit:
+  `33b976d test(v0.26): close simulated handoff delivery`.
+- [x] Both requested Core and Agent `rc1-python-ruff-gate` commands passed.
+- [x] Focused Core release-isolation and v0.26 closure validation passed:
+  43 tests.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2946 passed, 176 warnings in 176.13s (0:02:56)`.
+- [x] Full Agent regression validation passed: 983 tests.
+- [x] Mission Control passed 513 tests, lint, and production build. Lint
+  retained the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning
+  and reported no errors; the build retained only its existing chunk-size
+  advisory.
+- [x] `git diff --check` passed before the closure commit.
+- [x] No migration, tag, push, release, deployment, or rollback was performed.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `33b976d0e1f17ba8bc4ea831d13ae17cc8eaccb6`.
+- [ ] The tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.26.0` tag.
+- [ ] Push the final release branch and `atlas-v0.26.0` tag to `origin`.
+- [ ] Publish the Atlas v0.26 release as `atlas-v0.26.0`.
+
 ## Atlas v0.25 P0–P5 Agent Intake Simulation — complete
 
 Atlas v0.25 is **Agent Intake Simulation**. P0–P5 are complete from the frozen

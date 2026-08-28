@@ -300,8 +300,9 @@ def test_contract_has_no_forbidden_imports_calls_or_production_consumers() -> No
     }
     assert calls.isdisjoint(forbidden_calls)
     consumers = []
+    delivery_model_root = root / "installation_handoff_simulated_delivery"
     for path in root.rglob("*.py"):
-        if contract_root in path.parents:
+        if contract_root in path.parents or delivery_model_root in path.parents:
             continue
         if "agent_intake_simulation" in path.read_text(encoding="utf-8"):
             consumers.append(path.relative_to(root))

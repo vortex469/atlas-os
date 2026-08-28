@@ -1,4 +1,4 @@
-"""Atlas v0.16-v0.25 release-surface and authority-isolation locks."""
+"""Atlas v0.16-v0.26 release-surface and authority-isolation locks."""
 
 from __future__ import annotations
 
@@ -118,6 +118,8 @@ V024_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_dispatch_handoff" / "store.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_dispatch_handoff.py",
+    APP_ROOT / "installation_handoff_simulated_delivery" / "__init__.py",
+    APP_ROOT / "installation_handoff_simulated_delivery" / "contract.py",
 }
 V025_RECORD_MARKERS = (
     "app.agent_intake_simulation",
@@ -126,6 +128,14 @@ V025_RECORD_MARKERS = (
     "AgentInstallationIntakeSimulation",
     "agent-installation-intake-simulation",
     "agent_intake_simulation",
+)
+V026_RECORD_MARKERS = (
+    "app.installation_handoff_simulated_delivery",
+    "AgentInstallationHandoffSimulatedAcknowledgement",
+    "InstallationHandoffSimulatedDelivery",
+    "agent-installation-handoff-simulated-acknowledgement",
+    "installation-handoff-simulated-delivery",
+    "installation_handoff_simulated_delivery",
 )
 V023_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
@@ -885,8 +895,9 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
 
     agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
     simulation_root = agent_root / "agent_intake_simulation"
+    delivery_model_root = agent_root / "installation_handoff_simulated_delivery"
     for path in _production_python_files(agent_root):
-        if simulation_root in path.parents:
+        if simulation_root in path.parents or delivery_model_root in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V024_RECORD_MARKERS:
@@ -1014,20 +1025,24 @@ def test_v024_home_assistant_remains_non_installable_and_non_executable() -> Non
 
 
 def test_v025_simulation_has_no_core_or_agent_production_consumer() -> None:
-    """Only the isolated Agent package may recognize simulation records."""
+    """Only isolated v0.25/v0.26 model packages may recognize simulation records."""
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     simulation_root = agent_root / "agent_intake_simulation"
+    delivery_core_root = APP_ROOT / "installation_handoff_simulated_delivery"
+    delivery_agent_root = agent_root / "installation_handoff_simulated_delivery"
     violations: list[str] = []
 
     for path in _production_python_files(APP_ROOT):
+        if delivery_core_root in path.parents:
+            continue
         source = path.read_text(encoding="utf-8")
         for marker in V025_RECORD_MARKERS:
             if marker in source:
                 violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
 
     for path in _production_python_files(agent_root):
-        if simulation_root in path.parents:
+        if simulation_root in path.parents or delivery_agent_root in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V025_RECORD_MARKERS:
@@ -1038,6 +1053,71 @@ def test_v025_simulation_has_no_core_or_agent_production_consumer() -> None:
 
 
 def test_v025_keeps_install_container_unsupported_and_home_assistant_blocked() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'capability_status: Literal["unsupported"]' in status_source
+    assert (
+        'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})'
+        in candidate_source
+    )
+    assert "install-container" not in candidate_source
+    assert not (repository_root / "compose" / "home-assistant.yaml").exists()
+    assert not (repository_root / "compose" / "home-assistant.yml").exists()
+
+
+def test_v026_evidence_has_no_core_or_agent_production_consumer() -> None:
+    """Only the two isolated in-process evidence packages recognize v0.26."""
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    core_package = APP_ROOT / "installation_handoff_simulated_delivery"
+    agent_package = agent_root / "installation_handoff_simulated_delivery"
+    violations: list[str] = []
+
+    for path in _production_python_files(APP_ROOT):
+        if core_package in path.parents:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in V026_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
+
+    for path in _production_python_files(agent_root):
+        if agent_package in path.parents:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in V026_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+
+    assert violations == []
+
+
+def test_v026_has_zero_http_surface_and_no_production_enablement() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    openapi = str(application.openapi()).lower()
+    settings = (APP_ROOT / "config" / "settings.py").read_text(encoding="utf-8")
+    main = (APP_ROOT / "main.py").read_text(encoding="utf-8")
+
+    for marker in (
+        "handoff-simulated-delivery",
+        "handoff_simulated_delivery",
+        "simulated-delivery",
+        "simulated_delivery",
+    ):
+        assert marker not in openapi
+        assert marker not in settings.lower()
+        assert marker not in main.lower()
+
+
+def test_v026_keeps_install_container_unsupported_and_home_assistant_blocked() -> None:
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
