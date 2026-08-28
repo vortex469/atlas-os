@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import re
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from fastapi import FastAPI
@@ -100,6 +101,16 @@ V023_RECORD_MARKERS = (
     "installation-execution-request-v1",
     "installation/execution-requests",
 )
+V023_ALLOWED_CONSUMERS = {
+    APP_ROOT / "api" / "v1" / "router.py",
+    APP_ROOT / "config" / "settings.py",
+    APP_ROOT / "installation_execution_request" / "__init__.py",
+    APP_ROOT / "installation_execution_request" / "contract.py",
+    APP_ROOT / "installation_execution_request" / "service.py",
+    APP_ROOT / "installation_execution_request" / "store.py",
+    APP_ROOT / "main.py",
+    APP_ROOT / "routes" / "installation_execution_request.py",
+}
 V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
     APP_ROOT / "installation_candidate_lifecycle" / "__init__.py",
@@ -736,20 +747,14 @@ def test_v022_adds_no_core_route_or_core_to_agent_bridge() -> None:
 
 
 def test_v023_records_have_no_authority_or_external_mutation_consumer() -> None:
-    consumer_roots = AUTHORITY_CONSUMER_ROOTS + (
-        APP_ROOT / "providers",
-        APP_ROOT / "repositories",
-        APP_ROOT / "workers",
-    )
     violations: list[str] = []
-    for root in consumer_roots:
-        if not root.exists():
+    for path in _production_python_files(APP_ROOT):
+        if path in V023_ALLOWED_CONSUMERS:
             continue
-        for path in _production_python_files(root):
-            source = path.read_text(encoding="utf-8")
-            for marker in V023_RECORD_MARKERS:
-                if marker in source:
-                    violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
+        source = path.read_text(encoding="utf-8")
+        for marker in V023_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
 
     agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
     for path in _production_python_files(agent_root):
@@ -760,6 +765,44 @@ def test_v023_records_have_no_authority_or_external_mutation_consumer() -> None:
                     f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
                 )
     assert violations == []
+
+
+def test_v023_is_record_only_default_disabled_and_non_authorizing() -> None:
+    from app.config.settings import OperatorAuthSettings
+    from app.installation_execution_request.contract import (
+        InstallationExecutionRequestV1,
+    )
+    from app.installation_execution_request.service import (
+        InstallationExecutionRequestService,
+    )
+
+    assert OperatorAuthSettings().installation_execution_request_enabled is False
+    assert InstallationExecutionRequestService.__init__.__kwdefaults__ == {
+        "enabled": False
+    }
+    authority_fields = {
+        "execution_authorized",
+        "dispatch_allowed",
+        "agent_invocation_allowed",
+        "mutation_allowed",
+        "replay_allowed",
+    }
+    for field in authority_fields:
+        annotation = InstallationExecutionRequestV1.model_fields[field].annotation
+        assert annotation == Literal[False]
+
+    package = APP_ROOT / "installation_execution_request"
+    forbidden_runtime_dependencies = tuple(
+        dependency for dependency in FORBIDDEN_DEPENDENCIES if dependency != "approval"
+    )
+    imports: list[str] = []
+    for path in _production_python_files(package):
+        imports.extend(
+            f"{path.relative_to(APP_ROOT)} -> {imported}"
+            for imported in _imports(path)
+            if any(term in imported for term in forbidden_runtime_dependencies)
+        )
+    assert imports == []
 
 
 def test_v023_route_has_only_create_list_and_owned_item_read() -> None:
@@ -779,7 +822,15 @@ def test_v023_route_has_only_create_list_and_owned_item_read() -> None:
             "get"
         },
     }
-    prohibited = ("install", "execute", "dispatch", "deploy")
+    prohibited = (
+        "install",
+        "execute",
+        "deploy",
+        "dispatch",
+        "send-to-agent",
+        "start-workflow",
+        "rollback",
+    )
     assert not any(
         segment in prohibited
         for path in paths

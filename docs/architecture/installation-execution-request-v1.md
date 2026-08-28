@@ -1,6 +1,6 @@
 # Installation Execution Request v1 planning contract
 
-Status: **Atlas v0.23 P0 selected; documentation only**.
+Status: **Atlas v0.23 P0–P5 complete; record-only boundary validated**.
 
 This document freezes the narrowest Core-side **Installation Execution Request
 Boundary** that can bind one v0.20 durable candidate record, one v0.21 approval
@@ -250,42 +250,42 @@ feature flag exists.
 
 ## P0–P5 scope and acceptance
 
-### P0 — Core request contract and threat model — selected
+### P0 — Core request contract and threat model — complete
 
 Freeze this exact schema, full three-release linkage, ownership, freshness,
 lifecycle, idempotency/no-replay, append-only evidence, redaction, API/UI
 boundary, default-disabled posture, threats, goldens, and must-not-change
 contracts. P0 changes planning documentation only.
 
-### P1 — Closed Core models and pure validation
+### P1 — Closed Core models and pure validation — complete
 
 Implement isolated immutable models, duplicate/unknown-field rejection,
 canonical fingerprints, exact v0.20/v0.21/v0.22 linkage validation, freshness,
 derived lifecycle, redacted failures, and complete hostile-input tests. Use
 injected closed values only; perform no I/O or registration.
 
-### P2 — Bounded append-only request store
+### P2 — Bounded append-only request store — complete
 
 Implement the independent operator-scoped store, atomic multi-identity
 reservation, idempotency, uniqueness, quotas, restart durability, reads, and
 fail-closed corruption/ambiguity behavior. Add no delete/update, event, queue,
 audit bridge, expiration task, consumer, worker job, or migration.
 
-### P3 — Authenticated record-only Core API
+### P3 — Authenticated record-only Core API — complete
 
 Implement only create/list/item-read. Re-resolve v0.20/v0.21 ownership and
 current state locally, accept only the complete submitted v0.22 pair, enforce
 freshness and bounds, and lock OpenAPI/method/redaction/dependency isolation.
 Do not call Agent or any authority/mutation subsystem.
 
-### P4 — Mission Control request evidence review
+### P4 — Mission Control request evidence review — complete
 
 Implement explicit confirmation, submission, and immutable review with
 conspicuous non-execution and untrusted-delivery provenance language. Prove
 accessibility, lifecycle/error rendering, ownership isolation, exact identity
 display, and absence of prohibited controls, navigation, and network calls.
 
-### P5 — Isolation, no-replay, and release closure
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage, same-owner resolution, freshness boundaries, all atomic
 reservations, concurrency/restart/timeout ambiguity, quotas, corruption,
@@ -294,6 +294,16 @@ goldens, capability parity, existing approval/no-replay/worker/backup
 boundaries, full Core/Agent/Mission Control gates, and default-disabled release
 posture. P5 does not automatically migrate, tag, push, publish, deploy, or
 release.
+
+P5 validation began from
+`b6148294039c295b9e781ac13079403c4deee69b`. Structural tests lock the
+default-disabled service, fixed-false authority schema, exact guarded
+create/list/get Core surface, repository-wide absence of Core and Agent
+consumers, and Mission Control's dedicated adapter and prohibited-control
+boundary. The focused Core suite passed 233 tests, the full Agent suite passed
+948 tests, and Mission Control passed 499 tests plus lint and production build.
+Home Assistant remains unable to reach this boundary and no deployment
+artifact exists. P5 changed tests and release evidence only.
 
 ## Must-not-change contracts for P0–P5
 

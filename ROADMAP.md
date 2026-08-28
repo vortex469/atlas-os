@@ -954,48 +954,57 @@ The request is record-only and non-executing. Its lifecycle is derived as
 `recorded` or terminal `expired`; all five authority fields are false. It is
 not queued, dispatchable, executable, renewable, replayable, or convertible.
 Core validates operator-submitted v0.22 evidence locally and never calls
-Agent. The dependency order is P0 → P1 → P2 → P3 → P4 → P5. Only P0 is
-selected; it changes planning documentation only.
+Agent. The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P5
+are complete; P5 added validation and release evidence only.
 
-### P0 — Core request contract and threat model — selected
+### P0 — Core request contract and threat model — complete
 
 Freeze the exact create/durable schemas, mandatory fingerprints, same-owner
 linkage, freshness, lifecycle, atomic idempotency/no-replay reservation,
 redaction/audit evidence, append-only store posture, default-disabled API/UI,
 goldens, threats, and must-not-change contracts.
 
-### P1 — Closed models and pure validation
+### P1 — Closed models and pure validation — complete
 
 Implement isolated Core models, fingerprints, exact three-release linkage,
 freshness/lifecycle derivation, and sanitized failures over injected values
 only. Register no route, store, service, consumer, or Agent client.
 
-### P2 — Bounded append-only request store
+### P2 — Bounded append-only request store — complete
 
 Implement operator-scoped atomic append/read, multi-identity reservation,
 idempotency, uniqueness, quotas, durability, and fail-closed corruption and
 ambiguous-completion behavior. Add no update/delete, event, queue, audit
 bridge, expiry task, worker job, migration, or consumer.
 
-### P3 — Authenticated record-only Core API
+### P3 — Authenticated record-only Core API — complete
 
 Implement create/list/item-read only. Resolve v0.20/v0.21 ownership locally,
 validate the submitted v0.22 pair without Agent invocation, and lock bounds,
 redaction, methods, OpenAPI, and dependency isolation.
 
-### P4 — Mission Control evidence review
+### P4 — Mission Control evidence review — complete
 
 Implement explicit non-executing confirmation and immutable review, including
 operator-submitted evidence provenance and `recorded`/`expired` rendering.
 Add no install, execute, dispatch, deploy, Agent, workflow, retry, cancel, or
 rollback control or navigation.
 
-### P5 — Isolation, no-replay, and release closure
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove ownership, linkage, freshness, reservations, concurrency/restart/timeout
 ambiguity, quotas, corruption, API/UI boundaries, zero consumers, all prior
 goldens and authority regressions, default-disabled posture, and full release
 gates. Do not automatically migrate, tag, push, publish, deploy, or release.
+
+P5 locks the default-disabled, record-only service and fixed-false authority
+fields; scans all Core and Agent production modules for unauthorized v0.23
+consumers; freezes the exact guarded create/list/get OpenAPI surface; confines
+Mission Control calls to its dedicated create/list/get adapter; and excludes
+prohibited controls and navigation. Home Assistant remains blocked with no
+deployment artifact. The requested Core/Agent Ruff gates, 233 focused Core
+tests, 948 Agent tests, 499 Mission Control tests, Mission Control lint/build,
+and whitespace validation passed.
 
 ### Exact authority boundary and later enablement
 
