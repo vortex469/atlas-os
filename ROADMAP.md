@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.20
+## 1. Current released baseline — v0.21
 
-Atlas v0.20.0 is released as `atlas-v0.20.0` at `929ebc0` and its completed
-milestone is merged to current `main` at `2e48731`.
+Atlas v0.21.0 is released as `atlas-v0.21.0` at `1ca7081` and its completed
+milestone is merged to current `main` at `8be5d7f`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -53,6 +53,8 @@ image evidence, grounding, and provenance.
   result is `admitted_but_non_executable`.
 - v0.20 released bounded durable preservation of an exact non-executable
   installation candidate record without adding an authority consumer.
+- v0.21 released an immutable operator approval statement for one exact
+  non-executable candidate without adding an execution consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -835,9 +837,108 @@ Control test/lint/build gates pass; backup v3 remains intentionally unchanged.
 - The optional worker remains default-disabled and backup/restore remains
   explicit operator maintenance.
 
-## 11. Explicitly deferred work
+## 11. Selected v0.22 plan — Agent Install-Container Contract
+
+Atlas v0.22 is **Agent Install-Container Contract**. It freezes the narrowest
+Agent-side validation contract that a separately designed future Core
+execution request could target, while adding no Core route, dispatch, worker,
+installation, provider/repository/guest mutation, or runtime behavior. The
+normative boundary is [Agent Install-Container Contract
+v1](docs/architecture/agent-install-container-contract-v1.md).
+
+The contract accepts only one exact same-owner v0.20 candidate envelope and
+v0.21 approval-intent proof chain, one unchanged existing Proxmox QEMU guest
+incarnation, and one digest-pinned normalized single OCI container. Its future
+runtime policy is rootless Podman, network `none`, no host mounts, devices,
+secrets, environment, command override, privilege, added capabilities,
+writable root filesystem, port publication, or restart policy. Validation can
+produce only `valid_but_unsupported` or `rejected`; all authority fields remain
+false and validation evidence has no production consumer.
+
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is complete as this
+documentation-only contract freeze. P1–P5 are planned and remain
+non-executing.
+
+### P0 — Contract and threat-model freeze — complete
+
+Freeze the exact request/result schemas, allowed subject, mandatory candidate
+and approval fingerprints, artifact/runtime/filesystem/network bounds,
+validation behavior, reason precedence, idempotency, no-replay, redaction,
+audit evidence, default-disabled posture, risks, goldens, and refusal
+boundaries. Change planning documentation only.
+
+### P1 — Closed models and fingerprints — planned
+
+Implement isolated pure Agent models, canonicalization, and domain-separated
+fingerprints. Register no route, intent, adapter, service, worker, or consumer.
+
+### P2 — Pure linkage and policy validation — planned
+
+Validate injected closed proof fixtures, destination/artifact lineage,
+freshness, and fixed runtime/filesystem/network policy with deterministic,
+redacted failures and no I/O.
+
+### P3 — Internal dry-run evidence boundary — planned
+
+Compose a dependency-injected validation-only service returning closed audit
+evidence. Add no HTTP intake, Core client call, persistence, audit bridge,
+queue, dispatch, or mutation.
+
+### P4 — Unsupported operator diagnostics — planned
+
+Present bounded Agent capability/diagnostic evidence while keeping
+`install-container` conspicuously unsupported and default-disabled. Add no
+enable switch, install control, Mission Control workflow, or runtime call.
+
+### P5 — Isolation, refusal, and regression closure — planned
+
+Prove zero Core route/caller/dispatch, zero supported Agent intent, zero
+worker/provider/repository/guest/runtime invocation, zero authority consumer,
+exact no-replay/redaction behavior, Home Assistant rejection, and full
+regression gates. Do not tag, push, publish, deploy, or release automatically.
+
+### Must-not-change contracts for P0–P5
+
+- V0.16–v0.21 contracts remain exact; their identities and evidence do not
+  become execution authority and their production packages gain no v0.22
+  consumer.
+- Existing ExecutionCandidate, approval, audit, workflow, dispatch, execution,
+  repository candidate, operational handling, and interrupted-side-effect
+  no-replay contracts remain unchanged.
+- Agent support remains exactly `update-compose-stack` for repository work and
+  `restart-service` for operational handling. `install-container` remains
+  unsupported and absent from planning, conversion, dispatch, and execution.
+- Operational capability remains `restart-service/proxmox/qemu`; Provider
+  Intent remains Proxmox QEMU `monitoring-policy`; Discovery remains GET-only
+  and non-authoritative.
+- No Core execution request route, Core-to-Agent dispatch, worker invocation,
+  install, provider mutation, repository read/mutation, guest read/mutation,
+  runtime probe, image acquisition, container creation, network use,
+  deployment, rollback, replay, workflow, background work, or authority event
+  is added.
+- The optional worker remains default-disabled and backup/restore remains
+  explicit operator maintenance.
+
+### Exact risks and what v0.22 enables
+
+The closed threat model covers approval substitution, cross-operator or stale
+proofs, destination replacement/confused deputy behavior, artifact
+equivocation, container escape, filesystem traversal/persistence, network
+exfiltration/lateral movement, resource exhaustion, replay after ambiguity,
+validation being mistaken for authority, secret/error leakage, and accidental
+feature activation.
+
+V0.22 enables later design to reuse a frozen Agent parser, proof-linkage
+validator, narrow runtime policy, redacted result, and audit-evidence shape. It
+still refuses runtime intake and execution, general Compose, image pulls,
+networked or persistent containers, Home Assistant deployment, and any request
+without a separately frozen Core authority, dispatch, durable no-replay,
+recovery, and rollback contract.
+
+## 12. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
+- Core install-container request authority and Core-to-Agent dispatch;
 - executable installation-intent lifecycle and approved installation targets;
 - conversational execution or installation;
 - generic image collection;
@@ -845,7 +946,7 @@ Control test/lint/build gates pass; backup v3 remains intentionally unchanged.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 12. Uncommitted future directions
+## 13. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

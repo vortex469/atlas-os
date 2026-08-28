@@ -6,6 +6,21 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.22-P0 — Agent Install-Container Contract
+
+- Selected Atlas v0.22 **Agent Install-Container Contract** and froze the
+  documentation-only
+  [v1 planning contract](docs/architecture/agent-install-container-contract-v1.md).
+- Defined the exact validation-only request/result schemas, existing-QEMU
+  subject, mandatory v0.20 candidate and v0.21 approval fingerprints,
+  digest-pinned single-container artifact, rootless runtime boundary,
+  filesystem/network/resource limits, idempotency, no-replay, sanitized
+  errors, audit evidence, threat model, and P0–P5 scope.
+- `install-container` remains unsupported and default-disabled. No Core route,
+  Core-to-Agent dispatch, worker, install, provider/repository/guest mutation,
+  runtime invocation, Home Assistant deployment, tag, push, release, or
+  deployment is added.
+
 #### v0.21 P0–P5 — Installation Approval Intent
 
 - Completed the closed contract, isolated bounded append-only store,

@@ -3,6 +3,41 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.22 P0 architecture freeze — complete
+
+Atlas v0.22 is **Agent Install-Container Contract**. P0 is documentation-only;
+P1–P5 are planned and no v0.22 release has been performed.
+
+- [x] Freeze the exact closed request/result schemas, canonical fingerprinting,
+  five-minute freshness, size bounds, and duplicate/unknown-field rejection in
+  the normative [v1 contract](architecture/agent-install-container-contract-v1.md).
+- [x] Limit the subject to one exact existing Proxmox QEMU incarnation and
+  require the complete same-owner v0.20 candidate-envelope and v0.21
+  approval-intent ID/fingerprint chain.
+- [x] Limit the artifact to one normalized digest-pinned OCI container under
+  rootless Podman with network `none`, no host mounts/devices/ports/secrets/
+  environment/commands/privilege/capabilities/restart, read-only rootfs, and
+  one bounded `/tmp` tmpfs.
+- [x] Freeze deterministic `valid_but_unsupported`/`rejected` validation,
+  fixed-false authority fields, ordered reason codes, redaction, idempotency,
+  no-replay semantics, and non-authorizing audit evidence.
+- [x] Record exact threats: proof substitution, confused deputy/destination
+  replacement, artifact equivocation, escape, filesystem/network abuse,
+  exhaustion, ambiguous replay, validation-as-authority, leakage, and
+  accidental activation.
+- [x] Preserve all v0.16–v0.21 contracts and existing execution/approval/audit/
+  workflow/dispatch/no-replay boundaries unchanged.
+- [x] Keep `install-container` unsupported and default-disabled with no Core
+  execution route, Core-to-Agent dispatch, worker/provider/repository/guest/
+  runtime invocation, mutation, installation, or Home Assistant deployment.
+- [x] Confirm P0 changes planning documentation only and performs no tag, push,
+  publication, release, or deployment.
+- [ ] P1 — implement closed models and pure canonical fingerprints.
+- [ ] P2 — implement pure proof-linkage and boundary validation.
+- [ ] P3 — implement the internal dry-run evidence service with no route.
+- [ ] P4 — add unsupported/default-disabled Agent diagnostics only.
+- [ ] P5 — close isolation, refusal, Home Assistant golden, and regressions.
+
 ## Atlas v0.21 P0–P5 release closure
 
 Atlas v0.21 is **Installation Approval Intent**. P0–P5 are complete. P5
