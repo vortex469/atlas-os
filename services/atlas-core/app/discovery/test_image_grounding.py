@@ -897,18 +897,20 @@ def test_grounding_module_ast_is_pure_and_side_effect_free() -> None:
 def test_grounding_module_has_only_reviewed_home_assistant_consumer() -> None:
     app_dir = Path(grounding_module.__file__).parents[1]
     module_name = _grounding_module_name()
-    references = [
+    references = sorted(
         path.relative_to(app_dir).as_posix()
         for path in app_dir.rglob("*.py")
         if path.name != "image_" + "grounding.py"
         and not path.name.startswith("test_")
         and module_name in path.read_text(encoding="utf-8")
-    ]
+    )
 
-    assert references == [
-        "services/image_grounding_read_model.py",
-        "services/home_assistant_image_grounding.py",
-    ]
+    assert references == sorted(
+        [
+            "services/image_grounding_read_model.py",
+            "services/home_assistant_image_grounding.py",
+        ]
+    )
 
 
 def test_grounding_module_public_surface() -> None:

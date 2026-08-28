@@ -129,6 +129,9 @@ class OperatorAuthSettings(BaseModel):
     installation_candidate_record_database: str = (
         "/opt/atlas/data/installation_candidate_records.db"
     )
+    installation_approval_intent_database: str = (
+        "/opt/atlas/data/installation_approval_intents.db"
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
@@ -153,6 +156,17 @@ class OperatorAuthSettings(BaseModel):
         ):
             raise ValueError(
                 "installation candidate record database must be an absolute path"
+            )
+        approval_intent_database = Path(self.installation_approval_intent_database)
+        if (
+            not self.installation_approval_intent_database
+            or self.installation_approval_intent_database
+            != self.installation_approval_intent_database.strip()
+            or not approval_intent_database.is_absolute()
+            or self.installation_approval_intent_database == ":memory:"
+        ):
+            raise ValueError(
+                "installation approval intent database must be an absolute path"
             )
         if not self.enabled:
             return self
@@ -238,6 +252,9 @@ def load_settings() -> Settings:
             ),
             "installation_candidate_record_database": os.getenv(
                 "ATLAS_OPERATOR_AUTH_INSTALLATION_CANDIDATE_RECORD_DATABASE"
+            ),
+            "installation_approval_intent_database": os.getenv(
+                "ATLAS_OPERATOR_AUTH_INSTALLATION_APPROVAL_INTENT_DATABASE"
             ),
         }
         for key, value in environment_overrides.items():

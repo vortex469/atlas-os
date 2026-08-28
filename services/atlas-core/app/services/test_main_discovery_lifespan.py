@@ -48,6 +48,9 @@ def test_application_lifespan_honors_dynamic_discovery_activation(
                 intent_database=str(tmp_path / "intents.db"),
                 installation_selection_database=str(tmp_path / "selections.db"),
                 installation_candidate_record_database=str(tmp_path / "candidates.db"),
+                installation_approval_intent_database=str(
+                    tmp_path / "approval-intents.db"
+                ),
                 trusted_origins=(),
             ),
         operational_dispatch=SimpleNamespace(

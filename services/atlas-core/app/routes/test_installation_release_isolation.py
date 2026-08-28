@@ -1,4 +1,4 @@
-"""Atlas v0.16-v0.20 release-surface and authority-isolation locks."""
+"""Atlas v0.16-v0.21 release-surface and authority-isolation locks."""
 
 from __future__ import annotations
 
@@ -31,6 +31,10 @@ V019_ROOTS = (
 V020_ROOTS = (
     APP_ROOT / "installation_candidate_lifecycle",
     APP_ROOT / "routes" / "installation_candidate_lifecycle.py",
+)
+V021_ROOTS = (
+    APP_ROOT / "installation_approval_intent",
+    APP_ROOT / "routes" / "installation_approval_intent.py",
 )
 
 # These are the production subsystems that could turn an advisory record into
@@ -77,6 +81,12 @@ V020_RECORD_MARKERS = (
     "InstallationCandidateRecordEnvelopeV1",
     "installation-candidate-record-envelope-v1",
 )
+V021_RECORD_MARKERS = (
+    "app.installation_approval_intent",
+    "InstallationApprovalIntentV1",
+    "installation-approval-intent-v1",
+    "candidate-approval-intents",
+)
 V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
     APP_ROOT / "installation_candidate_lifecycle" / "__init__.py",
@@ -85,6 +95,24 @@ V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_candidate_lifecycle" / "store.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_candidate_lifecycle.py",
+    APP_ROOT / "installation_approval_intent" / "contract.py",
+    APP_ROOT / "installation_approval_intent" / "service.py",
+    APP_ROOT / "installation_approval_intent" / "store.py",
+}
+V021_ALLOWED_CONSUMERS = {
+    APP_ROOT / "api" / "v1" / "router.py",
+    APP_ROOT / "config" / "settings.py",
+    APP_ROOT / "installation_approval_intent" / "__init__.py",
+    APP_ROOT / "installation_approval_intent" / "contract.py",
+    APP_ROOT / "installation_approval_intent" / "service.py",
+    APP_ROOT / "installation_approval_intent" / "store.py",
+    APP_ROOT / "main.py",
+    APP_ROOT / "routes" / "installation_approval_intent.py",
+}
+
+V021_V019_ALLOWED_CONSUMERS = {
+    APP_ROOT / "installation_approval_intent" / "contract.py",
+    APP_ROOT / "installation_approval_intent" / "store.py",
 }
 
 FORBIDDEN_DEPENDENCIES = (
@@ -261,7 +289,7 @@ def test_v019_is_read_only_and_has_no_authority_dependency() -> None:
 def test_no_authority_or_mutation_subsystem_consumes_v019_records() -> None:
     violations: list[str] = []
     for path in _production_python_files(APP_ROOT):
-        if path in V019_ALLOWED_CONSUMERS:
+        if path in V019_ALLOWED_CONSUMERS | V021_V019_ALLOWED_CONSUMERS:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V019_RECORD_MARKERS:
@@ -487,3 +515,136 @@ def test_home_assistant_and_agent_install_boundary_remain_closed() -> None:
         in agent_models
     )
     assert "install-container" not in agent_models
+
+
+def test_v021_is_append_only_evidence_with_no_authority_dependency() -> None:
+    allowed_imports = (
+        "app.installation_approval_intent",
+        "app.installation_candidate_admission.contract",
+        "app.installation_candidate_lifecycle.contract",
+        "app.installation_candidate_lifecycle.store",
+        "app.installation_plan.contract",
+        "app.installation_targets.contract",
+        "app.models.contracts",
+        "app.operator_auth",
+    )
+    violations: list[str] = []
+    for root in V021_ROOTS:
+        paths = (root,) if root.is_file() else _production_python_files(root)
+        for path in paths:
+            for imported in _imports(path):
+                if imported.startswith("app.") and not imported.startswith(
+                    allowed_imports
+                ):
+                    violations.append(f"{path.relative_to(APP_ROOT)} -> {imported}")
+    store_source = (V021_ROOTS[0] / "store.py").read_text(encoding="utf-8")
+    service_source = (V021_ROOTS[0] / "service.py").read_text(encoding="utf-8")
+    assert violations == []
+    assert not re.search(
+        r"\b(?:update|delete|consume|execute|dispatch|deploy|rollback)\b",
+        service_source,
+    )
+    assert "UPDATE installation_approval_intents" not in store_source
+    assert "DELETE FROM installation_approval_intents" not in store_source
+
+
+def test_no_core_or_agent_production_consumer_recognizes_v021_intents() -> None:
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        if path in V021_ALLOWED_CONSUMERS:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in V021_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
+
+    agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
+    for path in _production_python_files(agent_root):
+        source = path.read_text(encoding="utf-8")
+        for marker in V021_RECORD_MARKERS:
+            if marker in source:
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
+    assert violations == []
+
+
+def test_v021_openapi_is_exactly_append_list_get_with_no_authority_route() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    paths = {
+        path: set(methods)
+        for path, methods in application.openapi()["paths"].items()
+        if "candidate-approval-intents" in path
+    }
+    assert paths == {
+        "/api/v1/installation/candidate-approval-intents": {"get", "post"},
+        "/api/v1/installation/candidate-approval-intents/{approval_intent_id}": {
+            "get"
+        },
+    }
+    prohibited = ("install", "execute", "dispatch", "deploy", "rollback", "replay")
+    assert not any(
+        token in path.removeprefix(
+            "/api/v1/installation/candidate-approval-intents"
+        )
+        for path in paths
+        for token in prohibited
+    )
+
+
+def test_mission_control_v021_surface_has_only_append_list_get_calls() -> None:
+    mission_control = APP_ROOT.parents[1] / "mission-control" / "src"
+    api_source = (mission_control / "api" / "installationApprovalIntent.ts").read_text(
+        encoding="utf-8"
+    )
+    component_source = (
+        mission_control / "features" / "discovery" / "InstallationApprovalIntents.tsx"
+    ).read_text(encoding="utf-8")
+    route_consumers = {
+        path.relative_to(mission_control)
+        for path in mission_control.rglob("*.ts*")
+        if ".test." not in path.name
+        and "/installation/candidate-approval-intents" in path.read_text(
+            encoding="utf-8"
+        )
+    }
+    assert route_consumers == {Path("api/installationApprovalIntent.ts")}
+    assert len(re.findall(r"atlas\s*\.\s*get(?:<[^>]+>)?\s*\(", api_source)) == 2
+    assert len(re.findall(r"atlas\s*\.\s*post(?:<[^>]+>)?\s*\(", api_source)) == 1
+    assert not any(
+        re.search(rf"atlas\s*\.\s*{method}(?:<[^>]+>)?\s*\(", api_source)
+        for method in ("put", "patch", "delete")
+    )
+    assert not any(
+        token in component_source
+        for token in ("<a ", "<Link", "<form", "navigate(", "href=")
+    )
+    prohibited = (
+        "install now",
+        "execute now",
+        "dispatch now",
+        "deploy now",
+        "start workflow",
+        "rollback now",
+    )
+    assert not any(action in component_source.lower() for action in prohibited)
+
+
+def test_home_assistant_cannot_be_preserved_or_approved_in_v021() -> None:
+    from app.installation_candidate_admission.test_admission import admit
+    from app.installation_candidate_lifecycle.contract import (
+        validate_preservable_admission,
+    )
+    from app.installation_capability.test_assessment import assess, plan
+
+    home_plan = plan(ready=False)
+    admission = admit(plan=home_plan, capability_assessment=assess(home_plan))
+    assert admission.status == "not_admitted"
+    assert admission.candidate_record is None
+    with pytest.raises(ValueError, match="not currently preservable"):
+        validate_preservable_admission(
+            admission, created_at="2026-08-27T12:00:01Z"
+        )

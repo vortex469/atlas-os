@@ -15,6 +15,7 @@ vi.mock("../../api/installationCandidateLifecycle", () => ({
     preserveInstallationCandidateRecord: vi.fn(), deleteInstallationCandidateRecord: vi.fn(),
     candidateRecordIdempotencyKey: vi.fn(() => "preserve-key"),
 }));
+vi.mock("./InstallationApprovalIntents", () => ({ InstallationApprovalIntents: () => null }));
 
 const candidate = {
     schema: "installation-candidate-record-v1" as const, item_id: "example", catalog_entry_id: "catalog-example",

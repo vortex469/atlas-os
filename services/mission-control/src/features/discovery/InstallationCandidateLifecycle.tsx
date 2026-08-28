@@ -10,6 +10,7 @@ import {
 } from "../../api/installationCandidateLifecycle";
 import type { InstallationCandidateAdmissionV1 } from "../../types/installationCandidateAdmission";
 import type { InstallationCandidateRecordEnvelopeV1 } from "../../types/installationCandidateLifecycle";
+import { InstallationApprovalIntents } from "./InstallationApprovalIntents";
 
 export function InstallationCandidateLifecycle({
     admission, itemId, selectionId, csrfToken,
@@ -101,6 +102,7 @@ export function InstallationCandidateLifecycle({
         {mutationError && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{mutationError}</p>}
         {deletedId && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">Deleted saved record {deletedId}. The advisory record is gone and cannot be replayed.</p>}
         {reviewed && <RecordDetails record={reviewed} />}
+        <InstallationApprovalIntents records={records} csrfToken={csrfToken} />
     </section>;
 }
 

@@ -3,6 +3,77 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.21 P0–P5 release closure
+
+Atlas v0.21 is **Installation Approval Intent**. P0–P5 are complete. P5
+validation started from `1d84187aea2f187e9b408324ecc6c31bc9882499`.
+
+### P0 authority and scope gates
+
+- [x] The approved subject is exactly the v0.20 candidate-record ID, envelope
+  fingerprint, admission fingerprint, and embedded candidate-record
+  fingerprint; aliases and partial identities are forbidden.
+- [x] Creation is an explicit authenticated owner action over a complete active
+  v0.20 record and binds one fixed statement plus server-owned recording time.
+- [x] The intent is immutable append-only evidence, not execution
+  authorization, and has no state machine, runtime deletion, consumer,
+  conversion, event, queue, workflow, dispatch, or replay path.
+- [x] V0.16–v0.20 contracts, Home Assistant golden, five false authority fields,
+  v0.20 deletion, existing approvals, no-replay, capability parity,
+  default-disabled worker, and backup v3 exclusion remain unchanged.
+- [x] P0 changes only `ROADMAP.md`, `CHANGELOG.md`, this checklist, and the
+  normative v0.21 architecture contract. It adds no runtime behavior or tests.
+
+### P1–P5 authority and release gates
+
+- [x] Complete closed-contract, store, API, Mission Control, isolation, and
+  full regression acceptance defined in the normative v0.21 contract.
+- [x] Prove no Core or Agent authority/mutation consumer recognizes a v0.21
+  schema, intent ID, statement, or fingerprint.
+- [x] Lock OpenAPI to create/list/item-read only and Mission Control to exact-
+  record confirmation and evidence review only.
+- [x] Reconfirm Home Assistant cannot cross the v0.19 admission or v0.20
+  preservation boundary and therefore cannot be approved or executed.
+- [x] Preserve approval, execution, dispatch, Agent install-container, worker,
+  provider/repository/in-guest mutation, workflow, deployment, rollback,
+  eligibility, and no-replay boundaries with no v0.21 consumer.
+- [x] Keep backup v3 unchanged. The independent approval-intent database is
+  excluded and requires explicit operator maintenance with Atlas Core stopped;
+  older releases do not consume it.
+
+### P5 observed validation evidence
+
+- [x] P5 validation closure commit:
+  `de5f751 test(v0.21): close installation approval intent validation`.
+- [x] Stabilization commit:
+  `ea58c31 test(v0.21): stabilize image grounding consumer check`.
+- [x] Core and Agent baseline-aware Ruff gates passed.
+- [x] Focused approval-intent, route, and release-isolation suite passed:
+  `38 passed, 25 warnings in 6.76s`.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2882 passed, 121 warnings in 168.98s (0:02:48)`.
+- [x] Full Atlas Agent suite passed outside the managed sandbox (required for
+  TestClient threading), using a temporary `XDG_STATE_HOME`:
+  `912 passed, 1 warning in 6.84s`.
+- [x] Mission Control passed 65 files / 485 tests; lint completed with one
+  pre-existing `WorkflowShellPage.tsx` hook-dependency warning and no errors;
+  production build completed successfully.
+- [x] `git diff --check` passed; P5 adds tests and release documentation only.
+- [x] No migration, tag, push, publication, deployment, or release action
+  occurred.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `ea58c31927dcb685f66f542f5ec6cdc3d5603ca0`.
+- [x] Final release-preparation commit:
+  `1ca7081 docs(v0.21): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release commit.
+- [x] Created the immutable annotated `atlas-v0.21.0` tag at
+  `1ca708198bb0098a64ed442dd50c4ad9171d69e5` (`1ca7081`).
+- [x] Pushed the final release branch and `atlas-v0.21.0` tag to `origin`.
+- [x] Published the Atlas v0.21 release as `atlas-v0.21.0`.
+
 ## Atlas v0.20 P0–P5 release closure
 
 Atlas v0.20 is **Installation Candidate Record Lifecycle**. P0–P5 are

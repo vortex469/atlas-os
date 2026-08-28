@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.19
+## 1. Current released baseline — v0.20
 
-Atlas v0.19.0 is released as `atlas-v0.19.0` at `c23f4c4` and is merged to
-current `main` at `0344172`.
+Atlas v0.20.0 is released as `atlas-v0.20.0` at `929ebc0` and its completed
+milestone is merged to current `main` at `2e48731`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -51,6 +51,8 @@ image evidence, grounding, and provenance.
   Assessment.
 - v0.19 released ephemeral Installation Candidate Admission whose strongest
   result is `admitted_but_non_executable`.
+- v0.20 released bounded durable preservation of an exact non-executable
+  installation candidate record without adding an authority consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -734,17 +736,116 @@ and must be handled through explicit operator maintenance.
   interrupted-side-effect no-replay behavior, optional default-disabled
   worker, and operator-maintenance-only backup/restore remain unchanged.
 
-## 10. Explicitly deferred work
+## 10. Selected v0.21 plan — Installation Approval Intent
+
+Atlas v0.21 is **Installation Approval Intent**. It defines the narrowest
+durable evidence boundary through which an authenticated operator may record
+one explicit approval statement for one exact, owned, active v0.20 durable
+non-executable candidate identity. The normative planning boundary is
+[Installation Approval Intent
+v1](docs/architecture/installation-approval-intent-v1.md).
+
+The approved identity is the closed tuple of v0.20 candidate-record ID,
+envelope fingerprint, admission fingerprint, and embedded candidate-record
+fingerprint. The intent also binds the authenticated operator, server-owned
+recording time, and one fixed statement. It is immutable and append-only; it
+has no approval state machine, revocation semantics, execution authorization,
+consumer, or conversion path. Candidate expiry or deletion creates no work and
+does not turn the historical statement into permission.
+
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 through P5 are
+complete on the v0.21 release-candidate branch. The resulting surface records
+operator-scoped evidence only and adds no execution authority or consumer.
+
+### P0 — Approval-intent contract and threat model — complete
+
+Freeze the exact approved-subject tuple, fixed statement, authenticated actor,
+immutability, uniqueness, idempotency, bounds, isolated persistence, API/UI
+shape, failure behavior, threats, backup posture, goldens, and P1–P5 gates.
+Acceptance is this decision-complete documentation diff only; it adds no
+runtime, route, UI, test, store, migration, Agent, worker, provider,
+repository, guest, execution, workflow, commit, tag, push, or release behavior.
+
+### P1 — Closed intent contract and pure validation — complete
+
+Implement the closed model, domain-separated fingerprint, exact actor and
+subject binding, and pure validation over a complete active v0.20 envelope at
+server-owned time. It performs no I/O and grants no authority.
+
+### P2 — Bounded append-only store — complete
+
+Implement one independent operator-scoped store with atomic unique creation,
+conflict-safe idempotency, closed count/size bounds, restart durability,
+reads, and fail-closed corruption behavior. Add no runtime delete/update,
+background task, event, queue, audit bridge, worker job, or consumer.
+
+### P3 — Authenticated intent API — complete
+
+Implement only create, bounded list, and item read routes under the new
+candidate-approval-intent namespace. Creation accepts a candidate-record ID,
+re-resolves ownership and active state server-side, and accepts no caller proof
+or authority field. Freeze hardened mutation defenses, redaction, OpenAPI,
+unsupported methods, and dependency isolation.
+
+### P4 — Mission Control explicit statement and review — complete
+
+Implement deliberate exact-record confirmation and immutable evidence review
+with conspicuous language that recording approval neither starts nor permits
+installation. Add no execute, install, dispatch, deploy, workflow, convert,
+attach, retry, revoke, or rollback control, navigation, or request.
+
+### P5 — Isolation, regression, and release closure — complete
+
+Prove exact v0.20 linkage, authenticated actor proof, uniqueness, concurrency,
+restart durability, quotas, corruption handling, API/UI contracts, and absence
+of production consumers. Reconfirm v0.16–v0.20 goldens, capability parity,
+approval separation, no-replay, worker default, backup isolation, and full
+regression gates. Do not automatically migrate, commit, tag, push, publish,
+deploy, or release.
+
+P5 structurally locks the append-only store and operator-scoped service, zero
+Core/Agent production consumers, the exact create/list/item-read OpenAPI
+surface, and Mission Control's matching three calls with no authority control
+or navigation. Home Assistant remains `not_admitted`, cannot be preserved, and
+therefore cannot be approved or executed. Focused Core, full Agent, and Mission
+Control test/lint/build gates pass; backup v3 remains intentionally unchanged.
+
+### Must-not-change contracts for P0–P5
+
+- V0.16–v0.19 contracts remain exact and non-authorizing.
+- V0.20 remains an immutable, operator-scoped, durable non-executable record
+  with passive active/expired derivation, unchanged deletion, five false
+  authority fields, no consumers, and unchanged backup exclusion. V0.21 adds
+  no field or state to the v0.20 envelope and never blocks its deletion.
+- An approval intent is evidence of one operator statement, not an existing
+  ExecutionCandidate, approved target, execution approval, installation
+  intent, permission, workflow, action request, dispatch, deployment
+  specification, executable plan, audit approval, or replay token.
+- Existing ExecutionCandidate, approval, audit, workflow, dispatch, execution,
+  independent approvals, and interrupted-side-effect no-replay behavior remain
+  unchanged and never consume v0.21 data.
+- Atlas Agent support stays exactly `update-compose-stack` for repository work
+  and `restart-service` for operational handling; `install-container` remains
+  unsupported. Operational capability remains
+  `restart-service/proxmox/qemu`, Provider Intent remains Proxmox QEMU
+  `monitoring-policy`, and Discovery remains GET-only/non-authoritative.
+- No execution, dispatch, Agent or worker invocation, provider or repository
+  mutation, guest read/mutation, install, deploy, rollback, remediation,
+  replay, workflow start, background work, or authority-bearing event is added.
+- The optional worker remains default-disabled and backup/restore remains
+  explicit operator maintenance.
+
+## 11. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
-- installation-intent lifecycle and approved installation targets;
+- executable installation-intent lifecycle and approved installation targets;
 - conversational execution or installation;
 - generic image collection;
 - D11 semantic Discovery and D12 community/private catalogs;
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 11. Uncommitted future directions
+## 12. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

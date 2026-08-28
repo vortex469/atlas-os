@@ -6,6 +6,27 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.21 P0–P5 — Installation Approval Intent
+
+- Completed the closed contract, isolated bounded append-only store,
+  authenticated create/list/item-read API, and explicit Mission Control
+  confirmation and immutable evidence review for one exact owned active v0.20
+  non-executable candidate identity.
+- Added P5 structural locks proving no Core or Agent authority/mutation path
+  recognizes approval intents; OpenAPI exposes only the intended three-route
+  surface; and Mission Control performs only append, list, and get calls with
+  no prohibited control or navigation.
+- Reconfirmed approval intents are immutable operator-scoped evidence only,
+  Home Assistant remains non-approvable and non-executable, Agent
+  `install-container` remains unsupported, and backup v3 remains closed.
+- Approval intent remains evidence only: it is not execution authorization and
+  has no consumer, state transition, revocation, workflow, dispatch, Agent,
+  worker, provider, repository, guest, deployment, rollback, or replay path.
+- P5 validation passed Core and Agent Ruff, 38 focused Core tests, 912 Agent
+  tests, 485 Mission Control tests, Mission Control lint/build, and
+  `git diff --check`. No migration, tag, push, publication, deployment, or
+  release action was performed.
+
 #### v0.20 P0–P5 — Installation Candidate Record Lifecycle
 
 - Completed the closed immutable envelope, bounded operator-scoped durable
