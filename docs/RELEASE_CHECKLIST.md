@@ -67,11 +67,15 @@ validation started from `c50c09c850451f68a4b267d99d3e95b8a6197a52`.
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `7f909f8 test(v0.24): close installation dispatch handoff`.
 - [x] Both requested `rc1-python-ruff-gate` commands passed.
 - [x] Focused Core release-isolation, route, and service validation passed:
   237 tests. It ran from `services/atlas-core`, the expected working directory;
   host access was needed only for the existing provider-secret permission
   check.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2929 passed, 171 warnings in 172.03s (0:02:52)`.
 - [x] Full Agent validation passed: 948 tests, using isolated `/tmp` XDG state
   and host execution for the existing local integration-test boundary.
 - [x] Mission Control passed 506 tests, lint with zero errors (one pre-existing
@@ -81,6 +85,15 @@ validation started from `c50c09c850451f68a4b267d99d3e95b8a6197a52`.
 - [x] P5 changes only release-isolation/authority tests and these release
   documents. No runtime behavior, migration, tag, push, release, installation,
   execution, deployment, rollback, or external mutation was added or run.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `7f909f8bf57647315e505819fee88d12eb62f869`.
+- [ ] Confirm the tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.24.0` tag.
+- [ ] Push the final release branch and `atlas-v0.24.0` tag to `origin`.
+- [ ] Publish the Atlas v0.24 release as `atlas-v0.24.0`.
 
 ## Atlas v0.23 P0–P5 release validation and closure — complete
 
