@@ -11,6 +11,31 @@ vi.mock("../hooks/useAtlasAgent", () => ({
 
 const mockedUseAtlasAgent = vi.mocked(useAtlasAgent);
 
+const agentInfo = {
+    app_name: "Atlas Agent",
+    version: "0.22.0",
+    environment: "test",
+    repository_root: "/opt/atlas",
+    supported_workflow_phases: [],
+    supported_verification_statuses: [],
+    install_container: {
+        contract_schema: "agent-install-container-validation-v1" as const,
+        operation: "install-container" as const,
+        mode: "validate-only" as const,
+        capability_status: "unsupported" as const,
+        default_enabled: false as const,
+        execution_supported: false as const,
+        dispatch_allowed: false as const,
+        mutation_allowed: false as const,
+        replay_allowed: false as const,
+        runtime: "rootless-podman; fixed limits; no runtime invocation",
+        filesystem: "read-only root; bounded /tmp tmpfs; no host mounts",
+        network: "none; no ingress, egress, DNS, ports, or image pull",
+        home_assistant_status: "blocked" as const,
+        validation_result_available: false as const,
+    },
+};
+
 describe("AtlasAgentPanel", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -18,6 +43,7 @@ describe("AtlasAgentPanel", () => {
 
     it("displays published repository and workflow status", () => {
         mockedUseAtlasAgent.mockReturnValue({
+            info: agentInfo,
             repository: {
                 root: "/opt/atlas",
                 branch: "feature/atlas-agent",
@@ -73,6 +99,7 @@ describe("AtlasAgentPanel", () => {
 
     it("shows unpublished workflow resources without hiding the repository", () => {
         mockedUseAtlasAgent.mockReturnValue({
+            info: agentInfo,
             repository: {
                 root: "/opt/atlas",
                 branch: null,
@@ -106,6 +133,7 @@ describe("AtlasAgentPanel", () => {
 
     it("shows pending decision cards from pending approvals", () => {
         mockedUseAtlasAgent.mockReturnValue({
+            info: agentInfo,
             repository: {
                 root: "/opt/atlas",
                 branch: "feature/atlas-agent",
@@ -170,6 +198,7 @@ describe("AtlasAgentPanel", () => {
 
     it("shows only the panel unavailable state after a request failure", () => {
         mockedUseAtlasAgent.mockReturnValue({
+            info: null,
             repository: null,
             sprint: null,
             verification: null,

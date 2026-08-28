@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.22 P0–P3 — Agent Install-Container Contract
+#### v0.22 P0–P4 — Agent Install-Container Contract
 
 - Selected Atlas v0.22 **Agent Install-Container Contract** and froze the
   documentation-only
@@ -29,6 +29,16 @@ release boundaries.
   dry-run service that returns only closed validation evidence or sanitized
   redacted errors. It has no HTTP route, application-container registration,
   persistence, Core client, runtime, network, filesystem, or execution adapter.
+- Added a closed, static `install-container` capability diagnostic to the
+  existing Agent information response and a read-only Mission Control
+  presentation of its unsupported, default-disabled posture, fixed runtime,
+  filesystem, and network bounds, and blocked Home Assistant golden. With no
+  production validation-result read model, the UI shows an explicit empty
+  state and adds no Core bridge, result fetch, control, navigation, or mutation.
+- Added presentation-only coverage for closed validation status, proof and
+  evidence fingerprints, artifact references, audit evidence, and redacted
+  errors. Validation is explicitly not installation, execution approval,
+  dispatch, deployment, rollback, replay, or mutation permission.
 
 #### v0.21 P0–P5 — Installation Approval Intent
 

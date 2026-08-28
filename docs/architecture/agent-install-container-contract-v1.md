@@ -1,6 +1,6 @@
 # Agent Install-Container Contract v1
 
-Status: **Atlas v0.22 P0–P3 complete; P4–P5 not started**.
+Status: **Atlas v0.22 P0–P4 complete; P5 not started**.
 
 This document freezes the narrowest Agent-side contract that may later validate
 one future Core request to install one container. Atlas v0.22 adds only the
@@ -330,12 +330,20 @@ Expose an internal dependency-injected validation service callable only from
 tests and local composition, returning the closed result/evidence. Add no HTTP
 route, Core client call, persistence, audit-store bridge, queue, or dispatch.
 
-### P4 — Agent operator diagnostics — planned
+### P4 — Agent operator diagnostics — complete
 
 Expose capability/status documentation showing `install-container` as
 unsupported and default-disabled, plus bounded local validation diagnostics if
 they can be proven non-authorizing. Add no enable switch, request intake,
 execution control, Mission Control install UI, or mutation.
+
+The existing Agent information response now carries a code-owned closed
+capability diagnostic. Mission Control renders its unsupported/default-disabled
+posture, exact runtime/filesystem/network bounds, and the blocked Home Assistant
+golden. Because no production validation-result read model exists, it reports
+an explicit empty state and adds no API bridge. A presentation-only renderer is
+covered for closed validation/evidence and redacted-error values, but has no
+production caller or authority consumer.
 
 ### P5 — Isolation and refusal closure — planned
 

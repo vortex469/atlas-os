@@ -855,9 +855,8 @@ writable root filesystem, port publication, or restart policy. Validation can
 produce only `valid_but_unsupported` or `rejected`; all authority fields remain
 false and validation evidence has no production consumer.
 
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0–P3 are complete and
-P4–P5 are planned. Every phase remains
-non-executing.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0–P4 are complete and
+P5 is planned. Every phase remains non-executing.
 
 ### P0 — Contract and threat-model freeze — complete
 
@@ -884,11 +883,14 @@ Compose a dependency-injected validation-only service returning closed audit
 evidence. Add no HTTP intake, Core client call, persistence, audit bridge,
 queue, dispatch, or mutation.
 
-### P4 — Unsupported operator diagnostics — planned
+### P4 — Unsupported operator diagnostics — complete
 
 Present bounded Agent capability/diagnostic evidence while keeping
 `install-container` conspicuously unsupported and default-disabled. Add no
 enable switch, install control, Mission Control workflow, or runtime call.
+The existing Agent information route exposes only a closed static capability
+diagnostic; Mission Control presents that local state and an explicit no-result
+empty state because no validation-result route or Core bridge exists.
 
 ### P5 — Isolation, refusal, and regression closure — planned
 

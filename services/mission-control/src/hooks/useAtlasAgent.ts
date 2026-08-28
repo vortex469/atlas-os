@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
 
 import {
+    getAgentInfo,
     getAtlasAgentErrorMessage,
     getRepositoryStatus,
     getReviewReport,
@@ -11,6 +12,7 @@ import {
 import { getPendingApprovals } from "../api/approval";
 
 import type {
+    AgentInfo,
     RepositoryStatus,
     ReviewReport,
     SprintStatus,
@@ -19,6 +21,7 @@ import type {
 import type { ApprovalResult } from "../types/approval";
 
 interface AtlasAgentState {
+    info: AgentInfo | null;
     repository: RepositoryStatus | null;
     sprint: SprintStatus | null;
     verification: VerificationReport | null;
@@ -29,6 +32,7 @@ interface AtlasAgentState {
 }
 
 const initialState: AtlasAgentState = {
+    info: null,
     repository: null,
     sprint: null,
     verification: null,
@@ -81,12 +85,14 @@ export function useAtlasAgent(): AtlasAgentState {
         async function loadAtlasAgent() {
             try {
                 const [
+                    info,
                     repository,
                     sprint,
                     verification,
                     review,
                     approvals,
                 ] = await Promise.all([
+                    getAgentInfo(),
                     getRepositoryStatus(),
                     loadOptionalSummary(() => getSprintStatus()),
                     loadOptionalSummary(() => getVerificationReport()),
@@ -96,6 +102,7 @@ export function useAtlasAgent(): AtlasAgentState {
 
                 if (!isCancelled) {
                     setState({
+                        info,
                         repository,
                         sprint,
                         verification,
