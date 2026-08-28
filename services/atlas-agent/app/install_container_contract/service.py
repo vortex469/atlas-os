@@ -86,6 +86,34 @@ class ValidationFactsV1:
     replay: NoReplayEvidenceV1
 
 
+@dataclass(frozen=True, slots=True)
+class InstallContainerValidationService:
+    """Explicit local-only composition boundary for one closed validation.
+
+    The caller must inject both the already-validated proof facts and the
+    trusted whole-second validation instant.  No production adapter or clock
+    is resolved here, which keeps construction explicit and prevents this
+    service from becoming runtime intake by configuration drift.
+    """
+
+    facts: ValidationFactsV1
+    validated_at: str
+
+    def validate(
+        self,
+        payload: bytes | str,
+        *,
+        correlation_id: CorrelationId,
+    ) -> AgentInstallContainerValidationV1 | AgentInstallContainerErrorV1:
+        """Return only the frozen validation or redacted-error contract."""
+        return validate_install_container_json(
+            payload,
+            facts=self.facts,
+            validated_at=self.validated_at,
+            correlation_id=correlation_id,
+        )
+
+
 def validate_install_container_request(
     request: AgentInstallContainerRequestV1,
     *,

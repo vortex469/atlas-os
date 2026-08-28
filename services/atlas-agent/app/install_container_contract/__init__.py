@@ -22,6 +22,7 @@ from .models import (
 from .service import (
     ApprovalProofFactsV1,
     CandidateProofFactsV1,
+    InstallContainerValidationService,
     NoReplayEvidenceV1,
     ValidationFactsV1,
     validate_install_container_json,
@@ -39,6 +40,7 @@ __all__ = [
     "FingerprintV1",
     "InstallContainerArtifactV1",
     "InstallContainerLimitsV1",
+    "InstallContainerValidationService",
     "InstallationSubjectV1",
     "NoReplayEvidenceV1",
     "ReasonCode",

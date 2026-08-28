@@ -5,8 +5,8 @@ unchecked item is not implied to have passed.
 
 ## Atlas v0.22 P0 architecture freeze — complete
 
-Atlas v0.22 is **Agent Install-Container Contract**. P0–P1 are complete;
-P2–P5 are planned and no v0.22 release has been performed.
+Atlas v0.22 is **Agent Install-Container Contract**. P0–P3 are complete;
+P4–P5 are planned and no v0.22 release has been performed.
 
 - [x] Freeze the exact closed request/result schemas, canonical fingerprinting,
   five-minute freshness, size bounds, and duplicate/unknown-field rejection in
@@ -33,8 +33,8 @@ P2–P5 are planned and no v0.22 release has been performed.
 - [x] Confirm P0 changes planning documentation only and performs no tag, push,
   publication, release, or deployment.
 - [x] P1 — implement closed models and pure canonical fingerprints.
-- [ ] P2 — implement pure proof-linkage and boundary validation.
-- [ ] P3 — implement the internal dry-run evidence service with no route.
+- [x] P2 — implement pure proof-linkage and boundary validation.
+- [x] P3 — implement the internal dry-run evidence service with no route.
 - [ ] P4 — add unsupported/default-disabled Agent diagnostics only.
 - [ ] P5 — close isolation, refusal, Home Assistant golden, and regressions.
 

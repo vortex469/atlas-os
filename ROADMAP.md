@@ -855,8 +855,8 @@ writable root filesystem, port publication, or restart policy. Validation can
 produce only `valid_but_unsupported` or `rejected`; all authority fields remain
 false and validation evidence has no production consumer.
 
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is complete as this
-documentation-only contract freeze. P1–P5 are planned and remain
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0–P3 are complete and
+P4–P5 are planned. Every phase remains
 non-executing.
 
 ### P0 — Contract and threat-model freeze — complete
@@ -872,13 +872,13 @@ boundaries. Change planning documentation only.
 Implement isolated pure Agent models, canonicalization, and domain-separated
 fingerprints. Register no route, intent, adapter, service, worker, or consumer.
 
-### P2 — Pure linkage and policy validation — planned
+### P2 — Pure linkage and policy validation — complete
 
 Validate injected closed proof fixtures, destination/artifact lineage,
 freshness, and fixed runtime/filesystem/network policy with deterministic,
 redacted failures and no I/O.
 
-### P3 — Internal dry-run evidence boundary — planned
+### P3 — Internal dry-run evidence boundary — complete
 
 Compose a dependency-injected validation-only service returning closed audit
 evidence. Add no HTTP intake, Core client call, persistence, audit bridge,

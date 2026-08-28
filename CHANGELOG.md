@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.22 P0–P1 — Agent Install-Container Contract
+#### v0.22 P0–P3 — Agent Install-Container Contract
 
 - Selected Atlas v0.22 **Agent Install-Container Contract** and froze the
   documentation-only
@@ -25,6 +25,10 @@ release boundaries.
   fixed runtime/filesystem/network/resource bounds, canonical JSON parsing,
   and deterministic domain-separated fingerprints. Every authority field is
   fixed false and no model has a production consumer.
+- Added the pure proof/linkage validator and an explicitly composed local-only
+  dry-run service that returns only closed validation evidence or sanitized
+  redacted errors. It has no HTTP route, application-container registration,
+  persistence, Core client, runtime, network, filesystem, or execution adapter.
 
 #### v0.21 P0–P5 — Installation Approval Intent
 

@@ -1,6 +1,6 @@
 # Agent Install-Container Contract v1
 
-Status: **Atlas v0.22 P0–P1 complete; P2–P5 not started**.
+Status: **Atlas v0.22 P0–P3 complete; P4–P5 not started**.
 
 This document freezes the narrowest Agent-side contract that may later validate
 one future Core request to install one container. Atlas v0.22 adds only the
@@ -317,14 +317,14 @@ functions. Exhaust unknown fields, duplicate keys, type/bound violations,
 fingerprint sensitivity, hostile strings, and determinism. Do not register a
 route, intent, adapter, service, or worker.
 
-### P2 — Pure proof and boundary validator — planned
+### P2 — Pure proof and boundary validator — complete
 
 Validate complete injected v0.20/v0.21 proof fixtures, subject lineage,
 artifact normalization, freshness, fixed runtime/filesystem/network policy,
 reason precedence, and redacted failures. Perform no I/O and preserve all
 authority fields false.
 
-### P3 — Validation evidence and dry-run service boundary — planned
+### P3 — Validation evidence and dry-run service boundary — complete
 
 Expose an internal dependency-injected validation service callable only from
 tests and local composition, returning the closed result/evidence. Add no HTTP

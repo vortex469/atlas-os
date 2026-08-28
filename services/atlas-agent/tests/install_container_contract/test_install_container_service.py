@@ -10,6 +10,7 @@ from app.install_container_contract import (
     AgentInstallContainerRequestV1,
     ApprovalProofFactsV1,
     CandidateProofFactsV1,
+    InstallContainerValidationService,
     NoReplayEvidenceV1,
     ReasonCode,
     ValidationFactsV1,
@@ -69,6 +70,44 @@ def test_valid_request_is_deterministic_unsupported_and_non_authorizing() -> Non
     assert not first.mutation_allowed
     assert not first.replay_allowed
     assert first.evidence.evidence_fingerprint == second.evidence.evidence_fingerprint
+
+
+def test_local_service_composes_injected_facts_and_returns_closed_evidence() -> None:
+    request, facts = valid_inputs()
+    service = InstallContainerValidationService(
+        facts=facts,
+        validated_at="2026-08-28T12:01:00Z",
+    )
+
+    result = service.validate(
+        json.dumps(request.model_dump(mode="json")),
+        correlation_id="local-validation-1",
+    )
+
+    assert result.status == "valid_but_unsupported"
+    assert result.reason_codes == ()
+    assert result.evidence.request_id == request.request_id
+    assert result.execution_supported is False
+    assert result.dispatch_allowed is False
+    assert result.mutation_allowed is False
+    assert result.replay_allowed is False
+
+
+def test_local_service_redacts_malformed_input() -> None:
+    _, facts = valid_inputs()
+    service = InstallContainerValidationService(
+        facts=facts,
+        validated_at="2026-08-28T12:01:00Z",
+    )
+
+    result = service.validate(
+        '{"token":"do-not-echo","token":"still-secret"}',
+        correlation_id="local-validation-2",
+    )
+
+    assert isinstance(result, AgentInstallContainerErrorV1)
+    assert result.redacted is True
+    assert "secret" not in json.dumps(result.model_dump(mode="json"))
 
 
 @pytest.mark.parametrize(
