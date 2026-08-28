@@ -61,8 +61,12 @@ v0.22 release has been performed.
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `9adaf93 test(v0.22): close agent install-container validation`.
 - [x] Core and Agent baseline-aware Ruff gates passed.
 - [x] Focused Core release-isolation suite passed: `26 passed, 5 warnings`.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2885 passed, 121 warnings in 169.76s (0:02:49)`.
 - [x] Full Atlas Agent suite passed: `948 passed, 4 warnings in 6.98s`.
 - [x] Mission Control passed 67 files / 492 tests; lint completed with one
   pre-existing `WorkflowShellPage.tsx` hook-dependency warning and no errors;
@@ -70,6 +74,16 @@ v0.22 release has been performed.
 - [x] `git diff --check` passed; P5 adds tests and release documentation only.
 - [x] No migration, tag, push, publication, deployment, or release action
   occurred.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `9adaf937140ed2f05399bcdb44682ddef8ed677e`.
+- [ ] Confirm the tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.22.0` tag at the final release
+  commit.
+- [ ] Push the final release branch and `atlas-v0.22.0` tag to `origin`.
+- [ ] Publish the Atlas v0.22 release as `atlas-v0.22.0`.
 
 ## Atlas v0.21 P0–P5 release closure
 
