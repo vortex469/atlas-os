@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.22
+## 1. Current released baseline — v0.23
 
-Atlas v0.22.0 is released as `atlas-v0.22.0` at `ed69226` and its completed
-milestone is merged to current `main` at `22bff36`.
+Atlas v0.23.0 is released as `atlas-v0.23.0` at `2e69785` and its completed
+milestone is merged to current `main` at `d51d91e`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -57,6 +57,8 @@ image evidence, grounding, and provenance.
   non-executable candidate without adding an execution consumer.
 - v0.22 released a closed validation-only Agent install-container contract and
   non-authorizing evidence while keeping runtime intake unsupported.
+- v0.23 released an immutable, record-only installation execution request
+  binding v0.20–v0.22 without adding a consumer or dispatch authority.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -1020,7 +1022,37 @@ Core-to-Agent dispatch, worker/runtime behavior, interruption recovery,
 side-effect audit, image acquisition, persistent/networked workloads,
 deployment, rollback, and Home Assistant installation.
 
-## 13. Explicitly deferred work
+## 13. Selected v0.24 plan — Installation Dispatch Handoff
+
+Atlas v0.24 is **Installation Dispatch Handoff**. Its normative
+documentation-only P0 contract is [Installation Dispatch Handoff
+v1](docs/architecture/installation-dispatch-handoff-v1.md).
+
+Core may prepare one immutable, operator-owned, 60-second-maximum envelope
+that binds the exact v0.20 candidate, v0.21 intent, v0.22 validation evidence,
+and v0.23 execution request. It does not send the envelope. The only Agent
+shape is a contract-only parser result, `valid_but_not_admitted`, with every
+authority field false and no route or consumer.
+
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0 is selected and
+documentation-only. P1–P5 are planned and unimplemented: isolated models and
+pure assembly; a bounded append-only Core store; preparation-only create/list/
+read API; Mission Control evidence review; then isolation/no-replay release
+closure.
+
+The exact authority boundary is local owned-record resolution, pure validation,
+and preparation of one evidence envelope. No live Core-to-Agent invocation,
+Agent admission, delivery, worker/runtime/process execution, provider,
+repository, or guest mutation, workflow, installation, deployment, rollback,
+or replay is authorized.
+
+V0.24 enables later work to reference a compact owner-bound handoff envelope
+and frozen Agent intake vocabulary. Trusted transport, fresh execution
+approval, live Agent intake, atomic consume/no-redelivery, execution-time
+proof, worker/runtime behavior, recovery, side-effect audit, deployment,
+rollback, and Home Assistant installation remain blocked.
+
+## 14. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
@@ -1031,7 +1063,7 @@ deployment, rollback, and Home Assistant installation.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 14. Uncommitted future directions
+## 15. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

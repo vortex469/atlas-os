@@ -3,6 +3,48 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.24 P0 — Installation Dispatch Handoff planning
+
+Atlas v0.24 is **Installation Dispatch Handoff**. Only P0 planning is selected;
+P1–P5 remain unimplemented.
+
+- [x] Start from current `main` after v0.23.0 and freeze the documentation-only
+  [v1 planning contract](architecture/installation-dispatch-handoff-v1.md).
+- [x] Define the exact closed Core create/envelope and contract-only Agent
+  intake/admission schemas, domain-separated fingerprints, bounds, and closed
+  status vocabulary.
+- [x] Bind exact same-owner v0.20 candidate, v0.21 approval, v0.22 request/
+  validation/evidence, and v0.23 execution-request IDs and fingerprints.
+- [x] Freeze `prepared`/terminal `expired`, 60-second maximum lifetime,
+  one-envelope-per-v0.23-request reservation, exact retry, and fail-closed
+  ambiguity/no-replay rules.
+- [x] Define operator ownership, redaction, audit evidence, closed errors,
+  default-disabled posture, preparation-only API/UI boundaries, P0–P5 scope,
+  must-not-change contracts, threats, and goldens.
+- [x] Confirm the exact authority is local resolution, pure validation, and
+  append-only preparation evidence—not delivery, admission, or execution.
+- [x] Keep Home Assistant blocked and add no deployment artifact or exception.
+- [x] Confirm P0 changes planning documentation only: no runtime model, test,
+  route, store, UI, Agent/worker invocation, network delivery, Docker/Podman/
+  shell/process execution, provider/repository/guest mutation, workflow,
+  installation, deployment, rollback, tag, push, publication, or release.
+- [ ] P1 — implement closed models and pure assembly/admission validation.
+- [ ] P2 — implement the bounded append-only Core handoff store.
+- [ ] P3 — implement the authenticated preparation-only Core API.
+- [ ] P4 — implement Mission Control handoff evidence review.
+- [ ] P5 — close isolation, no-replay, goldens, regressions, and release gates.
+
+### P0 authority and blocked-work gates
+
+- [x] `prepared handoff != delivered request != Agent admission != execution`.
+- [x] Every envelope and admission authority field is fixed false; exact replay
+  performs no revalidation, time extension, delivery, or work.
+- [x] Agent intake/admission is schema-only with no listener, route, transport,
+  application wiring, persistence, or runtime consumer.
+- [x] Trusted transport, independent execution approval, live intake, atomic
+  consume/no-redelivery, execution-time proof, worker/runtime execution,
+  recovery, side-effect audit, deployment, and rollback remain blocked.
+
 ## Atlas v0.23 P0–P5 release validation and closure — complete
 
 Atlas v0.23 is **Installation Execution Request Boundary**. P0–P5 are complete.
