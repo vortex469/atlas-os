@@ -19,23 +19,37 @@ from .models import (
     runtime_limit_policy_fingerprint,
     validation_fingerprint,
 )
+from .service import (
+    ApprovalProofFactsV1,
+    CandidateProofFactsV1,
+    NoReplayEvidenceV1,
+    ValidationFactsV1,
+    validate_install_container_json,
+    validate_install_container_request,
+)
 
 __all__ = [
     "AgentInstallContainerAuditEvidenceV1",
     "AgentInstallContainerErrorV1",
     "AgentInstallContainerRequestV1",
     "AgentInstallContainerValidationV1",
+    "ApprovalProofFactsV1",
     "ApprovedCandidateProofV1",
+    "CandidateProofFactsV1",
     "FingerprintV1",
     "InstallContainerArtifactV1",
     "InstallContainerLimitsV1",
     "InstallationSubjectV1",
+    "NoReplayEvidenceV1",
     "ReasonCode",
     "StrictContractError",
+    "ValidationFactsV1",
     "canonical_json",
     "evidence_fingerprint",
     "parse_request_json",
     "request_fingerprint",
     "runtime_limit_policy_fingerprint",
+    "validate_install_container_json",
+    "validate_install_container_request",
     "validation_fingerprint",
 ]
