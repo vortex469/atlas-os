@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.23
+## 1. Current released baseline — v0.25
 
-Atlas v0.23.0 is released as `atlas-v0.23.0` at `2e69785` and its completed
-milestone is merged to current `main` at `d51d91e`.
+Atlas v0.25.0 is released as `atlas-v0.25.0` at `d4d7424` and its completed
+milestone is merged to current `main` at `421658c`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -59,6 +59,10 @@ image evidence, grounding, and provenance.
   non-authorizing evidence while keeping runtime intake unsupported.
 - v0.23 released an immutable, record-only installation execution request
   binding v0.20–v0.22 without adding a consumer or dispatch authority.
+- v0.24 released a prepared, non-delivered dispatch handoff envelope binding
+  v0.20–v0.23 without adding live Agent delivery or admission.
+- v0.25 released an explicitly constructed Agent intake simulation path and
+  durable evidence without adding a production intake surface or receipt.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -1101,7 +1105,83 @@ route, navigation, control, execution label, or evidence surface.
 and non-executable with no deployment artifact. P5 adds no runtime behavior or
 authority.
 
-## 15. Explicitly deferred work
+## 15. Selected v0.26 plan — Simulated Core-to-Agent Handoff Delivery
+
+Atlas v0.26 is **Simulated Core-to-Agent Handoff Delivery**. Its normative P0
+contract is [Simulated Handoff Delivery
+v1](docs/architecture/simulated-handoff-delivery-v1.md). P0 is selected and is
+documentation only; P1–P5 are planned, not implemented.
+
+The narrow boundary is an explicitly constructed in-process coordinator. Core
+may preserve one immutable simulated-delivery attempt, pass the complete exact
+v0.24 envelope to the unchanged v0.25 Agent simulation path, and preserve an
+exact closed Agent acknowledgement copy. Agent may preserve only its existing
+v0.25 intake evidence and one v0.26 acknowledgement. Every authority field is
+false, and `agent_simulated_not_received` remains the provenance.
+
+The delivery binds one same-owner v0.20 candidate, v0.21 approval intent, v0.22
+validation evidence, v0.23 execution request, v0.24 dispatch envelope, and
+v0.25 intake record through their exact IDs and domain-separated fingerprints.
+It freezes `pending_acknowledgement`, `simulated_acknowledged`, and terminal
+expired lifecycle states; upstream-bounded freshness; one-envelope/
+one-delivery/one-intake/one-acknowledgement reservations; exact retry and
+acknowledgement-copy reconciliation; redaction; and fail-closed ambiguity.
+
+### P0 — Contract and threat-model freeze — selected
+
+Freeze the exact simulated delivery, Core attempt record, and Agent
+acknowledgement schemas; six-release linkage; ownership and identity rules;
+freshness, lifecycle, idempotency/no-replay and recovery; evidence/redaction;
+default-disabled no-surface posture; threats, goldens, authority boundary, and
+must-not-change contracts. Change planning documentation only.
+
+### P1 — Closed models and pure validation — planned
+
+Implement isolated immutable values, strict parsing, canonical fingerprints,
+lifecycle derivation, and hostile-input tests without I/O or registration.
+
+### P2 — Core evidence and explicit coordinator — planned
+
+Implement bounded append-only Core attempt/acknowledgement-copy stores and an
+explicitly constructed coordinator with an injected Agent port, exact retries,
+owned reads, quotas, restart durability, and fail-closed reconciliation.
+
+### P3 — Agent acknowledgement adapter — planned
+
+Map the exact delivery into the unchanged v0.25 in-process service, validate
+the durable intake record, and append one closed acknowledgement. Add no
+production route, command, listener, transport, container registration, event,
+queue, execution adapter, or authority consumer.
+
+### P4 — Offline golden harness — planned
+
+Exercise only synthetic injected values and render bounded redacted test
+evidence. Mission Control remains absent. Home Assistant remains a blocked
+golden with no deployment artifact.
+
+### P5 — Isolation, no-replay, and release closure — planned
+
+Prove exact linkage, freshness/lifecycle, ownership, single-use identities,
+recovery, concurrency/restart/ambiguity, corruption, quotas, redaction, zero
+production surface, prior-contract goldens, capability parity, and regression
+gates. Do not migrate, tag, push, publish, deploy, or release automatically.
+
+The exact authority is evidence-only simulation. Core cannot claim live send
+or receipt, authenticate Agent, admit work, or authorize execution. Agent
+cannot claim authentic Core origin, grant admission, consume authority, or
+create work. Neither side may run Docker/Podman, execute a process, mutate a
+provider/repository/guest, start workflow/worker execution, install, deploy, or
+roll back.
+
+V0.26 enables later design to reuse a deterministic simulated delivery and
+acknowledgement state machine, six-release proof linkage, separate evidence on
+both sides, and bounded ambiguous-copy reconciliation. Live authenticated
+transport, receipt, atomic consumption/no-redelivery, fresh execution approval,
+execution-time proof, runtime/worker authority, all target mutation, side-
+effect recovery/audit, installation, deployment, rollback, and Home Assistant
+installation remain blocked.
+
+## 16. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
@@ -1112,7 +1192,7 @@ authority.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 15. Uncommitted future directions
+## 17. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

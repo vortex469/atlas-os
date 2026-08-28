@@ -6,6 +6,29 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.26 P0 — Simulated Core-to-Agent Handoff Delivery
+
+- Selected Atlas v0.26 **Simulated Core-to-Agent Handoff Delivery** and froze
+  the documentation-only [v1 planning
+  contract](docs/architecture/simulated-handoff-delivery-v1.md).
+- Defined exact closed Core simulated-delivery, immutable attempt-evidence,
+  and Agent simulated-acknowledgement schemas binding the same-owner v0.20
+  candidate, v0.21 intent, v0.22 validation evidence, v0.23 request, v0.24
+  envelope, and v0.25 intake record by exact IDs and fingerprints.
+- Froze freshness and lifecycle, one-delivery/one-intake/one-acknowledgement
+  idempotency and no-replay, ambiguous-copy reconciliation, operator ownership,
+  request identities, redaction/audit evidence, default-disabled no-surface
+  posture, authority limits, P0–P5 scope, and must-not-change contracts.
+- V0.26 P0 changes planning documentation only. It adds no runtime behavior,
+  route, command, UI, store, transport, Docker/Podman/container-runtime call,
+  shell/process execution, provider/repository/in-guest mutation, workflow,
+  worker execution, installation, deployment, rollback, Home Assistant
+  artifact, migration, tag, push, publication, or release.
+- The release may later simulate delivery only through an explicitly
+  constructed in-process coordinator and preserve non-authorizing evidence.
+  Live authenticated transport, receipt/admission, atomic consumption,
+  execution authority, runtime work, and all target mutation remain blocked.
+
 #### v0.25 P0–P5 — Agent Intake Simulation
 
 - Selected Atlas v0.25 **Agent Intake Simulation** and froze the
