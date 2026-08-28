@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.26 P0 — Simulated Core-to-Agent Handoff Delivery
+#### v0.26 P0–P5 — Simulated Core-to-Agent Handoff Delivery
 
 - Selected Atlas v0.26 **Simulated Core-to-Agent Handoff Delivery** and froze
   the documentation-only [v1 planning
@@ -28,6 +28,30 @@ release boundaries.
   constructed in-process coordinator and preserve non-authorizing evidence.
   Live authenticated transport, receipt/admission, atomic consumption,
   execution authority, runtime work, and all target mutation remain blocked.
+- Completed the closed models, canonical fingerprints, lifecycle derivation,
+  bounded Core attempt/acknowledgement-copy stores, explicit coordinator,
+  Agent acknowledgement adapter, exact v0.25 intake reuse, restart durability,
+  quotas, ownership, exact retry/no-replay, reconciliation, redaction, and
+  offline synthetic goldens.
+- P4 keeps Mission Control absent because the frozen contract defines no
+  production UI-facing route or read model. Structural tests lock out every
+  v0.26 client, mutation, page, route, navigation, control, evidence rendering,
+  and prohibited install/run/execute/deploy/dispatch/deliver/send-to-Agent/
+  start-workflow/rollback label.
+- P5 closes production isolation across Core and Agent. V0.26 evidence is not
+  consumed by HTTP/OpenAPI, commands, app/container registration, settings,
+  network transport, workers, workflows, candidate execution, provider/
+  repository/in-guest mutation, deployment, rollback, or replay bypass. All
+  authority remains fixed false and readback remains direct, owned, in-process
+  store access.
+- Home Assistant remains blocked, non-installable, and non-executable with no
+  deployment artifact. P5 adds no runtime behavior, authority, migration, tag,
+  push, release, or deployment.
+- P5 validation passed both Ruff gates, 43 focused Core isolation/closure
+  tests, 983 Agent tests, 513 Mission Control tests, Mission Control lint/build,
+  and `git diff --check`. Lint retained one pre-existing exhaustive-deps
+  warning and the build retained its existing chunk-size advisory; neither was
+  an error.
 
 #### v0.25 P0–P5 — Agent Intake Simulation
 

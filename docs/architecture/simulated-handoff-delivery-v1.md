@@ -1,6 +1,6 @@
 # Simulated Handoff Delivery v1 planning contract
 
-Status: **Atlas v0.26 P0 selected; documentation only**.
+Status: **Atlas v0.26 P0–P5 complete**.
 
 This document freezes the narrowest simulated Core-to-Agent delivery boundary
 that binds the released v0.20 durable installation candidate, v0.21 approval
@@ -305,48 +305,60 @@ and method isolation. No feature flag may expose v0.26 in production.
 
 ## P0–P5 scope and acceptance
 
-### P0 — Delivery and acknowledgement contract — selected
+### P0 — Delivery and acknowledgement contract — complete
 
 Freeze this exact schema, six-release linkage, authority boundary, ownership,
 identities, freshness, lifecycle, idempotency/no-replay, recovery, redaction,
 audit evidence, default-disabled no-surface posture, threats, goldens, and
 must-not-change contracts. P0 changes planning documentation only.
 
-### P1 — Closed models and pure validation
+### P1 — Closed models and pure validation — complete
 
 Implement isolated immutable delivery, attempt-record, acknowledgement, and
 error models; canonical fingerprints; lifecycle derivation; and hostile-input
 tests. Perform no I/O, persistence, registration, network, process, runtime,
 provider, repository, guest, worker, or workflow action.
 
-### P2 — Core simulation evidence and coordinator
+### P2 — Core simulation evidence and coordinator — complete
 
 Implement only the explicitly constructed coordinator and bounded Core stores
 with atomic reservations, exact retry, acknowledgement-copy reconciliation,
 quotas, restart durability, owned reads, and fail-closed ambiguity/corruption.
 The Agent port is injected and cannot be resolved from production settings.
 
-### P3 — Agent acknowledgement adapter and evidence
+### P3 — Agent acknowledgement adapter and evidence — complete
 
 Implement an explicitly constructed adapter that maps the exact delivery into
 the unchanged v0.25 service, validates the complete durable v0.25 record, and
 appends the closed acknowledgement. Add no route, listener, command, container
 registration, transport, event, queue, runtime adapter, or authority consumer.
 
-### P4 — Offline golden delivery harness
+### P4 — Offline golden delivery harness — complete
 
 Exercise the coordinator, Agent adapter, and synthetic same-owner v0.20–v0.25
 chain entirely in process. Render only a bounded redacted test projection.
 Mission Control remains absent. Home Assistant is a blocked golden only; add no
 deployment artifact or exception.
 
-### P5 — Isolation, no-replay, and release closure
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage, lifecycle/freshness boundaries, one-delivery/one-intake/
 one-acknowledgement behavior, exact recovery, concurrency, restart and timeout
 ambiguity, ownership, quotas, corruption, redaction, zero production surface,
 capability parity, all prior goldens, and full regressions. P5 does not migrate,
 tag, push, publish, deploy, or release automatically.
+
+Release-isolation tests scan production Core and Agent modules and allow v0.26
+vocabulary only inside the two isolated in-process packages. They lock out
+HTTP/OpenAPI, CLI/shell, application-container registration, settings
+enablement, network/transport clients, workers, workflows, provider/repository/
+guest mutation, candidate execution, deployment, rollback, and replay bypass.
+They also prove explicit default-disabled construction, fixed-false authority,
+effect-import isolation, and direct operator-owned store readback. Mission
+Control structural tests lock out every v0.26 client, mutation, route,
+navigation, control, prohibited action label, and evidence surface.
+`install-container` remains unsupported and Home Assistant remains blocked
+with no deployment artifact.
 
 ## Exact authority boundary
 

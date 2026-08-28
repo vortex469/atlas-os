@@ -1109,8 +1109,8 @@ authority.
 
 Atlas v0.26 is **Simulated Core-to-Agent Handoff Delivery**. Its normative P0
 contract is [Simulated Handoff Delivery
-v1](docs/architecture/simulated-handoff-delivery-v1.md). P0 is selected and is
-documentation only; P1–P5 are planned, not implemented.
+v1](docs/architecture/simulated-handoff-delivery-v1.md). P0 through P5 are
+complete.
 
 The narrow boundary is an explicitly constructed in-process coordinator. Core
 may preserve one immutable simulated-delivery attempt, pass the complete exact
@@ -1127,7 +1127,7 @@ expired lifecycle states; upstream-bounded freshness; one-envelope/
 one-delivery/one-intake/one-acknowledgement reservations; exact retry and
 acknowledgement-copy reconciliation; redaction; and fail-closed ambiguity.
 
-### P0 — Contract and threat-model freeze — selected
+### P0 — Contract and threat-model freeze — complete
 
 Freeze the exact simulated delivery, Core attempt record, and Agent
 acknowledgement schemas; six-release linkage; ownership and identity rules;
@@ -1135,36 +1135,46 @@ freshness, lifecycle, idempotency/no-replay and recovery; evidence/redaction;
 default-disabled no-surface posture; threats, goldens, authority boundary, and
 must-not-change contracts. Change planning documentation only.
 
-### P1 — Closed models and pure validation — planned
+### P1 — Closed models and pure validation — complete
 
 Implement isolated immutable values, strict parsing, canonical fingerprints,
 lifecycle derivation, and hostile-input tests without I/O or registration.
 
-### P2 — Core evidence and explicit coordinator — planned
+### P2 — Core evidence and explicit coordinator — complete
 
 Implement bounded append-only Core attempt/acknowledgement-copy stores and an
 explicitly constructed coordinator with an injected Agent port, exact retries,
 owned reads, quotas, restart durability, and fail-closed reconciliation.
 
-### P3 — Agent acknowledgement adapter — planned
+### P3 — Agent acknowledgement adapter — complete
 
 Map the exact delivery into the unchanged v0.25 in-process service, validate
 the durable intake record, and append one closed acknowledgement. Add no
 production route, command, listener, transport, container registration, event,
 queue, execution adapter, or authority consumer.
 
-### P4 — Offline golden harness — planned
+### P4 — Offline golden harness — complete
 
 Exercise only synthetic injected values and render bounded redacted test
 evidence. Mission Control remains absent. Home Assistant remains a blocked
 golden with no deployment artifact.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage, freshness/lifecycle, ownership, single-use identities,
 recovery, concurrency/restart/ambiguity, corruption, quotas, redaction, zero
 production surface, prior-contract goldens, capability parity, and regression
 gates. Do not migrate, tag, push, publish, deploy, or release automatically.
+
+Release-wide structural and regression tests prove that Core delivery and
+Agent acknowledgement evidence remain explicitly constructed, in-process,
+default-disabled, simulation-only, and fixed-false for every authority field.
+No production consumer, HTTP/OpenAPI route, command, registration, setting,
+network/transport client, worker, workflow, candidate execution, provider,
+repository, guest, deployment, rollback, or replay-bypass path exists.
+Mission Control remains absent for v0.26. `install-container` remains
+unsupported, and Home Assistant remains blocked and non-executable with no
+deployment artifact. P5 adds tests and release evidence only.
 
 The exact authority is evidence-only simulation. Core cannot claim live send
 or receipt, authenticate Agent, admit work, or authorize execution. Agent
