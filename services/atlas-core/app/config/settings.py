@@ -64,9 +64,7 @@ class IntelligenceSettings(BaseModel):
         gt=0,
         le=60,
     )
-    telemetry_database: str = (
-        "/opt/atlas/data/provider_intelligence.db"
-    )
+    telemetry_database: str = "/opt/atlas/data/provider_intelligence.db"
     telemetry_max_entries: int = Field(default=10_000, ge=1)
     telemetry_retention_days: int = Field(default=30, ge=1)
 
@@ -136,6 +134,10 @@ class OperatorAuthSettings(BaseModel):
     installation_execution_request_database: str = (
         "/opt/atlas/data/installation_execution_requests.db"
     )
+    installation_dispatch_handoff_enabled: bool = False
+    installation_dispatch_handoff_database: str = (
+        "/opt/atlas/data/installation_dispatch_handoffs.db"
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
@@ -147,9 +149,7 @@ class OperatorAuthSettings(BaseModel):
             or not selection_database.is_absolute()
             or self.installation_selection_database == ":memory:"
         ):
-            raise ValueError(
-                "installation selection database must be an absolute path"
-            )
+            raise ValueError("installation selection database must be an absolute path")
         candidate_database = Path(self.installation_candidate_record_database)
         if (
             not self.installation_candidate_record_database
@@ -172,9 +172,7 @@ class OperatorAuthSettings(BaseModel):
             raise ValueError(
                 "installation approval intent database must be an absolute path"
             )
-        execution_request_database = Path(
-            self.installation_execution_request_database
-        )
+        execution_request_database = Path(self.installation_execution_request_database)
         if (
             not self.installation_execution_request_database
             or self.installation_execution_request_database
@@ -184,6 +182,17 @@ class OperatorAuthSettings(BaseModel):
         ):
             raise ValueError(
                 "installation execution request database must be an absolute path"
+            )
+        dispatch_handoff_database = Path(self.installation_dispatch_handoff_database)
+        if (
+            not self.installation_dispatch_handoff_database
+            or self.installation_dispatch_handoff_database
+            != self.installation_dispatch_handoff_database.strip()
+            or not dispatch_handoff_database.is_absolute()
+            or self.installation_dispatch_handoff_database == ":memory:"
+        ):
+            raise ValueError(
+                "installation dispatch handoff database must be an absolute path"
             )
         if not self.enabled:
             return self
@@ -238,9 +247,7 @@ class Settings(BaseModel):
 
 def load_yaml_config() -> dict[str, Any]:
     if not CONFIG_FILE.exists():
-        raise RuntimeError(
-            f"Atlas configuration file not found: {CONFIG_FILE}"
-        )
+        raise RuntimeError(f"Atlas configuration file not found: {CONFIG_FILE}")
 
     with CONFIG_FILE.open("r", encoding="utf-8") as config_file:
         config = yaml.safe_load(config_file)
@@ -279,14 +286,26 @@ def load_settings() -> Settings:
             "installation_execution_request_database": os.getenv(
                 "ATLAS_OPERATOR_AUTH_INSTALLATION_EXECUTION_REQUEST_DATABASE"
             ),
+            "installation_dispatch_handoff_enabled": os.getenv(
+                "ATLAS_OPERATOR_AUTH_INSTALLATION_DISPATCH_HANDOFF_ENABLED"
+            ),
+            "installation_dispatch_handoff_database": os.getenv(
+                "ATLAS_OPERATOR_AUTH_INSTALLATION_DISPATCH_HANDOFF_DATABASE"
+            ),
         }
         for key, value in environment_overrides.items():
             if value is None:
                 continue
-            if key in {"enabled", "installation_execution_request_enabled"}:
+            if key in {
+                "enabled",
+                "installation_execution_request_enabled",
+                "installation_dispatch_handoff_enabled",
+            }:
                 operator_raw[key] = value.strip().lower() in {"1", "true", "yes", "on"}
             elif key == "trusted_origins":
-                operator_raw[key] = tuple(item.strip() for item in value.split(",") if item.strip())
+                operator_raw[key] = tuple(
+                    item.strip() for item in value.split(",") if item.strip()
+                )
             else:
                 operator_raw[key] = value
         raw["operator_auth"] = operator_raw
@@ -307,12 +326,15 @@ def load_settings() -> Settings:
         dynamic_discovery_raw = dict(raw.get("dynamic_discovery") or {})
         dynamic_discovery_enabled = os.getenv("ATLAS_ENABLE_DISCOVERY_DYNAMIC_REFRESH")
         if dynamic_discovery_enabled is not None:
-            dynamic_discovery_raw["enabled"] = dynamic_discovery_enabled.strip().lower() in {
-                "1",
-                "true",
-                "yes",
-                "on",
-            }
+            dynamic_discovery_raw["enabled"] = (
+                dynamic_discovery_enabled.strip().lower()
+                in {
+                    "1",
+                    "true",
+                    "yes",
+                    "on",
+                }
+            )
         raw["dynamic_discovery"] = dynamic_discovery_raw
         loaded = Settings.model_validate(raw)
         auth_file = os.getenv("ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE")

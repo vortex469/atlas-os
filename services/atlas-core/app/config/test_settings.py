@@ -59,6 +59,10 @@ def test_operator_auth_is_disabled_safely_by_default() -> None:
     assert OperatorAuthSettings().installation_execution_request_database == (
         "/opt/atlas/data/installation_execution_requests.db"
     )
+    assert OperatorAuthSettings().installation_dispatch_handoff_enabled is False
+    assert OperatorAuthSettings().installation_dispatch_handoff_database == (
+        "/opt/atlas/data/installation_dispatch_handoffs.db"
+    )
 
 
 @pytest.mark.parametrize("database", [":memory:", "relative/selections.db", ""])
@@ -83,6 +87,14 @@ def test_installation_execution_request_database_requires_durable_absolute_path(
 ) -> None:
     with pytest.raises(ValidationError, match="absolute"):
         OperatorAuthSettings(installation_execution_request_database=database)
+
+
+@pytest.mark.parametrize("database", [":memory:", "relative/handoffs.db", ""])
+def test_installation_dispatch_handoff_database_requires_durable_absolute_path(
+    database: str,
+) -> None:
+    with pytest.raises(ValidationError, match="absolute"):
+        OperatorAuthSettings(installation_dispatch_handoff_database=database)
 
 
 def test_dynamic_discovery_refresh_is_disabled_safely_by_default() -> None:
@@ -170,9 +182,7 @@ def test_empty_provider_intent_activation_environment_fails_closed(
     )
     monkeypatch.setenv("ATLAS_PROVIDER_INTENT_ACTIVATION", "")
     monkeypatch.delenv("ATLAS_PROVIDER_INTENT_DATABASE", raising=False)
-    monkeypatch.delenv(
-        "ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID", raising=False
-    )
+    monkeypatch.delenv("ATLAS_PROVIDER_INTENT_EXPECTED_LEGACY_IMPORT_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="configuration validation failed"):
         load_settings()

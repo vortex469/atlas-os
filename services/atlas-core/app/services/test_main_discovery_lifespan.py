@@ -43,20 +43,22 @@ def test_application_lifespan_honors_dynamic_discovery_activation(
     settings = SimpleNamespace(
         dynamic_discovery=SimpleNamespace(enabled=enabled),
         provider_intents=SimpleNamespace(),
-            operator_auth=SimpleNamespace(
-                enabled=False,
-                intent_database=str(tmp_path / "intents.db"),
-                installation_selection_database=str(tmp_path / "selections.db"),
-                installation_candidate_record_database=str(tmp_path / "candidates.db"),
-                installation_approval_intent_database=str(
-                    tmp_path / "approval-intents.db"
-                ),
-                installation_execution_request_database=str(
-                    tmp_path / "execution-requests.db"
-                ),
-                installation_execution_request_enabled=False,
-                trusted_origins=(),
+        operator_auth=SimpleNamespace(
+            enabled=False,
+            intent_database=str(tmp_path / "intents.db"),
+            installation_selection_database=str(tmp_path / "selections.db"),
+            installation_candidate_record_database=str(tmp_path / "candidates.db"),
+            installation_approval_intent_database=str(tmp_path / "approval-intents.db"),
+            installation_execution_request_database=str(
+                tmp_path / "execution-requests.db"
             ),
+            installation_execution_request_enabled=False,
+            installation_dispatch_handoff_database=str(
+                tmp_path / "dispatch-handoffs.db"
+            ),
+            installation_dispatch_handoff_enabled=False,
+            trusted_origins=(),
+        ),
         operational_dispatch=SimpleNamespace(
             database=str(tmp_path / "dispatch.db"),
             agent_auth_file=str(tmp_path / "agent-token"),
@@ -66,9 +68,15 @@ def test_application_lifespan_honors_dynamic_discovery_activation(
     monkeypatch.setattr(main, "DynamicDiscoveryActivation", FakeActivation)
     monkeypatch.setattr(main, "assert_restore_state_clean", lambda path: None)
     monkeypatch.setattr(main, "validate_configuration", lambda: None)
-    monkeypatch.setattr(main, "validate_provider_intent_activation", lambda value: object())
-    monkeypatch.setattr(main, "configure_monitoring_intent_authority", lambda *args: object())
-    monkeypatch.setattr(main, "development_fixture_enabled_and_validated", lambda: False)
+    monkeypatch.setattr(
+        main, "validate_provider_intent_activation", lambda value: object()
+    )
+    monkeypatch.setattr(
+        main, "configure_monitoring_intent_authority", lambda *args: object()
+    )
+    monkeypatch.setattr(
+        main, "development_fixture_enabled_and_validated", lambda: False
+    )
     monkeypatch.setattr(main, "OperatorIntentStore", lambda path: object())
     monkeypatch.setattr(main, "load_provider_registry", lambda: None)
     monkeypatch.setattr(main.provider_registry, "get", lambda provider_id: None)
@@ -84,6 +92,11 @@ def test_application_lifespan_honors_dynamic_discovery_activation(
     asyncio.run(exercise())
 
     if enabled:
-        assert events == ["dynamic-start", "serving", "dynamic-close", "lifecycle-close"]
+        assert events == [
+            "dynamic-start",
+            "serving",
+            "dynamic-close",
+            "lifecycle-close",
+        ]
     else:
         assert events == ["serving", "lifecycle-close"]

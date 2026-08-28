@@ -25,6 +25,9 @@ from app.routes.installation_candidate_lifecycle import (
     router as installation_candidate_lifecycle_router,
 )
 from app.routes.installation_capability import router as installation_capability_router
+from app.routes.installation_dispatch_handoff import (
+    router as installation_dispatch_handoff_router,
+)
 from app.routes.installation_execution_request import (
     router as installation_execution_request_router,
 )
@@ -97,6 +100,7 @@ router.include_router(installation_candidate_admission_router)
 router.include_router(installation_candidate_lifecycle_router)
 router.include_router(installation_approval_intent_router)
 router.include_router(installation_execution_request_router)
+router.include_router(installation_dispatch_handoff_router)
 router.include_router(execution_candidates_router)
 router.include_router(execution_candidate_intake_router)
 router.include_router(ops_router)

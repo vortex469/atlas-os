@@ -3,6 +3,101 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.24 P0–P5 release validation and closure — complete
+
+Atlas v0.24 is **Installation Dispatch Handoff**. P0–P5 are complete. P5
+validation started from `c50c09c850451f68a4b267d99d3e95b8a6197a52`.
+
+- [x] Start from current `main` after v0.23.0 and freeze the documentation-only
+  [v1 planning contract](architecture/installation-dispatch-handoff-v1.md).
+- [x] Define the exact closed Core create/envelope and contract-only Agent
+  intake/admission schemas, domain-separated fingerprints, bounds, and closed
+  status vocabulary.
+- [x] Bind exact same-owner v0.20 candidate, v0.21 approval, v0.22 request/
+  validation/evidence, and v0.23 execution-request IDs and fingerprints.
+- [x] Freeze `prepared`/terminal `expired`, 60-second maximum lifetime,
+  one-envelope-per-v0.23-request reservation, exact retry, and fail-closed
+  ambiguity/no-replay rules.
+- [x] Define operator ownership, redaction, audit evidence, closed errors,
+  default-disabled posture, preparation-only API/UI boundaries, P0–P5 scope,
+  must-not-change contracts, threats, and goldens.
+- [x] Confirm the exact authority is local resolution, pure validation, and
+  append-only preparation evidence—not delivery, admission, or execution.
+- [x] Keep Home Assistant blocked and add no deployment artifact or exception.
+- [x] Confirm P0 changes planning documentation only: no runtime model, test,
+  route, store, UI, Agent/worker invocation, network delivery, Docker/Podman/
+  shell/process execution, provider/repository/guest mutation, workflow,
+  installation, deployment, rollback, tag, push, publication, or release.
+- [x] P1 — implement closed models and pure assembly/admission validation.
+- [x] P2 — implement the bounded append-only Core handoff store.
+- [x] P3 — implement the authenticated preparation-only Core API.
+- [x] P4 — implement Mission Control handoff evidence review.
+- [x] P5 — close isolation, no-replay, goldens, regressions, and release gates.
+
+### P0 authority and blocked-work gates
+
+- [x] `prepared handoff != delivered request != Agent admission != execution`.
+- [x] Every envelope and admission authority field is fixed false; exact replay
+  performs no revalidation, time extension, delivery, or work.
+- [x] Agent intake/admission is schema-only with no listener, route, transport,
+  application wiring, persistence, or runtime consumer.
+- [x] Trusted transport, independent execution approval, live intake, atomic
+  consume/no-redelivery, execution-time proof, worker/runtime execution,
+  recovery, side-effect audit, deployment, and rollback remain blocked.
+
+### P5 authority and isolation gates
+
+- [x] The service constructor and configuration default remain disabled;
+  envelopes are record-only and both Core and contract-only Agent authority
+  field sets remain schema-fixed false.
+- [x] Every Core and Agent production Python module is scanned: only the
+  isolated handoff contract/store/service, guarded route, router, and
+  application wiring recognize v0.24 records. No live Agent invocation or
+  HTTP call, delivery, worker, workflow, provider/repository/in-guest mutation,
+  candidate execution, deployment, rollback, or replay-bypass consumer exists.
+- [x] Core OpenAPI exposes only guarded POST/list/item-read under
+  `/api/v1/installation/dispatch-handoffs`; it exposes no install, execute,
+  dispatch, deliver, deploy, send-to-Agent, start-workflow, rollback, or replay
+  route.
+- [x] Mission Control confines endpoint calls to the dedicated adapter's two
+  guarded reads and one explicit record-only create. The view has no prohibited
+  authority control, navigation, label, Agent bridge, or other mutation.
+- [x] Home Assistant remains blocked before candidate preservation and by the
+  v0.22 artifact policy; no deployment artifact was added.
+
+### P5 observed validation evidence
+
+- [x] P5 validation closure commit:
+  `7f909f8 test(v0.24): close installation dispatch handoff`.
+- [x] Both requested `rc1-python-ruff-gate` commands passed.
+- [x] Focused Core release-isolation, route, and service validation passed:
+  237 tests. It ran from `services/atlas-core`, the expected working directory;
+  host access was needed only for the existing provider-secret permission
+  check.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2929 passed, 171 warnings in 172.03s (0:02:52)`.
+- [x] Full Agent validation passed: 948 tests, using isolated `/tmp` XDG state
+  and host execution for the existing local integration-test boundary.
+- [x] Mission Control passed 506 tests, lint with zero errors (one pre-existing
+  hook-dependency warning), and production build (with the existing chunk-size
+  advisory).
+- [x] `git diff --check` passed.
+- [x] P5 changes only release-isolation/authority tests and these release
+  documents. No runtime behavior, migration, tag, push, release, installation,
+  execution, deployment, rollback, or external mutation was added or run.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `7f909f8bf57647315e505819fee88d12eb62f869`.
+- [x] Final release-preparation commit:
+  `a15ab39 docs(v0.24): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release commit.
+- [x] Created the immutable annotated `atlas-v0.24.0` tag at
+  `a15ab39ee53a2af2fae8711d1a74ab508b378dc6` (`a15ab39`).
+- [x] Pushed the final release branch and `atlas-v0.24.0` tag to `origin`.
+- [ ] Publish the Atlas v0.24 release as `atlas-v0.24.0`.
+
 ## Atlas v0.23 P0–P5 release validation and closure — complete
 
 Atlas v0.23 is **Installation Execution Request Boundary**. P0–P5 are complete.

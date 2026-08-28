@@ -1,4 +1,4 @@
-"""Atlas v0.16-v0.23 release-surface and authority-isolation locks."""
+"""Atlas v0.16-v0.24 release-surface and authority-isolation locks."""
 
 from __future__ import annotations
 
@@ -101,6 +101,24 @@ V023_RECORD_MARKERS = (
     "installation-execution-request-v1",
     "installation/execution-requests",
 )
+V024_RECORD_MARKERS = (
+    "app.installation_dispatch_handoff",
+    "InstallationDispatchEnvelopeV1",
+    "AgentInstallationDispatchIntakeV1",
+    "AgentInstallationDispatchAdmissionV1",
+    "installation-dispatch-envelope-v1",
+    "agent-installation-dispatch-intake-v1",
+    "installation/dispatch-handoffs",
+)
+V024_ALLOWED_CONSUMERS = {
+    APP_ROOT / "api" / "v1" / "router.py",
+    APP_ROOT / "installation_dispatch_handoff" / "__init__.py",
+    APP_ROOT / "installation_dispatch_handoff" / "contract.py",
+    APP_ROOT / "installation_dispatch_handoff" / "service.py",
+    APP_ROOT / "installation_dispatch_handoff" / "store.py",
+    APP_ROOT / "main.py",
+    APP_ROOT / "routes" / "installation_dispatch_handoff.py",
+}
 V023_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
     APP_ROOT / "config" / "settings.py",
@@ -110,6 +128,8 @@ V023_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_execution_request" / "store.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_execution_request.py",
+    APP_ROOT / "installation_dispatch_handoff" / "contract.py",
+    APP_ROOT / "installation_dispatch_handoff" / "store.py",
 }
 V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
@@ -126,6 +146,9 @@ V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_execution_request" / "service.py",
     APP_ROOT / "installation_execution_request" / "store.py",
     APP_ROOT / "routes" / "installation_execution_request.py",
+    APP_ROOT / "installation_dispatch_handoff" / "contract.py",
+    APP_ROOT / "installation_dispatch_handoff" / "service.py",
+    APP_ROOT / "installation_dispatch_handoff" / "store.py",
 }
 V021_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
@@ -140,6 +163,8 @@ V021_ALLOWED_CONSUMERS = {
     APP_ROOT / "routes" / "installation_execution_request.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_approval_intent.py",
+    APP_ROOT / "installation_dispatch_handoff" / "contract.py",
+    APP_ROOT / "installation_dispatch_handoff" / "store.py",
 }
 V022_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_execution_request" / "__init__.py",
@@ -838,3 +863,140 @@ def test_v023_route_has_only_create_list_and_owned_item_read() -> None:
             "/api/v1/installation/execution-requests"
         ).split("/")
     )
+
+
+def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        if path in V024_ALLOWED_CONSUMERS:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in V024_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
+
+    agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
+    for path in _production_python_files(agent_root):
+        source = path.read_text(encoding="utf-8")
+        for marker in V024_RECORD_MARKERS:
+            if marker in source:
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
+    assert violations == []
+
+
+def test_v024_is_record_only_default_disabled_and_non_authorizing() -> None:
+    from app.config.settings import OperatorAuthSettings
+    from app.installation_dispatch_handoff.contract import (
+        AgentInstallationDispatchAdmissionV1,
+        InstallationDispatchEnvelopeV1,
+    )
+    from app.installation_dispatch_handoff.service import (
+        InstallationDispatchHandoffService,
+    )
+
+    assert OperatorAuthSettings().installation_dispatch_handoff_enabled is False
+    assert InstallationDispatchHandoffService.__init__.__kwdefaults__ == {
+        "enabled": False
+    }
+    for model, fields in (
+        (
+            InstallationDispatchEnvelopeV1,
+            (
+                "delivery_authorized",
+                "agent_admission_authorized",
+                "execution_authorized",
+                "mutation_authorized",
+                "replay_allowed",
+            ),
+        ),
+        (
+            AgentInstallationDispatchAdmissionV1,
+            (
+                "delivery_accepted",
+                "execution_admitted",
+                "worker_allowed",
+                "mutation_allowed",
+                "replay_allowed",
+            ),
+        ),
+    ):
+        for field in fields:
+            assert model.model_fields[field].annotation == Literal[False]
+
+    package = APP_ROOT / "installation_dispatch_handoff"
+    prohibited_imports = (
+        "agent_client",
+        "core_client",
+        "deploy",
+        "execution_candidates",
+        "operational_dispatch",
+        "provider_intents",
+        "repository",
+        "subprocess",
+        "workflow",
+        "worker",
+    )
+    violations = [
+        f"{path.relative_to(APP_ROOT)} -> {imported}"
+        for path in _production_python_files(package)
+        for imported in _imports(path)
+        if any(term in imported for term in prohibited_imports)
+    ]
+    service_source = (package / "service.py").read_text(encoding="utf-8")
+    store_source = (package / "store.py").read_text(encoding="utf-8")
+    assert violations == []
+    assert not re.search(
+        r"\b(?:consume|deliver|dispatch|execute|invoke|install|replay|send|start)\s*\(",
+        service_source,
+    )
+    assert "UPDATE installation_dispatch_handoffs" not in store_source
+    assert "DELETE FROM installation_dispatch_handoffs" not in store_source
+
+
+def test_v024_core_surface_is_only_guarded_create_list_and_owned_get() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    base = "/api/v1/installation/dispatch-handoffs"
+    paths = {
+        path: set(methods)
+        for path, methods in application.openapi()["paths"].items()
+        if path.startswith(base)
+    }
+    assert paths == {
+        base: {"get", "post"},
+        base + "/{dispatch_envelope_id}": {"get"},
+    }
+    prohibited = (
+        "install",
+        "execute",
+        "dispatch",
+        "deliver",
+        "deploy",
+        "send-to-agent",
+        "start-workflow",
+        "rollback",
+        "replay",
+    )
+    assert not any(
+        segment in prohibited
+        for path in paths
+        for segment in path.removeprefix(base).split("/")
+    )
+
+
+def test_v024_home_assistant_remains_non_installable_and_non_executable() -> None:
+    repository_root = APP_ROOT.parents[2]
+    assert not (repository_root / "compose" / "home-assistant.yaml").exists()
+    agent_models = (
+        repository_root
+        / "services"
+        / "atlas-agent"
+        / "app"
+        / "candidate_planning"
+        / "models.py"
+    ).read_text(encoding="utf-8")
+    assert "install-container" not in agent_models

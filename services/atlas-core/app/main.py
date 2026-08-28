@@ -31,6 +31,8 @@ from app.installation_candidate_lifecycle.store import (
 from app.installation_capability.assembly import (
     InstallationCapabilityAssessmentReadDependency,
 )
+from app.installation_dispatch_handoff.service import InstallationDispatchHandoffService
+from app.installation_dispatch_handoff.store import InstallationDispatchHandoffStore
 from app.installation_execution_request.service import (
     InstallationExecutionRequestService,
 )
@@ -94,9 +96,7 @@ logger = get_logger("atlas")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Atlas Core starting")
-    assert_restore_state_clean(
-        Path(settings.operational_dispatch.database).parent
-    )
+    assert_restore_state_clean(Path(settings.operational_dispatch.database).parent)
     validate_configuration()
     logger.info("Atlas configuration validated")
     provider_intent_store = validate_provider_intent_activation(
@@ -118,7 +118,9 @@ async def lifespan(app: FastAPI):
         operator_settings.intent_database
     )
     app.state.operator_auth_enabled = operator_settings.enabled
-    app.state.operator_auth_trusted_origins = frozenset(operator_settings.trusted_origins)
+    app.state.operator_auth_trusted_origins = frozenset(
+        operator_settings.trusted_origins
+    )
     if operator_settings.enabled:
         app.state.operator_credential_verifier = OperatorCredentialVerifier(
             operator_settings.verifier_file
@@ -199,6 +201,18 @@ async def lifespan(app: FastAPI):
             enabled=operator_settings.installation_execution_request_enabled,
         )
     )
+    app.state.installation_dispatch_handoff_store = InstallationDispatchHandoffStore(
+        operator_settings.installation_dispatch_handoff_database,
+        execution_requests=app.state.installation_execution_request_store,
+        candidates=app.state.installation_candidate_record_store,
+        approvals=app.state.installation_approval_intent_store,
+    )
+    app.state.installation_dispatch_handoff_service = (
+        InstallationDispatchHandoffService(
+            store=app.state.installation_dispatch_handoff_store,
+            enabled=operator_settings.installation_dispatch_handoff_enabled,
+        )
+    )
 
     operational_ledger = OperationalDispatchLedger(
         settings.operational_dispatch.database
@@ -220,9 +234,7 @@ async def lifespan(app: FastAPI):
         )
 
         async def verify_proxmox_qemu(request, result, deadline):
-            return await proxmox_verifier.verify(
-                request, result, deadline=deadline
-            )
+            return await proxmox_verifier.verify(request, result, deadline=deadline)
 
         verifier_registry.register(
             execution_intent="restart-service",

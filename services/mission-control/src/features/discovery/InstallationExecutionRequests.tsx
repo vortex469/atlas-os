@@ -5,6 +5,7 @@ import { executionRequestIdempotencyKey, getInstallationExecutionRequest, listIn
 import type { InstallationApprovalIntentV1 } from "../../types/installationApprovalIntent";
 import type { AgentInstallContainerRequestV1, InstallationExecutionRequestCreateV1, InstallationExecutionRequestV1 } from "../../types/installationExecutionRequest";
 import type { InstallContainerValidation } from "../../types/atlasAgent";
+import { InstallationDispatchHandoffs } from "./InstallationDispatchHandoffs";
 
 export interface ExecutionEvidenceBundle {
     agent_request: AgentInstallContainerRequestV1;
@@ -80,6 +81,7 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
         </ul>}
         {confirming && <Confirmation value={confirming} recording={recording} onConfirm={() => void record()} onCancel={() => setConfirming(null)} />}
         {reviewed && <RequestDetails request={reviewed} />}
+        <InstallationDispatchHandoffs executionRequests={requests} csrfToken={csrfToken} />
     </section>;
 }
 

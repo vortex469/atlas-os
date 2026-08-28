@@ -6,6 +6,39 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.24 P0–P5 — Installation Dispatch Handoff
+
+- Selected Atlas v0.24 **Installation Dispatch Handoff** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/installation-dispatch-handoff-v1.md).
+- Defined an immutable, operator-owned, non-delivered Core envelope binding
+  the exact v0.20 candidate, v0.21 approval, v0.22 validation evidence, and
+  v0.23 execution-request identities and fingerprints.
+- Froze the exact closed envelope and contract-only Agent intake/admission
+  shapes, `prepared`/terminal `expired` lifecycle, 60-second maximum lifetime,
+  atomic one-envelope-per-request idempotency/no-replay, ownership, redaction,
+  audit evidence, default-disabled API/UI, and P0–P5 plan.
+- V0.24 P0 grants only local validation and future preparation of evidence:
+  no live Agent intake or Core-to-Agent invocation, worker dispatch,
+  Docker/Podman/shell/process execution, provider/repository/guest mutation,
+  workflow, install, deployment, rollback, or Home Assistant artifact.
+- Completed the closed models and pure validation, bounded append-only store,
+  authenticated default-disabled preparation-only create/list/item-read API,
+  and Mission Control immutable evidence-preservation and review surface.
+- Added P5 structural locks proving no Core or Agent invocation/HTTP consumer,
+  dispatch delivery, worker, workflow, provider/repository/in-guest mutation,
+  candidate execution, deployment, rollback, or replay bypass consumes a
+  v0.24 handoff record.
+- Locked Core to the intended guarded create/list/get lifecycle surface and
+  Mission Control to two reads plus the one explicit record-only create, with
+  no prohibited authority controls, navigation, labels, or mutation calls.
+- Reconfirmed both five-field authority sets remain fixed false, the feature
+  and service remain default-disabled and non-delivering/non-executing, and
+  Home Assistant remains blocked with no deployment artifact.
+- Trusted transport, fresh execution approval, live admission, atomic consume/
+  no-redelivery, execution-time proof, runtime/recovery/audit, deployment, and
+  rollback remain blocked.
+
 #### v0.23 P0–P5 — Installation Execution Request Boundary
 
 - Selected Atlas v0.23 **Installation Execution Request Boundary** and froze
