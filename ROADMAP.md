@@ -867,7 +867,7 @@ validation behavior, reason precedence, idempotency, no-replay, redaction,
 audit evidence, default-disabled posture, risks, goldens, and refusal
 boundaries. Change planning documentation only.
 
-### P1 — Closed models and fingerprints — planned
+### P1 — Closed models and fingerprints — complete
 
 Implement isolated pure Agent models, canonicalization, and domain-separated
 fingerprints. Register no route, intent, adapter, service, worker, or consumer.

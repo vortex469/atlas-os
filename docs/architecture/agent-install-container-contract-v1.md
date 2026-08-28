@@ -1,6 +1,6 @@
 # Agent Install-Container Contract v1
 
-Status: **Atlas v0.22 P0 planning contract complete; P1–P5 not started**.
+Status: **Atlas v0.22 P0–P1 complete; P2–P5 not started**.
 
 This document freezes the narrowest Agent-side contract that may later validate
 one future Core request to install one container. Atlas v0.22 adds only the
@@ -310,7 +310,7 @@ filesystem/network limits, validation result, reason precedence, idempotency,
 no-replay, redaction, audit evidence, default-disabled posture, goldens, and
 must-not-change contracts. P0 changes planning documentation only.
 
-### P1 — Closed models and canonical fingerprints — planned
+### P1 — Closed models and canonical fingerprints — complete
 
 Add isolated Agent contract models and pure canonicalization/fingerprint
 functions. Exhaust unknown fields, duplicate keys, type/bound violations,

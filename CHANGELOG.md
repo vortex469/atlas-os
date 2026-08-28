@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.22-P0 — Agent Install-Container Contract
+#### v0.22 P0–P1 — Agent Install-Container Contract
 
 - Selected Atlas v0.22 **Agent Install-Container Contract** and froze the
   documentation-only
@@ -20,6 +20,11 @@ release boundaries.
   Core-to-Agent dispatch, worker, install, provider/repository/guest mutation,
   runtime invocation, Home Assistant deployment, tag, push, release, or
   deployment is added.
+- Added isolated strict immutable Agent request, validation, audit-evidence,
+  and redacted-error models with the complete v0.20/v0.21 proof identity,
+  fixed runtime/filesystem/network/resource bounds, canonical JSON parsing,
+  and deterministic domain-separated fingerprints. Every authority field is
+  fixed false and no model has a production consumer.
 
 #### v0.21 P0–P5 — Installation Approval Intent
 
