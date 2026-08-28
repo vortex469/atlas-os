@@ -6,8 +6,7 @@ unchecked item is not implied to have passed.
 ## Atlas v0.22 P0–P5 release validation and closure — complete
 
 Atlas v0.22 is **Agent Install-Container Contract**. P0–P5 are complete. P5
-validation started from `1a399533a2e320fe7f8ee4f4096209316bb40e32` and no
-v0.22 release has been performed.
+validation started from `1a399533a2e320fe7f8ee4f4096209316bb40e32`.
 
 - [x] Freeze the exact closed request/result schemas, canonical fingerprinting,
   five-minute freshness, size bounds, and duplicate/unknown-field rejection in
@@ -79,11 +78,13 @@ v0.22 release has been performed.
 
 - [x] Record the exact reviewed implementation/validation SHA after P5 review:
   `9adaf937140ed2f05399bcdb44682ddef8ed677e`.
-- [ ] Confirm the tracked worktree is clean at the final release commit.
-- [ ] Create the immutable annotated `atlas-v0.22.0` tag at the final release
-  commit.
-- [ ] Push the final release branch and `atlas-v0.22.0` tag to `origin`.
-- [ ] Publish the Atlas v0.22 release as `atlas-v0.22.0`.
+- [x] Final release-preparation commit:
+  `3ecf91d docs(v0.22): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release commit.
+- [x] Created the immutable annotated `atlas-v0.22.0` tag at
+  `3ecf91dc4b501d6ac3bbfbc4ab99bd8dba283169` (`3ecf91d`).
+- [x] Pushed the final release branch and `atlas-v0.22.0` tag to `origin`.
+- [x] Published the Atlas v0.22 release as `atlas-v0.22.0`.
 
 ## Atlas v0.21 P0–P5 release closure
 
