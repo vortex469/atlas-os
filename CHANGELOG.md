@@ -6,6 +6,62 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.25 P0–P5 — Agent Intake Simulation
+
+- Selected Atlas v0.25 **Agent Intake Simulation** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/agent-intake-simulation-v1.md).
+- Defined the exact closed simulated-intake input and immutable Agent evidence
+  record binding every required v0.20–v0.24 identity and fingerprint under one
+  authenticated operator and one distinct simulation request identity.
+- Froze the `simulated`/terminal `expired` lifecycle, 30-second maximum local
+  freshness window, one-simulation-per-envelope idempotency/no-replay rules,
+  redaction/audit evidence, default-disabled posture, and P0–P5 plan.
+- V0.25 P0 changes planning documentation only. No Agent/Core route, command,
+  UI, transport, runtime call, store, worker, workflow, Docker/Podman/shell/
+  process execution, provider/repository/guest mutation, installation,
+  deployment, rollback, Home Assistant artifact, migration, tag, push,
+  publication, or release is added.
+- The release may later validate only explicitly injected bytes and preserve
+  simulation evidence; authentic delivery, live admission, atomic consumption,
+  execution approval, runtime behavior, and every external mutation remain
+  blocked.
+- Completed the closed immutable models, pure injected validation, bounded
+  append-only simulation evidence store, atomic idempotency/no-replay
+  reservations, restart durability, quotas, owned readback, and sanitized
+  failures.
+- P3 locks simulation intake to explicit in-process construction only. Agent
+  OpenAPI, commands, application container, settings, Core clients, workers,
+  workflows, providers, repositories, and runtime adapters expose or consume
+  no v0.25 surface; only the isolated evidence store may mutate its configured
+  store path.
+- P4 locks Mission Control to no v0.25 presentation because the frozen
+  contract exposes no UI-facing read model. Structural Mission Control and
+  cross-service tests prove there is no v0.25 API client, route, navigation,
+  mutation call, install/intake/delivery control, execution-suggesting label,
+  simulation evidence rendering, or sensitive intake detail. Home Assistant
+  remains blocked, non-installable, and non-executable with no deployment
+  artifact.
+- P4 validation passed 509 Mission Control tests, Mission Control lint/build,
+  the Agent Ruff gate, 968 Agent tests, and `git diff --check`; lint reported
+  one pre-existing exhaustive-deps warning and no errors.
+- P5 closes the release with release-wide isolation, regression, authority,
+  no-replay, owned-readback, capability-parity, and Home Assistant blocked-
+  golden tests. Production Core and Agent paths cannot consume v0.25 records;
+  Agent HTTP/OpenAPI, CLI/shell, container/settings registration, worker,
+  workflow, runtime, provider/repository/guest mutation, candidate execution,
+  deployment, rollback, and replay-bypass surfaces remain absent.
+- Mission Control remains free of v0.25 API clients, mutations, routes,
+  navigation, controls, prohibited action labels, and evidence rendering.
+  `install-container` remains unsupported and default-disabled, and Home
+  Assistant remains blocked with no deployment artifact. P5 adds no runtime
+  behavior, authority, migration, tag, push, release, or deployment.
+- P5 validation passed both Core and Agent Ruff gates, 35 focused Core
+  release-isolation tests, 969 Agent tests, 509 Mission Control tests, Mission
+  Control lint/build, and `git diff --check`. Lint retained one pre-existing
+  exhaustive-deps warning and the build retained its existing chunk-size
+  advisory; neither reported an error.
+
 #### v0.24 P0–P5 — Installation Dispatch Handoff
 
 - Selected Atlas v0.24 **Installation Dispatch Handoff** and froze the

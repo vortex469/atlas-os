@@ -1,4 +1,4 @@
-"""Atlas v0.16-v0.24 release-surface and authority-isolation locks."""
+"""Atlas v0.16-v0.25 release-surface and authority-isolation locks."""
 
 from __future__ import annotations
 
@@ -119,6 +119,14 @@ V024_ALLOWED_CONSUMERS = {
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_dispatch_handoff.py",
 }
+V025_RECORD_MARKERS = (
+    "app.agent_intake_simulation",
+    "AgentIntakeSimulationService",
+    "AgentIntakeSimulationStore",
+    "AgentInstallationIntakeSimulation",
+    "agent-installation-intake-simulation",
+    "agent_intake_simulation",
+)
 V023_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
     APP_ROOT / "config" / "settings.py",
@@ -876,7 +884,10 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
                 violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
 
     agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
+    simulation_root = agent_root / "agent_intake_simulation"
     for path in _production_python_files(agent_root):
+        if simulation_root in path.parents:
+            continue
         source = path.read_text(encoding="utf-8")
         for marker in V024_RECORD_MARKERS:
             if marker in source:
@@ -1000,3 +1011,45 @@ def test_v024_home_assistant_remains_non_installable_and_non_executable() -> Non
         / "models.py"
     ).read_text(encoding="utf-8")
     assert "install-container" not in agent_models
+
+
+def test_v025_simulation_has_no_core_or_agent_production_consumer() -> None:
+    """Only the isolated Agent package may recognize simulation records."""
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    simulation_root = agent_root / "agent_intake_simulation"
+    violations: list[str] = []
+
+    for path in _production_python_files(APP_ROOT):
+        source = path.read_text(encoding="utf-8")
+        for marker in V025_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
+
+    for path in _production_python_files(agent_root):
+        if simulation_root in path.parents:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in V025_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+
+    assert violations == []
+
+
+def test_v025_keeps_install_container_unsupported_and_home_assistant_blocked() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'capability_status: Literal["unsupported"]' in status_source
+    assert (
+        'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})'
+        in candidate_source
+    )
+    assert "install-container" not in candidate_source
+    assert not (repository_root / "compose" / "home-assistant.yaml").exists()
+    assert not (repository_root / "compose" / "home-assistant.yml").exists()

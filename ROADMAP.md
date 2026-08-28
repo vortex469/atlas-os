@@ -1057,7 +1057,51 @@ workflow, provider/repository/guest mutation, candidate execution, deployment,
 rollback, or replay-bypass consumer. The feature remains default-disabled and
 record-only, and Home Assistant remains non-installable and non-executable.
 
-## 14. Explicitly deferred work
+## 14. Selected v0.25 plan — Agent Intake Simulation
+
+Atlas v0.25 is **Agent Intake Simulation**. Its normative contract is
+[Agent Intake Simulation v1](docs/architecture/agent-intake-simulation-v1.md).
+P0 through P5 are complete.
+
+P1–P2 provide closed immutable models and pure validation of explicitly
+injected, owner-bound v0.24 envelopes. P3 provides the bounded append-only
+simulation evidence store with atomic reservations, exact idempotency,
+one-envelope no-replay semantics, restart durability, quotas, fail-closed
+corruption handling, and owned in-process readback.
+
+P3 also freezes the required no-surface boundary. There is no Agent HTTP,
+OpenAPI, RPC, CLI, shell-command, application-container, settings, Core
+consumer, delivery, worker, workflow, runtime, provider, repository, or guest
+integration. The simulation package has no network or process dependency, and
+filesystem mutation is confined to an explicitly constructed simulation
+evidence store. Authentic delivery, live admission, consumption, execution,
+installation, deployment, and rollback remain blocked.
+
+### P4 — Mission Control presentation boundary — complete
+
+The frozen contract exposes no UI-facing read model, so Mission Control adds
+no v0.25 component, page, route, navigation, API client, hook, type, mutation,
+or action control. Structural Mission Control and cross-service tests lock the
+absence of install/intake/delivery controls, mutation calls, action navigation,
+execution-suggesting labels, simulation evidence, and sensitive intake data.
+Home Assistant remains blocked, non-installable, and non-executable with no
+deployment artifact.
+
+### P5 — Release validation and closure — complete
+
+Release-wide structural and regression tests prove that v0.25 remains an
+explicitly constructed, default-disabled, simulation-only in-process Agent
+facility. No production Core or Agent module consumes its records; no live
+delivery, HTTP/OpenAPI, command, container/settings registration, worker,
+workflow, provider/repository/guest mutation, candidate execution, deployment,
+rollback, or replay-bypass path exists. Owned readback remains a direct
+in-process store operation. Mission Control has no v0.25 client, mutation,
+route, navigation, control, execution label, or evidence surface.
+`install-container` remains unsupported, and Home Assistant remains blocked
+and non-executable with no deployment artifact. P5 adds no runtime behavior or
+authority.
+
+## 15. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
