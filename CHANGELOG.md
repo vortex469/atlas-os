@@ -6,6 +6,27 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.25 P0 — Agent Intake Simulation
+
+- Selected Atlas v0.25 **Agent Intake Simulation** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/agent-intake-simulation-v1.md).
+- Defined the exact closed simulated-intake input and immutable Agent evidence
+  record binding every required v0.20–v0.24 identity and fingerprint under one
+  authenticated operator and one distinct simulation request identity.
+- Froze the `simulated`/terminal `expired` lifecycle, 30-second maximum local
+  freshness window, one-simulation-per-envelope idempotency/no-replay rules,
+  redaction/audit evidence, default-disabled posture, and P0–P5 plan.
+- V0.25 P0 changes planning documentation only. No Agent/Core route, command,
+  UI, transport, runtime call, store, worker, workflow, Docker/Podman/shell/
+  process execution, provider/repository/guest mutation, installation,
+  deployment, rollback, Home Assistant artifact, migration, tag, push,
+  publication, or release is added.
+- The release may later validate only explicitly injected bytes and preserve
+  simulation evidence; authentic delivery, live admission, atomic consumption,
+  execution approval, runtime behavior, and every external mutation remain
+  blocked.
+
 #### v0.24 P0–P5 — Installation Dispatch Handoff
 
 - Selected Atlas v0.24 **Installation Dispatch Handoff** and froze the
