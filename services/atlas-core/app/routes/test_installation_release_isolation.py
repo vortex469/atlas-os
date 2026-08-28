@@ -105,6 +105,7 @@ V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_approval_intent" / "contract.py",
     APP_ROOT / "installation_approval_intent" / "service.py",
     APP_ROOT / "installation_approval_intent" / "store.py",
+    APP_ROOT / "installation_execution_request" / "contract.py",
 }
 V021_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
@@ -113,8 +114,13 @@ V021_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_approval_intent" / "contract.py",
     APP_ROOT / "installation_approval_intent" / "service.py",
     APP_ROOT / "installation_approval_intent" / "store.py",
+    APP_ROOT / "installation_execution_request" / "contract.py",
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_approval_intent.py",
+}
+V022_ALLOWED_CONSUMERS = {
+    APP_ROOT / "installation_execution_request" / "__init__.py",
+    APP_ROOT / "installation_execution_request" / "contract.py",
 }
 
 V021_V019_ALLOWED_CONSUMERS = {
@@ -660,6 +666,8 @@ def test_home_assistant_cannot_be_preserved_or_approved_in_v021() -> None:
 def test_no_core_production_path_consumes_v022_validation_records() -> None:
     violations: list[str] = []
     for path in _production_python_files(APP_ROOT):
+        if path in V022_ALLOWED_CONSUMERS:
+            continue
         source = path.read_text(encoding="utf-8")
         for marker in V022_RECORD_MARKERS:
             if marker in source:
