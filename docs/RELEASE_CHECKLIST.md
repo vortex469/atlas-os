@@ -90,10 +90,12 @@ or deployment was added or performed.
 
 - [x] Record the exact reviewed implementation/validation SHA after P5 review:
   `407669b6d82572e8255e4b7b4f847abf5b04a3a1`.
-- [ ] The tracked worktree is clean at the final release commit.
-- [ ] Create the immutable annotated `atlas-v0.25.0` tag at the final release
-  commit.
-- [ ] Push the final release branch and `atlas-v0.25.0` tag to `origin`.
+- [x] Final release-preparation commit:
+  `d4d7424 docs(v0.25): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release commit.
+- [x] Created the immutable annotated `atlas-v0.25.0` tag at
+  `d4d7424b86af1510f200d92f628cf80b779638f9` (`d4d7424`).
+- [x] Pushed the final release branch and `atlas-v0.25.0` tag to `origin`.
 - [ ] Publish the Atlas v0.25 release as `atlas-v0.25.0`.
 
 ## Atlas v0.24 P0–P5 release validation and closure — complete
