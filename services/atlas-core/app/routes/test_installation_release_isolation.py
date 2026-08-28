@@ -111,6 +111,7 @@ V023_ALLOWED_CONSUMERS = {
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_execution_request.py",
     APP_ROOT / "installation_dispatch_handoff" / "contract.py",
+    APP_ROOT / "installation_dispatch_handoff" / "store.py",
 }
 V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
@@ -128,6 +129,8 @@ V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_execution_request" / "store.py",
     APP_ROOT / "routes" / "installation_execution_request.py",
     APP_ROOT / "installation_dispatch_handoff" / "contract.py",
+    APP_ROOT / "installation_dispatch_handoff" / "service.py",
+    APP_ROOT / "installation_dispatch_handoff" / "store.py",
 }
 V021_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
@@ -143,6 +146,7 @@ V021_ALLOWED_CONSUMERS = {
     APP_ROOT / "main.py",
     APP_ROOT / "routes" / "installation_approval_intent.py",
     APP_ROOT / "installation_dispatch_handoff" / "contract.py",
+    APP_ROOT / "installation_dispatch_handoff" / "store.py",
 }
 V022_ALLOWED_CONSUMERS = {
     APP_ROOT / "installation_execution_request" / "__init__.py",
