@@ -3,6 +3,55 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.23 P0 planning — Installation Execution Request Boundary
+
+- [x] Start from current `main` after v0.22.0 and freeze the documentation-only
+  [v1 planning contract](architecture/installation-execution-request-v1.md).
+- [x] Define the exact closed create and durable record schemas, all mandatory
+  v0.20/v0.21/v0.22 IDs and fingerprints, same-owner linkage, and Core
+  domain-separated fingerprint.
+- [x] Freeze `recorded`/terminal `expired` lifecycle, exact 60-second evidence
+  intake freshness, five-minute maximum record lifetime, and fail-closed clock
+  behavior.
+- [x] Freeze atomic reservation of the idempotency key, approval intent, Agent
+  request ID/fingerprint, validation fingerprint, and Core fingerprint; exact
+  replay returns the original without revalidation or work.
+- [x] Define operator-scoped append-only ownership, quotas, corruption and
+  ambiguity behavior, redaction, closed errors, audit evidence, and unchanged
+  backup-v3 posture.
+- [x] Limit future API scope to authenticated create/list/item-read and UI scope
+  to explicit non-executing submission/review with operator-submitted evidence
+  provenance and no authority controls.
+- [x] Keep the feature default-disabled through release closure and keep
+  `install-container` unsupported with no execution consumer or enable switch.
+- [x] Preserve all v0.16–v0.22 and existing approval/audit/workflow/dispatch/
+  execution/no-replay/capability contracts unchanged.
+- [x] Confirm P0 adds planning documentation only: no runtime, test, route,
+  store, UI, Agent/worker invocation, Core-to-Agent dispatch, process/shell/
+  Docker/Podman command, provider/repository/guest mutation, workflow, install,
+  deployment, rollback, migration, tag, push, publication, or release.
+- [ ] P1 — implement closed Core models and pure validation.
+- [ ] P2 — implement the bounded append-only request store.
+- [ ] P3 — implement the authenticated record-only Core API.
+- [ ] P4 — implement Mission Control evidence submission and review.
+- [ ] P5 — close isolation, no-replay, goldens, regressions, and release gates.
+
+### P0 authority and golden gates
+
+- [x] `recorded request != execution approval != dispatch != execution`; all
+  five authority fields are fixed false in every lifecycle state.
+- [x] Core performs only local owned-record reads, pure validation, and a
+  future append; v0.23 never calls Agent or any mutation/authority subsystem.
+- [x] V0.22 evidence is explicitly operator-submitted and fingerprint-checked,
+  not promoted into trusted Agent attestation, liveness, or runtime readiness.
+- [x] One approval intent can create at most one request. Expiry, restart,
+  timeout, lost response, or source deletion cannot open a replay path.
+- [x] Home Assistant remains blocked before v0.20 and by v0.22 artifact policy;
+  no deployment artifact or golden exception is added.
+- [x] What remains blocked is explicit: independent execution approval,
+  trusted Agent transport, execution-time proof, consumption/dispatch, worker/
+  runtime, recovery/audit, image acquisition, deployment, and rollback.
+
 ## Atlas v0.22 P0–P5 release validation and closure — complete
 
 Atlas v0.22 is **Agent Install-Container Contract**. P0–P5 are complete. P5

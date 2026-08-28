@@ -6,6 +6,24 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.23 P0 — Installation Execution Request Boundary
+
+- Selected Atlas v0.23 **Installation Execution Request Boundary** and froze
+  the documentation-only
+  [v1 planning contract](docs/architecture/installation-execution-request-v1.md).
+- Defined a closed, immutable, operator-owned Core record binding the exact
+  v0.20 candidate, v0.21 approval intent, and complete fresh v0.22 request,
+  validation, and audit-evidence fingerprints. Its derived states are only
+  `recorded` and terminal `expired`; every authority field is false.
+- Froze strict same-owner linkage, freshness/expiry, atomic multi-identity
+  reservation, exact-replay behavior, no-replay ambiguity rules, append-only
+  ownership, redaction, audit evidence, default-disabled API/UI boundaries,
+  P0–P5 scope, must-not-change contracts, and golden cases.
+- V0.23 P0 adds no runtime behavior, Core route, store, UI, Agent/worker call,
+  Core-to-Agent dispatch, process/shell/Docker/Podman execution, provider/
+  repository/guest mutation, workflow, installation, deployment, rollback,
+  Home Assistant artifact, migration, tag, push, publication, or release.
+
 #### v0.22 P0–P5 — Agent Install-Container Contract
 
 - Selected Atlas v0.22 **Agent Install-Container Contract** and froze the

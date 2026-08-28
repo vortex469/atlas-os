@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.21
+## 1. Current released baseline — v0.22
 
-Atlas v0.21.0 is released as `atlas-v0.21.0` at `1ca7081` and its completed
-milestone is merged to current `main` at `8be5d7f`.
+Atlas v0.22.0 is released as `atlas-v0.22.0` at `ed69226` and its completed
+milestone is merged to current `main` at `22bff36`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -55,6 +55,8 @@ image evidence, grounding, and provenance.
   installation candidate record without adding an authority consumer.
 - v0.21 released an immutable operator approval statement for one exact
   non-executable candidate without adding an execution consumer.
+- v0.22 released a closed validation-only Agent install-container contract and
+  non-authorizing evidence while keeping runtime intake unsupported.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -940,10 +942,79 @@ networked or persistent containers, Home Assistant deployment, and any request
 without a separately frozen Core authority, dispatch, durable no-replay,
 recovery, and rollback contract.
 
-## 12. Explicitly deferred work
+## 12. Selected v0.23 plan — Installation Execution Request Boundary
+
+Atlas v0.23 is **Installation Execution Request Boundary**. It defines the
+narrowest Core-side immutable request record that binds one same-owner active
+v0.20 candidate envelope, its exact v0.21 approval intent, and one complete
+fresh v0.22 Agent request/validation/evidence pair. The normative contract is
+[Installation Execution Request v1](docs/architecture/installation-execution-request-v1.md).
+
+The request is record-only and non-executing. Its lifecycle is derived as
+`recorded` or terminal `expired`; all five authority fields are false. It is
+not queued, dispatchable, executable, renewable, replayable, or convertible.
+Core validates operator-submitted v0.22 evidence locally and never calls
+Agent. The dependency order is P0 → P1 → P2 → P3 → P4 → P5. Only P0 is
+selected; it changes planning documentation only.
+
+### P0 — Core request contract and threat model — selected
+
+Freeze the exact create/durable schemas, mandatory fingerprints, same-owner
+linkage, freshness, lifecycle, atomic idempotency/no-replay reservation,
+redaction/audit evidence, append-only store posture, default-disabled API/UI,
+goldens, threats, and must-not-change contracts.
+
+### P1 — Closed models and pure validation
+
+Implement isolated Core models, fingerprints, exact three-release linkage,
+freshness/lifecycle derivation, and sanitized failures over injected values
+only. Register no route, store, service, consumer, or Agent client.
+
+### P2 — Bounded append-only request store
+
+Implement operator-scoped atomic append/read, multi-identity reservation,
+idempotency, uniqueness, quotas, durability, and fail-closed corruption and
+ambiguous-completion behavior. Add no update/delete, event, queue, audit
+bridge, expiry task, worker job, migration, or consumer.
+
+### P3 — Authenticated record-only Core API
+
+Implement create/list/item-read only. Resolve v0.20/v0.21 ownership locally,
+validate the submitted v0.22 pair without Agent invocation, and lock bounds,
+redaction, methods, OpenAPI, and dependency isolation.
+
+### P4 — Mission Control evidence review
+
+Implement explicit non-executing confirmation and immutable review, including
+operator-submitted evidence provenance and `recorded`/`expired` rendering.
+Add no install, execute, dispatch, deploy, Agent, workflow, retry, cancel, or
+rollback control or navigation.
+
+### P5 — Isolation, no-replay, and release closure
+
+Prove ownership, linkage, freshness, reservations, concurrency/restart/timeout
+ambiguity, quotas, corruption, API/UI boundaries, zero consumers, all prior
+goldens and authority regressions, default-disabled posture, and full release
+gates. Do not automatically migrate, tag, push, publish, deploy, or release.
+
+### Exact authority boundary and later enablement
+
+V0.23 may append and read one operator-owned evidence record. That is its full
+authority. It cannot dispatch, invoke Agent/worker/runtime/process execution,
+mutate provider/repository/guest state, start a workflow, install, deploy, roll
+back, or replay. It preserves existing capability sets and backup v3.
+
+Later design may reference the durable, freshness-bounded, one-time linkage as
+an input. Still blocked are a new independent execution approval, trusted
+Agent evidence transport, execution-time identity checks, atomic consumption,
+Core-to-Agent dispatch, worker/runtime behavior, interruption recovery,
+side-effect audit, image acquisition, persistent/networked workloads,
+deployment, rollback, and Home Assistant installation.
+
+## 13. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
-- Core install-container request authority and Core-to-Agent dispatch;
+- executable Core install-container authority and Core-to-Agent dispatch;
 - executable installation-intent lifecycle and approved installation targets;
 - conversational execution or installation;
 - generic image collection;
@@ -951,7 +1022,7 @@ recovery, and rollback contract.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 13. Uncommitted future directions
+## 14. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 
