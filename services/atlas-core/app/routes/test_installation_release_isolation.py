@@ -1,4 +1,4 @@
-"""Atlas v0.16-v0.21 release-surface and authority-isolation locks."""
+"""Atlas v0.16-v0.22 release-surface and authority-isolation locks."""
 
 from __future__ import annotations
 
@@ -86,6 +86,13 @@ V021_RECORD_MARKERS = (
     "InstallationApprovalIntentV1",
     "installation-approval-intent-v1",
     "candidate-approval-intents",
+)
+V022_RECORD_MARKERS = (
+    "app.install_container_contract",
+    "AgentInstallContainerValidationV1",
+    "AgentInstallContainerAuditEvidenceV1",
+    "agent-install-container-validation-v1",
+    "agent-install-container-audit-evidence-v1",
 )
 V020_ALLOWED_CONSUMERS = {
     APP_ROOT / "api" / "v1" / "router.py",
@@ -648,3 +655,61 @@ def test_home_assistant_cannot_be_preserved_or_approved_in_v021() -> None:
         validate_preservable_admission(
             admission, created_at="2026-08-27T12:00:01Z"
         )
+
+
+def test_no_core_production_path_consumes_v022_validation_records() -> None:
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        source = path.read_text(encoding="utf-8")
+        for marker in V022_RECORD_MARKERS:
+            if marker in source:
+                violations.append(f"{path.relative_to(APP_ROOT)} -> {marker}")
+    assert violations == []
+
+
+def test_agent_authority_and_mutation_paths_do_not_consume_v022_records() -> None:
+    agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
+    allowed = {
+        agent_root / "install_container_contract" / "__init__.py",
+        agent_root / "install_container_contract" / "models.py",
+        agent_root / "install_container_contract" / "service.py",
+        agent_root / "routes" / "status.py",
+    }
+    violations: list[str] = []
+    for path in _production_python_files(agent_root):
+        if path in allowed:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in V022_RECORD_MARKERS:
+            if marker in source:
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
+    assert violations == []
+
+
+def test_v022_adds_no_core_route_or_core_to_agent_bridge() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    assert not any(
+        "install-container" in path or "install_container" in path
+        for path in application.openapi()["paths"]
+    )
+
+    consumer_roots = (
+        APP_ROOT / "core_client",
+        APP_ROOT / "operational_dispatch",
+        APP_ROOT / "execution_candidates",
+        APP_ROOT / "deploy",
+    )
+    violations: list[str] = []
+    for root in consumer_roots:
+        if not root.exists():
+            continue
+        for path in _production_python_files(root):
+            source = path.read_text(encoding="utf-8")
+            if "install_container_contract" in source:
+                violations.append(str(path.relative_to(APP_ROOT)))
+    assert violations == []

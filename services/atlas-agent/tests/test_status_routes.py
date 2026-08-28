@@ -3,8 +3,6 @@
 import subprocess
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from app.config.settings import Settings
 from app.main import create_app
 from app.review.models import (
@@ -21,6 +19,7 @@ from app.verification.models import (
 )
 from app.version import AGENT_VERSION
 from app.workflow.models import SprintPhase, SprintStatus
+from fastapi.testclient import TestClient
 
 
 def run_git(
@@ -262,4 +261,20 @@ def test_agent_info_returns_runtime_information(
             "timed_out",
             "launch_failed",
         ],
+        "install_container": {
+            "contract_schema": "agent-install-container-validation-v1",
+            "operation": "install-container",
+            "mode": "validate-only",
+            "capability_status": "unsupported",
+            "default_enabled": False,
+            "execution_supported": False,
+            "dispatch_allowed": False,
+            "mutation_allowed": False,
+            "replay_allowed": False,
+            "runtime": "rootless-podman; fixed limits; no runtime invocation",
+            "filesystem": "read-only root; bounded /tmp tmpfs; no host mounts",
+            "network": "none; no ingress, egress, DNS, ports, or image pull",
+            "home_assistant_status": "blocked",
+            "validation_result_available": False,
+        },
     }

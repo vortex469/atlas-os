@@ -1,5 +1,6 @@
 import { useAtlasAgent } from "../hooks/useAtlasAgent";
 import { ApprovalCard } from "./ApprovalCard";
+import { InstallContainerValidationPanel } from "./InstallContainerValidationPanel";
 
 interface StatusCardProps {
     title: string;
@@ -27,6 +28,7 @@ function UnpublishedStatus() {
 
 export function AtlasAgentPanel() {
     const {
+        info,
         repository,
         sprint,
         verification,
@@ -73,7 +75,8 @@ export function AtlasAgentPanel() {
             )}
 
             {!isLoading && !error && repository && (
-                <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <>
+                    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <StatusCard title="Repository">
                         <p className="break-all text-slate-300">
                             {repository.root}
@@ -179,7 +182,15 @@ export function AtlasAgentPanel() {
                             </StatusCard>
                         </div>
                     )}
-                </div>
+                    </div>
+                    {info && (
+                        <InstallContainerValidationPanel
+                            capability={info.install_container}
+                            validation={null}
+                            error={null}
+                        />
+                    )}
+                </>
             )}
         </section>
     );

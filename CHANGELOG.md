@@ -6,6 +6,50 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.22 P0–P5 — Agent Install-Container Contract
+
+- Selected Atlas v0.22 **Agent Install-Container Contract** and froze the
+  documentation-only
+  [v1 planning contract](docs/architecture/agent-install-container-contract-v1.md).
+- Defined the exact validation-only request/result schemas, existing-QEMU
+  subject, mandatory v0.20 candidate and v0.21 approval fingerprints,
+  digest-pinned single-container artifact, rootless runtime boundary,
+  filesystem/network/resource limits, idempotency, no-replay, sanitized
+  errors, audit evidence, threat model, and P0–P5 scope.
+- `install-container` remains unsupported and default-disabled. No Core route,
+  Core-to-Agent dispatch, worker, install, provider/repository/guest mutation,
+  runtime invocation, Home Assistant deployment, tag, push, release, or
+  deployment is added.
+- Added isolated strict immutable Agent request, validation, audit-evidence,
+  and redacted-error models with the complete v0.20/v0.21 proof identity,
+  fixed runtime/filesystem/network/resource bounds, canonical JSON parsing,
+  and deterministic domain-separated fingerprints. Every authority field is
+  fixed false and no model has a production consumer.
+- Added the pure proof/linkage validator and an explicitly composed local-only
+  dry-run service that returns only closed validation evidence or sanitized
+  redacted errors. It has no HTTP route, application-container registration,
+  persistence, Core client, runtime, network, filesystem, or execution adapter.
+- Added a closed, static `install-container` capability diagnostic to the
+  existing Agent information response and a read-only Mission Control
+  presentation of its unsupported, default-disabled posture, fixed runtime,
+  filesystem, and network bounds, and blocked Home Assistant golden. With no
+  production validation-result read model, the UI shows an explicit empty
+  state and adds no Core bridge, result fetch, control, navigation, or mutation.
+- Added presentation-only coverage for closed validation status, proof and
+  evidence fingerprints, artifact references, audit evidence, and redacted
+  errors. Validation is explicitly not installation, execution approval,
+  dispatch, deployment, rollback, replay, or mutation permission.
+- Added P5 structural locks proving no Core, dispatch, worker, workflow,
+  provider/repository/in-guest mutation, deployment, rollback, candidate
+  execution, or no-replay path consumes a v0.22 validation record. Agent keeps
+  only its static diagnostic and isolated pure validator, with no runtime or
+  command route; Mission Control adds no prohibited control, navigation, or
+  mutation call. Home Assistant remains blocked and non-installable.
+- P5 validation passed the requested Core and Agent Ruff gates, focused Core
+  release-isolation tests, the full Agent suite, Mission Control tests/lint/
+  build, and `git diff --check`. No runtime behavior, migration, tag, push,
+  publication, deployment, or release action was added or performed.
+
 #### v0.21 P0–P5 — Installation Approval Intent
 
 - Completed the closed contract, isolated bounded append-only store,

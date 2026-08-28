@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+    getAgentInfo,
     getRepositoryStatus,
     getReviewReport,
     getSprintStatus,
@@ -11,6 +12,7 @@ import {
 import { useAtlasAgent } from "./useAtlasAgent";
 
 vi.mock("../api/atlas-agent", () => ({
+    getAgentInfo: vi.fn(),
     getRepositoryStatus: vi.fn(),
     getSprintStatus: vi.fn(),
     getVerificationReport: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("../api/approval", () => ({
 const mockedGetRepositoryStatus = vi.mocked(
     getRepositoryStatus,
 );
+const mockedGetAgentInfo = vi.mocked(getAgentInfo);
 const mockedGetSprintStatus = vi.mocked(getSprintStatus);
 const mockedGetVerificationReport = vi.mocked(
     getVerificationReport,
@@ -62,6 +65,30 @@ function notFoundError(): Error {
 describe("useAtlasAgent", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockedGetAgentInfo.mockResolvedValue({
+            app_name: "Atlas Agent",
+            version: "0.22.0",
+            environment: "test",
+            repository_root: "/opt/atlas",
+            supported_workflow_phases: [],
+            supported_verification_statuses: [],
+            install_container: {
+                contract_schema: "agent-install-container-validation-v1",
+                operation: "install-container",
+                mode: "validate-only",
+                capability_status: "unsupported",
+                default_enabled: false,
+                execution_supported: false,
+                dispatch_allowed: false,
+                mutation_allowed: false,
+                replay_allowed: false,
+                runtime: "rootless-podman; fixed limits; no runtime invocation",
+                filesystem: "read-only root; bounded /tmp tmpfs; no host mounts",
+                network: "none; no ingress, egress, DNS, ports, or image pull",
+                home_assistant_status: "blocked",
+                validation_result_available: false,
+            },
+        });
     });
 
     it("loads repository and published workflow status", async () => {
@@ -118,6 +145,7 @@ describe("useAtlasAgent", () => {
         });
 
         expect(result.current.error).toBeNull();
+        expect(result.current.info?.install_container.default_enabled).toBe(false);
         expect(result.current.repository?.branch).toBe(
             "feature/atlas-agent",
         );

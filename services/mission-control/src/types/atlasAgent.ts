@@ -8,6 +8,99 @@ export interface RepositoryStatus {
     untracked_files: string[];
 }
 
+export interface InstallContainerCapability {
+    contract_schema: "agent-install-container-validation-v1";
+    operation: "install-container";
+    mode: "validate-only";
+    capability_status: "unsupported";
+    default_enabled: false;
+    execution_supported: false;
+    dispatch_allowed: false;
+    mutation_allowed: false;
+    replay_allowed: false;
+    runtime: string;
+    filesystem: string;
+    network: string;
+    home_assistant_status: "blocked";
+    validation_result_available: false;
+}
+
+export interface AgentInfo {
+    app_name: string;
+    version: string;
+    environment: string;
+    repository_root: string;
+    supported_workflow_phases: string[];
+    supported_verification_statuses: string[];
+    install_container: InstallContainerCapability;
+}
+
+export interface ContractFingerprint {
+    algorithm: "sha256";
+    canonicalization: "atlas-jcs-nfc-v1";
+    value: string;
+}
+
+export interface InstallContainerValidationEvidence {
+    evidence_schema: "agent-install-container-audit-evidence-v1";
+    request_id: string;
+    request_fingerprint: ContractFingerprint;
+    approval: {
+        candidate_record_id: string;
+        candidate_envelope_fingerprint: ContractFingerprint;
+        admission_fingerprint: ContractFingerprint;
+        candidate_record_fingerprint: ContractFingerprint;
+        approval_intent_id: string;
+        approval_intent_fingerprint: ContractFingerprint;
+    };
+    subject: {
+        provider: "proxmox";
+        resource_type: "qemu";
+        placement_kind: "existing-guest";
+        resource_id: string;
+        destination_fingerprint: string;
+    };
+    artifact_kind: "single-oci-container-v1";
+    source_plan_fingerprint: ContractFingerprint;
+    source_repository_path: string;
+    source_service: string;
+    source_content_digest: string;
+    image_digest: string;
+    runtime_limit_policy_fingerprint: ContractFingerprint;
+    validated_at: string;
+    status: "valid_but_unsupported" | "rejected";
+    reason_codes: string[];
+    execution_supported: false;
+    dispatch_allowed: false;
+    mutation_allowed: false;
+    replay_allowed: false;
+    evidence_fingerprint: ContractFingerprint;
+}
+
+export interface InstallContainerValidation {
+    schema: "agent-install-container-validation-v1";
+    request_id: string;
+    request_fingerprint: ContractFingerprint;
+    validated_at: string;
+    status: "valid_but_unsupported" | "rejected";
+    reason_codes: string[];
+    execution_supported: false;
+    dispatch_allowed: false;
+    mutation_allowed: false;
+    replay_allowed: false;
+    evidence: InstallContainerValidationEvidence;
+    validation_fingerprint: ContractFingerprint;
+}
+
+export interface InstallContainerRedactedError {
+    schema: "agent-install-container-error-v1";
+    reason_code: string;
+    request_id: string | null;
+    request_fingerprint: ContractFingerprint | null;
+    correlation_id: string;
+    redacted: true;
+}
+
 export interface SprintStatus {
     checkpoint_id: string;
     title: string;

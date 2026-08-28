@@ -1,6 +1,7 @@
 import axios, { isAxiosError } from "axios";
 
 import type {
+    AgentInfo,
     CandidatePlanApiResponse,
     CandidatePlanningRequest,
     CandidatePlanningSuccessorRequest,
@@ -35,6 +36,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isStringArray(value: unknown): value is string[] {
     return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function parseAgentInfo(value: unknown): AgentInfo {
+    if (!isRecord(value) || !isRecord(value.install_container)) {
+        throw new Error("Malformed Atlas Agent information payload.");
+    }
+
+    const capability = value.install_container;
+    if (
+        typeof value.app_name !== "string"
+        || typeof value.version !== "string"
+        || typeof value.environment !== "string"
+        || typeof value.repository_root !== "string"
+        || !isStringArray(value.supported_workflow_phases)
+        || !isStringArray(value.supported_verification_statuses)
+        || capability.contract_schema !== "agent-install-container-validation-v1"
+        || capability.operation !== "install-container"
+        || capability.mode !== "validate-only"
+        || capability.capability_status !== "unsupported"
+        || capability.default_enabled !== false
+        || capability.execution_supported !== false
+        || capability.dispatch_allowed !== false
+        || capability.mutation_allowed !== false
+        || capability.replay_allowed !== false
+        || typeof capability.runtime !== "string"
+        || typeof capability.filesystem !== "string"
+        || typeof capability.network !== "string"
+        || capability.home_assistant_status !== "blocked"
+        || capability.validation_result_available !== false
+    ) {
+        throw new Error("Malformed Atlas Agent information payload.");
+    }
+
+    return value as unknown as AgentInfo;
 }
 
 function isVerificationCheck(value: unknown): boolean {
@@ -163,6 +198,11 @@ export const atlasAgent = axios.create({
         Accept: "application/json",
     },
 });
+
+export async function getAgentInfo(): Promise<AgentInfo> {
+    const response = await atlasAgent.get<unknown>("/api/v1/agent/info");
+    return parseAgentInfo(response.data);
+}
 
 export async function getRepositoryStatus(): Promise<RepositoryStatus> {
     const response = await atlasAgent.get<RepositoryStatus>(

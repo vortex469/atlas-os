@@ -1,6 +1,7 @@
 """Read-only Atlas Agent status endpoints."""
 
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
@@ -23,6 +24,26 @@ class AgentInfoResponse(BaseModel):
     repository_root: str
     supported_workflow_phases: list[str]
     supported_verification_statuses: list[str]
+    install_container: "InstallContainerCapabilityResponse"
+
+
+class InstallContainerCapabilityResponse(BaseModel):
+    """Non-authorizing, code-owned v0.22 capability diagnostic."""
+
+    contract_schema: Literal["agent-install-container-validation-v1"]
+    operation: Literal["install-container"]
+    mode: Literal["validate-only"]
+    capability_status: Literal["unsupported"]
+    default_enabled: Literal[False]
+    execution_supported: Literal[False]
+    dispatch_allowed: Literal[False]
+    mutation_allowed: Literal[False]
+    replay_allowed: Literal[False]
+    runtime: str
+    filesystem: str
+    network: str
+    home_assistant_status: Literal["blocked"]
+    validation_result_available: Literal[False]
 
 
 class RepositoryStatusResponse(BaseModel):
@@ -171,6 +192,22 @@ async def agent_info(request: Request) -> AgentInfoResponse:
             status.value
             for status in VerificationStatus
         ],
+        install_container=InstallContainerCapabilityResponse(
+            contract_schema="agent-install-container-validation-v1",
+            operation="install-container",
+            mode="validate-only",
+            capability_status="unsupported",
+            default_enabled=False,
+            execution_supported=False,
+            dispatch_allowed=False,
+            mutation_allowed=False,
+            replay_allowed=False,
+            runtime="rootless-podman; fixed limits; no runtime invocation",
+            filesystem="read-only root; bounded /tmp tmpfs; no host mounts",
+            network="none; no ingress, egress, DNS, ports, or image pull",
+            home_assistant_status="blocked",
+            validation_result_available=False,
+        ),
     )
 
 

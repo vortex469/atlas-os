@@ -3,6 +3,89 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.22 P0–P5 release validation and closure — complete
+
+Atlas v0.22 is **Agent Install-Container Contract**. P0–P5 are complete. P5
+validation started from `1a399533a2e320fe7f8ee4f4096209316bb40e32`.
+
+- [x] Freeze the exact closed request/result schemas, canonical fingerprinting,
+  five-minute freshness, size bounds, and duplicate/unknown-field rejection in
+  the normative [v1 contract](architecture/agent-install-container-contract-v1.md).
+- [x] Limit the subject to one exact existing Proxmox QEMU incarnation and
+  require the complete same-owner v0.20 candidate-envelope and v0.21
+  approval-intent ID/fingerprint chain.
+- [x] Limit the artifact to one normalized digest-pinned OCI container under
+  rootless Podman with network `none`, no host mounts/devices/ports/secrets/
+  environment/commands/privilege/capabilities/restart, read-only rootfs, and
+  one bounded `/tmp` tmpfs.
+- [x] Freeze deterministic `valid_but_unsupported`/`rejected` validation,
+  fixed-false authority fields, ordered reason codes, redaction, idempotency,
+  no-replay semantics, and non-authorizing audit evidence.
+- [x] Record exact threats: proof substitution, confused deputy/destination
+  replacement, artifact equivocation, escape, filesystem/network abuse,
+  exhaustion, ambiguous replay, validation-as-authority, leakage, and
+  accidental activation.
+- [x] Preserve all v0.16–v0.21 contracts and existing execution/approval/audit/
+  workflow/dispatch/no-replay boundaries unchanged.
+- [x] Keep `install-container` unsupported and default-disabled with no Core
+  execution route, Core-to-Agent dispatch, worker/provider/repository/guest/
+  runtime invocation, mutation, installation, or Home Assistant deployment.
+- [x] Confirm P0 changes planning documentation only and performs no tag, push,
+  publication, release, or deployment.
+- [x] P1 — implement closed models and pure canonical fingerprints.
+- [x] P2 — implement pure proof-linkage and boundary validation.
+- [x] P3 — implement the internal dry-run evidence service with no route.
+- [x] P4 — add unsupported/default-disabled Agent diagnostics only.
+- [x] P5 — close isolation, refusal, Home Assistant golden, and regressions.
+
+### P5 authority and isolation gates
+
+- [x] No Core production path, route, caller, or Core-to-Agent bridge consumes
+  the v0.22 validation or audit-evidence record.
+- [x] No Agent dispatch, worker, workflow, provider/repository/in-guest
+  mutation, deployment, rollback, candidate execution, or no-replay path
+  imports or recognizes the v0.22 record.
+- [x] The isolated validator has no runtime, process, socket, container,
+  persistence, repository, execution, workflow, route, or application-
+  container dependency.
+- [x] Agent exposes only the closed static diagnostic: validation-only,
+  unsupported, default-disabled, non-executing, non-dispatching, non-mutating,
+  non-replayable, and without an install/execute/deploy command or route.
+- [x] Mission Control uses only the existing Agent-info GET and contains no
+  install/execute/deploy/dispatch/send-to-Agent/start-workflow control,
+  authority navigation, or install-container mutation call.
+- [x] Home Assistant remains blocked, non-preservable, non-approvable,
+  non-installable, and non-executable; its deployment artifact remains absent.
+- [x] Backup v3 remains unchanged; v0.22 validation records remain excluded.
+
+### P5 observed validation evidence
+
+- [x] P5 validation closure commit:
+  `9adaf93 test(v0.22): close agent install-container validation`.
+- [x] Core and Agent baseline-aware Ruff gates passed.
+- [x] Focused Core release-isolation suite passed: `26 passed, 5 warnings`.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2885 passed, 121 warnings in 169.76s (0:02:49)`.
+- [x] Full Atlas Agent suite passed: `948 passed, 4 warnings in 6.98s`.
+- [x] Mission Control passed 67 files / 492 tests; lint completed with one
+  pre-existing `WorkflowShellPage.tsx` hook-dependency warning and no errors;
+  production build completed successfully.
+- [x] `git diff --check` passed; P5 adds tests and release documentation only.
+- [x] No migration, tag, push, publication, deployment, or release action
+  occurred.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `9adaf937140ed2f05399bcdb44682ddef8ed677e`.
+- [x] Final release-preparation commit:
+  `3ecf91d docs(v0.22): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release commit.
+- [x] Created the immutable annotated `atlas-v0.22.0` tag at
+  `3ecf91dc4b501d6ac3bbfbc4ab99bd8dba283169` (`3ecf91d`).
+- [x] Pushed the final release branch and `atlas-v0.22.0` tag to `origin`.
+- [x] Published the Atlas v0.22 release as `atlas-v0.22.0`.
+
 ## Atlas v0.21 P0–P5 release closure
 
 Atlas v0.21 is **Installation Approval Intent**. P0–P5 are complete. P5

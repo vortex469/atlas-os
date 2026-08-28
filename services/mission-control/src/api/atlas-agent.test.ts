@@ -14,6 +14,7 @@ vi.mock("axios", () => ({
 }));
 
 import {
+    getAgentInfo,
     getReviewReport,
     getSprintStatus,
     getVerificationReport,
@@ -48,6 +49,26 @@ describe("Atlas Agent optional summary endpoints", () => {
         await expect(getSprintStatus()).resolves.toBeNull();
         await expect(getVerificationReport()).resolves.toBeNull();
         await expect(getReviewReport()).resolves.toBeNull();
+    });
+
+    it("reads only the closed default-disabled install-container diagnostic", async () => {
+        mockGet.mockResolvedValueOnce({ data: {
+            app_name: "Atlas Agent", version: "0.22.0", environment: "test", repository_root: "/opt/atlas",
+            supported_workflow_phases: [], supported_verification_statuses: [],
+            install_container: {
+                contract_schema: "agent-install-container-validation-v1", operation: "install-container", mode: "validate-only",
+                capability_status: "unsupported", default_enabled: false, execution_supported: false, dispatch_allowed: false,
+                mutation_allowed: false, replay_allowed: false, runtime: "rootless-podman", filesystem: "read-only", network: "none",
+                home_assistant_status: "blocked", validation_result_available: false,
+            },
+        } });
+        await expect(getAgentInfo()).resolves.toMatchObject({ install_container: { capability_status: "unsupported", default_enabled: false } });
+        expect(mockGet).toHaveBeenCalledWith("/api/v1/agent/info");
+    });
+
+    it("rejects diagnostics that claim install-container authority", async () => {
+        mockGet.mockResolvedValueOnce({ data: { install_container: { execution_supported: true } } });
+        await expect(getAgentInfo()).rejects.toThrow("Malformed Atlas Agent information payload.");
     });
 
     it("treats 5xx responses as failures", async () => {
