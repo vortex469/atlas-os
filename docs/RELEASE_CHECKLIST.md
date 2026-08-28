@@ -3,10 +3,11 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.22 P0 architecture freeze — complete
+## Atlas v0.22 P0–P5 release validation and closure — complete
 
-Atlas v0.22 is **Agent Install-Container Contract**. P0–P3 are complete;
-P4–P5 are planned and no v0.22 release has been performed.
+Atlas v0.22 is **Agent Install-Container Contract**. P0–P5 are complete. P5
+validation started from `1a399533a2e320fe7f8ee4f4096209316bb40e32` and no
+v0.22 release has been performed.
 
 - [x] Freeze the exact closed request/result schemas, canonical fingerprinting,
   five-minute freshness, size bounds, and duplicate/unknown-field rejection in
@@ -35,8 +36,40 @@ P4–P5 are planned and no v0.22 release has been performed.
 - [x] P1 — implement closed models and pure canonical fingerprints.
 - [x] P2 — implement pure proof-linkage and boundary validation.
 - [x] P3 — implement the internal dry-run evidence service with no route.
-- [ ] P4 — add unsupported/default-disabled Agent diagnostics only.
-- [ ] P5 — close isolation, refusal, Home Assistant golden, and regressions.
+- [x] P4 — add unsupported/default-disabled Agent diagnostics only.
+- [x] P5 — close isolation, refusal, Home Assistant golden, and regressions.
+
+### P5 authority and isolation gates
+
+- [x] No Core production path, route, caller, or Core-to-Agent bridge consumes
+  the v0.22 validation or audit-evidence record.
+- [x] No Agent dispatch, worker, workflow, provider/repository/in-guest
+  mutation, deployment, rollback, candidate execution, or no-replay path
+  imports or recognizes the v0.22 record.
+- [x] The isolated validator has no runtime, process, socket, container,
+  persistence, repository, execution, workflow, route, or application-
+  container dependency.
+- [x] Agent exposes only the closed static diagnostic: validation-only,
+  unsupported, default-disabled, non-executing, non-dispatching, non-mutating,
+  non-replayable, and without an install/execute/deploy command or route.
+- [x] Mission Control uses only the existing Agent-info GET and contains no
+  install/execute/deploy/dispatch/send-to-Agent/start-workflow control,
+  authority navigation, or install-container mutation call.
+- [x] Home Assistant remains blocked, non-preservable, non-approvable,
+  non-installable, and non-executable; its deployment artifact remains absent.
+- [x] Backup v3 remains unchanged; v0.22 validation records remain excluded.
+
+### P5 observed validation evidence
+
+- [x] Core and Agent baseline-aware Ruff gates passed.
+- [x] Focused Core release-isolation suite passed: `26 passed, 5 warnings`.
+- [x] Full Atlas Agent suite passed: `948 passed, 4 warnings in 6.98s`.
+- [x] Mission Control passed 67 files / 492 tests; lint completed with one
+  pre-existing `WorkflowShellPage.tsx` hook-dependency warning and no errors;
+  production build completed successfully.
+- [x] `git diff --check` passed; P5 adds tests and release documentation only.
+- [x] No migration, tag, push, publication, deployment, or release action
+  occurred.
 
 ## Atlas v0.21 P0–P5 release closure
 

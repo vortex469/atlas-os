@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.22 P0–P4 — Agent Install-Container Contract
+#### v0.22 P0–P5 — Agent Install-Container Contract
 
 - Selected Atlas v0.22 **Agent Install-Container Contract** and froze the
   documentation-only
@@ -39,6 +39,16 @@ release boundaries.
   evidence fingerprints, artifact references, audit evidence, and redacted
   errors. Validation is explicitly not installation, execution approval,
   dispatch, deployment, rollback, replay, or mutation permission.
+- Added P5 structural locks proving no Core, dispatch, worker, workflow,
+  provider/repository/in-guest mutation, deployment, rollback, candidate
+  execution, or no-replay path consumes a v0.22 validation record. Agent keeps
+  only its static diagnostic and isolated pure validator, with no runtime or
+  command route; Mission Control adds no prohibited control, navigation, or
+  mutation call. Home Assistant remains blocked and non-installable.
+- P5 validation passed the requested Core and Agent Ruff gates, focused Core
+  release-isolation tests, the full Agent suite, Mission Control tests/lint/
+  build, and `git diff --check`. No runtime behavior, migration, tag, push,
+  publication, deployment, or release action was added or performed.
 
 #### v0.21 P0–P5 — Installation Approval Intent
 

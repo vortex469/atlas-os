@@ -855,8 +855,8 @@ writable root filesystem, port publication, or restart policy. Validation can
 produce only `valid_but_unsupported` or `rejected`; all authority fields remain
 false and validation evidence has no production consumer.
 
-The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0–P4 are complete and
-P5 is planned. Every phase remains non-executing.
+The dependency order is P0 → P1 → P2 → P3 → P4 → P5. P0–P5 are complete.
+Every phase remains non-executing.
 
 ### P0 — Contract and threat-model freeze — complete
 
@@ -892,12 +892,15 @@ The existing Agent information route exposes only a closed static capability
 diagnostic; Mission Control presents that local state and an explicit no-result
 empty state because no validation-result route or Core bridge exists.
 
-### P5 — Isolation, refusal, and regression closure — planned
+### P5 — Isolation, refusal, and regression closure — complete
 
-Prove zero Core route/caller/dispatch, zero supported Agent intent, zero
+Proved zero Core route/caller/dispatch, zero supported Agent intent, zero
 worker/provider/repository/guest/runtime invocation, zero authority consumer,
 exact no-replay/redaction behavior, Home Assistant rejection, and full
-regression gates. Do not tag, push, publish, deploy, or release automatically.
+regression gates. Structural Mission Control locks also prove the diagnostic
+has no install/execute/deploy/dispatch/send-to-Agent/start-workflow control,
+navigation, or mutation call. P5 added tests and release evidence only; it did
+not tag, push, publish, deploy, or release.
 
 ### Must-not-change contracts for P0–P5
 

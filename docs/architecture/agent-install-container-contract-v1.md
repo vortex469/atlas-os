@@ -1,6 +1,6 @@
 # Agent Install-Container Contract v1
 
-Status: **Atlas v0.22 P0–P4 complete; P5 not started**.
+Status: **Atlas v0.22 P0–P5 complete**.
 
 This document freezes the narrowest Agent-side contract that may later validate
 one future Core request to install one container. Atlas v0.22 adds only the
@@ -345,13 +345,18 @@ an explicit empty state and adds no API bridge. A presentation-only renderer is
 covered for closed validation/evidence and redacted-error values, but has no
 production caller or authority consumer.
 
-### P5 — Isolation and refusal closure — planned
+### P5 — Isolation and refusal closure — complete
 
-Prove zero Core routes/callers, zero Core-to-Agent dispatch, zero supported
+Structural release locks prove zero Core routes/callers, zero Core-to-Agent
+dispatch, zero supported
 Agent intent registration, zero worker/provider/repository/guest/runtime
 invocation, no production consumer of validation evidence, exact redaction,
-no-replay, and full regression gates. Reconfirm the Home Assistant blocked
-golden and do not tag, push, publish, deploy, or release automatically.
+no-replay bypass, and full regression gates. Agent exposes only the existing
+static diagnostic plus an isolated pure validator with no runtime/command
+surface. Mission Control exposes no install, execute, deploy, dispatch,
+send-to-Agent, or start-workflow control, navigation, or mutation call. Home
+Assistant remains blocked and no tag, push, publication, deployment, or
+release was performed.
 
 ## Must-not-change contracts for P0–P5
 

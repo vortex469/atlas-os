@@ -3,8 +3,6 @@
 import subprocess
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from app.config.settings import Settings
 from app.main import create_app
 from app.review.models import (
@@ -21,6 +19,7 @@ from app.verification.models import (
 )
 from app.version import AGENT_VERSION
 from app.workflow.models import SprintPhase, SprintStatus
+from fastapi.testclient import TestClient
 
 
 def run_git(
