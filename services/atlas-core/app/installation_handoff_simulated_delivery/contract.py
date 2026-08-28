@@ -10,7 +10,7 @@ import hashlib
 import json
 import re
 import unicodedata
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, model_validator
@@ -345,8 +345,12 @@ def validate_acknowledgement(*, operator_id: str, delivery: InstallationHandoffS
         raise ValueError("acknowledgement delivery linkage mismatch")
     if acknowledgement.intake.simulation_request_id != delivery.simulation_request_id:
         raise ValueError("acknowledgement intake linkage mismatch")
-    if acknowledgement.valid_until > delivery.valid_until:
-        raise ValueError("acknowledgement extends delivery expiry")
+    expected_expiry = min(
+        _instant(delivery.valid_until),
+        _instant(acknowledgement.acknowledged_at) + timedelta(seconds=30),
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if acknowledgement.valid_until != expected_expiry:
+        raise ValueError("acknowledgement expiry mismatch")
     if acknowledgement.acknowledgement_fingerprint != acknowledgement_fingerprint(operator_id=operator_id, acknowledgement=acknowledgement):
         raise ValueError("acknowledgement fingerprint mismatch")
 
