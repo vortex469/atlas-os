@@ -3,6 +3,33 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.25 P0–P3 Agent Intake Simulation — P3 complete
+
+Atlas v0.25 is **Agent Intake Simulation**. P0–P3 are complete from the frozen
+[v1 contract](architecture/agent-intake-simulation-v1.md); P4–P5 remain future
+work.
+
+- [x] P1 — implement closed immutable models, strict parsing, canonical
+  fingerprints, lifecycle derivation, and hostile-input bounds without I/O.
+- [x] P2 — implement pure injected validation of the exact owner-bound v0.24
+  envelope with fixed-false authority and sanitized closed errors.
+- [x] P3 — implement the isolated bounded append-only evidence store, atomic
+  identity reservations, exact idempotency/no-replay, quotas, restart
+  durability, owned reads, and fail-closed corruption behavior.
+- [x] Lock Agent OpenAPI to zero v0.25 paths, operations, tags, or schemas.
+- [x] Lock out CLI/shell commands, application-container registration, and
+  settings-driven production enablement.
+- [x] Scan Agent production modules to prove no v0.25 Core-to-Agent consumer,
+  live delivery, worker, workflow, provider, repository, runtime, route, or
+  registration exists.
+- [x] Prove the isolated package imports no Docker/Podman, shell/process,
+  target/provider/Core network, worker, workflow, route, or mutation adapter.
+- [x] Confine filesystem access to the explicitly constructed simulation
+  evidence store; keep readback an owner-scoped in-process store operation.
+- [x] Preserve `install-container` as unsupported and default-disabled, with
+  no installation, deployment, rollback, Home Assistant artifact, tag, push,
+  publication, or release action.
+
 ## Atlas v0.24 P0–P5 release validation and closure — complete
 
 Atlas v0.24 is **Installation Dispatch Handoff**. P0–P5 are complete. P5

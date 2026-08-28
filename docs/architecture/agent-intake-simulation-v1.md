@@ -1,6 +1,6 @@
 # Agent Intake Simulation v1 planning contract
 
-Status: **Atlas v0.25 P0 selected; planning only**.
+Status: **Atlas v0.25 P0–P3 complete; P4–P5 planned**.
 
 This document freezes the narrowest simulation-only Agent intake boundary that
 can bind the released v0.20 durable installation candidate, v0.21 approval
@@ -241,26 +241,34 @@ request identity, freshness, lifecycle, idempotency/no-replay, redaction,
 audit evidence, default-disabled posture, interface absence, goldens, and
 must-not-change contracts. P0 changes planning documentation only.
 
-### P1 — Closed models and canonical fingerprints — planned
+### P1 — Closed models and canonical fingerprints — complete
 
 Implement isolated immutable input/record/error models, strict parsing,
 canonical fingerprints, lifecycle derivation, and boundary/hostile-input
 tests. Perform no I/O, registration, persistence, network, filesystem, or
 runtime action.
 
-### P2 — Pure injected simulation validation — planned
+### P2 — Pure injected simulation validation — complete
 
 Implement deterministic validation over injected operator identity, trusted
 time, and complete v0.24 envelope. Prove exact transitive linkage, recipient,
 authority, expiry, and sanitized failure behavior. Do not call Core, Agent
 routes, repositories, providers, guests, registries, or runtimes.
 
-### P3 — Bounded simulation evidence store — planned
+### P3 — Bounded simulation evidence store and no-surface lock — complete
 
 Implement only the isolated append-only Agent store, atomic reservations,
 idempotency, quotas, restart durability, owned reads, and fail-closed
 corruption/ambiguity behavior. Add no production container registration,
 route, command, UI, event, queue, audit bridge, or consumer.
+
+P3 release-hardening locks the latter absence structurally: the production
+Agent OpenAPI, application container, settings, and command entrypoints expose
+no simulation intake; no production module consumes or registers the package;
+and the isolated package imports no Core client, network, runtime, process,
+provider, repository, worker, workflow, or route dependency. Filesystem access
+is confined to the explicitly constructed evidence store. Readback remains an
+owner-scoped in-process store operation only.
 
 ### P4 — Offline golden harness and evidence review — planned
 

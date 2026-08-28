@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.25 P0 — Agent Intake Simulation
+#### v0.25 P0–P3 — Agent Intake Simulation
 
 - Selected Atlas v0.25 **Agent Intake Simulation** and froze the
   documentation-only [v1 planning
@@ -26,6 +26,15 @@ release boundaries.
   simulation evidence; authentic delivery, live admission, atomic consumption,
   execution approval, runtime behavior, and every external mutation remain
   blocked.
+- Completed the closed immutable models, pure injected validation, bounded
+  append-only simulation evidence store, atomic idempotency/no-replay
+  reservations, restart durability, quotas, owned readback, and sanitized
+  failures.
+- P3 locks simulation intake to explicit in-process construction only. Agent
+  OpenAPI, commands, application container, settings, Core clients, workers,
+  workflows, providers, repositories, and runtime adapters expose or consume
+  no v0.25 surface; only the isolated evidence store may mutate its configured
+  store path.
 
 #### v0.24 P0–P5 — Installation Dispatch Handoff
 
