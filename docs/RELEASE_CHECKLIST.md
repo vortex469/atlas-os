@@ -46,9 +46,13 @@ P5 validation started from `696c98e773823e054ce86ce11f64d4ccbd57fba9`.
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `33b976d test(v0.26): close simulated handoff delivery`.
 - [x] Both requested Core and Agent `rc1-python-ruff-gate` commands passed.
 - [x] Focused Core release-isolation and v0.26 closure validation passed:
   43 tests.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2946 passed, 176 warnings in 176.13s (0:02:56)`.
 - [x] Full Agent regression validation passed: 983 tests.
 - [x] Mission Control passed 513 tests, lint, and production build. Lint
   retained the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning
@@ -56,6 +60,15 @@ P5 validation started from `696c98e773823e054ce86ce11f64d4ccbd57fba9`.
   advisory.
 - [x] `git diff --check` passed before the closure commit.
 - [x] No migration, tag, push, release, deployment, or rollback was performed.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `33b976d0e1f17ba8bc4ea831d13ae17cc8eaccb6`.
+- [ ] The tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.26.0` tag.
+- [ ] Push the final release branch and `atlas-v0.26.0` tag to `origin`.
+- [ ] Publish the Atlas v0.26 release as `atlas-v0.26.0`.
 
 ## Atlas v0.25 P0–P5 Agent Intake Simulation — complete
 
