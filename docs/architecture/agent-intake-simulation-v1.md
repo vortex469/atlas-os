@@ -1,6 +1,6 @@
 # Agent Intake Simulation v1 planning contract
 
-Status: **Atlas v0.25 P0–P3 complete; P4–P5 planned**.
+Status: **Atlas v0.25 P0–P4 complete; P5 planned**.
 
 This document freezes the narrowest simulation-only Agent intake boundary that
 can bind the released v0.20 durable installation candidate, v0.21 approval
@@ -270,12 +270,20 @@ provider, repository, worker, workflow, or route dependency. Filesystem access
 is confined to the explicitly constructed evidence store. Readback remains an
 owner-scoped in-process store operation only.
 
-### P4 — Offline golden harness and evidence review — planned
+### P4 — Offline golden harness and evidence review — complete
 
 Exercise the in-process service using synthetic fixtures and render a bounded
 text/structured evidence projection for tests. The harness accepts injected
 values only and cannot invoke shell/process, Docker/Podman, network, provider,
 repository, guest, workflow, worker, deployment, or rollback behavior.
+
+The frozen no-UI decision takes precedence at the Mission Control boundary:
+the structured projection remains test-harness evidence only. P4 adds no UI
+presentation, API client, hook, type, route, navigation, or control. Structural
+Mission Control and cross-service tests lock that absence, prohibit v0.25
+mutation calls and action navigation, and prove that no simulation evidence or
+sensitive intake detail can be rendered. Home Assistant remains blocked by the
+absent deployment artifact and is non-installable and non-executable.
 
 ### P5 — Isolation, no-replay, and release closure — planned
 

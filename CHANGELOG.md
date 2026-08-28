@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.25 P0–P3 — Agent Intake Simulation
+#### v0.25 P0–P4 — Agent Intake Simulation
 
 - Selected Atlas v0.25 **Agent Intake Simulation** and froze the
   documentation-only [v1 planning
@@ -35,6 +35,16 @@ release boundaries.
   workflows, providers, repositories, and runtime adapters expose or consume
   no v0.25 surface; only the isolated evidence store may mutate its configured
   store path.
+- P4 locks Mission Control to no v0.25 presentation because the frozen
+  contract exposes no UI-facing read model. Structural Mission Control and
+  cross-service tests prove there is no v0.25 API client, route, navigation,
+  mutation call, install/intake/delivery control, execution-suggesting label,
+  simulation evidence rendering, or sensitive intake detail. Home Assistant
+  remains blocked, non-installable, and non-executable with no deployment
+  artifact.
+- P4 validation passed 509 Mission Control tests, Mission Control lint/build,
+  the Agent Ruff gate, 968 Agent tests, and `git diff --check`; lint reported
+  one pre-existing exhaustive-deps warning and no errors.
 
 #### v0.24 P0–P5 — Installation Dispatch Handoff
 

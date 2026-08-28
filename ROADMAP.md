@@ -1061,7 +1061,7 @@ record-only, and Home Assistant remains non-installable and non-executable.
 
 Atlas v0.25 is **Agent Intake Simulation**. Its normative contract is
 [Agent Intake Simulation v1](docs/architecture/agent-intake-simulation-v1.md).
-P0 through P3 are complete; P4–P5 remain planned.
+P0 through P4 are complete; P5 remains planned.
 
 P1–P2 provide closed immutable models and pure validation of explicitly
 injected, owner-bound v0.24 envelopes. P3 provides the bounded append-only
@@ -1076,6 +1076,16 @@ integration. The simulation package has no network or process dependency, and
 filesystem mutation is confined to an explicitly constructed simulation
 evidence store. Authentic delivery, live admission, consumption, execution,
 installation, deployment, and rollback remain blocked.
+
+### P4 — Mission Control presentation boundary — complete
+
+The frozen contract exposes no UI-facing read model, so Mission Control adds
+no v0.25 component, page, route, navigation, API client, hook, type, mutation,
+or action control. Structural Mission Control and cross-service tests lock the
+absence of install/intake/delivery controls, mutation calls, action navigation,
+execution-suggesting labels, simulation evidence, and sensitive intake data.
+Home Assistant remains blocked, non-installable, and non-executable with no
+deployment artifact.
 
 ## 15. Explicitly deferred work
 

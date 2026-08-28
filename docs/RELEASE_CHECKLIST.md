@@ -3,10 +3,10 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.25 P0–P3 Agent Intake Simulation — P3 complete
+## Atlas v0.25 P0–P4 Agent Intake Simulation — P4 complete
 
-Atlas v0.25 is **Agent Intake Simulation**. P0–P3 are complete from the frozen
-[v1 contract](architecture/agent-intake-simulation-v1.md); P4–P5 remain future
+Atlas v0.25 is **Agent Intake Simulation**. P0–P4 are complete from the frozen
+[v1 contract](architecture/agent-intake-simulation-v1.md); P5 remains future
 work.
 
 - [x] P1 — implement closed immutable models, strict parsing, canonical
@@ -16,6 +16,14 @@ work.
 - [x] P3 — implement the isolated bounded append-only evidence store, atomic
   identity reservations, exact idempotency/no-replay, quotas, restart
   durability, owned reads, and fail-closed corruption behavior.
+- [x] P4 — lock Mission Control to no v0.25 presentation because the frozen
+  contract exposes no UI-facing read model.
+- [x] Prove there is no v0.25 Mission Control API client, hook, type, component,
+  page, route, navigation, or mutation call.
+- [x] Prove there is no install/run/execute/deploy/dispatch/deliver/send-to-
+  Agent/start-workflow/rollback control or simulated-intake action label.
+- [x] Prove Mission Control cannot render v0.25 simulation evidence, raw
+  provider payloads, credentials, commands, logs, internal paths, or addresses.
 - [x] Lock Agent OpenAPI to zero v0.25 paths, operations, tags, or schemas.
 - [x] Lock out CLI/shell commands, application-container registration, and
   settings-driven production enablement.
@@ -29,6 +37,14 @@ work.
 - [x] Preserve `install-container` as unsupported and default-disabled, with
   no installation, deployment, rollback, Home Assistant artifact, tag, push,
   publication, or release action.
+- [x] Keep Home Assistant blocked, non-installable, and non-executable; confirm
+  `compose/home-assistant.yaml` remains absent.
+
+P4 validation passed 509 Mission Control tests, Mission Control lint and build,
+the Agent Ruff gate, and 968 Agent tests. Mission Control lint retained one
+pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning; there were no
+lint errors. `git diff --check` passed. No runtime surface, tag, push, release,
+or deployment was added or performed.
 
 ## Atlas v0.24 P0–P5 release validation and closure — complete
 
