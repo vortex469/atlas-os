@@ -72,8 +72,12 @@ or deployment was added or performed.
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `407669b test(v0.25): close agent intake simulation`.
 - [x] Both requested Core and Agent `rc1-python-ruff-gate` commands passed.
 - [x] Focused Core release-isolation validation passed: 35 tests.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2931 passed, 171 warnings in 177.48s (0:02:57)`.
 - [x] Full Agent regression validation passed: 969 tests.
 - [x] Mission Control passed 509 tests, lint, and production build. Lint
   retained the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning
@@ -81,6 +85,16 @@ or deployment was added or performed.
   advisory.
 - [x] `git diff --check` passed before the closure commit.
 - [x] No migration, tag, push, release, deployment, or rollback was performed.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `407669b6d82572e8255e4b7b4f847abf5b04a3a1`.
+- [ ] The tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.25.0` tag at the final release
+  commit.
+- [ ] Push the final release branch and `atlas-v0.25.0` tag to `origin`.
+- [ ] Publish the Atlas v0.25 release as `atlas-v0.25.0`.
 
 ## Atlas v0.24 P0–P5 release validation and closure — complete
 
