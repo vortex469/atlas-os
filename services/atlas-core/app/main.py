@@ -31,6 +31,12 @@ from app.installation_candidate_lifecycle.store import (
 from app.installation_capability.assembly import (
     InstallationCapabilityAssessmentReadDependency,
 )
+from app.installation_execution_request.service import (
+    InstallationExecutionRequestService,
+)
+from app.installation_execution_request.store import (
+    InstallationExecutionRequestStore,
+)
 from app.installation_targets.resolver import (
     enumerate_destinations,
     resolve_operational_target,
@@ -181,6 +187,17 @@ async def lifespan(app: FastAPI):
     )
     app.state.installation_approval_intent_service = InstallationApprovalIntentService(
         store=app.state.installation_approval_intent_store
+    )
+    app.state.installation_execution_request_store = InstallationExecutionRequestStore(
+        operator_settings.installation_execution_request_database,
+        candidates=app.state.installation_candidate_record_store,
+        approvals=app.state.installation_approval_intent_store,
+    )
+    app.state.installation_execution_request_service = (
+        InstallationExecutionRequestService(
+            store=app.state.installation_execution_request_store,
+            enabled=operator_settings.installation_execution_request_enabled,
+        )
     )
 
     operational_ledger = OperationalDispatchLedger(

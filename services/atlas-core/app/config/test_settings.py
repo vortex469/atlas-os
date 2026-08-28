@@ -55,6 +55,10 @@ def test_operator_auth_is_disabled_safely_by_default() -> None:
     assert OperatorAuthSettings().installation_approval_intent_database == (
         "/opt/atlas/data/installation_approval_intents.db"
     )
+    assert OperatorAuthSettings().installation_execution_request_enabled is False
+    assert OperatorAuthSettings().installation_execution_request_database == (
+        "/opt/atlas/data/installation_execution_requests.db"
+    )
 
 
 @pytest.mark.parametrize("database", [":memory:", "relative/selections.db", ""])
@@ -71,6 +75,14 @@ def test_installation_approval_intent_database_requires_durable_absolute_path(
 ) -> None:
     with pytest.raises(ValidationError, match="absolute"):
         OperatorAuthSettings(installation_approval_intent_database=database)
+
+
+@pytest.mark.parametrize("database", [":memory:", "relative/requests.db", ""])
+def test_installation_execution_request_database_requires_durable_absolute_path(
+    database: str,
+) -> None:
+    with pytest.raises(ValidationError, match="absolute"):
+        OperatorAuthSettings(installation_execution_request_database=database)
 
 
 def test_dynamic_discovery_refresh_is_disabled_safely_by_default() -> None:

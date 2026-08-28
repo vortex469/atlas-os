@@ -132,6 +132,10 @@ class OperatorAuthSettings(BaseModel):
     installation_approval_intent_database: str = (
         "/opt/atlas/data/installation_approval_intents.db"
     )
+    installation_execution_request_enabled: bool = False
+    installation_execution_request_database: str = (
+        "/opt/atlas/data/installation_execution_requests.db"
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
@@ -167,6 +171,19 @@ class OperatorAuthSettings(BaseModel):
         ):
             raise ValueError(
                 "installation approval intent database must be an absolute path"
+            )
+        execution_request_database = Path(
+            self.installation_execution_request_database
+        )
+        if (
+            not self.installation_execution_request_database
+            or self.installation_execution_request_database
+            != self.installation_execution_request_database.strip()
+            or not execution_request_database.is_absolute()
+            or self.installation_execution_request_database == ":memory:"
+        ):
+            raise ValueError(
+                "installation execution request database must be an absolute path"
             )
         if not self.enabled:
             return self
@@ -256,11 +273,17 @@ def load_settings() -> Settings:
             "installation_approval_intent_database": os.getenv(
                 "ATLAS_OPERATOR_AUTH_INSTALLATION_APPROVAL_INTENT_DATABASE"
             ),
+            "installation_execution_request_enabled": os.getenv(
+                "ATLAS_OPERATOR_AUTH_INSTALLATION_EXECUTION_REQUEST_ENABLED"
+            ),
+            "installation_execution_request_database": os.getenv(
+                "ATLAS_OPERATOR_AUTH_INSTALLATION_EXECUTION_REQUEST_DATABASE"
+            ),
         }
         for key, value in environment_overrides.items():
             if value is None:
                 continue
-            if key == "enabled":
+            if key in {"enabled", "installation_execution_request_enabled"}:
                 operator_raw[key] = value.strip().lower() in {"1", "true", "yes", "on"}
             elif key == "trusted_origins":
                 operator_raw[key] = tuple(item.strip() for item in value.split(",") if item.strip())
