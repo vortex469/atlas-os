@@ -1,7 +1,6 @@
 # Dormant Core-to-Agent Delivery Wiring v1 planning contract
 
-Status: **Atlas v0.28 P0 contract frozen; documentation only; P1–P5 are not
-implemented**.
+Status: **Atlas v0.28 P0 contract frozen; P1–P5 implemented and validated**.
 
 This document freezes the narrowest Core-side wiring boundary that can later
 connect one exact v0.24 dispatch handoff envelope to the dormant v0.27 Agent
@@ -442,20 +441,20 @@ response validation, fingerprint/linkage, ownership/identity, freshness,
 lifecycle, idempotency/no-replay, redaction/audit, no-surface, authority,
 golden, and must-not-change contracts. Change planning documentation only.
 
-### P1 — Closed models and pure validation — planned
+### P1 — Closed models and pure validation — implemented
 
 Implement isolated immutable Core models, strict duplicate/unknown rejection,
 canonical fingerprints, exact v0.20–v0.27 linkage validation, lifecycle
 derivation, and hostile-input bounds. Perform no I/O or registration.
 
-### P2 — Dormant preparation service and bounded store — planned
+### P2 — Dormant preparation service and bounded store — implemented
 
 Implement the explicitly constructed preparation service over injected owned
 evidence readers, trusted clock, ID factory, and append-only store. It may
 assemble and preserve one `not_sent` request only. Add no client transport,
 credential read, Agent call, route, command, worker, workflow, or consumer.
 
-### P3 — Explicit no-send client factory — planned
+### P3 — Explicit no-send client factory — implemented
 
 Implement the isolated factory and client with only `prepare`, direct owned
 readback, and pure supplied-response validation. Validate the closed endpoint
@@ -463,14 +462,14 @@ and authentication configuration shape without reading files, resolving DNS,
 creating TLS state, rendering Authorization, importing a network library, or
 exposing any send-capable method. Keep production construction absent.
 
-### P4 — Offline structural goldens — planned
+### P4 — Offline structural goldens — implemented
 
 Exercise synthetic same-owner v0.20–v0.27 values and the exact proposed HTTP
 shape without opening a socket or invoking the Agent application. Validate an
 injected byte-exact admitted result and closed rejection values. Lock Mission
 Control absence and Home Assistant as a blocked/rejected golden only.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage, endpoint/auth shape, freshness/lifecycle, concurrency,
 restart/timeout ambiguity, ownership, quotas, corruption, redaction, one-
@@ -478,6 +477,13 @@ preparation no-replay, zero send method, zero production construction, zero
 Agent registration, zero Core/Agent network path, capability parity, prior
 goldens, and full regressions. Do not migrate, tag, push, publish, deploy, or
 release automatically.
+
+P1–P5 preserve this frozen contract without widening authority. Release
+closure proves the client remains explicitly constructed and fixed-disabled,
+the store remains append-only evidence rather than an outbox, no credential or
+network capability exists, production Core and Agent remain disconnected, the
+Agent route remains test-only, Mission Control has no surface, and Home
+Assistant remains blocked without a deployment artifact.
 
 ## Exact authority boundary
 

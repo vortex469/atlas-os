@@ -1280,7 +1280,7 @@ deployment, rollback, and Home Assistant installation remain blocked.
 Atlas v0.28 is **Dormant Core-to-Agent Delivery Wiring**. Its normative P0
 contract is [Dormant Core-to-Agent Delivery Wiring
 v1](docs/architecture/dormant-core-agent-delivery-wiring-v1.md). P0 is selected
-and documentation-only; P1–P5 remain planned.
+and documentation-only; P1–P5 are implemented and validated.
 
 The boundary may later let explicitly constructed Core code assemble and
 preserve one exact `not_sent` v0.27 intake request from the same-owner
@@ -1295,37 +1295,43 @@ request/preparation, injected-response validation, eight-release linkage,
 ownership, freshness, lifecycle, idempotency/no-replay, redaction, no-surface,
 authority, golden, and must-not-change contracts. Change planning docs only.
 
-### P1 — Closed models and pure validation — planned
+### P1 — Closed models and pure validation — implemented
 
 Implement isolated immutable Core values, canonical fingerprints, exact
 v0.20–v0.27 linkage, derived lifecycle, and hostile-input validation with no
 I/O, registration, or effects.
 
-### P2 — Dormant preparation service and bounded store — planned
+### P2 — Dormant preparation service and bounded store — implemented
 
 Implement an explicitly constructed service and append-only store that may
 prepare and preserve one evidence-only `not_sent` request. Add no client
 transport, Agent call, credential read, route, command, worker, or workflow.
 
-### P3 — Explicit no-send client factory — planned
+### P3 — Explicit no-send client factory — implemented
 
 Implement only `prepare`, owned readback, and pure supplied-response validation
 over injected dependencies. Validate configuration shape without DNS, TLS,
 HTTP, file reads, Authorization rendering, or any send/deliver method. Keep all
 production construction absent.
 
-### P4 — Offline structural goldens — planned
+### P4 — Offline structural goldens — implemented
 
 Exercise synthetic same-owner v0.20–v0.27 preparation and injected response
 validation without a socket or Agent application invocation. Lock the exact
 future HTTP shape, Mission Control absence, and blocked Home Assistant golden.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage, freshness, concurrency/ambiguity, ownership, bounds,
 redaction, one-preparation no-replay, zero network/send surface, zero production
 Core construction and Agent registration, capability parity, prior goldens,
 and full regressions. Add no release/deployment action automatically.
+
+P5 locks explicit-only construction, the exact fixed-disabled configuration,
+zero send/network/credential-loading capability, append-only evidence storage,
+zero production Core consumer, and continued test-only Agent route isolation.
+Mission Control remains absent, Home Assistant remains blocked with no
+deployment artifact, and P5 adds only tests and release evidence.
 
 The exact authority is dormant preparation and validation only. Explicitly
 constructed Core code may validate fixed-disabled connection metadata, resolve
