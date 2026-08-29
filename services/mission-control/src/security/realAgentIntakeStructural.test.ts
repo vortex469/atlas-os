@@ -14,6 +14,7 @@ const productionSources = Object.fromEntries(
         && !path.includes("/test/")
         && !path.includes("/security/")
         && !path.toLowerCase().includes("deliveryactivationpreflight")
+        && !path.toLowerCase().includes("deliveryenablement")
     )),
 );
 
