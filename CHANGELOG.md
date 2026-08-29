@@ -6,6 +6,53 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.32 P0–P5 — Agent Live Intake Admission
+
+- Selected Atlas v0.32 **Agent Live Intake Admission** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/agent-live-intake-admission-v1.md).
+- Defined the exact inert outer envelope, Agent admission/acknowledgement/
+  result/record schemas, complete v0.20–v0.31 causal linkage, deterministic
+  fingerprints, inherited 30-second freshness, same-owner validation,
+  permanent no-replay, lifecycle, redaction, and audit evidence.
+- Froze one default-off production Agent POST, fixed-Core-principal
+  authentication through an injected mode-0400 credential reference, strict
+  HTTPS/body/response bounds, exact internal OpenAPI, and no Mission Control or
+  public Core surface.
+- Froze P0–P5 scope, threats, goldens, exact evidence-only authority, later
+  enablement, remaining blockers, and must-not-change contracts. V0.31's
+  reserved attempt is admission input; Agent admission/result/acknowledgement
+  are causally upstream of the v0.31 Core receipt and cannot require it.
+- V0.32 P0 changes planning documents only. It adds no runtime registration,
+  service, store, route, credential read, Agent call, retry, installation,
+  Docker/Podman/shell/process work, worker/workflow/dispatch, mutation,
+  deployment, rollback, Home Assistant artifact, tag, push, or release action.
+- P1 added strict immutable Agent-local envelope, v0.20–v0.31 linkage,
+  authentication, admission, acknowledgement, result, receipt/record, audit,
+  error, idempotency, lifecycle, fingerprint, freshness, bounds, and
+  fixed-false authority models.
+- P2 added an explicitly constructed default-off admission service and bounded
+  append-only owner-scoped store with permanent reservation-first no-replay,
+  exact replay, restart readback, quotas, and fail-closed corruption handling.
+- P3 added the sole independently default-off production Agent POST with exact
+  HTTPS/source/path/method, mode-0400 credential reference, bounded streaming,
+  strict parsing, closed responses, and exact internal OpenAPI. It adds no
+  effect route or execution authority.
+- P4 keeps Mission Control absent as frozen. Structural tests lock out every
+  v0.32 client, hook, component, page, route, navigation, read/mutation call,
+  admit/retry/resend/send-again or effect control, sensitive rendering, and
+  Home Assistant exception. No Core bridge or runtime behavior is added.
+- P5 closes the boundary with exact default-off single-route registration,
+  concurrent one-envelope no-replay, append-only restart-safe evidence,
+  secret-free persistence/log/error locks, fixed-false effect authority, zero
+  installation/workflow/worker/dispatch/mutation/deployment consumers, Core
+  one-shot/no-retry preservation, absent Mission Control, capability parity,
+  and Home Assistant blocking. P5 adds tests and release documentation only.
+- P5 validation passed both Ruff gates, 61 focused Core isolation tests, 5
+  focused Agent closure tests, all 3072 Core tests, all 1045 Agent tests, and
+  550 Mission Control tests plus lint/build. The existing frontend hook and
+  chunk-size warnings remained non-errors.
+
 #### v0.31 P0–P5 — Live Delivery Send Boundary
 
 - Selected Atlas v0.31 **Live Delivery Send Boundary** and froze the

@@ -53,7 +53,11 @@ def test_simulation_has_no_setting_or_command_entrypoint() -> None:
     settings_source = (APP_ROOT / "config" / "settings.py").read_text(encoding="utf-8")
     settings_fields = Settings.__dataclass_fields__
 
-    assert not any("intake" in field or "simulation" in field for field in settings_fields)
+    assert not any(
+        ("intake" in field or "simulation" in field)
+        and not field.startswith("agent_live_intake_")
+        for field in settings_fields
+    )
     assert "ATLAS_AGENT_INTAKE" not in settings_source
     assert "ATLAS_AGENT_SIMULATION" not in settings_source
     assert not (APP_ROOT / "__main__.py").exists()

@@ -147,7 +147,10 @@ def test_no_production_module_consumes_real_intake_evidence() -> None:
     )
     violations: list[str] = []
     for path in sorted(APP_ROOT.rglob("*.py")):
-        if PACKAGE_ROOT in path.parents:
+        if (
+            PACKAGE_ROOT in path.parents
+            or path == APP_ROOT / "agent_live_intake_admission" / "contract.py"
+        ):
             continue
         source = path.read_text(encoding="utf-8")
         for marker in markers:

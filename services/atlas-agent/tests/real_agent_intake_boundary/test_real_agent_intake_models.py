@@ -283,7 +283,7 @@ def test_no_forbidden_imports_calls_or_production_wiring() -> None:
     assert calls.isdisjoint({"exec", "eval", "open", "system", "run", "Popen"})
     consumers = []
     for path in root.rglob("*.py"):
-        if package in path.parents:
+        if package in path.parents or path == root / "agent_live_intake_admission" / "contract.py":
             continue
         if "real_agent_intake_boundary" in path.read_text(encoding="utf-8"):
             consumers.append(path.relative_to(root))

@@ -3,6 +3,94 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.32 P0–P5 Agent Live Intake Admission — complete
+
+Atlas v0.32 is **Agent Live Intake Admission**. P0–P5 are complete from the
+frozen [v1 contract](architecture/agent-live-intake-admission-v1.md). P5
+validation started from `2ca93dbfb24bcfe85f92440595fb0f6c56c6e2ce`.
+
+- [x] Inspect current `main` after annotated `atlas-v0.31.0` and record the
+  exact planning baseline and causal send/admission/receipt ordering.
+- [x] Freeze the exact inert request envelope and Agent admission,
+  acknowledgement, result, record, lifecycle, redacted-error, audit, and
+  deterministic fingerprint schemas.
+- [x] Freeze exact same-owner v0.20–v0.30 linkage plus the v0.31 reserved send
+  attempt, with Agent output feeding the downstream v0.31 Core receipt/result.
+- [x] Preserve the inherited maximum 30-second freshness/expiry window.
+- [x] Freeze permanent atomic no-replay, idempotency, ownership, append-only
+  durability, fail-closed corruption, quota, and record-bound rules.
+- [x] Freeze fixed HTTPS/path registration, default-off production settings,
+  fixed-Core-principal authentication, and injected mode-0400
+  credential-reference verification without secret persistence or disclosure.
+- [x] Freeze the single internal Agent POST and exact OpenAPI boundary, absent
+  public Core/Mission Control surfaces, P0–P5 scope, threats, goldens,
+  authority, later enablement, blockers, and must-not-change contracts.
+- [x] Keep P0 planning-only: no model/service/store/route/UI implementation,
+  production registration, credential read, Agent call, retry, install,
+  execution, worker/workflow/dispatch, mutation, deployment, rollback, Home
+  Assistant artifact, migration, tag, push, publication, or release action.
+- [x] P1 — closed mirrored Agent/Core models and pure validation
+  (`64ff2e4526f8d3904ca37f3fb0f91d21d3d4bc18`).
+- [x] P2 — default-off durable Agent admission service/store
+  (`d4ff6f480a6a1b945947c1f5d78e3fa7a9c74b1b`).
+- [x] P3 — guarded default-off production Agent route registration
+  (`c9b6a8a0be035575bc91d9181013fde736eef34c`).
+- [x] P4 — keep Mission Control absent; structural locks prohibit a v0.32
+  client, hook, component, page, route, navigation, mutation, admit/retry/
+  resend/send-again or effect control, sensitive rendering, and Home Assistant
+  exception. No Core API bridge or runtime behavior is added.
+- [x] P5 — isolation, no-replay, regressions, and release closure.
+
+### P5 authority and isolation gates
+
+- [x] Keep admission default-off and production-registered only through the
+  exact guarded `POST /api/v1/internal/installation-intake` route.
+- [x] Keep admission evidence-only, append-only, one-envelope no-replay, and
+  secret-free in durable records, logs, audit evidence, and redacted errors.
+- [x] Keep install, execute, deploy, mutate, dispatch, worker, workflow, and
+  replay authority fixed false with no downstream evidence consumer.
+- [x] Preserve the Core live-send boundary as explicitly constructed,
+  one-shot, and without automatic retry or broader delivery machinery.
+- [x] Keep Mission Control free of v0.32 clients, UI, routes, navigation,
+  mutation/retry/resend/admit/send/install/execute/deploy/workflow controls,
+  raw envelopes, credentials, tokens, or sensitive evidence.
+- [x] Preserve capability parity and Home Assistant as blocked,
+  non-installable, non-executable, and without a deployment artifact.
+- [x] Add only release-isolation/authority tests and the five release-status
+  documents; add no runtime, migration, tag, push, release, or deployment.
+
+### P5 observed validation evidence
+
+- [x] Both requested Atlas Core and Atlas Agent Ruff gates passed.
+- [x] Focused Core release-isolation validation passed:
+  `61 passed, 47 warnings in 9.93s`.
+- [x] Focused Agent v0.32 closure validation passed:
+  `5 passed, 20 warnings in 0.82s`.
+- [x] Full Atlas Core clean-environment validation passed:
+  `3072 passed, 246 warnings in 195.20s (0:03:15)`.
+- [x] Full Atlas Agent validation passed:
+  `1045 passed, 32 warnings in 10.93s`.
+- [x] Mission Control passed 85 test files and 550 tests, lint, and production
+  build. Lint retained one pre-existing exhaustive-deps warning and no errors;
+  build retained only the existing chunk-size advisory.
+- [x] `git diff --check` passed.
+- [x] P5 closure commit:
+  `611890a9bbf1bbee7f16663659695a2e0ad77a1f test(v0.32): close agent live intake admission`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3072 passed, 246 warnings in 195.20s (0:03:15)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `611890a9bbf1bbee7f16663659695a2e0ad77a1f`.
+- [x] Final release-preparation commit:
+  `74264b1f8f9e20f72e8c02c262dcfa97252e2ed5 docs(v0.32): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Created immutable annotated tag `atlas-v0.32.0` targeting
+  `74264b1f8f9e20f72e8c02c262dcfa97252e2ed5`.
+- [x] Pushed branch `v032-agent-live-intake-admission` and annotated tag
+  `atlas-v0.32.0` to `origin`; the remote branch and peeled tag target both
+  resolve to `74264b1f8f9e20f72e8c02c262dcfa97252e2ed5`.
+- [ ] Publish the GitHub release for `atlas-v0.32.0`.
+
 ## Atlas v0.31 P0 Live Delivery Send Boundary — selected
 
 Atlas v0.31 is **Live Delivery Send Boundary**. P0 is the documentation-only

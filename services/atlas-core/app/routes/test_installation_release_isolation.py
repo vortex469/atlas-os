@@ -1156,6 +1156,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     isolated_agent_package = agent_root / "real_agent_intake_boundary"
+    v032_agent_package = agent_root / "agent_live_intake_admission"
     isolated_core_package = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     live_send_contract_package = APP_ROOT / "live_delivery_send_boundary"
     markers = (
@@ -1178,7 +1179,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
             if marker in source:
                 violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
     for path in _production_python_files(agent_root):
-        if isolated_agent_package in path.parents:
+        if isolated_agent_package in path.parents or v032_agent_package in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in markers:
@@ -1384,13 +1385,10 @@ def test_v028_has_no_production_settings_route_or_agent_registration() -> None:
     application = FastAPI()
     application.include_router(api_v1_router)
     openapi = str(application.openapi()).lower()
-    inspected = (
+    core_inspected = (
         APP_ROOT / "main.py",
         APP_ROOT / "api" / "v1" / "router.py",
         APP_ROOT / "config" / "settings.py",
-        agent_root / "main.py",
-        agent_root / "container" / "application.py",
-        agent_root / "config" / "settings.py",
     )
     forbidden = (
         "dormant_agent_intake_delivery_wiring",
@@ -1402,10 +1400,20 @@ def test_v028_has_no_production_settings_route_or_agent_registration() -> None:
     assert all(marker not in openapi for marker in forbidden)
     assert [
         f"{path.relative_to(repository_root)} -> {marker}"
-        for path in inspected
+        for path in core_inspected
         for marker in forbidden
         if marker in path.read_text(encoding="utf-8").lower()
     ] == []
+    agent_registration_source = "\n".join(
+        path.read_text(encoding="utf-8").lower()
+        for path in (
+            agent_root / "main.py",
+            agent_root / "container" / "application.py",
+            agent_root / "config" / "settings.py",
+        )
+    )
+    assert "dormant_agent_intake_delivery_wiring" not in agent_registration_source
+    assert "dormant-agent-intake-delivery" not in agent_registration_source
 
 
 def test_v028_capability_parity_and_home_assistant_remain_blocked() -> None:
@@ -1844,3 +1852,43 @@ def test_v031_home_assistant_remains_non_installable_and_has_no_artifact() -> No
         and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
     ]
     assert artifacts == []
+
+
+def test_v032_agent_admission_does_not_widen_core_live_send_or_gain_consumers() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_package = (
+        repository_root
+        / "services"
+        / "atlas-agent"
+        / "app"
+        / "agent_live_intake_admission"
+    )
+    core_markers = (
+        "agent_live_intake_admission",
+        "AgentLiveIntakeAdmissionV1",
+        "AgentLiveIntakeAcknowledgementV1",
+        "agent-live-intake-admission-v1",
+    )
+    violations = [
+        f"{path.relative_to(repository_root)} -> {marker}"
+        for path in _production_python_files(APP_ROOT)
+        for marker in core_markers
+        if marker in path.read_text(encoding="utf-8")
+    ]
+    assert violations == []
+    assert agent_package.is_dir()
+
+    contract_source = (
+        APP_ROOT / "live_delivery_send_boundary" / "contract.py"
+    ).read_text(encoding="utf-8")
+    transport_source = (
+        APP_ROOT / "live_delivery_send_boundary" / "transport.py"
+    ).read_text(encoding="utf-8")
+    assert 'automatic_retries: Literal[0] = 0' in contract_source
+    assert 'one_shot_only: Literal[True] = True' in contract_source
+    assert "for attempt in" not in transport_source
+    assert "while " not in transport_source
+    assert all(
+        marker not in transport_source.lower()
+        for marker in ("scheduler", "daemon", "retry queue", "background task")
+    )

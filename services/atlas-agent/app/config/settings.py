@@ -144,6 +144,18 @@ def _load_atlas_core_required() -> bool:
         ) from exc
 
 
+def _load_agent_live_intake_enabled() -> bool:
+    """Load the independently default-off production admission registration."""
+
+    raw_value = os.getenv("ATLAS_AGENT_LIVE_INTAKE_ENABLED", "false").strip().lower()
+    try:
+        return {"true": True, "false": False}[raw_value]
+    except KeyError as exc:
+        raise ValueError(
+            "ATLAS_AGENT_LIVE_INTAKE_ENABLED must be one of: false, true"
+        ) from exc
+
+
 def _load_atlas_core_port() -> int:
     """Load and validate the configured Atlas Core port."""
 
@@ -209,6 +221,12 @@ class Settings:
     execution_worker_port: int = 8081
     execution_worker_auth_file: Path = Path("/run/atlas-execution-auth/token")
     operational_dispatch_auth_file: Path = Path("/run/atlas-core-agent-auth/token")
+    agent_live_intake_enabled: bool = False
+    agent_live_intake_source_host: str = "atlas-agent.internal"
+    agent_live_intake_credential_file: Path = Path(
+        "/run/secrets/atlas-agent-intake-token"
+    )
+    agent_live_intake_endpoint_fingerprint: str = ""
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -256,6 +274,19 @@ class Settings:
                     "ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE",
                     "/run/atlas-core-agent-auth/token",
                 )
+            ),
+            agent_live_intake_enabled=_load_agent_live_intake_enabled(),
+            agent_live_intake_source_host=os.getenv(
+                "ATLAS_AGENT_LIVE_INTAKE_SOURCE_HOST", "atlas-agent.internal"
+            ),
+            agent_live_intake_credential_file=Path(
+                os.getenv(
+                    "ATLAS_AGENT_LIVE_INTAKE_CREDENTIAL_FILE",
+                    "/run/secrets/atlas-agent-intake-token",
+                )
+            ),
+            agent_live_intake_endpoint_fingerprint=os.getenv(
+                "ATLAS_AGENT_LIVE_INTAKE_ENDPOINT_FINGERPRINT", ""
             ),
             host=os.getenv("ATLAS_AGENT_HOST", "127.0.0.1"),
             port=_load_port(),

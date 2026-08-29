@@ -287,7 +287,11 @@ def test_v031_agent_intake_remains_explicit_dormant_and_unconsumed() -> None:
     )
     violations: list[str] = []
     for path in APP_ROOT.rglob("*.py"):
-        if path.name.startswith("test_") or PACKAGE_ROOT in path.parents:
+        if (
+            path.name.startswith("test_")
+            or PACKAGE_ROOT in path.parents
+            or path == APP_ROOT / "agent_live_intake_admission" / "contract.py"
+        ):
             continue
         source = path.read_text(encoding="utf-8")
         violations.extend(
