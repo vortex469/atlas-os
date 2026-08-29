@@ -80,13 +80,15 @@ validation started from `2ca93dbfb24bcfe85f92440595fb0f6c56c6e2ce`.
   `3072 passed, 246 warnings in 195.20s (0:03:15)`.
 - [x] Exact reviewed implementation/validation SHA after P5 review:
   `611890a9bbf1bbee7f16663659695a2e0ad77a1f`.
-- [ ] Verify the tracked worktree is clean at the final release-preparation
+- [x] Final release-preparation commit:
+  `74264b1f8f9e20f72e8c02c262dcfa97252e2ed5 docs(v0.32): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
   commit.
-- [ ] Create immutable annotated tag `atlas-v0.32.0` targeting the final
-  release-preparation commit.
-- [ ] Push branch `v032-agent-live-intake-admission` and annotated tag
-  `atlas-v0.32.0` to `origin` and verify the remote branch and peeled tag
-  target.
+- [x] Created immutable annotated tag `atlas-v0.32.0` targeting
+  `74264b1f8f9e20f72e8c02c262dcfa97252e2ed5`.
+- [x] Pushed branch `v032-agent-live-intake-admission` and annotated tag
+  `atlas-v0.32.0` to `origin`; the remote branch and peeled tag target both
+  resolve to `74264b1f8f9e20f72e8c02c262dcfa97252e2ed5`.
 - [ ] Publish the GitHub release for `atlas-v0.32.0`.
 
 ## Atlas v0.31 P0 Live Delivery Send Boundary — selected
