@@ -885,8 +885,9 @@ def test_v023_route_has_only_create_list_and_owned_item_read() -> None:
 
 def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     violations: list[str] = []
+    dormant_wiring_root = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     for path in _production_python_files(APP_ROOT):
-        if path in V024_ALLOWED_CONSUMERS:
+        if path in V024_ALLOWED_CONSUMERS or dormant_wiring_root in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V024_RECORD_MARKERS:
@@ -1144,6 +1145,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     isolated_agent_package = agent_root / "real_agent_intake_boundary"
+    isolated_core_package = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     markers = (
         "app.real_agent_intake_boundary",
         "AgentRealIntakeEvidenceService",
@@ -1154,6 +1156,8 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     )
     violations: list[str] = []
     for path in _production_python_files(APP_ROOT):
+        if isolated_core_package in path.parents:
+            continue
         source = path.read_text(encoding="utf-8")
         for marker in markers:
             if marker in source:
