@@ -1,0 +1,18 @@
+import type { DeliveryActivationPreflightOperationV1 } from "../types/deliveryActivationPreflight";
+
+const fp = (character: string) => ({ algorithm: "sha256" as const, canonicalization: "atlas-jcs-nfc-v1" as const, value: character.repeat(64) });
+const id = (suffix: string) => `00000000-0000-4000-8000-${suffix.padStart(12, "0")}`;
+
+export const deliveryActivationPreflightFixture: DeliveryActivationPreflightOperationV1 = {
+    disposition: "created",
+    result: {
+        schema: "delivery-activation-preflight-result-v1", preflight_id: id("901"), evaluated_at: "2026-08-29T12:00:00Z", expires_at: "2026-08-29T12:00:30Z", delivery_preparation_id: id("801"), preparation_fingerprint: fp("a"), endpoint_fingerprint: fp("b"),
+        linkage: {
+            candidate_record_id: id("201"), candidate_envelope_fingerprint: fp("c"), candidate_record_fingerprint: fp("d"), approval_intent_id: id("211"), approval_intent_fingerprint: fp("e"), agent_request_id: id("221"), agent_request_fingerprint: fp("f"), agent_validation_fingerprint: fp("1"), agent_audit_evidence_fingerprint: fp("2"), destination_fingerprint: fp("3"), source_plan_fingerprint: fp("4"), artifact_policy_fingerprint: fp("5"), execution_request_id: id("231"), execution_request_fingerprint: fp("6"), dispatch_envelope_id: id("241"), dispatch_envelope_fingerprint: fp("7"), simulation_request_id: id("251"), intake_record_id: id("252"), intake_record_fingerprint: fp("8"), intake_simulation_evidence_fingerprint: fp("9"), simulated_delivery_id: id("261"), simulated_delivery_fingerprint: fp("a"), delivery_record_fingerprint: fp("b"), simulated_delivery_evidence_fingerprint: fp("c"), simulated_acknowledgement_id: id("262"), simulated_acknowledgement_fingerprint: fp("d"), simulated_acknowledgement_evidence_fingerprint: fp("e"), intake_request_id: id("271"), delivery_attempt_id: id("272"), dormant_preparation_fingerprint: fp("f"),
+        },
+        decision: "eligible_for_later_activation", reason_codes: [], lifecycle_at_evaluation: "eligible", statement: "local_evidence_preflight_only_no_delivery_activation", source: "core_delivery_activation_preflight_v1", default_enabled: false, agent_contacted: false, credentials_loaded: false, production_transport_registered: false, delivery_activated: false, delivery_authorized: false, execution_admission_granted: false, execution_authorized: false, worker_allowed: false, mutation_allowed: false, replay_allowed: false, preflight_fingerprint: fp("0"),
+    },
+    status: { schema: "delivery-activation-preflight-status-v1", preflight_id: id("901"), preflight_fingerprint: fp("0"), observed_at: "2026-08-29T12:00:01Z", lifecycle: "eligible", delivery_activated: false, delivery_authorized: false, replay_allowed: false },
+    audit_evidence: { schema: "delivery-activation-preflight-audit-evidence-v1", preflight_id: id("901"), preflight_fingerprint: fp("0"), delivery_preparation_id: id("801"), preparation_fingerprint: fp("a"), intake_request_id: id("271"), delivery_attempt_id: id("272"), evaluated_at: "2026-08-29T12:00:00Z", expires_at: "2026-08-29T12:00:30Z", lifecycle: "eligible", decision: "eligible_for_later_activation", reason_codes: [], provenance: "core_delivery_activation_preflight_v1", delivery_activated: false, delivery_authorized: false, execution_authorized: false, mutation_allowed: false, replay_allowed: false, evidence_fingerprint: fp("9") },
+    error: null, default_enabled: false, agent_contacted: false, credentials_loaded: false, delivery_activated: false, delivery_authorized: false, execution_attempted: false, mutation_attempted: false, replay_allowed: false,
+};
