@@ -49,3 +49,26 @@ historical. An old “next checkpoint” is not current work.
 Broader knowledge inputs, additional execution intents, performance evidence,
 and distributed orchestration require future explicit planning and authority
 review. This document does not name a next checkpoint or invent new Agent work.
+
+## Selected v0.27 planning boundary
+
+Atlas v0.27 selects the **Real Agent Intake Boundary**. Its
+normative contract is
+[Real Agent Intake Boundary v1](../../docs/architecture/real-agent-intake-boundary-v1.md).
+P0 freezes an authenticated, evidence-only intake request, admission result,
+seven-release linkage, one-envelope no-replay, and a dormant internal route.
+
+P1–P3 implement isolated models, an explicitly constructed default-disabled
+admission service, and one bounded append-only evidence store. P3 deliberately
+adds no production route or command surface. P4 adds the isolated,
+default-disabled route factory for explicitly constructed offline test apps
+only. Production Agent registration, settings, credentials, OpenAPI, Core
+delivery, CLI, UI, workflow/worker/runtime coupling, and every target effect
+remain prohibited in v0.27. `install-container` remains unsupported and absent
+from executable intent/capability registries.
+
+P5 completes release isolation and regression validation. It locks concurrent
+single admission, no-replay and fail-closed ambiguity, owned direct readback,
+the factory's single test-only POST shape, zero production Agent/Core consumer,
+and no Mission Control surface. Home Assistant remains blocked and has no
+deployment artifact. P5 adds tests and release documentation only.

@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.25
+## 1. Current released baseline — v0.26
 
-Atlas v0.25.0 is released as `atlas-v0.25.0` at `d4d7424` and its completed
-milestone is merged to current `main` at `421658c`.
+Atlas v0.26.0 is released as `atlas-v0.26.0` at `4d51aee` and its completed
+milestone is merged to current `main` at `4a5ff02`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -63,6 +63,9 @@ image evidence, grounding, and provenance.
   v0.20–v0.23 without adding live Agent delivery or admission.
 - v0.25 released an explicitly constructed Agent intake simulation path and
   durable evidence without adding a production intake surface or receipt.
+- v0.26 released explicitly constructed in-process simulated delivery and
+  acknowledgement evidence without adding live transport, receipt, admission,
+  or execution authority.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -1191,7 +1194,85 @@ execution-time proof, runtime/worker authority, all target mutation, side-
 effect recovery/audit, installation, deployment, rollback, and Home Assistant
 installation remain blocked.
 
-## 16. Explicitly deferred work
+## 16. Selected v0.27 plan — Real Agent Intake Boundary
+
+Atlas v0.27 is **Real Agent Intake Boundary**. Its normative P0 contract is
+[Real Agent Intake Boundary
+v1](docs/architecture/real-agent-intake-boundary-v1.md). P0 is selected and is
+documentation only. P1–P5 are implemented and validated.
+
+The narrow boundary accepts one authenticated Core request only when explicitly
+constructed, validates the complete exact v0.20–v0.26 chain, and preserves one
+operator-owned `admitted_for_evidence_only` record. Admission proves receipt
+and evidence custody only. It is never execution admission, a job, a capability,
+or permission to mutate a target.
+
+### P0 — Contract and threat-model freeze — selected
+
+Freeze the exact request, admission, result, fingerprint, seven-release
+linkage, authentication/authorization, ownership, identity, freshness,
+lifecycle, idempotency/no-replay, evidence/redaction, dormant API, authority,
+golden, and must-not-change contracts. Change planning documentation only.
+
+### P1 — Closed models and pure validation — implemented
+
+Implement isolated immutable values, canonical fingerprints, lifecycle and
+hostile-input validation with no I/O, registration, or side effects.
+
+### P2 — Authenticated evidence-only admission — implemented
+
+Implement an explicitly constructed service over an injected fixed Core
+principal, operator assertion, trusted clock, local v0.25/v0.26 evidence
+readers, and admission-store port. It validates and admits evidence only.
+
+### P3 — Bounded intake evidence store — implemented
+
+Implement the independent append-only Agent store with atomic reservations,
+exact idempotency, one-envelope no-replay, quotas, restart durability, owned
+reads, and fail-closed ambiguity/corruption. Add no authority consumer.
+
+P3 adds no HTTP/OpenAPI route, route factory, command, production application
+or container registration, setting, credential, Core consumer, or live
+delivery listener. The explicitly constructed test-only dormant route factory
+remains P4 work.
+
+### P4 — Dormant route factory and offline goldens — implemented
+
+Implement the bounded internal POST adapter only in an explicitly constructed
+test application. Production Agent registration, settings, credentials,
+deployment wiring, Core delivery, CLI, and UI remain absent. Home Assistant is
+a blocked golden only.
+
+### P5 — Isolation, no-replay, and release closure — complete
+
+Prove exact linkage, authentication separation, freshness/lifecycle,
+single-admission behavior, ownership, concurrency/restart/timeout ambiguity,
+quotas, corruption, redaction, route bounds, zero production surface and Core
+delivery, capability parity, prior goldens, and full regressions. Do not tag,
+push, publish, deploy, or release automatically.
+
+P5 locks concurrent single admission, fail-closed ambiguous reservations,
+operator-owned direct readback, the exact dormant POST factory, and zero
+production registration or Core delivery. Mission Control remains absent,
+Home Assistant remains blocked with no deployment artifact, and P5 adds only
+tests and release evidence.
+
+The exact authority is authenticated receipt, validation, and bounded
+preservation of evidence-only admission when the service is explicitly
+constructed. Agent cannot execute installation, invoke Docker/Podman or a
+process, access or mutate a provider/repository/guest, start workflow/worker
+execution, deploy, or roll back. Core cannot deliver to the v0.27 surface, and
+production Agent cannot register it, until a later release explicitly enables
+both sides.
+
+V0.27 enables later design to register the reviewed route, provision a
+dedicated Core identity, deliver one owner-bound handoff, and use deterministic
+receipt/freshness/no-redelivery evidence as input to a separate future
+execution-admission contract. Production delivery, execution approval and
+consumption, execution-time proof, all runtime and target effects, installation,
+deployment, rollback, and Home Assistant installation remain blocked.
+
+## 17. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
@@ -1202,7 +1283,7 @@ installation remain blocked.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 17. Uncommitted future directions
+## 18. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

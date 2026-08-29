@@ -896,8 +896,13 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     agent_root = APP_ROOT.parents[1] / "atlas-agent" / "app"
     simulation_root = agent_root / "agent_intake_simulation"
     delivery_model_root = agent_root / "installation_handoff_simulated_delivery"
+    real_intake_root = agent_root / "real_agent_intake_boundary"
     for path in _production_python_files(agent_root):
-        if simulation_root in path.parents or delivery_model_root in path.parents:
+        if (
+            simulation_root in path.parents
+            or delivery_model_root in path.parents
+            or real_intake_root in path.parents
+        ):
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V024_RECORD_MARKERS:
@@ -1133,3 +1138,88 @@ def test_v026_keeps_install_container_unsupported_and_home_assistant_blocked() -
     assert "install-container" not in candidate_source
     assert not (repository_root / "compose" / "home-assistant.yaml").exists()
     assert not (repository_root / "compose" / "home-assistant.yml").exists()
+
+
+def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    isolated_agent_package = agent_root / "real_agent_intake_boundary"
+    markers = (
+        "app.real_agent_intake_boundary",
+        "AgentRealIntakeEvidenceService",
+        "AgentRealIntakeEvidenceStore",
+        "agent-installation-intake-request-v1",
+        "agent-installation-intake-admission-v1",
+        "/api/v1/internal/installation-intake",
+    )
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        source = path.read_text(encoding="utf-8")
+        for marker in markers:
+            if marker in source:
+                violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
+    for path in _production_python_files(agent_root):
+        if isolated_agent_package in path.parents:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for marker in markers:
+            if marker in source:
+                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+    assert violations == []
+
+
+def test_v027_has_no_core_delivery_or_production_agent_http_surface() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    assert "/api/v1/internal/installation-intake" not in application.openapi()["paths"]
+
+    inspected = (
+        APP_ROOT / "main.py",
+        APP_ROOT / "api" / "v1" / "router.py",
+        APP_ROOT / "config" / "settings.py",
+        agent_root / "main.py",
+        agent_root / "container" / "application.py",
+        agent_root / "config" / "settings.py",
+        agent_root / "core_client" / "client.py",
+    )
+    forbidden = (
+        "real_agent_intake_boundary",
+        "installation-intake",
+        "install_intake",
+        "AgentRealIntake",
+    )
+    assert [
+        f"{path.relative_to(repository_root)} -> {marker}"
+        for path in inspected
+        for marker in forbidden
+        if marker in path.read_text(encoding="utf-8")
+    ] == []
+
+
+def test_v027_capability_parity_and_home_assistant_remain_blocked() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
+        encoding="utf-8"
+    )
+    status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
+    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
+    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert "install-container" not in candidate_source
+    assert 'capability_status: Literal["unsupported"]' in status_source
+
+    deployment_roots = (repository_root / "compose", repository_root / "deploy")
+    artifacts = [
+        path.relative_to(repository_root)
+        for root in deployment_roots
+        if root.exists()
+        for path in root.rglob("*")
+        if path.is_file()
+        and "home-assistant" in path.name.lower()
+        and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
+    ]
+    assert artifacts == []
