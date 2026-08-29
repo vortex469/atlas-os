@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.26
+## 1. Current released baseline — v0.27
 
-Atlas v0.26.0 is released as `atlas-v0.26.0` at `4d51aee` and its completed
-milestone is merged to current `main` at `4a5ff02`.
+Atlas v0.27.0 is released as `atlas-v0.27.0` at `d0a36dd` and its completed
+milestone is merged to current `main` at `31f7dd1`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -66,6 +66,9 @@ image evidence, grounding, and provenance.
 - v0.26 released explicitly constructed in-process simulated delivery and
   acknowledgement evidence without adding live transport, receipt, admission,
   or execution authority.
+- v0.27 released an explicitly constructed authenticated real-intake evidence
+  boundary and dormant test-only Agent route factory without production Core
+  delivery, Agent registration, or execution authority.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -1272,7 +1275,74 @@ execution-admission contract. Production delivery, execution approval and
 consumption, execution-time proof, all runtime and target effects, installation,
 deployment, rollback, and Home Assistant installation remain blocked.
 
-## 17. Explicitly deferred work
+## 17. Selected v0.28 plan — Dormant Core-to-Agent Delivery Wiring
+
+Atlas v0.28 is **Dormant Core-to-Agent Delivery Wiring**. Its normative P0
+contract is [Dormant Core-to-Agent Delivery Wiring
+v1](docs/architecture/dormant-core-agent-delivery-wiring-v1.md). P0 is selected
+and documentation-only; P1–P5 remain planned.
+
+The boundary may later let explicitly constructed Core code assemble and
+preserve one exact `not_sent` v0.27 intake request from the same-owner
+v0.20–v0.26 chain and validate a directly injected v0.27 result. It has no
+send-capable method, production registration, credential read, network call,
+or Agent invocation.
+
+### P0 — Dormant wiring and threat-model freeze — selected
+
+Freeze the exact client/factory, disabled endpoint/authentication configuration,
+request/preparation, injected-response validation, eight-release linkage,
+ownership, freshness, lifecycle, idempotency/no-replay, redaction, no-surface,
+authority, golden, and must-not-change contracts. Change planning docs only.
+
+### P1 — Closed models and pure validation — planned
+
+Implement isolated immutable Core values, canonical fingerprints, exact
+v0.20–v0.27 linkage, derived lifecycle, and hostile-input validation with no
+I/O, registration, or effects.
+
+### P2 — Dormant preparation service and bounded store — planned
+
+Implement an explicitly constructed service and append-only store that may
+prepare and preserve one evidence-only `not_sent` request. Add no client
+transport, Agent call, credential read, route, command, worker, or workflow.
+
+### P3 — Explicit no-send client factory — planned
+
+Implement only `prepare`, owned readback, and pure supplied-response validation
+over injected dependencies. Validate configuration shape without DNS, TLS,
+HTTP, file reads, Authorization rendering, or any send/deliver method. Keep all
+production construction absent.
+
+### P4 — Offline structural goldens — planned
+
+Exercise synthetic same-owner v0.20–v0.27 preparation and injected response
+validation without a socket or Agent application invocation. Lock the exact
+future HTTP shape, Mission Control absence, and blocked Home Assistant golden.
+
+### P5 — Isolation, no-replay, and release closure — planned
+
+Prove exact linkage, freshness, concurrency/ambiguity, ownership, bounds,
+redaction, one-preparation no-replay, zero network/send surface, zero production
+Core construction and Agent registration, capability parity, prior goldens,
+and full regressions. Add no release/deployment action automatically.
+
+The exact authority is dormant preparation and validation only. Explicitly
+constructed Core code may validate fixed-disabled connection metadata, resolve
+owned evidence, preserve one immutable `not_sent` request, and validate an
+already supplied closed result. Core cannot read credentials, call Agent, open
+a socket, perform DNS/TLS/HTTP, claim delivery, or expose a production consumer.
+Agent remains dormant and test-only. Neither side gains execution, runtime,
+worker, workflow, installation, mutation, deployment, or rollback authority.
+
+V0.28 enables later review of a separate authenticated HTTPS transport,
+credential/CA provisioning, production Agent route registration, and one
+atomic no-redelivery send without redesigning the frozen client boundary.
+Production delivery and receipt, execution approval/consumption, runtime and
+target effects, installation, deployment, rollback, Mission Control delivery
+controls, and Home Assistant installation remain blocked.
+
+## 18. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
@@ -1283,7 +1353,7 @@ deployment, rollback, and Home Assistant installation remain blocked.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 18. Uncommitted future directions
+## 19. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 
