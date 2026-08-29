@@ -8,11 +8,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 OPERATIONAL_INTENT_CREATE = "operational_intent:create"
 PROVIDER_INTENT_UPDATE = "provider_intent:update"
 INSTALLATION_DESTINATION_SELECT = "installation_destination:select"
+INSTALLATION_DELIVERY_PREFLIGHT_CREATE = "installation_delivery_preflight:create"
+INSTALLATION_DELIVERY_PREFLIGHT_READ = "installation_delivery_preflight:read"
 SUPPORTED_OPERATOR_PERMISSIONS = frozenset(
     {
         OPERATIONAL_INTENT_CREATE,
         PROVIDER_INTENT_UPDATE,
         INSTALLATION_DESTINATION_SELECT,
+        INSTALLATION_DELIVERY_PREFLIGHT_CREATE,
+        INSTALLATION_DELIVERY_PREFLIGHT_READ,
     }
 )
 

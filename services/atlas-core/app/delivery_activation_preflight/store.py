@@ -188,7 +188,9 @@ class DeliveryActivationPreflightStore:
         except sqlite3.Error as error:
             raise DeliveryActivationPreflightStoreError("unavailable") from error
         if row is None:
-            raise DeliveryActivationPreflightStoreError("unavailable")
+            # The query is owner-scoped, so absence and another owner's row
+            # deliberately have the same observable result.
+            raise DeliveryActivationPreflightStoreError("not_found")
         return self._decode(row, operator_id=operator_id)
 
     def list_owned(self, *, operator_id: str) -> tuple[DeliveryActivationPreflightResultV1, ...]:

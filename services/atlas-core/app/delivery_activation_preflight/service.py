@@ -163,12 +163,36 @@ class DeliveryActivationPreflightService:
             ):
                 raise ValueError("current evidence revalidation mismatch")
             return self._success(result, disposition="exact_replay", now=now)
-        except DeliveryActivationPreflightStoreError:
-            return self._failure("unavailable", correlation_id)
+        except DeliveryActivationPreflightStoreError as error:
+            return self._failure(
+                "not_found" if error.code == "not_found" else "unavailable",
+                correlation_id,
+            )
         except ValueError:
             return self._failure("unavailable", correlation_id)
         except Exception:  # noqa: BLE001 - injected dependency failures are redacted
             return self._failure("unavailable", correlation_id)
+
+    def list(
+        self,
+        *,
+        authenticated_operator_id: str,
+        correlation_id: str,
+    ) -> tuple[DeliveryActivationPreflightOperationResultV1, ...]:
+        """Read and currently revalidate every bounded owner-scoped record."""
+        try:
+            TypeAdapter(CorrelationId).validate_python(correlation_id, strict=True)
+            records = self._store.list_owned(operator_id=authenticated_operator_id)
+        except Exception:  # noqa: BLE001 - store details remain redacted
+            return (self._failure("unavailable", correlation_id),)
+        return tuple(
+            self.get(
+                authenticated_operator_id=authenticated_operator_id,
+                preflight_id=record.preflight_id,
+                correlation_id=correlation_id,
+            )
+            for record in records
+        )
 
     @staticmethod
     def _success(

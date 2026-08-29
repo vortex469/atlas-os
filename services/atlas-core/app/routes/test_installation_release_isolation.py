@@ -1114,7 +1114,9 @@ def test_v026_has_zero_http_surface_and_no_production_enablement() -> None:
 
     application = FastAPI()
     application.include_router(api_v1_router)
-    openapi = str(application.openapi()).lower()
+    # Later releases may expose these historical evidence field names in a
+    # non-transport schema. V0.26's invariant is absence of an HTTP route.
+    openapi_paths = str(application.openapi()["paths"]).lower()
     settings = (APP_ROOT / "config" / "settings.py").read_text(encoding="utf-8")
     main = (APP_ROOT / "main.py").read_text(encoding="utf-8")
 
@@ -1124,7 +1126,7 @@ def test_v026_has_zero_http_surface_and_no_production_enablement() -> None:
         "simulated-delivery",
         "simulated_delivery",
     ):
-        assert marker not in openapi
+        assert marker not in openapi_paths
         assert marker not in settings.lower()
         assert marker not in main.lower()
 
