@@ -48,9 +48,13 @@ P5 validation started from `70faa4bb69206d332d037914464f22c66f651ce4`.
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `227e93f test(v0.29): close delivery activation preflight`.
 - [x] P5 validation started from P4 commit `70faa4b`.
 - [x] Both requested Core and Agent Ruff gates passed.
 - [x] Focused Core release-isolation and route validation passed: 55 tests.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `3022 passed, 206 warnings in 185.95s (0:03:05)`.
 - [x] Full Agent regression validation passed: 1,018 tests.
 - [x] Mission Control passed 530 tests, lint, and production build. Lint retained
   the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning and no errors;
@@ -58,6 +62,15 @@ P5 validation started from `70faa4bb69206d332d037914464f22c66f651ce4`.
 - [x] `git diff --check` passed before the closure commit.
 - [x] P5 changes only isolation/authority tests and the four release documents.
 - [x] No migration, tag, push, release, deployment, or rollback was performed.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `227e93f8e29cd308d2623e33f3d38a691ba0502f`.
+- [ ] Confirm the tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.29.0` tag.
+- [ ] Push the final release branch and `atlas-v0.29.0` tag to `origin`.
+- [ ] Publish the Atlas v0.29 release as `atlas-v0.29.0`.
 
 ## Atlas v0.28 P0–P5 Dormant Core-to-Agent Delivery Wiring — complete
 
