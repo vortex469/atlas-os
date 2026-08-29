@@ -1509,32 +1509,34 @@ transport/authentication/credential-reference, lifecycle, ownership,
 freshness, permanent idempotency/no-replay, redaction/audit, default-off API/
 UI, threats, goldens, and must-not-change contracts. Change planning docs only.
 
-### P1 — Closed live-send models and pure validation — planned
+### P1 — Closed live-send models and pure validation — implemented
 
 Add immutable Core models and pure exact v0.20–v0.30 validation while reusing
 the unchanged v0.27 request/result and v0.28 response validation. Add no I/O,
 route, registration, credential read, or send.
 
-### P2 — Production Agent evidence-intake boundary — planned
+### P2 — Durable Core reservation service and store — implemented
 
-Register only the existing v0.27 POST intake contract behind independent,
-explicit default-off configuration and fixed service authentication. Preserve
-evidence-only admission and acknowledgement, permanent no-replay, bounds,
-redaction, and zero execution/install/mutation consumers.
+Added the explicitly constructed default-off Core reservation service and
+append-only attempt store with exact linkage/freshness, owner scope, permanent
+idempotency/no-replay, bounded restart-safe reads, and fail-closed corruption.
+It adds no route, Agent invocation, network, credential read, or runtime
+authority.
 
-### P3 — One-shot Core send service — planned
+### P3 — One-shot Core send service — implemented
 
 Add one explicitly constructed default-off synchronous HTTPS adapter and an
 append-only attempt/receipt store. Permanently reserve before I/O, load only
 the fixed credential and CA references, send at most once, validate the closed
 response, and make every timeout/crash/indeterminate result non-retryable.
 
-### P4 — Guarded operator API and evidence presentation — planned
+### P4 — Mission Control presentation absence — complete
 
-Add only guarded create/list/item-read Core routes and the narrow Mission
-Control one-shot confirmation plus read-only lifecycle/linkage/receipt/audit
-view. Add no retry/resend, install, execute, workflow, deploy, or mutation
-control or navigation.
+No guarded Core create/list/item-read live-send API or UI-facing read model
+exists after P3, so P4 does not invent an API bridge or Mission Control
+surface. Structural tests prove there is no v0.31 client, type, hook, page,
+route, navigation, mutation, retry/resend/refresh/send-again control, sensitive
+transport rendering, prohibited authority label, or Home Assistant exception.
 
 ### P5 — Isolation, no-replay, and release closure — planned
 

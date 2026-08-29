@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.31 P0 — Live Delivery Send Boundary
+#### v0.31 P0–P4 — Live Delivery Send Boundary
 
 - Selected Atlas v0.31 **Live Delivery Send Boundary** and froze the
   documentation-only [v1 planning
@@ -24,6 +24,22 @@ release boundaries.
   read, transport, Agent call, installation, Docker/Podman/shell/process work,
   worker/workflow/dispatch, mutation, deployment, rollback, retry daemon,
   Home Assistant artifact, tag, push, publication, or release action.
+- P1 added closed immutable live-send request, attempt, receipt, lifecycle,
+  audit, redacted-error, transport-envelope, linkage, fingerprint, freshness,
+  endpoint, credential-reference, idempotency, ambiguity, and fixed-false
+  authority models.
+- P2 added the explicitly constructed default-off Core reservation service and
+  append-only owner-scoped durable store with permanent no-replay, restart
+  readback, quotas, bounds, and fail-closed corruption handling.
+- P3 added the injected one-shot Core HTTPS/credential boundary, permanent
+  reservation before I/O, bounded closed Agent response validation, terminal
+  ambiguity, and append-only receipt/result/acknowledgement/audit evidence. It
+  adds no install, execution, worker, workflow, deployment, or mutation power.
+- P4 keeps Mission Control absent because P3 exposes no guarded Core live-send
+  API or UI-facing read model. Structural tests lock out every v0.31 client,
+  type, page, route, navigation, mutation, retry/resend/send-again control,
+  secret or raw transport rendering, prohibited authority label, and Home
+  Assistant exception. No API bridge or runtime behavior is added.
 
 #### v0.30 P0–P5 — Operator-Controlled Delivery Enablement
 

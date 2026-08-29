@@ -25,10 +25,14 @@ frozen [v1 contract](architecture/live-delivery-send-boundary-v1.md).
   production registration, transport, credential read, Agent call, install,
   execution, worker/workflow/dispatch, mutation, deployment, rollback, Home
   Assistant artifact, migration, tag, push, publication, or release action.
-- [ ] P1 — closed live-send models and pure validation.
-- [ ] P2 — default-off production Agent evidence-intake boundary.
-- [ ] P3 — default-off one-shot Core send service and attempt/receipt store.
-- [ ] P4 — guarded Core API and Mission Control evidence presentation.
+- [x] P1 — closed live-send models and pure validation.
+- [x] P2 — default-off durable Core reservation service and attempt store.
+- [x] P3 — default-off one-shot injected Core send boundary and terminal
+  receipt/audit store.
+- [x] P4 — keep Mission Control absent because no guarded Core live-send API
+  or UI-facing read model exists; structural tests lock out clients, routes,
+  navigation, mutation/retry/resend controls, sensitive rendering, prohibited
+  authority labels, and Home Assistant exceptions.
 - [ ] P5 — isolation, no-replay, regressions, and release closure.
 
 ## Atlas v0.30 P0–P5 Operator-Controlled Delivery Enablement — complete

@@ -1,6 +1,7 @@
 # Live Delivery Send Boundary v1 planning contract
 
-Status: **Atlas v0.31 P0 selected; documentation only**.
+Status: **Atlas v0.31 P0 frozen; P1–P3 implemented; P4 presentation remains
+absent because no guarded Core API/read model exists**.
 
 This document freezes the narrowest first production Core-to-Agent send. One
 authenticated operator may cause Core to transmit one closed, inert v0.27
@@ -464,12 +465,15 @@ the fixed credential/CA references; perform at most one POST; validate the
 closed response; and fail ambiguous without retry. Add no generic transport,
 background task, worker, workflow, dispatch, runtime, or mutation integration.
 
-### P4 — Guarded operator API and evidence presentation — planned
+### P4 — Guarded operator API and evidence presentation — absence locked
 
-Add only guarded Core create/list/item-read and the narrow Mission Control
-one-shot confirmation plus read-only lifecycle/linkage/receipt/audit display.
-Lock exact routes, permissions, strict parsing, ownership, redaction, labels,
-and absence of retry or effect controls.
+The guarded create/list/item-read Core routes planned by this contract are not
+implemented after P3. P4 therefore adds no Mission Control client, read model,
+page, component, route, navigation, mutation, confirmation, or evidence view.
+Structural tests lock that absence, including no retry/resend, install,
+execute, workflow, deploy, mutation, credential, endpoint, raw-envelope, or
+Home Assistant exception surface. Presentation remains blocked until the
+separately guarded Core API exists.
 
 ### P5 — Isolation, no-replay, and release closure — planned
 
