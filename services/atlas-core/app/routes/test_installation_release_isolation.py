@@ -1530,3 +1530,102 @@ def test_v029_capability_parity_and_home_assistant_remain_blocked() -> None:
         and "home-assistant" in path.name.lower()
         and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
     ] == []
+
+
+def test_v030_service_store_and_route_are_evidence_only() -> None:
+    from app.operator_controlled_delivery_enablement.service import (
+        OperatorControlledDeliveryEnablementService,
+    )
+
+    assert {
+        name
+        for name in dir(OperatorControlledDeliveryEnablementService)
+        if not name.startswith("_")
+    } == {"configuration", "create", "get", "list"}
+    package = APP_ROOT / "operator_controlled_delivery_enablement"
+    forbidden_import_roots = {
+        "aiohttp", "docker", "http", "httpx", "podman", "requests",
+        "socket", "ssl", "subprocess", "urllib",
+    }
+    forbidden_calls = {
+        "activate", "send", "deliver", "dispatch", "consume", "execute",
+        "install", "deploy", "rollback", "connect", "request", "run",
+    }
+    violations: list[str] = []
+    for path in _production_python_files(package):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        violations.extend(
+            f"{path.relative_to(APP_ROOT)} -> import {imported}"
+            for imported in _imports(path)
+            if imported.split(".")[0] in forbidden_import_roots
+        )
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name in forbidden_calls
+            ):
+                violations.append(f"{path.relative_to(APP_ROOT)} -> def {node.name}")
+    store = (package / "store.py").read_text(encoding="utf-8")
+    assert "UPDATE operator_delivery_enablements" not in store
+    assert "DELETE FROM operator_delivery_enablements" not in store
+    assert violations == []
+
+
+def test_v030_is_default_absent_and_has_no_production_consumer() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    package = APP_ROOT / "operator_controlled_delivery_enablement"
+    allowed_core = {
+        APP_ROOT / "routes" / "delivery_enablement.py",
+        APP_ROOT / "api" / "v1" / "router.py",
+    }
+    markers = (
+        "OperatorControlledDeliveryEnablementService",
+        "create_operator_controlled_delivery_enablement_service",
+        "operator-controlled-delivery-enablement-record-v1",
+        "core_operator_controlled_delivery_enablement_v1",
+    )
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        if package in path.parents or path in allowed_core:
+            continue
+        source = path.read_text(encoding="utf-8")
+        violations.extend(
+            f"{path.relative_to(repository_root)} -> {marker}"
+            for marker in markers
+            if marker in source
+        )
+    for path in _production_python_files(agent_root):
+        source = path.read_text(encoding="utf-8")
+        violations.extend(
+            f"{path.relative_to(repository_root)} -> {marker}"
+            for marker in markers
+            if marker in source
+        )
+    main = (APP_ROOT / "main.py").read_text(encoding="utf-8")
+    assert "operator_controlled_delivery_enablement" not in main
+    assert violations == []
+
+
+def test_v030_openapi_is_exact_without_authority_sibling() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    paths = application.openapi()["paths"]
+    collection = "/api/v1/installation-delivery-enablements"
+    item = f"{collection}/{{enablement_id}}"
+    enablement_paths = {
+        path: value for path, value in paths.items() if "delivery-enablement" in path
+    }
+    assert set(enablement_paths) == {collection, item}
+    assert set(enablement_paths[collection]) == {"get", "post"}
+    assert set(enablement_paths[item]) == {"get"}
+    for path in enablement_paths:
+        normalized = path.lower().replace("installation-delivery-enablements", "")
+        assert all(
+            word not in normalized
+            for word in (
+                "send", "deliver", "activate", "install", "execute", "deploy",
+            )
+        )

@@ -9,6 +9,7 @@ from app.routes.dashboard import router as dashboard_router
 from app.routes.delivery_activation_preflight import (
     router as delivery_activation_preflight_router,
 )
+from app.routes.delivery_enablement import router as delivery_enablement_router
 from app.routes.discovery import router as discovery_router
 from app.routes.docker import router as docker_router
 from app.routes.execution_candidate_intake import (
@@ -97,6 +98,7 @@ router.include_router(provider_intent_mutation_router)
 router.include_router(provider_resources_router)
 router.include_router(discovery_router)
 router.include_router(delivery_activation_preflight_router)
+router.include_router(delivery_enablement_router)
 router.include_router(installation_plan_router)
 router.include_router(installation_router)
 router.include_router(installation_capability_router)
