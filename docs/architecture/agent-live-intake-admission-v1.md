@@ -1,6 +1,6 @@
 # Agent Live Intake Admission v1 planning contract
 
-Status: **Atlas v0.32 P0–P4 complete; P5 planned**.
+Status: **Atlas v0.32 P0–P5 complete**.
 
 Atlas v0.32 defines the narrowest production-registered Agent boundary that
 may authenticate, receive, validate, and durably admit one inert v0.31 live
@@ -444,7 +444,7 @@ exception. Evidence admission remains non-installing, non-executing,
 non-dispatching, non-workflow, non-worker, non-mutating, non-deploying,
 non-rollback, and non-retry authority.
 
-### P5 — Release validation and closure — planned
+### P5 — Release validation and closure — complete
 
 Prove exact chain/freshness, authentication and credential-file safety,
 independent defaults, production registration/OpenAPI exactness, concurrent
@@ -452,6 +452,15 @@ single admission, restart/corruption/no-replay behavior, redaction, secret-free
 persistence, zero effect consumers, absent UI, capability parity, prior
 goldens, and Home Assistant blocking. Add tests and release evidence only; do
 not migrate, tag, push, publish, deploy, or release automatically.
+
+Closure locks the exact independently default-off POST registration,
+concurrent permanent reservation semantics, append-only restart readback,
+secret-free persistence/log/error behavior, fixed-false effect authority, and
+zero installation, dispatch, worker, workflow, mutation, deployment, rollback,
+or replay-bypass consumers. It also preserves Core's one-shot/no-automatic-
+retry send, Mission Control absence, capability parity, and Home Assistant
+blocking. Both Ruff gates, 3072 Core tests, 1045 Agent tests, and 550 Mission
+Control tests plus lint/build passed.
 
 ## Exact authority boundary
 

@@ -91,7 +91,12 @@ value may be modeled, persisted, logged, returned, or documented. P4 keeps
 Mission Control absent and adds structural locks against any v0.32 client,
 page, navigation, mutation, retry/resend, effect control, sensitive rendering,
 or Home Assistant exception. It adds no Core bridge or runtime behavior. P5
-adds isolation and release evidence only.
+completed isolation and release closure with exact default-off route locks,
+concurrent permanent no-replay, append-only restart-safe and secret-free
+evidence, zero effect consumers, Core one-shot/no-retry preservation,
+capability parity, and Home Assistant blocking. Both Ruff gates, all 3072 Core
+tests, all 1045 Agent tests, and all 550 Mission Control tests plus lint/build
+passed. P5 adds tests and release evidence only.
 
 This boundary durably admits evidence; it does not admit execution. There is no
 install, runtime/container/process execution, retry/resend, dispatch, worker,

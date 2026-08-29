@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.32 P0–P4 — Agent Live Intake Admission
+#### v0.32 P0–P5 — Agent Live Intake Admission
 
 - Selected Atlas v0.32 **Agent Live Intake Admission** and froze the
   documentation-only [v1 planning
@@ -42,6 +42,16 @@ release boundaries.
   v0.32 client, hook, component, page, route, navigation, read/mutation call,
   admit/retry/resend/send-again or effect control, sensitive rendering, and
   Home Assistant exception. No Core bridge or runtime behavior is added.
+- P5 closes the boundary with exact default-off single-route registration,
+  concurrent one-envelope no-replay, append-only restart-safe evidence,
+  secret-free persistence/log/error locks, fixed-false effect authority, zero
+  installation/workflow/worker/dispatch/mutation/deployment consumers, Core
+  one-shot/no-retry preservation, absent Mission Control, capability parity,
+  and Home Assistant blocking. P5 adds tests and release documentation only.
+- P5 validation passed both Ruff gates, 61 focused Core isolation tests, 5
+  focused Agent closure tests, all 3072 Core tests, all 1045 Agent tests, and
+  550 Mission Control tests plus lint/build. The existing frontend hook and
+  chunk-size warnings remained non-errors.
 
 #### v0.31 P0–P5 — Live Delivery Send Boundary
 

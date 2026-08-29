@@ -118,7 +118,11 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   client, type, hook, component, page, route, navigation, mutation, retry/
   resend/send-again, effect control, sensitive rendering, or Home Assistant
   exception. It adds no Core bridge or runtime behavior.
-- P5 adds isolation/regression/authority tests and release documentation only.
+- P5 completed isolation/regression/authority validation: exact default-off
+  single-route registration, permanent concurrent no-replay, append-only and
+  secret-free evidence, zero effect consumers, Core one-shot/no-retry
+  preservation, absent Mission Control, capability parity, and Home Assistant
+  blocking. It adds tests and release documentation only.
 
 V0.32 authority ends at durable receipt/admission evidence. It enables a later
 release to consider a fresh linked admission as one prerequisite for a new,
@@ -127,6 +131,9 @@ execution token. Installation, runtime/container/process execution, dispatch,
 workers, workflows, queues, retry/resend, provider/repository/in-guest
 mutation, deployment, rollback, public Core or Mission Control surfaces,
 credential management, and Home Assistant artifacts remain blocked.
+
+P0 through P5 are complete. Closure passed both Ruff gates, all 3072 Core
+tests, all 1045 Agent tests, and all 550 Mission Control tests plus lint/build.
 
 ## 4. Released v0.15 scope — Deployment Image Grounding Operator Surface
 
