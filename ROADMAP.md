@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.28
+## 1. Current released baseline — v0.30
 
-Atlas v0.28.0 is released as `atlas-v0.28.0` at `c95d580` and its completed
-milestone is merged to current `main` at `2ba2a14`.
+Atlas v0.30.0 is released as `atlas-v0.30.0` at `9fe2f9e` and its completed
+milestone is merged to current `main` at `2d379a2`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -72,6 +72,10 @@ image evidence, grounding, and provenance.
 - v0.28 released explicitly constructed dormant Core delivery preparation and
   injected-response validation without a send method, production transport,
   credential loading, Agent invocation, or execution authority.
+- v0.29 released guarded durable delivery-activation preflight evidence over
+  the exact v0.20–v0.28 chain while remaining non-activating and non-sending.
+- v0.30 released guarded durable operator enablement evidence over a fresh
+  same-owner v0.20–v0.29 chain without adding a send or execution consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -1485,7 +1489,74 @@ Docker/Podman/shell/process/container work; install; mutate provider,
 repository, or guest state; deploy; roll back; or create a Home Assistant
 artifact. All those capabilities remain blocked.
 
-## 20. Explicitly deferred work
+## 20. Selected v0.31 plan — Live Delivery Send Boundary
+
+Atlas v0.31 is **Live Delivery Send Boundary**. Its normative P0 contract is
+[Live Delivery Send Boundary
+v1](docs/architecture/live-delivery-send-boundary-v1.md). P0 is selected and
+documentation-only; P1–P5 are planned.
+
+The narrow boundary is one authenticated, synchronous, permanently single-use
+HTTPS POST of the exact inert v0.27 intake request, after Core revalidates the
+same-owner v0.20–v0.30 chain inside the inherited v0.29/v0.30 30-second window.
+Agent may admit and acknowledge evidence only. Evidence delivery is not
+execution admission, installation, dispatch, deployment, or mutation authority.
+
+### P0 — Live-send contract and threat model — selected
+
+Freeze exact request/result/admission/acknowledgement, linkage, fingerprint,
+transport/authentication/credential-reference, lifecycle, ownership,
+freshness, permanent idempotency/no-replay, redaction/audit, default-off API/
+UI, threats, goldens, and must-not-change contracts. Change planning docs only.
+
+### P1 — Closed live-send models and pure validation — planned
+
+Add immutable Core models and pure exact v0.20–v0.30 validation while reusing
+the unchanged v0.27 request/result and v0.28 response validation. Add no I/O,
+route, registration, credential read, or send.
+
+### P2 — Production Agent evidence-intake boundary — planned
+
+Register only the existing v0.27 POST intake contract behind independent,
+explicit default-off configuration and fixed service authentication. Preserve
+evidence-only admission and acknowledgement, permanent no-replay, bounds,
+redaction, and zero execution/install/mutation consumers.
+
+### P3 — One-shot Core send service — planned
+
+Add one explicitly constructed default-off synchronous HTTPS adapter and an
+append-only attempt/receipt store. Permanently reserve before I/O, load only
+the fixed credential and CA references, send at most once, validate the closed
+response, and make every timeout/crash/indeterminate result non-retryable.
+
+### P4 — Guarded operator API and evidence presentation — planned
+
+Add only guarded create/list/item-read Core routes and the narrow Mission
+Control one-shot confirmation plus read-only lifecycle/linkage/receipt/audit
+view. Add no retry/resend, install, execute, workflow, deploy, or mutation
+control or navigation.
+
+### P5 — Isolation, no-replay, and release closure — planned
+
+Prove exact chain/freshness, independent defaults, transport authentication,
+TLS and credential-file bounds, reservation-before-I/O, ambiguity no-replay,
+ownership, redaction, exact Core/Agent/UI surfaces, zero prohibited consumers,
+capability parity, prior goldens, and Home Assistant blocking. Add tests and
+release evidence only.
+
+The exact v0.31 authority is one operator-triggered, synchronous delivery of
+one inert evidence envelope to one fixed authenticated Agent route, plus
+durable redacted attempt/receipt evidence. It adds no broad transport, retry
+daemon, scheduler, callback, worker, workflow, dispatch, runtime, installation,
+provider/repository/in-guest mutation, deployment, rollback, or Home Assistant
+artifact.
+
+V0.31 enables a later separately frozen release to consider a successfully
+admitted receipt as one prerequisite for a distinct execution-admission
+decision. Receipt consumption, installation, runtime execution, all mutation,
+deployment, rollback, recovery, and retry remain blocked.
+
+## 21. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
@@ -1496,7 +1567,7 @@ artifact. All those capabilities remain blocked.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 21. Uncommitted future directions
+## 22. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

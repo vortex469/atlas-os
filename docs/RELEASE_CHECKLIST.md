@@ -3,6 +3,34 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.31 P0 Live Delivery Send Boundary — selected
+
+Atlas v0.31 is **Live Delivery Send Boundary**. P0 is the documentation-only
+frozen [v1 contract](architecture/live-delivery-send-boundary-v1.md).
+
+- [x] Inspect current `main` after annotated `atlas-v0.30.0`.
+- [x] Freeze the exact operator create request, unchanged v0.27 Agent wire
+  request/result/admission/acknowledgement, attempt, receipt, status, error,
+  audit, and deterministic fingerprint contracts.
+- [x] Freeze exact same-owner v0.20–v0.30 linkage and recomputation rules.
+- [x] Preserve the v0.29/v0.30 maximum 30-second freshness/expiry window.
+- [x] Freeze fixed HTTPS endpoint, mutual Core/Agent default-off registration,
+  service authentication, CA and mode-0400 credential-reference boundaries.
+- [x] Freeze permanent reservation-before-I/O, exact retry with zero I/O,
+  terminal ambiguity, no resend, ownership, redaction, and audit rules.
+- [x] Freeze the exact three-route Core API, single Agent POST, narrow Mission
+  Control confirmation/read view, P0–P5 scope, threats, goldens, authority,
+  later enablement, remaining blockers, and must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/route/UI change,
+  production registration, transport, credential read, Agent call, install,
+  execution, worker/workflow/dispatch, mutation, deployment, rollback, Home
+  Assistant artifact, migration, tag, push, publication, or release action.
+- [ ] P1 — closed live-send models and pure validation.
+- [ ] P2 — default-off production Agent evidence-intake boundary.
+- [ ] P3 — default-off one-shot Core send service and attempt/receipt store.
+- [ ] P4 — guarded Core API and Mission Control evidence presentation.
+- [ ] P5 — isolation, no-replay, regressions, and release closure.
+
 ## Atlas v0.30 P0–P5 Operator-Controlled Delivery Enablement — complete
 
 Atlas v0.30 is **Operator-Controlled Delivery Enablement**. P0–P5 are complete

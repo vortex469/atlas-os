@@ -6,6 +6,25 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.31 P0 — Live Delivery Send Boundary
+
+- Selected Atlas v0.31 **Live Delivery Send Boundary** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/live-delivery-send-boundary-v1.md).
+- Defined the exact one-shot operator request, unchanged v0.27 wire request,
+  Agent result/admission/acknowledgement, complete v0.20–v0.30 linkage,
+  fingerprints, append-only attempt/receipt lifecycle, inherited 30-second
+  freshness, permanent reservation/no-replay, ownership, redaction, audit,
+  transport authentication and bounded credential-reference contract.
+- Froze independent default-off Core send and Agent route registration, exact
+  three-route Core and one-route Agent surfaces, Mission Control confirmation,
+  P0–P5 scope, threats, goldens, authority, later enablement, remaining
+  blockers, and must-not-change contracts.
+- V0.31 P0 changes planning documents only. It adds no send, route, credential
+  read, transport, Agent call, installation, Docker/Podman/shell/process work,
+  worker/workflow/dispatch, mutation, deployment, rollback, retry daemon,
+  Home Assistant artifact, tag, push, publication, or release action.
+
 #### v0.30 P0–P5 — Operator-Controlled Delivery Enablement
 
 - Selected Atlas v0.30 **Operator-Controlled Delivery Enablement** and froze
