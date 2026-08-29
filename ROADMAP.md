@@ -1,9 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.30
+## 1. Current released baseline — v0.31
 
-Atlas v0.30.0 is released as `atlas-v0.30.0` at `9fe2f9e` and its completed
-milestone is merged to current `main` at `2d379a2`.
+Atlas v0.31.0 is released as `atlas-v0.31.0` at
+`01e6fc40378f4f38f2559691768fc8880e69a96b`; its completed milestone and
+release-checklist reconciliation are merged to current `main` at
+`c93bf5b0790aa37f5d9bf348dca3ccdf3315baf5`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -76,10 +78,53 @@ image evidence, grounding, and provenance.
   the exact v0.20–v0.28 chain while remaining non-activating and non-sending.
 - v0.30 released guarded durable operator enablement evidence over a fresh
   same-owner v0.20–v0.29 chain without adding a send or execution consumer.
+- v0.31 released an explicitly constructed, default-disabled, one-shot live
+  HTTPS send of an inert evidence envelope, with permanent no-replay and
+  terminal ambiguity, while Agent intake remained dormant and unregistered.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Selected v0.32 plan — Agent Live Intake Admission
+
+Atlas v0.32 selects **Agent Live Intake Admission**. The normative
+documentation-only P0 contract is
+[Agent Live Intake Admission v1](docs/architecture/agent-live-intake-admission-v1.md).
+It defines the narrowest default-off production Agent registration that may
+authenticate one fixed Core principal, receive one bounded inert v0.31
+envelope, and append one durable evidence-only admission and acknowledgement.
+
+The admission input binds the complete same-owner v0.20–v0.30 linkage and the
+v0.31 permanently reserved send attempt. The Agent response is causally prior
+to, and becomes input to, the v0.31 Core receipt/result; the receipt therefore
+cannot be an Agent admission prerequisite. The inherited maximum freshness is
+30 seconds. Authentication uses an injected mode-0400 credential reference;
+secret material is never modeled, persisted, logged, returned, or exposed in
+OpenAPI.
+
+The phase order is P0 → P1 → P2 → P3 → P4 → P5:
+
+- P0 freezes the exact schemas, fingerprints, lifecycle, ownership,
+  authentication, freshness, no-replay, redaction, audit, API/OpenAPI, UI,
+  authority, threat, golden, and must-not-change contracts.
+- P1 adds strict immutable mirrored Core/Agent models and pure validation only.
+- P2 adds an explicitly constructed, default-off, append-only Agent admission
+  service/store with permanent atomic reservations and owned readback.
+- P3 adds the sole production-registered Agent POST behind explicit settings,
+  HTTPS enforcement, injected authentication, strict bounds, and exact
+  internal OpenAPI; registration remains off by default.
+- P4 adapts only the explicitly constructed v0.31 Core one-shot sender to the
+  frozen envelope/response contract. It adds no retry, public Core API, or UI.
+- P5 adds isolation/regression/authority tests and release documentation only.
+
+V0.32 authority ends at durable receipt/admission evidence. It enables a later
+release to consider a fresh linked admission as one prerequisite for a new,
+separately confirmed execution-admission decision. It does not create an
+execution token. Installation, runtime/container/process execution, dispatch,
+workers, workflows, queues, retry/resend, provider/repository/in-guest
+mutation, deployment, rollback, public Core or Mission Control surfaces,
+credential management, and Home Assistant artifacts remain blocked.
 
 ## 4. Released v0.15 scope — Deployment Image Grounding Operator Surface
 

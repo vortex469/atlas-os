@@ -72,3 +72,27 @@ single admission, no-replay and fail-closed ambiguity, owned direct readback,
 the factory's single test-only POST shape, zero production Agent/Core consumer,
 and no Mission Control surface. Home Assistant remains blocked and has no
 deployment artifact. P5 adds tests and release documentation only.
+
+## Selected v0.32 planning boundary
+
+Atlas v0.32 selects **Agent Live Intake Admission**. Its normative contract is
+[Agent Live Intake Admission v1](../../docs/architecture/agent-live-intake-admission-v1.md).
+P0 freezes an inert outer envelope binding the complete same-owner v0.20–v0.30
+chain and the v0.31 reserved send attempt, plus closed Agent admission,
+acknowledgement, result, record, audit, lifecycle, and redacted-error models.
+The Agent outputs are inputs to the downstream v0.31 Core receipt; the receipt
+is not an admission prerequisite.
+
+P1–P3 may add closed models, a bounded append-only default-off admission
+service/store, and the sole guarded production Agent POST. Registration stays
+off unless explicitly configured; authentication is for one fixed Core
+principal through an injected mode-0400 credential reference, and no secret
+value may be modeled, persisted, logged, returned, or documented. P4 may adapt
+only the existing explicitly constructed v0.31 one-shot Core sender. P5 adds
+isolation and release evidence only.
+
+This boundary durably admits evidence; it does not admit execution. There is no
+install, runtime/container/process execution, retry/resend, dispatch, worker,
+workflow, provider/repository/in-guest mutation, deployment, rollback, public
+Core API, Mission Control surface, or Home Assistant artifact. Existing
+executable intent and capability registries remain unchanged.

@@ -6,6 +6,28 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.32 P0 — Agent Live Intake Admission
+
+- Selected Atlas v0.32 **Agent Live Intake Admission** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/agent-live-intake-admission-v1.md).
+- Defined the exact inert outer envelope, Agent admission/acknowledgement/
+  result/record schemas, complete v0.20–v0.31 causal linkage, deterministic
+  fingerprints, inherited 30-second freshness, same-owner validation,
+  permanent no-replay, lifecycle, redaction, and audit evidence.
+- Froze one default-off production Agent POST, fixed-Core-principal
+  authentication through an injected mode-0400 credential reference, strict
+  HTTPS/body/response bounds, exact internal OpenAPI, and no Mission Control or
+  public Core surface.
+- Froze P0–P5 scope, threats, goldens, exact evidence-only authority, later
+  enablement, remaining blockers, and must-not-change contracts. V0.31's
+  reserved attempt is admission input; Agent admission/result/acknowledgement
+  are causally upstream of the v0.31 Core receipt and cannot require it.
+- V0.32 P0 changes planning documents only. It adds no runtime registration,
+  service, store, route, credential read, Agent call, retry, installation,
+  Docker/Podman/shell/process work, worker/workflow/dispatch, mutation,
+  deployment, rollback, Home Assistant artifact, tag, push, or release action.
+
 #### v0.31 P0–P5 — Live Delivery Send Boundary
 
 - Selected Atlas v0.31 **Live Delivery Send Boundary** and froze the

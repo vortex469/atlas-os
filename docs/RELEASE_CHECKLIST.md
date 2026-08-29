@@ -3,6 +3,38 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.32 P0 Agent Live Intake Admission — selected
+
+Atlas v0.32 is **Agent Live Intake Admission**. P0 is the documentation-only
+frozen [v1 contract](architecture/agent-live-intake-admission-v1.md).
+
+- [x] Inspect current `main` after annotated `atlas-v0.31.0` and record the
+  exact planning baseline and causal send/admission/receipt ordering.
+- [x] Freeze the exact inert request envelope and Agent admission,
+  acknowledgement, result, record, lifecycle, redacted-error, audit, and
+  deterministic fingerprint schemas.
+- [x] Freeze exact same-owner v0.20–v0.30 linkage plus the v0.31 reserved send
+  attempt, with Agent output feeding the downstream v0.31 Core receipt/result.
+- [x] Preserve the inherited maximum 30-second freshness/expiry window.
+- [x] Freeze permanent atomic no-replay, idempotency, ownership, append-only
+  durability, fail-closed corruption, quota, and record-bound rules.
+- [x] Freeze fixed HTTPS/path registration, default-off production settings,
+  fixed-Core-principal authentication, and injected mode-0400
+  credential-reference verification without secret persistence or disclosure.
+- [x] Freeze the single internal Agent POST and exact OpenAPI boundary, absent
+  public Core/Mission Control surfaces, P0–P5 scope, threats, goldens,
+  authority, later enablement, blockers, and must-not-change contracts.
+- [x] Keep P0 planning-only: no model/service/store/route/UI implementation,
+  production registration, credential read, Agent call, retry, install,
+  execution, worker/workflow/dispatch, mutation, deployment, rollback, Home
+  Assistant artifact, migration, tag, push, publication, or release action.
+- [ ] P1 — closed mirrored Agent/Core models and pure validation.
+- [ ] P2 — default-off durable Agent admission service/store.
+- [ ] P3 — guarded default-off production Agent route registration.
+- [ ] P4 — v0.31 one-shot Core envelope integration; no retry, public API, or
+  Mission Control surface.
+- [ ] P5 — isolation, no-replay, regressions, and release closure.
+
 ## Atlas v0.31 P0 Live Delivery Send Boundary — selected
 
 Atlas v0.31 is **Live Delivery Send Boundary**. P0 is the documentation-only
