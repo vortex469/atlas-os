@@ -1423,51 +1423,51 @@ live authenticated transport and receipt, atomic consumption, execution
 approval and runtime authority, all target effects, deployment, rollback, and
 Home Assistant installation remain blocked.
 
-## 19. Selected v0.30 plan — Operator-Controlled Delivery Enablement
+## 19. Completed v0.30 plan — Operator-Controlled Delivery Enablement
 
 Atlas v0.30 is **Operator-Controlled Delivery Enablement**. Its normative P0
 contract is [Operator-Controlled Delivery Enablement
-v1](docs/architecture/operator-controlled-delivery-enablement-v1.md). P0 is
-selected and documentation-only; P1–P5 are planned.
+v1](docs/architecture/operator-controlled-delivery-enablement-v1.md). P0–P5
+are complete.
 
 The narrow boundary is one explicit, authenticated, owner-bound confirmation
 over a still-eligible v0.29 preflight and its exact v0.20–v0.29 lineage. V0.30
-may later preserve a short-lived `operator_enabled_for_later_delivery_consideration`
+preserves a short-lived `operator_enabled_for_later_delivery_consideration`
 record. Operator-enabled is not activated, sent, delivery-authorized,
 execution-admitted, installed, or deployed.
 
-### P0 — Enablement contract and threat model — selected
+### P0 — Enablement contract and threat model — complete
 
 Freeze exact schemas, linkage, fixed confirmation wording, fingerprints,
 ownership/authz, inherited freshness/expiry, permanent idempotency/no-replay,
 redaction/audit, default-off API/UI, authority, threats, goldens, and
 must-not-change contracts. Change planning documentation only.
 
-### P1 — Closed models and pure validation — planned
+### P1 — Closed models and pure validation — complete
 
 Implement immutable models and pure exact v0.20–v0.29 linkage, confirmation,
 fingerprint, and lifecycle validation over injected values/time. Add no I/O,
 store, route, client, registration, or side effect.
 
-### P2 — Bounded append-only enablement evidence — planned
+### P2 — Bounded append-only enablement evidence — complete
 
 Implement the explicitly constructed local service and independent owner-scoped
 append-only store with atomic permanent reservations, exact retry/no-replay,
 quotas, corruption/ambiguity closure, and current reads. Add no consumer.
 
-### P3 — Authenticated Core-local API — planned
+### P3 — Authenticated Core-local API — complete
 
 Add only guarded create/list/item-read with narrow permissions, mutation
 protections, strict bounds/parsing, ownership, redaction, exact OpenAPI/methods,
 and default-off injected construction. Add no Agent or runtime dependency.
 
-### P4 — Mission Control enablement evidence review — planned
+### P4 — Mission Control enablement evidence review — complete
 
 Add the exact two-step **Enable exact delivery for later consideration only**
 confirmation and read-only status/linkage/audit display. Add no activation,
 send, delivery, execution, installation, deployment, rollback, or navigation.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove confirmation/linkage/fingerprint sensitivity, expiry, ownership/authz,
 concurrency/ambiguity/corruption, exact retry, API/UI bounds, zero consumers,

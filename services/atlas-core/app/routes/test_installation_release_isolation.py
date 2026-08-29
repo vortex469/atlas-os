@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import inspect
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
 
@@ -1581,6 +1582,7 @@ def test_v030_is_default_absent_and_has_no_production_consumer() -> None:
     }
     markers = (
         "OperatorControlledDeliveryEnablementService",
+        "OperatorControlledDeliveryEnablementRecordV1",
         "create_operator_controlled_delivery_enablement_service",
         "operator-controlled-delivery-enablement-record-v1",
         "core_operator_controlled_delivery_enablement_v1",
@@ -1629,3 +1631,66 @@ def test_v030_openapi_is_exact_without_authority_sibling() -> None:
                 "send", "deliver", "activate", "install", "execute", "deploy",
             )
         )
+
+
+def test_v030_concurrent_exact_retry_creates_one_permanent_record(
+    tmp_path: Path,
+) -> None:
+    from app.operator_controlled_delivery_enablement.store import (
+        OperatorControlledDeliveryEnablementStore,
+    )
+    from app.operator_controlled_delivery_enablement.test_contract import (
+        OPERATOR,
+        _create,
+    )
+    from app.operator_controlled_delivery_enablement.test_service import _service
+
+    database = tmp_path / "enablement.sqlite3"
+    service, _, _, evidence = _service(tmp_path, database=database)
+    create = _create(evidence)
+
+    def submit(correlation: str):
+        return service.create(
+            create,
+            authenticated_operator_id=OPERATOR,
+            idempotency_key="concurrent-enable",
+            correlation_id=correlation,
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = tuple(executor.map(submit, ("concurrent-1", "concurrent-2")))
+    assert {outcome.disposition for outcome in outcomes} == {
+        "created",
+        "exact_replay",
+    }
+    assert outcomes[0].record == outcomes[1].record
+    assert outcomes[0].record is not None
+    assert not any(outcome.replay_allowed for outcome in outcomes)
+    assert OperatorControlledDeliveryEnablementStore(database).list_owned(
+        operator_id=OPERATOR
+    ) == (outcomes[0].record,)
+
+
+def test_v030_capability_parity_and_home_assistant_remain_blocked() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
+        encoding="utf-8"
+    )
+    status_source = (agent_root / "routes" / "status.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
+    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert "install-container" not in candidate_source
+    assert 'capability_status: Literal["unsupported"]' in status_source
+    artifacts = [
+        path.relative_to(repository_root)
+        for root in (repository_root / "compose", repository_root / "deploy")
+        if root.exists()
+        for path in root.rglob("*")
+        if path.is_file()
+        and "home-assistant" in path.name.lower()
+        and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
+    ]
+    assert artifacts == []

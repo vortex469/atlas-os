@@ -5,6 +5,11 @@ import component from "../features/discovery/DeliveryEnablements.tsx?raw";
 import router from "../app/router.tsx?raw";
 import navigation from "../layouts/MainLayout.tsx?raw";
 
+const productionModules = import.meta.glob(
+    "../**/*.{ts,tsx}",
+    { eager: true, import: "default", query: "?raw" },
+) as Record<string, string>;
+
 describe("v0.30 operator-controlled delivery enablement presentation boundary", () => {
     it("uses only guarded Core create, list, and item-read", () => {
         expect((api.match(/atlas\.get</g) ?? [])).toHaveLength(2);
@@ -28,5 +33,19 @@ describe("v0.30 operator-controlled delivery enablement presentation boundary", 
     it("contains no sensitive fields or external integration", () => {
         expect(component).not.toMatch(/raw_provider_payload|credential_(?:file|path)|ca_bundle|tls_server_name|authorization_header|cookie_value|raw_command|internal_path|repository_path|guest_path|endpoint_address/i);
         expect(component).not.toMatch(/agent\.(?:get|post)|transport\.(?:send|register)|worker\.|workflow\.|provider\.|repository\./i);
+    });
+
+    it("has no enablement consumer or mutation outside the evidence presenter", () => {
+        const allowed = /(?:api|types)\/deliveryEnablement\.ts$|features\/discovery\/(?:DeliveryEnablements|InstallationDispatchHandoffs)\.tsx$/;
+        const markers = /DeliveryEnablementOperationV1|operator-controlled-delivery-enablement-record-v1|core_operator_controlled_delivery_enablement_v1/;
+        const consumers = Object.entries(productionModules)
+            .filter(([path]) => !path.includes(".test.") && !path.includes("/test/") && !path.includes("/security/"))
+            .filter(([path, source]) => markers.test(source) && !allowed.test(path));
+        expect(consumers).toEqual([]);
+        const enablementSources = Object.entries(productionModules)
+            .filter(([path]) => path.toLowerCase().includes("deliveryenablement") && !path.includes(".test."))
+            .map(([, source]) => source).join("\n");
+        expect((enablementSources.match(/atlas\.post</g) ?? [])).toHaveLength(1);
+        expect(enablementSources).not.toMatch(/atlas\.(?:put|patch|delete)/);
     });
 });

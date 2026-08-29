@@ -1,6 +1,6 @@
 # Operator-Controlled Delivery Enablement v1 planning contract
 
-Status: **Atlas v0.30 P0 selected; documentation only**.
+Status: **Atlas v0.30 P0–P5 complete; frozen**.
 
 This document freezes the narrowest Core-local boundary by which one
 authenticated operator may explicitly enable one exact, currently eligible
@@ -363,41 +363,41 @@ deployment artifact.
 
 ## P0–P5 scope
 
-### P0 — Enablement contract and threat model — selected
+### P0 — Enablement contract and threat model — complete
 
 Freeze exact request/linkage/record/result/status/error/audit schemas,
 confirmation wording, fingerprints, ownership/authz, freshness, expiry,
 idempotency/no-replay, store/API/UI limits, authority, threats, goldens, and
 must-not-change rules. Change planning documentation only.
 
-### P1 — Closed models and pure validation — planned
+### P1 — Closed models and pure validation — complete
 
 Implement immutable models, canonical fingerprints, exact v0.20–v0.29 linkage
 validation, confirmation validation, and pure lifecycle derivation over
 injected values/time. Add no I/O, store, route, client, or registration.
 
-### P2 — Bounded append-only enablement evidence — planned
+### P2 — Bounded append-only enablement evidence — complete
 
 Implement the explicitly constructed service over injected owner-scoped local
 readers, trusted clock/ID factory, and independent store. Add atomic permanent
 reservations, exact retry, quotas, corruption/ambiguity closure, and current
 owned reads. Add no consumer or activation bridge.
 
-### P3 — Authenticated Core-local API — planned
+### P3 — Authenticated Core-local API — complete
 
 Add only guarded create/list/item-read with exact authentication, narrow
 permissions, CSRF/origin/rate limits, strict bounds/parsing, ownership,
 redaction, OpenAPI/method isolation, and default-off injected construction.
 Add no Agent, transport, credential, runtime, or mutation dependency.
 
-### P4 — Mission Control enablement evidence review — planned
+### P4 — Mission Control enablement evidence review — complete
 
 Add the explicit two-step enablement confirmation and read-only lifecycle,
 expiry, linkage, fingerprint, audit, no-replay, and fixed-authority display.
 Add no activation, send, delivery, execution, installation, deployment,
 rollback, endpoint, credential, Agent, workflow, or action navigation.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage/fingerprint sensitivity, confirmation, freshness/expiry,
 ownership/authz, concurrency, ambiguity, quotas, corruption, redaction, exact
@@ -405,6 +405,18 @@ retry/no-replay, API/UI bounds, default-off posture, zero Agent/transport/
 secret/runtime registration, zero consumers, capability parity, prior goldens,
 and full regressions. Add only tests and release evidence; do not migrate, tag,
 push, publish, deploy, or release automatically.
+
+### P5 validation evidence
+
+P5 validation started from P4 commit
+`1957d1774436055ebc6f87732e51101c555a9203`. Both requested Core and Agent Ruff
+gates passed. The focused Core release-isolation and delivery-enablement route
+suite passed 62 tests; the full Agent suite passed 1,018 tests; and Mission
+Control passed 83 test files and 540 tests, lint, and production build. The
+lint run retained one pre-existing exhaustive-deps warning and the build
+retained its existing chunk-size advisory; neither was an error. P5 changes
+only isolation/authority tests and these four release documents. It performs
+no migration, tag, push, publication, release, deployment, or rollback.
 
 ## Exact authority boundary
 
