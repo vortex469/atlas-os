@@ -81,9 +81,15 @@ frozen [v1 contract](architecture/live-delivery-send-boundary-v1.md).
   `3071 passed, 246 warnings in 192.37s (0:03:12)`.
 - [x] Exact reviewed implementation/validation SHA after P5 review:
   `28a817daf3a1b4591c11cc4a294832c9ab5414b5`.
-- [ ] Verify the tracked worktree is clean at the final release commit.
-- [ ] Create immutable annotated tag `atlas-v0.31.0`.
-- [ ] Push the branch and annotated tag to `origin`.
+- [x] Final release-preparation commit:
+  `01e6fc40378f4f38f2559691768fc8880e69a96b docs(v0.31): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Created immutable annotated tag `atlas-v0.31.0` targeting
+  `01e6fc40378f4f38f2559691768fc8880e69a96b`.
+- [x] Pushed branch `v031-live-delivery-send-boundary` and annotated tag
+  `atlas-v0.31.0` to `origin`; the remote branch and peeled tag target both
+  resolve to `01e6fc40378f4f38f2559691768fc8880e69a96b`.
 - [ ] Publish the GitHub release for `atlas-v0.31.0`.
 
 ## Atlas v0.30 P0–P5 Operator-Controlled Delivery Enablement — complete
