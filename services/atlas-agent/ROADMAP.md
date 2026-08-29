@@ -60,8 +60,9 @@ seven-release linkage, one-envelope no-replay, and a dormant internal route.
 
 P1–P3 implement isolated models, an explicitly constructed default-disabled
 admission service, and one bounded append-only evidence store. P3 deliberately
-adds no route or command surface; the isolated test-only dormant route factory
-remains deferred to P4. Production Agent registration, settings, credentials,
-OpenAPI, Core delivery, CLI, UI, workflow/worker/runtime coupling, and every
-target effect remain prohibited in v0.27. `install-container` remains
-unsupported and absent from executable intent/capability registries.
+adds no production route or command surface. P4 adds the isolated,
+default-disabled route factory for explicitly constructed offline test apps
+only. Production Agent registration, settings, credentials, OpenAPI, Core
+delivery, CLI, UI, workflow/worker/runtime coupling, and every target effect
+remain prohibited in v0.27. `install-container` remains unsupported and absent
+from executable intent/capability registries.

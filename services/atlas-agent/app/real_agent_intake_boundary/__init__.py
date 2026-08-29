@@ -1,5 +1,11 @@
 """Frozen v0.27 real Agent intake boundary models and pure validation."""
 
+from app.real_agent_intake_boundary.dormant_route import (
+    INTAKE_PATH,
+    DormantIntakeAuthenticationError,
+    DormantIntakeAuthenticator,
+    create_dormant_real_intake_router,
+)
 from app.real_agent_intake_boundary.models import (
     AUTHENTICATED_CORE_PRINCIPAL,
     AgentInstallationIntakeAcknowledgementV1,
@@ -36,6 +42,7 @@ from app.real_agent_intake_boundary.store import (
 
 __all__ = [
     "AUTHENTICATED_CORE_PRINCIPAL",
+    "INTAKE_PATH",
     "MAX_RETAINED_RECORDS_PER_OPERATOR",
     "AgentInstallationIntakeAcknowledgementV1",
     "AgentInstallationIntakeAdmissionV1",
@@ -50,6 +57,8 @@ __all__ = [
     "AgentInstallationIntakeValidationV1",
     "AgentRealIntakeEvidenceService",
     "AgentRealIntakeEvidenceStore",
+    "DormantIntakeAuthenticationError",
+    "DormantIntakeAuthenticator",
     "IntakeRejectionCodeV1",
     "RealIntakeEvidenceReader",
     "RealIntakeStoreError",
@@ -57,6 +66,7 @@ __all__ = [
     "acknowledgement_fingerprint",
     "admission_fingerprint",
     "audit_evidence_fingerprint",
+    "create_dormant_real_intake_router",
     "intake_lifecycle",
     "parse_intake_request_json",
     "request_fingerprint",

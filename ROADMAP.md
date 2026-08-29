@@ -1199,7 +1199,7 @@ installation remain blocked.
 Atlas v0.27 is **Real Agent Intake Boundary**. Its normative P0 contract is
 [Real Agent Intake Boundary
 v1](docs/architecture/real-agent-intake-boundary-v1.md). P0 is selected and is
-documentation only. P1–P3 are implemented; P4–P5 remain planned.
+documentation only. P1–P4 are implemented; P5 remains planned.
 
 The narrow boundary accepts one authenticated Core request only when explicitly
 constructed, validates the complete exact v0.20–v0.26 chain, and preserves one
@@ -1236,7 +1236,7 @@ or container registration, setting, credential, Core consumer, or live
 delivery listener. The explicitly constructed test-only dormant route factory
 remains P4 work.
 
-### P4 — Dormant route factory and offline goldens — planned
+### P4 — Dormant route factory and offline goldens — implemented
 
 Implement the bounded internal POST adapter only in an explicitly constructed
 test application. Production Agent registration, settings, credentials,

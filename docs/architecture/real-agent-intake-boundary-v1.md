@@ -1,13 +1,19 @@
 # Real Agent Intake Boundary v1 planning contract
 
-Status: **Atlas v0.27 contract frozen; P0–P3 implemented through bounded
-evidence custody; P4–P5 remain planned**.
+Status: **Atlas v0.27 contract frozen; P0–P4 implemented through the dormant
+test-only route factory; P5 remains planned**.
 
 Implementation through P3 adds only isolated closed models, pure validation,
 an explicitly constructed default-disabled evidence service, and the bounded
 append-only Agent admission store. P3 adds no HTTP/OpenAPI route factory,
 command, production registration, setting, credential, Core consumer, or live
 delivery listener. The dormant test-only route factory remains deferred to P4.
+
+P4 adds that exact bounded factory inside the isolated package for explicitly
+constructed offline test applications only. It remains default-disabled and is
+not imported, registered, configured, or discoverable by production Agent or
+Core paths. No credential, setting, listener, deployment wiring, CLI, UI, or
+live delivery is added.
 
 This document freezes the narrowest guarded Agent boundary that may later
 receive one authentic Core delivery of the exact released installation handoff
@@ -396,7 +402,7 @@ Implement only the independent append-only store, atomic reservations, exact
 idempotency, one-envelope no-replay, quotas, restart durability, owned reads,
 and fail-closed corruption/ambiguity. Add no consumer or authority bridge.
 
-### P4 — Dormant route factory and offline goldens — planned
+### P4 — Dormant route factory and offline goldens — implemented
 
 Implement the exact bounded internal POST adapter and dedicated authentication
 contract only in an explicitly constructed test application. Exercise

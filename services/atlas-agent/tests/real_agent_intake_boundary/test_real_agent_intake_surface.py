@@ -78,13 +78,15 @@ def test_production_http_openapi_and_container_have_no_real_intake_surface(
 
 
 def test_no_route_command_listener_or_settings_enablement_exists() -> None:
-    assert not (PACKAGE_ROOT / "routes.py").exists()
-    assert not (PACKAGE_ROOT / "router.py").exists()
-    assert not (PACKAGE_ROOT / "api.py").exists()
     assert not (PACKAGE_ROOT / "__main__.py").exists()
     assert all(
-        not (_imports(path) & {"argparse", "click", "fastapi", "starlette", "typer"})
+        not (_imports(path) & {"argparse", "click", "typer"})
         for path in sorted(PACKAGE_ROOT.glob("*.py"))
+    )
+    assert all(
+        not (_imports(path) & {"fastapi", "starlette"})
+        for path in sorted(PACKAGE_ROOT.glob("*.py"))
+        if path.name != "dormant_route.py"
     )
     package_text = "\n".join(
         path.read_text(encoding="utf-8").lower()
@@ -92,7 +94,6 @@ def test_no_route_command_listener_or_settings_enablement_exists() -> None:
     )
     for prohibited_surface in (
         "@router.",
-        "add_api_route",
         "include_router",
         "create_subprocess",
         "listen(",
@@ -168,7 +169,6 @@ def test_package_has_no_transport_runtime_worker_or_authority_consumer() -> None
         "app.workflow",
         "asyncio",
         "docker",
-        "fastapi",
         "http.client",
         "httpx",
         "podman",
@@ -183,6 +183,10 @@ def test_package_has_no_transport_runtime_worker_or_authority_consumer() -> None
         for path in sorted(PACKAGE_ROOT.glob("*.py"))
         for imported in _imports(path)
         if imported.startswith(forbidden)
+        or (
+            imported.startswith(("fastapi", "starlette"))
+            and path.name != "dormant_route.py"
+        )
     ]
     assert violations == []
 
