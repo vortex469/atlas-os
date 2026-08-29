@@ -34,6 +34,7 @@ from app.installation_plan.contract import UtcSecond
 from app.installation_targets.contract import CanonicalUuid4
 
 MAX_CREATE_BYTES = 1024
+MAX_CONFIGURATION_BYTES = 16 * 1024
 MAX_REQUEST_BYTES = 64 * 1024
 MAX_PREPARATION_BYTES = 96 * 1024
 MAX_RESPONSE_BYTES = 64 * 1024
@@ -820,6 +821,17 @@ def audit_evidence_fingerprint(
 
 def parse_delivery_create_json(payload: bytes | str) -> CoreAgentIntakeDeliveryCreateV1:
     return _parse(payload, CoreAgentIntakeDeliveryCreateV1, MAX_CREATE_BYTES)
+
+
+def parse_delivery_configuration_json(
+    payload: bytes | str,
+) -> DormantAgentIntakeDeliveryConfigurationV1:
+    """Parse injected dormant configuration without reading referenced files."""
+    return _parse(
+        payload,
+        DormantAgentIntakeDeliveryConfigurationV1,
+        MAX_CONFIGURATION_BYTES,
+    )
 
 
 def parse_delivery_response_json(
