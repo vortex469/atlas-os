@@ -6,6 +6,33 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.28 P0–P5 — Dormant Core-to-Agent Delivery Wiring
+
+- Froze and completed the Dormant Core-to-Agent Delivery Wiring v1 contract:
+  closed immutable Core configuration, request/preparation, response-
+  validation, audit, idempotency, result, and redacted-error models bind the
+  exact same-owner v0.20–v0.27 evidence chain and server-owned Core time.
+- Added the explicitly constructed fixed-disabled no-send client and bounded
+  append-only preparation store. It may prepare one immutable `not_sent`
+  request, perform owned readback, and validate one directly injected closed
+  Agent result; it has no send, transport, credential-loading, execution,
+  mutation, worker, workflow, deployment, or rollback capability.
+- Locked endpoint and authentication-reference shape validation without file
+  reads, credential material, Authorization rendering, DNS, sockets, TLS,
+  HTTP, network libraries, Agent invocation, or production construction.
+- Production Core and Agent app/container/settings/API paths have no v0.28
+  client, factory, store, route, credential, consumer, listener, workflow,
+  worker, provider/repository/guest mutation, candidate execution, or replay
+  bypass. The v0.27 Agent intake route remains dormant and test-only.
+- Mission Control has no v0.28 type, client, mutation, route, navigation,
+  control, evidence rendering, or prohibited action label. Home Assistant
+  remains blocked, non-installable, non-executable, and has no deployment
+  artifact.
+- P5 validation passed both Core and Agent Ruff gates, 92 focused Core
+  isolation/dormant-wiring tests, 1,016 Agent tests, 522 Mission Control tests,
+  Mission Control lint/build, and `git diff --check`. P5 adds tests and release
+  documentation only; it performs no migration, tag, push, release, or deployment.
+
 #### v0.27 P0–P5 — Real Agent Intake Boundary
 
 - Froze and completed the Real Agent Intake Boundary v1 contract: immutable

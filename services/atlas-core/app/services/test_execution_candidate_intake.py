@@ -435,7 +435,7 @@ async def test_global_candidate_collection_failure_is_sanitized() -> None:
 
 
 def test_intake_service_imports_no_agent_workflow_approval_persistence_or_http_modules() -> None:
-    source = Path("app/services/execution_candidate_intake.py").read_text()
+    source = Path(__file__).with_name("execution_candidate_intake.py").read_text()
 
     forbidden_imports = (
         "app.agent",

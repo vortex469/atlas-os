@@ -1,8 +1,9 @@
-"""Atlas v0.16-v0.26 release-surface and authority-isolation locks."""
+"""Atlas v0.16-v0.28 release-surface and authority-isolation locks."""
 
 from __future__ import annotations
 
 import ast
+import inspect
 import re
 from pathlib import Path
 from typing import Literal
@@ -885,8 +886,9 @@ def test_v023_route_has_only_create_list_and_owned_item_read() -> None:
 
 def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     violations: list[str] = []
+    dormant_wiring_root = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     for path in _production_python_files(APP_ROOT):
-        if path in V024_ALLOWED_CONSUMERS:
+        if path in V024_ALLOWED_CONSUMERS or dormant_wiring_root in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V024_RECORD_MARKERS:
@@ -1144,6 +1146,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     isolated_agent_package = agent_root / "real_agent_intake_boundary"
+    isolated_core_package = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     markers = (
         "app.real_agent_intake_boundary",
         "AgentRealIntakeEvidenceService",
@@ -1154,6 +1157,8 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     )
     violations: list[str] = []
     for path in _production_python_files(APP_ROOT):
+        if isolated_core_package in path.parents:
+            continue
         source = path.read_text(encoding="utf-8")
         for marker in markers:
             if marker in source:
@@ -1216,6 +1221,189 @@ def test_v027_capability_parity_and_home_assistant_remain_blocked() -> None:
     artifacts = [
         path.relative_to(repository_root)
         for root in deployment_roots
+        if root.exists()
+        for path in root.rglob("*")
+        if path.is_file()
+        and "home-assistant" in path.name.lower()
+        and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
+    ]
+    assert artifacts == []
+
+
+def test_v028_client_is_explicit_disabled_no_send_and_non_authorizing() -> None:
+    from app.dormant_agent_intake_delivery_wiring import (
+        DormantAgentIntakeDeliveryClient,
+        DormantAgentIntakeDeliveryConfigurationV1,
+        create_dormant_agent_intake_delivery_client,
+    )
+
+    assert list(
+        inspect.signature(create_dormant_agent_intake_delivery_client).parameters
+    ) == [
+        "configuration",
+        "evidence_reader",
+        "preparation_store",
+        "clock",
+        "id_factory",
+    ]
+    assert all(
+        parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        and parameter.default is inspect.Parameter.empty
+        for parameter in inspect.signature(
+            create_dormant_agent_intake_delivery_client
+        ).parameters.values()
+    )
+    assert {
+        name
+        for name in dir(DormantAgentIntakeDeliveryClient)
+        if not name.startswith("_")
+    } == {"configuration", "get_preparation", "prepare", "validate_response"}
+    for field in (
+        "enabled",
+        "agent_route_registered",
+        "production_transport_registered",
+        "production_delivery_allowed",
+        "execution_authorized",
+        "worker_allowed",
+        "mutation_allowed",
+        "replay_allowed",
+    ):
+        assert DormantAgentIntakeDeliveryConfigurationV1.model_fields[field].annotation == Literal[
+            False
+        ]
+
+
+def test_v028_package_cannot_load_credentials_or_open_network_runtime() -> None:
+    package = APP_ROOT / "dormant_agent_intake_delivery_wiring"
+    forbidden_import_roots = {
+        "aiohttp",
+        "docker",
+        "http",
+        "httpx",
+        "podman",
+        "requests",
+        "socket",
+        "ssl",
+        "subprocess",
+        "urllib",
+    }
+    violations: list[str] = []
+    for path in _production_python_files(package):
+        for imported in _imports(path):
+            if imported.split(".")[0] in forbidden_import_roots:
+                violations.append(f"{path.relative_to(APP_ROOT)} -> {imported}")
+    for path in (package / "contract.py", package / "client.py"):
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if isinstance(node.func, ast.Name) and node.func.id == "open":
+                violations.append(f"{path.relative_to(APP_ROOT)} -> open")
+            if isinstance(node.func, ast.Attribute) and node.func.attr in {
+                "read_bytes",
+                "read_text",
+                "send",
+                "request",
+                "connect",
+            }:
+                violations.append(
+                    f"{path.relative_to(APP_ROOT)} -> {node.func.attr}"
+                )
+        assert "Authorization: Bearer" not in source
+    assert violations == []
+
+
+def test_v028_store_is_append_only_evidence_not_outbox_or_replay_bridge() -> None:
+    store = (
+        APP_ROOT / "dormant_agent_intake_delivery_wiring" / "store.py"
+    ).read_text(encoding="utf-8")
+    assert "UPDATE dormant_agent_intake_delivery" not in store
+    assert "DELETE FROM dormant_agent_intake_delivery" not in store
+    assert {
+        node.name
+        for node in ast.walk(ast.parse(store))
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }.isdisjoint(
+        {"send", "deliver", "retry", "reconcile", "consume", "execute", "install", "deploy", "rollback"}
+    )
+
+
+def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    isolated_core = APP_ROOT / "dormant_agent_intake_delivery_wiring"
+    isolated_agent = agent_root / "real_agent_intake_boundary"
+    markers = (
+        "app.dormant_agent_intake_delivery_wiring",
+        "DormantAgentIntakeDeliveryClient",
+        "DormantAgentIntakeDeliveryPreparationStore",
+        "create_dormant_agent_intake_delivery_client",
+        "core-agent-intake-delivery-preparation-v1",
+        "dormant-agent-intake-delivery-configuration-v1",
+    )
+    violations: list[str] = []
+    for root, isolated in ((APP_ROOT, isolated_core), (agent_root, isolated_agent)):
+        for path in _production_python_files(root):
+            if isolated in path.parents:
+                continue
+            source = path.read_text(encoding="utf-8")
+            violations.extend(
+                f"{path.relative_to(repository_root)} -> {marker}"
+                for marker in markers
+                if marker in source
+            )
+    assert violations == []
+
+
+def test_v028_has_no_production_settings_route_or_agent_registration() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    openapi = str(application.openapi()).lower()
+    inspected = (
+        APP_ROOT / "main.py",
+        APP_ROOT / "api" / "v1" / "router.py",
+        APP_ROOT / "config" / "settings.py",
+        agent_root / "main.py",
+        agent_root / "container" / "application.py",
+        agent_root / "config" / "settings.py",
+    )
+    forbidden = (
+        "dormant_agent_intake_delivery_wiring",
+        "dormant-agent-intake-delivery",
+        "installation-intake",
+        "agent_intake_credential",
+        "credential_file",
+    )
+    assert all(marker not in openapi for marker in forbidden)
+    assert [
+        f"{path.relative_to(repository_root)} -> {marker}"
+        for path in inspected
+        for marker in forbidden
+        if marker in path.read_text(encoding="utf-8").lower()
+    ] == []
+
+
+def test_v028_capability_parity_and_home_assistant_remain_blocked() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
+        encoding="utf-8"
+    )
+    status_source = (agent_root / "routes" / "status.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
+    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert "install-container" not in candidate_source
+    assert 'capability_status: Literal["unsupported"]' in status_source
+    artifacts = [
+        path.relative_to(repository_root)
+        for root in (repository_root / "compose", repository_root / "deploy")
         if root.exists()
         for path in root.rglob("*")
         if path.is_file()

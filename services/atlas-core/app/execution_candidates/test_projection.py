@@ -257,7 +257,7 @@ def test_secret_like_content_is_rejected() -> None:
 
 
 def test_projection_imports_no_execution_or_io_boundaries() -> None:
-    source = Path("app/execution_candidates/projection.py").read_text()
+    source = Path(__file__).with_name("projection.py").read_text()
 
     assert "app.planning" not in source
     assert "app.actions" not in source
