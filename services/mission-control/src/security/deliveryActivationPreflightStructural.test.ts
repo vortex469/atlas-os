@@ -1,0 +1,32 @@
+import { describe, expect, it } from "vitest";
+
+import api from "../api/deliveryActivationPreflight.ts?raw";
+import component from "../features/discovery/DeliveryActivationPreflights.tsx?raw";
+import router from "../app/router.tsx?raw";
+import navigation from "../layouts/MainLayout.tsx?raw";
+
+describe("v0.29 delivery activation preflight presentation boundary", () => {
+    it("uses only the guarded Core create, list, and item-read API", () => {
+        expect((api.match(/atlas\.get</g) ?? [])).toHaveLength(2);
+        expect((api.match(/atlas\.post</g) ?? [])).toHaveLength(1);
+        expect(api).toContain('atlas.get<unknown>("/installation-delivery-preflights"');
+        expect(api).toContain("atlas.get<unknown>(`/installation-delivery-preflights/${encodeURIComponent(id)}`");
+        expect(api).toContain('atlas.post<unknown>("/installation-delivery-preflights"');
+        expect(api).not.toMatch(/atlas\.(?:put|patch|delete)/);
+        expect(api).not.toMatch(/from ["'][^"']*(?:agent|credential|provider|repository|workflow|worker|docker|podman|shell|process)/i);
+        expect(api).not.toMatch(/(?:fetch|axios|agent|provider|repository|workflow|worker|transport)\.(?:get|post|send|register|execute)/i);
+    });
+
+    it("adds no route, navigation, or prohibited authority control", () => {
+        expect(router).not.toMatch(/delivery[-_ ]activation[-_ ]preflight/i);
+        expect(navigation).not.toMatch(/delivery[-_ ]activation[-_ ]preflight/i);
+        const labels = [...component.matchAll(/<button[^>]*>([^<]+)/g)].map((match) => match[1]).join(" ");
+        expect(labels).not.toMatch(/\bactivate\b|\bsend\b|\bdeliver\b|\brun\b|\binstall\b|\bexecute\b|\bdeploy\b|\bdispatch\b|start workflow|\brollback\b/i);
+        expect(component).not.toMatch(/href=|<Link|navigate\(/);
+    });
+
+    it("contains no sensitive presentation fields or non-preflight integration", () => {
+        expect(component).not.toMatch(/raw_provider_payload|credential_(?:file|path)|ca_bundle|tls_server_name|authorization_header|cookie_value|raw_command|internal_path|repository_path|guest_path|endpoint_address/i);
+        expect(component).not.toMatch(/agent\.(?:get|post)|transport\.(?:send|register)|worker\.|workflow\.|provider\.|repository\./i);
+    });
+});

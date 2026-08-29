@@ -887,8 +887,13 @@ def test_v023_route_has_only_create_list_and_owned_item_read() -> None:
 def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     violations: list[str] = []
     dormant_wiring_root = APP_ROOT / "dormant_agent_intake_delivery_wiring"
+    preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
     for path in _production_python_files(APP_ROOT):
-        if path in V024_ALLOWED_CONSUMERS or dormant_wiring_root in path.parents:
+        if (
+            path in V024_ALLOWED_CONSUMERS
+            or dormant_wiring_root in path.parents
+            or preflight_contract_root in path.parents
+        ):
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V024_RECORD_MARKERS:
@@ -1109,7 +1114,9 @@ def test_v026_has_zero_http_surface_and_no_production_enablement() -> None:
 
     application = FastAPI()
     application.include_router(api_v1_router)
-    openapi = str(application.openapi()).lower()
+    # Later releases may expose these historical evidence field names in a
+    # non-transport schema. V0.26's invariant is absence of an HTTP route.
+    openapi_paths = str(application.openapi()["paths"]).lower()
     settings = (APP_ROOT / "config" / "settings.py").read_text(encoding="utf-8")
     main = (APP_ROOT / "main.py").read_text(encoding="utf-8")
 
@@ -1119,7 +1126,7 @@ def test_v026_has_zero_http_surface_and_no_production_enablement() -> None:
         "simulated-delivery",
         "simulated_delivery",
     ):
-        assert marker not in openapi
+        assert marker not in openapi_paths
         assert marker not in settings.lower()
         assert marker not in main.lower()
 
@@ -1333,6 +1340,7 @@ def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     isolated_core = APP_ROOT / "dormant_agent_intake_delivery_wiring"
+    preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
     isolated_agent = agent_root / "real_agent_intake_boundary"
     markers = (
         "app.dormant_agent_intake_delivery_wiring",
@@ -1345,7 +1353,7 @@ def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
     violations: list[str] = []
     for root, isolated in ((APP_ROOT, isolated_core), (agent_root, isolated_agent)):
         for path in _production_python_files(root):
-            if isolated in path.parents:
+            if isolated in path.parents or preflight_contract_root in path.parents:
                 continue
             source = path.read_text(encoding="utf-8")
             violations.extend(
@@ -1411,3 +1419,113 @@ def test_v028_capability_parity_and_home_assistant_remain_blocked() -> None:
         and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
     ]
     assert artifacts == []
+
+
+def test_v029_service_and_store_are_evidence_only_without_authority_bridge() -> None:
+    from app.delivery_activation_preflight.service import (
+        DeliveryActivationPreflightService,
+    )
+
+    assert {
+        name
+        for name in dir(DeliveryActivationPreflightService)
+        if not name.startswith("_")
+    } == {"configuration", "create", "get", "list"}
+    package = APP_ROOT / "delivery_activation_preflight"
+    forbidden_import_roots = {
+        "aiohttp", "docker", "http", "httpx", "podman", "requests",
+        "socket", "ssl", "subprocess", "urllib",
+    }
+    forbidden_calls = {
+        "activate", "send", "deliver", "dispatch", "consume", "execute",
+        "install", "deploy", "rollback", "connect", "request", "run",
+    }
+    violations: list[str] = []
+    for path in _production_python_files(package):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        violations.extend(
+            f"{path.relative_to(APP_ROOT)} -> import {imported}"
+            for imported in _imports(path)
+            if imported.split(".")[0] in forbidden_import_roots
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in forbidden_calls:
+                violations.append(f"{path.relative_to(APP_ROOT)} -> def {node.name}")
+    store = (package / "store.py").read_text(encoding="utf-8")
+    assert "UPDATE delivery_activation_preflights" not in store
+    assert "DELETE FROM delivery_activation_preflights" not in store
+    assert violations == []
+
+
+def test_v029_is_default_absent_from_production_construction_and_has_no_consumer() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    package = APP_ROOT / "delivery_activation_preflight"
+    allowed_core = {
+        APP_ROOT / "routes" / "delivery_activation_preflight.py",
+        APP_ROOT / "api" / "v1" / "router.py",
+    }
+    markers = (
+        "DeliveryActivationPreflightResultV1",
+        "DeliveryActivationPreflightService",
+        "create_delivery_activation_preflight_service",
+        "delivery-activation-preflight-result-v1",
+        "core_delivery_activation_preflight_v1",
+    )
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        if package in path.parents or path in allowed_core:
+            continue
+        source = path.read_text(encoding="utf-8")
+        violations.extend(
+            f"{path.relative_to(repository_root)} -> {marker}"
+            for marker in markers if marker in source
+        )
+    for path in _production_python_files(agent_root):
+        source = path.read_text(encoding="utf-8")
+        violations.extend(
+            f"{path.relative_to(repository_root)} -> {marker}"
+            for marker in markers if marker in source
+        )
+    main = (APP_ROOT / "main.py").read_text(encoding="utf-8")
+    assert "delivery_activation_preflight" not in main
+    assert violations == []
+
+
+def test_v029_openapi_is_exact_without_activation_or_delivery_sibling() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    paths = application.openapi()["paths"]
+    collection = "/api/v1/installation-delivery-preflights"
+    item = f"{collection}/{{preflight_id}}"
+    preflight_paths = {path: value for path, value in paths.items() if "delivery-preflight" in path}
+    assert set(preflight_paths) == {collection, item}
+    assert set(preflight_paths[collection]) == {"get", "post"}
+    assert set(preflight_paths[item]) == {"get"}
+    for path in preflight_paths:
+        normalized = path.lower().replace("installation-delivery-preflights", "")
+        assert all(word not in normalized for word in (
+            "activate", "send", "deliver", "execute", "deploy",
+        ))
+
+
+def test_v029_capability_parity_and_home_assistant_remain_blocked() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(encoding="utf-8")
+    status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
+    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
+    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert "install-container" not in candidate_source
+    assert 'capability_status: Literal["unsupported"]' in status_source
+    assert [
+        path.relative_to(repository_root)
+        for root in (repository_root / "compose", repository_root / "deploy")
+        if root.exists()
+        for path in root.rglob("*")
+        if path.is_file()
+        and "home-assistant" in path.name.lower()
+        and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
+    ] == []

@@ -4,6 +4,7 @@ import { getAtlasErrorMessage } from "../../api/atlas";
 import { dispatchHandoffIdempotencyKey, getInstallationDispatchHandoff, listInstallationDispatchHandoffs, preserveInstallationDispatchHandoff } from "../../api/installationDispatchHandoff";
 import type { InstallationDispatchHandoffV1 } from "../../types/installationDispatchHandoff";
 import type { InstallationExecutionRequestV1 } from "../../types/installationExecutionRequest";
+import { DeliveryActivationPreflights } from "./DeliveryActivationPreflights";
 
 export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: { executionRequests: InstallationExecutionRequestV1[]; csrfToken: string | null }) {
     const [handoffs, setHandoffs] = useState<InstallationDispatchHandoffV1[]>([]);
@@ -72,6 +73,7 @@ export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: {
             {preserving && <p role="status" className="mt-2 text-sm text-slate-400">Preserving immutable non-delivering handoff record…</p>}
         </section>}
         {reviewed && <HandoffDetails handoff={reviewed} />}
+        <DeliveryActivationPreflights csrfToken={csrfToken} />
     </section>;
 }
 

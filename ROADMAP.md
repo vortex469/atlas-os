@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.27
+## 1. Current released baseline — v0.28
 
-Atlas v0.27.0 is released as `atlas-v0.27.0` at `d0a36dd` and its completed
-milestone is merged to current `main` at `31f7dd1`.
+Atlas v0.28.0 is released as `atlas-v0.28.0` at `c95d580` and its completed
+milestone is merged to current `main` at `2ba2a14`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -69,6 +69,9 @@ image evidence, grounding, and provenance.
 - v0.27 released an explicitly constructed authenticated real-intake evidence
   boundary and dormant test-only Agent route factory without production Core
   delivery, Agent registration, or execution authority.
+- v0.28 released explicitly constructed dormant Core delivery preparation and
+  injected-response validation without a send method, production transport,
+  credential loading, Agent invocation, or execution authority.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -1348,7 +1351,79 @@ Production delivery and receipt, execution approval/consumption, runtime and
 target effects, installation, deployment, rollback, Mission Control delivery
 controls, and Home Assistant installation remain blocked.
 
-## 18. Explicitly deferred work
+## 18. Selected v0.29 plan — Controlled Delivery Activation Preflight
+
+Atlas v0.29 is **Controlled Delivery Activation Preflight**. Its normative P0
+contract is [Controlled Delivery Activation Preflight
+v1](docs/architecture/delivery-activation-preflight-v1.md). P0 through P5 are
+implemented and validated.
+
+The narrow boundary is a Core-local, operator-owned eligibility snapshot over
+one exact v0.28 `not_sent` preparation and its complete v0.20–v0.27 lineage.
+It may later preserve and read one short-lived `eligible_for_later_activation`
+or terminal `ineligible` result. Eligibility is not activation approval,
+delivery authority, execution admission, or installation authority.
+
+### P0 — Contract and threat-model freeze — selected
+
+Freeze the exact request/result/linkage schemas, fingerprints, decision and
+lifecycle values, ownership, authentication/authorization, freshness/expiry,
+idempotency/no-replay, redaction/audit, default-disabled API/UI, authority,
+goldens, and must-not-change contracts. Change planning documentation only.
+
+### P1 — Closed models and pure evaluation — complete
+
+Implement isolated immutable Core models and pure validation of the complete
+same-owner v0.20–v0.28 chain over injected values and time. Add no I/O,
+registration, store, route, or side effect.
+
+### P2 — Bounded append-only preflight evidence — complete
+
+Implement an explicitly constructed evaluator and independent operator-scoped
+append-only store with atomic reservations, exact retry/no-replay, quotas,
+restart durability, fail-closed ambiguity/corruption, and owned reads. Add no
+consumer or activation bridge.
+
+### P3 — Authenticated Core-local API — complete
+
+Add only guarded create/list/item-read with narrow authz, exact bounds,
+redaction, OpenAPI/method isolation, and default-disabled registration. The
+request path must not contact Agent or reach secrets, transport, runtime,
+worker, workflow, dispatch, provider, repository, or guest modules.
+
+### P4 — Mission Control evidence review — complete
+
+Add explicit local-preflight confirmation and read-only temporary eligibility
+or blocker presentation. Add no activation, delivery, execution, installation,
+deployment, rollback, endpoint, credential, Agent, or workflow control.
+
+### P5 — Isolation, no-replay, and release closure — complete
+
+Prove linkage, freshness/expiry, ownership/authz, concurrency, ambiguity,
+redaction, exact retry/no-replay, API/UI bounds, zero Agent contact, zero
+transport/secret/runtime registration, zero consumers, prior goldens,
+capability parity, and full regressions. Do not automatically migrate, tag,
+push, publish, deploy, or release.
+
+P5 locks the evidence-only service/store, exact guarded Core route surface,
+zero production construction and downstream consumers, zero Agent awareness,
+Mission Control's evidence-only create/read presentation, capability parity,
+and Home Assistant's blocked state. P5 adds tests and release evidence only.
+
+The exact v0.29 authority is local evidence evaluation and durable
+operator-owned preflight create/list/item read.
+V0.29 must not activate delivery, send to Agent, register production transport
+or the Agent route, load credentials or secrets, invoke a worker/workflow/
+dispatch/runtime/process, mutate provider/repository/in-guest state, install,
+deploy, roll back, or create a Home Assistant artifact.
+
+V0.29 enables a later release to require a fresh, exact, nine-release-linked
+eligibility proof before separately authorizing activation. Activation itself,
+live authenticated transport and receipt, atomic consumption, execution
+approval and runtime authority, all target effects, deployment, rollback, and
+Home Assistant installation remain blocked.
+
+## 19. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
@@ -1359,7 +1434,7 @@ controls, and Home Assistant installation remain blocked.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 19. Uncommitted future directions
+## 20. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 
