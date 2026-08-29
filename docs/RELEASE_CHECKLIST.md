@@ -3,6 +3,29 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.30 P0 Operator-Controlled Delivery Enablement — selected
+
+Atlas v0.30 is **Operator-Controlled Delivery Enablement**. P0 is the
+documentation-only frozen [v1 contract](architecture/operator-controlled-delivery-enablement-v1.md).
+
+- [x] Inspect current `main` after released `atlas-v0.29.0`.
+- [x] Freeze exact request, linkage, record, result, status, error, audit, and
+  deterministic fingerprint contracts over v0.20–v0.29.
+- [x] Freeze exact operator confirmation, authentication, ownership, authz,
+  freshness/expiry, idempotency/no-replay, redaction, and audit rules.
+- [x] Freeze default-off create/list/item-read API and two-step Mission Control
+  evidence boundary for later phases.
+- [x] Freeze P0–P5 scope, authority, threats, goldens, must-not-change
+  contracts, later enablement, and remaining blockers.
+- [x] Keep P0 planning-only: no model/runtime/store/route/UI implementation,
+  Agent contact, transport, credential loading, dispatch, command, execution,
+  mutation, installation, deployment, rollback, or Home Assistant artifact.
+- [ ] P1 — closed models and pure validation.
+- [ ] P2 — bounded append-only enablement evidence.
+- [ ] P3 — authenticated Core-local create/list/item-read API.
+- [ ] P4 — Mission Control two-step enablement evidence review.
+- [ ] P5 — isolation, no-replay, regressions, and release closure.
+
 ## Atlas v0.29 P0–P5 Controlled Delivery Activation Preflight — complete
 
 Atlas v0.29 is **Controlled Delivery Activation Preflight**. P0–P5 are complete

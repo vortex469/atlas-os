@@ -6,6 +6,20 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.30 P0 — Operator-Controlled Delivery Enablement
+
+- Selected Atlas v0.30 **Operator-Controlled Delivery Enablement** and froze
+  the documentation-only [v1 planning
+  contract](docs/architecture/operator-controlled-delivery-enablement-v1.md).
+- Defined exact closed create/linkage/record/result/status/error/audit schemas,
+  fixed operator-confirmation wording, owner/authz rules, inherited v0.29
+  freshness/expiry, permanent idempotency/no-replay, redaction, default-off
+  API/UI boundaries, P0–P5 scope, threats, goldens, and must-not-change rules.
+- V0.30 P0 changes planning documents only. Delivery activation, Agent calls,
+  transport/credential loading, dispatch, worker/workflow/runtime/process work,
+  installation, provider/repository/in-guest mutation, deployment, rollback,
+  enablement consumption, and Home Assistant artifacts remain prohibited.
+
 #### v0.29 P0–P5 — Controlled Delivery Activation Preflight
 
 - Selected Atlas v0.29 **Controlled Delivery Activation Preflight** and froze
