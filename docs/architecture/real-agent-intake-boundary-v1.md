@@ -1,7 +1,7 @@
 # Real Agent Intake Boundary v1 planning contract
 
-Status: **Atlas v0.27 contract frozen; P0–P4 implemented through the dormant
-test-only route factory; P5 remains planned**.
+Status: **Atlas v0.27 contract frozen; P0–P5 implemented and validated; the
+route factory remains dormant and test-only**.
 
 Implementation through P3 adds only isolated closed models, pure validation,
 an explicitly constructed default-disabled evidence service, and the bounded
@@ -14,6 +14,11 @@ constructed offline test applications only. It remains default-disabled and is
 not imported, registered, configured, or discoverable by production Agent or
 Core paths. No credential, setting, listener, deployment wiring, CLI, UI, or
 live delivery is added.
+
+P5 adds release-isolation, authority-boundary, concurrency, ambiguity,
+Mission Control absence, capability-parity, and blocked Home Assistant tests
+only. It adds no production registration, consumer, transport, runtime
+behavior, authority, or deployment artifact.
 
 This document freezes the narrowest guarded Agent boundary that may later
 receive one authentic Core delivery of the exact released installation handoff
@@ -410,7 +415,7 @@ synthetic same-owner v0.20–v0.26 goldens. Do not register production Agent or
 Core wiring, credential/settings support, CLI, UI, or deployment configuration.
 Home Assistant remains a blocked/golden case with no deployment artifact.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage, authentication separation, lifecycle/freshness,
 single-admission behavior, concurrency/restart/timeout ambiguity, ownership,

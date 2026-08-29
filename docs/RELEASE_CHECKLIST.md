@@ -3,6 +3,65 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.27 P0–P5 Real Agent Intake Boundary — complete
+
+Atlas v0.27 is **Real Agent Intake Boundary**. P0–P5 are complete from the
+frozen [v1 contract](architecture/real-agent-intake-boundary-v1.md). P5
+validation started from `2710b66`.
+
+- [x] P1 — implement closed immutable models, strict validation, exact
+  v0.20–v0.26 linkage, server-owned time, and deterministic fingerprints.
+- [x] P2 — implement the explicitly constructed default-disabled evidence
+  service and bounded append-only store with owned reads and no authority.
+- [x] P3 — lock out every production HTTP/OpenAPI, command, registration,
+  setting, Core consumer, and live-listener surface.
+- [x] P4 — add the dormant route factory only for explicitly constructed test
+  apps and exercise its exact authenticated bounded POST contract.
+- [x] P5 — close isolation, no-replay, concurrency/ambiguity, authority,
+  capability-parity, Mission Control absence, and Home Assistant blocked gates.
+
+### P5 authority and isolation gates
+
+- [x] Keep the service and route explicitly constructed, default-disabled,
+  evidence-only, non-executing, non-mutating, and non-authorizing.
+- [x] Keep the test-only POST factory absent from production Agent app,
+  container, settings, OpenAPI, CLI, credentials, and deployment wiring.
+- [x] Keep production Core delivery, transport/listener, worker, workflow,
+  provider/repository/in-guest mutation, candidate execution, deployment,
+  rollback, and replay-bypass consumers absent.
+- [x] Lock authentication/authorization, HTTPS, JSON, header/body bounds,
+  duplicate-key/unknown-field rejection, idempotency/no-replay, ownership,
+  linkage/freshness, redaction, and fixed-false authority behavior.
+- [x] Expose no install/run/execute/deploy/dispatch/deliver/start-workflow/
+  runtime sibling route or command.
+- [x] Lock Mission Control to no v0.27 client, mutation, route, navigation,
+  control, evidence rendering, or prohibited action label.
+- [x] Preserve Home Assistant as blocked, non-installable, non-executable, and
+  without a deployment artifact.
+
+### P5 observed validation evidence
+
+- [x] P5 validation closure commit subject:
+  `test(v0.27): close real agent intake boundary` (this commit).
+- [x] Both requested Core and Agent `rc1-python-ruff-gate` commands passed.
+- [x] Focused Core release-isolation validation passed: 41 tests.
+- [x] Full Agent regression validation passed: 1,016 tests.
+- [x] Mission Control passed 517 tests, lint, and production build. Lint
+  retained the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning
+  and reported no errors; the build retained only its existing chunk-size
+  advisory.
+- [x] `git diff --check` passed before the closure commit.
+- [x] P5 changes only isolation/authority tests and release documentation.
+- [x] No migration, tag, push, release, deployment, or rollback was performed.
+
+### Final release actions
+
+- [ ] Record the exact reviewed implementation/validation SHA after P5 review.
+- [ ] The tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.27.0` tag.
+- [ ] Push the final release branch and `atlas-v0.27.0` tag to `origin`.
+- [ ] Publish the Atlas v0.27 release as `atlas-v0.27.0`.
+
 ## Atlas v0.26 P0–P5 Simulated Handoff Delivery — complete
 
 Atlas v0.26 is **Simulated Core-to-Agent Handoff Delivery**. P0–P5 are complete

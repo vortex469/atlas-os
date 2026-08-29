@@ -6,6 +6,34 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.27 P0–P5 — Real Agent Intake Boundary
+
+- Froze and completed the Real Agent Intake Boundary v1 contract: immutable
+  closed request, admission, acknowledgement, result, audit, validation, and
+  redacted-error models bind the exact same-owner v0.20–v0.26 evidence chain,
+  operator identity, and server-owned Agent intake time.
+- Added the explicitly constructed, default-disabled evidence service and
+  bounded append-only store with exact idempotency, one-envelope no-replay,
+  quotas, restart durability, owned reads, and fail-closed corruption and
+  ambiguous-reservation behavior.
+- Added one dormant test-only `POST /api/v1/internal/installation-intake`
+  factory. Production Agent app/container/settings paths do not register it,
+  and production Core has no delivery, transport, listener, worker, workflow,
+  execution, mutation, deployment, rollback, or replay-bypass consumer.
+- Locked authentication, authorization, HTTPS, JSON/header/body bounds,
+  duplicate-key and unknown-field rejection, linkage/freshness, redaction,
+  fixed-false authority, and absence of install/run/execute/deploy/dispatch/
+  deliver/start-workflow/runtime sibling surfaces.
+- Mission Control has no v0.27 type, client, mutation, route, navigation,
+  control, evidence rendering, or prohibited action label. Home Assistant
+  remains blocked, non-installable, non-executable, and has no deployment
+  artifact.
+- P5 validation passed both Ruff gates, 41 focused Core release-isolation
+  tests, 1,016 Agent tests, 517 Mission Control tests, Mission Control lint and
+  production build, and `git diff --check`. Lint retained one pre-existing
+  exhaustive-deps warning and the build retained its existing chunk-size
+  advisory; neither was an error. P5 adds tests and release documentation only.
+
 #### v0.26 P0–P5 — Simulated Core-to-Agent Handoff Delivery
 
 - Selected Atlas v0.26 **Simulated Core-to-Agent Handoff Delivery** and froze

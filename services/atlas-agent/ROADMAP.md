@@ -66,3 +66,9 @@ only. Production Agent registration, settings, credentials, OpenAPI, Core
 delivery, CLI, UI, workflow/worker/runtime coupling, and every target effect
 remain prohibited in v0.27. `install-container` remains unsupported and absent
 from executable intent/capability registries.
+
+P5 completes release isolation and regression validation. It locks concurrent
+single admission, no-replay and fail-closed ambiguity, owned direct readback,
+the factory's single test-only POST shape, zero production Agent/Core consumer,
+and no Mission Control surface. Home Assistant remains blocked and has no
+deployment artifact. P5 adds tests and release documentation only.

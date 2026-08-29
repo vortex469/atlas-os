@@ -1199,7 +1199,7 @@ installation remain blocked.
 Atlas v0.27 is **Real Agent Intake Boundary**. Its normative P0 contract is
 [Real Agent Intake Boundary
 v1](docs/architecture/real-agent-intake-boundary-v1.md). P0 is selected and is
-documentation only. P1–P4 are implemented; P5 remains planned.
+documentation only. P1–P5 are implemented and validated.
 
 The narrow boundary accepts one authenticated Core request only when explicitly
 constructed, validates the complete exact v0.20–v0.26 chain, and preserves one
@@ -1243,13 +1243,19 @@ test application. Production Agent registration, settings, credentials,
 deployment wiring, Core delivery, CLI, and UI remain absent. Home Assistant is
 a blocked golden only.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove exact linkage, authentication separation, freshness/lifecycle,
 single-admission behavior, ownership, concurrency/restart/timeout ambiguity,
 quotas, corruption, redaction, route bounds, zero production surface and Core
 delivery, capability parity, prior goldens, and full regressions. Do not tag,
 push, publish, deploy, or release automatically.
+
+P5 locks concurrent single admission, fail-closed ambiguous reservations,
+operator-owned direct readback, the exact dormant POST factory, and zero
+production registration or Core delivery. Mission Control remains absent,
+Home Assistant remains blocked with no deployment artifact, and P5 adds only
+tests and release evidence.
 
 The exact authority is authenticated receipt, validation, and bounded
 preservation of evidence-only admission when the service is explicitly
