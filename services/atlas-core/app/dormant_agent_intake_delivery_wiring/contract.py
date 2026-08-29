@@ -270,6 +270,44 @@ class CoreAgentIntakeDeliveryPreparationSourceV1(ContractModel):
     simulated_acknowledgement_evidence_fingerprint: FingerprintV1
 
 
+class CoreAgentIntakeDeliveryEvidenceContextV1(ContractModel):
+    """Injected owner-scoped evidence; it is never caller or network input."""
+
+    operator_id: CanonicalOperatorId
+    envelope: InstallationDispatchEnvelopeV1
+    simulation_request_id: CanonicalUuid4
+    source: CoreAgentIntakeDeliveryPreparationSourceV1
+    intake_record_observed_at: UtcSecond
+    simulated_acknowledged_at: UtcSecond
+    existing_admission_id: CanonicalUuid4 | None = None
+    existing_admission_fingerprint: FingerprintV1 | None = None
+    existing_acknowledgement_fingerprint: FingerprintV1 | None = None
+    default_enabled: Literal[False] = False
+    production_delivery_observed: Literal[False] = False
+    execution_authorized: Literal[False] = False
+    mutation_allowed: Literal[False] = False
+    replay_allowed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact_context(self) -> CoreAgentIntakeDeliveryEvidenceContextV1:
+        existing = (
+            self.existing_admission_id,
+            self.existing_admission_fingerprint,
+            self.existing_acknowledgement_fingerprint,
+        )
+        if any(value is not None for value in existing) and not all(
+            value is not None for value in existing
+        ):
+            raise ValueError("existing v0.27 evidence must be complete")
+        if (
+            self.source.dispatch_envelope_id != self.envelope.dispatch_envelope_id
+            or self.source.dispatch_envelope_fingerprint
+            != self.envelope.dispatch_envelope_fingerprint
+        ):
+            raise ValueError("evidence context envelope mismatch")
+        return self
+
+
 class CoreAgentIntakeDeliveryPreparationV1(ContractModel):
     schema: Literal["core-agent-intake-delivery-preparation-v1"] = (
         "core-agent-intake-delivery-preparation-v1"
@@ -579,6 +617,7 @@ class CoreAgentIntakeDeliveryPreparationResultV1(ContractModel):
     disposition: Literal["prepared_dormant", "exact_replay", "rejected", "unavailable"]
     preparation: CoreAgentIntakeDeliveryPreparationV1 | None
     error: CoreAgentIntakeDeliveryRedactedErrorV1 | None
+    audit_evidence: CoreAgentIntakeDeliveryAuditEvidenceV1 | None = None
     default_enabled: Literal[False] = False
     network_attempted: Literal[False] = False
     agent_invoked: Literal[False] = False

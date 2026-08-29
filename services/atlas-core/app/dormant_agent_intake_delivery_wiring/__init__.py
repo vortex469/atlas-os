@@ -1,5 +1,10 @@
 """Closed v0.28 dormant Core-to-Agent delivery wiring contracts."""
 
+from .client import (
+    DormantAgentIntakeDeliveryClient,
+    DormantDeliveryEvidenceReader,
+    create_dormant_agent_intake_delivery_client,
+)
 from .contract import (
     AgentInstallationIntakeAcknowledgementV1,
     AgentInstallationIntakeAdmissionV1,
@@ -8,6 +13,7 @@ from .contract import (
     AgentInstallationIntakeResultV1,
     CoreAgentIntakeDeliveryAuditEvidenceV1,
     CoreAgentIntakeDeliveryCreateV1,
+    CoreAgentIntakeDeliveryEvidenceContextV1,
     CoreAgentIntakeDeliveryIdempotencyV1,
     CoreAgentIntakeDeliveryPreparationResultV1,
     CoreAgentIntakeDeliveryPreparationSourceV1,
@@ -30,6 +36,10 @@ from .contract import (
     validate_delivery_preparation,
     validate_delivery_response,
 )
+from .store import (
+    DormantAgentIntakeDeliveryPreparationStore,
+    DormantDeliveryStoreError,
+)
 
 __all__ = [
     "AgentInstallationIntakeAcknowledgementV1",
@@ -39,6 +49,7 @@ __all__ = [
     "AgentInstallationIntakeResultV1",
     "CoreAgentIntakeDeliveryAuditEvidenceV1",
     "CoreAgentIntakeDeliveryCreateV1",
+    "CoreAgentIntakeDeliveryEvidenceContextV1",
     "CoreAgentIntakeDeliveryIdempotencyV1",
     "CoreAgentIntakeDeliveryPreparationResultV1",
     "CoreAgentIntakeDeliveryPreparationSourceV1",
@@ -46,11 +57,16 @@ __all__ = [
     "CoreAgentIntakeDeliveryRedactedErrorV1",
     "CoreAgentIntakeDeliveryResponseValidationV1",
     "DormantAgentIntakeAuthenticationReferenceV1",
+    "DormantAgentIntakeDeliveryClient",
     "DormantAgentIntakeDeliveryConfigurationV1",
+    "DormantAgentIntakeDeliveryPreparationStore",
     "DormantAgentIntakeEndpointV1",
+    "DormantDeliveryEvidenceReader",
+    "DormantDeliveryStoreError",
     "StrictContractError",
     "acknowledgement_fingerprint",
     "admission_fingerprint",
+    "create_dormant_agent_intake_delivery_client",
     "endpoint_fingerprint",
     "parse_delivery_create_json",
     "parse_delivery_response_json",
