@@ -30,6 +30,18 @@ class AgentLiveIntakeEvidenceReader(Protocol):
     ) -> AgentLiveIntakeLinkageV1: ...
 
 
+class AuthenticatedEnvelopeEvidenceReader:
+    """Revalidate the closed linkage carried by the authenticated Core envelope."""
+
+    def resolve(
+        self, *, operator_id: str, linkage: AgentLiveIntakeLinkageV1
+    ) -> AgentLiveIntakeLinkageV1:
+        TypeAdapter(str).validate_python(operator_id, strict=True)
+        return AgentLiveIntakeLinkageV1.model_validate(
+            linkage.model_dump(mode="python")
+        )
+
+
 class AgentLiveIntakeAdmissionService:
     """Validate and durably admit evidence only; never receive network I/O."""
 

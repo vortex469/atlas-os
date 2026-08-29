@@ -1,11 +1,26 @@
 """Atlas Agent FastAPI application."""
 
 import logging
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.agent_live_intake_admission.contract import (
+    AgentLiveIntakeAuthenticationReferenceV1,
+    AgentLiveIntakeSourceV1,
+    FingerprintV1,
+)
+from app.agent_live_intake_admission.route import (
+    Mode0400FileLiveIntakeAuthenticator,
+    create_agent_live_intake_router,
+)
+from app.agent_live_intake_admission.service import (
+    AgentLiveIntakeAdmissionService,
+    AuthenticatedEnvelopeEvidenceReader,
+)
+from app.agent_live_intake_admission.store import AgentLiveIntakeAdmissionStore
 from app.approval.engine import ApprovalEngine
 from app.approval.repository import ApprovalRepository
 from app.candidate_planning.commit import CandidateCommitValidator
@@ -232,6 +247,39 @@ def create_app() -> FastAPI:
     application.include_router(approval_router)
     application.include_router(workflow_router)
     application.include_router(candidate_planning_router)
+    if settings.agent_live_intake_enabled:
+        source = AgentLiveIntakeSourceV1(
+            host=settings.agent_live_intake_source_host
+        )
+        credential_reference = AgentLiveIntakeAuthenticationReferenceV1(
+            credential_file=str(settings.agent_live_intake_credential_file)
+        )
+        endpoint_fingerprint = FingerprintV1(
+            algorithm="sha256",
+            canonicalization="atlas-jcs-nfc-v1",
+            value=settings.agent_live_intake_endpoint_fingerprint,
+        )
+        live_intake_store = AgentLiveIntakeAdmissionStore(
+            settings.state_dir / "agent-live-intake-admissions.sqlite3"
+        )
+        live_intake_service = AgentLiveIntakeAdmissionService(
+            store=live_intake_store,
+            evidence_reader=AuthenticatedEnvelopeEvidenceReader(),
+            expected_source=source,
+            endpoint_fingerprint=endpoint_fingerprint,
+            enabled=True,
+        )
+        application.include_router(
+            create_agent_live_intake_router(
+                service=live_intake_service,
+                authenticator=Mode0400FileLiveIntakeAuthenticator(
+                    reference=credential_reference,
+                    source=source,
+                ),
+                expected_source=source,
+                correlation_id_factory=lambda: f"intake-{uuid.uuid4()}",
+            )
+        )
 
     return application
 
