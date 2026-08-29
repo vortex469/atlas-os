@@ -12,6 +12,7 @@ ALLOWED_CORE_EVIDENCE_ROOTS = (
     CORE_APP_ROOT / "dormant_agent_intake_delivery_wiring",
     CORE_APP_ROOT / "delivery_activation_preflight",
     CORE_APP_ROOT / "operator_controlled_delivery_enablement",
+    CORE_APP_ROOT / "live_delivery_send_boundary",
 )
 
 V025_MARKERS = (

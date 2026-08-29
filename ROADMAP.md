@@ -1,9 +1,9 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.28
+## 1. Current released baseline — v0.30
 
-Atlas v0.28.0 is released as `atlas-v0.28.0` at `c95d580` and its completed
-milestone is merged to current `main` at `2ba2a14`.
+Atlas v0.30.0 is released as `atlas-v0.30.0` at `9fe2f9e` and its completed
+milestone is merged to current `main` at `2d379a2`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -72,6 +72,10 @@ image evidence, grounding, and provenance.
 - v0.28 released explicitly constructed dormant Core delivery preparation and
   injected-response validation without a send method, production transport,
   credential loading, Agent invocation, or execution authority.
+- v0.29 released guarded durable delivery-activation preflight evidence over
+  the exact v0.20–v0.28 chain while remaining non-activating and non-sending.
+- v0.30 released guarded durable operator enablement evidence over a fresh
+  same-owner v0.20–v0.29 chain without adding a send or execution consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
@@ -1485,7 +1489,86 @@ Docker/Podman/shell/process/container work; install; mutate provider,
 repository, or guest state; deploy; roll back; or create a Home Assistant
 artifact. All those capabilities remain blocked.
 
-## 20. Explicitly deferred work
+## 20. Selected v0.31 plan — Live Delivery Send Boundary
+
+Atlas v0.31 is **Live Delivery Send Boundary**. Its normative P0 contract is
+[Live Delivery Send Boundary
+v1](docs/architecture/live-delivery-send-boundary-v1.md). P0 through P5 are
+implemented and validated.
+
+The narrow boundary is one authenticated, synchronous, permanently single-use
+HTTPS POST of the exact inert v0.27 intake request, after Core revalidates the
+same-owner v0.20–v0.30 chain inside the inherited v0.29/v0.30 30-second window.
+Agent may admit and acknowledge evidence only. Evidence delivery is not
+execution admission, installation, dispatch, deployment, or mutation authority.
+
+### P0 — Live-send contract and threat model — selected
+
+Freeze exact request/result/admission/acknowledgement, linkage, fingerprint,
+transport/authentication/credential-reference, lifecycle, ownership,
+freshness, permanent idempotency/no-replay, redaction/audit, default-off API/
+UI, threats, goldens, and must-not-change contracts. Change planning docs only.
+
+### P1 — Closed live-send models and pure validation — implemented
+
+Add immutable Core models and pure exact v0.20–v0.30 validation while reusing
+the unchanged v0.27 request/result and v0.28 response validation. Add no I/O,
+route, registration, credential read, or send.
+
+### P2 — Durable Core reservation service and store — implemented
+
+Added the explicitly constructed default-off Core reservation service and
+append-only attempt store with exact linkage/freshness, owner scope, permanent
+idempotency/no-replay, bounded restart-safe reads, and fail-closed corruption.
+It adds no route, Agent invocation, network, credential read, or runtime
+authority.
+
+### P3 — One-shot Core send service — implemented
+
+Add one explicitly constructed default-off synchronous HTTPS adapter and an
+append-only attempt/receipt store. Permanently reserve before I/O, load only
+the fixed credential and CA references, send at most once, validate the closed
+response, and make every timeout/crash/indeterminate result non-retryable.
+
+### P4 — Mission Control presentation absence — complete
+
+No guarded Core create/list/item-read live-send API or UI-facing read model
+exists after P3, so P4 does not invent an API bridge or Mission Control
+surface. Structural tests prove there is no v0.31 client, type, hook, page,
+route, navigation, mutation, retry/resend/refresh/send-again control, sensitive
+transport rendering, prohibited authority label, or Home Assistant exception.
+
+### P5 — Isolation, no-replay, and release closure — complete
+
+P5 locks explicit construction, default-off and one-shot/no-automatic-retry
+posture, inert evidence-only envelopes, permanent reservation/no-replay,
+terminal ambiguity, secret-free persistence, redaction, and fixed-false
+install/execute/deploy/mutate/worker/workflow authority. Release-isolation
+tests prove no live-send evidence consumer in Core, Agent, or the execution
+worker; no production Core route or Agent intake registration; no Mission
+Control v0.31 surface or effect control; capability parity; and Home Assistant
+blocking with no artifact. P5 adds tests and release documentation only.
+
+Validation passed both Ruff gates, 60 focused Core release-isolation tests,
+10 focused Agent intake-closure tests, the full Core suite (`3071 passed, 246
+warnings in 193.85s (0:03:13)`), the full Agent suite (`1020 passed, 22
+warnings in 11.42s`), and Mission Control (`84` files, `545` tests), lint, and
+production build. Lint retained the pre-existing exhaustive-deps warning and
+the build retained its existing chunk-size advisory; neither was an error.
+
+The exact v0.31 authority is one operator-triggered, synchronous delivery of
+one inert evidence envelope to one fixed authenticated Agent route, plus
+durable redacted attempt/receipt evidence. It adds no broad transport, retry
+daemon, scheduler, callback, worker, workflow, dispatch, runtime, installation,
+provider/repository/in-guest mutation, deployment, rollback, or Home Assistant
+artifact.
+
+V0.31 enables a later separately frozen release to consider a successfully
+admitted receipt as one prerequisite for a distinct execution-admission
+decision. Receipt consumption, installation, runtime execution, all mutation,
+deployment, rollback, recovery, and retry remain blocked.
+
+## 21. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
@@ -1496,7 +1579,7 @@ artifact. All those capabilities remain blocked.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 21. Uncommitted future directions
+## 22. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

@@ -173,7 +173,11 @@ def test_isolated_package_has_no_transport_secret_or_runtime_capability() -> Non
 
 
 def test_production_paths_do_not_construct_or_consume_dormant_wiring() -> None:
-    excluded = {PACKAGE_ROOT, APP_ROOT / "delivery_activation_preflight"}
+    excluded = {
+        PACKAGE_ROOT,
+        APP_ROOT / "delivery_activation_preflight",
+        APP_ROOT / "live_delivery_send_boundary",
+    }
     markers = {
         "dormant_agent_intake_delivery_wiring",
         "DormantAgentIntakeDeliveryClient",

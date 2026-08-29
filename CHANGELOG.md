@@ -6,6 +6,51 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.31 P0–P5 — Live Delivery Send Boundary
+
+- Selected Atlas v0.31 **Live Delivery Send Boundary** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/live-delivery-send-boundary-v1.md).
+- Defined the exact one-shot operator request, unchanged v0.27 wire request,
+  Agent result/admission/acknowledgement, complete v0.20–v0.30 linkage,
+  fingerprints, append-only attempt/receipt lifecycle, inherited 30-second
+  freshness, permanent reservation/no-replay, ownership, redaction, audit,
+  transport authentication and bounded credential-reference contract.
+- Froze independent default-off Core send and Agent route registration, exact
+  three-route Core and one-route Agent surfaces, Mission Control confirmation,
+  P0–P5 scope, threats, goldens, authority, later enablement, remaining
+  blockers, and must-not-change contracts.
+- V0.31 P0 changes planning documents only. It adds no send, route, credential
+  read, transport, Agent call, installation, Docker/Podman/shell/process work,
+  worker/workflow/dispatch, mutation, deployment, rollback, retry daemon,
+  Home Assistant artifact, tag, push, publication, or release action.
+- P1 added closed immutable live-send request, attempt, receipt, lifecycle,
+  audit, redacted-error, transport-envelope, linkage, fingerprint, freshness,
+  endpoint, credential-reference, idempotency, ambiguity, and fixed-false
+  authority models.
+- P2 added the explicitly constructed default-off Core reservation service and
+  append-only owner-scoped durable store with permanent no-replay, restart
+  readback, quotas, bounds, and fail-closed corruption handling.
+- P3 added the injected one-shot Core HTTPS/credential boundary, permanent
+  reservation before I/O, bounded closed Agent response validation, terminal
+  ambiguity, and append-only receipt/result/acknowledgement/audit evidence. It
+  adds no install, execution, worker, workflow, deployment, or mutation power.
+- P4 keeps Mission Control absent because P3 exposes no guarded Core live-send
+  API or UI-facing read model. Structural tests lock out every v0.31 client,
+  type, page, route, navigation, mutation, retry/resend/send-again control,
+  secret or raw transport rendering, prohibited authority label, and Home
+  Assistant exception. No API bridge or runtime behavior is added.
+- P5 closes the release boundary with explicit/default-off/one-shot locks,
+  permanent no-replay and ambiguity handling, secret-free durable evidence,
+  fixed-false effect authority, zero workflow/worker/dispatch/provider/
+  repository/in-guest/install/deploy/rollback consumers, dormant test-only
+  Agent intake, absent Mission Control surface, capability parity, and Home
+  Assistant blocking. P5 adds tests and release documentation only.
+- P5 validation passed both Ruff gates, 60 focused Core isolation tests, 10
+  focused Agent intake-closure tests, all 3071 Core tests, all 1020 Agent
+  tests, and 545 Mission Control tests plus lint/build. The existing frontend
+  hook and chunk-size warnings remained non-errors.
+
 #### v0.30 P0–P5 — Operator-Controlled Delivery Enablement
 
 - Selected Atlas v0.30 **Operator-Controlled Delivery Enablement** and froze
