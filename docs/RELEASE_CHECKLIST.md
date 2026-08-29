@@ -75,9 +75,12 @@ frozen [v1 contract](architecture/live-delivery-send-boundary-v1.md).
   build. Lint retained one pre-existing exhaustive-deps warning and no errors;
   build retained only the existing chunk-size advisory.
 - [x] `git diff --check` passed.
-- [ ] Record the P5 closure commit.
-- [ ] Run the full Core clean-environment release-preparation gate.
-- [ ] Record the exact reviewed implementation/validation SHA.
+- [x] P5 closure commit:
+  `28a817daf3a1b4591c11cc4a294832c9ab5414b5 test(v0.31): close live delivery send`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3071 passed, 246 warnings in 192.37s (0:03:12)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `28a817daf3a1b4591c11cc4a294832c9ab5414b5`.
 - [ ] Verify the tracked worktree is clean at the final release commit.
 - [ ] Create immutable annotated tag `atlas-v0.31.0`.
 - [ ] Push the branch and annotated tag to `origin`.
