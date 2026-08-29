@@ -11,6 +11,8 @@ from .contract import (
     MAX_AUDIT_EVIDENCE_BYTES,
     MAX_RECEIPT_BYTES,
     MAX_TRANSPORT_ENVELOPE_BYTES,
+    AgentInstallationIntakeAcknowledgementV1,
+    AgentInstallationIntakeResultV1,
     LiveDeliverySendAttemptV1,
     LiveDeliverySendAuditEvidenceV1,
     LiveDeliverySendReceiptV1,
@@ -35,6 +37,9 @@ class LiveDeliverySendStoredEvidence:
     envelope: LiveDeliveryTransportEnvelopeV1
     audit_evidence: LiveDeliverySendAuditEvidenceV1
     receipt: LiveDeliverySendReceiptV1 | None = None
+    agent_result: AgentInstallationIntakeResultV1 | None = None
+    acknowledgement: AgentInstallationIntakeAcknowledgementV1 | None = None
+    terminal_audit_evidence: LiveDeliverySendAuditEvidenceV1 | None = None
 
 
 class LiveDeliverySendStore:
@@ -91,6 +96,9 @@ class LiveDeliverySendStore:
                         send_attempt_id TEXT NOT NULL,
                         receipt_fingerprint TEXT NOT NULL,
                         receipt_json TEXT NOT NULL,
+                        agent_result_json TEXT,
+                        acknowledgement_json TEXT,
+                        terminal_audit_json TEXT,
                         PRIMARY KEY (operator_id, send_attempt_id),
                         UNIQUE (operator_id, receipt_fingerprint),
                         FOREIGN KEY (operator_id, send_attempt_id) REFERENCES
@@ -143,7 +151,10 @@ class LiveDeliverySendStore:
             evidence.envelope,
             evidence.audit_evidence,
         )
-        if evidence.receipt is not None:
+        if any(value is not None for value in (
+            evidence.receipt, evidence.agent_result, evidence.acknowledgement,
+            evidence.terminal_audit_evidence,
+        )):
             raise LiveDeliverySendStoreError("unavailable")
         attempt_json = self._encode(attempt, MAX_ATTEMPT_BYTES)
         envelope_json = self._encode(envelope, MAX_TRANSPORT_ENVELOPE_BYTES)
@@ -154,7 +165,9 @@ class LiveDeliverySendStore:
                 connection.execute("BEGIN IMMEDIATE")
                 rows = connection.execute(
                     """
-                    SELECT attempts.*, receipts.receipt_json
+                    SELECT attempts.*, receipts.receipt_json,
+                           receipts.agent_result_json, receipts.acknowledgement_json,
+                           receipts.terminal_audit_json
                     FROM live_delivery_send_attempts AS attempts
                     LEFT JOIN live_delivery_send_receipts AS receipts USING (
                         operator_id, send_attempt_id
@@ -228,7 +241,9 @@ class LiveDeliverySendStore:
             with self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 row = connection.execute(
-                    """SELECT attempts.*, receipts.receipt_json
+                    """SELECT attempts.*, receipts.receipt_json,
+                              receipts.agent_result_json, receipts.acknowledgement_json,
+                              receipts.terminal_audit_json
                     FROM live_delivery_send_attempts AS attempts
                     LEFT JOIN live_delivery_send_receipts AS receipts USING (
                         operator_id, send_attempt_id
@@ -269,11 +284,78 @@ class LiveDeliverySendStore:
         except sqlite3.Error as error:
             raise LiveDeliverySendStoreError("unavailable") from error
 
+    def append_outcome(
+        self,
+        *,
+        operator_id: str,
+        receipt: LiveDeliverySendReceiptV1,
+        agent_result: AgentInstallationIntakeResultV1 | None,
+        acknowledgement: AgentInstallationIntakeAcknowledgementV1 | None,
+        audit_evidence: LiveDeliverySendAuditEvidenceV1,
+    ) -> LiveDeliverySendStoredEvidence:
+        encoded = (
+            self._encode(receipt, MAX_RECEIPT_BYTES),
+            None if agent_result is None else self._encode(agent_result, MAX_RECEIPT_BYTES),
+            None if acknowledgement is None else self._encode(
+                acknowledgement, MAX_RECEIPT_BYTES
+            ),
+            self._encode(audit_evidence, MAX_AUDIT_EVIDENCE_BYTES),
+        )
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    """SELECT attempts.*, receipts.receipt_json,
+                              receipts.agent_result_json, receipts.acknowledgement_json,
+                              receipts.terminal_audit_json
+                       FROM live_delivery_send_attempts AS attempts
+                       LEFT JOIN live_delivery_send_receipts AS receipts USING (
+                           operator_id, send_attempt_id
+                       )
+                       WHERE attempts.operator_id = ? AND attempts.send_attempt_id = ?""",
+                    (operator_id, receipt.send_attempt_id),
+                ).fetchone()
+                if row is None:
+                    raise LiveDeliverySendStoreError("not_found")
+                existing = self._decode(row, operator_id=operator_id)
+                if receipt.attempt_fingerprint != existing.attempt.attempt_fingerprint:
+                    raise LiveDeliverySendStoreError("replay_conflict")
+                if existing.receipt is not None:
+                    if (
+                        existing.receipt, existing.agent_result,
+                        existing.acknowledgement, existing.terminal_audit_evidence,
+                    ) != (receipt, agent_result, acknowledgement, audit_evidence):
+                        raise LiveDeliverySendStoreError("replay_conflict")
+                    connection.execute("COMMIT")
+                    return existing
+                connection.execute(
+                    """INSERT INTO live_delivery_send_receipts (
+                           operator_id, send_attempt_id, receipt_fingerprint,
+                           receipt_json, agent_result_json, acknowledgement_json,
+                           terminal_audit_json
+                       ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        operator_id, receipt.send_attempt_id,
+                        receipt.receipt_fingerprint.value, *encoded,
+                    ),
+                )
+                connection.execute("COMMIT")
+                return LiveDeliverySendStoredEvidence(
+                    existing.attempt, existing.envelope, existing.audit_evidence,
+                    receipt, agent_result, acknowledgement, audit_evidence,
+                )
+        except LiveDeliverySendStoreError:
+            raise
+        except sqlite3.Error as error:
+            raise LiveDeliverySendStoreError("unavailable") from error
+
     def get(self, *, operator_id: str, send_attempt_id: str) -> LiveDeliverySendStoredEvidence:
         try:
             with self._connect() as connection:
                 row = connection.execute(
-                    """SELECT attempts.*, receipts.receipt_json
+                    """SELECT attempts.*, receipts.receipt_json,
+                              receipts.agent_result_json, receipts.acknowledgement_json,
+                              receipts.terminal_audit_json
                     FROM live_delivery_send_attempts AS attempts
                     LEFT JOIN live_delivery_send_receipts AS receipts USING (
                         operator_id, send_attempt_id
@@ -291,7 +373,9 @@ class LiveDeliverySendStore:
         try:
             with self._connect() as connection:
                 rows = connection.execute(
-                    """SELECT attempts.*, receipts.receipt_json
+                    """SELECT attempts.*, receipts.receipt_json,
+                              receipts.agent_result_json, receipts.acknowledgement_json,
+                              receipts.terminal_audit_json
                     FROM live_delivery_send_attempts AS attempts
                     LEFT JOIN live_delivery_send_receipts AS receipts USING (
                         operator_id, send_attempt_id
@@ -312,7 +396,9 @@ class LiveDeliverySendStore:
         try:
             with self._connect() as connection:
                 return connection.execute(
-                    """SELECT attempts.*, receipts.receipt_json
+                    """SELECT attempts.*, receipts.receipt_json,
+                              receipts.agent_result_json, receipts.acknowledgement_json,
+                              receipts.terminal_audit_json
                     FROM live_delivery_send_attempts AS attempts
                     LEFT JOIN live_delivery_send_receipts AS receipts USING (
                         operator_id, send_attempt_id
@@ -366,12 +452,62 @@ class LiveDeliverySendStore:
             if audit.evidence_fingerprint != audit_evidence_fingerprint(audit):
                 raise ValueError("audit fingerprint mismatch")
             receipt = None
+            agent_result = None
+            acknowledgement = None
+            terminal_audit = None
             if row["receipt_json"] is not None:
                 if not isinstance(row["receipt_json"], str) or len(row["receipt_json"].encode()) > MAX_RECEIPT_BYTES:
                     raise ValueError("persisted receipt exceeds bound")
                 receipt = LiveDeliverySendReceiptV1.model_validate_json(row["receipt_json"])
                 if receipt.receipt_fingerprint != receipt_fingerprint(receipt):
                     raise ValueError("receipt fingerprint mismatch")
+                if row["agent_result_json"] is not None:
+                    if len(row["agent_result_json"].encode()) > MAX_RECEIPT_BYTES:
+                        raise ValueError("persisted Agent result exceeds bound")
+                    agent_result = AgentInstallationIntakeResultV1.model_validate_json(
+                        row["agent_result_json"]
+                    )
+                if row["acknowledgement_json"] is not None:
+                    if len(row["acknowledgement_json"].encode()) > MAX_RECEIPT_BYTES:
+                        raise ValueError("persisted acknowledgement exceeds bound")
+                    acknowledgement = AgentInstallationIntakeAcknowledgementV1.model_validate_json(
+                        row["acknowledgement_json"]
+                    )
+                if row["terminal_audit_json"] is not None:
+                    if len(row["terminal_audit_json"].encode()) > MAX_AUDIT_EVIDENCE_BYTES:
+                        raise ValueError("persisted terminal audit exceeds bound")
+                    terminal_audit = LiveDeliverySendAuditEvidenceV1.model_validate_json(
+                        row["terminal_audit_json"]
+                    )
+                    if terminal_audit.evidence_fingerprint != audit_evidence_fingerprint(
+                        terminal_audit
+                    ):
+                        raise ValueError("terminal audit fingerprint mismatch")
+                admitted = receipt.lifecycle == "admitted_evidence_only"
+                if admitted != (agent_result is not None and acknowledgement is not None):
+                    raise ValueError("persisted Agent evidence mismatch")
+                if (
+                    receipt.send_attempt_id != attempt.send_attempt_id
+                    or (
+                        terminal_audit is not None
+                        and (
+                            terminal_audit.send_attempt_id != attempt.send_attempt_id
+                            or terminal_audit.attempt_fingerprint
+                            != attempt.attempt_fingerprint
+                            or terminal_audit.receipt_fingerprint
+                            != receipt.receipt_fingerprint
+                            or terminal_audit.lifecycle != receipt.lifecycle
+                        )
+                    )
+                ):
+                    raise ValueError("persisted terminal linkage mismatch")
+            elif any(
+                row[name] is not None
+                for name in (
+                    "agent_result_json", "acknowledgement_json", "terminal_audit_json"
+                )
+            ):
+                raise ValueError("persisted terminal evidence has no receipt")
             linkage = attempt.linkage
             if (
                 row["enablement_id"] != linkage.enablement_id
@@ -386,6 +522,9 @@ class LiveDeliverySendStore:
                 or audit.send_attempt_id != attempt.send_attempt_id
             ):
                 raise ValueError("persisted identity mismatch")
-            return LiveDeliverySendStoredEvidence(attempt, envelope, audit, receipt)
+            return LiveDeliverySendStoredEvidence(
+                attempt, envelope, audit, receipt, agent_result,
+                acknowledgement, terminal_audit,
+            )
         except Exception as error:
             raise LiveDeliverySendStoreError("unavailable") from error

@@ -20,6 +20,8 @@ from app.dormant_agent_intake_delivery_wiring.contract import (
     AgentInstallationIntakeResultV1,
     CoreAgentIntakeDeliveryPreparationV1,
     DormantAgentIntakeEndpointV1,
+    acknowledgement_fingerprint,
+    admission_fingerprint,
     endpoint_fingerprint,
     preparation_fingerprint,
     request_fingerprint,
@@ -470,6 +472,52 @@ class LiveDeliverySendOperationResultV1(ContractModel):
         return self
 
 
+class LiveDeliverySendTransportResultV1(ContractModel):
+    """Closed outcome of the single P3 transport opportunity."""
+
+    disposition: Literal[
+        "admitted_evidence_only", "rejected", "ambiguous", "exact_replay", "unavailable"
+    ]
+    attempt: LiveDeliverySendAttemptV1 | None
+    receipt: LiveDeliverySendReceiptV1 | None
+    agent_result: AgentInstallationIntakeResultV1 | None
+    acknowledgement: AgentInstallationIntakeAcknowledgementV1 | None
+    audit_evidence: LiveDeliverySendAuditEvidenceV1 | None
+    error: LiveDeliverySendRedactedErrorV1 | None
+    default_enabled: Literal[False] = False
+    one_shot_only: Literal[True] = True
+    automatic_retries: Literal[0] = 0
+    execution_attempted: Literal[False] = False
+    installation_attempted: Literal[False] = False
+    worker_attempted: Literal[False] = False
+    workflow_attempted: Literal[False] = False
+    deployment_attempted: Literal[False] = False
+    mutation_attempted: Literal[False] = False
+    replay_allowed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact_transport_result(self):
+        has_evidence = self.attempt is not None and self.audit_evidence is not None
+        terminal = self.receipt is not None
+        if terminal != has_evidence:
+            raise ValueError("transport disposition and terminal evidence disagree")
+        if self.disposition in {"admitted_evidence_only", "ambiguous", "exact_replay"} and not terminal:
+            raise ValueError("transport disposition requires terminal evidence")
+        if not terminal and (
+            any(value is not None for value in (
+                self.attempt, self.receipt, self.agent_result,
+                self.acknowledgement, self.audit_evidence,
+            )) or self.error is None
+        ):
+            raise ValueError("precondition result must be redacted")
+        admitted = self.receipt is not None and self.receipt.lifecycle == "admitted_evidence_only"
+        if admitted != (self.agent_result is not None and self.acknowledgement is not None):
+            raise ValueError("admitted transport evidence is incomplete")
+        if terminal and self.error != self.receipt.redacted_error:
+            raise ValueError("transport and receipt errors disagree")
+        return self
+
+
 def create_send_attempt(create, *, evidence, configuration, send_attempt_id: str,
                         created_at: str, idempotency_key: str):
     exact_create = LiveDeliverySendCreateV1.model_validate(create.model_dump(mode="python"))
@@ -558,9 +606,123 @@ def body_fingerprint(value: bytes) -> FingerprintV1:
     return _fingerprint("atlas:live-delivery-send-request-body:v1", {"hex": value.hex()})
 
 
+def canonical_agent_request(value) -> bytes:
+    exact = AgentInstallationIntakeRequestV1.model_validate(
+        value.model_dump(mode="python")
+    )
+    return _canonical(exact)
+
+
 def idempotency_key_fingerprint(*, operator_id: str, idempotency_key: str) -> FingerprintV1:
     return _fingerprint("atlas:live-delivery-send-idempotency-key:v1",
                         {"operator_id": _identity(operator_id), "key": _visible_ascii(idempotency_key)})
+
+
+def agent_result_fingerprint(value) -> FingerprintV1:
+    return _fingerprint("atlas:live-delivery-agent-result:v1", _raw(value))
+
+
+def agent_audit_evidence_fingerprint(admission) -> FingerprintV1:
+    exact = AgentInstallationIntakeAdmissionV1.model_validate(
+        admission.model_dump(mode="python")
+    )
+    raw = {
+        "schema": "agent-installation-intake-audit-evidence-v1",
+        "admission_id": exact.admission_id,
+        "admission_fingerprint": exact.admission_fingerprint.model_dump(mode="json"),
+        "intake_request_id": exact.intake_request_id,
+        "delivery_attempt_id": exact.delivery_attempt_id,
+        "request_fingerprint": exact.source.request_fingerprint.model_dump(mode="json"),
+        "dispatch_envelope_id": exact.source.dispatch_envelope_id,
+        "dispatch_envelope_fingerprint": exact.source.dispatch_envelope_fingerprint.model_dump(mode="json"),
+        "prior_evidence": exact.prior_evidence.model_dump(mode="json"),
+        "received_at": exact.received_at,
+        "valid_until": exact.valid_until,
+        "lifecycle": "admitted",
+        "status": "admitted_for_evidence_only",
+        "provenance": "authenticated_core_intake_evidence_only",
+        "default_enabled": False,
+        "evidence_only": True,
+        "delivery_received": True,
+        "evidence_admission_granted": True,
+        "execution_admission_granted": False,
+        "execution_authorized": False,
+        "worker_allowed": False,
+        "mutation_allowed": False,
+        "replay_allowed": False,
+    }
+    return _fingerprint("atlas:agent-installation-intake-audit-evidence:v1", raw)
+
+
+def parse_agent_result_json(payload: bytes) -> AgentInstallationIntakeResultV1:
+    if not payload or len(payload) > MAX_RESPONSE_BYTES:
+        raise StrictContractError("agent response is outside its bound")
+    try:
+        value = json.loads(payload, object_pairs_hook=_no_duplicates)
+        return AgentInstallationIntakeResultV1.model_validate(value)
+    except StrictContractError:
+        raise
+    except Exception as exc:
+        raise StrictContractError("invalid agent response") from exc
+
+
+def validate_agent_result(*, result, delivery_preparation_id: str, request,
+                          operator_id: str, validated_at: str):
+    exact = AgentInstallationIntakeResultV1.model_validate(
+        result.model_dump(mode="python")
+    )
+    admitted = exact.outcome == "admitted_for_evidence_only"
+    admission = exact.admission
+    acknowledgement = None
+    admission_fp = None
+    if admitted:
+        if admission is None:
+            raise ValueError("missing admission")
+        admission_fp = admission_fingerprint(operator_id=operator_id, admission=admission)
+        acknowledgement_raw = {
+            "schema": "agent-installation-intake-acknowledgement-v1",
+            "admission_id": admission.admission_id,
+            "admission_fingerprint": admission_fp.model_dump(mode="json"),
+            "intake_request_id": admission.intake_request_id,
+            "received_at": admission.received_at,
+            "valid_until": admission.valid_until,
+            "status": "admitted_for_evidence_only",
+            "provenance": "authenticated_core_intake_evidence_only",
+            "execution_admission_granted": False,
+            "execution_authorized": False,
+            "worker_allowed": False,
+            "mutation_allowed": False,
+            "replay_allowed": False,
+        }
+        acknowledgement_raw["acknowledgement_fingerprint"] = acknowledgement_fingerprint(
+            acknowledgement_raw
+        ).model_dump(mode="json")
+        acknowledgement = AgentInstallationIntakeAcknowledgementV1.model_validate(
+            acknowledgement_raw
+        )
+    exact_request = AgentInstallationIntakeRequestV1.model_validate(
+        request.model_dump(mode="python")
+    )
+    _identity(operator_id)
+    _identity(delivery_preparation_id)
+    _instant(validated_at)
+    if exact.intake_request_id not in {None, exact_request.intake_request_id}:
+        raise ValueError("response request identity mismatch")
+    if admission is not None and (
+        admission.intake_request_id != exact_request.intake_request_id
+        or admission.delivery_attempt_id != exact_request.delivery_attempt_id
+        or admission.source.request_fingerprint != exact_request.request_fingerprint
+        or admission.source.dispatch_envelope_id
+        != exact_request.envelope.dispatch_envelope_id
+        or admission.source.dispatch_envelope_fingerprint
+        != exact_request.envelope.dispatch_envelope_fingerprint
+        or admission.linkage != exact_request.envelope.linkage
+        or admission.prior_evidence != exact_request.prior_evidence
+        or admission.valid_until != exact_request.expires_at
+        or admission.admission_fingerprint != admission_fp
+    ):
+        raise ValueError("admission linkage or fingerprint mismatch")
+    return exact, acknowledgement
 
 
 def parse_create_json(payload: str | bytes):
@@ -625,8 +787,24 @@ def _format(value: datetime) -> str:
 
 
 __all__ = [name for name in globals() if name.startswith("LiveDelivery")]
-__all__ += ["AgentInstallationIntakeAcknowledgementV1", "AgentInstallationIntakeAdmissionV1",
-            "AgentInstallationIntakeRequestV1", "AgentInstallationIntakeResultV1", "StrictContractError",
-            "attempt_fingerprint", "audit_evidence_fingerprint", "body_fingerprint", "create_send_attempt",
-            "idempotency_key_fingerprint", "parse_create_json", "receipt_fingerprint", "send_lifecycle",
-            "validate_send_attempt"]
+__all__ += [
+    "AgentInstallationIntakeAcknowledgementV1",
+    "AgentInstallationIntakeAdmissionV1",
+    "AgentInstallationIntakeRequestV1",
+    "AgentInstallationIntakeResultV1",
+    "StrictContractError",
+    "agent_audit_evidence_fingerprint",
+    "agent_result_fingerprint",
+    "attempt_fingerprint",
+    "audit_evidence_fingerprint",
+    "body_fingerprint",
+    "canonical_agent_request",
+    "create_send_attempt",
+    "idempotency_key_fingerprint",
+    "parse_agent_result_json",
+    "parse_create_json",
+    "receipt_fingerprint",
+    "send_lifecycle",
+    "validate_agent_result",
+    "validate_send_attempt",
+]
