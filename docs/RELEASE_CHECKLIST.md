@@ -44,9 +44,13 @@ P5 validation started from `1957d1774436055ebc6f87732e51101c555a9203`.
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `ff9beae22c541334c27c6b0fe6c5c81fdc5680e2 test(v0.30): close delivery enablement`.
 - [x] Both requested Core and Agent Ruff gates passed.
 - [x] Focused Core release-isolation and route validation passed:
   `62 passed, 64 warnings in 9.97s`.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `3046 passed, 238 warnings in 189.22s (0:03:09)`.
 - [x] Full Agent regression validation passed:
   `1018 passed, 22 warnings in 10.72s`.
 - [x] Mission Control passed 83 test files and 540 tests, lint, and production
@@ -58,7 +62,8 @@ P5 validation started from `1957d1774436055ebc6f87732e51101c555a9203`.
 
 ### Final release actions
 
-- [ ] Record the exact reviewed implementation/validation SHA after P5 review.
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `ff9beae22c541334c27c6b0fe6c5c81fdc5680e2`.
 - [ ] Confirm the tracked worktree is clean at the final release-preparation
   commit.
 - [ ] Create the immutable annotated `atlas-v0.30.0` tag.
