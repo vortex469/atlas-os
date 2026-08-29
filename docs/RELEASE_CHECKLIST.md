@@ -74,6 +74,20 @@ validation started from `2ca93dbfb24bcfe85f92440595fb0f6c56c6e2ce`.
   build. Lint retained one pre-existing exhaustive-deps warning and no errors;
   build retained only the existing chunk-size advisory.
 - [x] `git diff --check` passed.
+- [x] P5 closure commit:
+  `611890a9bbf1bbee7f16663659695a2e0ad77a1f test(v0.32): close agent live intake admission`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3072 passed, 246 warnings in 195.20s (0:03:15)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `611890a9bbf1bbee7f16663659695a2e0ad77a1f`.
+- [ ] Verify the tracked worktree is clean at the final release-preparation
+  commit.
+- [ ] Create immutable annotated tag `atlas-v0.32.0` targeting the final
+  release-preparation commit.
+- [ ] Push branch `v032-agent-live-intake-admission` and annotated tag
+  `atlas-v0.32.0` to `origin` and verify the remote branch and peeled tag
+  target.
+- [ ] Publish the GitHub release for `atlas-v0.32.0`.
 
 ## Atlas v0.31 P0 Live Delivery Send Boundary — selected
 
