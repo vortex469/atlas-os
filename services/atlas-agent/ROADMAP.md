@@ -103,3 +103,24 @@ install, runtime/container/process execution, retry/resend, dispatch, worker,
 workflow, provider/repository/in-guest mutation, deployment, rollback, public
 Core API, Mission Control surface, or Home Assistant artifact. Existing
 executable intent and capability registries remain unchanged.
+
+## Selected v0.33 planning boundary
+
+Atlas v0.33 selects **End-to-End Inert Delivery Receipt**. Its normative
+contract is [End-to-End Inert Delivery Receipt
+v1](../../docs/architecture/end-to-end-inert-delivery-receipt-v1.md).
+
+Agent behavior remains the exact v0.32 independently default-off guarded POST,
+closed envelope/result, append-only admission, fixed Core principal, and
+mode-0400 credential-reference verification. V0.33 adds no Agent schema,
+action, route, callback, read API, worker/workflow/runtime consumer, retry, or
+mutation. Core may explicitly make one one-shot call and verify the returned
+admission/acknowledgement into its own receipt; Core does not claim direct
+verification of Agent-local storage.
+
+P0 is documentation-only. P1–P3 may add Core-only closed verification models,
+an append-only default-off receipt service/store, and one injected one-shot
+composition. P4 locks Mission Control and public Core API absence; P5 closes
+isolation. Installation, execution, dispatch, worker/workflow start,
+provider/repository/in-guest mutation, deployment, rollback, retry/resend, and
+Home Assistant artifacts remain blocked.

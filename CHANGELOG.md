@@ -6,6 +6,24 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.33 P0 — End-to-End Inert Delivery Receipt
+
+- Selected Atlas v0.33 **End-to-End Inert Delivery Receipt** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/end-to-end-inert-delivery-receipt-v1.md).
+- Defined the exact internal Core request, closed Agent-result verification,
+  append-only Core receipt, complete v0.20–v0.32 linkage, deterministic
+  fingerprints, inherited 30-second freshness, lifecycle, ownership,
+  permanent no-replay/ambiguity, redaction, and audit evidence.
+- Froze reuse of the exact v0.32 envelope/result and single Agent POST, exact
+  v0.31 HTTPS/principal/credential-reference boundary, independent default-off
+  gates, no public Core API or Mission Control surface, P0–P5 scope, threats,
+  goldens, later enablement, blockers, and must-not-change contracts.
+- P0 changes planning documents only. It adds no models, service, store,
+  transport, credential read, network call, route, UI, retry, installation,
+  Docker/Podman/shell/process work, worker/workflow/dispatch, mutation,
+  deployment, rollback, Home Assistant artifact, tag, push, or release action.
+
 #### v0.32 P0–P5 — Agent Live Intake Admission
 
 - Selected Atlas v0.32 **Agent Live Intake Admission** and froze the

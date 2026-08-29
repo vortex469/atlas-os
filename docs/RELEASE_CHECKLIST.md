@@ -3,6 +3,35 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.33 P0 End-to-End Inert Delivery Receipt — selected
+
+Atlas v0.33 is **End-to-End Inert Delivery Receipt**. P0 is the
+documentation-only frozen
+[v1 contract](architecture/end-to-end-inert-delivery-receipt-v1.md).
+
+- [x] Inspect current `main` after annotated `atlas-v0.32.0` and record the
+  exact baseline and causal attempt/envelope/admission/receipt ordering.
+- [x] Freeze the exact internal request, Core verification, receipt, status,
+  redacted-error, audit, idempotency, and deterministic fingerprint schemas.
+- [x] Freeze exact same-owner v0.20–v0.32 linkage and preserve the inherited
+  maximum 30-second freshness window.
+- [x] Reuse the exact v0.32 envelope/result and sole guarded Agent POST without
+  a callback, second route, Agent action, or Core claim of Agent-store access.
+- [x] Freeze the exact v0.31 HTTPS, fixed-principal, mode-0400 credential-
+  reference, bounded timeout, independent default-off, one-shot/no-retry, and
+  terminal ambiguity rules.
+- [x] Freeze append-only durability, permanent reservation/no-replay,
+  ownership, redaction/audit, absent public Core API/Mission Control surface,
+  P0–P5 scope, threats, goldens, authority, blockers, and invariants.
+- [x] Keep P0 planning-only: no runtime model/service/store/route/UI,
+  credential read, network, Agent call, retry, execution, mutation, deployment,
+  rollback, Home Assistant artifact, migration, tag, push, or release action.
+- [ ] P1 — closed Core receipt models and pure verification.
+- [ ] P2 — default-off durable Core verification service/store.
+- [ ] P3 — explicitly constructed one-shot end-to-end composition.
+- [ ] P4 — lock public Core API and Mission Control presentation absence.
+- [ ] P5 — release isolation, regressions, authority closure, and evidence.
+
 ## Atlas v0.32 P0–P5 Agent Live Intake Admission — complete
 
 Atlas v0.32 is **Agent Live Intake Admission**. P0–P5 are complete from the
