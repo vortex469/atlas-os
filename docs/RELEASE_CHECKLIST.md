@@ -33,7 +33,55 @@ frozen [v1 contract](architecture/live-delivery-send-boundary-v1.md).
   or UI-facing read model exists; structural tests lock out clients, routes,
   navigation, mutation/retry/resend controls, sensitive rendering, prohibited
   authority labels, and Home Assistant exceptions.
-- [ ] P5 — isolation, no-replay, regressions, and release closure.
+- [x] P5 — isolation, no-replay, regressions, and release closure.
+
+### P5 authority and isolation gates
+
+- [x] Keep live send explicitly constructed, default-disabled, one-shot,
+  synchronous, inert-evidence-only, permanently no-replay, and without an
+  automatic retry path.
+- [x] Keep credentials ephemeral: no credential value, Authorization header,
+  secret, raw body, endpoint address, or internal path is persisted or
+  disclosed through evidence or errors.
+- [x] Keep every install, execute, deploy, mutate, worker, workflow, and replay
+  authority field fixed false.
+- [x] Keep live-send attempt/result/receipt/acknowledgement evidence isolated
+  from Core authority subsystems, Agent consumers, and the execution worker.
+- [x] Keep Core free of a production live-send route and Agent intake dormant,
+  default-off, unregistered, and available only through explicit test
+  construction.
+- [x] Keep Mission Control free of a v0.31 client, type, UI, route, navigation,
+  retry/resend/send-again, execute/install/deploy/rollback, workflow/worker, or
+  mutation control.
+- [x] Preserve capability parity and Home Assistant as blocked,
+  non-installable, non-executable, and without a deployment artifact.
+- [x] Add release-isolation tests and documentation only; add no runtime,
+  migration, tag, push, release, publication, or deployment action.
+
+### P5 observed validation evidence
+
+- [x] P5 validation started from P4 commit
+  `0e754a42ecc9dfd8e5aa702b15facd6aecfa5ed8`.
+- [x] Both requested Atlas Core and Atlas Agent Ruff gates passed.
+- [x] Focused Core release-isolation validation passed:
+  `60 passed, 46 warnings in 9.58s`.
+- [x] Focused Agent intake-closure validation passed:
+  `10 passed, 15 warnings in 1.30s`.
+- [x] Full Atlas Core validation passed:
+  `3071 passed, 246 warnings in 193.85s (0:03:13)`.
+- [x] Full Atlas Agent validation passed:
+  `1020 passed, 22 warnings in 11.42s`.
+- [x] Mission Control passed 84 test files and 545 tests, lint, and production
+  build. Lint retained one pre-existing exhaustive-deps warning and no errors;
+  build retained only the existing chunk-size advisory.
+- [x] `git diff --check` passed.
+- [ ] Record the P5 closure commit.
+- [ ] Run the full Core clean-environment release-preparation gate.
+- [ ] Record the exact reviewed implementation/validation SHA.
+- [ ] Verify the tracked worktree is clean at the final release commit.
+- [ ] Create immutable annotated tag `atlas-v0.31.0`.
+- [ ] Push the branch and annotated tag to `origin`.
+- [ ] Publish the GitHub release for `atlas-v0.31.0`.
 
 ## Atlas v0.30 P0–P5 Operator-Controlled Delivery Enablement — complete
 

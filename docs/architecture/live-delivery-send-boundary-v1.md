@@ -1,6 +1,6 @@
 # Live Delivery Send Boundary v1 planning contract
 
-Status: **Atlas v0.31 P0 frozen; P1–P3 implemented; P4 presentation remains
+Status: **Atlas v0.31 P0–P5 implemented and validated; Mission Control remains
 absent because no guarded Core API/read model exists**.
 
 This document freezes the narrowest first production Core-to-Agent send. One
@@ -435,29 +435,28 @@ contains no secret or raw transport payload.
 
 ## P0–P5 scope
 
-### P0 — Live-send contract and threat model — selected
+### P0 — Live-send contract and threat model — frozen
 
 Freeze the exact schemas, linkage, fingerprints, transport/authentication/
 credential-reference boundary, lifecycle, ownership, freshness, idempotency,
 no-replay, redaction/audit, API/UI limits, authority, threats, goldens, and
 must-not-change contracts. Change planning documents only.
 
-### P1 — Closed live-send models and pure validation — planned
+### P1 — Closed live-send models and pure validation — implemented
 
 Add immutable Core request/attempt/receipt/status/audit/error/configuration
 models, canonical fingerprints, and pure exact v0.20–v0.30 validation over
 injected records/time. Reuse v0.27 request/result and v0.28 response validation
 without I/O, registration, settings, route, or send behavior.
 
-### P2 — Production Agent evidence-intake boundary — planned
+### P2 — Durable Core reservation service and store — implemented
 
-Register only the existing v0.27 closed POST intake contract in production
-Agent behind explicit default-off configuration and the fixed authenticated
-principal/permission. Preserve append-only admission, exact retry/no-replay,
-bounds, redaction, and zero execution/install/mutation consumers. Add no other
-Agent route or runtime authority.
+Add the explicitly constructed default-off Core reservation service and
+append-only attempt store with exact linkage/freshness, owner scope, permanent
+idempotency/no-replay, bounded restart-safe reads, and fail-closed corruption.
+Add no route, Agent invocation, network, credential read, or runtime authority.
 
-### P3 — One-shot Core send service — planned
+### P3 — One-shot Core send service — implemented
 
 Add an explicitly constructed, default-off synchronous HTTPS adapter and
 append-only attempt/receipt store. Reserve permanently before I/O; load only
@@ -475,14 +474,17 @@ execute, workflow, deploy, mutation, credential, endpoint, raw-envelope, or
 Home Assistant exception surface. Presentation remains blocked until the
 separately guarded Core API exists.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
-Prove exact linkage/fingerprint/freshness, independent defaults, authentication,
-TLS/credential-file constraints, request/response bounds, permanent reservation
-before I/O, timeout/crash/ambiguity no-replay, ownership, redaction, exact API/
-UI/Agent surfaces, zero prohibited consumers, capability parity, prior goldens,
-and Home Assistant blocking. Add only tests and release evidence; do not tag,
-push, publish, deploy, or release automatically.
+Release-isolation tests lock exact linkage/fingerprint/freshness, independent
+defaults, injected transport/authentication, request/response bounds,
+permanent reservation before I/O, timeout/crash/ambiguity no-replay,
+secret-free persistence, ownership, redaction, and fixed-false effect
+authority. They prove no live-send evidence consumer across Core, Agent, or
+the execution worker; no production Core route or Agent intake registration;
+no Mission Control v0.31 surface; capability parity; and Home Assistant
+blocking with no artifact. P5 adds tests and release evidence only and performs
+no migration, tag, push, publication, deployment, or release action.
 
 ## Exact authority boundary
 

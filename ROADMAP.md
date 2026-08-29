@@ -1493,8 +1493,8 @@ artifact. All those capabilities remain blocked.
 
 Atlas v0.31 is **Live Delivery Send Boundary**. Its normative P0 contract is
 [Live Delivery Send Boundary
-v1](docs/architecture/live-delivery-send-boundary-v1.md). P0 is selected and
-documentation-only; P1–P5 are planned.
+v1](docs/architecture/live-delivery-send-boundary-v1.md). P0 through P5 are
+implemented and validated.
 
 The narrow boundary is one authenticated, synchronous, permanently single-use
 HTTPS POST of the exact inert v0.27 intake request, after Core revalidates the
@@ -1538,13 +1538,23 @@ surface. Structural tests prove there is no v0.31 client, type, hook, page,
 route, navigation, mutation, retry/resend/refresh/send-again control, sensitive
 transport rendering, prohibited authority label, or Home Assistant exception.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
-Prove exact chain/freshness, independent defaults, transport authentication,
-TLS and credential-file bounds, reservation-before-I/O, ambiguity no-replay,
-ownership, redaction, exact Core/Agent/UI surfaces, zero prohibited consumers,
-capability parity, prior goldens, and Home Assistant blocking. Add tests and
-release evidence only.
+P5 locks explicit construction, default-off and one-shot/no-automatic-retry
+posture, inert evidence-only envelopes, permanent reservation/no-replay,
+terminal ambiguity, secret-free persistence, redaction, and fixed-false
+install/execute/deploy/mutate/worker/workflow authority. Release-isolation
+tests prove no live-send evidence consumer in Core, Agent, or the execution
+worker; no production Core route or Agent intake registration; no Mission
+Control v0.31 surface or effect control; capability parity; and Home Assistant
+blocking with no artifact. P5 adds tests and release documentation only.
+
+Validation passed both Ruff gates, 60 focused Core release-isolation tests,
+10 focused Agent intake-closure tests, the full Core suite (`3071 passed, 246
+warnings in 193.85s (0:03:13)`), the full Agent suite (`1020 passed, 22
+warnings in 11.42s`), and Mission Control (`84` files, `545` tests), lint, and
+production build. Lint retained the pre-existing exhaustive-deps warning and
+the build retained its existing chunk-size advisory; neither was an error.
 
 The exact v0.31 authority is one operator-triggered, synchronous delivery of
 one inert evidence envelope to one fixed authenticated Agent route, plus

@@ -1710,3 +1710,137 @@ def test_v030_capability_parity_and_home_assistant_remain_blocked() -> None:
         and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
     ]
     assert artifacts == []
+
+
+def test_v031_live_send_is_explicit_default_off_one_shot_and_non_authorizing() -> None:
+    from app.live_delivery_send_boundary.contract import (
+        LiveDeliverySendReceiptV1,
+        LiveDeliverySendTransportResultV1,
+        LiveDeliveryTransportConfigurationV1,
+    )
+    from app.live_delivery_send_boundary.transport import LiveDeliverySendCoordinator
+
+    assert LiveDeliveryTransportConfigurationV1.model_fields["enabled"].default is False
+    assert set(inspect.signature(LiveDeliverySendCoordinator).parameters) == {
+        "reservation_service",
+        "store",
+        "credential_resolver",
+        "transport",
+        "clock",
+    }
+    assert inspect.signature(LiveDeliverySendCoordinator).parameters[
+        "transport"
+    ].default is inspect.Parameter.empty
+    for model in (LiveDeliverySendReceiptV1, LiveDeliverySendTransportResultV1):
+        for field in (
+            "execution_authorized",
+            "installation_allowed",
+            "worker_allowed",
+            "workflow_allowed",
+            "deployment_allowed",
+            "mutation_allowed",
+            "replay_allowed",
+        ):
+            if field in model.model_fields:
+                assert model.model_fields[field].annotation == Literal[False]
+    assert LiveDeliverySendTransportResultV1.model_fields[
+        "automatic_retries"
+    ].default == 0
+    assert LiveDeliverySendTransportResultV1.model_fields["one_shot_only"].default is True
+    for field in (
+        "execution_attempted",
+        "installation_attempted",
+        "worker_attempted",
+        "workflow_attempted",
+        "deployment_attempted",
+        "mutation_attempted",
+    ):
+        assert LiveDeliverySendTransportResultV1.model_fields[field].annotation == Literal[
+            False
+        ]
+
+
+def test_v031_live_send_has_no_route_registration_or_authority_consumer() -> None:
+    repository_root = APP_ROOT.parents[2]
+    package = APP_ROOT / "live_delivery_send_boundary"
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    worker_root = repository_root / "services" / "atlas-execution-worker"
+    markers = (
+        "app.live_delivery_send_boundary",
+        "LiveDeliverySendAttemptV1",
+        "LiveDeliverySendReceiptV1",
+        "LiveDeliverySendTransportResultV1",
+        "live-delivery-send-receipt-v1",
+        "live_delivery_send_attempts",
+    )
+    violations: list[str] = []
+    for root in (APP_ROOT, agent_root, worker_root):
+        for path in _production_python_files(root):
+            if package in path.parents:
+                continue
+            source = path.read_text(encoding="utf-8")
+            violations.extend(
+                f"{path.relative_to(repository_root)} -> {marker}"
+                for marker in markers
+                if marker in source
+            )
+    for path in (
+        APP_ROOT / "main.py",
+        APP_ROOT / "api" / "v1" / "router.py",
+    ):
+        source = path.read_text(encoding="utf-8")
+        assert "installation-delivery-sends" not in source
+        assert "live_delivery_send_boundary" not in source
+    assert violations == []
+
+
+def test_v031_secret_is_not_persisted_and_exact_retry_performs_zero_io(
+    tmp_path: Path,
+) -> None:
+    from app.live_delivery_send_boundary.test_transport import (
+        _admitted_body,
+        _coordinator,
+        _send,
+    )
+    from app.live_delivery_send_boundary.transport import LiveDeliveryHttpResponse
+
+    database = tmp_path / "release-live-send.sqlite3"
+    coordinator, resolver, transport, evidence, _ = _coordinator(
+        tmp_path,
+        LiveDeliveryHttpResponse(200, _admitted_body(tmp_path)),
+        database=database,
+    )
+    first = _send(coordinator, evidence)
+    second = _send(coordinator, evidence)
+    assert first.disposition == "admitted_evidence_only"
+    assert second.disposition == "exact_replay"
+    assert first.receipt == second.receipt
+    assert resolver.calls == 1
+    assert len(transport.calls) == 1
+    persisted = b"".join(
+        path.read_bytes()
+        for path in tmp_path.glob("release-live-send.sqlite3*")
+        if path.is_file()
+    )
+    assert b"super-secret-token" not in persisted
+    assert b"Authorization" not in persisted
+    assert not first.replay_allowed
+
+
+def test_v031_home_assistant_remains_non_installable_and_has_no_artifact() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
+        encoding="utf-8"
+    )
+    assert "install-container" not in candidate_source
+    artifacts = [
+        path.relative_to(repository_root)
+        for root in (repository_root / "compose", repository_root / "deploy")
+        if root.exists()
+        for path in root.rglob("*")
+        if path.is_file()
+        and "home-assistant" in path.name.lower()
+        and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
+    ]
+    assert artifacts == []

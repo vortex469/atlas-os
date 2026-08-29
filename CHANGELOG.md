@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.31 P0–P4 — Live Delivery Send Boundary
+#### v0.31 P0–P5 — Live Delivery Send Boundary
 
 - Selected Atlas v0.31 **Live Delivery Send Boundary** and froze the
   documentation-only [v1 planning
@@ -40,6 +40,16 @@ release boundaries.
   type, page, route, navigation, mutation, retry/resend/send-again control,
   secret or raw transport rendering, prohibited authority label, and Home
   Assistant exception. No API bridge or runtime behavior is added.
+- P5 closes the release boundary with explicit/default-off/one-shot locks,
+  permanent no-replay and ambiguity handling, secret-free durable evidence,
+  fixed-false effect authority, zero workflow/worker/dispatch/provider/
+  repository/in-guest/install/deploy/rollback consumers, dormant test-only
+  Agent intake, absent Mission Control surface, capability parity, and Home
+  Assistant blocking. P5 adds tests and release documentation only.
+- P5 validation passed both Ruff gates, 60 focused Core isolation tests, 10
+  focused Agent intake-closure tests, all 3071 Core tests, all 1020 Agent
+  tests, and 545 Mission Control tests plus lint/build. The existing frontend
+  hook and chunk-size warnings remained non-errors.
 
 #### v0.30 P0–P5 — Operator-Controlled Delivery Enablement
 

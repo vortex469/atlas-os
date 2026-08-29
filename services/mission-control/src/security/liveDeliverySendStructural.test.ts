@@ -70,6 +70,7 @@ describe("v0.31 live delivery send Mission Control boundary", () => {
         for (const label of [
             "install", "run", "execute", "deploy", "rollback", "dispatch",
             "start(?:-|\\s+)workflow", "retry", "resend", "send(?:-|\\s+)again",
+            "worker", "mutate",
         ]) {
             expect(source).not.toMatch(new RegExp(
                 `live[-_ ]delivery[-_ ]send[^\\n]{0,200}(?:>|aria-label=["'])\\s*${label}(?:\\s+now)?(?:\\s*<|["'])`,

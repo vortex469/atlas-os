@@ -270,3 +270,48 @@ def test_capability_parity_and_home_assistant_deployment_remain_blocked() -> Non
         and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
     ]
     assert artifacts == []
+
+
+def test_v031_agent_intake_remains_explicit_dormant_and_unconsumed() -> None:
+    assert inspect.signature(AgentRealIntakeEvidenceService).parameters[
+        "enabled"
+    ].default is False
+    assert inspect.signature(create_dormant_real_intake_router).parameters[
+        "enabled"
+    ].default is False
+    markers = (
+        "app.real_agent_intake_boundary",
+        "AgentRealIntakeEvidenceService",
+        "create_dormant_real_intake_router",
+        '"/api/v1/internal/installation-intake"',
+    )
+    violations: list[str] = []
+    for path in APP_ROOT.rglob("*.py"):
+        if path.name.startswith("test_") or PACKAGE_ROOT in path.parents:
+            continue
+        source = path.read_text(encoding="utf-8")
+        violations.extend(
+            f"{path.relative_to(REPOSITORY_ROOT)} -> {marker}"
+            for marker in markers
+            if marker in source
+        )
+    assert violations == []
+
+
+def test_v031_live_send_receipt_or_acknowledgement_has_no_agent_authority_consumer() -> None:
+    live_send_markers = (
+        "LiveDeliverySendAttemptV1",
+        "LiveDeliverySendReceiptV1",
+        "LiveDeliverySendTransportResultV1",
+        "live-delivery-send-receipt-v1",
+        "live_delivery_send_attempts",
+        "installation-delivery-sends",
+    )
+    violations = [
+        f"{path.relative_to(REPOSITORY_ROOT)} -> {marker}"
+        for path in APP_ROOT.rglob("*.py")
+        if not path.name.startswith("test_")
+        for marker in live_send_markers
+        if marker in path.read_text(encoding="utf-8")
+    ]
+    assert violations == []
