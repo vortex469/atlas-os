@@ -3,6 +3,28 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.29 P0 Controlled Delivery Activation Preflight — selected
+
+Atlas v0.29 is **Controlled Delivery Activation Preflight**. P0 is the
+documentation-only frozen [v1 contract](architecture/delivery-activation-preflight-v1.md).
+
+- [x] Inspect current `main` after the released `atlas-v0.28.0` boundary.
+- [x] Freeze exact request/result/linkage schemas and deterministic fingerprint.
+- [x] Freeze decision, lifecycle, freshness/expiry, ownership, authentication,
+  authorization, idempotency/no-replay, redaction, and audit rules.
+- [x] Freeze the default-disabled create/list/item-read API and non-authorizing
+  Mission Control evidence boundary for later P phases.
+- [x] Freeze P0–P5 scope, authority, threats, goldens, must-not-change
+  contracts, later enablement, and remaining blockers.
+- [x] Keep P0 planning-only: no runtime, route, store, UI, Agent contact,
+  transport, secret, command, mutation, installation, deployment, rollback, or
+  Home Assistant artifact change.
+- [ ] P1 — closed models and pure evaluation.
+- [ ] P2 — bounded append-only preflight evidence.
+- [ ] P3 — authenticated Core-local create/list/item-read API.
+- [ ] P4 — Mission Control evidence review.
+- [ ] P5 — isolation, no-replay, regressions, and release closure.
+
 ## Atlas v0.28 P0–P5 Dormant Core-to-Agent Delivery Wiring — complete
 
 Atlas v0.28 is **Dormant Core-to-Agent Delivery Wiring**. P0–P5 are complete

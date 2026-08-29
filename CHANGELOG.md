@@ -6,6 +6,21 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.29 P0 — Controlled Delivery Activation Preflight
+
+- Selected Atlas v0.29 **Controlled Delivery Activation Preflight** and froze
+  the documentation-only [v1 planning
+  contract](docs/architecture/delivery-activation-preflight-v1.md).
+- Defined exact closed request, result, linkage, decision, reason, lifecycle,
+  fingerprint, ownership/authz, freshness/expiry, idempotency/no-replay,
+  redaction/audit, default-disabled API/UI, and P0–P5 contracts binding the
+  complete same-owner v0.20–v0.28 evidence chain.
+- V0.29 P0 adds no runtime behavior. Delivery activation, Agent requests,
+  transport/route registration, credential/secret loading, worker/workflow/
+  dispatch/runtime/process execution, provider/repository/guest mutation,
+  installation, deployment, rollback, and Home Assistant artifacts remain
+  prohibited.
+
 #### v0.28 P0–P5 — Dormant Core-to-Agent Delivery Wiring
 
 - Froze and completed the Dormant Core-to-Agent Delivery Wiring v1 contract:
