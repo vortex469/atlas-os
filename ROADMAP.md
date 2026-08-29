@@ -108,14 +108,16 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
 - P0 freezes the exact schemas, fingerprints, lifecycle, ownership,
   authentication, freshness, no-replay, redaction, audit, API/OpenAPI, UI,
   authority, threat, golden, and must-not-change contracts.
-- P1 adds strict immutable mirrored Core/Agent models and pure validation only.
-- P2 adds an explicitly constructed, default-off, append-only Agent admission
+- P1 added strict immutable mirrored Core/Agent models and pure validation.
+- P2 added an explicitly constructed, default-off, append-only Agent admission
   service/store with permanent atomic reservations and owned readback.
-- P3 adds the sole production-registered Agent POST behind explicit settings,
+- P3 added the sole production-registered Agent POST behind explicit settings,
   HTTPS enforcement, injected authentication, strict bounds, and exact
   internal OpenAPI; registration remains off by default.
-- P4 adapts only the explicitly constructed v0.31 Core one-shot sender to the
-  frozen envelope/response contract. It adds no retry, public Core API, or UI.
+- P4 keeps Mission Control absent and adds structural locks proving no v0.32
+  client, type, hook, component, page, route, navigation, mutation, retry/
+  resend/send-again, effect control, sensitive rendering, or Home Assistant
+  exception. It adds no Core bridge or runtime behavior.
 - P5 adds isolation/regression/authority tests and release documentation only.
 
 V0.32 authority ends at durable receipt/admission evidence. It enables a later

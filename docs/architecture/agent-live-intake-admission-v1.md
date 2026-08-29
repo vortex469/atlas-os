@@ -1,6 +1,6 @@
 # Agent Live Intake Admission v1 planning contract
 
-Status: **Atlas v0.32 P0 selected; documentation only**.
+Status: **Atlas v0.32 P0–P4 complete; P5 planned**.
 
 Atlas v0.32 defines the narrowest production-registered Agent boundary that
 may authenticate, receive, validate, and durably admit one inert v0.31 live
@@ -410,14 +410,14 @@ freshness, lifecycle, idempotency/no-replay, ownership, redaction/audit,
 registration, OpenAPI/UI boundary, threats, goldens, authority, and
 must-not-change contracts. Documentation only.
 
-### P1 — Closed v0.32 models and pure validation — planned
+### P1 — Closed v0.32 models and pure validation — complete
 
 Add strict immutable mirrored Core/Agent models and pure validation for the
 outer envelope, complete v0.20–v0.31 chain, admission, acknowledgement, result,
 record, lifecycle, fingerprints, bounds, and fixed-false authority. Add no
 service, store, route, registration, settings, credential read, or network.
 
-### P2 — Durable Agent live-admission service/store — planned
+### P2 — Durable Agent live-admission service/store — complete
 
 Add an explicitly constructed, default-disabled service and bounded append-only
 store. Validate injected authentication and the complete envelope, permanently
@@ -425,7 +425,7 @@ reserve before admission, persist admission/acknowledgement/audit atomically,
 support exact-replay and owner-scoped readback, and fail corruption closed. Add
 no route, registration, runtime, worker, workflow, or mutation consumer.
 
-### P3 — Guarded production Agent registration — planned
+### P3 — Guarded production Agent registration — complete
 
 Add the exact default-off startup configuration, injected credential verifier,
 and production application-factory registration for the single internal POST.
@@ -433,13 +433,16 @@ Enforce HTTPS, fixed principal/permission/path, credential-file controls,
 strict bounds/parsing, permanent no-replay, closed responses, and redaction.
 Add no sibling route, generic command/transport/auth framework, or effect.
 
-### P4 — V0.31 Core envelope integration and isolation — planned
+### P4 — Mission Control presentation absence — complete
 
-Adapt only the explicit one-shot v0.31 Core send composition to transmit the
-v0.32 outer inert envelope and validate the closed result, while preserving
-reservation-before-I/O, at-most-one transport call, terminal ambiguity, and no
-automatic retry. Add no public Core API or Mission Control surface. Lock Agent,
-Core, worker/workflow, mutation, secret, and Home Assistant isolation.
+The frozen boundary exposes no public Core read model or UI-facing API, so P4
+does not invent a Core bridge or Mission Control surface. Structural tests
+prove there is no v0.32 API client, hook, component, page, route, navigation,
+read or mutation call, admit/retry/resend/send-again or effect control,
+credential/token/raw-envelope/sensitive-evidence rendering, or Home Assistant
+exception. Evidence admission remains non-installing, non-executing,
+non-dispatching, non-workflow, non-worker, non-mutating, non-deploying,
+non-rollback, and non-retry authority.
 
 ### P5 — Release validation and closure — planned
 

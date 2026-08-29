@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.32 P0 — Agent Live Intake Admission
+#### v0.32 P0–P4 — Agent Live Intake Admission
 
 - Selected Atlas v0.32 **Agent Live Intake Admission** and froze the
   documentation-only [v1 planning
@@ -27,6 +27,21 @@ release boundaries.
   service, store, route, credential read, Agent call, retry, installation,
   Docker/Podman/shell/process work, worker/workflow/dispatch, mutation,
   deployment, rollback, Home Assistant artifact, tag, push, or release action.
+- P1 added strict immutable Agent-local envelope, v0.20–v0.31 linkage,
+  authentication, admission, acknowledgement, result, receipt/record, audit,
+  error, idempotency, lifecycle, fingerprint, freshness, bounds, and
+  fixed-false authority models.
+- P2 added an explicitly constructed default-off admission service and bounded
+  append-only owner-scoped store with permanent reservation-first no-replay,
+  exact replay, restart readback, quotas, and fail-closed corruption handling.
+- P3 added the sole independently default-off production Agent POST with exact
+  HTTPS/source/path/method, mode-0400 credential reference, bounded streaming,
+  strict parsing, closed responses, and exact internal OpenAPI. It adds no
+  effect route or execution authority.
+- P4 keeps Mission Control absent as frozen. Structural tests lock out every
+  v0.32 client, hook, component, page, route, navigation, read/mutation call,
+  admit/retry/resend/send-again or effect control, sensitive rendering, and
+  Home Assistant exception. No Core bridge or runtime behavior is added.
 
 #### v0.31 P0–P5 — Live Delivery Send Boundary
 

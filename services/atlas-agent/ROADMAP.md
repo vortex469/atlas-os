@@ -83,13 +83,15 @@ acknowledgement, result, record, audit, lifecycle, and redacted-error models.
 The Agent outputs are inputs to the downstream v0.31 Core receipt; the receipt
 is not an admission prerequisite.
 
-P1–P3 may add closed models, a bounded append-only default-off admission
+P1–P3 added closed models, a bounded append-only default-off admission
 service/store, and the sole guarded production Agent POST. Registration stays
 off unless explicitly configured; authentication is for one fixed Core
 principal through an injected mode-0400 credential reference, and no secret
-value may be modeled, persisted, logged, returned, or documented. P4 may adapt
-only the existing explicitly constructed v0.31 one-shot Core sender. P5 adds
-isolation and release evidence only.
+value may be modeled, persisted, logged, returned, or documented. P4 keeps
+Mission Control absent and adds structural locks against any v0.32 client,
+page, navigation, mutation, retry/resend, effect control, sensitive rendering,
+or Home Assistant exception. It adds no Core bridge or runtime behavior. P5
+adds isolation and release evidence only.
 
 This boundary durably admits evidence; it does not admit execution. There is no
 install, runtime/container/process execution, retry/resend, dispatch, worker,

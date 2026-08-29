@@ -28,11 +28,16 @@ frozen [v1 contract](architecture/agent-live-intake-admission-v1.md).
   production registration, credential read, Agent call, retry, install,
   execution, worker/workflow/dispatch, mutation, deployment, rollback, Home
   Assistant artifact, migration, tag, push, publication, or release action.
-- [ ] P1 — closed mirrored Agent/Core models and pure validation.
-- [ ] P2 — default-off durable Agent admission service/store.
-- [ ] P3 — guarded default-off production Agent route registration.
-- [ ] P4 — v0.31 one-shot Core envelope integration; no retry, public API, or
-  Mission Control surface.
+- [x] P1 — closed mirrored Agent/Core models and pure validation
+  (`64ff2e4526f8d3904ca37f3fb0f91d21d3d4bc18`).
+- [x] P2 — default-off durable Agent admission service/store
+  (`d4ff6f480a6a1b945947c1f5d78e3fa7a9c74b1b`).
+- [x] P3 — guarded default-off production Agent route registration
+  (`c9b6a8a0be035575bc91d9181013fde736eef34c`).
+- [x] P4 — keep Mission Control absent; structural locks prohibit a v0.32
+  client, hook, component, page, route, navigation, mutation, admit/retry/
+  resend/send-again or effect control, sensitive rendering, and Home Assistant
+  exception. No Core API bridge or runtime behavior is added.
 - [ ] P5 — isolation, no-replay, regressions, and release closure.
 
 ## Atlas v0.31 P0 Live Delivery Send Boundary — selected
