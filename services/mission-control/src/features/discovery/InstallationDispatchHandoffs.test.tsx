@@ -10,6 +10,7 @@ import { InstallationDispatchHandoffs } from "./InstallationDispatchHandoffs";
 
 vi.mock("../../api/installationDispatchHandoff", () => ({ listInstallationDispatchHandoffs: vi.fn(), getInstallationDispatchHandoff: vi.fn(), preserveInstallationDispatchHandoff: vi.fn(), dispatchHandoffIdempotencyKey: vi.fn(() => "handoff-key") }));
 vi.mock("./DeliveryActivationPreflights", () => ({ DeliveryActivationPreflights: () => null }));
+vi.mock("./DeliveryEnablements", () => ({ DeliveryEnablements: () => null }));
 const handoff = dispatchHandoffFixture as InstallationDispatchHandoffV1;
 const request = executionRequestFixture as InstallationExecutionRequestV1;
 

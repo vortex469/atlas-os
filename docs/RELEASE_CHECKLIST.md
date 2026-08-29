@@ -3,6 +3,76 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.30 P0–P5 Operator-Controlled Delivery Enablement — complete
+
+Atlas v0.30 is **Operator-Controlled Delivery Enablement**. P0–P5 are complete
+from the frozen [v1 contract](architecture/operator-controlled-delivery-enablement-v1.md).
+P5 validation started from `1957d1774436055ebc6f87732e51101c555a9203`.
+
+- [x] Inspect current `main` after released `atlas-v0.29.0`.
+- [x] Freeze exact request, linkage, record, result, status, error, audit, and
+  deterministic fingerprint contracts over v0.20–v0.29.
+- [x] Freeze exact operator confirmation, authentication, ownership, authz,
+  freshness/expiry, idempotency/no-replay, redaction, and audit rules.
+- [x] Freeze default-off create/list/item-read API and two-step Mission Control
+  evidence boundary for later phases.
+- [x] Freeze P0–P5 scope, authority, threats, goldens, must-not-change
+  contracts, later enablement, and remaining blockers.
+- [x] Keep P0 planning-only: no model/runtime/store/route/UI implementation,
+  Agent contact, transport, credential loading, dispatch, command, execution,
+  mutation, installation, deployment, rollback, or Home Assistant artifact.
+- [x] P1 — closed models and pure validation.
+- [x] P2 — bounded append-only enablement evidence.
+- [x] P3 — authenticated Core-local create/list/item-read API.
+- [x] P4 — Mission Control two-step enablement evidence review.
+- [x] P5 — isolation, no-replay, regressions, and release closure.
+
+### P5 authority and isolation gates
+
+- [x] Keep enablement durable-evidence-only, append-only, default-off,
+  non-sending, non-executing, and permanently no-replay.
+- [x] Keep Core limited to guarded create/list/item-read with no send, deliver,
+  activate, install, execute, or deploy sibling route.
+- [x] Keep live delivery, Agent, transport, credential, dispatch, worker,
+  workflow, provider/repository/in-guest mutation, candidate execution,
+  deployment, rollback, and replay-bypass consumers absent.
+- [x] Keep Mission Control limited to enablement evidence reads and the single
+  explicit v0.30 evidence-create mutation, without prohibited controls or
+  navigation.
+- [x] Preserve Home Assistant as blocked, non-installable, non-executable, and
+  without a deployment artifact.
+
+### P5 observed validation evidence
+
+- [x] P5 validation closure commit:
+  `ff9beae22c541334c27c6b0fe6c5c81fdc5680e2 test(v0.30): close delivery enablement`.
+- [x] Both requested Core and Agent Ruff gates passed.
+- [x] Focused Core release-isolation and route validation passed:
+  `62 passed, 64 warnings in 9.97s`.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `3046 passed, 238 warnings in 189.22s (0:03:09)`.
+- [x] Full Agent regression validation passed:
+  `1018 passed, 22 warnings in 10.72s`.
+- [x] Mission Control passed 83 test files and 540 tests, lint, and production
+  build. Lint retained the pre-existing `WorkflowShellPage.tsx`
+  exhaustive-deps warning and no errors; build retained only the existing
+  chunk-size advisory.
+- [x] P5 changes only isolation/authority tests and the four release documents.
+- [x] No migration, tag, push, release, deployment, or rollback was performed.
+
+### Final release actions
+
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `ff9beae22c541334c27c6b0fe6c5c81fdc5680e2`.
+- [x] Final release-preparation commit:
+  `9fe2f9e9b8d3e7332abaa013fb5893beb916f290 docs(v0.30): prepare release checklist`.
+- [x] Confirmed the tracked worktree was clean at the final
+  release-preparation commit.
+- [x] Created the immutable annotated `atlas-v0.30.0` tag targeting
+  `9fe2f9e9b8d3e7332abaa013fb5893beb916f290`.
+- [x] Pushed the final release branch and `atlas-v0.30.0` tag to `origin`.
+- [ ] Publish the Atlas v0.30 release as `atlas-v0.30.0`.
+
 ## Atlas v0.29 P0–P5 Controlled Delivery Activation Preflight — complete
 
 Atlas v0.29 is **Controlled Delivery Activation Preflight**. P0–P5 are complete

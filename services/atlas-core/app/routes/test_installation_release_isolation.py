@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import inspect
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
 
@@ -1464,6 +1465,7 @@ def test_v029_is_default_absent_from_production_construction_and_has_no_consumer
     allowed_core = {
         APP_ROOT / "routes" / "delivery_activation_preflight.py",
         APP_ROOT / "api" / "v1" / "router.py",
+        APP_ROOT / "operator_controlled_delivery_enablement" / "contract.py",
     }
     markers = (
         "DeliveryActivationPreflightResultV1",
@@ -1529,3 +1531,166 @@ def test_v029_capability_parity_and_home_assistant_remain_blocked() -> None:
         and "home-assistant" in path.name.lower()
         and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
     ] == []
+
+
+def test_v030_service_store_and_route_are_evidence_only() -> None:
+    from app.operator_controlled_delivery_enablement.service import (
+        OperatorControlledDeliveryEnablementService,
+    )
+
+    assert {
+        name
+        for name in dir(OperatorControlledDeliveryEnablementService)
+        if not name.startswith("_")
+    } == {"configuration", "create", "get", "list"}
+    package = APP_ROOT / "operator_controlled_delivery_enablement"
+    forbidden_import_roots = {
+        "aiohttp", "docker", "http", "httpx", "podman", "requests",
+        "socket", "ssl", "subprocess", "urllib",
+    }
+    forbidden_calls = {
+        "activate", "send", "deliver", "dispatch", "consume", "execute",
+        "install", "deploy", "rollback", "connect", "request", "run",
+    }
+    violations: list[str] = []
+    for path in _production_python_files(package):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        violations.extend(
+            f"{path.relative_to(APP_ROOT)} -> import {imported}"
+            for imported in _imports(path)
+            if imported.split(".")[0] in forbidden_import_roots
+        )
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name in forbidden_calls
+            ):
+                violations.append(f"{path.relative_to(APP_ROOT)} -> def {node.name}")
+    store = (package / "store.py").read_text(encoding="utf-8")
+    assert "UPDATE operator_delivery_enablements" not in store
+    assert "DELETE FROM operator_delivery_enablements" not in store
+    assert violations == []
+
+
+def test_v030_is_default_absent_and_has_no_production_consumer() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    package = APP_ROOT / "operator_controlled_delivery_enablement"
+    allowed_core = {
+        APP_ROOT / "routes" / "delivery_enablement.py",
+        APP_ROOT / "api" / "v1" / "router.py",
+    }
+    markers = (
+        "OperatorControlledDeliveryEnablementService",
+        "OperatorControlledDeliveryEnablementRecordV1",
+        "create_operator_controlled_delivery_enablement_service",
+        "operator-controlled-delivery-enablement-record-v1",
+        "core_operator_controlled_delivery_enablement_v1",
+    )
+    violations: list[str] = []
+    for path in _production_python_files(APP_ROOT):
+        if package in path.parents or path in allowed_core:
+            continue
+        source = path.read_text(encoding="utf-8")
+        violations.extend(
+            f"{path.relative_to(repository_root)} -> {marker}"
+            for marker in markers
+            if marker in source
+        )
+    for path in _production_python_files(agent_root):
+        source = path.read_text(encoding="utf-8")
+        violations.extend(
+            f"{path.relative_to(repository_root)} -> {marker}"
+            for marker in markers
+            if marker in source
+        )
+    main = (APP_ROOT / "main.py").read_text(encoding="utf-8")
+    assert "operator_controlled_delivery_enablement" not in main
+    assert violations == []
+
+
+def test_v030_openapi_is_exact_without_authority_sibling() -> None:
+    from app.api.v1.router import router as api_v1_router
+
+    application = FastAPI()
+    application.include_router(api_v1_router)
+    paths = application.openapi()["paths"]
+    collection = "/api/v1/installation-delivery-enablements"
+    item = f"{collection}/{{enablement_id}}"
+    enablement_paths = {
+        path: value for path, value in paths.items() if "delivery-enablement" in path
+    }
+    assert set(enablement_paths) == {collection, item}
+    assert set(enablement_paths[collection]) == {"get", "post"}
+    assert set(enablement_paths[item]) == {"get"}
+    for path in enablement_paths:
+        normalized = path.lower().replace("installation-delivery-enablements", "")
+        assert all(
+            word not in normalized
+            for word in (
+                "send", "deliver", "activate", "install", "execute", "deploy",
+            )
+        )
+
+
+def test_v030_concurrent_exact_retry_creates_one_permanent_record(
+    tmp_path: Path,
+) -> None:
+    from app.operator_controlled_delivery_enablement.store import (
+        OperatorControlledDeliveryEnablementStore,
+    )
+    from app.operator_controlled_delivery_enablement.test_contract import (
+        OPERATOR,
+        _create,
+    )
+    from app.operator_controlled_delivery_enablement.test_service import _service
+
+    database = tmp_path / "enablement.sqlite3"
+    service, _, _, evidence = _service(tmp_path, database=database)
+    create = _create(evidence)
+
+    def submit(correlation: str):
+        return service.create(
+            create,
+            authenticated_operator_id=OPERATOR,
+            idempotency_key="concurrent-enable",
+            correlation_id=correlation,
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = tuple(executor.map(submit, ("concurrent-1", "concurrent-2")))
+    assert {outcome.disposition for outcome in outcomes} == {
+        "created",
+        "exact_replay",
+    }
+    assert outcomes[0].record == outcomes[1].record
+    assert outcomes[0].record is not None
+    assert not any(outcome.replay_allowed for outcome in outcomes)
+    assert OperatorControlledDeliveryEnablementStore(database).list_owned(
+        operator_id=OPERATOR
+    ) == (outcomes[0].record,)
+
+
+def test_v030_capability_parity_and_home_assistant_remain_blocked() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_root = repository_root / "services" / "atlas-agent" / "app"
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
+        encoding="utf-8"
+    )
+    status_source = (agent_root / "routes" / "status.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
+    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert "install-container" not in candidate_source
+    assert 'capability_status: Literal["unsupported"]' in status_source
+    artifacts = [
+        path.relative_to(repository_root)
+        for root in (repository_root / "compose", repository_root / "deploy")
+        if root.exists()
+        for path in root.rglob("*")
+        if path.is_file()
+        and "home-assistant" in path.name.lower()
+        and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
+    ]
+    assert artifacts == []

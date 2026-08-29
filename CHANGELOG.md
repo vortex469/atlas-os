@@ -6,6 +6,34 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.30 P0–P5 — Operator-Controlled Delivery Enablement
+
+- Selected Atlas v0.30 **Operator-Controlled Delivery Enablement** and froze
+  the documentation-only [v1 planning
+  contract](docs/architecture/operator-controlled-delivery-enablement-v1.md).
+- Defined exact closed create/linkage/record/result/status/error/audit schemas,
+  fixed operator-confirmation wording, owner/authz rules, inherited v0.29
+  freshness/expiry, permanent idempotency/no-replay, redaction, default-off
+  API/UI boundaries, P0–P5 scope, threats, goldens, and must-not-change rules.
+- V0.30 P0 changes planning documents only. Delivery activation, Agent calls,
+  transport/credential loading, dispatch, worker/workflow/runtime/process work,
+  installation, provider/repository/in-guest mutation, deployment, rollback,
+  enablement consumption, and Home Assistant artifacts remain prohibited.
+- P1 added closed immutable models, canonical domain-separated fingerprints,
+  fixed confirmation and authority fields, lifecycle derivation, and pure
+  same-owner v0.20–v0.29 linkage validation.
+- P2 added the explicitly constructed evidence service and bounded append-only
+  owner-scoped store with permanent atomic reservations, exact retry/no-replay,
+  quotas, restart durability, and fail-closed corruption handling.
+- P3 added only guarded create/list/item-read Core routes with dedicated
+  permissions, mutation protections, strict parsing/bounds, ownership
+  isolation, sanitized errors, and exact OpenAPI/method limits.
+- P4 added strict Mission Control parsing and evidence-only creation/review of
+  lifecycle, expiry, linkage, fingerprints, audit, and fixed-false authority.
+- P5 locks concurrency and permanent no-replay, zero downstream consumers,
+  exact Core and Mission Control surfaces, capability parity, and Home
+  Assistant's blocked state. P5 adds tests and release documentation only.
+
 #### v0.29 P0–P5 — Controlled Delivery Activation Preflight
 
 - Selected Atlas v0.29 **Controlled Delivery Activation Preflight** and froze

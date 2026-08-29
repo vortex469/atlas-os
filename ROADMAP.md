@@ -1423,7 +1423,69 @@ live authenticated transport and receipt, atomic consumption, execution
 approval and runtime authority, all target effects, deployment, rollback, and
 Home Assistant installation remain blocked.
 
-## 19. Explicitly deferred work
+## 19. Completed v0.30 plan — Operator-Controlled Delivery Enablement
+
+Atlas v0.30 is **Operator-Controlled Delivery Enablement**. Its normative P0
+contract is [Operator-Controlled Delivery Enablement
+v1](docs/architecture/operator-controlled-delivery-enablement-v1.md). P0–P5
+are complete.
+
+The narrow boundary is one explicit, authenticated, owner-bound confirmation
+over a still-eligible v0.29 preflight and its exact v0.20–v0.29 lineage. V0.30
+preserves a short-lived `operator_enabled_for_later_delivery_consideration`
+record. Operator-enabled is not activated, sent, delivery-authorized,
+execution-admitted, installed, or deployed.
+
+### P0 — Enablement contract and threat model — complete
+
+Freeze exact schemas, linkage, fixed confirmation wording, fingerprints,
+ownership/authz, inherited freshness/expiry, permanent idempotency/no-replay,
+redaction/audit, default-off API/UI, authority, threats, goldens, and
+must-not-change contracts. Change planning documentation only.
+
+### P1 — Closed models and pure validation — complete
+
+Implement immutable models and pure exact v0.20–v0.29 linkage, confirmation,
+fingerprint, and lifecycle validation over injected values/time. Add no I/O,
+store, route, client, registration, or side effect.
+
+### P2 — Bounded append-only enablement evidence — complete
+
+Implement the explicitly constructed local service and independent owner-scoped
+append-only store with atomic permanent reservations, exact retry/no-replay,
+quotas, corruption/ambiguity closure, and current reads. Add no consumer.
+
+### P3 — Authenticated Core-local API — complete
+
+Add only guarded create/list/item-read with narrow permissions, mutation
+protections, strict bounds/parsing, ownership, redaction, exact OpenAPI/methods,
+and default-off injected construction. Add no Agent or runtime dependency.
+
+### P4 — Mission Control enablement evidence review — complete
+
+Add the exact two-step **Enable exact delivery for later consideration only**
+confirmation and read-only status/linkage/audit display. Add no activation,
+send, delivery, execution, installation, deployment, rollback, or navigation.
+
+### P5 — Isolation, no-replay, and release closure — complete
+
+Prove confirmation/linkage/fingerprint sensitivity, expiry, ownership/authz,
+concurrency/ambiguity/corruption, exact retry, API/UI bounds, zero consumers,
+zero Agent/transport/secret/runtime registration, capability parity, prior
+goldens, and full regressions. Add tests/release evidence only.
+
+The exact v0.30 authority is revalidating one current same-owner v0.29
+preflight and creating/listing/reading bounded durable operator-enable evidence
+that expires with that preflight. A later release may require this record as
+one prerequisite for separately designed atomic activation and delivery.
+
+V0.30 does not activate, authorize, send, deliver, consume, or invoke Agent;
+register transport; load secrets; dispatch; start a worker/workflow; run
+Docker/Podman/shell/process/container work; install; mutate provider,
+repository, or guest state; deploy; roll back; or create a Home Assistant
+artifact. All those capabilities remain blocked.
+
+## 20. Explicitly deferred work
 
 - durable execution-candidate generation and install-container execution;
 - executable Core install-container authority and Core-to-Agent dispatch;
@@ -1434,7 +1496,7 @@ Home Assistant installation remain blocked.
 - distributed orchestration; and
 - general VM/container lifecycle management.
 
-## 20. Uncommitted future directions
+## 21. Uncommitted future directions
 
 The following remain uncommitted directions, not commitments:
 

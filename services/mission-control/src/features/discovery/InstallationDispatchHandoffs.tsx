@@ -5,6 +5,7 @@ import { dispatchHandoffIdempotencyKey, getInstallationDispatchHandoff, listInst
 import type { InstallationDispatchHandoffV1 } from "../../types/installationDispatchHandoff";
 import type { InstallationExecutionRequestV1 } from "../../types/installationExecutionRequest";
 import { DeliveryActivationPreflights } from "./DeliveryActivationPreflights";
+import { DeliveryEnablements } from "./DeliveryEnablements";
 
 export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: { executionRequests: InstallationExecutionRequestV1[]; csrfToken: string | null }) {
     const [handoffs, setHandoffs] = useState<InstallationDispatchHandoffV1[]>([]);
@@ -74,6 +75,7 @@ export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: {
         </section>}
         {reviewed && <HandoffDetails handoff={reviewed} />}
         <DeliveryActivationPreflights csrfToken={csrfToken} />
+        <DeliveryEnablements csrfToken={csrfToken} />
     </section>;
 }
 
