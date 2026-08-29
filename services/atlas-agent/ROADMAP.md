@@ -49,3 +49,18 @@ historical. An old “next checkpoint” is not current work.
 Broader knowledge inputs, additional execution intents, performance evidence,
 and distributed orchestration require future explicit planning and authority
 review. This document does not name a next checkpoint or invent new Agent work.
+
+## Selected v0.27 planning boundary
+
+Atlas v0.27 selects the documentation-only **Real Agent Intake Boundary**. Its
+normative contract is
+[Real Agent Intake Boundary v1](../../docs/architecture/real-agent-intake-boundary-v1.md).
+P0 freezes an authenticated, evidence-only intake request, admission result,
+seven-release linkage, one-envelope no-replay, and a dormant internal route.
+
+P1–P5 may later implement isolated models, an explicitly constructed admission
+service, one bounded append-only evidence store, and a route factory used only
+by tests. Production Agent registration, settings, credentials, OpenAPI, Core
+delivery, CLI, UI, workflow/worker/runtime coupling, and every target effect
+remain prohibited in v0.27. `install-container` remains unsupported and absent
+from executable intent/capability registries.
