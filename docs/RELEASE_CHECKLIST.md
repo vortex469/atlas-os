@@ -41,10 +41,12 @@ validation started from `2710b66`.
 
 ### P5 observed validation evidence
 
-- [x] P5 validation closure commit subject:
-  `test(v0.27): close real agent intake boundary` (this commit).
+- [x] P5 validation closure commit:
+  `2746814 test(v0.27): close real agent intake boundary`.
 - [x] Both requested Core and Agent `rc1-python-ruff-gate` commands passed.
 - [x] Focused Core release-isolation validation passed: 41 tests.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `2949 passed, 176 warnings in 175.35s (0:02:55)`.
 - [x] Full Agent regression validation passed: 1,016 tests.
 - [x] Mission Control passed 517 tests, lint, and production build. Lint
   retained the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning
@@ -56,7 +58,8 @@ validation started from `2710b66`.
 
 ### Final release actions
 
-- [ ] Record the exact reviewed implementation/validation SHA after P5 review.
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `274681422eb2b3ae392c3283d15c3d96f760c0cb`.
 - [ ] The tracked worktree is clean at the final release commit.
 - [ ] Create the immutable annotated `atlas-v0.27.0` tag.
 - [ ] Push the final release branch and `atlas-v0.27.0` tag to `origin`.
