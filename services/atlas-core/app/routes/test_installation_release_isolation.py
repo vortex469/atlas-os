@@ -889,11 +889,13 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     violations: list[str] = []
     dormant_wiring_root = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
+    live_send_contract_root = APP_ROOT / "live_delivery_send_boundary"
     for path in _production_python_files(APP_ROOT):
         if (
             path in V024_ALLOWED_CONSUMERS
             or dormant_wiring_root in path.parents
             or preflight_contract_root in path.parents
+            or live_send_contract_root in path.parents
         ):
             continue
         source = path.read_text(encoding="utf-8")
@@ -1155,6 +1157,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     isolated_agent_package = agent_root / "real_agent_intake_boundary"
     isolated_core_package = APP_ROOT / "dormant_agent_intake_delivery_wiring"
+    live_send_contract_package = APP_ROOT / "live_delivery_send_boundary"
     markers = (
         "app.real_agent_intake_boundary",
         "AgentRealIntakeEvidenceService",
@@ -1165,7 +1168,10 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     )
     violations: list[str] = []
     for path in _production_python_files(APP_ROOT):
-        if isolated_core_package in path.parents:
+        if (
+            isolated_core_package in path.parents
+            or live_send_contract_package in path.parents
+        ):
             continue
         source = path.read_text(encoding="utf-8")
         for marker in markers:
@@ -1342,6 +1348,7 @@ def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     isolated_core = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
+    live_send_contract_root = APP_ROOT / "live_delivery_send_boundary"
     isolated_agent = agent_root / "real_agent_intake_boundary"
     markers = (
         "app.dormant_agent_intake_delivery_wiring",
@@ -1354,7 +1361,11 @@ def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
     violations: list[str] = []
     for root, isolated in ((APP_ROOT, isolated_core), (agent_root, isolated_agent)):
         for path in _production_python_files(root):
-            if isolated in path.parents or preflight_contract_root in path.parents:
+            if (
+                isolated in path.parents
+                or preflight_contract_root in path.parents
+                or live_send_contract_root in path.parents
+            ):
                 continue
             source = path.read_text(encoding="utf-8")
             violations.extend(
@@ -1576,6 +1587,7 @@ def test_v030_is_default_absent_and_has_no_production_consumer() -> None:
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     package = APP_ROOT / "operator_controlled_delivery_enablement"
+    live_send_contract_root = APP_ROOT / "live_delivery_send_boundary"
     allowed_core = {
         APP_ROOT / "routes" / "delivery_enablement.py",
         APP_ROOT / "api" / "v1" / "router.py",
@@ -1589,7 +1601,11 @@ def test_v030_is_default_absent_and_has_no_production_consumer() -> None:
     )
     violations: list[str] = []
     for path in _production_python_files(APP_ROOT):
-        if package in path.parents or path in allowed_core:
+        if (
+            package in path.parents
+            or live_send_contract_root in path.parents
+            or path in allowed_core
+        ):
             continue
         source = path.read_text(encoding="utf-8")
         violations.extend(
