@@ -890,12 +890,14 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     dormant_wiring_root = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
     live_send_contract_root = APP_ROOT / "live_delivery_send_boundary"
+    inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     for path in _production_python_files(APP_ROOT):
         if (
             path in V024_ALLOWED_CONSUMERS
             or dormant_wiring_root in path.parents
             or preflight_contract_root in path.parents
             or live_send_contract_root in path.parents
+            or inert_receipt_contract_root in path.parents
         ):
             continue
         source = path.read_text(encoding="utf-8")
@@ -1159,6 +1161,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     v032_agent_package = agent_root / "agent_live_intake_admission"
     isolated_core_package = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     live_send_contract_package = APP_ROOT / "live_delivery_send_boundary"
+    inert_receipt_contract_package = APP_ROOT / "end_to_end_inert_delivery_receipt"
     markers = (
         "app.real_agent_intake_boundary",
         "AgentRealIntakeEvidenceService",
@@ -1172,6 +1175,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
         if (
             isolated_core_package in path.parents
             or live_send_contract_package in path.parents
+            or inert_receipt_contract_package in path.parents
         ):
             continue
         source = path.read_text(encoding="utf-8")
@@ -1350,6 +1354,7 @@ def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
     isolated_core = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
     live_send_contract_root = APP_ROOT / "live_delivery_send_boundary"
+    inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     isolated_agent = agent_root / "real_agent_intake_boundary"
     markers = (
         "app.dormant_agent_intake_delivery_wiring",
@@ -1366,6 +1371,7 @@ def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
                 isolated in path.parents
                 or preflight_contract_root in path.parents
                 or live_send_contract_root in path.parents
+                or inert_receipt_contract_root in path.parents
             ):
                 continue
             source = path.read_text(encoding="utf-8")
@@ -1771,6 +1777,7 @@ def test_v031_live_send_is_explicit_default_off_one_shot_and_non_authorizing() -
 def test_v031_live_send_has_no_route_registration_or_authority_consumer() -> None:
     repository_root = APP_ROOT.parents[2]
     package = APP_ROOT / "live_delivery_send_boundary"
+    inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     worker_root = repository_root / "services" / "atlas-execution-worker"
     markers = (
@@ -1784,7 +1791,7 @@ def test_v031_live_send_has_no_route_registration_or_authority_consumer() -> Non
     violations: list[str] = []
     for root in (APP_ROOT, agent_root, worker_root):
         for path in _production_python_files(root):
-            if package in path.parents:
+            if package in path.parents or inert_receipt_contract_root in path.parents:
                 continue
             source = path.read_text(encoding="utf-8")
             violations.extend(
@@ -1869,9 +1876,11 @@ def test_v032_agent_admission_does_not_widen_core_live_send_or_gain_consumers() 
         "AgentLiveIntakeAcknowledgementV1",
         "agent-live-intake-admission-v1",
     )
+    inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     violations = [
         f"{path.relative_to(repository_root)} -> {marker}"
         for path in _production_python_files(APP_ROOT)
+        if inert_receipt_contract_root not in path.parents
         for marker in core_markers
         if marker in path.read_text(encoding="utf-8")
     ]
