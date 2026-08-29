@@ -64,10 +64,13 @@ P5 validation started from `1957d1774436055ebc6f87732e51101c555a9203`.
 
 - [x] Record the exact reviewed implementation/validation SHA after P5 review:
   `ff9beae22c541334c27c6b0fe6c5c81fdc5680e2`.
-- [ ] Confirm the tracked worktree is clean at the final release-preparation
-  commit.
-- [ ] Create the immutable annotated `atlas-v0.30.0` tag.
-- [ ] Push the final release branch and `atlas-v0.30.0` tag to `origin`.
+- [x] Final release-preparation commit:
+  `9fe2f9e9b8d3e7332abaa013fb5893beb916f290 docs(v0.30): prepare release checklist`.
+- [x] Confirmed the tracked worktree was clean at the final
+  release-preparation commit.
+- [x] Created the immutable annotated `atlas-v0.30.0` tag targeting
+  `9fe2f9e9b8d3e7332abaa013fb5893beb916f290`.
+- [x] Pushed the final release branch and `atlas-v0.30.0` tag to `origin`.
 - [ ] Publish the Atlas v0.30 release as `atlas-v0.30.0`.
 
 ## Atlas v0.29 P0–P5 Controlled Delivery Activation Preflight — complete
