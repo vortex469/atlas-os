@@ -1464,6 +1464,7 @@ def test_v029_is_default_absent_from_production_construction_and_has_no_consumer
     allowed_core = {
         APP_ROOT / "routes" / "delivery_activation_preflight.py",
         APP_ROOT / "api" / "v1" / "router.py",
+        APP_ROOT / "operator_controlled_delivery_enablement" / "contract.py",
     }
     markers = (
         "DeliveryActivationPreflightResultV1",
