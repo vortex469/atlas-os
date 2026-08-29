@@ -60,9 +60,12 @@ validation started from `2710b66`.
 
 - [x] Record the exact reviewed implementation/validation SHA after P5 review:
   `274681422eb2b3ae392c3283d15c3d96f760c0cb`.
-- [ ] The tracked worktree is clean at the final release commit.
-- [ ] Create the immutable annotated `atlas-v0.27.0` tag.
-- [ ] Push the final release branch and `atlas-v0.27.0` tag to `origin`.
+- [x] Final release-preparation commit:
+  `d0a36dd docs(v0.27): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release-preparation commit.
+- [x] Created the immutable annotated `atlas-v0.27.0` tag targeting
+  `d0a36dd41eeec7a04acf500a3c21cfd98b882d4e`.
+- [x] Pushed the final release branch and `atlas-v0.27.0` tag to `origin`.
 - [ ] Publish the Atlas v0.27 release as `atlas-v0.27.0`.
 
 ## Atlas v0.26 P0–P5 Simulated Handoff Delivery — complete
