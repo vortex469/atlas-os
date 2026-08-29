@@ -57,10 +57,12 @@ P5 validation started from `701d6ba9e675816ec1ccca5d7260c5930f8da984`.
 
 - [x] Record the exact reviewed implementation/validation SHA after P5 review:
   `5b53a48ab2c27e19c66044c633e8d6dae25e471e`.
-- [ ] Prepare the final release checklist commit.
-- [ ] Confirm the tracked worktree is clean at the final release commit.
-- [ ] Create immutable annotated tag `atlas-v0.28.0` at the reviewed commit.
-- [ ] Push the final release branch and `atlas-v0.28.0` tag to `origin`.
+- [x] Final release-preparation commit:
+  `c95d580 docs(v0.28): prepare release checklist`.
+- [x] The tracked worktree was clean at the final release-preparation commit.
+- [x] Created the immutable annotated `atlas-v0.28.0` tag targeting
+  `c95d580b3cdc9d4cb52d2cfe3e7b764506c2ae9c`.
+- [x] Pushed the final release branch and `atlas-v0.28.0` tag to `origin`.
 - [ ] Publish the Atlas v0.28 release as `atlas-v0.28.0`.
 
 ## Atlas v0.27 P0–P5 Real Agent Intake Boundary — complete
