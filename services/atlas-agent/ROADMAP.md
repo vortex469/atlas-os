@@ -52,15 +52,16 @@ review. This document does not name a next checkpoint or invent new Agent work.
 
 ## Selected v0.27 planning boundary
 
-Atlas v0.27 selects the documentation-only **Real Agent Intake Boundary**. Its
+Atlas v0.27 selects the **Real Agent Intake Boundary**. Its
 normative contract is
 [Real Agent Intake Boundary v1](../../docs/architecture/real-agent-intake-boundary-v1.md).
 P0 freezes an authenticated, evidence-only intake request, admission result,
 seven-release linkage, one-envelope no-replay, and a dormant internal route.
 
-P1–P5 may later implement isolated models, an explicitly constructed admission
-service, one bounded append-only evidence store, and a route factory used only
-by tests. Production Agent registration, settings, credentials, OpenAPI, Core
-delivery, CLI, UI, workflow/worker/runtime coupling, and every target effect
-remain prohibited in v0.27. `install-container` remains unsupported and absent
-from executable intent/capability registries.
+P1–P3 implement isolated models, an explicitly constructed default-disabled
+admission service, and one bounded append-only evidence store. P3 deliberately
+adds no route or command surface; the isolated test-only dormant route factory
+remains deferred to P4. Production Agent registration, settings, credentials,
+OpenAPI, Core delivery, CLI, UI, workflow/worker/runtime coupling, and every
+target effect remain prohibited in v0.27. `install-container` remains
+unsupported and absent from executable intent/capability registries.

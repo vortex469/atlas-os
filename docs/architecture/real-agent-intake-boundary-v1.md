@@ -1,6 +1,13 @@
 # Real Agent Intake Boundary v1 planning contract
 
-Status: **Atlas v0.27 P0 selected; documentation only**.
+Status: **Atlas v0.27 contract frozen; P0–P3 implemented through bounded
+evidence custody; P4–P5 remain planned**.
+
+Implementation through P3 adds only isolated closed models, pure validation,
+an explicitly constructed default-disabled evidence service, and the bounded
+append-only Agent admission store. P3 adds no HTTP/OpenAPI route factory,
+command, production registration, setting, credential, Core consumer, or live
+delivery listener. The dormant test-only route factory remains deferred to P4.
 
 This document freezes the narrowest guarded Agent boundary that may later
 receive one authentic Core delivery of the exact released installation handoff
@@ -369,21 +376,21 @@ linkage, authentication/authorization, ownership, identity, freshness,
 lifecycle, idempotency/no-replay, redaction, evidence, dormant-API, authority,
 golden, and must-not-change rules. P0 changes planning documentation only.
 
-### P1 — Closed models and pure validation — planned
+### P1 — Closed models and pure validation — implemented
 
 Implement isolated immutable models, strict parsing, canonical fingerprints,
 lifecycle derivation, failure precedence, and hostile-input tests. Perform no
 I/O, persistence, application registration, network, process, runtime,
 provider, repository, guest, worker, or workflow action.
 
-### P2 — Authenticated admission service — planned
+### P2 — Authenticated admission service — implemented
 
 Implement an explicitly constructed service over injected authenticated Core
 principal, operator assertion, trusted clock, local v0.25/v0.26 evidence
 readers, and admission-store port. Validate only and return the closed result.
 It cannot resolve Core, a target, repository, runtime, worker, or executor.
 
-### P3 — Bounded intake evidence store — planned
+### P3 — Bounded intake evidence store — implemented
 
 Implement only the independent append-only store, atomic reservations, exact
 idempotency, one-envelope no-replay, quotas, restart durability, owned reads,

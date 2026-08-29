@@ -1199,7 +1199,7 @@ installation remain blocked.
 Atlas v0.27 is **Real Agent Intake Boundary**. Its normative P0 contract is
 [Real Agent Intake Boundary
 v1](docs/architecture/real-agent-intake-boundary-v1.md). P0 is selected and is
-documentation only; P1–P5 are planned, not implemented.
+documentation only. P1–P3 are implemented; P4–P5 remain planned.
 
 The narrow boundary accepts one authenticated Core request only when explicitly
 constructed, validates the complete exact v0.20–v0.26 chain, and preserves one
@@ -1214,22 +1214,27 @@ linkage, authentication/authorization, ownership, identity, freshness,
 lifecycle, idempotency/no-replay, evidence/redaction, dormant API, authority,
 golden, and must-not-change contracts. Change planning documentation only.
 
-### P1 — Closed models and pure validation — planned
+### P1 — Closed models and pure validation — implemented
 
 Implement isolated immutable values, canonical fingerprints, lifecycle and
 hostile-input validation with no I/O, registration, or side effects.
 
-### P2 — Authenticated evidence-only admission — planned
+### P2 — Authenticated evidence-only admission — implemented
 
 Implement an explicitly constructed service over an injected fixed Core
 principal, operator assertion, trusted clock, local v0.25/v0.26 evidence
 readers, and admission-store port. It validates and admits evidence only.
 
-### P3 — Bounded intake evidence store — planned
+### P3 — Bounded intake evidence store — implemented
 
 Implement the independent append-only Agent store with atomic reservations,
 exact idempotency, one-envelope no-replay, quotas, restart durability, owned
 reads, and fail-closed ambiguity/corruption. Add no authority consumer.
+
+P3 adds no HTTP/OpenAPI route, route factory, command, production application
+or container registration, setting, credential, Core consumer, or live
+delivery listener. The explicitly constructed test-only dormant route factory
+remains P4 work.
 
 ### P4 — Dormant route factory and offline goldens — planned
 
