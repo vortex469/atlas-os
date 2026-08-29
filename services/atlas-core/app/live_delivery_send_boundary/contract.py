@@ -430,6 +430,46 @@ class LiveDeliverySendAuditEvidenceV1(ContractModel):
         return self
 
 
+class LiveDeliverySendOperationResultV1(ContractModel):
+    disposition: Literal["reserved", "exact_replay", "rejected", "unavailable"]
+    attempt: LiveDeliverySendAttemptV1 | None
+    receipt: LiveDeliverySendReceiptV1 | None
+    status: LiveDeliverySendStatusV1 | None
+    audit_evidence: LiveDeliverySendAuditEvidenceV1 | None
+    error: LiveDeliverySendRedactedErrorV1 | None
+    default_enabled: Literal[False] = False
+    network_attempted: Literal[False] = False
+    one_shot_only: Literal[True] = True
+    execution_attempted: Literal[False] = False
+    installation_attempted: Literal[False] = False
+    worker_attempted: Literal[False] = False
+    workflow_attempted: Literal[False] = False
+    deployment_attempted: Literal[False] = False
+    mutation_attempted: Literal[False] = False
+    replay_allowed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact_result(self):
+        success = self.disposition in {"reserved", "exact_replay"}
+        if success != (
+            self.attempt is not None
+            and self.status is not None
+            and self.audit_evidence is not None
+            and self.error is None
+        ):
+            raise ValueError("operation disposition and values disagree")
+        if success and self.receipt is not None:
+            raise ValueError("P2 reservation result cannot contain a receipt")
+        if not success and any(
+            value is not None
+            for value in (self.attempt, self.receipt, self.status, self.audit_evidence)
+        ):
+            raise ValueError("failed operation cannot contain evidence")
+        if not success and self.error is None:
+            raise ValueError("failed operation requires one redacted error")
+        return self
+
+
 def create_send_attempt(create, *, evidence, configuration, send_attempt_id: str,
                         created_at: str, idempotency_key: str):
     exact_create = LiveDeliverySendCreateV1.model_validate(create.model_dump(mode="python"))
