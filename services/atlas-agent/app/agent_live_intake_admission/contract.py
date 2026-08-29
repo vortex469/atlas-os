@@ -527,11 +527,28 @@ def envelope_fingerprint(value: Any) -> FingerprintV1:
 
 def admission_fingerprint(value: Any) -> FingerprintV1:
     raw = _without(value, "admission_fingerprint")
+    raw = {
+        "schema": "agent-live-intake-admission-v1",
+        "status": "admitted_for_evidence_only",
+        "statement": "agent_admitted_authenticated_live_delivery_evidence_only",
+        "delivery_received": True,
+        "evidence_admission_granted": True,
+        **_false_authority(),
+        **raw,
+    }
     return _fingerprint("atlas:agent-live-intake-admission:v1", {"operator_id": raw["operator_id"], "admission": raw})
 
 
 def acknowledgement_fingerprint(value: Any) -> FingerprintV1:
-    return _fingerprint("atlas:agent-live-intake-acknowledgement:v1", _without(value, "acknowledgement_fingerprint"))
+    raw = _without(value, "acknowledgement_fingerprint")
+    raw = {
+        "schema": "agent-live-intake-acknowledgement-v1",
+        "status": "admitted_for_evidence_only",
+        "provenance": "authenticated_core_live_intake_evidence_only",
+        **_false_authority(),
+        **raw,
+    }
+    return _fingerprint("atlas:agent-live-intake-acknowledgement:v1", raw)
 
 
 def record_fingerprint(value: Any) -> FingerprintV1:
