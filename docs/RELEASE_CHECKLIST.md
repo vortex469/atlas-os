@@ -38,9 +38,13 @@ P5 validation started from `701d6ba9e675816ec1ccca5d7260c5930f8da984`.
 
 ### P5 observed validation evidence
 
+- [x] P5 validation closure commit:
+  `5b53a48 test(v0.28): close dormant delivery wiring`.
 - [x] Both requested Core and Agent `rc1-python-ruff-gate` commands passed.
 - [x] Focused Core release-isolation and dormant-wiring validation passed:
   92 tests.
+- [x] Full Atlas Core suite passed in a clean environment:
+  `3000 passed, 186 warnings in 180.28s (0:03:00)`.
 - [x] Full Agent regression validation passed: 1,016 tests.
 - [x] Mission Control passed 522 tests, lint, and production build. Lint retained
   the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning and reported
@@ -51,7 +55,8 @@ P5 validation started from `701d6ba9e675816ec1ccca5d7260c5930f8da984`.
 
 ### Final release actions
 
-- [ ] Record the exact reviewed implementation/validation SHA after P5 review.
+- [x] Record the exact reviewed implementation/validation SHA after P5 review:
+  `5b53a48ab2c27e19c66044c633e8d6dae25e471e`.
 - [ ] Prepare the final release checklist commit.
 - [ ] Confirm the tracked worktree is clean at the final release commit.
 - [ ] Create immutable annotated tag `atlas-v0.28.0` at the reviewed commit.
