@@ -1355,8 +1355,8 @@ controls, and Home Assistant installation remain blocked.
 
 Atlas v0.29 is **Controlled Delivery Activation Preflight**. Its normative P0
 contract is [Controlled Delivery Activation Preflight
-v1](docs/architecture/delivery-activation-preflight-v1.md). P0 is selected and
-documentation-only; P1–P5 are planned.
+v1](docs/architecture/delivery-activation-preflight-v1.md). P0 through P5 are
+implemented and validated.
 
 The narrow boundary is a Core-local, operator-owned eligibility snapshot over
 one exact v0.28 `not_sent` preparation and its complete v0.20–v0.27 lineage.
@@ -1371,33 +1371,33 @@ lifecycle values, ownership, authentication/authorization, freshness/expiry,
 idempotency/no-replay, redaction/audit, default-disabled API/UI, authority,
 goldens, and must-not-change contracts. Change planning documentation only.
 
-### P1 — Closed models and pure evaluation — planned
+### P1 — Closed models and pure evaluation — complete
 
 Implement isolated immutable Core models and pure validation of the complete
 same-owner v0.20–v0.28 chain over injected values and time. Add no I/O,
 registration, store, route, or side effect.
 
-### P2 — Bounded append-only preflight evidence — planned
+### P2 — Bounded append-only preflight evidence — complete
 
 Implement an explicitly constructed evaluator and independent operator-scoped
 append-only store with atomic reservations, exact retry/no-replay, quotas,
 restart durability, fail-closed ambiguity/corruption, and owned reads. Add no
 consumer or activation bridge.
 
-### P3 — Authenticated Core-local API — planned
+### P3 — Authenticated Core-local API — complete
 
 Add only guarded create/list/item-read with narrow authz, exact bounds,
 redaction, OpenAPI/method isolation, and default-disabled registration. The
 request path must not contact Agent or reach secrets, transport, runtime,
 worker, workflow, dispatch, provider, repository, or guest modules.
 
-### P4 — Mission Control evidence review — planned
+### P4 — Mission Control evidence review — complete
 
 Add explicit local-preflight confirmation and read-only temporary eligibility
 or blocker presentation. Add no activation, delivery, execution, installation,
 deployment, rollback, endpoint, credential, Agent, or workflow control.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove linkage, freshness/expiry, ownership/authz, concurrency, ambiguity,
 redaction, exact retry/no-replay, API/UI bounds, zero Agent contact, zero
@@ -1405,8 +1405,13 @@ transport/secret/runtime registration, zero consumers, prior goldens,
 capability parity, and full regressions. Do not automatically migrate, tag,
 push, publish, deploy, or release.
 
-The exact v0.29 authority is local evidence evaluation and, if implemented by
-the planned contract, durable operator-owned preflight create/list/item read.
+P5 locks the evidence-only service/store, exact guarded Core route surface,
+zero production construction and downstream consumers, zero Agent awareness,
+Mission Control's evidence-only create/read presentation, capability parity,
+and Home Assistant's blocked state. P5 adds tests and release evidence only.
+
+The exact v0.29 authority is local evidence evaluation and durable
+operator-owned preflight create/list/item read.
 V0.29 must not activate delivery, send to Agent, register production transport
 or the Agent route, load credentials or secrets, invoke a worker/workflow/
 dispatch/runtime/process, mutate provider/repository/in-guest state, install,

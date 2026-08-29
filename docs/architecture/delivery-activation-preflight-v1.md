@@ -1,6 +1,6 @@
 # Controlled Delivery Activation Preflight v1 planning contract
 
-Status: **Atlas v0.29 P0 selected; documentation only**.
+Status: **Atlas v0.29 P0–P5 implemented and validated**.
 
 This document freezes the narrowest Core-local boundary that can answer one
 question: whether one exact dormant v0.28 Core-to-Agent delivery preparation is
@@ -332,14 +332,14 @@ idempotency/no-replay, durable-evidence option, redaction/audit, default-
 disabled API/UI boundary, threats, goldens, authority, and must-not-change
 contracts. Change planning documentation only.
 
-### P1 — Closed models and pure evaluation — planned
+### P1 — Closed models and pure evaluation — complete
 
 Implement isolated immutable Core models, canonical fingerprints, complete
 v0.20–v0.28 linkage validation, deterministic decision/lifecycle derivation,
 and hostile-input tests over injected values and time. Add no I/O, store,
 route, client, registration, or side effect.
 
-### P2 — Bounded append-only preflight evidence — planned
+### P2 — Bounded append-only preflight evidence — complete
 
 Implement the explicitly constructed evaluator over injected owner-scoped
 readers, trusted clock, ID factory, and independent store. Add atomic
@@ -347,7 +347,7 @@ reservations, exact retry, restart durability, quotas, owned reads, and
 fail-closed ambiguity/corruption. It may create/read durable preflight evidence
 only; add no consumer or activation bridge.
 
-### P3 — Authenticated Core-local API — planned
+### P3 — Authenticated Core-local API — complete
 
 Add only guarded create/list/item-read, preserving exact authn/authz, bounds,
 OpenAPI, redaction, methods, default-disabled registration, and dependency
@@ -355,14 +355,14 @@ isolation. The request path must never load live secrets, invoke Agent, or
 reach transport, runtime, worker, workflow, dispatch, provider, repository, or
 guest modules.
 
-### P4 — Mission Control evidence review — planned
+### P4 — Mission Control evidence review — complete
 
 Add explicit local-preflight confirmation and read-only evidence presentation
 with expiry and non-authority language. Lock out activation, delivery,
 execution, installation, deployment, rollback, credential, endpoint, Agent,
 workflow, and action-navigation controls. Keep Home Assistant blocked.
 
-### P5 — Isolation, no-replay, and release closure — planned
+### P5 — Isolation, no-replay, and release closure — complete
 
 Prove full linkage and fingerprint sensitivity, state precedence, freshness,
 expiry, ownership, authz, concurrency/restart/ambiguity, quotas, corruption,
@@ -370,6 +370,13 @@ redaction, exact retry/no-replay, API/UI bounds, default-disabled posture, zero
 Agent contact and transport/secret/runtime registration, zero consumers,
 capability parity, prior goldens, and full regressions. Add no migration, tag,
 push, publication, deployment, or release automatically.
+
+P5 closure proves the Core service/store remains append-only evidence with no
+authority bridge; production constructs no preflight service; Agent has no
+preflight consumer or registration; Core exposes only guarded create/list/item
+read; Mission Control has no prohibited action/navigation/mutation surface;
+and Home Assistant remains blocked without a deployment artifact. P5 changes
+tests and release evidence only.
 
 ## Exact authority boundary
 

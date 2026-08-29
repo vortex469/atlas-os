@@ -3,10 +3,11 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.29 P0 Controlled Delivery Activation Preflight — selected
+## Atlas v0.29 P0–P5 Controlled Delivery Activation Preflight — complete
 
-Atlas v0.29 is **Controlled Delivery Activation Preflight**. P0 is the
-documentation-only frozen [v1 contract](architecture/delivery-activation-preflight-v1.md).
+Atlas v0.29 is **Controlled Delivery Activation Preflight**. P0–P5 are complete
+from the frozen [v1 contract](architecture/delivery-activation-preflight-v1.md).
+P5 validation started from `70faa4bb69206d332d037914464f22c66f651ce4`.
 
 - [x] Inspect current `main` after the released `atlas-v0.28.0` boundary.
 - [x] Freeze exact request/result/linkage schemas and deterministic fingerprint.
@@ -19,11 +20,44 @@ documentation-only frozen [v1 contract](architecture/delivery-activation-preflig
 - [x] Keep P0 planning-only: no runtime, route, store, UI, Agent contact,
   transport, secret, command, mutation, installation, deployment, rollback, or
   Home Assistant artifact change.
-- [ ] P1 — closed models and pure evaluation.
-- [ ] P2 — bounded append-only preflight evidence.
-- [ ] P3 — authenticated Core-local create/list/item-read API.
-- [ ] P4 — Mission Control evidence review.
-- [ ] P5 — isolation, no-replay, regressions, and release closure.
+- [x] P1 — closed models, fingerprints, pure evaluation, and exact injected
+  same-owner v0.20–v0.28 linkage validation.
+- [x] P2 — bounded append-only preflight evidence with permanent reservations,
+  exact retry/no-replay, quotas, corruption closure, and owned reads.
+- [x] P3 — authenticated Core-local create/list/item-read API with narrow
+  permissions, mutation gates, strict parsing, ownership, and redaction.
+- [x] P4 — Mission Control strict client and non-authorizing status, linkage,
+  expiry, fingerprint, audit, and fixed-false authority review.
+- [x] P5 — isolation, no-replay, regressions, capability parity, Home Assistant
+  blocking, and release closure.
+
+### P5 authority and isolation gates
+
+- [x] Keep the service/store durable-evidence-only, append-only,
+  default-disabled/default-absent, non-activating, non-sending, and without an
+  activation or downstream-consumption method.
+- [x] Keep Core limited to guarded create/list/item-read and exclude every
+  activate/send/deliver/execute/deploy sibling method or route.
+- [x] Keep Agent calls, transport/route registration, credential loading,
+  dispatch, worker/workflow/runtime, provider/repository/in-guest mutation,
+  candidate execution, deployment, rollback, and replay-bypass consumers absent.
+- [x] Keep Mission Control limited to strict reads and the explicit v0.29
+  evidence-create call, with no prohibited control, navigation, or mutation.
+- [x] Preserve Home Assistant as blocked, non-installable, non-executable, and
+  without a deployment artifact.
+
+### P5 observed validation evidence
+
+- [x] P5 validation started from P4 commit `70faa4b`.
+- [x] Both requested Core and Agent Ruff gates passed.
+- [x] Focused Core release-isolation and route validation passed: 55 tests.
+- [x] Full Agent regression validation passed: 1,018 tests.
+- [x] Mission Control passed 530 tests, lint, and production build. Lint retained
+  the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning and no errors;
+  build retained only the existing chunk-size advisory.
+- [x] `git diff --check` passed before the closure commit.
+- [x] P5 changes only isolation/authority tests and the four release documents.
+- [x] No migration, tag, push, release, deployment, or rollback was performed.
 
 ## Atlas v0.28 P0–P5 Dormant Core-to-Agent Delivery Wiring — complete
 

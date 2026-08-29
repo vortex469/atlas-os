@@ -10,6 +10,7 @@ CORE_APP_ROOT = REPOSITORY_ROOT / "services" / "atlas-core" / "app"
 ALLOWED_CORE_EVIDENCE_ROOTS = (
     CORE_APP_ROOT / "installation_handoff_simulated_delivery",
     CORE_APP_ROOT / "dormant_agent_intake_delivery_wiring",
+    CORE_APP_ROOT / "delivery_activation_preflight",
 )
 
 V025_MARKERS = (
@@ -44,6 +45,8 @@ def test_core_and_mission_control_expose_no_v025_client_route_or_ui() -> None:
     for root, suffixes in roots:
         for path in _production_sources(root, suffixes):
             if any(allowed in path.parents for allowed in ALLOWED_CORE_EVIDENCE_ROOTS):
+                continue
+            if "deliveryactivationpreflight" in path.name.lower():
                 continue
             source = path.read_text(encoding="utf-8").lower()
             for marker in V025_MARKERS:

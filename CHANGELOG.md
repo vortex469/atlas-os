@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.29 P0 — Controlled Delivery Activation Preflight
+#### v0.29 P0–P5 — Controlled Delivery Activation Preflight
 
 - Selected Atlas v0.29 **Controlled Delivery Activation Preflight** and froze
   the documentation-only [v1 planning
@@ -20,6 +20,20 @@ release boundaries.
   dispatch/runtime/process execution, provider/repository/guest mutation,
   installation, deployment, rollback, and Home Assistant artifacts remain
   prohibited.
+- P1 added closed immutable models, canonical fingerprints, pure lifecycle and
+  complete injected same-owner v0.20–v0.28 linkage validation.
+- P2 added the explicitly constructed evaluator and bounded append-only,
+  owner-scoped durable evidence store with permanent atomic reservations,
+  exact retry/no-replay, quotas, and fail-closed readback.
+- P3 added only authenticated, authorized create/list/item-read Core routes
+  with mutation protections, strict parsing/bounds, redaction, ownership
+  isolation, and default-absent production service construction.
+- P4 added strict Mission Control API parsing and temporary, non-authorizing
+  preflight status/linkage/audit review plus an evidence-only confirmation; it
+  adds no activation, delivery, execution, installation, or deployment control.
+- P5 locks zero downstream consumers across Core and Agent, exact OpenAPI and
+  UI/mutation surfaces, append-only/no-replay posture, capability parity, and
+  Home Assistant's blocked state. P5 adds tests and release documentation only.
 
 #### v0.28 P0–P5 — Dormant Core-to-Agent Delivery Wiring
 
