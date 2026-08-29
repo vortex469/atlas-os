@@ -67,9 +67,13 @@ P5 validation started from `70faa4bb69206d332d037914464f22c66f651ce4`.
 
 - [x] Record the exact reviewed implementation/validation SHA after P5 review:
   `227e93f8e29cd308d2623e33f3d38a691ba0502f`.
-- [ ] Confirm the tracked worktree is clean at the final release commit.
-- [ ] Create the immutable annotated `atlas-v0.29.0` tag.
-- [ ] Push the final release branch and `atlas-v0.29.0` tag to `origin`.
+- [x] Final release-preparation commit:
+  `8eae3f4 docs(v0.29): prepare release checklist`.
+- [x] Confirm the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Created the immutable annotated `atlas-v0.29.0` tag targeting
+  `8eae3f4238da0eba2322b2297a97ec6aa77715bf`.
+- [x] Pushed the final release branch and `atlas-v0.29.0` tag to `origin`.
 - [ ] Publish the Atlas v0.29 release as `atlas-v0.29.0`.
 
 ## Atlas v0.28 P0–P5 Dormant Core-to-Agent Delivery Wiring — complete
