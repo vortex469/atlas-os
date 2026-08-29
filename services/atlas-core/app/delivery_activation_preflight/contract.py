@@ -340,7 +340,7 @@ class DeliveryActivationPreflightAuditEvidenceV1(ContractModel):
 PreflightErrorCodeV1 = Literal[
     "malformed", "not_found", "unauthenticated", "unauthorized",
     "linkage_mismatch", "fingerprint_mismatch", "not_current",
-    "replay_conflict", "unavailable",
+    "replay_conflict", "quota_exceeded", "unavailable",
 ]
 
 
@@ -353,6 +353,43 @@ class DeliveryActivationPreflightRedactedErrorV1(ContractModel):
     delivery_preparation_id: CanonicalUuid4 | None = None
     preparation_fingerprint: FingerprintV1 | None = None
     redacted: Literal[True] = True
+
+
+class DeliveryActivationPreflightOperationResultV1(ContractModel):
+    disposition: Literal["created", "exact_replay", "rejected", "unavailable"]
+    result: DeliveryActivationPreflightResultV1 | None
+    status: DeliveryActivationPreflightStatusV1 | None
+    audit_evidence: DeliveryActivationPreflightAuditEvidenceV1 | None
+    error: DeliveryActivationPreflightRedactedErrorV1 | None
+    default_enabled: Literal[False] = False
+    agent_contacted: Literal[False] = False
+    credentials_loaded: Literal[False] = False
+    delivery_activated: Literal[False] = False
+    delivery_authorized: Literal[False] = False
+    execution_attempted: Literal[False] = False
+    mutation_attempted: Literal[False] = False
+    replay_allowed: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact_operation_result(self) -> DeliveryActivationPreflightOperationResultV1:
+        success = self.disposition in ("created", "exact_replay")
+        if success != (
+            self.result is not None
+            and self.status is not None
+            and self.audit_evidence is not None
+            and self.error is None
+        ):
+            raise ValueError("operation disposition and values disagree")
+        if not success and (
+            self.result is not None
+            or self.status is not None
+            or self.audit_evidence is not None
+            or self.error is None
+        ):
+            raise ValueError("failed operation must contain one redacted error")
+        if self.disposition == "unavailable" and self.error and self.error.error_code != "unavailable":
+            raise ValueError("unavailable operation must contain unavailable error")
+        return self
 
 
 def evaluate_delivery_activation_preflight(
