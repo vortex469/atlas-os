@@ -3,7 +3,7 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.33 P0 End-to-End Inert Delivery Receipt — selected
+## Atlas v0.33 P0–P4 End-to-End Inert Delivery Receipt — implemented
 
 Atlas v0.33 is **End-to-End Inert Delivery Receipt**. P0 is the
 documentation-only frozen
@@ -26,10 +26,16 @@ documentation-only frozen
 - [x] Keep P0 planning-only: no runtime model/service/store/route/UI,
   credential read, network, Agent call, retry, execution, mutation, deployment,
   rollback, Home Assistant artifact, migration, tag, push, or release action.
-- [ ] P1 — closed Core receipt models and pure verification.
-- [ ] P2 — default-off durable Core verification service/store.
-- [ ] P3 — explicitly constructed one-shot end-to-end composition.
-- [ ] P4 — lock public Core API and Mission Control presentation absence.
+- [x] P1 — closed Core receipt models and pure verification
+  (`b9b39855ce4f994d42285c3de0f63925b4dd55ea`).
+- [x] P2 — default-off durable Core verification service/store
+  (`d4730f658880e31445ab1b8ed88969a6a53ab914`).
+- [x] P3 — explicitly constructed one-shot end-to-end composition
+  (`bf51afd860d4b8efe1c5014dcd16f0b8e51d1c2c`).
+- [x] P4 — lock public Core API and Mission Control presentation absence;
+  prohibit v0.33 clients/types/hooks/pages/routes/navigation, read or mutation
+  calls, verification/retry/resend/effect controls, sensitive rendering, and
+  Home Assistant exceptions without adding runtime behavior.
 - [ ] P5 — release isolation, regressions, authority closure, and evidence.
 
 ## Atlas v0.32 P0–P5 Agent Live Intake Admission — complete

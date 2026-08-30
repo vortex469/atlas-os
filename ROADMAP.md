@@ -106,12 +106,14 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
 - P0 freezes schemas, verification, fingerprints, linkage, ownership,
   transport/authentication, freshness, lifecycle, permanent no-replay,
   redaction/audit, API/UI, authority, threats, goldens, and invariants.
-- P1 adds closed immutable models and pure verification only.
-- P2 adds a default-off append-only Core verification service/store with no
+- P1 added closed immutable models and pure verification only.
+- P2 added a default-off append-only Core verification service/store with no
   network or production consumer.
-- P3 adds the explicitly constructed one-shot composition through injected
+- P3 added the explicitly constructed one-shot composition through injected
   transport/credential dependencies, with terminal ambiguity and no retry.
-- P4 keeps Mission Control and public Core API absent and locks that absence.
+- P4 keeps Mission Control and public Core API absent and now locks that
+  absence structurally, including sensitive rendering and Home Assistant
+  exceptions.
 - P5 adds isolation/regression/authority tests and release evidence only.
 
 V0.33 authority ends after one authenticated inert POST and one verified Core

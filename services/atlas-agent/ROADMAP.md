@@ -118,9 +118,9 @@ mutation. Core may explicitly make one one-shot call and verify the returned
 admission/acknowledgement into its own receipt; Core does not claim direct
 verification of Agent-local storage.
 
-P0 is documentation-only. P1–P3 may add Core-only closed verification models,
+P0 is documentation-only. P1–P3 added Core-only closed verification models,
 an append-only default-off receipt service/store, and one injected one-shot
-composition. P4 locks Mission Control and public Core API absence; P5 closes
-isolation. Installation, execution, dispatch, worker/workflow start,
+composition. P4 now locks Mission Control and public Core API absence; P5
+closes isolation. Installation, execution, dispatch, worker/workflow start,
 provider/repository/in-guest mutation, deployment, rollback, retry/resend, and
 Home Assistant artifacts remain blocked.

@@ -23,6 +23,22 @@ release boundaries.
   transport, credential read, network call, route, UI, retry, installation,
   Docker/Podman/shell/process work, worker/workflow/dispatch, mutation,
   deployment, rollback, Home Assistant artifact, tag, push, or release action.
+- P1 added strict immutable Core request, receipt-copy, verification, receipt,
+  linkage, lifecycle/status, audit, redacted-error, idempotency, fingerprint,
+  freshness, bounds, and fixed-false authority models.
+- P2 added the explicitly constructed Core verification service and bounded
+  append-only owner-scoped receipt store with permanent reservation-first
+  no-replay, exact duplicate reads, quotas, restart readback, and fail-closed
+  corruption handling. It added no route, transport, or production consumer.
+- P3 added the independently default-off one-shot internal composition through
+  injected v0.31 transport, credential, and prior-receipt dependencies. It
+  sends only the inert v0.32 envelope, preserves terminal ambiguity and zero
+  retry, and adds no public Core route or production registration.
+- P4 keeps Mission Control absent as frozen. Structural tests lock out every
+  v0.33 client, type, hook, component, page, route, navigation, read/mutation,
+  verification/polling, retry/resend/send/admit/effect control, sensitive
+  rendering, and Home Assistant exception. No API bridge or runtime behavior
+  is added.
 
 #### v0.32 P0–P5 — Agent Live Intake Admission
 

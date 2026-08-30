@@ -1,6 +1,6 @@
 # End-to-End Inert Delivery Receipt v1 planning contract
 
-Status: **Atlas v0.33 P0 selected; P1–P5 not implemented**.
+Status: **Atlas v0.33 P0–P4 implemented; P5 not implemented**.
 
 Atlas v0.33 defines the narrowest end-to-end Core-to-Agent inert delivery
 receipt. An explicitly constructed, independently default-disabled Core
@@ -328,7 +328,7 @@ transport/authentication, ownership, freshness, lifecycle, no-replay,
 redaction/audit, API/UI, authority, threat, golden, and must-not-change
 contracts. Change planning documents only.
 
-### P1 — Closed models and pure verification
+### P1 — Closed models and pure verification — implemented
 
 Add strict immutable Core models for request, verification, receipt, linkage,
 status, audit, error, and idempotency. Mirror only the frozen v0.32 wire models
@@ -336,7 +336,7 @@ needed for closed parsing. Add deterministic domain-separated fingerprints and
 pure verification. Add no service, store, route, registration, credential read,
 network, Agent behavior, or UI.
 
-### P2 — Durable Core verification service/store
+### P2 — Durable Core verification service/store — implemented
 
 Add an explicitly constructed, default-off Core service and append-only store.
 It may prepare the v0.32 envelope, validate an injected closed Agent result,
@@ -345,7 +345,7 @@ freshness, permanent reservations, exact duplicate behavior, quotas, bounds,
 restart readback, corruption failure, redaction, and fixed-false authority. Add
 no network or production consumer.
 
-### P3 — One-shot end-to-end composition
+### P3 — One-shot end-to-end composition — implemented
 
 Through only injected v0.31 transport and credential dependencies, connect one
 permanently reserved Core attempt to the exact v0.32 POST, transmit one inert
@@ -354,7 +354,7 @@ audit evidence. Preserve both independent default-off gates, bounded timeout,
 one-shot/no-retry ambiguity, and secret-free persistence. Add no public Core
 route, new Agent route, callback, scheduler, or effect consumer.
 
-### P4 — Presentation absence lock
+### P4 — Presentation absence lock — implemented
 
 Because no guarded Core receipt API/read model is frozen, add no Mission
 Control surface. Add structural absence tests for clients, hooks, types, pages,
