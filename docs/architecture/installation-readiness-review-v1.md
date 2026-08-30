@@ -1,6 +1,6 @@
 # Installation Readiness Review v1 planning contract
 
-Status: **Atlas v0.34 P0 selected; P1–P5 not implemented**.
+Status: **Atlas v0.34 P0–P1 implemented; P2–P5 not implemented**.
 
 Atlas v0.34 defines a read-only, operator-owned review of the released
 v0.20–v0.33 installation evidence chain. It answers only whether the exact
@@ -334,12 +334,20 @@ ownership/authentication, time interpretation, redaction/audit, one-GET API,
 read-only UI, authority boundary, threats, goldens, and must-not-change rules.
 Change planning documents only.
 
-### P1 — Closed models and pure review evaluation
+### P1 — Closed models and pure review evaluation — implemented
 
 Add immutable Core review/linkage/summary/audit/error models, domain-separated
 fingerprints, strict bounds, and pure evaluation over injected exact evidence.
 Add no readers, stores, routes, registration, Agent access, UI, or runtime
 composition.
+
+P1 adds the strict immutable linkage, fourteen-item summary, review, audit,
+redacted-error, response/result, and injected pure-evaluation models. It binds
+the complete v0.20–v0.33 identities, enforces owner/authentication context,
+closed readiness/blocker and freshness semantics, deterministic UUIDv5 and
+domain-separated fingerprints, bounds, redaction, fixed-false authority, and
+the blocked Home Assistant golden. It adds no service, reader, route, UI,
+persistence, external I/O, or runtime behavior.
 
 ### P2 — Owner-scoped local read composition
 

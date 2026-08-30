@@ -140,7 +140,9 @@ evidence already bound into the v0.33 chain, but it adds no Agent schema,
 reader, route, call, callback, credential access, registration, or behavior.
 Agent-local records not exported by released contracts cannot be inferred.
 
-P0 changes planning documents only. P1–P5 remain unimplemented. Installation,
+P0 changed planning documents only. P1 added Core-only closed models and pure
+review evaluation without any Agent import or behavior. P2–P5 remain
+unimplemented. Installation,
 execution, dispatch, retry/resend, Agent invocation, worker/workflow/process
 start, provider/repository/in-guest mutation, deployment, rollback, and Home
 Assistant artifacts remain blocked.

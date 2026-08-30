@@ -23,6 +23,13 @@ release boundaries.
   route, UI, persistence, credential access, Agent/network call, runtime
   behavior, Home Assistant artifact, migration, tag, push, release, or
   deployment.
+- P1 added strict immutable Core linkage, fourteen-item evidence summary,
+  readiness, blocker, audit, redacted-error, response/result, and injected
+  pure-evaluation models. It enforces exact v0.20–v0.33 identity binding,
+  owner/authentication context, freshness/expiry interpretation, deterministic
+  domain-separated fingerprints, bounds, fixed-false authority, redaction,
+  and the blocked Home Assistant golden, with no service, route, UI, store,
+  external I/O, or runtime behavior.
 
 #### v0.33 P0–P5 — End-to-End Inert Delivery Receipt
 

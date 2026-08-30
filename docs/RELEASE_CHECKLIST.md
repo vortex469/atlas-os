@@ -30,7 +30,7 @@ frozen [v1 contract](architecture/installation-readiness-review-v1.md).
   persistence, credential access, Agent/network call, execution, mutation,
   deployment, rollback, artifact, migration, tag, push, publication, or
   release action.
-- [ ] P1 — closed models and pure review evaluation.
+- [x] P1 — closed models and pure review evaluation.
 - [ ] P2 — owner-scoped local read composition.
 - [ ] P3 — exact authenticated read-only Core API.
 - [ ] P4 — read-only Mission Control presentation.

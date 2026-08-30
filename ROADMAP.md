@@ -105,7 +105,8 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
 - P0 freezes the exact review/linkage/summary/audit schemas, blocker vocabulary,
   ownership, time interpretation, redaction, API/UI, authority, threats,
   goldens, and must-not-change contracts. P0 changes planning documents only.
-- P1 adds closed immutable models and pure review evaluation only.
+- P1 added closed immutable linkage/summary/review/audit/error/result models,
+  deterministic fingerprints, strict bounds, and pure review evaluation only.
 - P2 adds explicit composition through existing Core-local owner-scoped readers
   only, with no persistence or external I/O.
 - P3 adds the sole authenticated read-only Core GET and exact OpenAPI surface.
