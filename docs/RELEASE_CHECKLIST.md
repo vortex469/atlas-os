@@ -68,6 +68,16 @@ documentation-only frozen
   build. Lint retained one pre-existing exhaustive-deps warning and no errors;
   build retained only the existing chunk-size advisory.
 - [x] `git diff --check` passed.
+- [x] P5 closure commit:
+  `b7107be4f73d1e4eddd1861517463942455a9d5f test(v0.33): close inert delivery receipt`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3107 passed, 293 warnings in 206.46s (0:03:26)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `b7107be4f73d1e4eddd1861517463942455a9d5f`.
+- [ ] Verify the tracked worktree is clean at the final release commit.
+- [ ] Create the immutable annotated `atlas-v0.33.0` tag.
+- [ ] Push the final release branch and `atlas-v0.33.0` tag to `origin`.
+- [ ] Publish the GitHub release for `atlas-v0.33.0`.
 
 ## Atlas v0.32 P0–P5 Agent Live Intake Admission — complete
 
