@@ -914,6 +914,7 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     readiness_contract_root = APP_ROOT / "installation_readiness_review"
     permission_grant_contract_root = APP_ROOT / "execution_permission_grant"
+    execution_admission_contract_root = APP_ROOT / "installation_execution_admission"
     for path in _production_python_files(APP_ROOT):
         if (
             path in V024_ALLOWED_CONSUMERS
@@ -923,6 +924,7 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
             or inert_receipt_contract_root in path.parents
             or readiness_contract_root in path.parents
             or permission_grant_contract_root in path.parents
+            or execution_admission_contract_root in path.parents
         ):
             continue
         source = path.read_text(encoding="utf-8")
