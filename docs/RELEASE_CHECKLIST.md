@@ -3,6 +3,74 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.34 P0 Installation Readiness Review — selected
+
+Atlas v0.34 is **Installation Readiness Review**. P0 is the documentation-only
+frozen [v1 contract](architecture/installation-readiness-review-v1.md).
+
+- [x] Inspect current `main` at
+  `343f683efb872b4b6322e27eaeffa64ccc4893ce` after annotated
+  `atlas-v0.33.0` targeting
+  `4bc30527b1c5a99eb090a43619494bb557791a50`.
+- [x] Freeze the exact closed review, evidence-summary, linkage, blocker,
+  audit, redacted-error, deterministic ID, and fingerprint contracts.
+- [x] Freeze recomputation of every same-owner v0.20–v0.33 fingerprint and
+  transitive identity, with no repair or inference for missing Agent evidence.
+- [x] Freeze each released freshness, expiry, terminal ambiguity, and no-replay
+  rule without extending, refreshing, or restarting any window.
+- [x] Freeze one owner-scoped authenticated Core GET using the existing
+  `installation.destination.select` permission and exact non-disclosing error
+  behavior, with no collection or action/mutation sibling.
+- [x] Freeze one read-only Mission Control page with no form, button, polling,
+  retry/resend/admit/send/install/execute/dispatch/deploy/workflow control, raw
+  evidence, secret, credential, endpoint, body, command, or internal path.
+- [x] Freeze P0–P5 scope, exact read-only authority, later enablement, threats,
+  blocked Home Assistant golden, and must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/reader/route/UI,
+  persistence, credential access, Agent/network call, execution, mutation,
+  deployment, rollback, artifact, migration, tag, push, publication, or
+  release action.
+- [x] P1 — closed models and pure review evaluation.
+- [x] P2 — owner-scoped local read composition with deterministic ephemeral
+  results, ownership isolation, redaction, and no persistence or reservation.
+- [x] P3 — exact authenticated read-only Core GET, permission and ownership
+  isolation, closed redacted errors, and locked OpenAPI surface.
+- [x] P4 — strictly parsed read-only Mission Control presentation with ordered
+  evidence, linkage, audit, redaction, authority copy, and no effect controls.
+- [x] P5 — isolation, regression, authority closure, Home Assistant golden,
+  and Core/Agent/Mission Control release validation evidence.
+
+P5 closure validates both Python lint gates, the complete Core and Agent test
+suites, the complete Mission Control test/lint/build gates, and
+`git diff --check`. The frozen surface remains one Core GET and one read-only
+Mission Control presentation. No tag, push, publication, release, deployment,
+migration, or runtime effect is part of this closure commit.
+
+Validation evidence for P5:
+
+- Atlas Core: `3133 passed, 315 warnings in 219.09s`.
+- Atlas Agent: `1045 passed, 32 warnings in 11.59s`.
+- Mission Control: `89` test files and `566` tests passed; lint completed with
+  the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning and no
+  errors; the production TypeScript/Vite build passed.
+- Both Python Ruff gates and `git diff --check` passed.
+- [x] P5 closure commit:
+  `9098c7f92d26c980d5739a7a3098e3d692777514 test(v0.34): close installation readiness review`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3133 passed, 315 warnings in 219.09s (0:03:39)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `9098c7f92d26c980d5739a7a3098e3d692777514`.
+- [x] Final release-preparation commit:
+  `fb3d9014574b5aa85a1024d77fe7b29bf35e1b88 docs(v0.34): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Created immutable annotated tag `atlas-v0.34.0` targeting
+  `fb3d9014574b5aa85a1024d77fe7b29bf35e1b88`.
+- [x] Pushed branch `v034-installation-readiness-review` and annotated tag
+  `atlas-v0.34.0` to `origin`; the remote branch and peeled tag target both
+  resolve to `fb3d9014574b5aa85a1024d77fe7b29bf35e1b88`.
+- [ ] Publish the GitHub release for `atlas-v0.34.0`.
+
 ## Atlas v0.33 P0–P5 End-to-End Inert Delivery Receipt — complete
 
 Atlas v0.33 is **End-to-End Inert Delivery Receipt**. P0 is the

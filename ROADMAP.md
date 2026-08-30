@@ -86,6 +86,49 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
+## Selected v0.34 plan — Installation Readiness Review
+
+Atlas v0.34 selects **Installation Readiness Review**. The normative
+documentation-only P0 contract is
+[Installation Readiness Review v1](docs/architecture/installation-readiness-review-v1.md).
+It freezes one authenticated, owner-scoped Core GET and one read-only Mission
+Control view over the complete v0.20–v0.33 evidence chain.
+
+The review has only `blocked` and `readiness_gated` outcomes. Even the latter
+retains the blocker `execution_admission_not_defined`; it is not approval,
+admission, authorization, installability, or executability. Core reads only
+existing local owner-scoped evidence, recomputes every released fingerprint,
+and creates no durable review record, reservation, refresh, retry, or effect.
+
+The phase order is P0 → P1 → P2 → P3 → P4 → P5:
+
+- P0 freezes the exact review/linkage/summary/audit schemas, blocker vocabulary,
+  ownership, time interpretation, redaction, API/UI, authority, threats,
+  goldens, and must-not-change contracts. P0 changes planning documents only.
+- P1 added closed immutable linkage/summary/review/audit/error/result models,
+  deterministic fingerprints, strict bounds, and pure review evaluation only.
+- P2 added an explicitly injected Core-local owner-scoped evidence reader and
+  trusted clock composition, with redacted errors and no persistence,
+  reservation, credential access, or external I/O.
+- P3 added the sole authenticated read-only Core GET and exact OpenAPI surface,
+  with owner non-disclosure, redacted errors, and no body, query, CSRF mutation,
+  collection, action, or non-GET sibling.
+- P4 added the sole strictly parsed read-only Mission Control GET client and
+  candidate-context page/route, with no polling, mutation, retry, resend,
+  admit, install, execute, dispatch, workflow, rollback, or deploy control.
+- P5 completed cross-layer isolation, regression, authority, redaction, Home
+  Assistant, and release validation evidence only, with no runtime change or
+  release action.
+
+V0.34 authority ends at an ephemeral read-only projection. Installation,
+execution, dispatch, retry/resend, Agent invocation, worker/workflow/process
+start, provider/repository/in-guest mutation, deployment, rollback, credential
+access, and Home Assistant artifacts remain blocked.
+
+P0–P5 are complete. V0.34 enables only authenticated inspection of the exact
+released evidence chain; a later milestone must separately define any
+execution-admission authority.
+
 ## Selected v0.33 plan — End-to-End Inert Delivery Receipt
 
 Atlas v0.33 selects **End-to-End Inert Delivery Receipt**. The normative

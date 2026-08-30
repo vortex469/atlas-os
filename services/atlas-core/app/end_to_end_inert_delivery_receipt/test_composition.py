@@ -207,6 +207,7 @@ def test_closed_agent_rejection_never_creates_receipt(tmp_path: Path):
 def test_v033_has_no_core_route_openapi_command_or_effect_consumer():
     core = Path(__file__).parents[1]
     package_root = Path(__file__).parent
+    readiness_contract_root = core / "installation_readiness_review"
     package_name = "end_to_end_inert_delivery_receipt"
     route_sources = [
         path
@@ -224,6 +225,7 @@ def test_v033_has_no_core_route_openapi_command_or_effect_consumer():
         if (
             path.name.startswith("test_")
             or package_root in path.parents
+            or readiness_contract_root in path.parents
             or "__pycache__" in path.parts
         ):
             continue

@@ -438,6 +438,9 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
             "delete",
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/readiness-review": {
+            "get",
+        },
     }
     prohibited = ("approve", "execute", "dispatch", "install", "deploy", "rollback")
     assert not any(
@@ -467,6 +470,8 @@ def test_mission_control_v020_surface_is_preserve_review_delete_only() -> None:
     }
     assert route_consumers == {
         Path("api/installationCandidateLifecycle.ts"),
+        Path("api/installationReadinessReview.ts"),
+        Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 
     assert len(re.findall(r"atlas\s*\.\s*get(?:<[^>]+>)?\s*\(", api_source)) == 2
@@ -482,7 +487,15 @@ def test_mission_control_v020_surface_is_preserve_review_delete_only() -> None:
         "listInstallationCandidateRecords",
         "preserveInstallationCandidateRecord",
     }
-    assert not any(token in component_source for token in ("<a ", "<Link", "<form", "navigate(", "href="))
+    assert "<Link" not in component_source
+    assert "<form" not in component_source
+    assert "navigate(" not in component_source
+    assert re.findall(r'href=\{`([^`]+)`\}', component_source) == [
+        (
+            "/installation/candidate-records/"
+            "${encodeURIComponent(record.candidate_record_id)}/readiness-review"
+        )
+    ]
     button_labels = set(re.findall(r">([^<>]+)</button>", component_source))
     assert button_labels == {
         "Delete saved record",
@@ -891,6 +904,7 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
     live_send_contract_root = APP_ROOT / "live_delivery_send_boundary"
     inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
+    readiness_contract_root = APP_ROOT / "installation_readiness_review"
     for path in _production_python_files(APP_ROOT):
         if (
             path in V024_ALLOWED_CONSUMERS
@@ -898,6 +912,7 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
             or preflight_contract_root in path.parents
             or live_send_contract_root in path.parents
             or inert_receipt_contract_root in path.parents
+            or readiness_contract_root in path.parents
         ):
             continue
         source = path.read_text(encoding="utf-8")
@@ -1047,11 +1062,15 @@ def test_v025_simulation_has_no_core_or_agent_production_consumer() -> None:
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     simulation_root = agent_root / "agent_intake_simulation"
     delivery_core_root = APP_ROOT / "installation_handoff_simulated_delivery"
+    readiness_contract_root = APP_ROOT / "installation_readiness_review"
     delivery_agent_root = agent_root / "installation_handoff_simulated_delivery"
     violations: list[str] = []
 
     for path in _production_python_files(APP_ROOT):
-        if delivery_core_root in path.parents:
+        if (
+            delivery_core_root in path.parents
+            or readiness_contract_root in path.parents
+        ):
             continue
         source = path.read_text(encoding="utf-8")
         for marker in V025_RECORD_MARKERS:
@@ -1877,10 +1896,14 @@ def test_v032_agent_admission_does_not_widen_core_live_send_or_gain_consumers() 
         "agent-live-intake-admission-v1",
     )
     inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
+    readiness_contract_root = APP_ROOT / "installation_readiness_review"
     violations = [
         f"{path.relative_to(repository_root)} -> {marker}"
         for path in _production_python_files(APP_ROOT)
-        if inert_receipt_contract_root not in path.parents
+        if (
+            inert_receipt_contract_root not in path.parents
+            and readiness_contract_root not in path.parents
+        )
         for marker in core_markers
         if marker in path.read_text(encoding="utf-8")
     ]
@@ -1920,6 +1943,7 @@ def test_v033_receipt_composition_is_explicit_internal_and_unregistered() -> Non
     }
     repository_root = APP_ROOT.parents[2]
     package = APP_ROOT / "end_to_end_inert_delivery_receipt"
+    readiness_contract_root = APP_ROOT / "installation_readiness_review"
     markers = (
         "app.end_to_end_inert_delivery_receipt",
         "EndToEndInertDeliveryComposition",
@@ -1935,7 +1959,10 @@ def test_v033_receipt_composition_is_explicit_internal_and_unregistered() -> Non
             repository_root / "services" / "atlas-execution-worker",
         )
         for path in _production_python_files(root)
-        if package not in path.parents
+        if (
+            package not in path.parents
+            and readiness_contract_root not in path.parents
+        )
         for marker in markers
         if marker in path.read_text(encoding="utf-8")
     ]

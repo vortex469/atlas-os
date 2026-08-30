@@ -12,6 +12,7 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { OperationsPage } from "../pages/OperationsPage";
 import { OperationalHistoryPage } from "../pages/OperationalHistoryPage";
 import { MaintenanceRequestPage } from "../pages/MaintenanceRequestPage";
+import { InstallationReadinessReviewPage } from "../pages/InstallationReadinessReviewPage";
 import { OperatorLoginPage } from "../pages/OperatorLoginPage";
 import { PlanningSessionPage } from "../pages/PlanningSessionPage";
 import { ProviderPage } from "../pages/ProviderPage";
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
             {
                 path: "execution-candidates/:candidateId",
                 element: <ExecutionCandidateDetailPage />,
+            },
+            {
+                path: "installation/candidate-records/:candidateRecordId/readiness-review",
+                element: <InstallationReadinessReviewPage />,
             },
             {
                 path: "candidate-planning/:sessionId",

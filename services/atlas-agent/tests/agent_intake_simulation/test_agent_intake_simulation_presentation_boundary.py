@@ -1,4 +1,4 @@
-"""Cross-service P4 locks for the deliberately absent v0.25 presentation."""
+"""Cross-service locks for v0.25 outside the v0.34 read-only review."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ ALLOWED_CORE_EVIDENCE_ROOTS = (
     CORE_APP_ROOT / "delivery_activation_preflight",
     CORE_APP_ROOT / "operator_controlled_delivery_enablement",
     CORE_APP_ROOT / "live_delivery_send_boundary",
+    CORE_APP_ROOT / "installation_readiness_review",
 )
 
 V025_MARKERS = (
@@ -53,6 +54,7 @@ def test_core_and_mission_control_expose_no_v025_client_route_or_ui() -> None:
                 for evidence_name in (
                     "deliveryactivationpreflight",
                     "deliveryenablement",
+                    "installationreadinessreview",
                 )
             ):
                 continue
