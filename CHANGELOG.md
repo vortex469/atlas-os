@@ -6,6 +6,29 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.37 P0 — Runner Binding Plan
+
+- Selected Atlas v0.37 **Runner Binding Plan** and froze the documentation-only
+  [v1 planning contract](docs/architecture/runner-binding-plan-v1.md).
+- Defined one append-only, operator-owned Core plan-evidence artifact binding
+  the complete v0.20–v0.35 chain, active v0.36 admission, one server-owned
+  abstract runner reference, and exact confined sandbox/resource/network/
+  filesystem ceilings.
+- Froze only `binding_planned` for successful records, always blocked by
+  `runner_not_bound` and `execution_start_boundary_not_defined`; the runner
+  reference proves eligibility for planning only, never registration,
+  availability, reachability, reservation, binding, or invocation.
+- Froze dedicated record/read permissions, permanent idempotency and subject
+  reservations, maximum inherited 30-second freshness, exact candidate-scoped
+  collection GET/guarded POST and item GET, optional Mission Control evidence
+  panel, audit/redaction, Home Assistant golden, threats, later enablement, and
+  must-not-change rules.
+- P0 changes planning documents only. It adds no runtime model, service, store,
+  reader, route, permission registration, UI, persistence, migration, runner/
+  Agent/network/credential access, installation, execution, worker/workflow,
+  dispatch, retry/resend, Docker/Podman/shell/process, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+
 #### v0.36 P0–P5 — Installation Execution Admission Boundary
 
 - Selected Atlas v0.36 **Installation Execution Admission Boundary** and froze

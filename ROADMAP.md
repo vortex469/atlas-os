@@ -1,11 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.35
+## 1. Current released baseline — v0.36
 
-Atlas v0.35.0 is released as `atlas-v0.35.0` at
-`5c56940e21db9e80a9470d2db434415d02dff9ac`; its completed milestone and
+Atlas v0.36.0 is released as `atlas-v0.36.0` at
+`d02e04126fd4a897c9faaab0f68b49d84f218044`; its completed milestone and
 release-checklist reconciliation are merged to current `main` at
-`adb74c2a49fee28483ebe48c703b6887bcee7ee9`.
+`0b23b2c292e65b293a8097c74c3ab11b5d3295dd`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -90,10 +90,51 @@ image evidence, grounding, and provenance.
   admission undefined.
 - v0.35 released durable operator permission evidence over the exact
   v0.20–v0.34 chain without execution admission or an effect consumer.
+- v0.36 released durable installation-execution admission evidence over the
+  exact v0.20–v0.35 chain while remaining `admission_gated`, with no runner
+  binding, execution-start boundary, or effect consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Selected v0.37 plan — Runner Binding Plan
+
+Atlas v0.37 selects **Runner Binding Plan**. The normative documentation-only
+P0 contract is [Runner Binding Plan v1](docs/architecture/runner-binding-plan-v1.md).
+
+V0.37 may append one same-owner Core plan-evidence record binding the complete
+v0.20–v0.35 evidence/permission chain, one active v0.36 admission, one abstract
+eligible runner reference, and exact confined sandbox/resource/network/
+filesystem ceilings. Its strongest state is `binding_planned`, permanently
+blocked by `runner_not_bound` and `execution_start_boundary_not_defined`. It
+does not register, contact, reserve, bind, or invoke a runner.
+
+The phase order is P0 → P1 → P2 → P3 → P4 → P5:
+
+- P0 freezes exact models, runner reference, fingerprints/linkage, lifecycle,
+  eligibility/blockers, ownership/permissions, freshness, limit semantics,
+  permanent reservations, audit/redaction, API/UI, threats, later enablement,
+  and must-not-change contracts. P0 changes planning documents only.
+- P1 adds closed immutable models, deterministic domain-separated
+  fingerprints, bounds, and pure validation only.
+- P2 adds an explicitly constructed default-off Core append-only plan-evidence
+  service/store with injected owner-scoped readers and permanent no-replay.
+- P3 adds only dedicated record/read permissions and candidate-scoped
+  collection GET/guarded POST plus owned item GET.
+- P4 adds only a strict Mission Control evidence panel and two-step record
+  flow, with no polling, live runner selector, editable limit, or effect
+  control.
+- P5 adds isolation, concurrency/no-replay, regression, authority, redaction,
+  Agent parity, Home Assistant, and release evidence only.
+
+V0.37 enables a later milestone to require an active runner-binding plan before
+separately specifying authenticated live runner binding. Runner discovery,
+registration, endpoint/credential access, contact, reservation, binding,
+invocation, execution authorization/start, installation, worker/workflow,
+dispatch, retry/resend, Agent invocation, Docker/Podman/shell/process,
+provider/repository/in-guest mutation, deployment, rollback, and Home Assistant
+artifacts remain blocked.
 
 ## Completed v0.36 plan — Installation Execution Admission Boundary
 

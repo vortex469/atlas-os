@@ -3,6 +3,54 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.37 P0 Runner Binding Plan — selected
+
+Atlas v0.37 is **Runner Binding Plan**. P0 is the documentation-only frozen
+[v1 contract](architecture/runner-binding-plan-v1.md).
+
+- [x] Inspect current `main` at
+  `0b23b2c292e65b293a8097c74c3ab11b5d3295dd` after annotated
+  `atlas-v0.36.0` targeting
+  `d02e04126fd4a897c9faaab0f68b49d84f218044`.
+- [x] Freeze exact create, runner-reference, sandbox/resource/network/
+  filesystem-limit, linkage, plan, lifecycle/status, reservation, audit,
+  redacted-error, and result schemas with bounds and fixed-false authority.
+- [x] Freeze authoritative same-owner v0.20–v0.35 linkage plus exact v0.36
+  admission/status, runner identity/reference/capability, and limit
+  fingerprints, with no client-supplied raw evidence.
+- [x] Freeze only `binding_planned`, ordered blocker vocabulary, and permanent
+  successful-record blockers `runner_not_bound` and
+  `execution_start_boundary_not_defined`.
+- [x] Freeze authenticated ownership, dedicated record/read permissions,
+  trusted clock, inherited maximum 30-second freshness, earliest expiry, and
+  Home Assistant rejection.
+- [x] Freeze exact confined sandbox/resource ceilings, network `none`, and
+  ephemeral-workspace-only filesystem semantics as evidence ceilings that do
+  not create or prove a sandbox or runtime enforcement.
+- [x] Freeze atomic permanent idempotency-key and binding-subject reservations,
+  exact-duplicate zero-I/O readback, and no consume, release, refresh, retry,
+  resend, replay, replacement, supersession, or bypass.
+- [x] Freeze closed sanitized audit/errors and exclude raw keys, credentials,
+  runner/provider payloads, endpoints, commands, logs, images, internal paths,
+  mount sources, addresses, and arbitrary metadata.
+- [x] Freeze exact candidate-scoped collection GET/guarded POST and item GET,
+  plus one optional Mission Control two-step plan-evidence panel; retain no
+  effect/action sibling, polling, live runner selector, editable limit, or
+  prohibited control.
+- [x] Freeze the exact evidence-only authority boundary, P0–P5 scope, threats,
+  later enablement, blocked/non-artifact Home Assistant golden, and
+  must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/reader/route/UI,
+  persistence, migration, credential/network/Agent/runner call, installation,
+  execution, worker/workflow, dispatch, retry/resend, Docker/Podman/shell,
+  mutation, deployment, rollback, artifact, tag, push, publication, or release
+  action.
+- [ ] P1 — closed immutable models and pure validation.
+- [ ] P2 — explicitly constructed append-only Core plan-evidence service/store.
+- [ ] P3 — exact guarded Core create/list/get API.
+- [ ] P4 — strict Mission Control plan-evidence presentation.
+- [ ] P5 — isolation, regression, authority closure, and release evidence.
+
 ## Atlas v0.36 P0–P5 Installation Execution Admission Boundary — complete
 
 Atlas v0.36 is **Installation Execution Admission Boundary**. P0 is the
