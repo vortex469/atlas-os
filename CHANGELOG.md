@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.38 P0 — Worker Admission Stub
+#### v0.38 P0–P5 — Worker Admission Stub
 
 - Selected Atlas v0.38 **Worker Admission Stub** and froze the
   documentation-only [v1 planning contract](docs/architecture/worker-admission-stub-v1.md).
@@ -31,6 +31,29 @@ release boundaries.
   route/UI, persistence, migration, worker/queue/Agent/network/process call,
   installation, execution, dispatch, retry/resend, mutation, deployment,
   rollback, artifact, tag, push, publication, or release action.
+- P1 adds closed immutable stub, intent, intake, worker-reference, inherited-
+  limit, linkage, lifecycle, reservation, audit, error, result, and collection
+  models with deterministic fingerprints, exact bounds, fixed blockers, and
+  fixed-false authority.
+- P2 adds an explicitly constructed append-only Core evidence service/store
+  over injected owner-scoped v0.37 and worker-reference readers, with atomic
+  permanent reservations, exact-duplicate zero-I/O readback, quotas, bounds,
+  corruption closure, and no worker, queue, runtime, network, or effect
+  dependency.
+- P3 registers only the guarded candidate-scoped collection GET/POST and owned
+  item GET with strict authentication, permissions, origin/CSRF/rate/parsing,
+  ownership non-disclosure, redaction, and no effect-bearing sibling route.
+- P4 adds strict Mission Control create/list/get typing and a nested list/get
+  evidence panel presenting lifecycle, intent/intake, worker reference,
+  byte-exact inherited limits, linkage, audit, permanent no-replay, fixed-false
+  authority, and Home Assistant blocking, with no polling, navigation, form,
+  sensitive rendering, or prohibited control.
+- P5 locks exact API and zero-consumer isolation, concurrent/restart permanent
+  no-replay, secret-free persistence, Agent and execution-worker parity,
+  Mission Control structural closure, and the blocked/non-artifact Home
+  Assistant golden. Validation passed both Ruff gates, 98 focused Core tests,
+  1049 Agent tests, 605 Mission Control tests, Mission Control lint/build, and
+  `git diff --check`. P5 adds tests and release documentation only.
 
 #### v0.37 P0–P5 — Runner Binding Plan
 

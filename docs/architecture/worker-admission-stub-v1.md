@@ -1,6 +1,6 @@
 # Worker Admission Stub v1 planning contract
 
-Status: **Atlas v0.38 P0 selected; P1–P5 not implemented**.
+Status: **Atlas v0.38 P0–P5 complete; release preparation remains separate**.
 
 Atlas v0.38 defines one closed, durable Core evidence record stating that an
 authenticated operator's exact, fresh v0.20–v0.37 installation chain has been
@@ -618,44 +618,46 @@ ownership/permissions, freshness, inherited limits, permanent reservations,
 audit/redaction, API/UI, threats, later enablement, and must-not-change rules.
 Planning documents only.
 
-### P1 — Closed models and pure validation
+### P1 — Closed models and pure validation — complete
 
-Add immutable request/intent/reference/linkage/stub/status/reservation/audit/
+Added immutable request/intent/reference/linkage/stub/status/reservation/audit/
 error/result/collection models, domain-separated fingerprints, bounds,
 same-owner/freshness/limit validation, fixed blockers, Home Assistant golden,
 and fixed-false authority. No service, store, reader, route, UI, worker, queue,
 Agent, or effect.
 
-### P2 — Append-only stub-evidence service and store
+### P2 — Append-only stub-evidence service and store — complete
 
-Add an explicitly constructed Core service over injected owner-scoped v0.37
+Added an explicitly constructed Core service over injected owner-scoped v0.37
 and abstract worker-reference readers plus a bounded append-only store. Add
 atomic permanent key/subject reservations, exact-duplicate zero-I/O readback,
 quotas, corruption closure, and derived expiry. No worker/queue/network/
 process/Agent/workflow/dispatch/mutation integration.
 
-### P3 — Exact guarded Core API
+### P3 — Exact guarded Core API — complete
 
-Register only the two permissions and exact candidate-scoped collection GET/
+Registered only the two permissions and exact candidate-scoped collection GET/
 guarded POST plus owned item GET. Lock authentication, origin, CSRF, rate,
 body/query/idempotency parsing, ownership non-disclosure, redaction, OpenAPI,
 and fail-closed construction. No action or effect sibling.
 
-### P4 — Mission Control evidence presentation
+### P4 — Mission Control evidence presentation — complete
 
-Add only strict create/list/get typing and a nested list/get evidence panel.
+Added only strict create/list/get typing and a nested list/get evidence panel.
 Show exact inherited limits/linkage/lifecycle/audit/fixed-false authority,
 redaction, and Home Assistant blocking. No surfaced creation without a
 server-owned worker context; no polling, selection, form, navigation,
 sensitive view, effect label, or other mutation.
 
-### P5 — Isolation, regression, and release closure
+### P5 — Isolation, regression, and release closure — complete
 
-Prove concurrent/restart permanent no-replay, secret-free persistence, exact
+Proved concurrent/restart permanent no-replay, secret-free persistence, exact
 v0.20–v0.37 linkage and inherited limits, owner/permission isolation, exact
 API/UI surfaces, zero execution-worker/Agent/effect consumers, prior-boundary
 regressions, and blocked/non-artifact Home Assistant. Tests and release docs
-only; no runtime behavior, tag, push, publication, or deployment.
+only; no runtime behavior, tag, push, publication, or deployment. Validation
+passed both Ruff gates, 98 focused Core tests, 1049 Agent tests, 605 Mission
+Control tests, Mission Control lint/build, and `git diff --check`.
 
 ## What v0.38 enables later
 

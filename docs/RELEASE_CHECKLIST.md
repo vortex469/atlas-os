@@ -3,10 +3,11 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.38 P0 Worker Admission Stub — selected
+## Atlas v0.38 P0–P5 Worker Admission Stub — complete
 
-Atlas v0.38 is **Worker Admission Stub**. P0 is the documentation-only frozen
-[v1 contract](architecture/worker-admission-stub-v1.md).
+Atlas v0.38 is **Worker Admission Stub**. P0–P5 are complete from the frozen
+[v1 contract](architecture/worker-admission-stub-v1.md). P5 validation started
+from P4 commit `1ca2f0f46cc300dd19ed89b4952e23635eff0a41`.
 
 - [x] Inspect current `main` at
   `83d08274a805ca3c972e9827c6a2ce9253982758` after annotated
@@ -49,11 +50,49 @@ Atlas v0.38 is **Worker Admission Stub**. P0 is the documentation-only frozen
   persistence, migration, worker/queue/Agent/network/process call,
   installation, execution, dispatch, retry/resend, mutation, deployment,
   rollback, artifact, tag, push, publication, or release action.
-- [ ] P1 — closed immutable models and pure validation.
-- [ ] P2 — explicitly constructed append-only Core stub-evidence service/store.
-- [ ] P3 — exact guarded Core create/list/get API.
-- [ ] P4 — strict Mission Control stub-evidence presentation.
-- [ ] P5 — isolation, regression, authority closure, and release evidence.
+- [x] P1 — closed immutable models, exact intent/reference/intake/linkage and
+  byte-exact inherited-limit validation, deterministic fingerprints, bounds,
+  redaction, fixed blockers, and fixed-false authority.
+- [x] P2 — explicitly constructed append-only Core stub-evidence service/store
+  with injected owner-scoped readers, atomic permanent reservations,
+  restart-safe reads, quotas, corruption closure, and no effect dependency.
+- [x] P3 — exact guarded candidate-scoped collection GET/POST and item GET,
+  strict auth/permission/origin/CSRF/rate/parsing gates, redaction, and no
+  effect-bearing sibling route.
+- [x] P4 — strict Mission Control stub-evidence presentation using only P3
+  create/list/get, with no polling, sensitive rendering, standalone
+  navigation, editable worker/intent/limits, extra mutation, or prohibited
+  control.
+- [x] P5 — exact API and zero-consumer isolation,
+  `worker_admission_stubbed` fixed-false authority, concurrency/restart
+  permanent no-replay, secret-free persistence, Agent/execution-worker parity,
+  Mission Control structural closure, Home Assistant golden, and release
+  evidence.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates: `All checks passed!`.
+- [x] Focused Atlas Core release suite: `98 passed, 144 warnings in 22.17s`.
+- [x] Full Atlas Agent pytest: `1049 passed, 32 warnings in 11.54s`.
+- [x] Mission Control: `100 passed` test files / `605 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed with only the advisory
+  chunk-size warning.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, worker start,
+  queue/enqueue, runner binding, execution/workflow start, dispatch,
+  retry/resend, Agent invocation, process execution, mutation, deployment,
+  rollback, Home Assistant artifact, tag, push, publication, or release action.
+- [ ] Record the P5 closure commit.
+- [ ] Run and record the full Atlas Core clean-environment gate.
+- [ ] Record the exact reviewed implementation/validation SHA after P5 review.
+- [ ] Verify the tracked worktree is clean at the final release-preparation
+  commit.
+- [ ] Create and verify immutable annotated tag `atlas-v0.38.0` at the exact
+  final release-preparation commit.
+- [ ] Push branch `v038-worker-admission-stub` and annotated tag
+  `atlas-v0.38.0` to `origin`, then verify the remote branch and peeled tag.
+- [ ] Publish the GitHub release for `atlas-v0.38.0`.
 
 ## Atlas v0.37 P0–P5 Runner Binding Plan — complete
 

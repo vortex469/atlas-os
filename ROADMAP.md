@@ -101,10 +101,11 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Selected v0.38 plan — Worker Admission Stub
+## Completed v0.38 plan — Worker Admission Stub
 
-Atlas v0.38 selects **Worker Admission Stub**. The normative documentation-only
-P0 contract is [Worker Admission Stub v1](docs/architecture/worker-admission-stub-v1.md).
+Atlas v0.38 implements **Worker Admission Stub** from the frozen
+[Worker Admission Stub v1](docs/architecture/worker-admission-stub-v1.md)
+contract.
 
 V0.38 may append one same-owner Core stub-evidence record binding the complete
 v0.20–v0.36 chain, one active v0.37 runner binding plan, one server-owned
@@ -115,23 +116,23 @@ sandbox/resource/network/filesystem ceilings. Its strongest state is
 
 The phase order is P0 → P1 → P2 → P3 → P4 → P5:
 
-- P0 freezes exact schemas, worker reference/intent/intake stub, fingerprints/
+- P0 froze exact schemas, worker reference/intent/intake stub, fingerprints/
   linkage, lifecycle, eligibility/blockers, ownership/permissions, freshness,
   inherited limits, permanent reservations, audit/redaction, API/UI, threats,
   later enablement, and must-not-change rules. P0 changes planning documents
   only.
-- P1 adds closed immutable models, deterministic domain-separated
+- P1 added closed immutable models, deterministic domain-separated
   fingerprints, exact bounds/linkage/limits, and pure validation only.
-- P2 adds an explicitly constructed Core append-only stub-evidence service/
+- P2 added an explicitly constructed Core append-only stub-evidence service/
   store with injected owner-scoped readers and permanent no-replay.
-- P3 adds only dedicated record/read permissions and candidate-scoped
+- P3 added only dedicated record/read permissions and candidate-scoped
   collection GET/guarded POST plus owned item GET.
-- P4 adds strict Mission Control typing and a nested list/get evidence panel,
+- P4 added strict Mission Control typing and a nested list/get evidence panel,
   with no surfaced creation absent server-owned worker context, polling,
   selector, form, navigation, editable limits, or effect control.
-- P5 adds isolation, concurrency/restart no-replay, regression, authority,
+- P5 closes isolation, concurrency/restart no-replay, regression, authority,
   redaction, execution-worker and Agent parity, Home Assistant, and release
-  evidence only.
+  evidence only. P0–P5 are complete.
 
 V0.38 enables a later milestone to require an active worker-admission stub
 before independently defining queue admission or worker start. Worker
