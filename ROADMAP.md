@@ -113,8 +113,10 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   freshness, lifecycle, permanent reservations, redaction/audit, API/UI,
   authority, threats, goldens, and must-not-change contracts. P0 changes
   planning documents only.
-- P1 adds closed immutable models, domain-separated fingerprints, and pure
-  validation only.
+- P1 added closed immutable create/linkage/grant/status/result/audit/error,
+  idempotency, and permanent-reservation models, domain-separated
+  fingerprints, and pure same-owner, permission, freshness, expiry, authority,
+  and Home Assistant blocked-golden validation only.
 - P2 adds an explicitly constructed default-off append-only Core service/store
   with atomic permanent subject/idempotency reservations and no external I/O.
 - P3 adds only the dedicated operator permission, exact guarded POST, and

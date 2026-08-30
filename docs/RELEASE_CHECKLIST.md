@@ -36,7 +36,10 @@ documentation-only frozen [v1 contract](architecture/execution-permission-grant-
   execution, dispatch, retry/resend, worker/workflow/process, Docker/Podman/
   shell, mutation, deployment, rollback, artifact, tag, push, publication, or
   release action.
-- [ ] P1 — closed grant models and pure validation.
+- [x] P1 — closed immutable grant, linkage, lifecycle, idempotency,
+  permanent-reservation, audit, error, and result models with deterministic
+  fingerprints and pure ownership, permission, exact-confirmation, freshness,
+  expiry, authority, and Home Assistant blocked-golden validation.
 - [ ] P2 — default-off append-only reservation service and store.
 - [ ] P3 — dedicated permission and exact guarded Core POST/owned GET.
 - [ ] P4 — exact Mission Control confirmation and readback panel.

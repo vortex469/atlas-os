@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.35 P0 — Execution Permission Grant Boundary
+#### v0.35 P0–P1 — Execution Permission Grant Boundary
 
 - Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
   documentation-only [v1 planning
@@ -28,6 +28,12 @@ release boundaries.
   network access, Agent call, retry/resend, installation, execution, dispatch,
   worker/workflow/process start, Docker/Podman/shell, mutation, deployment,
   rollback, tag, push, publication, or release action.
+- P1 adds strict immutable create, authority, linkage, grant, lifecycle/status,
+  idempotency, permanent reservation, audit, redacted-error, and result models;
+  deterministic domain-separated fingerprints; and pure owner, permission,
+  exact-confirmation, v0.20–v0.34 linkage, 30-second freshness, expiry, and
+  Home Assistant blocked-golden validation. It adds no service, API, UI,
+  persistence, migration, Agent/runtime call, mutation, or execution authority.
 
 #### v0.34 P0 — Installation Readiness Review
 

@@ -453,19 +453,27 @@ grant ID is present; it never repeats POST.
 
 ## P0–P5 plan
 
-### P0 — Contract and threat model — selected
+### P0 — Contract and threat model — complete
 
 Freeze these exact schemas, linkage/fingerprints, confirmation, ownership,
 freshness, permanent reservations, lifecycle, redaction/audit, API/UI,
 authority, threats, goldens, and must-not-change contracts. Change planning
 documents only.
 
-### P1 — Closed models and pure validation
+### P1 — Closed models and pure validation — complete
 
 Add strict immutable create/linkage/grant/status/audit/error/result models,
 domain-separated fingerprints, bounds, exact confirmation validation, and pure
 same-owner/freshness/authority validation. Add no service, store, route, UI,
 Agent access, or runtime composition.
+
+P1 implements those closed models plus explicit idempotency and permanent
+reservation shapes. Its pure validation binds the authenticated operator,
+dedicated permission expectation, trusted server-owned request time, exact
+v0.20–v0.34 fingerprints, maximum inherited 30-second window, fixed-false
+authority, redaction, and blocked Home Assistant golden. P1 adds no service,
+store, route, UI, persistence, migration, reader, Agent access, or runtime
+composition.
 
 ### P2 — Append-only reservation service and store
 
