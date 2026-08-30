@@ -35,7 +35,8 @@ frozen [v1 contract](architecture/installation-readiness-review-v1.md).
   results, ownership isolation, redaction, and no persistence or reservation.
 - [x] P3 — exact authenticated read-only Core GET, permission and ownership
   isolation, closed redacted errors, and locked OpenAPI surface.
-- [ ] P4 — read-only Mission Control presentation.
+- [x] P4 — strictly parsed read-only Mission Control presentation with ordered
+  evidence, linkage, audit, redaction, authority copy, and no effect controls.
 - [ ] P5 — isolation, regression, authority closure, and release evidence.
 
 ## Atlas v0.33 P0–P5 End-to-End Inert Delivery Receipt — complete

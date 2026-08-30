@@ -1,6 +1,6 @@
 # Installation Readiness Review v1 planning contract
 
-Status: **Atlas v0.34 P0–P3 implemented; P4–P5 not implemented**.
+Status: **Atlas v0.34 P0–P4 implemented; P5 not implemented**.
 
 Atlas v0.34 defines a read-only, operator-owned review of the released
 v0.20–v0.33 installation evidence chain. It answers only whether the exact
@@ -377,11 +377,19 @@ CSRF mutation proof, returns the closed success or redacted-error bodies, and
 conceals foreign evidence as `not_found`. All non-GET methods are excluded from
 OpenAPI and rejected with `Allow: GET`; there is no action or mutation sibling.
 
-### P4 — Read-only Mission Control presentation
+### P4 — Read-only Mission Control presentation — implemented
 
 Add only the frozen client/type/query/page/route and navigation from an
 operator-owned candidate detail context. Lock the exact state/blocker display,
 sensitive-data absence, no polling, and absence of all effect controls.
+
+P4 adds the exact strictly parsed GET client, closed response types, one-load
+read-only page, frozen candidate-record route, and contextual link from an
+operator-owned saved record. It renders the two states, ordered blockers,
+fourteen evidence summaries, exact linkage/fingerprints, owner/source/time
+context, audit evidence, redacted unavailable state, and fixed authority
+fields. It adds no polling, form, action navigation, mutation client, raw
+payload, credential, address, command, log, path, or effect control.
 
 ### P5 — Isolation, regression, and release closure
 

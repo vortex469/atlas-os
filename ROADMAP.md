@@ -113,8 +113,9 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
 - P3 added the sole authenticated read-only Core GET and exact OpenAPI surface,
   with owner non-disclosure, redacted errors, and no body, query, CSRF mutation,
   collection, action, or non-GET sibling.
-- P4 adds the sole read-only Mission Control client/query/page/route, with no
-  polling, mutation, retry, resend, admit, install, execute, or deploy control.
+- P4 added the sole strictly parsed read-only Mission Control GET client and
+  candidate-context page/route, with no polling, mutation, retry, resend,
+  admit, install, execute, dispatch, workflow, rollback, or deploy control.
 - P5 adds isolation, regression, authority, redaction, and release evidence
   only.
 

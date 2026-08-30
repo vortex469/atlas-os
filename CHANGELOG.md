@@ -42,6 +42,12 @@ release boundaries.
   returns only closed review/audit or redacted-error bodies, and adds no
   collection, action, mutation, install, execute, dispatch, retry/resend, or
   deployment route.
+- P4 added one strictly parsed, credentialed GET client and one read-only
+  Mission Control candidate-record readiness page. It presents the two frozen
+  states, ordered blockers, complete v0.20–v0.33 summary, linkage/fingerprints,
+  freshness, owner context, audit evidence, redacted errors, fixed-false
+  authority, and the blocked Home Assistant golden, with no polling, mutation
+  call, raw sensitive data, or effect control.
 
 #### v0.33 P0–P5 — End-to-End Inert Delivery Receipt
 

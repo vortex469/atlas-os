@@ -94,6 +94,7 @@ export function InstallationCandidateLifecycle({
                 <p className="mt-1 break-all text-xs text-slate-400">Record ID: {record.candidate_record_id}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" onClick={() => void review(record.candidate_record_id)} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review saved record</button>
+                    <a href={`/installation/candidate-records/${encodeURIComponent(record.candidate_record_id)}/readiness-review`} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-blue-200">Open readiness review</a>
                     <button type="button" disabled={!csrfToken || mutation !== null} onClick={() => void remove(record.candidate_record_id)} className="rounded border border-red-500/50 px-3 py-1.5 text-sm text-red-200 disabled:opacity-50">Delete saved record</button>
                 </div>
                 <p className="mt-2 text-xs text-slate-400">Deletion removes only this advisory record. It cannot be replayed and does not cancel any external activity.</p>

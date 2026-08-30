@@ -144,7 +144,8 @@ P0 changed planning documents only. P1 added Core-only closed models and pure
 review evaluation without any Agent import or behavior. P2 adds only a
 Core-local injected reader composition and does not import or invoke Agent.
 P3 exposes only the authenticated Core read-only GET and likewise does not
-import, contact, or change Agent. P4–P5 remain unimplemented. Installation,
+import, contact, or change Agent. P4 adds only a Mission Control read-only GET
+presentation and likewise cannot invoke Agent. P5 remains unimplemented. Installation,
 execution, dispatch, retry/resend, Agent invocation, worker/workflow/process
 start, provider/repository/in-guest mutation, deployment, rollback, and Home
 Assistant artifacts remain blocked.
