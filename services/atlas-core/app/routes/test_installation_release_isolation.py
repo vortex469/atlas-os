@@ -457,7 +457,7 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
     )
 
 
-def test_mission_control_v020_surface_is_preserve_review_delete_only() -> None:
+def test_mission_control_v020_surface_adds_only_review_and_permission_evidence() -> None:
     mission_control = APP_ROOT.parents[1] / "mission-control" / "src"
     api_source = (
         mission_control / "api" / "installationCandidateLifecycle.ts"
@@ -478,6 +478,7 @@ def test_mission_control_v020_surface_is_preserve_review_delete_only() -> None:
     assert route_consumers == {
         Path("api/installationCandidateLifecycle.ts"),
         Path("api/installationReadinessReview.ts"),
+        Path("api/executionPermissionGrant.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 

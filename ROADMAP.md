@@ -129,8 +129,11 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   v0.34 review context: strict P3 create/list/get parsing, a two-step exact-text
   evidence confirmation, lifecycle/freshness/linkage/audit readback, and
   fixed-false authority presentation with no polling, retry, or effect control.
-- P5 adds isolation, concurrency/no-replay, regression, authority, redaction,
-  Home Assistant, and release evidence only.
+- P5 closed the milestone with exact Core route isolation, fixed-false
+  authority, concurrent and restart-safe permanent reservation/no-replay
+  validation, sensitive persistence/rendering exclusion, a v0.34 consumer
+  allowlist, Mission Control structural isolation, Agent regression coverage,
+  and the blocked/non-artifact Home Assistant golden. P0–P5 are complete.
 
 V0.35 authority ends at append-only permission evidence. It enables a future
 milestone to require that evidence as one prerequisite for a separately

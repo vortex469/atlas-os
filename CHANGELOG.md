@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.35 P0–P4 — Execution Permission Grant Boundary
+#### v0.35 P0–P5 — Execution Permission Grant Boundary
 
 - Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
   documentation-only [v1 planning
@@ -57,6 +57,14 @@ release boundaries.
   audit evidence, redacted failures, fixed-false authority, and the blocked
   Home Assistant golden without polling, sensitive data, effect controls, or
   any mutation outside the single grant-evidence POST.
+- P5 closes v0.35 with release-isolation tests for the exact P3 create/list/get
+  API, fixed-false evidence-only authority, concurrent single-record and
+  restart/expiry permanent reservations, exact-duplicate zero-I/O readback,
+  raw-key and sensitive-field exclusion, no effect or replay-bypass dependency,
+  the exclusive readiness-review/permission-evidence consumer boundary,
+  Mission Control API/control/rendering isolation, Agent regressions, and the
+  blocked/non-artifact Home Assistant golden. It adds no runtime behavior,
+  migration, execution authority, deployment, tag, push, or release action.
 
 #### v0.34 P0 — Installation Readiness Review
 

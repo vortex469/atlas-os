@@ -52,7 +52,24 @@ documentation-only frozen [v1 contract](architecture/execution-permission-grant-
   strict P3 create/list/get, with two-step exact-text evidence confirmation,
   lifecycle/linkage/audit readback, permanent no-replay posture, redaction,
   fixed-false authority, and blocked Home Assistant presentation.
-- [ ] P5 — isolation, regression, authority closure, and release evidence.
+- [x] P5 — exact route and consumer isolation, fixed-false authority,
+  concurrent/restart permanent reservation and no-replay closure, sensitive
+  persistence/rendering exclusion, Mission Control and Agent regression
+  coverage, and blocked/non-artifact Home Assistant validation.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates.
+- [x] Full Atlas Core pytest: `3167 passed, 355 warnings in 222.62s
+  (0:03:42)`.
+- [x] Full Atlas Agent pytest: `1045 passed, 32 warnings in 13.61s`.
+- [x] Mission Control: `91 passed` test files / `573 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, installation,
+  execution, dispatch, Agent invocation, effect, deployment, rollback, Home
+  Assistant artifact, tag, push, publication, or release action.
 
 ## Atlas v0.34 P0 Installation Readiness Review — selected
 

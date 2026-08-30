@@ -532,7 +532,7 @@ sanitized audit evidence, redacted failures, and fixed-false authority. It adds
 no polling, effect control, sensitive raw field, Home Assistant artifact, or
 mutation outside the explicit grant-evidence create operation.
 
-### P5 — Isolation, regression, and release closure
+### P5 — Isolation, regression, and release closure — complete
 
 Prove permanent single grant, concurrency, restart readback, expiry without
 refresh, exact duplicate zero-I/O, secret-free persistence, complete linkage
@@ -540,6 +540,18 @@ recomputation, permission/owner isolation, exact API/UI surfaces, zero effect
 consumers, prior v0.20–v0.34 regressions, Agent capability parity, and blocked
 Home Assistant with no artifact. Add release tests/docs only; do not tag, push,
 publish, release, or deploy automatically.
+
+P5 adds release-only tests proving the exact collection `GET`/guarded `POST`
+and item `GET`, fixed-false authority, concurrent single-record creation,
+permanent idempotency and review-subject reservations across restart and
+expiry, exact-duplicate zero-reader/zero-ID behavior, corruption closure, and
+absence of effect or replay-bypass dependencies. Persistence and Mission
+Control rendering are checked for raw idempotency keys, credentials, provider
+payloads, commands, logs, internal paths, and addresses. A closed consumer
+allowlist keeps v0.34 evidence confined to readiness review and permission
+evidence, while Mission Control, Agent regression, and Home Assistant
+non-artifact goldens lock the remaining release boundary. No production
+behavior or authority changes in P5.
 
 ## What v0.35 enables later
 
