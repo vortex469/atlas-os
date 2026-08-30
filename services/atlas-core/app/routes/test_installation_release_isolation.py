@@ -438,17 +438,24 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
             "delete",
             "get",
         },
-            "/api/v1/installation/candidate-records/{candidate_record_id}/readiness-review": {
-                "get",
-            },
-            "/api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants": {
-                "get",
-                "post",
-            },
-            "/api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants/{grant_id}": {
-                "get",
-            },
-        }
+        "/api/v1/installation/candidate-records/{candidate_record_id}/readiness-review": {
+            "get",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants/{grant_id}": {
+            "get",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/execution-admissions": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/execution-admissions/{admission_id}": {
+            "get",
+        },
+    }
     prohibited = ("approve", "execute", "dispatch", "install", "deploy", "rollback")
     assert not any(
         token in path.removeprefix("/api/v1/installation/candidate-records")

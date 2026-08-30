@@ -317,10 +317,17 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
 
     app_root = Path(service.__file__).parents[1]
     allowed = {service.__file__, store.__file__}
+    boundary_only = {
+        "api/v1/router.py",
+        "config/settings.py",
+        "routes/installation_execution_admission.py",
+    }
     consumers = []
     for path in app_root.rglob("*.py"):
         if str(path) in allowed or path.name.startswith("test_"):
             continue
         if "installation_execution_admission" in path.read_text():
-            consumers.append(str(path.relative_to(app_root)))
+            relative = str(path.relative_to(app_root))
+            if relative not in boundary_only:
+                consumers.append(relative)
     assert consumers == []
