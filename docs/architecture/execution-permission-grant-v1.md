@@ -515,12 +515,22 @@ construction remains unavailable until a server-owned v0.34 evidence reader is
 explicitly supplied; no route reaches an Agent, worker, workflow, provider,
 repository, guest, process, or effect consumer.
 
-### P4 — Exact Mission Control confirmation surface
+### P4 — Exact Mission Control confirmation surface — complete
 
 Add only the strict client and confirmation/readback panel in the v0.34 review
 context. Lock exact text, explicit confirmation, short expiry, ambiguous-write
 guidance, Home Assistant absence, no polling/retry, and absence of every effect
 control or sensitive field.
+
+Implemented in the existing v0.34 readiness-review context with strict closed
+parsing of only the P3 collection `GET`/guarded `POST` and item `GET`. The
+two-step flow repeats the exact frozen confirmation and labels the sole write
+as durable permission evidence only. Owned readback exposes lifecycle,
+inherited 30-second validity/expiry interpretation, exact v0.20–v0.34 linkage
+and fingerprints, operator context, permanent reservation/no-replay posture,
+sanitized audit evidence, redacted failures, and fixed-false authority. It adds
+no polling, effect control, sensitive raw field, Home Assistant artifact, or
+mutation outside the explicit grant-evidence create operation.
 
 ### P5 — Isolation, regression, and release closure
 

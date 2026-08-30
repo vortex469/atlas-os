@@ -21,9 +21,12 @@ describe("v0.34 installation readiness review release boundary", () => {
         expect(candidateContext).not.toMatch(/readiness-review[^\n]*(?:button|onClick|post|put|patch|delete)/i);
     });
 
-    it("has no form, effect control, polling, or mutation call", () => {
-        expect(page).not.toMatch(/<(?:button|form|input|select|textarea)\b/i);
+    it("keeps readiness read-only while allowing only the v0.35 evidence confirmation", () => {
+        expect(page).not.toMatch(/<(?:form|input|select|textarea)\b/i);
         expect(page).not.toMatch(/setInterval|setTimeout|useMutation|atlas\.(?:post|put|patch|delete)/i);
+        expect(page.match(/<button\b/g)).toHaveLength(3);
+        expect(page).toContain("Review permission evidence statement");
+        expect(page).toContain("Record permission evidence");
         for (const label of [
             "install now", "execute now", "run now", "deploy now", "dispatch now",
             "retry now", "resend now", "send to agent", "start workflow", "roll back now",

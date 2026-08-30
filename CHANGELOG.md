@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.35 P0–P3 — Execution Permission Grant Boundary
+#### v0.35 P0–P4 — Execution Permission Grant Boundary
 
 - Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
   documentation-only [v1 planning
@@ -48,6 +48,15 @@ release boundaries.
   validated, while service construction remains injected because no
   production v0.34 evidence reader is authorized. No UI or effect route is
   added.
+- P4 adds the Mission Control panel in the v0.34 readiness-review context. Its
+  strict client uses only the P3 collection create/list and item get surface;
+  its two-step confirmation displays the exact frozen statement and says the
+  write creates durable permission evidence only. Readback presents lifecycle,
+  30-second inherited freshness/expiry, complete v0.20–v0.34 linkage and
+  fingerprints, authenticated ownership, permanent reservation/no-replay,
+  audit evidence, redacted failures, fixed-false authority, and the blocked
+  Home Assistant golden without polling, sensitive data, effect controls, or
+  any mutation outside the single grant-evidence POST.
 
 #### v0.34 P0 — Installation Readiness Review
 

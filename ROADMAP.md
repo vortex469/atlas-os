@@ -125,8 +125,10 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   permission, candidate-scoped collection GET/guarded POST, and owned item GET,
   with strict parsing, security gates, redaction, an independent durable
   database setting, and no execution or action sibling.
-- P4 adds only the exact Mission Control confirmation/readback panel in the
-  v0.34 review context, with no polling, retry, or effect control.
+- P4 added only the exact Mission Control confirmation/readback panel in the
+  v0.34 review context: strict P3 create/list/get parsing, a two-step exact-text
+  evidence confirmation, lifecycle/freshness/linkage/audit readback, and
+  fixed-false authority presentation with no polling, retry, or effect control.
 - P5 adds isolation, concurrency/no-replay, regression, authority, redaction,
   Home Assistant, and release evidence only.
 

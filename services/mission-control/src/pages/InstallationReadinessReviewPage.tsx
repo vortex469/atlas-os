@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getInstallationReadinessReview, LINKAGE_KEYS } from "../api/installationReadinessReview";
+import { createExecutionPermissionGrant, executionPermissionGrantIdempotencyKey, listExecutionPermissionGrants } from "../api/executionPermissionGrant";
+import { useOperatorSession } from "../hooks/operatorSessionContext";
 import type { FingerprintV1, InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
+import { EXECUTION_PERMISSION_CONFIRMATION, type ExecutionPermissionGrantCreateV1, type ExecutionPermissionGrantResultV1 } from "../types/executionPermissionGrant";
 
 const BLOCKER_LABELS: Record<string, string> = {
     missing_evidence: "Missing evidence", ownership_mismatch: "Ownership mismatch",
@@ -119,7 +122,81 @@ function Review({ response }: { response: InstallationReadinessReviewResponseV1 
                 <Value name="Retry allowed" value="false" /><Value name="Replay allowed" value="false" />
             </dl>
         </section>
+        <PermissionGrants response={response} />
     </div>;
+}
+
+function PermissionGrants({ response }: { response: InstallationReadinessReviewResponseV1 }) {
+    const session = useOperatorSession();
+    const [grants, setGrants] = useState<ExecutionPermissionGrantResultV1[] | null>(null);
+    const [error, setError] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const candidateId = response.review.candidate_record_id;
+
+    useEffect(() => {
+        let current = true;
+        listExecutionPermissionGrants(candidateId)
+            .then((value) => { if (current) setGrants(value.grants); })
+            .catch(() => { if (current) setError(true); })
+        return () => { current = false; };
+    }, [candidateId]);
+
+    const begin = () => setConfirming(true);
+    const record = async () => {
+        if (!session.csrfToken || submitting) return;
+        setSubmitting(true); setError(false);
+        const body: ExecutionPermissionGrantCreateV1 = {
+            schema: "execution-permission-grant-create-v1",
+            readiness_review_id: response.review.review_id,
+            readiness_review_fingerprint: response.review.review_fingerprint,
+            review_observed_at: response.review.observed_at,
+            confirmation_text: EXECUTION_PERMISSION_CONFIRMATION,
+            permission_scope: "future_execution_admission_consideration_only",
+            execution_admission_granted: false, execution_authorized: false,
+            installation_allowed: false, dispatch_allowed: false,
+            mutation_allowed: false, replay_allowed: false,
+        };
+        try {
+            const result = await createExecutionPermissionGrant(candidateId, body, session.csrfToken, executionPermissionGrantIdempotencyKey());
+            setGrants((current) => [result, ...(current ?? [])]); setConfirming(false);
+        } catch { setError(true); }
+        finally { setSubmitting(false); }
+    };
+
+    const mayCreate = response.review.readiness === "readiness_gated" && session.authenticated &&
+        session.principal?.permissions.includes("installation.execution.permission.grant");
+    return <section aria-labelledby="permission-grants-heading" className="rounded border border-slate-700 p-4">
+        <h2 id="permission-grants-heading" className="font-semibold">Execution permission evidence</h2>
+        <p className="mt-2 text-sm">This durable grant records permission evidence only. It is not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, worker execution, Docker, Podman, shell or process execution, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything.</p>
+        <p className="mt-2 text-sm">Core binds the authenticated operator and exact v0.20–v0.34 evidence/readiness fingerprints. Validity inherits at most 30 seconds; expiry never refreshes evidence. The review subject and idempotency subject are reserved permanently, with no replay.</p>
+        {grants === null && !error && <p role="status" className="mt-4">Loading execution permission evidence…</p>}
+        {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>Execution permission evidence could not be recorded.</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, or internal path is shown.</p></div>}
+        {grants?.length === 0 && <p role="status" className="mt-4">No execution permission evidence has been recorded.</p>}
+        {grants && grants.length > 0 && <ol aria-label="Execution permission grants" className="mt-4 space-y-4">{grants.map((item) => <Grant key={item.grant!.grant_id} result={item} />)}</ol>}
+        {mayCreate && !confirming && <button type="button" onClick={begin} className="mt-4 rounded border border-blue-400 px-3 py-2 text-sm">Review permission evidence statement</button>}
+        {mayCreate && confirming && <div aria-label="Permission evidence confirmation" className="mt-4 rounded border border-amber-400/40 p-4">
+            <p className="font-semibold">Step 2 of 2 — explicitly confirm durable evidence</p>
+            <p className="mt-2 text-sm">{EXECUTION_PERMISSION_CONFIRMATION}</p>
+            <p className="mt-2 text-xs">This creates durable permission evidence only. It grants no execution admission or mutation authority.</p>
+            <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record permission evidence</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
+        </div>}
+        {!mayCreate && <p className="mt-4 text-sm text-amber-200">Creation remains blocked. A current readiness-gated review, authenticated owner, dedicated permission, and valid CSRF session are required. Home Assistant remains non-installable and non-executable.</p>}
+    </section>;
+}
+
+function Grant({ result }: { result: ExecutionPermissionGrantResultV1 }) {
+    const grant = result.grant!; const status = result.status!; const audit = result.audit_evidence!;
+    return <li className="rounded border border-slate-800 p-3 text-sm">
+        <h3 className="font-semibold">{status.lifecycle === "active" ? "Active permission evidence" : "Expired permission evidence"}</h3>
+        <p className="mt-1">Lifecycle: {status.lifecycle}; disposition: {result.disposition}; record state: {grant.record_state}.</p>
+        <p className="mt-1">Recorded {grant.recorded_at}; valid until {grant.valid_until}; observed {status.observed_at}. Expiry does not erase or refresh this append-only evidence.</p>
+        <p className="mt-2">Confirmation: {grant.confirmation_text}</p>
+        <dl className="mt-3 grid gap-2 sm:grid-cols-2"><Value name="Authenticated operator" value={grant.operator_id} /><Value name="Grant ID" value={grant.grant_id} /><Value name="Grant fingerprint" value={grant.grant_fingerprint.value} /><Value name="Status fingerprint" value={status.status_fingerprint.value} /><Value name="v0.34 review ID" value={grant.linkage.v034_review_id} /><Value name="v0.34 review fingerprint" value={grant.linkage.v034_review_fingerprint.value} /><Value name="v0.34 audit fingerprint" value={grant.linkage.v034_audit_evidence_fingerprint.value} /><Value name="v0.34 operator fingerprint" value={grant.linkage.v034_operator_fingerprint.value} /><Value name="v0.20–v0.34 linkage fingerprint" value={grant.linkage.linkage_fingerprint.value} /><Value name="Request fingerprint" value={grant.request_fingerprint.value} /><Value name="Idempotency-key fingerprint" value={grant.idempotency_key_fingerprint.value} /><Value name="Audit evidence fingerprint" value={audit.evidence_fingerprint.value} /><Value name="Audit outcome" value={audit.outcome} /><Value name="Audit correlation ID" value={audit.correlation_id} /></dl>
+        <details className="mt-3"><summary>Required v0.20–v0.34 evidence linkage</summary><dl className="mt-2 grid gap-2 sm:grid-cols-2">{LINKAGE_KEYS.map((key) => <Value key={key} name={key} value={display(grant.linkage.readiness_linkage[key])} />)}</dl></details>
+        <p className="mt-3 text-xs">Permanent reservation: true · raw idempotency key persisted: false · retry allowed: false · replay allowed: false.</p>
+        <dl aria-label="Grant fixed-false authority fields" className="mt-3 grid gap-2 sm:grid-cols-2">{["Execution admission granted", "Execution authorized", "Installation allowed", "Dispatch allowed", "Agent invocation allowed", "Worker allowed", "Workflow allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Deployment allowed", "Rollback allowed", "Retry allowed", "Resend allowed", "Docker allowed", "Podman allowed", "Shell allowed", "Process allowed", "Replay allowed"].map((name) => <Value key={name} name={name} value="false" />)}</dl>
+    </li>;
 }
 
 function display(value: string | boolean | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }

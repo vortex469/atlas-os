@@ -48,7 +48,10 @@ documentation-only frozen [v1 contract](architecture/execution-permission-grant-
 - [x] P3 — dedicated create and owned-read permissions, exact candidate-scoped
   collection GET/guarded POST and item GET, strict security/parsing gates,
   redaction, locked OpenAPI, and independent durable database setting.
-- [ ] P4 — exact Mission Control confirmation and readback panel.
+- [x] P4 — exact Mission Control confirmation and readback panel using only
+  strict P3 create/list/get, with two-step exact-text evidence confirmation,
+  lifecycle/linkage/audit readback, permanent no-replay posture, redaction,
+  fixed-false authority, and blocked Home Assistant presentation.
 - [ ] P5 — isolation, regression, authority closure, and release evidence.
 
 ## Atlas v0.34 P0 Installation Readiness Review — selected
