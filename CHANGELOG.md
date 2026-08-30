@@ -6,6 +6,32 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.38 P0 — Worker Admission Stub
+
+- Selected Atlas v0.38 **Worker Admission Stub** and froze the
+  documentation-only [v1 planning contract](docs/architecture/worker-admission-stub-v1.md).
+- Defined one append-only operator-owned Core stub-evidence artifact binding
+  the exact v0.20–v0.36 chain, active v0.37 runner binding plan, one abstract
+  server-owned worker reference, a derived fixed admission intent and no-intake
+  descriptor, and exact inherited sandbox/resource/network/filesystem ceilings.
+- Froze only `worker_admission_stubbed` for successful records, always blocked
+  by `worker_not_started`, `queue_boundary_not_defined`, and
+  `execution_start_boundary_not_defined`; neither the intent nor worker
+  reference is a queue request, operational worker identity, endpoint,
+  credential, registration, availability, binding, start, or invocation.
+- Froze dedicated record/read permissions, maximum inherited 30-second
+  freshness, earliest expiry, permanent idempotency/subject reservations,
+  closed audit/redaction, exact candidate-scoped GET/guarded POST/item GET,
+  nested read presentation only, Home Assistant golden, P0–P5 sequencing,
+  threats, later enablement, and must-not-change rules.
+- Explicitly isolated the pre-existing execution-worker backend, relay, ledger,
+  request contracts, workspace runner, and Agent surfaces: v0.38 adds no import,
+  client, address, credential, queue, job, callback, conversion, or consumer.
+- P0 changes planning documents only. It adds no runtime model/service/store/
+  route/UI, persistence, migration, worker/queue/Agent/network/process call,
+  installation, execution, dispatch, retry/resend, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+
 #### v0.37 P0–P5 — Runner Binding Plan
 
 - Selected Atlas v0.37 **Runner Binding Plan** and froze the documentation-only

@@ -3,6 +3,58 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.38 P0 Worker Admission Stub — selected
+
+Atlas v0.38 is **Worker Admission Stub**. P0 is the documentation-only frozen
+[v1 contract](architecture/worker-admission-stub-v1.md).
+
+- [x] Inspect current `main` at
+  `83d08274a805ca3c972e9827c6a2ce9253982758` after annotated
+  `atlas-v0.37.0` targeting
+  `eee726fe68da80ca2e4ecab9478494881836e648`.
+- [x] Freeze exact create, intent, intake-stub, worker-reference,
+  inherited-limit, linkage, stub, lifecycle/status, reservation, audit,
+  redacted-error, result, and collection schemas with bounds and fixed-false
+  authority.
+- [x] Freeze authoritative same-owner v0.20–v0.36 linkage plus exact v0.37
+  plan/status, runner/worker identity/reference/capability, intent, and limits
+  fingerprints, with no client-supplied raw evidence.
+- [x] Freeze only `worker_admission_stubbed`, ordered blocker vocabulary, and
+  permanent successful-record blockers `worker_not_started`,
+  `queue_boundary_not_defined`, and `execution_start_boundary_not_defined`.
+- [x] Freeze authenticated ownership, dedicated record/read permissions,
+  trusted clock, inherited maximum 30-second freshness, earliest expiry,
+  permanent reservations, quotas, and Home Assistant rejection.
+- [x] Freeze byte-exact inheritance of v0.37 confined sandbox/resource/network/
+  filesystem ceilings as evidence bounds that do not create or prove a
+  sandbox, workspace, container, queue, worker, or runtime enforcement.
+- [x] Freeze atomic permanent idempotency-key and stub-subject reservations,
+  exact-duplicate zero-I/O readback, and no consume, release, refresh, retry,
+  resend, replay, replacement, supersession, repair, or bypass.
+- [x] Freeze closed sanitized audit/errors and exclude raw keys, credentials,
+  worker/runner/provider payloads, endpoints, addresses, ports, queues,
+  commands, arguments, environment, logs, images, repositories, internal paths,
+  mount sources, and arbitrary metadata.
+- [x] Freeze exact candidate-scoped collection GET/guarded POST and item GET,
+  plus a nested Mission Control list/get evidence panel; retain no surfaced
+  creation absent server-owned worker context, effect sibling, polling,
+  selector, form, navigation, editable intent/limit, or prohibited control.
+- [x] Freeze complete isolation from the pre-existing execution-worker backend,
+  relay, ledger, runner, request contracts, Agent, queues, dispatch, workflows,
+  providers, repositories, guests, deployments, and rollback systems.
+- [x] Freeze the evidence-only authority boundary, P0–P5 scope, threats, later
+  enablement, blocked/non-artifact Home Assistant golden, and must-not-change
+  contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/reader/route/UI,
+  persistence, migration, worker/queue/Agent/network/process call,
+  installation, execution, dispatch, retry/resend, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+- [ ] P1 — closed immutable models and pure validation.
+- [ ] P2 — explicitly constructed append-only Core stub-evidence service/store.
+- [ ] P3 — exact guarded Core create/list/get API.
+- [ ] P4 — strict Mission Control stub-evidence presentation.
+- [ ] P5 — isolation, regression, authority closure, and release evidence.
+
 ## Atlas v0.37 P0–P5 Runner Binding Plan — complete
 
 Atlas v0.37 is **Runner Binding Plan**. P0–P5 are complete from the frozen

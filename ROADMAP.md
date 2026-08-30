@@ -1,11 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.36
+## 1. Current released baseline — v0.37
 
-Atlas v0.36.0 is released as `atlas-v0.36.0` at
-`d02e04126fd4a897c9faaab0f68b49d84f218044`; its completed milestone and
+Atlas v0.37.0 is released as `atlas-v0.37.0` at
+`eee726fe68da80ca2e4ecab9478494881836e648`; its completed milestone and
 release-checklist reconciliation are merged to current `main` at
-`0b23b2c292e65b293a8097c74c3ab11b5d3295dd`.
+`83d08274a805ca3c972e9827c6a2ce9253982758`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -93,10 +93,54 @@ image evidence, grounding, and provenance.
 - v0.36 released durable installation-execution admission evidence over the
   exact v0.20–v0.35 chain while remaining `admission_gated`, with no runner
   binding, execution-start boundary, or effect consumer.
+- v0.37 released durable runner-binding-plan evidence over the exact
+  v0.20–v0.36 chain and confined limits while remaining `binding_planned`,
+  with no live runner binding, worker start, queue, or effect consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Selected v0.38 plan — Worker Admission Stub
+
+Atlas v0.38 selects **Worker Admission Stub**. The normative documentation-only
+P0 contract is [Worker Admission Stub v1](docs/architecture/worker-admission-stub-v1.md).
+
+V0.38 may append one same-owner Core stub-evidence record binding the complete
+v0.20–v0.36 chain, one active v0.37 runner binding plan, one server-owned
+abstract worker reference and derived admission intent, and the exact inherited
+sandbox/resource/network/filesystem ceilings. Its strongest state is
+`worker_admission_stubbed`, permanently blocked by `worker_not_started`,
+`queue_boundary_not_defined`, and `execution_start_boundary_not_defined`.
+
+The phase order is P0 → P1 → P2 → P3 → P4 → P5:
+
+- P0 freezes exact schemas, worker reference/intent/intake stub, fingerprints/
+  linkage, lifecycle, eligibility/blockers, ownership/permissions, freshness,
+  inherited limits, permanent reservations, audit/redaction, API/UI, threats,
+  later enablement, and must-not-change rules. P0 changes planning documents
+  only.
+- P1 adds closed immutable models, deterministic domain-separated
+  fingerprints, exact bounds/linkage/limits, and pure validation only.
+- P2 adds an explicitly constructed Core append-only stub-evidence service/
+  store with injected owner-scoped readers and permanent no-replay.
+- P3 adds only dedicated record/read permissions and candidate-scoped
+  collection GET/guarded POST plus owned item GET.
+- P4 adds strict Mission Control typing and a nested list/get evidence panel,
+  with no surfaced creation absent server-owned worker context, polling,
+  selector, form, navigation, editable limits, or effect control.
+- P5 adds isolation, concurrency/restart no-replay, regression, authority,
+  redaction, execution-worker and Agent parity, Home Assistant, and release
+  evidence only.
+
+V0.38 enables a later milestone to require an active worker-admission stub
+before independently defining queue admission or worker start. Worker
+discovery/registration/contact/reservation/binding/start, queue/enqueue,
+execution requests, dispatch, execution/installation, retry/resend, Agent or
+workflow invocation, Docker/Podman/shell/process, provider/repository/in-guest
+mutation, deployment, rollback, endpoint/credential access, and Home Assistant
+artifacts remain blocked. The pre-existing execution-worker subsystem remains
+independently gated and has no v0.38 consumer or integration.
 
 ## Completed v0.37 plan — Runner Binding Plan
 
