@@ -3,10 +3,11 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.37 P0 Runner Binding Plan — selected
+## Atlas v0.37 P0–P5 Runner Binding Plan — complete
 
-Atlas v0.37 is **Runner Binding Plan**. P0 is the documentation-only frozen
-[v1 contract](architecture/runner-binding-plan-v1.md).
+Atlas v0.37 is **Runner Binding Plan**. P0–P5 are complete from the frozen
+[v1 contract](architecture/runner-binding-plan-v1.md). P5 validation started
+from P4 commit `25bb21c58bf465ddc9fcf2895c6beb2301ba4e21`.
 
 - [x] Inspect current `main` at
   `0b23b2c292e65b293a8097c74c3ab11b5d3295dd` after annotated
@@ -45,11 +46,47 @@ Atlas v0.37 is **Runner Binding Plan**. P0 is the documentation-only frozen
   execution, worker/workflow, dispatch, retry/resend, Docker/Podman/shell,
   mutation, deployment, rollback, artifact, tag, push, publication, or release
   action.
-- [ ] P1 — closed immutable models and pure validation.
-- [ ] P2 — explicitly constructed append-only Core plan-evidence service/store.
-- [ ] P3 — exact guarded Core create/list/get API.
-- [ ] P4 — strict Mission Control plan-evidence presentation.
-- [ ] P5 — isolation, regression, authority closure, and release evidence.
+- [x] P1 — closed immutable models, exact runner/limit/linkage validation,
+  deterministic fingerprints, bounds, redaction, fixed blockers, and
+  fixed-false authority.
+- [x] P2 — explicitly constructed append-only Core plan-evidence service/store
+  with injected owner-scoped readers, atomic permanent reservations,
+  restart-safe reads, quotas, corruption closure, and no effect dependency.
+- [x] P3 — exact guarded candidate-scoped collection GET/POST and item GET,
+  strict auth/permission/origin/CSRF/rate/parsing gates, redaction, and no
+  effect-bearing sibling route.
+- [x] P4 — strict Mission Control plan-evidence presentation using only P3
+  create/list/get, with no polling, sensitive rendering, standalone
+  navigation, editable runner/limits, extra mutation, or prohibited control.
+- [x] P5 — exact API and zero-consumer isolation, `binding_planned` fixed-false
+  authority, concurrency/restart permanent no-replay, secret-free persistence,
+  Agent parity, Mission Control structural closure, Home Assistant golden, and
+  release evidence.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates: `All checks passed!`.
+- [x] Focused Atlas Core release suite: `104 passed, 129 warnings in 21.91s`.
+- [x] Full Atlas Agent pytest: `1049 passed, 32 warnings in 13.03s`.
+- [x] Mission Control: `97 passed` test files / `596 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed with only the advisory
+  chunk-size warning.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, runner binding,
+  execution/worker/workflow start, dispatch, retry/resend, Agent invocation,
+  process execution, mutation, deployment, rollback, Home Assistant artifact,
+  tag, push, publication, or release action.
+- [ ] Record the P5 closure commit after commit creation.
+- [ ] Run and record the full Atlas Core clean-environment gate.
+- [ ] Record the exact reviewed implementation/validation SHA after P5 review.
+- [ ] Verify the tracked worktree is clean at the final release-preparation
+  commit.
+- [ ] Create immutable annotated tag `atlas-v0.37.0` at the final
+  release-preparation commit.
+- [ ] Push branch `v037-runner-binding-plan` and annotated tag
+  `atlas-v0.37.0` to `origin`.
+- [ ] Publish the GitHub release for `atlas-v0.37.0`.
 
 ## Atlas v0.36 P0–P5 Installation Execution Admission Boundary — complete
 

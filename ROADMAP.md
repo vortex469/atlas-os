@@ -98,10 +98,10 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Selected v0.37 plan — Runner Binding Plan
+## Completed v0.37 plan — Runner Binding Plan
 
-Atlas v0.37 selects **Runner Binding Plan**. The normative documentation-only
-P0 contract is [Runner Binding Plan v1](docs/architecture/runner-binding-plan-v1.md).
+Atlas v0.37 implements **Runner Binding Plan** from the frozen
+[Runner Binding Plan v1](docs/architecture/runner-binding-plan-v1.md) contract.
 
 V0.37 may append one same-owner Core plan-evidence record binding the complete
 v0.20–v0.35 evidence/permission chain, one active v0.36 admission, one abstract
@@ -116,17 +116,18 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   eligibility/blockers, ownership/permissions, freshness, limit semantics,
   permanent reservations, audit/redaction, API/UI, threats, later enablement,
   and must-not-change contracts. P0 changes planning documents only.
-- P1 adds closed immutable models, deterministic domain-separated
-  fingerprints, bounds, and pure validation only.
-- P2 adds an explicitly constructed default-off Core append-only plan-evidence
-  service/store with injected owner-scoped readers and permanent no-replay.
-- P3 adds only dedicated record/read permissions and candidate-scoped
+- P1 added closed immutable models, deterministic domain-separated
+  fingerprints, exact limits/linkage, bounds, and pure validation only.
+- P2 added an explicitly constructed Core append-only plan-evidence service/
+  store with injected owner-scoped readers and permanent no-replay.
+- P3 added only dedicated record/read permissions and candidate-scoped
   collection GET/guarded POST plus owned item GET.
-- P4 adds only a strict Mission Control evidence panel and two-step record
-  flow, with no polling, live runner selector, editable limit, or effect
-  control.
-- P5 adds isolation, concurrency/no-replay, regression, authority, redaction,
-  Agent parity, Home Assistant, and release evidence only.
+- P4 added only a strict Mission Control evidence panel with no polling, live
+  runner selector, editable limit, standalone navigation, or effect control.
+- P5 closes exact Core API and zero-consumer isolation, concurrency/restart
+  no-replay, secret-free evidence, fixed-false authority, Agent parity,
+  Mission Control structural isolation, Home Assistant blocking, and release
+  evidence. P0–P5 are complete.
 
 V0.37 enables a later milestone to require an active runner-binding plan before
 separately specifying authenticated live runner binding. Runner discovery,

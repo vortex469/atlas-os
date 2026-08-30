@@ -1,6 +1,6 @@
 # Runner Binding Plan v1 planning contract
 
-Status: **Atlas v0.37 P0 selected; P1–P5 not implemented**.
+Status: **Atlas v0.37 P0–P5 complete**.
 
 Atlas v0.37 defines one closed, durable Core evidence record stating that an
 authenticated operator planned the possible future binding of one exact,
@@ -576,14 +576,14 @@ eligibility/blockers, ownership/permissions, freshness/expiry, bounded limit
 semantics, permanent reservations, audit/redaction, API/UI, threats, later
 enablement, and must-not-change contracts. Planning documents only.
 
-### P1 — Closed models and pure validation
+### P1 — Closed models and pure validation — complete
 
 Add immutable request/reference/limit/linkage/plan/status/reservation/audit/
 error/result models, domain-separated fingerprints, bounds, same-owner and
 freshness validation, fixed blockers, Home Assistant golden, and fixed-false
 authority. No service, store, reader, route, UI, Agent, runner, or effect.
 
-### P2 — Append-only plan-evidence service and store
+### P2 — Append-only plan-evidence service and store — complete
 
 Add an explicitly constructed default-off Core service over injected
 owner-scoped v0.36 and runner-reference readers plus a bounded append-only
@@ -592,21 +592,22 @@ readback, quotas, corruption closure, and derived expiry. No external I/O,
 registration, runner contact, worker/workflow/process call, dispatch, or
 mutation.
 
-### P3 — Exact guarded Core API
+### P3 — Exact guarded Core API — complete
 
 Register only the two permissions and candidate-scoped collection GET/guarded
 POST plus owned item GET. Lock authentication, origin, CSRF, rate, body/query/
 idempotency parsing, ownership non-disclosure, redaction, OpenAPI, and fail-
 closed construction. No action or effect sibling.
 
-### P4 — Mission Control plan-evidence presentation
+### P4 — Mission Control plan-evidence presentation — complete
 
-Add only the strict P3 client and evidence panel with two-step creation, exact
-limits/linkage/lifecycle/audit readback, fixed-false authority, redaction, and
-Home Assistant blocked state. No polling, live runner selection, editable
+Add only the strict P3 client and evidence panel with exact limits/linkage/
+lifecycle/audit readback, fixed-false authority, redaction, and Home Assistant
+blocked state. Creation remains unavailable because Core supplies no eligible
+runner reference in this context. No polling, live runner selection, editable
 limits, sensitive rendering, effect label, or other mutation.
 
-### P5 — Isolation, regression, and release closure
+### P5 — Isolation, regression, and release closure — complete
 
 Prove permanent concurrent single plan, restart/expiry no-replay, secret-free
 persistence, complete v0.20–v0.36 linkage, exact runner/limit fingerprints,
@@ -614,6 +615,12 @@ owner/permission isolation, exact API/UI surfaces, zero effect consumers,
 Agent capability parity, prior-boundary regressions, and blocked/non-artifact
 Home Assistant. Tests and release docs only; no runtime behavior, tag, push,
 publication, or deployment.
+
+Observed P5 validation passed both Core and Agent Ruff gates, 104 focused Core
+release/isolation tests, all 1049 Agent tests, all 596 Mission Control tests,
+Mission Control lint and production build, and `git diff --check`. Closure adds
+only authority/isolation tests and release evidence; no effect or authority
+consumer was added.
 
 ## What v0.37 enables later
 

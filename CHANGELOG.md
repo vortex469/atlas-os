@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.37 P0 — Runner Binding Plan
+#### v0.37 P0–P5 — Runner Binding Plan
 
 - Selected Atlas v0.37 **Runner Binding Plan** and froze the documentation-only
   [v1 planning contract](docs/architecture/runner-binding-plan-v1.md).
@@ -28,6 +28,28 @@ release boundaries.
   Agent/network/credential access, installation, execution, worker/workflow,
   dispatch, retry/resend, Docker/Podman/shell/process, mutation, deployment,
   rollback, artifact, tag, push, publication, or release action.
+- P1 adds closed immutable plan/reference/limit/linkage/lifecycle/audit/error,
+  reservation, idempotency, result, and collection models with deterministic
+  fingerprints, exact ceilings, fixed blockers, and fixed-false authority.
+- P2 adds an explicitly constructed append-only Core evidence service/store
+  over injected owner-scoped admission and runner-reference readers, with
+  atomic permanent reservations, exact-duplicate readback, quotas, bounds,
+  corruption closure, and no effect dependency.
+- P3 registers only the guarded candidate-scoped collection GET/POST and owned
+  item GET with strict security/parsing, ownership non-disclosure, redaction,
+  and no bind/run/execute/start/dispatch/retry/resend/deploy sibling.
+- P4 adds a strict Mission Control evidence panel using only P3 create/list/get.
+  It presents lifecycle, exact runner/limit/linkage evidence, expiry, audit,
+  permanent no-replay, fixed-false authority, and Home Assistant blocking with
+  no polling, sensitive rendering, navigation, editable runner/limits, or
+  prohibited control.
+- P5 locks exact API and consumer isolation, `binding_planned` evidence-only
+  authority, concurrent/restart permanent no-replay, secret-free persistence,
+  Agent zero-consumer status, Mission Control structural isolation, and the
+  blocked/non-artifact Home Assistant golden. Validation passed both Ruff
+  gates, 104 focused Core tests, 1049 Agent tests, 596 Mission Control tests,
+  Mission Control lint/build, and `git diff --check`. P5 adds tests and release
+  documentation only.
 
 #### v0.36 P0–P5 — Installation Execution Admission Boundary
 
