@@ -71,6 +71,19 @@ P5 validation evidence:
   execution start, dispatch, retry/resend, Agent invocation, effect,
   deployment, rollback, Home Assistant artifact, tag, push, publication, or
   release action.
+- [x] P5 closure commit:
+  `720c1be9d71ba8556b04ea34e7e96402f6711ab6 test(v0.36): close installation execution admission`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3201 passed, 396 warnings in 230.74s (0:03:50)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `720c1be9d71ba8556b04ea34e7e96402f6711ab6`.
+- [ ] Verify the tracked worktree is clean at the final release-preparation
+  commit.
+- [ ] Create immutable annotated tag `atlas-v0.36.0` targeting the final
+  release-preparation commit.
+- [ ] Push branch `v036-installation-execution-admission` and annotated tag
+  `atlas-v0.36.0` to `origin`.
+- [ ] Publish the GitHub release for `atlas-v0.36.0`.
 
 ## Atlas v0.35 P0 Execution Permission Grant Boundary — selected
 
