@@ -48,6 +48,12 @@ release boundaries.
   freshness, owner context, audit evidence, redacted errors, fixed-false
   authority, and the blocked Home Assistant golden, with no polling, mutation
   call, raw sensitive data, or effect control.
+- P5 closed v0.34 with Core and Mission Control release-isolation guards for
+  the exact GET-only surface, no-effect service, fixed-false authority,
+  exclusive read-only v0.20–v0.33 evidence consumption, sensitive-data and
+  effect-control absence, Agent isolation, and blocked/non-artifact Home
+  Assistant golden. P1–P5 are complete with no migration, tag, push, release,
+  deployment, or runtime authority expansion.
 
 #### v0.33 P0–P5 — End-to-End Inert Delivery Receipt
 

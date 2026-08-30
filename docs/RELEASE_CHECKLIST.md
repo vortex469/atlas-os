@@ -37,7 +37,23 @@ frozen [v1 contract](architecture/installation-readiness-review-v1.md).
   isolation, closed redacted errors, and locked OpenAPI surface.
 - [x] P4 — strictly parsed read-only Mission Control presentation with ordered
   evidence, linkage, audit, redaction, authority copy, and no effect controls.
-- [ ] P5 — isolation, regression, authority closure, and release evidence.
+- [x] P5 — isolation, regression, authority closure, Home Assistant golden,
+  and Core/Agent/Mission Control release validation evidence.
+
+P5 closure validates both Python lint gates, the complete Core and Agent test
+suites, the complete Mission Control test/lint/build gates, and
+`git diff --check`. The frozen surface remains one Core GET and one read-only
+Mission Control presentation. No tag, push, publication, release, deployment,
+migration, or runtime effect is part of this closure commit.
+
+Validation evidence for P5:
+
+- Atlas Core: `3133 passed, 315 warnings in 219.09s`.
+- Atlas Agent: `1045 passed, 32 warnings in 11.59s`.
+- Mission Control: `89` test files and `566` tests passed; lint completed with
+  the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning and no
+  errors; the production TypeScript/Vite build passed.
+- Both Python Ruff gates and `git diff --check` passed.
 
 ## Atlas v0.33 P0–P5 End-to-End Inert Delivery Receipt — complete
 

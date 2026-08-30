@@ -1,6 +1,6 @@
 # Installation Readiness Review v1 planning contract
 
-Status: **Atlas v0.34 P0–P4 implemented; P5 not implemented**.
+Status: **Atlas v0.34 P0–P5 implemented and release-validated**.
 
 Atlas v0.34 defines a read-only, operator-owned review of the released
 v0.20–v0.33 installation evidence chain. It answers only whether the exact
@@ -391,7 +391,7 @@ context, audit evidence, redacted unavailable state, and fixed authority
 fields. It adds no polling, form, action navigation, mutation client, raw
 payload, credential, address, command, log, path, or effect control.
 
-### P5 — Isolation, regression, and release closure
+### P5 — Isolation, regression, and release closure — complete
 
 Prove exact route/OpenAPI and UI surfaces, deterministic evaluation, complete
 linkage recomputation, ownership isolation, freshness/expiry mapping,
@@ -399,6 +399,13 @@ redaction, no writes or external I/O, zero authority consumers, prior release
 regressions, capability parity, and the blocked Home Assistant golden. Add
 tests and release evidence only; do not tag, push, publish, deploy, or release
 automatically.
+
+P5 adds cross-layer release guards for the single Core GET, P2 no-effect
+service, fixed-false authority, exclusive read-only v0.20–v0.33 consumption,
+Mission Control GET-only client and control/data absence, Agent isolation, and
+the blocked/non-artifact Home Assistant golden. Core, Agent, and Mission
+Control lint, tests, build, and repository whitespace validation close P1–P5.
+No tag, push, publication, release, or deployment is performed by P5.
 
 ## Exact authority boundary
 

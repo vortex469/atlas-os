@@ -470,6 +470,8 @@ def test_mission_control_v020_surface_is_preserve_review_delete_only() -> None:
     }
     assert route_consumers == {
         Path("api/installationCandidateLifecycle.ts"),
+        Path("api/installationReadinessReview.ts"),
+        Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 
     assert len(re.findall(r"atlas\s*\.\s*get(?:<[^>]+>)?\s*\(", api_source)) == 2
@@ -485,7 +487,15 @@ def test_mission_control_v020_surface_is_preserve_review_delete_only() -> None:
         "listInstallationCandidateRecords",
         "preserveInstallationCandidateRecord",
     }
-    assert not any(token in component_source for token in ("<a ", "<Link", "<form", "navigate(", "href="))
+    assert "<Link" not in component_source
+    assert "<form" not in component_source
+    assert "navigate(" not in component_source
+    assert re.findall(r'href=\{`([^`]+)`\}', component_source) == [
+        (
+            "/installation/candidate-records/"
+            "${encodeURIComponent(record.candidate_record_id)}/readiness-review"
+        )
+    ]
     button_labels = set(re.findall(r">([^<>]+)</button>", component_source))
     assert button_labels == {
         "Delete saved record",

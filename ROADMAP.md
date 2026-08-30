@@ -116,13 +116,18 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
 - P4 added the sole strictly parsed read-only Mission Control GET client and
   candidate-context page/route, with no polling, mutation, retry, resend,
   admit, install, execute, dispatch, workflow, rollback, or deploy control.
-- P5 adds isolation, regression, authority, redaction, and release evidence
-  only.
+- P5 completed cross-layer isolation, regression, authority, redaction, Home
+  Assistant, and release validation evidence only, with no runtime change or
+  release action.
 
 V0.34 authority ends at an ephemeral read-only projection. Installation,
 execution, dispatch, retry/resend, Agent invocation, worker/workflow/process
 start, provider/repository/in-guest mutation, deployment, rollback, credential
 access, and Home Assistant artifacts remain blocked.
+
+P0–P5 are complete. V0.34 enables only authenticated inspection of the exact
+released evidence chain; a later milestone must separately define any
+execution-admission authority.
 
 ## Selected v0.33 plan — End-to-End Inert Delivery Receipt
 
