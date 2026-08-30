@@ -76,12 +76,15 @@ P5 validation evidence:
   `3167 passed, 355 warnings in 222.62s (0:03:42)`.
 - [x] Exact reviewed implementation/validation SHA after P5 review:
   `42cbd86921e921edcc05aeeee0b4500fa177c13e`.
-- [ ] Verify the tracked worktree is clean at the final release-preparation
+- [x] Final release-preparation commit:
+  `5c56940e21db9e80a9470d2db434415d02dff9ac docs(v0.35): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
   commit.
-- [ ] Create immutable annotated tag `atlas-v0.35.0` targeting the final
-  release-preparation commit.
-- [ ] Push branch `v035-execution-permission-grant` and annotated tag
-  `atlas-v0.35.0` to `origin`.
+- [x] Created immutable annotated tag `atlas-v0.35.0` targeting
+  `5c56940e21db9e80a9470d2db434415d02dff9ac`.
+- [x] Pushed branch `v035-execution-permission-grant` and annotated tag
+  `atlas-v0.35.0` to `origin`; the tag target is
+  `5c56940e21db9e80a9470d2db434415d02dff9ac`.
 - [ ] Publish the GitHub release for `atlas-v0.35.0`.
 
 ## Atlas v0.34 P0 Installation Readiness Review — selected
