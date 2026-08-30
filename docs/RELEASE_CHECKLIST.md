@@ -83,9 +83,12 @@ P5 validation evidence:
   queue/enqueue, runner binding, execution/workflow start, dispatch,
   retry/resend, Agent invocation, process execution, mutation, deployment,
   rollback, Home Assistant artifact, tag, push, publication, or release action.
-- [ ] Record the P5 closure commit.
-- [ ] Run and record the full Atlas Core clean-environment gate.
-- [ ] Record the exact reviewed implementation/validation SHA after P5 review.
+- [x] P5 closure commit:
+  `f1dffeb6bff79496562bdbb5d2555930a9e7e5da test(v0.38): close worker admission stub`.
+- [x] Full Atlas Core clean-environment gate:
+  `3373 passed, 496 warnings in 253.43s (0:04:13)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `f1dffeb6bff79496562bdbb5d2555930a9e7e5da`.
 - [ ] Verify the tracked worktree is clean at the final release-preparation
   commit.
 - [ ] Create and verify immutable annotated tag `atlas-v0.38.0` at the exact
