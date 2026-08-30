@@ -438,17 +438,24 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
             "delete",
             "get",
         },
-            "/api/v1/installation/candidate-records/{candidate_record_id}/readiness-review": {
-                "get",
-            },
-            "/api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants": {
-                "get",
-                "post",
-            },
-            "/api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants/{grant_id}": {
-                "get",
-            },
-        }
+        "/api/v1/installation/candidate-records/{candidate_record_id}/readiness-review": {
+            "get",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants/{grant_id}": {
+            "get",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/execution-admissions": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/execution-admissions/{admission_id}": {
+            "get",
+        },
+    }
     prohibited = ("approve", "execute", "dispatch", "install", "deploy", "rollback")
     assert not any(
         token in path.removeprefix("/api/v1/installation/candidate-records")
@@ -479,6 +486,7 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/installationCandidateLifecycle.ts"),
         Path("api/installationReadinessReview.ts"),
         Path("api/executionPermissionGrant.ts"),
+        Path("api/installationExecutionAdmission.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 
@@ -914,6 +922,7 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     readiness_contract_root = APP_ROOT / "installation_readiness_review"
     permission_grant_contract_root = APP_ROOT / "execution_permission_grant"
+    execution_admission_contract_root = APP_ROOT / "installation_execution_admission"
     for path in _production_python_files(APP_ROOT):
         if (
             path in V024_ALLOWED_CONSUMERS
@@ -923,6 +932,7 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
             or inert_receipt_contract_root in path.parents
             or readiness_contract_root in path.parents
             or permission_grant_contract_root in path.parents
+            or execution_admission_contract_root in path.parents
         ):
             continue
         source = path.read_text(encoding="utf-8")

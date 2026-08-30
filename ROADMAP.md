@@ -1,11 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.34
+## 1. Current released baseline — v0.35
 
-Atlas v0.34.0 is released as `atlas-v0.34.0` at
-`fb3d9014574b5aa85a1024d77fe7b29bf35e1b88`; its completed milestone and
+Atlas v0.35.0 is released as `atlas-v0.35.0` at
+`5c56940e21db9e80a9470d2db434415d02dff9ac`; its completed milestone and
 release-checklist reconciliation are merged to current `main` at
-`5965e3c016a4ee1e6d871d675964cbe40b04e353`.
+`adb74c2a49fee28483ebe48c703b6887bcee7ee9`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -88,12 +88,51 @@ image evidence, grounding, and provenance.
 - v0.34 released authenticated read-only installation readiness review over
   the exact v0.20–v0.33 chain; even `readiness_gated` leaves execution
   admission undefined.
+- v0.35 released durable operator permission evidence over the exact
+  v0.20–v0.34 chain without execution admission or an effect consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Selected v0.35 plan — Execution Permission Grant Boundary
+## Completed v0.36 plan — Installation Execution Admission Boundary
+
+Atlas v0.36 selects **Installation Execution Admission Boundary**. The
+normative documentation-only P0 contract is [Installation Execution Admission
+v1](docs/architecture/installation-execution-admission-v1.md).
+
+V0.36 may append one same-owner Core admission-evidence record binding the
+complete v0.20–v0.34 evidence/readiness chain and an active v0.35 permission
+grant. Its strongest readiness is `admission_gated`, permanently blocked by
+`runner_binding_not_defined` and `execution_start_boundary_not_defined`. It
+does not select or invoke a runner and grants no execution or mutation
+authority.
+
+The phase order is P0 → P1 → P2 → P3 → P4 → P5:
+
+- P0 freezes exact models, linkage/fingerprints, readiness/blockers,
+  eligibility evidence, lifecycle, ownership/permissions, freshness,
+  permanent reservations, audit/redaction, API/UI, threats, later enablement,
+  and must-not-change contracts. P0 changes planning documents only.
+- P1 added closed immutable models, deterministic domain-separated
+  fingerprints, bounds, and pure validation only.
+- P2 added an explicitly constructed default-off Core append-only evidence
+  service/store with injected owner-scoped readers and permanent no-replay.
+- P3 added only dedicated record/read permissions and candidate-scoped
+  collection GET/guarded POST plus owned item GET.
+- P4 added only the strict Mission Control evidence panel and two-step record
+  flow, with no runner selector, polling, or effect control.
+- P5 added isolation, concurrency/no-replay, regression, authority, redaction,
+  Home Assistant, and release evidence only.
+
+V0.36 enables a later milestone to require active admission evidence before a
+separately specified runner-binding or execution-start decision. Runner
+selection/registration/invocation, executable intent, installation, execution,
+dispatch, retry/resend, Agent invocation, worker/workflow/process start,
+Docker/Podman/shell, provider/repository/in-guest mutation, deployment,
+rollback, credentials, and Home Assistant artifacts remain blocked.
+
+## Completed v0.35 plan — Execution Permission Grant Boundary
 
 Atlas v0.35 selects **Execution Permission Grant Boundary**. The normative
 documentation-only P0 contract is

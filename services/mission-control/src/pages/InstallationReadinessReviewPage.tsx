@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { getInstallationReadinessReview, LINKAGE_KEYS } from "../api/installationReadinessReview";
 import { createExecutionPermissionGrant, executionPermissionGrantIdempotencyKey, listExecutionPermissionGrants } from "../api/executionPermissionGrant";
+import { InstallationExecutionAdmissions } from "../features/installation/InstallationExecutionAdmissions";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
 import type { FingerprintV1, InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
 import { EXECUTION_PERMISSION_CONFIRMATION, type ExecutionPermissionGrantCreateV1, type ExecutionPermissionGrantResultV1 } from "../types/executionPermissionGrant";
@@ -166,7 +167,7 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
 
     const mayCreate = response.review.readiness === "readiness_gated" && session.authenticated &&
         session.principal?.permissions.includes("installation.execution.permission.grant");
-    return <section aria-labelledby="permission-grants-heading" className="rounded border border-slate-700 p-4">
+    return <><section aria-labelledby="permission-grants-heading" className="rounded border border-slate-700 p-4">
         <h2 id="permission-grants-heading" className="font-semibold">Execution permission evidence</h2>
         <p className="mt-2 text-sm">This durable grant records permission evidence only. It is not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, worker execution, Docker, Podman, shell or process execution, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything.</p>
         <p className="mt-2 text-sm">Core binds the authenticated operator and exact v0.20–v0.34 evidence/readiness fingerprints. Validity inherits at most 30 seconds; expiry never refreshes evidence. The review subject and idempotency subject are reserved permanently, with no replay.</p>
@@ -182,7 +183,11 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
             <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record permission evidence</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
         </div>}
         {!mayCreate && <p className="mt-4 text-sm text-amber-200">Creation remains blocked. A current readiness-gated review, authenticated owner, dedicated permission, and valid CSRF session are required. Home Assistant remains non-installable and non-executable.</p>}
-    </section>;
+    </section><InstallationExecutionAdmissions
+        candidateId={candidateId}
+        grants={grants ?? []}
+        homeAssistantBlocked={response.review.readiness === "blocked" && response.review.blockers.includes("installation_capability_unsupported")}
+    /></>;
 }
 
 function Grant({ result }: { result: ExecutionPermissionGrantResultV1 }) {

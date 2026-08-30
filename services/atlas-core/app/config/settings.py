@@ -141,6 +141,9 @@ class OperatorAuthSettings(BaseModel):
     execution_permission_grant_database: str = (
         "/opt/atlas/data/execution_permission_grants.db"
     )
+    installation_execution_admission_database: str = (
+        "/opt/atlas/data/installation_execution_admissions.db"
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
@@ -207,6 +210,19 @@ class OperatorAuthSettings(BaseModel):
         ):
             raise ValueError(
                 "execution permission grant database must be an absolute path"
+            )
+        execution_admission_database = Path(
+            self.installation_execution_admission_database
+        )
+        if (
+            not self.installation_execution_admission_database
+            or self.installation_execution_admission_database
+            != self.installation_execution_admission_database.strip()
+            or not execution_admission_database.is_absolute()
+            or self.installation_execution_admission_database == ":memory:"
+        ):
+            raise ValueError(
+                "installation execution admission database must be an absolute path"
             )
         if not self.enabled:
             return self
@@ -308,6 +324,9 @@ def load_settings() -> Settings:
             ),
             "execution_permission_grant_database": os.getenv(
                 "ATLAS_OPERATOR_AUTH_EXECUTION_PERMISSION_GRANT_DATABASE"
+            ),
+            "installation_execution_admission_database": os.getenv(
+                "ATLAS_OPERATOR_AUTH_INSTALLATION_EXECUTION_ADMISSION_DATABASE"
             ),
         }
         for key, value in environment_overrides.items():

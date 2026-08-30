@@ -172,3 +172,24 @@ consumed by Agent in v0.35. Installation, execution, dispatch, retry/resend,
 Agent invocation, worker/workflow/process start, Docker/Podman/shell,
 provider/repository/in-guest mutation, deployment, rollback, and Home Assistant
 artifacts remain blocked through P0–P5.
+
+## Selected v0.36 planning boundary
+
+Atlas v0.36 selects **Installation Execution Admission Boundary**. Its
+normative contract is [Installation Execution Admission
+v1](../../docs/architecture/installation-execution-admission-v1.md).
+
+P0 was documentation-only. P1–P4 added Core-owned admission evidence
+over the already exported v0.20–v0.35 chain. It adds no Agent model, route,
+reader, callback, permission, credential, registration, runner identity,
+invocation, executable capability, worker/workflow consumer, or runtime
+behavior. Agent-local evidence not exported by released contracts remains
+inaccessible and cannot be inferred. P5 confirms through Agent regression and
+repository isolation tests that Agent has no v0.36 consumer or Home Assistant
+deployment artifact. P0–P5 are complete.
+
+Every successful v0.36 record remains `admission_gated` because runner binding
+and the execution-start boundary are undefined. Installation, execution,
+dispatch, retry/resend, Agent invocation, worker/workflow/process start,
+Docker/Podman/shell, provider/repository/in-guest mutation, deployment,
+rollback, and Home Assistant artifacts remain blocked through P0–P5.

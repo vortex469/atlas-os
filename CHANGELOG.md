@@ -6,6 +6,46 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.36 P0–P5 — Installation Execution Admission Boundary
+
+- Selected Atlas v0.36 **Installation Execution Admission Boundary** and froze
+  the documentation-only [v1 planning
+  contract](docs/architecture/installation-execution-admission-v1.md).
+- Defined one append-only, operator-owned Core admission-evidence artifact
+  binding the exact v0.20–v0.34 chain and active v0.35 permission grant, with
+  deterministic linkage, inherited maximum 30-second freshness, permanent
+  idempotency/grant-subject reservations, audit, and redaction.
+- Froze only `blocked` and `admission_gated`; every successful record retains
+  `runner_binding_not_defined` and `execution_start_boundary_not_defined`.
+  Runner eligibility is evidence only: no runner is selected, registered,
+  available, invokable, or authorized to start work.
+- Froze dedicated record/read permissions, exact candidate-scoped collection
+  GET/guarded POST and item GET, one optional Mission Control two-step evidence
+  flow, closed blockers, lifecycle, P0–P5 sequencing, threats, later
+  enablement, Home Assistant golden, and must-not-change rules.
+- P0 changes planning documents only. It adds no runtime model, service, store,
+  route, permission registration, UI, persistence, migration, Agent/runner/
+  worker/workflow call, credential/network access, installation, execution,
+  dispatch, retry/resend, Docker/Podman/shell/process, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+- P1 adds closed immutable admission/linkage/eligibility/lifecycle/audit/error,
+  reservation, idempotency, and result models with deterministic fingerprints,
+  exact same-owner v0.20–v0.35 validation, fixed blockers, and fixed-false
+  authority.
+- P2 adds an explicitly constructed Core-local append-only service/store over
+  injected owner-scoped evidence readers, with atomic permanent reservations,
+  exact-duplicate readback, quotas, corruption closure, and no effect consumer.
+- P3 registers only the guarded candidate-scoped collection GET/POST and owned
+  item GET with strict security/parsing gates, redaction, and no runner,
+  execute, start, dispatch, retry/resend, or deployment sibling.
+- P4 adds only the Mission Control evidence presentation using P3 create/list/
+  get, with explicit `admission_gated` non-authorizing copy, no polling,
+  navigation, sensitive rendering, extra mutation, or prohibited control.
+- P5 closes exact Core API/consumer isolation, permanent concurrent/restart
+  no-replay, Agent zero-consumer status, Mission Control structural isolation,
+  fixed-false authority, and blocked/non-artifact Home Assistant validation.
+  It adds tests and release documentation only.
+
 #### v0.35 P0–P5 — Execution Permission Grant Boundary
 
 - Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
