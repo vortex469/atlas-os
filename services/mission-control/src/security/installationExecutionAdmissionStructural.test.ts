@@ -48,9 +48,12 @@ describe("v0.36 installation execution admission presentation boundary", () => {
             .sort();
         expect(consumers).toEqual([
             "../api/installationExecutionAdmission.ts",
+            "../api/runnerBindingPlan.ts",
             "../features/installation/InstallationExecutionAdmissions.tsx",
+            "../features/installation/RunnerBindingPlans.tsx",
             "../pages/InstallationReadinessReviewPage.tsx",
             "../types/installationExecutionAdmission.ts",
+            "../types/runnerBindingPlan.ts",
         ]);
     });
 });

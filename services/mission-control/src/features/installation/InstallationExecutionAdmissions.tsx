@@ -6,6 +6,7 @@ import { useOperatorSession } from "../../hooks/operatorSessionContext";
 import type { ExecutionPermissionGrantResultV1 } from "../../types/executionPermissionGrant";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { InstallationExecutionAdmissionCreateV1, InstallationExecutionAdmissionResultV1 } from "../../types/installationExecutionAdmission";
+import { RunnerBindingPlans } from "./RunnerBindingPlans";
 
 const BLOCKER_LABELS: Record<string, string> = {
     runner_binding_not_defined: "Runner binding is not defined",
@@ -59,7 +60,7 @@ export function InstallationExecutionAdmissions({ candidateId, grants, homeAssis
         {admissions === null && !error && <p role="status" className="mt-4">Loading installation execution admission evidence…</p>}
         {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>Installation execution admission evidence could not be recorded.</p><p className="text-xs text-slate-400">The error is redacted; no credential, provider payload, command, log, address, endpoint, or internal path is shown.</p></div>}
         {admissions?.length === 0 && <p role="status" className="mt-4">No installation execution admission evidence has been recorded.</p>}
-        {admissions && admissions.length > 0 && <ol aria-label="Installation execution admissions" className="mt-4 space-y-4">{admissions.map((item) => <Admission key={item.admission!.admission_id} result={item} />)}</ol>}
+        {admissions && admissions.length > 0 && <ol aria-label="Installation execution admissions" className="mt-4 space-y-4">{admissions.map((item) => <Admission key={item.admission!.admission_id} result={item} homeAssistantBlocked={homeAssistantBlocked} />)}</ol>}
         {mayCreate && !confirming && <button type="button" onClick={() => setConfirming(true)} className="mt-4 rounded border border-blue-400 px-3 py-2 text-sm">Review admission evidence statement</button>}
         {mayCreate && confirming && <div aria-label="Admission evidence confirmation" className="mt-4 rounded border border-amber-400/40 p-4">
             <p className="font-semibold">Step 2 of 2 — explicitly preserve evidence</p>
@@ -71,7 +72,7 @@ export function InstallationExecutionAdmissions({ candidateId, grants, homeAssis
     </section>;
 }
 
-function Admission({ result }: { result: InstallationExecutionAdmissionResultV1 }) {
+function Admission({ result, homeAssistantBlocked }: { result: InstallationExecutionAdmissionResultV1; homeAssistantBlocked: boolean }) {
     const admission = result.admission!; const status = result.status!; const audit = result.audit_evidence!;
     return <li className="rounded border border-slate-800 p-3 text-sm">
         <h3 className="font-semibold">{status.lifecycle === "active" ? "Active admission-gated evidence" : "Expired admission-gated evidence"}</h3>
@@ -82,6 +83,7 @@ function Admission({ result }: { result: InstallationExecutionAdmissionResultV1 
         <details className="mt-3"><summary>Required v0.20–v0.34 evidence linkage inside v0.35 grant</summary><dl className="mt-2 grid gap-2 sm:grid-cols-2">{LINKAGE_KEYS.map((key) => <Value key={key} name={key} value={display(admission.linkage.permission_grant_linkage.readiness_linkage[key])} />)}</dl></details>
         <p className="mt-3 text-xs">Permanent idempotency reservation: true · permanent grant-subject reservation: true · raw idempotency key persisted: false · retry allowed: false · replay allowed: false.</p>
         <dl aria-label="Admission fixed-false authority fields" className="mt-3 grid gap-2 sm:grid-cols-2">{["Execution start allowed", "Runner binding allowed", "Execution authorized", "Installation allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Agent invocation allowed", "Worker allowed", "Workflow allowed", "Docker allowed", "Podman allowed", "Shell allowed", "Process allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Deployment allowed", "Rollback allowed", "Replay allowed"].map((name) => <Value key={name} name={name} value="false" />)}</dl>
+        <RunnerBindingPlans candidateId={admission.candidate_record_id} admission={result} homeAssistantBlocked={homeAssistantBlocked} />
     </li>;
 }
 
