@@ -3,7 +3,7 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.33 P0–P4 End-to-End Inert Delivery Receipt — implemented
+## Atlas v0.33 P0–P5 End-to-End Inert Delivery Receipt — complete
 
 Atlas v0.33 is **End-to-End Inert Delivery Receipt**. P0 is the
 documentation-only frozen
@@ -36,7 +36,38 @@ documentation-only frozen
   prohibit v0.33 clients/types/hooks/pages/routes/navigation, read or mutation
   calls, verification/retry/resend/effect controls, sensitive rendering, and
   Home Assistant exceptions without adding runtime behavior.
-- [ ] P5 — release isolation, regressions, authority closure, and evidence.
+- [x] P5 — release isolation, regressions, authority closure, and evidence.
+
+### P5 authority and isolation gates
+
+- [x] Keep v0.33 explicitly constructed as internal composition only, with no
+  production registration, public Core API, or Mission Control surface.
+- [x] Keep verification one-shot, permanently reserved, append-only, durable,
+  and secret-free, with exact duplicate zero I/O and no retry/resend path.
+- [x] Keep receipt/result/acknowledgement evidence fixed false for effect
+  authority and unconsumed by installation, workflow, worker, dispatch,
+  provider/repository/in-guest mutation, deployment, rollback, or replay.
+- [x] Preserve v0.31 Core live send as one-shot/no-retry and v0.32 Agent intake
+  as admission-only on its exact guarded internal POST.
+- [x] Keep Mission Control free of a v0.33 API client, UI, route, navigation,
+  and retry/resend/admit/send/install/execute/deploy/workflow/mutation control.
+- [x] Preserve Home Assistant as blocked, non-installable, non-executable, and
+  without a deployment artifact.
+- [x] Add only release-isolation/authority tests and release-status documents;
+  add no runtime behavior, authority, API/UI, migration, tag, push, release,
+  or deployment.
+
+### P5 observed validation evidence
+
+- [x] Both requested Atlas Core and Atlas Agent Ruff gates passed.
+- [x] Full Atlas Core regression passed:
+  `3107 passed, 293 warnings in 208.00s (0:03:28)`.
+- [x] Full Atlas Agent regression passed:
+  `1045 passed, 32 warnings in 10.62s`.
+- [x] Mission Control passed 86 test files and 555 tests, lint, and production
+  build. Lint retained one pre-existing exhaustive-deps warning and no errors;
+  build retained only the existing chunk-size advisory.
+- [x] `git diff --check` passed.
 
 ## Atlas v0.32 P0–P5 Agent Live Intake Admission — complete
 

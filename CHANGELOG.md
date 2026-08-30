@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.33 P0 — End-to-End Inert Delivery Receipt
+#### v0.33 P0–P5 — End-to-End Inert Delivery Receipt
 
 - Selected Atlas v0.33 **End-to-End Inert Delivery Receipt** and froze the
   documentation-only [v1 planning
@@ -39,6 +39,18 @@ release boundaries.
   verification/polling, retry/resend/send/admit/effect control, sensitive
   rendering, and Home Assistant exception. No API bridge or runtime behavior
   is added.
+- P5 closes release isolation with explicit internal-only composition, exact
+  duplicate zero-I/O behavior, append-only durable and secret-free evidence,
+  fixed-false authority, and zero installation, workflow, worker, dispatch,
+  provider/repository/in-guest mutation, deployment, rollback, or replay-
+  bypass consumer. Core live send remains one-shot; Agent intake remains
+  admission-only; public Core and Mission Control surfaces remain absent; Home
+  Assistant remains blocked without a deployment artifact. P5 adds tests and
+  release documentation only.
+- P5 validation passed both Ruff gates, all 3107 Core tests, all 1045 Agent
+  tests, all 555 Mission Control tests, lint, production build, and
+  `git diff --check`. The existing frontend hook and chunk-size warnings
+  remained non-errors.
 
 #### v0.32 P0–P5 — Agent Live Intake Admission
 

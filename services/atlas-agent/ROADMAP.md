@@ -120,7 +120,10 @@ verification of Agent-local storage.
 
 P0 is documentation-only. P1–P3 added Core-only closed verification models,
 an append-only default-off receipt service/store, and one injected one-shot
-composition. P4 now locks Mission Control and public Core API absence; P5
-closes isolation. Installation, execution, dispatch, worker/workflow start,
+composition. P4 locks Mission Control and public Core API absence. P5 completed
+release isolation while preserving the exact one-shot Core send and admission-
+only Agent boundary; both Ruff gates, all 3107 Core tests, all 1045 Agent tests,
+and all 555 Mission Control tests plus lint/build passed.
+Installation, execution, dispatch, worker/workflow start,
 provider/repository/in-guest mutation, deployment, rollback, retry/resend, and
 Home Assistant artifacts remain blocked.

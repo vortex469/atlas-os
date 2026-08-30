@@ -1,6 +1,6 @@
 # End-to-End Inert Delivery Receipt v1 planning contract
 
-Status: **Atlas v0.33 P0–P4 implemented; P5 not implemented**.
+Status: **Atlas v0.33 P0–P5 implemented and validated**.
 
 Atlas v0.33 defines the narrowest end-to-end Core-to-Agent inert delivery
 receipt. An explicitly constructed, independently default-disabled Core
@@ -362,7 +362,7 @@ routes, navigation, polling, mutation, send/retry/resend/finalize controls,
 sensitive rendering, prohibited authority labels, and Home Assistant exception.
 Update milestone status only.
 
-### P5 — Release validation and closure
+### P5 — Release validation and closure — complete
 
 Lock default-off explicit construction, exact one-shot transport and Agent
 route, independent reservations, concurrent no-replay, terminal ambiguity,
@@ -371,6 +371,15 @@ consumers, absent UI/API expansion, capability parity, prior goldens, and Home
 Assistant blocking. Run full Core, Agent, and Mission Control regressions. Add
 tests and release evidence only; do not migrate, tag, push, publish, deploy, or
 release automatically.
+
+Closure locks explicit internal-only construction, exact duplicate zero-I/O
+behavior, durable append-only and secret-free evidence, fixed-false effect
+authority, zero production consumers, v0.31 one-shot/no-retry preservation,
+v0.32 admission-only preservation, absent public Core and Mission Control
+surfaces, and Home Assistant blocking without a deployment artifact. Both Ruff
+gates, all 3107 Core tests, all 1045 Agent tests, all 555 Mission Control tests,
+Mission Control lint/build, and `git diff --check` passed. P5 adds no runtime
+behavior or authority.
 
 ## Exact authority boundary
 
