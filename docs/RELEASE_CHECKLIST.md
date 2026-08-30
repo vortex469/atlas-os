@@ -83,12 +83,15 @@ P5 validation evidence:
   `3242 passed, 447 warnings in 237.14s (0:03:57)`.
 - [x] Exact reviewed implementation/validation SHA after P5 review:
   `0271f488a9a73f7badd530abf0ce0e9d489a804f`.
-- [ ] Verify the tracked worktree is clean at the final release-preparation
+- [x] Final release-preparation commit:
+  `eee726fe68da80ca2e4ecab9478494881836e648 docs(v0.37): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
   commit.
-- [ ] Create immutable annotated tag `atlas-v0.37.0` at the final
-  release-preparation commit.
-- [ ] Push branch `v037-runner-binding-plan` and annotated tag
-  `atlas-v0.37.0` to `origin`.
+- [x] Verified immutable annotated tag `atlas-v0.37.0` targets
+  `eee726fe68da80ca2e4ecab9478494881836e648`.
+- [x] Verified branch `v037-runner-binding-plan` and annotated tag
+  `atlas-v0.37.0` were pushed to `origin`; the remote branch and peeled tag
+  target are `eee726fe68da80ca2e4ecab9478494881836e648`.
 - [ ] Publish the GitHub release for `atlas-v0.37.0`.
 
 ## Atlas v0.36 P0–P5 Installation Execution Admission Boundary — complete
