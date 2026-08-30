@@ -44,12 +44,25 @@ from .store import (
 class InertDeliveryReceiptEvidence:
     prior_send_receipt: LiveDeliverySendReceiptV1
     agent_receipt_copy: AgentAdmissionReceiptCopyV1
+    response_body: bytes | None = None
 
 
 class InertDeliveryReceiptEvidenceReader(Protocol):
     def resolve(
         self, *, operator_id: str, request: EndToEndInertDeliveryRequestV1
     ) -> InertDeliveryReceiptEvidence: ...
+
+
+class InertDeliveryReceiptAmbiguousError(RuntimeError):
+    """A one-shot Agent exchange may have committed but cannot be verified."""
+
+
+class InertDeliveryReceiptRejectedError(RuntimeError):
+    """Agent returned a closed rejection for the inert envelope."""
+
+
+class InertDeliveryReceiptNotCurrentError(RuntimeError):
+    """The independently default-off composition is not enabled."""
 
 
 class InertDeliveryReceiptService:
@@ -110,6 +123,12 @@ class InertDeliveryReceiptService:
                 self._store.append(operator_id=authenticated_operator_id, stored=stored),
                 disposition="verified_inert_receipt",
             )
+        except InertDeliveryReceiptAmbiguousError:
+            return self._failure("ambiguous", correlation_id)
+        except InertDeliveryReceiptRejectedError:
+            return self._failure("agent_rejected", correlation_id)
+        except InertDeliveryReceiptNotCurrentError:
+            return self._failure("not_current", correlation_id)
         except InertDeliveryReceiptConflictError:
             return self._failure("already_reserved", correlation_id)
         except InertDeliveryReceiptQuotaError:
@@ -208,7 +227,9 @@ class InertDeliveryReceiptService:
             "envelope_fingerprint": request.envelope.envelope_fingerprint,
             "request_fingerprint": request.request_fingerprint,
             "response_body_fingerprint": response_body_fingerprint(
-                canonical_json(result)
+                evidence.response_body
+                if evidence.response_body is not None
+                else canonical_json(result)
             ),
             "agent_result_fingerprint": result_fingerprint,
             "admission_id": admission.admission_id,
