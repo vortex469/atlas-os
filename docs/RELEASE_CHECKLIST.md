@@ -70,6 +70,19 @@ P5 validation evidence:
 - [x] No runtime behavior, authority expansion, migration, installation,
   execution, dispatch, Agent invocation, effect, deployment, rollback, Home
   Assistant artifact, tag, push, publication, or release action.
+- [x] P5 closure commit:
+  `42cbd86921e921edcc05aeeee0b4500fa177c13e test(v0.35): close execution permission grant`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3167 passed, 355 warnings in 222.62s (0:03:42)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `42cbd86921e921edcc05aeeee0b4500fa177c13e`.
+- [ ] Verify the tracked worktree is clean at the final release-preparation
+  commit.
+- [ ] Create immutable annotated tag `atlas-v0.35.0` targeting the final
+  release-preparation commit.
+- [ ] Push branch `v035-execution-permission-grant` and annotated tag
+  `atlas-v0.35.0` to `origin`.
+- [ ] Publish the GitHub release for `atlas-v0.35.0`.
 
 ## Atlas v0.34 P0 Installation Readiness Review — selected
 
