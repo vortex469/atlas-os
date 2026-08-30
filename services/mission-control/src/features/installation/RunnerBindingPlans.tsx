@@ -4,6 +4,7 @@ import { listRunnerBindingPlans } from "../../api/runnerBindingPlan";
 import type { InstallationExecutionAdmissionResultV1 } from "../../types/installationExecutionAdmission";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { RunnerBindingPlanResultV1 } from "../../types/runnerBindingPlan";
+import { WorkerAdmissionStubs } from "./WorkerAdmissionStubs";
 
 const BLOCKER_LABELS: Record<string, string> = {
     runner_not_bound: "Runner is not bound",
@@ -30,11 +31,11 @@ export function RunnerBindingPlans({ candidateId, admission, homeAssistantBlocke
         {plans === null && !error && <p role="status" className="mt-4">Loading runner binding plan evidence…</p>}
         {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>Runner binding plan evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no provider payload, credential, command, log, endpoint, address, mount source, or internal path is shown.</p></div>}
         {plans?.length === 0 && <p role="status" className="mt-4">No runner binding plan evidence has been recorded. Runner binding and execution remain blocked.</p>}
-        {plans && plans.length > 0 && <ol aria-label="Runner binding plans" className="mt-4 space-y-4">{plans.map((item) => <Plan key={item.plan!.plan_id} result={item} />)}</ol>}
+        {plans && plans.length > 0 && <ol aria-label="Runner binding plans" className="mt-4 space-y-4">{plans.map((item) => <Plan key={item.plan!.plan_id} result={item} homeAssistantBlocked={homeAssistantBlocked} />)}</ol>}
     </section>;
 }
 
-function Plan({ result }: { result: RunnerBindingPlanResultV1 }) {
+function Plan({ result, homeAssistantBlocked }: { result: RunnerBindingPlanResultV1; homeAssistantBlocked: boolean }) {
     const plan = result.plan!; const status = result.status!; const audit = result.audit_evidence!;
     const reference = plan.runner_reference; const limits = plan.limits;
     return <li className="rounded border border-slate-800 p-3 text-sm">
@@ -58,6 +59,7 @@ function Plan({ result }: { result: RunnerBindingPlanResultV1 }) {
         <dl className="mt-3 grid gap-2 sm:grid-cols-2"><Value name="Request fingerprint" value={plan.request_fingerprint.value} /><Value name="Idempotency-key fingerprint" value={plan.idempotency_key_fingerprint.value} /><Value name="Audit event" value={audit.event} /><Value name="Audit outcome" value={audit.outcome} /><Value name="Audit fingerprint" value={audit.audit_fingerprint.value} /><Value name="Correlation fingerprint" value={audit.correlation_fingerprint.value} /></dl>
         <p className="mt-3 text-xs">Permanent binding-subject reservation: true · permanent idempotency reservation: true · raw idempotency key persisted: false · retry allowed: false · replay allowed: false.</p>
         <dl aria-label="Runner binding fixed-false authority fields" className="mt-3 grid gap-2 sm:grid-cols-2">{["Runner registered", "Runner contacted", "Runner reserved", "Runner bound", "Runner binding allowed", "Execution start allowed", "Execution authorized", "Installation allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Agent invocation allowed", "Worker allowed", "Workflow allowed", "Docker allowed", "Podman allowed", "Shell allowed", "Process allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Deployment allowed", "Rollback allowed", "Replay allowed"].map((name) => <Value key={name} name={name} value="false" />)}</dl>
+        <WorkerAdmissionStubs candidateId={plan.candidate_record_id} bindingPlan={result} homeAssistantBlocked={homeAssistantBlocked} />
     </li>;
 }
 
