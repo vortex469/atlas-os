@@ -486,6 +486,7 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/installationCandidateLifecycle.ts"),
         Path("api/installationReadinessReview.ts"),
         Path("api/executionPermissionGrant.ts"),
+        Path("api/installationExecutionAdmission.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 

@@ -5,6 +5,11 @@ import router from "../app/router.tsx?raw";
 import component from "../features/installation/InstallationExecutionAdmissions.tsx?raw";
 import navigation from "../layouts/MainLayout.tsx?raw";
 
+const productionModules = import.meta.glob(
+    ["../**/*.{ts,tsx}", "!../**/*.test.{ts,tsx}", "!../test/**"],
+    { eager: true, query: "?raw", import: "default" },
+) as Record<string, string>;
+
 describe("v0.36 installation execution admission presentation boundary", () => {
     it("uses only the exact guarded P3 create/list/get client", () => {
         expect(client.match(/atlas\.get/g)).toHaveLength(2);
@@ -34,5 +39,18 @@ describe("v0.36 installation execution admission presentation boundary", () => {
         expect(component).toContain("runner_binding_not_defined");
         expect(component).toContain("execution_start_boundary_not_defined");
         expect(component).toMatch(/Home Assistant remains blocked, non-installable, and non-executable/i);
+    });
+
+    it("has no admission consumer outside the exact client and presentation", () => {
+        const consumers = Object.entries(productionModules)
+            .filter(([, source]) => /execution-admissions|InstallationExecutionAdmission/.test(source))
+            .map(([path]) => path)
+            .sort();
+        expect(consumers).toEqual([
+            "../api/installationExecutionAdmission.ts",
+            "../features/installation/InstallationExecutionAdmissions.tsx",
+            "../pages/InstallationReadinessReviewPage.tsx",
+            "../types/installationExecutionAdmission.ts",
+        ]);
     });
 });

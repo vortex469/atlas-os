@@ -95,7 +95,7 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Selected v0.36 plan — Installation Execution Admission Boundary
+## Completed v0.36 plan — Installation Execution Admission Boundary
 
 Atlas v0.36 selects **Installation Execution Admission Boundary**. The
 normative documentation-only P0 contract is [Installation Execution Admission
@@ -114,15 +114,15 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   eligibility evidence, lifecycle, ownership/permissions, freshness,
   permanent reservations, audit/redaction, API/UI, threats, later enablement,
   and must-not-change contracts. P0 changes planning documents only.
-- P1 adds closed immutable models, deterministic domain-separated
+- P1 added closed immutable models, deterministic domain-separated
   fingerprints, bounds, and pure validation only.
-- P2 adds an explicitly constructed default-off Core append-only evidence
+- P2 added an explicitly constructed default-off Core append-only evidence
   service/store with injected owner-scoped readers and permanent no-replay.
-- P3 adds only dedicated record/read permissions and candidate-scoped
+- P3 added only dedicated record/read permissions and candidate-scoped
   collection GET/guarded POST plus owned item GET.
-- P4 adds only the strict Mission Control evidence panel and two-step record
+- P4 added only the strict Mission Control evidence panel and two-step record
   flow, with no runner selector, polling, or effect control.
-- P5 adds isolation, concurrency/no-replay, regression, authority, redaction,
+- P5 added isolation, concurrency/no-replay, regression, authority, redaction,
   Home Assistant, and release evidence only.
 
 V0.36 enables a later milestone to require active admission evidence before a

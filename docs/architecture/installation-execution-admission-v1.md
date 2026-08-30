@@ -1,6 +1,6 @@
 # Installation Execution Admission v1 planning contract
 
-Status: **Atlas v0.36 P0 selected; P1–P5 not implemented**.
+Status: **Atlas v0.36 P0–P5 complete**.
 
 Atlas v0.36 defines one closed, durable Core evidence record stating that an
 authenticated operator's exact, fresh v0.20–v0.35 installation chain satisfies
@@ -453,42 +453,48 @@ ownership/permissions, freshness, permanent reservations, audit/redaction,
 API/UI, threats, later enablement, and must-not-change contracts. Planning docs
 only.
 
-### P1 — Closed models and pure validation
+### P1 — Closed models and pure validation — complete
 
-Add strict immutable create/linkage/eligibility/admission/status/reservation/
+Added strict immutable create/linkage/eligibility/admission/status/reservation/
 audit/error/result models, domain-separated fingerprints, bounds, ordered
 blockers, and pure same-owner/freshness/fixed-authority validation. No service,
 store, route, UI, reader, Agent, runner, or effect behavior.
 
-### P2 — Append-only admission-evidence service and store
+### P2 — Append-only admission-evidence service and store — complete
 
-Add an explicitly constructed default-off Core service over injected
-owner-scoped v0.34/v0.35 readers and a bounded append-only local store. Add
+Added an explicitly constructed default-off Core service over injected
+owner-scoped v0.34/v0.35 readers and a bounded append-only local store, with
 atomic permanent key/grant-subject reservations, exact-duplicate zero-I/O
 readback, quotas, corruption closure, and derived status. No external I/O,
 Agent/runner/worker/workflow/process call, dispatch, or mutation.
 
-### P3 — Exact guarded Core API
+### P3 — Exact guarded Core API — complete
 
-Register only the dedicated permissions and exact candidate-scoped collection
+Registered only the dedicated permissions and exact candidate-scoped collection
 GET/guarded POST plus item GET. Lock authentication, origin, CSRF, rate,
 body/query/idempotency parsing, ownership non-disclosure, redaction, OpenAPI,
 and fail-closed construction. No effect or action sibling.
 
-### P4 — Mission Control admission-evidence presentation
+### P4 — Mission Control admission-evidence presentation — complete
 
-Add only the strict P3 client and evidence panel with two-step creation,
+Added only the strict P3 client and evidence panel with two-step creation,
 ordered blockers, lifecycle/linkage/eligibility/audit readback, fixed-false
 authority, redaction, and Home Assistant blocked state. No polling, sensitive
 rendering, runner selector, effect label, or other mutation.
 
-### P5 — Isolation, regression, and release closure
+### P5 — Isolation, regression, and release closure — complete
 
-Prove concurrent permanent single admission, restart/expiry no-replay,
+Proved concurrent permanent single admission, restart/expiry no-replay,
 secret-free persistence, complete v0.20–v0.35 linkage, owner/permission
 isolation, exact API/UI surfaces, zero effect consumers, prior regressions,
 Agent capability parity, and blocked/non-artifact Home Assistant. Tests and
 release docs only; no runtime behavior, tag, push, publication, or deployment.
+
+Release validation passed both Core and Agent Ruff gates, the targeted Core
+release suite (`97 passed`), the full Agent suite (`1047 passed`), and Mission
+Control (`94` test files / `585` tests) plus lint and production build. Lint
+retains one pre-existing `WorkflowShellPage.tsx` hook-dependency warning and no
+errors.
 
 ## What v0.36 enables later
 

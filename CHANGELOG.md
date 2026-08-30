@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.36 P0 — Installation Execution Admission Boundary
+#### v0.36 P0–P5 — Installation Execution Admission Boundary
 
 - Selected Atlas v0.36 **Installation Execution Admission Boundary** and froze
   the documentation-only [v1 planning
@@ -28,6 +28,23 @@ release boundaries.
   worker/workflow call, credential/network access, installation, execution,
   dispatch, retry/resend, Docker/Podman/shell/process, mutation, deployment,
   rollback, artifact, tag, push, publication, or release action.
+- P1 adds closed immutable admission/linkage/eligibility/lifecycle/audit/error,
+  reservation, idempotency, and result models with deterministic fingerprints,
+  exact same-owner v0.20–v0.35 validation, fixed blockers, and fixed-false
+  authority.
+- P2 adds an explicitly constructed Core-local append-only service/store over
+  injected owner-scoped evidence readers, with atomic permanent reservations,
+  exact-duplicate readback, quotas, corruption closure, and no effect consumer.
+- P3 registers only the guarded candidate-scoped collection GET/POST and owned
+  item GET with strict security/parsing gates, redaction, and no runner,
+  execute, start, dispatch, retry/resend, or deployment sibling.
+- P4 adds only the Mission Control evidence presentation using P3 create/list/
+  get, with explicit `admission_gated` non-authorizing copy, no polling,
+  navigation, sensitive rendering, extra mutation, or prohibited control.
+- P5 closes exact Core API/consumer isolation, permanent concurrent/restart
+  no-replay, Agent zero-consumer status, Mission Control structural isolation,
+  fixed-false authority, and blocked/non-artifact Home Assistant validation.
+  It adds tests and release documentation only.
 
 #### v0.35 P0–P5 — Execution Permission Grant Boundary
 

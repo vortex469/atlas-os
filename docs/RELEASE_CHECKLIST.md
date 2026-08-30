@@ -3,7 +3,7 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.36 P0 Installation Execution Admission Boundary — selected
+## Atlas v0.36 P0–P5 Installation Execution Admission Boundary — complete
 
 Atlas v0.36 is **Installation Execution Admission Boundary**. P0 is the
 documentation-only frozen [v1
@@ -42,11 +42,35 @@ contract](architecture/installation-execution-admission-v1.md).
   execution, dispatch, retry/resend, worker/workflow/process, Docker/Podman/
   shell, mutation, deployment, rollback, artifact, tag, push, publication, or
   release action.
-- [ ] P1 — closed immutable models and pure validation.
-- [ ] P2 — explicitly constructed append-only Core evidence service/store.
-- [ ] P3 — exact guarded Core create/list/get API.
-- [ ] P4 — strict Mission Control admission-evidence presentation.
-- [ ] P5 — isolation, regression, authority closure, and release evidence.
+- [x] P1 — closed immutable models, deterministic domain-separated
+  fingerprints, exact linkage, bounds, redaction, fixed blockers, and pure
+  non-authorizing validation.
+- [x] P2 — explicitly constructed append-only Core evidence service/store with
+  owner-scoped injected readers, atomic permanent reservations, restart-safe
+  reads, quotas, corruption closure, and no effect dependency.
+- [x] P3 — exact guarded candidate-scoped collection GET/POST and item GET,
+  strict auth/permission/origin/CSRF/rate/parsing gates, redaction, and no
+  effect-bearing sibling route.
+- [x] P4 — strict Mission Control admission-evidence presentation using only
+  P3 create/list/get, with explicit evidence-only copy, no polling, sensitive
+  rendering, navigation, extra mutation, or prohibited control.
+- [x] P5 — exact API and consumer isolation, admission-gated fixed-false
+  authority, concurrency/restart permanent no-replay, Agent zero-consumer,
+  Mission Control regression, Home Assistant golden, and release evidence.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates.
+- [x] Targeted Atlas Core release suite: `97 passed, 111 warnings in 18.28s`.
+- [x] Full Atlas Agent pytest: `1047 passed, 32 warnings in 11.78s`.
+- [x] Mission Control: `94 passed` test files / `585 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, runner binding,
+  execution start, dispatch, retry/resend, Agent invocation, effect,
+  deployment, rollback, Home Assistant artifact, tag, push, publication, or
+  release action.
 
 ## Atlas v0.35 P0 Execution Permission Grant Boundary — selected
 
