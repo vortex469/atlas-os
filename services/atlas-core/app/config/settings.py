@@ -138,6 +138,9 @@ class OperatorAuthSettings(BaseModel):
     installation_dispatch_handoff_database: str = (
         "/opt/atlas/data/installation_dispatch_handoffs.db"
     )
+    execution_permission_grant_database: str = (
+        "/opt/atlas/data/execution_permission_grants.db"
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
@@ -193,6 +196,17 @@ class OperatorAuthSettings(BaseModel):
         ):
             raise ValueError(
                 "installation dispatch handoff database must be an absolute path"
+            )
+        permission_grant_database = Path(self.execution_permission_grant_database)
+        if (
+            not self.execution_permission_grant_database
+            or self.execution_permission_grant_database
+            != self.execution_permission_grant_database.strip()
+            or not permission_grant_database.is_absolute()
+            or self.execution_permission_grant_database == ":memory:"
+        ):
+            raise ValueError(
+                "execution permission grant database must be an absolute path"
             )
         if not self.enabled:
             return self
@@ -291,6 +305,9 @@ def load_settings() -> Settings:
             ),
             "installation_dispatch_handoff_database": os.getenv(
                 "ATLAS_OPERATOR_AUTH_INSTALLATION_DISPATCH_HANDOFF_DATABASE"
+            ),
+            "execution_permission_grant_database": os.getenv(
+                "ATLAS_OPERATOR_AUTH_EXECUTION_PERMISSION_GRANT_DATABASE"
             ),
         }
         for key, value in environment_overrides.items():

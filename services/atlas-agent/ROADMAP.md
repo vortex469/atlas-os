@@ -151,3 +151,24 @@ complete. Installation,
 execution, dispatch, retry/resend, Agent invocation, worker/workflow/process
 start, provider/repository/in-guest mutation, deployment, rollback, and Home
 Assistant artifacts remain blocked.
+
+## Selected v0.35 planning boundary
+
+Atlas v0.35 selects **Execution Permission Grant Boundary**. Its normative
+contract is [Execution Permission Grant
+v1](../../docs/architecture/execution-permission-grant-v1.md).
+
+P0 was documentation-only. P1–P3 add only Core-owned closed models and an
+explicitly constructed Core-local append-only service/store. The grant is an
+operator permission artifact over the already exported v0.20–v0.34 evidence
+chain. It adds no Agent schema, permission, route, reader, callback,
+credential, registration, invocation, worker/workflow consumer, runtime
+capability, executable intent, or behavior. Agent-local evidence not exported
+by released contracts remains inaccessible and cannot be inferred.
+
+The v0.35 grant may later become one prerequisite for a separately specified
+execution-admission decision, but it is not that decision and cannot be
+consumed by Agent in v0.35. Installation, execution, dispatch, retry/resend,
+Agent invocation, worker/workflow/process start, Docker/Podman/shell,
+provider/repository/in-guest mutation, deployment, rollback, and Home Assistant
+artifacts remain blocked through P0–P5.

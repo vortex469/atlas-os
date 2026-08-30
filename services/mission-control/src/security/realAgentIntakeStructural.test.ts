@@ -16,6 +16,7 @@ const productionSources = Object.fromEntries(
         && !path.toLowerCase().includes("installationreadinessreview")
         && !path.toLowerCase().includes("deliveryactivationpreflight")
         && !path.toLowerCase().includes("deliveryenablement")
+        && !path.toLowerCase().includes("executionpermissiongrant")
     )),
 );
 

@@ -6,6 +6,66 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.35 P0–P5 — Execution Permission Grant Boundary
+
+- Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/execution-permission-grant-v1.md).
+- Defined one operator-owned append-only permission-evidence artifact binding
+  the exact v0.20–v0.33 linkage, v0.34 review/audit fingerprints,
+  authenticated operator, exact confirmation text, trusted short expiry, and
+  permanent subject/idempotency reservations.
+- Froze a dedicated `installation.execution.permission.grant` permission, one
+  exact guarded POST, one owned GET, and one Mission Control confirmation and
+  readback panel. The grant permits only later execution-admission
+  consideration; it does not admit or authorize execution.
+- Defined closed grant/status/result/error/audit models, two-state derived
+  lifecycle, domain-separated fingerprints, same-owner recomputation,
+  confirmation/redaction rules, exact API/UI boundaries, P0–P5 sequencing,
+  threats, Home Assistant golden, later enablement, and must-not-change rules.
+- P0 changes planning documents only. It adds no models, service, store,
+  permission registration, route, UI, persistence, migration, credential or
+  network access, Agent call, retry/resend, installation, execution, dispatch,
+  worker/workflow/process start, Docker/Podman/shell, mutation, deployment,
+  rollback, tag, push, publication, or release action.
+- P1 adds strict immutable create, authority, linkage, grant, lifecycle/status,
+  idempotency, permanent reservation, audit, redacted-error, and result models;
+  deterministic domain-separated fingerprints; and pure owner, permission,
+  exact-confirmation, v0.20–v0.34 linkage, 30-second freshness, expiry, and
+  Home Assistant blocked-golden validation. It adds no service, API, UI,
+  persistence, migration, Agent/runtime call, mutation, or execution authority.
+- P2 adds an explicitly constructed Core-local service and bounded append-only
+  SQLite store over injected owner-scoped v0.34 evidence. Atomic durable grant,
+  audit, and permanent idempotency/review-subject reservations provide
+  restart-safe owned create/get/list, exact-duplicate zero-reader readback,
+  quotas, corruption checks, derived lifecycle, and redacted failures without
+  persisting raw idempotency keys or adding a route, UI, Agent/network call,
+  execution, dispatch, retry/resend, workflow/worker, or mutation consumer.
+- P3 registers only the owner-scoped candidate collection `GET`/guarded `POST`
+  and owned item `GET`, with independent create/read permissions, strict
+  body/query/idempotency parsing, origin/CSRF/rate gates, redacted errors, and
+  a locked OpenAPI surface. An independent durable database setting is
+  validated, while service construction remains injected because no
+  production v0.34 evidence reader is authorized. No UI or effect route is
+  added.
+- P4 adds the Mission Control panel in the v0.34 readiness-review context. Its
+  strict client uses only the P3 collection create/list and item get surface;
+  its two-step confirmation displays the exact frozen statement and says the
+  write creates durable permission evidence only. Readback presents lifecycle,
+  30-second inherited freshness/expiry, complete v0.20–v0.34 linkage and
+  fingerprints, authenticated ownership, permanent reservation/no-replay,
+  audit evidence, redacted failures, fixed-false authority, and the blocked
+  Home Assistant golden without polling, sensitive data, effect controls, or
+  any mutation outside the single grant-evidence POST.
+- P5 closes v0.35 with release-isolation tests for the exact P3 create/list/get
+  API, fixed-false evidence-only authority, concurrent single-record and
+  restart/expiry permanent reservations, exact-duplicate zero-I/O readback,
+  raw-key and sensitive-field exclusion, no effect or replay-bypass dependency,
+  the exclusive readiness-review/permission-evidence consumer boundary,
+  Mission Control API/control/rendering isolation, Agent regressions, and the
+  blocked/non-artifact Home Assistant golden. It adds no runtime behavior,
+  migration, execution authority, deployment, tag, push, or release action.
+
 #### v0.34 P0 — Installation Readiness Review
 
 - Selected Atlas v0.34 **Installation Readiness Review** and froze the

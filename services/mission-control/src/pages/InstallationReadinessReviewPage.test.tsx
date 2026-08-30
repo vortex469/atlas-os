@@ -1,14 +1,23 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getInstallationReadinessReview } from "../api/installationReadinessReview";
+import { createExecutionPermissionGrant, listExecutionPermissionGrants } from "../api/executionPermissionGrant";
+import { grantResultFixture } from "../test/executionPermissionGrant";
 import { blockedFixture, readinessGatedFixture, uuid4 } from "../test/installationReadinessReview";
 import { InstallationReadinessReviewPage } from "./InstallationReadinessReviewPage";
+
+const session = vi.hoisted(() => ({ value: { authenticated: false, principal: null as { operator_id: string; permissions: string[] } | null, csrfToken: null as string | null } }));
+vi.mock("../hooks/operatorSessionContext", () => ({ useOperatorSession: () => session.value }));
 
 vi.mock("../api/installationReadinessReview", async (original) => {
     const module = await original<typeof import("../api/installationReadinessReview")>();
     return { ...module, getInstallationReadinessReview: vi.fn() };
+});
+vi.mock("../api/executionPermissionGrant", async (original) => {
+    const module = await original<typeof import("../api/executionPermissionGrant")>();
+    return { ...module, listExecutionPermissionGrants: vi.fn(), createExecutionPermissionGrant: vi.fn(), executionPermissionGrantIdempotencyKey: () => "stable-key" };
 });
 
 function renderPage(path = `/installation/candidate-records/${uuid4}/readiness-review`) {
@@ -19,7 +28,7 @@ function renderPage(path = `/installation/candidate-records/${uuid4}/readiness-r
 }
 
 describe("InstallationReadinessReviewPage", () => {
-    beforeEach(() => vi.resetAllMocks());
+    beforeEach(() => { vi.resetAllMocks(); session.value = { authenticated: false, principal: null, csrfToken: null }; vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false }); });
 
     it("renders loading then the readiness-gated evidence, linkage, audit, and authority boundary", async () => {
         let resolve!: (value: typeof readinessGatedFixture) => void;
@@ -73,5 +82,21 @@ describe("InstallationReadinessReviewPage", () => {
         expect(links).toHaveLength(1);
         expect(links[0]).toHaveTextContent("Discovery");
         expect(document.body.textContent).not.toMatch(/install now|execute now|run now|deploy now|dispatch now|retry now|resend now|send to agent|start workflow|roll back now/i);
+    });
+
+    it("uses a two-step exact evidence-only confirmation and renders create/readback", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
+        vi.mocked(createExecutionPermissionGrant).mockResolvedValue(grantResultFixture);
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Active permission evidence" })).toBeInTheDocument();
+        expect(screen.getByText("v0.20–v0.34 linkage fingerprint").nextSibling).toHaveTextContent("a".repeat(64));
+        expect(screen.getByText(/permanent reservation: true/i)).toHaveTextContent(/retry allowed: false · replay allowed: false/i);
+        fireEvent.click(screen.getByRole("button", { name: "Review permission evidence statement" }));
+        expect(screen.getByLabelText("Permission evidence confirmation")).toHaveTextContent(/creates durable permission evidence only/i);
+        fireEvent.click(screen.getByRole("button", { name: "Record permission evidence" }));
+        await waitFor(() => expect(createExecutionPermissionGrant).toHaveBeenCalled());
+        expect(createExecutionPermissionGrant).toHaveBeenCalledWith(uuid4, expect.objectContaining({ confirmation_text: expect.stringContaining("This does not install or execute anything."), execution_authorized: false, mutation_allowed: false }), "csrf", "stable-key");
     });
 });

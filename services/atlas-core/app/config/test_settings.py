@@ -63,6 +63,9 @@ def test_operator_auth_is_disabled_safely_by_default() -> None:
     assert OperatorAuthSettings().installation_dispatch_handoff_database == (
         "/opt/atlas/data/installation_dispatch_handoffs.db"
     )
+    assert OperatorAuthSettings().execution_permission_grant_database == (
+        "/opt/atlas/data/execution_permission_grants.db"
+    )
 
 
 @pytest.mark.parametrize("database", [":memory:", "relative/selections.db", ""])
@@ -95,6 +98,14 @@ def test_installation_dispatch_handoff_database_requires_durable_absolute_path(
 ) -> None:
     with pytest.raises(ValidationError, match="absolute"):
         OperatorAuthSettings(installation_dispatch_handoff_database=database)
+
+
+@pytest.mark.parametrize("database", [":memory:", "relative/grants.db", ""])
+def test_execution_permission_grant_database_requires_durable_absolute_path(
+    database: str,
+) -> None:
+    with pytest.raises(ValidationError, match="absolute"):
+        OperatorAuthSettings(execution_permission_grant_database=database)
 
 
 def test_dynamic_discovery_refresh_is_disabled_safely_by_default() -> None:

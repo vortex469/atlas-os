@@ -3,6 +3,90 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.35 P0 Execution Permission Grant Boundary — selected
+
+Atlas v0.35 is **Execution Permission Grant Boundary**. P0 is the
+documentation-only frozen [v1 contract](architecture/execution-permission-grant-v1.md).
+
+- [x] Inspect current `main` at
+  `5965e3c016a4ee1e6d871d675964cbe40b04e353` after annotated
+  `atlas-v0.34.0` targeting
+  `fb3d9014574b5aa85a1024d77fe7b29bf35e1b88`.
+- [x] Freeze the exact create, linkage, durable grant, derived status, audit,
+  redacted-error, and result schemas with strict bounds and fixed-false effect
+  authority.
+- [x] Freeze exact same-owner v0.20–v0.33 linkage plus v0.34 review, audit, and
+  operator fingerprints, with authoritative recomputation and no
+  client-supplied linkage.
+- [x] Freeze the exact confirmation text, dedicated operator permission,
+  trusted-clock ownership rules, and maximum inherited 30-second freshness.
+- [x] Freeze append-only durability, atomic permanent idempotency/subject
+  reservations, exact-duplicate zero-I/O readback, and no refresh, retry,
+  replay, revoke, consume, or replacement.
+- [x] Freeze the guarded Core POST and owned GET readback, then apply the P3
+  implementation amendment for owner-scoped collection GET only; retain no
+  action, install, execute, dispatch, retry/resend, deploy, rollback, or
+  mutation sibling.
+- [x] Freeze the exact Mission Control confirmation/readback panel, explicit
+  non-authorizing copy, ambiguous-write behavior, redaction, and absence of
+  polling, sensitive data, or effect controls.
+- [x] Freeze P0–P5 scope, exact authority increase, later enablement, threats,
+  blocked Home Assistant golden, and must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/permission/route/UI,
+  persistence, migration, credential/network/Agent call, installation,
+  execution, dispatch, retry/resend, worker/workflow/process, Docker/Podman/
+  shell, mutation, deployment, rollback, artifact, tag, push, publication, or
+  release action.
+- [x] P1 — closed immutable grant, linkage, lifecycle, idempotency,
+  permanent-reservation, audit, error, and result models with deterministic
+  fingerprints and pure ownership, permission, exact-confirmation, freshness,
+  expiry, authority, and Home Assistant blocked-golden validation.
+- [x] P2 — explicitly constructed default-off owner-scoped service and bounded
+  append-only store with atomic durable grant/audit evidence, permanent
+  idempotency and review-subject reservations, exact-duplicate zero-reader
+  readback, quotas, corruption checks, derived lifecycle, and redaction.
+- [x] P3 — dedicated create and owned-read permissions, exact candidate-scoped
+  collection GET/guarded POST and item GET, strict security/parsing gates,
+  redaction, locked OpenAPI, and independent durable database setting.
+- [x] P4 — exact Mission Control confirmation and readback panel using only
+  strict P3 create/list/get, with two-step exact-text evidence confirmation,
+  lifecycle/linkage/audit readback, permanent no-replay posture, redaction,
+  fixed-false authority, and blocked Home Assistant presentation.
+- [x] P5 — exact route and consumer isolation, fixed-false authority,
+  concurrent/restart permanent reservation and no-replay closure, sensitive
+  persistence/rendering exclusion, Mission Control and Agent regression
+  coverage, and blocked/non-artifact Home Assistant validation.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates.
+- [x] Full Atlas Core pytest: `3167 passed, 355 warnings in 222.62s
+  (0:03:42)`.
+- [x] Full Atlas Agent pytest: `1045 passed, 32 warnings in 13.61s`.
+- [x] Mission Control: `91 passed` test files / `573 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, installation,
+  execution, dispatch, Agent invocation, effect, deployment, rollback, Home
+  Assistant artifact, tag, push, publication, or release action.
+- [x] P5 closure commit:
+  `42cbd86921e921edcc05aeeee0b4500fa177c13e test(v0.35): close execution permission grant`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3167 passed, 355 warnings in 222.62s (0:03:42)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `42cbd86921e921edcc05aeeee0b4500fa177c13e`.
+- [x] Final release-preparation commit:
+  `5c56940e21db9e80a9470d2db434415d02dff9ac docs(v0.35): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Created immutable annotated tag `atlas-v0.35.0` targeting
+  `5c56940e21db9e80a9470d2db434415d02dff9ac`.
+- [x] Pushed branch `v035-execution-permission-grant` and annotated tag
+  `atlas-v0.35.0` to `origin`; the tag target is
+  `5c56940e21db9e80a9470d2db434415d02dff9ac`.
+- [ ] Publish the GitHub release for `atlas-v0.35.0`.
+
 ## Atlas v0.34 P0 Installation Readiness Review — selected
 
 Atlas v0.34 is **Installation Readiness Review**. P0 is the documentation-only

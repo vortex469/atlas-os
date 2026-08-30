@@ -1,11 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.31
+## 1. Current released baseline — v0.34
 
-Atlas v0.31.0 is released as `atlas-v0.31.0` at
-`01e6fc40378f4f38f2559691768fc8880e69a96b`; its completed milestone and
+Atlas v0.34.0 is released as `atlas-v0.34.0` at
+`fb3d9014574b5aa85a1024d77fe7b29bf35e1b88`; its completed milestone and
 release-checklist reconciliation are merged to current `main` at
-`c93bf5b0790aa37f5d9bf348dca3ccdf3315baf5`.
+`5965e3c016a4ee1e6d871d675964cbe40b04e353`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -81,10 +81,66 @@ image evidence, grounding, and provenance.
 - v0.31 released an explicitly constructed, default-disabled, one-shot live
   HTTPS send of an inert evidence envelope, with permanent no-replay and
   terminal ambiguity, while Agent intake remained dormant and unregistered.
+- v0.32 released independently default-off Agent live intake admission for the
+  inert envelope without installation execution authority.
+- v0.33 released a durable inert Core receipt binding the complete delivered
+  evidence chain without adding an effect consumer.
+- v0.34 released authenticated read-only installation readiness review over
+  the exact v0.20–v0.33 chain; even `readiness_gated` leaves execution
+  admission undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Selected v0.35 plan — Execution Permission Grant Boundary
+
+Atlas v0.35 selects **Execution Permission Grant Boundary**. The normative
+documentation-only P0 contract is
+[Execution Permission Grant v1](docs/architecture/execution-permission-grant-v1.md).
+It freezes one durable, operator-owned Core evidence artifact binding the exact
+v0.20–v0.33 chain, v0.34 readiness review, authenticated operator, exact
+confirmation text, short inherited freshness, and permanent no-replay.
+
+The grant records only permission for the exact evidence chain to be considered
+by a later, separately released execution-admission boundary. It does not
+admit or authorize execution, install, dispatch, invoke Agent, start a worker
+or workflow, mutate any provider/repository/guest, deploy, or roll back.
+
+The phase order is P0 → P1 → P2 → P3 → P4 → P5:
+
+- P0 freezes exact models, linkage/fingerprints, confirmation, ownership,
+  freshness, lifecycle, permanent reservations, redaction/audit, API/UI,
+  authority, threats, goldens, and must-not-change contracts. P0 changes
+  planning documents only.
+- P1 added closed immutable create/linkage/grant/status/result/audit/error,
+  idempotency, and permanent-reservation models, domain-separated
+  fingerprints, and pure same-owner, permission, freshness, expiry, authority,
+  and Home Assistant blocked-golden validation only.
+- P2 added an explicitly constructed default-off append-only Core service/store
+  with atomic durable sanitized audit evidence, permanent review-subject and
+  idempotency reservations, owner-scoped restart readback, quotas, corruption
+  checks, and no external I/O or authority consumer.
+- P3 added only the dedicated create permission, independent owned-read
+  permission, candidate-scoped collection GET/guarded POST, and owned item GET,
+  with strict parsing, security gates, redaction, an independent durable
+  database setting, and no execution or action sibling.
+- P4 added only the exact Mission Control confirmation/readback panel in the
+  v0.34 review context: strict P3 create/list/get parsing, a two-step exact-text
+  evidence confirmation, lifecycle/freshness/linkage/audit readback, and
+  fixed-false authority presentation with no polling, retry, or effect control.
+- P5 closed the milestone with exact Core route isolation, fixed-false
+  authority, concurrent and restart-safe permanent reservation/no-replay
+  validation, sensitive persistence/rendering exclusion, a v0.34 consumer
+  allowlist, Mission Control structural isolation, Agent regression coverage,
+  and the blocked/non-artifact Home Assistant golden. P0–P5 are complete.
+
+V0.35 authority ends at append-only permission evidence. It enables a future
+milestone to require that evidence as one prerequisite for a separately
+specified execution-admission decision. Actual installation, admission,
+execution, dispatch, retry/resend, Agent invocation, worker/workflow/process
+start, Docker/Podman/shell, provider/repository/in-guest mutation, deployment,
+rollback, credential access, and Home Assistant artifacts remain blocked.
 
 ## Selected v0.34 plan — Installation Readiness Review
 
