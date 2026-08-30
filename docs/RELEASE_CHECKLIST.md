@@ -54,6 +54,21 @@ Validation evidence for P5:
   the pre-existing `WorkflowShellPage.tsx` exhaustive-deps warning and no
   errors; the production TypeScript/Vite build passed.
 - Both Python Ruff gates and `git diff --check` passed.
+- [x] P5 closure commit:
+  `9098c7f92d26c980d5739a7a3098e3d692777514 test(v0.34): close installation readiness review`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3133 passed, 315 warnings in 219.09s (0:03:39)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `9098c7f92d26c980d5739a7a3098e3d692777514`.
+- [ ] Record the final release-preparation commit.
+- [ ] Verify the tracked worktree is clean at the final release-preparation
+  commit.
+- [ ] Create immutable annotated tag `atlas-v0.34.0` targeting the final
+  release-preparation commit.
+- [ ] Push branch `v034-installation-readiness-review` and annotated tag
+  `atlas-v0.34.0` to `origin`, then verify the remote branch and peeled tag
+  target.
+- [ ] Publish the GitHub release for `atlas-v0.34.0`.
 
 ## Atlas v0.33 P0–P5 End-to-End Inert Delivery Receipt — complete
 
