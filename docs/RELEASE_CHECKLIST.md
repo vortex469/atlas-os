@@ -3,6 +3,39 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.34 P0 Installation Readiness Review — selected
+
+Atlas v0.34 is **Installation Readiness Review**. P0 is the documentation-only
+frozen [v1 contract](architecture/installation-readiness-review-v1.md).
+
+- [x] Inspect current `main` at
+  `343f683efb872b4b6322e27eaeffa64ccc4893ce` after annotated
+  `atlas-v0.33.0` targeting
+  `4bc30527b1c5a99eb090a43619494bb557791a50`.
+- [x] Freeze the exact closed review, evidence-summary, linkage, blocker,
+  audit, redacted-error, deterministic ID, and fingerprint contracts.
+- [x] Freeze recomputation of every same-owner v0.20–v0.33 fingerprint and
+  transitive identity, with no repair or inference for missing Agent evidence.
+- [x] Freeze each released freshness, expiry, terminal ambiguity, and no-replay
+  rule without extending, refreshing, or restarting any window.
+- [x] Freeze one owner-scoped authenticated Core GET using the existing
+  `installation.destination.select` permission and exact non-disclosing error
+  behavior, with no collection or action/mutation sibling.
+- [x] Freeze one read-only Mission Control page with no form, button, polling,
+  retry/resend/admit/send/install/execute/dispatch/deploy/workflow control, raw
+  evidence, secret, credential, endpoint, body, command, or internal path.
+- [x] Freeze P0–P5 scope, exact read-only authority, later enablement, threats,
+  blocked Home Assistant golden, and must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/reader/route/UI,
+  persistence, credential access, Agent/network call, execution, mutation,
+  deployment, rollback, artifact, migration, tag, push, publication, or
+  release action.
+- [ ] P1 — closed models and pure review evaluation.
+- [ ] P2 — owner-scoped local read composition.
+- [ ] P3 — exact authenticated read-only Core API.
+- [ ] P4 — read-only Mission Control presentation.
+- [ ] P5 — isolation, regression, authority closure, and release evidence.
+
 ## Atlas v0.33 P0–P5 End-to-End Inert Delivery Receipt — complete
 
 Atlas v0.33 is **End-to-End Inert Delivery Receipt**. P0 is the

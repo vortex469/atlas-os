@@ -6,6 +6,24 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.34 P0 — Installation Readiness Review
+
+- Selected Atlas v0.34 **Installation Readiness Review** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/installation-readiness-review-v1.md).
+- Defined one authenticated owner-scoped Core GET and one read-only Mission
+  Control page over a strict projection of the complete v0.20–v0.33 chain,
+  with exact linkage/fingerprints, a closed blocker vocabulary, deterministic
+  redacted audit evidence, and only `blocked` or `readiness_gated` outcomes.
+- `readiness_gated` always retains `execution_admission_not_defined`; the
+  review grants no approval, admission, authorization, installation, dispatch,
+  execution, worker/workflow, mutation, deployment, rollback, retry, or replay
+  authority.
+- P0 changes planning documents only. It adds no models, readers, service,
+  route, UI, persistence, credential access, Agent/network call, runtime
+  behavior, Home Assistant artifact, migration, tag, push, release, or
+  deployment.
+
 #### v0.33 P0–P5 — End-to-End Inert Delivery Receipt
 
 - Selected Atlas v0.33 **End-to-End Inert Delivery Receipt** and froze the

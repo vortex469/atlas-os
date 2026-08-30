@@ -127,3 +127,20 @@ and all 555 Mission Control tests plus lint/build passed.
 Installation, execution, dispatch, worker/workflow start,
 provider/repository/in-guest mutation, deployment, rollback, retry/resend, and
 Home Assistant artifacts remain blocked.
+
+## Selected v0.34 planning boundary
+
+Atlas v0.34 selects **Installation Readiness Review**. Its normative contract
+is [Installation Readiness Review
+v1](../../docs/architecture/installation-readiness-review-v1.md).
+
+V0.34 is Core-local read composition and Mission Control presentation only.
+It may summarize the frozen exported v0.22, v0.25–v0.27, and v0.32 Agent
+evidence already bound into the v0.33 chain, but it adds no Agent schema,
+reader, route, call, callback, credential access, registration, or behavior.
+Agent-local records not exported by released contracts cannot be inferred.
+
+P0 changes planning documents only. P1–P5 remain unimplemented. Installation,
+execution, dispatch, retry/resend, Agent invocation, worker/workflow/process
+start, provider/repository/in-guest mutation, deployment, rollback, and Home
+Assistant artifacts remain blocked.
