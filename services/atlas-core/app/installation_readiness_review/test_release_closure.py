@@ -124,6 +124,7 @@ def test_v020_v033_evidence_has_only_the_named_v034_read_consumer() -> None:
         APP_ROOT / "api" / "v1" / "router.py",
         APP_ROOT / "routes" / "installation_readiness_review.py",
         APP_ROOT / "execution_permission_grant" / "contract.py",
+        APP_ROOT / "execution_permission_grant" / "service.py",
     }
     consumers = [
         path

@@ -40,7 +40,10 @@ documentation-only frozen [v1 contract](architecture/execution-permission-grant-
   permanent-reservation, audit, error, and result models with deterministic
   fingerprints and pure ownership, permission, exact-confirmation, freshness,
   expiry, authority, and Home Assistant blocked-golden validation.
-- [ ] P2 — default-off append-only reservation service and store.
+- [x] P2 — explicitly constructed default-off owner-scoped service and bounded
+  append-only store with atomic durable grant/audit evidence, permanent
+  idempotency and review-subject reservations, exact-duplicate zero-reader
+  readback, quotas, corruption checks, derived lifecycle, and redaction.
 - [ ] P3 — dedicated permission and exact guarded Core POST/owned GET.
 - [ ] P4 — exact Mission Control confirmation and readback panel.
 - [ ] P5 — isolation, regression, authority closure, and release evidence.

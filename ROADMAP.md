@@ -117,8 +117,10 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   idempotency, and permanent-reservation models, domain-separated
   fingerprints, and pure same-owner, permission, freshness, expiry, authority,
   and Home Assistant blocked-golden validation only.
-- P2 adds an explicitly constructed default-off append-only Core service/store
-  with atomic permanent subject/idempotency reservations and no external I/O.
+- P2 added an explicitly constructed default-off append-only Core service/store
+  with atomic durable sanitized audit evidence, permanent review-subject and
+  idempotency reservations, owner-scoped restart readback, quotas, corruption
+  checks, and no external I/O or authority consumer.
 - P3 adds only the dedicated operator permission, exact guarded POST, and
   owned GET, with no execution or action sibling.
 - P4 adds only the exact Mission Control confirmation/readback panel in the

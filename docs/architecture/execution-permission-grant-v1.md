@@ -475,7 +475,7 @@ authority, redaction, and blocked Home Assistant golden. P1 adds no service,
 store, route, UI, persistence, migration, reader, Agent access, or runtime
 composition.
 
-### P2 — Append-only reservation service and store
+### P2 — Append-only reservation service and store — complete
 
 Add an explicitly constructed, default-off Core service over injected
 owner-scoped v0.34 evidence readers and one bounded append-only local store.
@@ -483,6 +483,15 @@ Implement atomic permanent subject/idempotency reservations, exact-duplicate
 readback, quotas, corruption checks, and derived status. Add no external I/O,
 credential access, Agent call, dispatch, worker/workflow/process start, or
 effect consumer.
+
+P2 implements that boundary as an explicitly constructed Core-local service
+over one injected owner-scoped v0.34 evidence reader, trusted whole-second UTC
+clock, ID factory, and bounded SQLite store. Grant, sanitized `recorded` audit,
+and both permanent reservation subjects append atomically; raw idempotency keys
+are never stored. Owned create/get/list are restart-safe, exact duplicates do
+not reread evidence or allocate identity, lifecycle is derived without row
+updates, and corruption fails closed. No route, permission registration, UI,
+external I/O, Agent/worker/workflow call, or effect consumer is added.
 
 ### P3 — Exact guarded Core API
 

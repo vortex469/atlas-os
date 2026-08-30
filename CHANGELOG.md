@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.35 P0–P1 — Execution Permission Grant Boundary
+#### v0.35 P0–P2 — Execution Permission Grant Boundary
 
 - Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
   documentation-only [v1 planning
@@ -34,6 +34,13 @@ release boundaries.
   exact-confirmation, v0.20–v0.34 linkage, 30-second freshness, expiry, and
   Home Assistant blocked-golden validation. It adds no service, API, UI,
   persistence, migration, Agent/runtime call, mutation, or execution authority.
+- P2 adds an explicitly constructed Core-local service and bounded append-only
+  SQLite store over injected owner-scoped v0.34 evidence. Atomic durable grant,
+  audit, and permanent idempotency/review-subject reservations provide
+  restart-safe owned create/get/list, exact-duplicate zero-reader readback,
+  quotas, corruption checks, derived lifecycle, and redacted failures without
+  persisting raw idempotency keys or adding a route, UI, Agent/network call,
+  execution, dispatch, retry/resend, workflow/worker, or mutation consumer.
 
 #### v0.34 P0 — Installation Readiness Review
 
