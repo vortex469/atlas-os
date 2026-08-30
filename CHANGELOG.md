@@ -30,6 +30,12 @@ release boundaries.
   domain-separated fingerprints, bounds, fixed-false authority, redaction,
   and the blocked Home Assistant golden, with no service, route, UI, store,
   external I/O, or runtime behavior.
+- P2 added the explicitly constructed read-only Core review service over an
+  injected owner-scoped local evidence reader and trusted UTC clock. It
+  enforces authentication, permission, ownership, exact linkage/fingerprints,
+  freshness/blockers, deterministic results, redacted non-disclosing errors,
+  and the blocked Home Assistant golden without persistence, reservation,
+  credential access, Agent/network calls, retry/replay, or effect authority.
 
 #### v0.33 P0–P5 — End-to-End Inert Delivery Receipt
 

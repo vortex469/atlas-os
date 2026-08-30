@@ -31,7 +31,8 @@ frozen [v1 contract](architecture/installation-readiness-review-v1.md).
   deployment, rollback, artifact, migration, tag, push, publication, or
   release action.
 - [x] P1 — closed models and pure review evaluation.
-- [ ] P2 — owner-scoped local read composition.
+- [x] P2 — owner-scoped local read composition with deterministic ephemeral
+  results, ownership isolation, redaction, and no persistence or reservation.
 - [ ] P3 — exact authenticated read-only Core API.
 - [ ] P4 — read-only Mission Control presentation.
 - [ ] P5 — isolation, regression, authority closure, and release evidence.

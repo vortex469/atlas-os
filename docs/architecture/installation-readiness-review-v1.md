@@ -1,6 +1,6 @@
 # Installation Readiness Review v1 planning contract
 
-Status: **Atlas v0.34 P0–P1 implemented; P2–P5 not implemented**.
+Status: **Atlas v0.34 P0–P2 implemented; P3–P5 not implemented**.
 
 Atlas v0.34 defines a read-only, operator-owned review of the released
 v0.20–v0.33 installation evidence chain. It answers only whether the exact
@@ -349,12 +349,20 @@ domain-separated fingerprints, bounds, redaction, fixed-false authority, and
 the blocked Home Assistant golden. It adds no service, reader, route, UI,
 persistence, external I/O, or runtime behavior.
 
-### P2 — Owner-scoped local read composition
+### P2 — Owner-scoped local read composition — implemented
 
 Add an explicitly constructed read service that resolves the exact v0.20–v0.33
 chain through existing Core-local owner-scoped readers and returns the pure
 projection. Add no persistence, cache, mutation, network, credential read,
 Agent invocation, retry, or background task.
+
+P2 adds an explicitly injected Core-local evidence-reader protocol and trusted
+whole-second UTC clock. The service enforces authentication, existing read
+permission, owner/candidate/time binding, exact P1 validation and deterministic
+projection, while collapsing absent/foreign evidence to the same redacted
+`not_found` result and corrupt/unavailable sources to the single redacted
+`unavailable` result. It has no store, identity factory, reservation, write,
+cache, credential, Agent, transport, retry, replay, or effect dependency.
 
 ### P3 — Exact read-only Core API
 

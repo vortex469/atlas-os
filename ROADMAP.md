@@ -107,8 +107,9 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   goldens, and must-not-change contracts. P0 changes planning documents only.
 - P1 added closed immutable linkage/summary/review/audit/error/result models,
   deterministic fingerprints, strict bounds, and pure review evaluation only.
-- P2 adds explicit composition through existing Core-local owner-scoped readers
-  only, with no persistence or external I/O.
+- P2 added an explicitly injected Core-local owner-scoped evidence reader and
+  trusted clock composition, with redacted errors and no persistence,
+  reservation, credential access, or external I/O.
 - P3 adds the sole authenticated read-only Core GET and exact OpenAPI surface.
 - P4 adds the sole read-only Mission Control client/query/page/route, with no
   polling, mutation, retry, resend, admit, install, execute, or deploy control.
