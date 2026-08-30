@@ -121,8 +121,10 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   with atomic durable sanitized audit evidence, permanent review-subject and
   idempotency reservations, owner-scoped restart readback, quotas, corruption
   checks, and no external I/O or authority consumer.
-- P3 adds only the dedicated operator permission, exact guarded POST, and
-  owned GET, with no execution or action sibling.
+- P3 added only the dedicated create permission, independent owned-read
+  permission, candidate-scoped collection GET/guarded POST, and owned item GET,
+  with strict parsing, security gates, redaction, an independent durable
+  database setting, and no execution or action sibling.
 - P4 adds only the exact Mission Control confirmation/readback panel in the
   v0.34 review context, with no polling, retry, or effect control.
 - P5 adds isolation, concurrency/no-replay, regression, authority, redaction,

@@ -158,7 +158,7 @@ Atlas v0.35 selects **Execution Permission Grant Boundary**. Its normative
 contract is [Execution Permission Grant
 v1](../../docs/architecture/execution-permission-grant-v1.md).
 
-P0 was documentation-only. P1–P2 add only Core-owned closed models and an
+P0 was documentation-only. P1–P3 add only Core-owned closed models and an
 explicitly constructed Core-local append-only service/store. The grant is an
 operator permission artifact over the already exported v0.20–v0.34 evidence
 chain. It adds no Agent schema, permission, route, reader, callback,

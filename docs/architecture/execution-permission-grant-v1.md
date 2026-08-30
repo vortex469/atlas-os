@@ -31,20 +31,22 @@ execution, and deployment surfaces do not consume installation evidence.
 
 ## Exact authority increase
 
-V0.35 may authenticate an operator, require one new dedicated permission,
+V0.35 may authenticate an operator, require dedicated create and owned-read
+permissions,
 re-read the operator's existing Core-local evidence, recompute the exact
 v0.20–v0.34 fingerprints, validate exact confirmation text, reserve one
 subject permanently, and append one bounded permission-evidence record. It may
 return that record and its derived current/expired status to the same owner.
 
-That is the entire authority increase. The dedicated permission is:
+That is the entire authority increase. The permissions are:
 
 ```text
 installation.execution.permission.grant
+installation.execution.permission.grant.read
 ```
 
-It authorizes only creation and owned readback of this evidence artifact. It
-does not imply `installation.destination.select`, execution admission,
+They authorize only creation and owned list/readback of this evidence
+artifact. They do not imply `installation.destination.select`, execution admission,
 execution authorization, an executable intent, dispatch, or any target effect.
 Conversely, existing read, approval, installation, operational, Provider
 Intent, repository, or workflow permissions do not imply this permission.
@@ -268,8 +270,9 @@ indistinguishable. Operator IDs are never accepted from a body or header.
 POST requires an authenticated session, the dedicated
 `installation.execution.permission.grant` permission, an allowed HTTPS origin,
 valid CSRF token, bounded mutation rate limit, exact confirmation text, and a
-valid `Idempotency-Key`. GET readback requires the same authenticated operator
-and dedicated permission but no mutation origin/CSRF proof.
+valid `Idempotency-Key`. GET list/readback requires the same authenticated
+operator and the independent `installation.execution.permission.grant.read`
+permission but no mutation origin/CSRF proof.
 
 ## Permanent idempotency and no replay
 
@@ -397,19 +400,21 @@ V0.35 may add only:
 
 ```text
 POST /api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants
+GET  /api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants
 GET  /api/v1/installation/candidate-records/{candidate_record_id}/execution-permission-grants/{grant_id}
 ```
 
 POST has exactly the closed JSON body above plus `Idempotency-Key`; no query
-parameters. GET has no body or query. There is no collection GET, PUT, PATCH,
-DELETE, approve, admit, execute, install, dispatch, retry, resend, refresh,
+parameters. GET has no body or query. Collection GET returns only owned grants
+for the path candidate. There is no PUT, PATCH, DELETE, approve, admit,
+execute, install, dispatch, retry, resend, refresh,
 consume, revoke, deploy, rollback, or action sibling.
 
 HTTP outcomes are `200` for exact duplicate/readback, `201` for one new grant,
 `401` unauthenticated, `403` permission/origin/CSRF rejection, `404` absent or
 foreign, `409` conflict/not-readiness-gated/expired, `413` oversized, `415`
 wrong media type, `422` malformed/confirmation mismatch, `429` rate limited,
-and redacted `503` unavailable. OpenAPI exposes only the two operations and
+and redacted `503` unavailable. OpenAPI exposes only these three operations and
 closed bodies. Existing API discovery gains no implied effect authority.
 
 ## Exact Mission Control boundary
@@ -493,12 +498,22 @@ not reread evidence or allocate identity, lifecycle is derived without row
 updates, and corruption fails closed. No route, permission registration, UI,
 external I/O, Agent/worker/workflow call, or effect consumer is added.
 
-### P3 — Exact guarded Core API
+### P3 — Exact guarded Core API — complete
 
 Add only the dedicated permission, exact POST, and owned GET. Lock
 authentication, origin, CSRF, idempotency, rate limit, body/query bounds,
 non-disclosure, redacted errors, OpenAPI, and default-off construction. Add no
 effect or action sibling.
+
+P3 applies the explicit implementation-scope amendment to add owner-scoped
+collection GET alongside the guarded POST and item GET, with an independent
+owned-read permission. It registers only those three operations, validates the
+independent durable database path, and locks authentication, trusted origin,
+CSRF, mutation rate, strict body/query/idempotency parsing, owner
+non-disclosure, redaction, and fixed-false authority. Production service
+construction remains unavailable until a server-owned v0.34 evidence reader is
+explicitly supplied; no route reaches an Agent, worker, workflow, provider,
+repository, guest, process, or effect consumer.
 
 ### P4 — Exact Mission Control confirmation surface
 

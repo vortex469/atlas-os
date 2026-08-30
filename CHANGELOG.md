@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.35 P0–P2 — Execution Permission Grant Boundary
+#### v0.35 P0–P3 — Execution Permission Grant Boundary
 
 - Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
   documentation-only [v1 planning
@@ -41,6 +41,13 @@ release boundaries.
   quotas, corruption checks, derived lifecycle, and redacted failures without
   persisting raw idempotency keys or adding a route, UI, Agent/network call,
   execution, dispatch, retry/resend, workflow/worker, or mutation consumer.
+- P3 registers only the owner-scoped candidate collection `GET`/guarded `POST`
+  and owned item `GET`, with independent create/read permissions, strict
+  body/query/idempotency parsing, origin/CSRF/rate gates, redacted errors, and
+  a locked OpenAPI surface. An independent durable database setting is
+  validated, while service construction remains injected because no
+  production v0.34 evidence reader is authorized. No UI or effect route is
+  added.
 
 #### v0.34 P0 — Installation Readiness Review
 

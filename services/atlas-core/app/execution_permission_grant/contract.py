@@ -29,6 +29,7 @@ from app.installation_readiness_review.contract import (
 from app.installation_targets.contract import CanonicalUuid4
 
 MAX_CREATE_BYTES = 8 * 1024
+MAX_CREATE_NESTING = 4
 MAX_MODEL_BYTES = 64 * 1024
 MAX_RESULT_BYTES = 128 * 1024
 MAX_INHERITED_FRESHNESS_SECONDS = 30
@@ -170,7 +171,7 @@ class ExecutionPermissionGrantCreateV1(ContractModel):
 
     @model_validator(mode="after")
     def bounded(self) -> ExecutionPermissionGrantCreateV1:
-        if len(canonical_json(self, max_depth=4)) > MAX_CREATE_BYTES:
+        if len(canonical_json(self, max_depth=MAX_CREATE_NESTING)) > MAX_CREATE_BYTES:
             raise ValueError("create request exceeds 8 KiB")
         return self
 

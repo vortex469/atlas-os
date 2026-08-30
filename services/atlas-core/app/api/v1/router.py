@@ -16,6 +16,9 @@ from app.routes.execution_candidate_intake import (
     router as execution_candidate_intake_router,
 )
 from app.routes.execution_candidates import router as execution_candidates_router
+from app.routes.execution_permission_grant import (
+    router as execution_permission_grant_router,
+)
 from app.routes.health import router as health_router
 from app.routes.homeassistant import router as homeassistant_router
 from app.routes.installation import router as installation_router
@@ -111,6 +114,7 @@ router.include_router(installation_approval_intent_router)
 router.include_router(installation_execution_request_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
+router.include_router(execution_permission_grant_router)
 router.include_router(execution_candidates_router)
 router.include_router(execution_candidate_intake_router)
 router.include_router(ops_router)

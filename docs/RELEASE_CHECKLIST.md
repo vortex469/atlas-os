@@ -23,7 +23,8 @@ documentation-only frozen [v1 contract](architecture/execution-permission-grant-
 - [x] Freeze append-only durability, atomic permanent idempotency/subject
   reservations, exact-duplicate zero-I/O readback, and no refresh, retry,
   replay, revoke, consume, or replacement.
-- [x] Freeze the exact guarded Core POST and owned GET with no collection,
+- [x] Freeze the guarded Core POST and owned GET readback, then apply the P3
+  implementation amendment for owner-scoped collection GET only; retain no
   action, install, execute, dispatch, retry/resend, deploy, rollback, or
   mutation sibling.
 - [x] Freeze the exact Mission Control confirmation/readback panel, explicit
@@ -44,7 +45,9 @@ documentation-only frozen [v1 contract](architecture/execution-permission-grant-
   append-only store with atomic durable grant/audit evidence, permanent
   idempotency and review-subject reservations, exact-duplicate zero-reader
   readback, quotas, corruption checks, derived lifecycle, and redaction.
-- [ ] P3 — dedicated permission and exact guarded Core POST/owned GET.
+- [x] P3 — dedicated create and owned-read permissions, exact candidate-scoped
+  collection GET/guarded POST and item GET, strict security/parsing gates,
+  redaction, locked OpenAPI, and independent durable database setting.
 - [ ] P4 — exact Mission Control confirmation and readback panel.
 - [ ] P5 — isolation, regression, authority closure, and release evidence.
 
