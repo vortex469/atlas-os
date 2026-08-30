@@ -110,7 +110,9 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
 - P2 added an explicitly injected Core-local owner-scoped evidence reader and
   trusted clock composition, with redacted errors and no persistence,
   reservation, credential access, or external I/O.
-- P3 adds the sole authenticated read-only Core GET and exact OpenAPI surface.
+- P3 added the sole authenticated read-only Core GET and exact OpenAPI surface,
+  with owner non-disclosure, redacted errors, and no body, query, CSRF mutation,
+  collection, action, or non-GET sibling.
 - P4 adds the sole read-only Mission Control client/query/page/route, with no
   polling, mutation, retry, resend, admit, install, execute, or deploy control.
 - P5 adds isolation, regression, authority, redaction, and release evidence

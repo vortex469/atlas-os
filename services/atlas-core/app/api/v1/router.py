@@ -36,6 +36,9 @@ from app.routes.installation_execution_request import (
     router as installation_execution_request_router,
 )
 from app.routes.installation_plan import router as installation_plan_router
+from app.routes.installation_readiness_review import (
+    router as installation_readiness_review_router,
+)
 from app.routes.intelligence import router as intelligence_router
 from app.routes.internal_operational_actions import (
     router as internal_operational_actions_router,
@@ -107,6 +110,7 @@ router.include_router(installation_candidate_lifecycle_router)
 router.include_router(installation_approval_intent_router)
 router.include_router(installation_execution_request_router)
 router.include_router(installation_dispatch_handoff_router)
+router.include_router(installation_readiness_review_router)
 router.include_router(execution_candidates_router)
 router.include_router(execution_candidate_intake_router)
 router.include_router(ops_router)

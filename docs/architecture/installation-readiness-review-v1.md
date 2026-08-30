@@ -1,6 +1,6 @@
 # Installation Readiness Review v1 planning contract
 
-Status: **Atlas v0.34 P0–P2 implemented; P3–P5 not implemented**.
+Status: **Atlas v0.34 P0–P3 implemented; P4–P5 not implemented**.
 
 Atlas v0.34 defines a read-only, operator-owned review of the released
 v0.20–v0.33 installation evidence chain. It answers only whether the exact
@@ -364,11 +364,18 @@ projection, while collapsing absent/foreign evidence to the same redacted
 `unavailable` result. It has no store, identity factory, reservation, write,
 cache, credential, Agent, transport, retry, replay, or effect dependency.
 
-### P3 — Exact read-only Core API
+### P3 — Exact read-only Core API — implemented
 
 Register only the authenticated GET frozen above, with exact OpenAPI,
 permission, ownership non-disclosure, bounds, and redacted errors. Add no
 collection or mutation/action route and no new permission.
+
+P3 registers exactly the frozen candidate-record readiness-review GET. It uses
+the existing `installation.destination.select` permission, calls only the P2
+service, rejects query parameters and request bodies, requires no origin or
+CSRF mutation proof, returns the closed success or redacted-error bodies, and
+conceals foreign evidence as `not_found`. All non-GET methods are excluded from
+OpenAPI and rejected with `Allow: GET`; there is no action or mutation sibling.
 
 ### P4 — Read-only Mission Control presentation
 

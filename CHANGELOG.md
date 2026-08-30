@@ -36,6 +36,12 @@ release boundaries.
   freshness/blockers, deterministic results, redacted non-disclosing errors,
   and the blocked Home Assistant golden without persistence, reservation,
   credential access, Agent/network calls, retry/replay, or effect authority.
+- P3 exposed exactly one authenticated owner-scoped Core GET for the frozen
+  readiness review. It accepts only the canonical candidate path, no query or
+  body, uses the existing read permission without CSRF mutation semantics,
+  returns only closed review/audit or redacted-error bodies, and adds no
+  collection, action, mutation, install, execute, dispatch, retry/resend, or
+  deployment route.
 
 #### v0.33 P0–P5 — End-to-End Inert Delivery Receipt
 

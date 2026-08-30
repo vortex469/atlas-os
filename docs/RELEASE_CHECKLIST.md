@@ -33,7 +33,8 @@ frozen [v1 contract](architecture/installation-readiness-review-v1.md).
 - [x] P1 — closed models and pure review evaluation.
 - [x] P2 — owner-scoped local read composition with deterministic ephemeral
   results, ownership isolation, redaction, and no persistence or reservation.
-- [ ] P3 — exact authenticated read-only Core API.
+- [x] P3 — exact authenticated read-only Core GET, permission and ownership
+  isolation, closed redacted errors, and locked OpenAPI surface.
 - [ ] P4 — read-only Mission Control presentation.
 - [ ] P5 — isolation, regression, authority closure, and release evidence.
 
