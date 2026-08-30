@@ -6,6 +6,55 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.38 P0–P5 — Worker Admission Stub
+
+- Selected Atlas v0.38 **Worker Admission Stub** and froze the
+  documentation-only [v1 planning contract](docs/architecture/worker-admission-stub-v1.md).
+- Defined one append-only operator-owned Core stub-evidence artifact binding
+  the exact v0.20–v0.36 chain, active v0.37 runner binding plan, one abstract
+  server-owned worker reference, a derived fixed admission intent and no-intake
+  descriptor, and exact inherited sandbox/resource/network/filesystem ceilings.
+- Froze only `worker_admission_stubbed` for successful records, always blocked
+  by `worker_not_started`, `queue_boundary_not_defined`, and
+  `execution_start_boundary_not_defined`; neither the intent nor worker
+  reference is a queue request, operational worker identity, endpoint,
+  credential, registration, availability, binding, start, or invocation.
+- Froze dedicated record/read permissions, maximum inherited 30-second
+  freshness, earliest expiry, permanent idempotency/subject reservations,
+  closed audit/redaction, exact candidate-scoped GET/guarded POST/item GET,
+  nested read presentation only, Home Assistant golden, P0–P5 sequencing,
+  threats, later enablement, and must-not-change rules.
+- Explicitly isolated the pre-existing execution-worker backend, relay, ledger,
+  request contracts, workspace runner, and Agent surfaces: v0.38 adds no import,
+  client, address, credential, queue, job, callback, conversion, or consumer.
+- P0 changes planning documents only. It adds no runtime model/service/store/
+  route/UI, persistence, migration, worker/queue/Agent/network/process call,
+  installation, execution, dispatch, retry/resend, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+- P1 adds closed immutable stub, intent, intake, worker-reference, inherited-
+  limit, linkage, lifecycle, reservation, audit, error, result, and collection
+  models with deterministic fingerprints, exact bounds, fixed blockers, and
+  fixed-false authority.
+- P2 adds an explicitly constructed append-only Core evidence service/store
+  over injected owner-scoped v0.37 and worker-reference readers, with atomic
+  permanent reservations, exact-duplicate zero-I/O readback, quotas, bounds,
+  corruption closure, and no worker, queue, runtime, network, or effect
+  dependency.
+- P3 registers only the guarded candidate-scoped collection GET/POST and owned
+  item GET with strict authentication, permissions, origin/CSRF/rate/parsing,
+  ownership non-disclosure, redaction, and no effect-bearing sibling route.
+- P4 adds strict Mission Control create/list/get typing and a nested list/get
+  evidence panel presenting lifecycle, intent/intake, worker reference,
+  byte-exact inherited limits, linkage, audit, permanent no-replay, fixed-false
+  authority, and Home Assistant blocking, with no polling, navigation, form,
+  sensitive rendering, or prohibited control.
+- P5 locks exact API and zero-consumer isolation, concurrent/restart permanent
+  no-replay, secret-free persistence, Agent and execution-worker parity,
+  Mission Control structural closure, and the blocked/non-artifact Home
+  Assistant golden. Validation passed both Ruff gates, 98 focused Core tests,
+  1049 Agent tests, 605 Mission Control tests, Mission Control lint/build, and
+  `git diff --check`. P5 adds tests and release documentation only.
+
 #### v0.37 P0–P5 — Runner Binding Plan
 
 - Selected Atlas v0.37 **Runner Binding Plan** and froze the documentation-only

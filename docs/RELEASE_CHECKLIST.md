@@ -3,6 +3,103 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.38 P0–P5 Worker Admission Stub — complete
+
+Atlas v0.38 is **Worker Admission Stub**. P0–P5 are complete from the frozen
+[v1 contract](architecture/worker-admission-stub-v1.md). P5 validation started
+from P4 commit `1ca2f0f46cc300dd19ed89b4952e23635eff0a41`.
+
+- [x] Inspect current `main` at
+  `83d08274a805ca3c972e9827c6a2ce9253982758` after annotated
+  `atlas-v0.37.0` targeting
+  `eee726fe68da80ca2e4ecab9478494881836e648`.
+- [x] Freeze exact create, intent, intake-stub, worker-reference,
+  inherited-limit, linkage, stub, lifecycle/status, reservation, audit,
+  redacted-error, result, and collection schemas with bounds and fixed-false
+  authority.
+- [x] Freeze authoritative same-owner v0.20–v0.36 linkage plus exact v0.37
+  plan/status, runner/worker identity/reference/capability, intent, and limits
+  fingerprints, with no client-supplied raw evidence.
+- [x] Freeze only `worker_admission_stubbed`, ordered blocker vocabulary, and
+  permanent successful-record blockers `worker_not_started`,
+  `queue_boundary_not_defined`, and `execution_start_boundary_not_defined`.
+- [x] Freeze authenticated ownership, dedicated record/read permissions,
+  trusted clock, inherited maximum 30-second freshness, earliest expiry,
+  permanent reservations, quotas, and Home Assistant rejection.
+- [x] Freeze byte-exact inheritance of v0.37 confined sandbox/resource/network/
+  filesystem ceilings as evidence bounds that do not create or prove a
+  sandbox, workspace, container, queue, worker, or runtime enforcement.
+- [x] Freeze atomic permanent idempotency-key and stub-subject reservations,
+  exact-duplicate zero-I/O readback, and no consume, release, refresh, retry,
+  resend, replay, replacement, supersession, repair, or bypass.
+- [x] Freeze closed sanitized audit/errors and exclude raw keys, credentials,
+  worker/runner/provider payloads, endpoints, addresses, ports, queues,
+  commands, arguments, environment, logs, images, repositories, internal paths,
+  mount sources, and arbitrary metadata.
+- [x] Freeze exact candidate-scoped collection GET/guarded POST and item GET,
+  plus a nested Mission Control list/get evidence panel; retain no surfaced
+  creation absent server-owned worker context, effect sibling, polling,
+  selector, form, navigation, editable intent/limit, or prohibited control.
+- [x] Freeze complete isolation from the pre-existing execution-worker backend,
+  relay, ledger, runner, request contracts, Agent, queues, dispatch, workflows,
+  providers, repositories, guests, deployments, and rollback systems.
+- [x] Freeze the evidence-only authority boundary, P0–P5 scope, threats, later
+  enablement, blocked/non-artifact Home Assistant golden, and must-not-change
+  contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/reader/route/UI,
+  persistence, migration, worker/queue/Agent/network/process call,
+  installation, execution, dispatch, retry/resend, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+- [x] P1 — closed immutable models, exact intent/reference/intake/linkage and
+  byte-exact inherited-limit validation, deterministic fingerprints, bounds,
+  redaction, fixed blockers, and fixed-false authority.
+- [x] P2 — explicitly constructed append-only Core stub-evidence service/store
+  with injected owner-scoped readers, atomic permanent reservations,
+  restart-safe reads, quotas, corruption closure, and no effect dependency.
+- [x] P3 — exact guarded candidate-scoped collection GET/POST and item GET,
+  strict auth/permission/origin/CSRF/rate/parsing gates, redaction, and no
+  effect-bearing sibling route.
+- [x] P4 — strict Mission Control stub-evidence presentation using only P3
+  create/list/get, with no polling, sensitive rendering, standalone
+  navigation, editable worker/intent/limits, extra mutation, or prohibited
+  control.
+- [x] P5 — exact API and zero-consumer isolation,
+  `worker_admission_stubbed` fixed-false authority, concurrency/restart
+  permanent no-replay, secret-free persistence, Agent/execution-worker parity,
+  Mission Control structural closure, Home Assistant golden, and release
+  evidence.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates: `All checks passed!`.
+- [x] Focused Atlas Core release suite: `98 passed, 144 warnings in 22.17s`.
+- [x] Full Atlas Agent pytest: `1049 passed, 32 warnings in 11.54s`.
+- [x] Mission Control: `100 passed` test files / `605 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed with only the advisory
+  chunk-size warning.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, worker start,
+  queue/enqueue, runner binding, execution/workflow start, dispatch,
+  retry/resend, Agent invocation, process execution, mutation, deployment,
+  rollback, Home Assistant artifact, tag, push, publication, or release action.
+- [x] P5 closure commit:
+  `f1dffeb6bff79496562bdbb5d2555930a9e7e5da test(v0.38): close worker admission stub`.
+- [x] Full Atlas Core clean-environment gate:
+  `3373 passed, 496 warnings in 253.43s (0:04:13)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `f1dffeb6bff79496562bdbb5d2555930a9e7e5da`.
+- [x] Final release-preparation commit:
+  `1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7 docs(v0.38): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Verified immutable annotated tag `atlas-v0.38.0` targets
+  `1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7`.
+- [x] Verified branch `v038-worker-admission-stub` and annotated tag
+  `atlas-v0.38.0` were pushed to `origin`; the remote branch and peeled tag
+  target are `1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7`.
+- [ ] Publish the GitHub release for `atlas-v0.38.0`.
+
 ## Atlas v0.37 P0–P5 Runner Binding Plan — complete
 
 Atlas v0.37 is **Runner Binding Plan**. P0–P5 are complete from the frozen

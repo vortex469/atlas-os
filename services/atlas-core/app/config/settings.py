@@ -147,6 +147,9 @@ class OperatorAuthSettings(BaseModel):
     runner_binding_plan_database: str = (
         "/opt/atlas/data/runner_binding_plans.db"
     )
+    worker_admission_stub_database: str = (
+        "/opt/atlas/data/worker_admission_stubs.db"
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
@@ -237,6 +240,17 @@ class OperatorAuthSettings(BaseModel):
         ):
             raise ValueError(
                 "runner binding plan database must be an absolute path"
+            )
+        worker_admission_stub_database = Path(self.worker_admission_stub_database)
+        if (
+            not self.worker_admission_stub_database
+            or self.worker_admission_stub_database
+            != self.worker_admission_stub_database.strip()
+            or not worker_admission_stub_database.is_absolute()
+            or self.worker_admission_stub_database == ":memory:"
+        ):
+            raise ValueError(
+                "worker admission stub database must be an absolute path"
             )
         if not self.enabled:
             return self
@@ -344,6 +358,9 @@ def load_settings() -> Settings:
             ),
             "runner_binding_plan_database": os.getenv(
                 "ATLAS_OPERATOR_AUTH_RUNNER_BINDING_PLAN_DATABASE"
+            ),
+            "worker_admission_stub_database": os.getenv(
+                "ATLAS_OPERATOR_AUTH_WORKER_ADMISSION_STUB_DATABASE"
             ),
         }
         for key, value in environment_overrides.items():

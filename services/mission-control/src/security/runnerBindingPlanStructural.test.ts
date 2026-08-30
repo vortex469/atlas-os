@@ -43,9 +43,12 @@ describe("v0.37 runner binding plan presentation boundary", () => {
         const consumers = Object.entries(productionModules).filter(([, source]) => /runner-binding-plans|RunnerBindingPlan/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/runnerBindingPlan.ts",
+            "../api/workerAdmissionStub.ts",
             "../features/installation/InstallationExecutionAdmissions.tsx",
             "../features/installation/RunnerBindingPlans.tsx",
+            "../features/installation/WorkerAdmissionStubs.tsx",
             "../types/runnerBindingPlan.ts",
+            "../types/workerAdmissionStub.ts",
         ]);
     });
 });

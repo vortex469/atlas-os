@@ -462,6 +462,13 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/runner-binding-plans/{plan_id}": {
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-admission-stubs": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-admission-stubs/{stub_id}": {
+            "get",
+        },
     }
     prohibited = ("approve", "execute", "dispatch", "install", "deploy", "rollback")
     assert not any(
@@ -495,6 +502,7 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/executionPermissionGrant.ts"),
         Path("api/installationExecutionAdmission.ts"),
         Path("api/runnerBindingPlan.ts"),
+        Path("api/workerAdmissionStub.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 

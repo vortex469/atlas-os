@@ -194,6 +194,32 @@ dispatch, retry/resend, Agent invocation, worker/workflow/process start,
 Docker/Podman/shell, provider/repository/in-guest mutation, deployment,
 rollback, and Home Assistant artifacts remain blocked through P0–P5.
 
+## Completed v0.38 boundary
+
+Atlas v0.38 implements **Worker Admission Stub**. Its normative contract is
+[Worker Admission Stub v1](../../docs/architecture/worker-admission-stub-v1.md).
+
+The released-scope record is Core-owned evidence over the
+v0.20–v0.37 chain, a fixed derived intent, one abstract Core-readable worker
+reference, and limits inherited unchanged from v0.37. It adds no Agent model,
+reader, route, callback, permission, credential, endpoint, queue, worker
+identity, request conversion, invocation, executable capability, or runtime
+behavior. The worker reference cannot name or infer the pre-existing Agent-to-
+execution-worker control plane.
+
+Every successful record remains `worker_admission_stubbed`; no worker is
+registered, contacted, reserved, bound, authenticated, started, or invoked and
+no work is enqueued. Installation, execution, dispatch, retry/resend, Agent or
+workflow invocation, Docker/Podman/shell/process, provider/repository/in-guest
+mutation, deployment, rollback, and Home Assistant artifacts remain blocked
+through P0–P5.
+
+P1–P4 add only Core evidence contracts/service/store/API and a strict Mission
+Control evidence presentation. P5 confirms through the full Agent regression
+suite and repository isolation tests that Agent and the independently gated
+execution-worker have no v0.38 schema, reader, route, callback, conversion,
+queue, worker-start, execution, or effect consumer. P0–P5 are complete.
+
 ## Completed v0.37 boundary
 
 Atlas v0.37 selects **Runner Binding Plan**. Its normative contract is [Runner

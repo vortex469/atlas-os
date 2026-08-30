@@ -30,7 +30,7 @@ function instant(value: unknown) { return typeof value === "string" && /^\d{4}-\
 function falseFields(value: Record<string, unknown>, fields: string[]) { return fields.every((key) => value[key] === false); }
 function fixedBlockers(value: unknown) { return Array.isArray(value) && value.length === 2 && value[0] === "runner_not_bound" && value[1] === "execution_start_boundary_not_defined"; }
 
-function limits(value: unknown) {
+export function isRunnerBindingLimits(value: unknown) {
     if (!obj(value) || !exact(value, LIMITS) || value.schema !== "runner-binding-limits-v1" || !fp(value.limits_fingerprint)) return false;
     const sandbox = value.sandbox; const resources = value.resources; const network = value.network; const filesystem = value.filesystem;
     return obj(sandbox) && exact(sandbox, SANDBOX) && sandbox.profile === "atlas-installation-confined-v1" && sandbox.privileged === false && sandbox.privilege_escalation === false && sandbox.host_pid_namespace === false && sandbox.host_ipc_namespace === false && sandbox.host_network_namespace === false && sandbox.host_devices === false && sandbox.capabilities_drop_all === true && sandbox.seccomp_required === true && sandbox.apparmor_required === true
@@ -40,16 +40,16 @@ function limits(value: unknown) {
 }
 
 function reference(value: unknown) {
-    return obj(value) && exact(value, REFERENCE) && value.schema === "installation-runner-reference-v1" && typeof value.runner_reference_id === "string" && UUID.test(value.runner_reference_id) && typeof value.owner_operator_id === "string" && value.runner_kind === "isolated_installation_runner" && value.trust_domain === "atlas-installation" && value.scope === "installation_runner_binding_plan_only" && value.eligibility === "eligible_for_binding_plan_only" && fp(value.identity_fingerprint) && fp(value.capability_profile_fingerprint) && limits(value.limits) && instant(value.valid_from) && instant(value.valid_until) && fp(value.reference_fingerprint) && falseFields(value, ["registered", "available", "contacted", "reserved", "invocation_allowed"]);
+    return obj(value) && exact(value, REFERENCE) && value.schema === "installation-runner-reference-v1" && typeof value.runner_reference_id === "string" && UUID.test(value.runner_reference_id) && typeof value.owner_operator_id === "string" && value.runner_kind === "isolated_installation_runner" && value.trust_domain === "atlas-installation" && value.scope === "installation_runner_binding_plan_only" && value.eligibility === "eligible_for_binding_plan_only" && fp(value.identity_fingerprint) && fp(value.capability_profile_fingerprint) && isRunnerBindingLimits(value.limits) && instant(value.valid_from) && instant(value.valid_until) && fp(value.reference_fingerprint) && falseFields(value, ["registered", "available", "contacted", "reserved", "invocation_allowed"]);
 }
 
-function linkage(value: unknown) {
+export function isRunnerBindingPlanLinkage(value: unknown) {
     if (!obj(value) || !exact(value, LINKAGE) || value.schema !== "runner-binding-plan-linkage-v1" || typeof value.operator_id !== "string" || typeof value.candidate_record_id !== "string" || !UUID.test(value.candidate_record_id) || !isInstallationExecutionAdmissionLinkage(value.execution_admission_linkage)) return false;
     return typeof value.execution_admission_id === "string" && UUID.test(value.execution_admission_id) && typeof value.runner_reference_id === "string" && UUID.test(value.runner_reference_id) && ["v020_v035_chain_fingerprint", "readiness_review_fingerprint", "permission_grant_fingerprint", "execution_admission_fingerprint", "execution_admission_status_fingerprint", "runner_reference_fingerprint", "runner_identity_fingerprint", "runner_capability_profile_fingerprint", "limits_fingerprint", "linkage_fingerprint"].every((key) => fp(value[key]));
 }
 
 function plan(value: unknown) {
-    if (!obj(value) || !exact(value, PLAN) || value.schema !== "runner-binding-plan-v1" || typeof value.plan_id !== "string" || !UUID.test(value.plan_id) || typeof value.operator_id !== "string" || typeof value.candidate_record_id !== "string" || !UUID.test(value.candidate_record_id) || !instant(value.recorded_at) || !instant(value.valid_until) || value.record_state !== "recorded" || value.lifecycle !== "active" || value.eligibility !== "binding_planned" || !fixedBlockers(value.blockers) || !linkage(value.linkage) || !reference(value.runner_reference) || !limits(value.limits) || !fp(value.idempotency_key_fingerprint) || !fp(value.request_fingerprint) || !fp(value.plan_fingerprint) || value.evidence_only !== true || !falseFields(value, NO_AUTHORITY.filter((key) => key !== "evidence_only"))) return false;
+    if (!obj(value) || !exact(value, PLAN) || value.schema !== "runner-binding-plan-v1" || typeof value.plan_id !== "string" || !UUID.test(value.plan_id) || typeof value.operator_id !== "string" || typeof value.candidate_record_id !== "string" || !UUID.test(value.candidate_record_id) || !instant(value.recorded_at) || !instant(value.valid_until) || value.record_state !== "recorded" || value.lifecycle !== "active" || value.eligibility !== "binding_planned" || !fixedBlockers(value.blockers) || !isRunnerBindingPlanLinkage(value.linkage) || !reference(value.runner_reference) || !isRunnerBindingLimits(value.limits) || !fp(value.idempotency_key_fingerprint) || !fp(value.request_fingerprint) || !fp(value.plan_fingerprint) || value.evidence_only !== true || !falseFields(value, NO_AUTHORITY.filter((key) => key !== "evidence_only"))) return false;
     const recorded = Date.parse(String(value.recorded_at)); const expiry = Date.parse(String(value.valid_until));
     return expiry > recorded && expiry - recorded <= 30_000;
 }
