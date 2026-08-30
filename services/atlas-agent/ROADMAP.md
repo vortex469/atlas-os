@@ -220,6 +220,26 @@ suite and repository isolation tests that Agent and the independently gated
 execution-worker have no v0.38 schema, reader, route, callback, conversion,
 queue, worker-start, execution, or effect consumer. P0–P5 are complete.
 
+## Selected v0.39 planning boundary
+
+Atlas v0.39 selects **Worker Queue Reservation Boundary**. Its normative P0
+contract is [Worker Queue Reservation Boundary
+v1](../../docs/architecture/worker-queue-reservation-v1.md).
+
+The planned record is Core-owned, payload-free evidence over the already
+exported v0.20–v0.38 chain, one abstract Core-readable queue intake reference,
+one derived queue item reference, and inherited ceilings. It adds no Agent or
+execution-worker model, reader, route, callback, permission, credential,
+endpoint, queue client, request conversion, consumer, or behavior. Neither
+system may consume a v0.39 record.
+
+Even the strongest `worker_queue_reservation_recorded` state means no live
+enqueue or reservation occurred. Enqueue, dequeue, queue polling, worker
+start, runner binding, execution, dispatch, retry/resend, Agent/workflow
+invocation, process execution, mutation, deployment, rollback, and Home
+Assistant artifacts remain blocked through P0-P5. P0 changes planning
+documents only.
+
 ## Completed v0.37 boundary
 
 Atlas v0.37 selects **Runner Binding Plan**. Its normative contract is [Runner

@@ -3,6 +3,54 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.39 P0 Worker Queue Reservation Boundary — selected
+
+Atlas v0.39 is **Worker Queue Reservation Boundary**. P0 freezes the
+documentation-only [v1 contract](architecture/worker-queue-reservation-v1.md);
+P1-P5 are not implemented.
+
+- [x] Inspect post-v0.38 `main` at
+  `570bb7c1ef103dfce1c377baf8b7be9f4ec509ff`, after annotated
+  `atlas-v0.38.0` targeting
+  `1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7`.
+- [x] Freeze exact create, queue-intake reference, payload-free queue-item
+  reference, inherited-limit, linkage, record/status, reservation,
+  idempotency, audit, error, result, and collection schemas.
+- [x] Freeze exact same-owner v0.20-v0.37 linkage, active v0.38 worker-
+  admission-stub binding, server-owned trusted clock/reference dependencies,
+  and byte-exact inherited limit fingerprints.
+- [x] Freeze `worker_queue_reservation_recorded | readiness_gated | blocked`,
+  the closed blocker vocabulary, and permanent successful-record blockers for
+  live enqueue, dequeue, worker start, and execution start.
+- [x] Freeze authenticated ownership, dedicated
+  `installation.execution.worker_queue_reservation.record` and `.read`
+  permissions, exact reservation-only scope, foreign/not-found non-disclosure,
+  maximum inherited 30-second freshness, and earliest expiry.
+- [x] Freeze atomic permanent idempotency and subject reservations, exact-
+  duplicate zero-I/O readback, and no consume/release/refresh/replacement/
+  supersession/retry/resend/replay bypass.
+- [x] Freeze strict bounds, deterministic domain-separated fingerprints,
+  closed audit/redaction, and exclusion of raw keys, payloads, credentials,
+  commands, logs, paths, endpoints, addresses, and arbitrary metadata.
+- [x] Freeze only candidate-scoped collection GET/guarded POST and item GET,
+  plus an optional nested Mission Control evidence panel with no polling,
+  selectors, editable limits, sensitive rendering, extra mutation, or effect
+  control.
+- [x] Freeze Home Assistant blocked/non-artifact behavior, Agent and execution-
+  worker zero-consumer isolation, exact authority boundary, later enablement,
+  P0-P5, threats, and must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/reader/route/
+  permission/UI, persistence, migration, queue/worker/Agent/network/process
+  call, installation, execution, dispatch, retry/resend, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+- [ ] P1 — closed immutable Core contract models and pure validation only.
+- [ ] P2 — explicitly constructed append-only Core evidence service/store with
+  injected owner-scoped readers and permanent no-replay.
+- [ ] P3 — exact guarded Core create/list/get evidence API only.
+- [ ] P4 — strict Mission Control evidence presentation only.
+- [ ] P5 — release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, and release evidence only.
+
 ## Atlas v0.38 P0–P5 Worker Admission Stub — complete
 
 Atlas v0.38 is **Worker Admission Stub**. P0–P5 are complete from the frozen

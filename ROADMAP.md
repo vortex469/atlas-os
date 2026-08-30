@@ -1,11 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.37
+## 1. Current released baseline — v0.38
 
-Atlas v0.37.0 is released as `atlas-v0.37.0` at
-`eee726fe68da80ca2e4ecab9478494881836e648`; its completed milestone and
+Atlas v0.38.0 is released as `atlas-v0.38.0` at
+`1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7`; its completed milestone and
 release-checklist reconciliation are merged to current `main` at
-`83d08274a805ca3c972e9827c6a2ce9253982758`.
+`570bb7c1ef103dfce1c377baf8b7be9f4ec509ff`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -96,10 +96,57 @@ image evidence, grounding, and provenance.
 - v0.37 released durable runner-binding-plan evidence over the exact
   v0.20–v0.36 chain and confined limits while remaining `binding_planned`,
   with no live runner binding, worker start, queue, or effect consumer.
+- v0.38 released durable worker-admission-stub evidence over the exact
+  v0.20–v0.37 chain and byte-exact inherited limits while remaining
+  `worker_admission_stubbed`, with no queue, enqueue, worker start, or effect
+  consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Selected v0.39 plan — Worker Queue Reservation Boundary
+
+Atlas v0.39 selects **Worker Queue Reservation Boundary**. The normative
+documentation-only P0 contract is [Worker Queue Reservation Boundary
+v1](docs/architecture/worker-queue-reservation-v1.md).
+
+V0.39 may later append one same-owner Core evidence record binding the exact
+v0.20–v0.37 chain, one active v0.38 worker-admission stub, one abstract
+server-owned queue intake reference, one derived payload-free queue item
+reference, and byte-exact inherited sandbox/resource/network/filesystem
+ceilings. Its strongest state is `worker_queue_reservation_recorded`, always
+blocked by `live_enqueue_not_defined`, `dequeue_not_defined`,
+`worker_start_not_defined`, and `execution_start_boundary_not_defined`.
+
+The phase order is P0 → P1 → P2 → P3 → P4 → P5:
+
+- P0 freezes exact schemas, queue references, linkage/fingerprints, lifecycle,
+  eligibility/blockers, ownership/permissions, freshness, inherited limits,
+  permanent reservations, audit/redaction, API/UI, threats, later enablement,
+  and must-not-change contracts. P0 changes planning documents only.
+- P1 may add closed immutable models, deterministic domain-separated
+  fingerprints, exact bounds/linkage/limits, fixed blockers, and pure
+  validation only.
+- P2 may add an explicitly constructed Core append-only evidence service/store
+  with injected owner-scoped readers and permanent no-replay.
+- P3 may add only dedicated record/read permissions and the frozen candidate-
+  scoped collection GET/guarded POST plus owned item GET.
+- P4 may add only strict Mission Control typing and a nested evidence panel,
+  with no polling, live queue/worker selector, editable limit, standalone
+  navigation, sensitive rendering, or effect control.
+- P5 may add only release isolation, concurrency/restart no-replay,
+  regression, authority, redaction, Agent/execution-worker parity, Home
+  Assistant, and release evidence.
+
+V0.39 can enable a later milestone to require an active queue-reservation
+evidence record before independently defining live enqueue admission. It does
+not define that admission or a live queue. Enqueue, dequeue, worker start,
+runner binding, execution, installation, dispatch, retry/resend, Agent or
+workflow invocation, Docker/Podman/shell/process, provider/repository/in-guest
+mutation, deployment, rollback, endpoints/credentials, and Home Assistant
+artifacts remain blocked. The Agent and execution-worker gain no v0.39
+consumer or integration.
 
 ## Completed v0.38 plan — Worker Admission Stub
 

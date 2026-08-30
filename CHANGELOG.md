@@ -6,6 +6,30 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.39 P0 — Worker Queue Reservation Boundary
+
+- Selected Atlas v0.39 **Worker Queue Reservation Boundary** and froze the
+  documentation-only [v1 planning contract](docs/architecture/worker-queue-reservation-v1.md).
+- Defined one future append-only, operator-owned Core evidence record binding
+  the exact v0.20–v0.37 chain, active v0.38 worker-admission stub, abstract
+  server-owned queue intake reference, derived payload-free queue item
+  reference, and byte-exact inherited sandbox/resource/network/filesystem
+  ceilings.
+- Froze `worker_queue_reservation_recorded` as evidence only, with permanent
+  ordered blockers `live_enqueue_not_defined`, `dequeue_not_defined`,
+  `worker_start_not_defined`, and `execution_start_boundary_not_defined`.
+- Froze closed schemas/vocabulary, exact fingerprints/linkage, dedicated
+  record/read permissions, maximum inherited 30-second freshness, earliest
+  expiry, permanent idempotency/subject reservations, audit/redaction, strict
+  bounds, Home Assistant golden, exact candidate-scoped GET/guarded POST/item
+  GET, optional nested Mission Control presentation, P0-P5, and must-not-change
+  rules.
+- P0 changes planning documents only. It adds no runtime model/service/store/
+  route/permission/UI, persistence, migration, live queue, enqueue/dequeue,
+  worker/Agent/network/process call, installation, execution, dispatch,
+  retry/resend, mutation, deployment, rollback, artifact, tag, push,
+  publication, or release action.
+
 #### v0.38 P0–P5 — Worker Admission Stub
 
 - Selected Atlas v0.38 **Worker Admission Stub** and froze the
