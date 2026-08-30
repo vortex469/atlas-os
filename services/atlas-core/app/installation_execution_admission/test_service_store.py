@@ -322,6 +322,7 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "config/settings.py",
         "routes/installation_execution_admission.py",
         "runner_binding_plan/contract.py",
+        "runner_binding_plan/service.py",
     }
     consumers = []
     for path in app_root.rglob("*.py"):
