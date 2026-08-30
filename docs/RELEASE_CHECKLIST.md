@@ -89,12 +89,15 @@ P5 validation evidence:
   `3373 passed, 496 warnings in 253.43s (0:04:13)`.
 - [x] Exact reviewed implementation/validation SHA after P5 review:
   `f1dffeb6bff79496562bdbb5d2555930a9e7e5da`.
-- [ ] Verify the tracked worktree is clean at the final release-preparation
+- [x] Final release-preparation commit:
+  `1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7 docs(v0.38): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
   commit.
-- [ ] Create and verify immutable annotated tag `atlas-v0.38.0` at the exact
-  final release-preparation commit.
-- [ ] Push branch `v038-worker-admission-stub` and annotated tag
-  `atlas-v0.38.0` to `origin`, then verify the remote branch and peeled tag.
+- [x] Verified immutable annotated tag `atlas-v0.38.0` targets
+  `1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7`.
+- [x] Verified branch `v038-worker-admission-stub` and annotated tag
+  `atlas-v0.38.0` were pushed to `origin`; the remote branch and peeled tag
+  target are `1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7`.
 - [ ] Publish the GitHub release for `atlas-v0.38.0`.
 
 ## Atlas v0.37 P0–P5 Runner Binding Plan — complete
