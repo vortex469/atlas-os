@@ -6,6 +6,29 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.35 P0 — Execution Permission Grant Boundary
+
+- Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/execution-permission-grant-v1.md).
+- Defined one operator-owned append-only permission-evidence artifact binding
+  the exact v0.20–v0.33 linkage, v0.34 review/audit fingerprints,
+  authenticated operator, exact confirmation text, trusted short expiry, and
+  permanent subject/idempotency reservations.
+- Froze a dedicated `installation.execution.permission.grant` permission, one
+  exact guarded POST, one owned GET, and one Mission Control confirmation and
+  readback panel. The grant permits only later execution-admission
+  consideration; it does not admit or authorize execution.
+- Defined closed grant/status/result/error/audit models, two-state derived
+  lifecycle, domain-separated fingerprints, same-owner recomputation,
+  confirmation/redaction rules, exact API/UI boundaries, P0–P5 sequencing,
+  threats, Home Assistant golden, later enablement, and must-not-change rules.
+- P0 changes planning documents only. It adds no models, service, store,
+  permission registration, route, UI, persistence, migration, credential or
+  network access, Agent call, retry/resend, installation, execution, dispatch,
+  worker/workflow/process start, Docker/Podman/shell, mutation, deployment,
+  rollback, tag, push, publication, or release action.
+
 #### v0.34 P0 — Installation Readiness Review
 
 - Selected Atlas v0.34 **Installation Readiness Review** and froze the

@@ -3,6 +3,45 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.35 P0 Execution Permission Grant Boundary — selected
+
+Atlas v0.35 is **Execution Permission Grant Boundary**. P0 is the
+documentation-only frozen [v1 contract](architecture/execution-permission-grant-v1.md).
+
+- [x] Inspect current `main` at
+  `5965e3c016a4ee1e6d871d675964cbe40b04e353` after annotated
+  `atlas-v0.34.0` targeting
+  `fb3d9014574b5aa85a1024d77fe7b29bf35e1b88`.
+- [x] Freeze the exact create, linkage, durable grant, derived status, audit,
+  redacted-error, and result schemas with strict bounds and fixed-false effect
+  authority.
+- [x] Freeze exact same-owner v0.20–v0.33 linkage plus v0.34 review, audit, and
+  operator fingerprints, with authoritative recomputation and no
+  client-supplied linkage.
+- [x] Freeze the exact confirmation text, dedicated operator permission,
+  trusted-clock ownership rules, and maximum inherited 30-second freshness.
+- [x] Freeze append-only durability, atomic permanent idempotency/subject
+  reservations, exact-duplicate zero-I/O readback, and no refresh, retry,
+  replay, revoke, consume, or replacement.
+- [x] Freeze the exact guarded Core POST and owned GET with no collection,
+  action, install, execute, dispatch, retry/resend, deploy, rollback, or
+  mutation sibling.
+- [x] Freeze the exact Mission Control confirmation/readback panel, explicit
+  non-authorizing copy, ambiguous-write behavior, redaction, and absence of
+  polling, sensitive data, or effect controls.
+- [x] Freeze P0–P5 scope, exact authority increase, later enablement, threats,
+  blocked Home Assistant golden, and must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/permission/route/UI,
+  persistence, migration, credential/network/Agent call, installation,
+  execution, dispatch, retry/resend, worker/workflow/process, Docker/Podman/
+  shell, mutation, deployment, rollback, artifact, tag, push, publication, or
+  release action.
+- [ ] P1 — closed grant models and pure validation.
+- [ ] P2 — default-off append-only reservation service and store.
+- [ ] P3 — dedicated permission and exact guarded Core POST/owned GET.
+- [ ] P4 — exact Mission Control confirmation and readback panel.
+- [ ] P5 — isolation, regression, authority closure, and release evidence.
+
 ## Atlas v0.34 P0 Installation Readiness Review — selected
 
 Atlas v0.34 is **Installation Readiness Review**. P0 is the documentation-only
