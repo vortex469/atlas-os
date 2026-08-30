@@ -74,9 +74,15 @@ documentation-only frozen
   `3107 passed, 293 warnings in 206.46s (0:03:26)`.
 - [x] Exact reviewed implementation/validation SHA after P5 review:
   `b7107be4f73d1e4eddd1861517463942455a9d5f`.
-- [ ] Verify the tracked worktree is clean at the final release commit.
-- [ ] Create the immutable annotated `atlas-v0.33.0` tag.
-- [ ] Push the final release branch and `atlas-v0.33.0` tag to `origin`.
+- [x] Final release-preparation commit:
+  `4bc30527b1c5a99eb090a43619494bb557791a50 docs(v0.33): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Created immutable annotated tag `atlas-v0.33.0` targeting
+  `4bc30527b1c5a99eb090a43619494bb557791a50`.
+- [x] Pushed branch `v033-inert-delivery-receipt` and annotated tag
+  `atlas-v0.33.0` to `origin`; the remote branch and peeled tag target both
+  resolve to `4bc30527b1c5a99eb090a43619494bb557791a50`.
 - [ ] Publish the GitHub release for `atlas-v0.33.0`.
 
 ## Atlas v0.32 P0–P5 Agent Live Intake Admission — complete
