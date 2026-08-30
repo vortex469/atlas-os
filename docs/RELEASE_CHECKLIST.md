@@ -3,6 +3,51 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.36 P0 Installation Execution Admission Boundary — selected
+
+Atlas v0.36 is **Installation Execution Admission Boundary**. P0 is the
+documentation-only frozen [v1
+contract](architecture/installation-execution-admission-v1.md).
+
+- [x] Inspect current `main` at
+  `adb74c2a49fee28483ebe48c703b6887bcee7ee9` after annotated
+  `atlas-v0.35.0` targeting
+  `5c56940e21db9e80a9470d2db434415d02dff9ac`.
+- [x] Freeze exact create, linkage, runner-eligibility, admission, lifecycle,
+  reservation, audit, redacted-error, and result schemas with bounds and
+  fixed-false effect authority.
+- [x] Freeze authoritative same-owner v0.20–v0.34 linkage plus exact v0.35
+  grant/status/request/confirmation/operator fingerprints, with no
+  client-supplied raw evidence.
+- [x] Freeze `blocked | admission_gated`, ordered blocker vocabulary, and the
+  permanent successful-record blockers `runner_binding_not_defined` and
+  `execution_start_boundary_not_defined`.
+- [x] Freeze authenticated ownership, dedicated record/read permissions,
+  trusted clock, inherited maximum 30-second freshness, earliest expiry, and
+  Home Assistant rejection.
+- [x] Freeze atomic permanent idempotency-key and grant-subject reservations,
+  exact-duplicate zero-I/O readback, and no consume, release, refresh, retry,
+  resend, replay, replacement, or bypass.
+- [x] Freeze closed sanitized audit/errors and exclude raw keys, credentials,
+  provider payloads, commands, logs, internal paths, addresses, endpoints, and
+  arbitrary metadata.
+- [x] Freeze exact candidate-scoped collection GET/guarded POST and item GET,
+  plus one optional Mission Control two-step admission-evidence panel; retain
+  no effect/action sibling, polling, runner selector, or prohibited control.
+- [x] Freeze the exact evidence-only authority boundary, P0–P5 scope, threats,
+  later enablement, blocked/non-artifact Home Assistant golden, and
+  must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/permission/route/UI,
+  persistence, migration, credential/network/Agent/runner call, installation,
+  execution, dispatch, retry/resend, worker/workflow/process, Docker/Podman/
+  shell, mutation, deployment, rollback, artifact, tag, push, publication, or
+  release action.
+- [ ] P1 — closed immutable models and pure validation.
+- [ ] P2 — explicitly constructed append-only Core evidence service/store.
+- [ ] P3 — exact guarded Core create/list/get API.
+- [ ] P4 — strict Mission Control admission-evidence presentation.
+- [ ] P5 — isolation, regression, authority closure, and release evidence.
+
 ## Atlas v0.35 P0 Execution Permission Grant Boundary — selected
 
 Atlas v0.35 is **Execution Permission Grant Boundary**. P0 is the

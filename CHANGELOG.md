@@ -6,6 +6,29 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.36 P0 — Installation Execution Admission Boundary
+
+- Selected Atlas v0.36 **Installation Execution Admission Boundary** and froze
+  the documentation-only [v1 planning
+  contract](docs/architecture/installation-execution-admission-v1.md).
+- Defined one append-only, operator-owned Core admission-evidence artifact
+  binding the exact v0.20–v0.34 chain and active v0.35 permission grant, with
+  deterministic linkage, inherited maximum 30-second freshness, permanent
+  idempotency/grant-subject reservations, audit, and redaction.
+- Froze only `blocked` and `admission_gated`; every successful record retains
+  `runner_binding_not_defined` and `execution_start_boundary_not_defined`.
+  Runner eligibility is evidence only: no runner is selected, registered,
+  available, invokable, or authorized to start work.
+- Froze dedicated record/read permissions, exact candidate-scoped collection
+  GET/guarded POST and item GET, one optional Mission Control two-step evidence
+  flow, closed blockers, lifecycle, P0–P5 sequencing, threats, later
+  enablement, Home Assistant golden, and must-not-change rules.
+- P0 changes planning documents only. It adds no runtime model, service, store,
+  route, permission registration, UI, persistence, migration, Agent/runner/
+  worker/workflow call, credential/network access, installation, execution,
+  dispatch, retry/resend, Docker/Podman/shell/process, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+
 #### v0.35 P0–P5 — Execution Permission Grant Boundary
 
 - Selected Atlas v0.35 **Execution Permission Grant Boundary** and froze the
