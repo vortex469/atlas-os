@@ -890,12 +890,14 @@ def test_v024_records_have_no_core_or_agent_runtime_consumer() -> None:
     dormant_wiring_root = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
     live_send_contract_root = APP_ROOT / "live_delivery_send_boundary"
+    inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     for path in _production_python_files(APP_ROOT):
         if (
             path in V024_ALLOWED_CONSUMERS
             or dormant_wiring_root in path.parents
             or preflight_contract_root in path.parents
             or live_send_contract_root in path.parents
+            or inert_receipt_contract_root in path.parents
         ):
             continue
         source = path.read_text(encoding="utf-8")
@@ -1159,6 +1161,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
     v032_agent_package = agent_root / "agent_live_intake_admission"
     isolated_core_package = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     live_send_contract_package = APP_ROOT / "live_delivery_send_boundary"
+    inert_receipt_contract_package = APP_ROOT / "end_to_end_inert_delivery_receipt"
     markers = (
         "app.real_agent_intake_boundary",
         "AgentRealIntakeEvidenceService",
@@ -1172,6 +1175,7 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
         if (
             isolated_core_package in path.parents
             or live_send_contract_package in path.parents
+            or inert_receipt_contract_package in path.parents
         ):
             continue
         source = path.read_text(encoding="utf-8")
@@ -1350,6 +1354,7 @@ def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
     isolated_core = APP_ROOT / "dormant_agent_intake_delivery_wiring"
     preflight_contract_root = APP_ROOT / "delivery_activation_preflight"
     live_send_contract_root = APP_ROOT / "live_delivery_send_boundary"
+    inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     isolated_agent = agent_root / "real_agent_intake_boundary"
     markers = (
         "app.dormant_agent_intake_delivery_wiring",
@@ -1366,6 +1371,7 @@ def test_v028_has_no_production_core_agent_or_authority_consumer() -> None:
                 isolated in path.parents
                 or preflight_contract_root in path.parents
                 or live_send_contract_root in path.parents
+                or inert_receipt_contract_root in path.parents
             ):
                 continue
             source = path.read_text(encoding="utf-8")
@@ -1771,6 +1777,7 @@ def test_v031_live_send_is_explicit_default_off_one_shot_and_non_authorizing() -
 def test_v031_live_send_has_no_route_registration_or_authority_consumer() -> None:
     repository_root = APP_ROOT.parents[2]
     package = APP_ROOT / "live_delivery_send_boundary"
+    inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     worker_root = repository_root / "services" / "atlas-execution-worker"
     markers = (
@@ -1784,7 +1791,7 @@ def test_v031_live_send_has_no_route_registration_or_authority_consumer() -> Non
     violations: list[str] = []
     for root in (APP_ROOT, agent_root, worker_root):
         for path in _production_python_files(root):
-            if package in path.parents:
+            if package in path.parents or inert_receipt_contract_root in path.parents:
                 continue
             source = path.read_text(encoding="utf-8")
             violations.extend(
@@ -1869,9 +1876,11 @@ def test_v032_agent_admission_does_not_widen_core_live_send_or_gain_consumers() 
         "AgentLiveIntakeAcknowledgementV1",
         "agent-live-intake-admission-v1",
     )
+    inert_receipt_contract_root = APP_ROOT / "end_to_end_inert_delivery_receipt"
     violations = [
         f"{path.relative_to(repository_root)} -> {marker}"
         for path in _production_python_files(APP_ROOT)
+        if inert_receipt_contract_root not in path.parents
         for marker in core_markers
         if marker in path.read_text(encoding="utf-8")
     ]
@@ -1892,3 +1901,177 @@ def test_v032_agent_admission_does_not_widen_core_live_send_or_gain_consumers() 
         marker not in transport_source.lower()
         for marker in ("scheduler", "daemon", "retry queue", "background task")
     )
+
+
+def test_v033_receipt_composition_is_explicit_internal_and_unregistered() -> None:
+    from app.end_to_end_inert_delivery_receipt.composition import (
+        EndToEndInertDeliveryComposition,
+    )
+
+    assert set(inspect.signature(EndToEndInertDeliveryComposition).parameters) == {
+        "configuration",
+        "authenticity",
+        "credential_resolver",
+        "transport",
+        "prior_receipt_writer",
+        "store",
+        "clock",
+        "receipt_id_factory",
+    }
+    repository_root = APP_ROOT.parents[2]
+    package = APP_ROOT / "end_to_end_inert_delivery_receipt"
+    markers = (
+        "app.end_to_end_inert_delivery_receipt",
+        "EndToEndInertDeliveryComposition",
+        "EndToEndInertDeliveryReceiptV1",
+        "end-to-end-inert-delivery-receipt-v1",
+        "inert_delivery_receipts",
+    )
+    violations = [
+        f"{path.relative_to(repository_root)} -> {marker}"
+        for root in (
+            APP_ROOT,
+            repository_root / "services" / "atlas-agent" / "app",
+            repository_root / "services" / "atlas-execution-worker",
+        )
+        for path in _production_python_files(root)
+        if package not in path.parents
+        for marker in markers
+        if marker in path.read_text(encoding="utf-8")
+    ]
+    assert violations == []
+    for path in (APP_ROOT / "main.py", APP_ROOT / "api" / "v1" / "router.py"):
+        source = path.read_text(encoding="utf-8")
+        assert "inert-delivery-receipt" not in source
+        assert "end_to_end_inert_delivery_receipt" not in source
+
+
+def test_v033_exact_duplicate_is_zero_io_and_persistence_is_secret_free(
+    tmp_path: Path,
+) -> None:
+    from app.end_to_end_inert_delivery_receipt.test_composition import (
+        _compose,
+        _composition,
+    )
+
+    request, composition, resolver, transport, writer = _composition(tmp_path)
+    first = _compose(composition, request)
+    duplicate = _compose(composition, request)
+    assert first.disposition == "verified_inert_receipt"
+    assert duplicate.disposition == "exact_duplicate"
+    assert first.receipt == duplicate.receipt
+    assert resolver.calls == writer.calls == len(transport.calls) == 1
+    persisted = b"".join(
+        path.read_bytes()
+        for path in tmp_path.glob("v33.sqlite3*")
+        if path.is_file()
+    )
+    for forbidden in (
+        b"transient-test-secret",
+        b"Authorization",
+        b"Bearer ",
+        b"/run/secrets",
+    ):
+        assert forbidden not in persisted
+    rendered = first.model_dump_json().encode()
+    assert b"transient-test-secret" not in rendered
+    assert b"Authorization" not in rendered
+    assert not first.replay_allowed
+
+
+def test_v033_receipt_models_and_composition_grant_no_effect_authority() -> None:
+    from app.end_to_end_inert_delivery_receipt.contract import (
+        EndToEndInertDeliveryAuditEvidenceV1,
+        EndToEndInertDeliveryReceiptV1,
+        EndToEndInertDeliveryResultV1,
+        EndToEndInertDeliveryVerificationV1,
+    )
+
+    for model in (
+        EndToEndInertDeliveryVerificationV1,
+        EndToEndInertDeliveryReceiptV1,
+        EndToEndInertDeliveryAuditEvidenceV1,
+        EndToEndInertDeliveryResultV1,
+    ):
+        for field in (
+            "execution_admission_granted",
+            "execution_authorized",
+            "installation_allowed",
+            "worker_allowed",
+            "workflow_allowed",
+            "deployment_allowed",
+            "mutation_allowed",
+            "replay_allowed",
+        ):
+            assert model.model_fields[field].annotation == Literal[False]
+
+    composition_source = (
+        APP_ROOT / "end_to_end_inert_delivery_receipt" / "composition.py"
+    ).read_text(encoding="utf-8")
+    assert "automatic_retries" not in composition_source
+    assert "while " not in composition_source
+    assert "subprocess" not in composition_source
+    assert "docker" not in composition_source.lower()
+    assert all(
+        marker not in composition_source.lower()
+        for marker in (
+            "start_workflow",
+            "dispatch_worker",
+            "provider mutation",
+            "repository mutation",
+            "in-guest mutation",
+            "rollback",
+        )
+    )
+
+
+def test_v033_preserves_v031_one_shot_and_v032_admission_only_boundaries() -> None:
+    live_contract = (
+        APP_ROOT / "live_delivery_send_boundary" / "contract.py"
+    ).read_text(encoding="utf-8")
+    live_transport = (
+        APP_ROOT / "live_delivery_send_boundary" / "transport.py"
+    ).read_text(encoding="utf-8")
+    assert 'automatic_retries: Literal[0] = 0' in live_contract
+    assert 'one_shot_only: Literal[True] = True' in live_contract
+    assert "while " not in live_transport
+
+    repository_root = APP_ROOT.parents[2]
+    agent_package = (
+        repository_root
+        / "services"
+        / "atlas-agent"
+        / "app"
+        / "agent_live_intake_admission"
+    )
+    agent_contract = (agent_package / "contract.py").read_text(encoding="utf-8")
+    agent_route = (agent_package / "route.py").read_text(encoding="utf-8")
+    assert 'evidence_only: Literal[True] = True' in agent_contract
+    assert 'execution_authorized: Literal[False] = False' in agent_contract
+    assert 'INTAKE_PATH = "/api/v1/internal/installation-intake"' in agent_contract
+    assert "INTAKE_PATH" in agent_route
+    for marker in ("install-container", "execute", "deploy", "start-workflow"):
+        assert f'"{marker}"' not in agent_route
+
+
+def test_v033_home_assistant_remains_blocked_without_deployment_artifact() -> None:
+    repository_root = APP_ROOT.parents[2]
+    agent_models = (
+        repository_root
+        / "services"
+        / "atlas-agent"
+        / "app"
+        / "candidate_planning"
+        / "models.py"
+    ).read_text(encoding="utf-8")
+    assert "install-container" not in agent_models
+    artifacts = [
+        path.relative_to(repository_root)
+        for root in (repository_root / "compose", repository_root / "deploy")
+        if root.exists()
+        for path in root.rglob("*")
+        if path.is_file()
+        and "home-assistant" in path.name.lower()
+        and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
+    ]
+    assert artifacts == []

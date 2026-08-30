@@ -6,6 +6,52 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.33 P0–P5 — End-to-End Inert Delivery Receipt
+
+- Selected Atlas v0.33 **End-to-End Inert Delivery Receipt** and froze the
+  documentation-only [v1 planning
+  contract](docs/architecture/end-to-end-inert-delivery-receipt-v1.md).
+- Defined the exact internal Core request, closed Agent-result verification,
+  append-only Core receipt, complete v0.20–v0.32 linkage, deterministic
+  fingerprints, inherited 30-second freshness, lifecycle, ownership,
+  permanent no-replay/ambiguity, redaction, and audit evidence.
+- Froze reuse of the exact v0.32 envelope/result and single Agent POST, exact
+  v0.31 HTTPS/principal/credential-reference boundary, independent default-off
+  gates, no public Core API or Mission Control surface, P0–P5 scope, threats,
+  goldens, later enablement, blockers, and must-not-change contracts.
+- P0 changes planning documents only. It adds no models, service, store,
+  transport, credential read, network call, route, UI, retry, installation,
+  Docker/Podman/shell/process work, worker/workflow/dispatch, mutation,
+  deployment, rollback, Home Assistant artifact, tag, push, or release action.
+- P1 added strict immutable Core request, receipt-copy, verification, receipt,
+  linkage, lifecycle/status, audit, redacted-error, idempotency, fingerprint,
+  freshness, bounds, and fixed-false authority models.
+- P2 added the explicitly constructed Core verification service and bounded
+  append-only owner-scoped receipt store with permanent reservation-first
+  no-replay, exact duplicate reads, quotas, restart readback, and fail-closed
+  corruption handling. It added no route, transport, or production consumer.
+- P3 added the independently default-off one-shot internal composition through
+  injected v0.31 transport, credential, and prior-receipt dependencies. It
+  sends only the inert v0.32 envelope, preserves terminal ambiguity and zero
+  retry, and adds no public Core route or production registration.
+- P4 keeps Mission Control absent as frozen. Structural tests lock out every
+  v0.33 client, type, hook, component, page, route, navigation, read/mutation,
+  verification/polling, retry/resend/send/admit/effect control, sensitive
+  rendering, and Home Assistant exception. No API bridge or runtime behavior
+  is added.
+- P5 closes release isolation with explicit internal-only composition, exact
+  duplicate zero-I/O behavior, append-only durable and secret-free evidence,
+  fixed-false authority, and zero installation, workflow, worker, dispatch,
+  provider/repository/in-guest mutation, deployment, rollback, or replay-
+  bypass consumer. Core live send remains one-shot; Agent intake remains
+  admission-only; public Core and Mission Control surfaces remain absent; Home
+  Assistant remains blocked without a deployment artifact. P5 adds tests and
+  release documentation only.
+- P5 validation passed both Ruff gates, all 3107 Core tests, all 1045 Agent
+  tests, all 555 Mission Control tests, lint, production build, and
+  `git diff --check`. The existing frontend hook and chunk-size warnings
+  remained non-errors.
+
 #### v0.32 P0–P5 — Agent Live Intake Admission
 
 - Selected Atlas v0.32 **Agent Live Intake Admission** and froze the

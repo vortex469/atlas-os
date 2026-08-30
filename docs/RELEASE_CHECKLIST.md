@@ -3,6 +3,88 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.33 P0–P5 End-to-End Inert Delivery Receipt — complete
+
+Atlas v0.33 is **End-to-End Inert Delivery Receipt**. P0 is the
+documentation-only frozen
+[v1 contract](architecture/end-to-end-inert-delivery-receipt-v1.md).
+
+- [x] Inspect current `main` after annotated `atlas-v0.32.0` and record the
+  exact baseline and causal attempt/envelope/admission/receipt ordering.
+- [x] Freeze the exact internal request, Core verification, receipt, status,
+  redacted-error, audit, idempotency, and deterministic fingerprint schemas.
+- [x] Freeze exact same-owner v0.20–v0.32 linkage and preserve the inherited
+  maximum 30-second freshness window.
+- [x] Reuse the exact v0.32 envelope/result and sole guarded Agent POST without
+  a callback, second route, Agent action, or Core claim of Agent-store access.
+- [x] Freeze the exact v0.31 HTTPS, fixed-principal, mode-0400 credential-
+  reference, bounded timeout, independent default-off, one-shot/no-retry, and
+  terminal ambiguity rules.
+- [x] Freeze append-only durability, permanent reservation/no-replay,
+  ownership, redaction/audit, absent public Core API/Mission Control surface,
+  P0–P5 scope, threats, goldens, authority, blockers, and invariants.
+- [x] Keep P0 planning-only: no runtime model/service/store/route/UI,
+  credential read, network, Agent call, retry, execution, mutation, deployment,
+  rollback, Home Assistant artifact, migration, tag, push, or release action.
+- [x] P1 — closed Core receipt models and pure verification
+  (`b9b39855ce4f994d42285c3de0f63925b4dd55ea`).
+- [x] P2 — default-off durable Core verification service/store
+  (`d4730f658880e31445ab1b8ed88969a6a53ab914`).
+- [x] P3 — explicitly constructed one-shot end-to-end composition
+  (`bf51afd860d4b8efe1c5014dcd16f0b8e51d1c2c`).
+- [x] P4 — lock public Core API and Mission Control presentation absence;
+  prohibit v0.33 clients/types/hooks/pages/routes/navigation, read or mutation
+  calls, verification/retry/resend/effect controls, sensitive rendering, and
+  Home Assistant exceptions without adding runtime behavior.
+- [x] P5 — release isolation, regressions, authority closure, and evidence.
+
+### P5 authority and isolation gates
+
+- [x] Keep v0.33 explicitly constructed as internal composition only, with no
+  production registration, public Core API, or Mission Control surface.
+- [x] Keep verification one-shot, permanently reserved, append-only, durable,
+  and secret-free, with exact duplicate zero I/O and no retry/resend path.
+- [x] Keep receipt/result/acknowledgement evidence fixed false for effect
+  authority and unconsumed by installation, workflow, worker, dispatch,
+  provider/repository/in-guest mutation, deployment, rollback, or replay.
+- [x] Preserve v0.31 Core live send as one-shot/no-retry and v0.32 Agent intake
+  as admission-only on its exact guarded internal POST.
+- [x] Keep Mission Control free of a v0.33 API client, UI, route, navigation,
+  and retry/resend/admit/send/install/execute/deploy/workflow/mutation control.
+- [x] Preserve Home Assistant as blocked, non-installable, non-executable, and
+  without a deployment artifact.
+- [x] Add only release-isolation/authority tests and release-status documents;
+  add no runtime behavior, authority, API/UI, migration, tag, push, release,
+  or deployment.
+
+### P5 observed validation evidence
+
+- [x] Both requested Atlas Core and Atlas Agent Ruff gates passed.
+- [x] Full Atlas Core regression passed:
+  `3107 passed, 293 warnings in 208.00s (0:03:28)`.
+- [x] Full Atlas Agent regression passed:
+  `1045 passed, 32 warnings in 10.62s`.
+- [x] Mission Control passed 86 test files and 555 tests, lint, and production
+  build. Lint retained one pre-existing exhaustive-deps warning and no errors;
+  build retained only the existing chunk-size advisory.
+- [x] `git diff --check` passed.
+- [x] P5 closure commit:
+  `b7107be4f73d1e4eddd1861517463942455a9d5f test(v0.33): close inert delivery receipt`.
+- [x] Full Atlas Core clean-environment release-preparation gate passed:
+  `3107 passed, 293 warnings in 206.46s (0:03:26)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `b7107be4f73d1e4eddd1861517463942455a9d5f`.
+- [x] Final release-preparation commit:
+  `4bc30527b1c5a99eb090a43619494bb557791a50 docs(v0.33): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Created immutable annotated tag `atlas-v0.33.0` targeting
+  `4bc30527b1c5a99eb090a43619494bb557791a50`.
+- [x] Pushed branch `v033-inert-delivery-receipt` and annotated tag
+  `atlas-v0.33.0` to `origin`; the remote branch and peeled tag target both
+  resolve to `4bc30527b1c5a99eb090a43619494bb557791a50`.
+- [ ] Publish the GitHub release for `atlas-v0.33.0`.
+
 ## Atlas v0.32 P0–P5 Agent Live Intake Admission — complete
 
 Atlas v0.32 is **Agent Live Intake Admission**. P0–P5 are complete from the

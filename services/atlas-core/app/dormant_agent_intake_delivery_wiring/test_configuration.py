@@ -177,6 +177,7 @@ def test_production_paths_do_not_construct_or_consume_dormant_wiring() -> None:
         PACKAGE_ROOT,
         APP_ROOT / "delivery_activation_preflight",
         APP_ROOT / "live_delivery_send_boundary",
+        APP_ROOT / "end_to_end_inert_delivery_receipt",
     }
     markers = {
         "dormant_agent_intake_delivery_wiring",

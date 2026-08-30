@@ -86,6 +86,52 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
+## Selected v0.33 plan — End-to-End Inert Delivery Receipt
+
+Atlas v0.33 selects **End-to-End Inert Delivery Receipt**. The normative
+documentation-only P0 contract is
+[End-to-End Inert Delivery Receipt v1](docs/architecture/end-to-end-inert-delivery-receipt-v1.md).
+It freezes the narrowest independently default-off composition of one v0.31
+permanently reserved Core send attempt, one exact v0.32 inert envelope and
+Agent admission response, and one append-only Core-owned verified receipt.
+
+The complete same-owner v0.20–v0.32 evidence graph and inherited maximum
+30-second window remain exact. V0.33 reuses the existing HTTPS path, fixed Core
+principal, mode-0400 credential references, one-shot/no-retry transport, and
+closed Agent result. It adds no callback, second Agent route, public Core API,
+Mission Control surface, or claim that Core directly read Agent-local storage.
+
+The phase order is P0 → P1 → P2 → P3 → P4 → P5:
+
+- P0 freezes schemas, verification, fingerprints, linkage, ownership,
+  transport/authentication, freshness, lifecycle, permanent no-replay,
+  redaction/audit, API/UI, authority, threats, goldens, and invariants.
+- P1 added closed immutable models and pure verification only.
+- P2 added a default-off append-only Core verification service/store with no
+  network or production consumer.
+- P3 added the explicitly constructed one-shot composition through injected
+  transport/credential dependencies, with terminal ambiguity and no retry.
+- P4 keeps Mission Control and public Core API absent and now locks that
+  absence structurally, including sensitive rendering and Home Assistant
+  exceptions.
+- P5 completed isolation/regression/authority validation: explicit internal-
+  only composition, exact duplicate zero-I/O behavior, append-only secret-free
+  evidence, fixed-false effect authority, zero production consumers, preserved
+  v0.31 one-shot send and v0.32 admission-only boundaries, absent public Core
+  and Mission Control surfaces, and Home Assistant blocking. It adds tests and
+  release evidence only.
+
+V0.33 authority ends after one authenticated inert POST and one verified Core
+receipt. It enables only a later release to consider that fresh receipt as one
+prerequisite for a separately confirmed execution-admission decision. Install,
+runtime/process execution, dispatch, worker/workflow start, retry/resend,
+provider/repository/in-guest mutation, deployment, rollback, public API/UI,
+credential management, and Home Assistant artifacts remain blocked.
+
+P0 through P5 are complete. Closure passed both Core and Agent Ruff gates, all
+3107 Core tests, all 1045 Agent tests, and all 555 Mission Control tests plus
+lint/build and `git diff --check`.
+
 ## Selected v0.32 plan — Agent Live Intake Admission
 
 Atlas v0.32 selects **Agent Live Intake Admission**. The normative
