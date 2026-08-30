@@ -3,6 +3,97 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.37 P0–P5 Runner Binding Plan — complete
+
+Atlas v0.37 is **Runner Binding Plan**. P0–P5 are complete from the frozen
+[v1 contract](architecture/runner-binding-plan-v1.md). P5 validation started
+from P4 commit `25bb21c58bf465ddc9fcf2895c6beb2301ba4e21`.
+
+- [x] Inspect current `main` at
+  `0b23b2c292e65b293a8097c74c3ab11b5d3295dd` after annotated
+  `atlas-v0.36.0` targeting
+  `d02e04126fd4a897c9faaab0f68b49d84f218044`.
+- [x] Freeze exact create, runner-reference, sandbox/resource/network/
+  filesystem-limit, linkage, plan, lifecycle/status, reservation, audit,
+  redacted-error, and result schemas with bounds and fixed-false authority.
+- [x] Freeze authoritative same-owner v0.20–v0.35 linkage plus exact v0.36
+  admission/status, runner identity/reference/capability, and limit
+  fingerprints, with no client-supplied raw evidence.
+- [x] Freeze only `binding_planned`, ordered blocker vocabulary, and permanent
+  successful-record blockers `runner_not_bound` and
+  `execution_start_boundary_not_defined`.
+- [x] Freeze authenticated ownership, dedicated record/read permissions,
+  trusted clock, inherited maximum 30-second freshness, earliest expiry, and
+  Home Assistant rejection.
+- [x] Freeze exact confined sandbox/resource ceilings, network `none`, and
+  ephemeral-workspace-only filesystem semantics as evidence ceilings that do
+  not create or prove a sandbox or runtime enforcement.
+- [x] Freeze atomic permanent idempotency-key and binding-subject reservations,
+  exact-duplicate zero-I/O readback, and no consume, release, refresh, retry,
+  resend, replay, replacement, supersession, or bypass.
+- [x] Freeze closed sanitized audit/errors and exclude raw keys, credentials,
+  runner/provider payloads, endpoints, commands, logs, images, internal paths,
+  mount sources, addresses, and arbitrary metadata.
+- [x] Freeze exact candidate-scoped collection GET/guarded POST and item GET,
+  plus one optional Mission Control two-step plan-evidence panel; retain no
+  effect/action sibling, polling, live runner selector, editable limit, or
+  prohibited control.
+- [x] Freeze the exact evidence-only authority boundary, P0–P5 scope, threats,
+  later enablement, blocked/non-artifact Home Assistant golden, and
+  must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/reader/route/UI,
+  persistence, migration, credential/network/Agent/runner call, installation,
+  execution, worker/workflow, dispatch, retry/resend, Docker/Podman/shell,
+  mutation, deployment, rollback, artifact, tag, push, publication, or release
+  action.
+- [x] P1 — closed immutable models, exact runner/limit/linkage validation,
+  deterministic fingerprints, bounds, redaction, fixed blockers, and
+  fixed-false authority.
+- [x] P2 — explicitly constructed append-only Core plan-evidence service/store
+  with injected owner-scoped readers, atomic permanent reservations,
+  restart-safe reads, quotas, corruption closure, and no effect dependency.
+- [x] P3 — exact guarded candidate-scoped collection GET/POST and item GET,
+  strict auth/permission/origin/CSRF/rate/parsing gates, redaction, and no
+  effect-bearing sibling route.
+- [x] P4 — strict Mission Control plan-evidence presentation using only P3
+  create/list/get, with no polling, sensitive rendering, standalone
+  navigation, editable runner/limits, extra mutation, or prohibited control.
+- [x] P5 — exact API and zero-consumer isolation, `binding_planned` fixed-false
+  authority, concurrency/restart permanent no-replay, secret-free persistence,
+  Agent parity, Mission Control structural closure, Home Assistant golden, and
+  release evidence.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates: `All checks passed!`.
+- [x] Focused Atlas Core release suite: `104 passed, 129 warnings in 21.91s`.
+- [x] Full Atlas Agent pytest: `1049 passed, 32 warnings in 13.03s`.
+- [x] Mission Control: `97 passed` test files / `596 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed with only the advisory
+  chunk-size warning.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, runner binding,
+  execution/worker/workflow start, dispatch, retry/resend, Agent invocation,
+  process execution, mutation, deployment, rollback, Home Assistant artifact,
+  tag, push, publication, or release action.
+- [x] P5 closure commit:
+  `0271f488a9a73f7badd530abf0ce0e9d489a804f test(v0.37): close runner binding plan`.
+- [x] Full Atlas Core clean-environment gate:
+  `3242 passed, 447 warnings in 237.14s (0:03:57)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `0271f488a9a73f7badd530abf0ce0e9d489a804f`.
+- [x] Final release-preparation commit:
+  `eee726fe68da80ca2e4ecab9478494881836e648 docs(v0.37): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit.
+- [x] Verified immutable annotated tag `atlas-v0.37.0` targets
+  `eee726fe68da80ca2e4ecab9478494881836e648`.
+- [x] Verified branch `v037-runner-binding-plan` and annotated tag
+  `atlas-v0.37.0` were pushed to `origin`; the remote branch and peeled tag
+  target are `eee726fe68da80ca2e4ecab9478494881836e648`.
+- [ ] Publish the GitHub release for `atlas-v0.37.0`.
+
 ## Atlas v0.36 P0–P5 Installation Execution Admission Boundary — complete
 
 Atlas v0.36 is **Installation Execution Admission Boundary**. P0 is the

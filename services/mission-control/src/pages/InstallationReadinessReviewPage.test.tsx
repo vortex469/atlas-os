@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getInstallationReadinessReview } from "../api/installationReadinessReview";
 import { createExecutionPermissionGrant, listExecutionPermissionGrants } from "../api/executionPermissionGrant";
 import { listInstallationExecutionAdmissions } from "../api/installationExecutionAdmission";
+import { listRunnerBindingPlans } from "../api/runnerBindingPlan";
 import { grantResultFixture } from "../test/executionPermissionGrant";
 import { blockedFixture, readinessGatedFixture, uuid4 } from "../test/installationReadinessReview";
 import { InstallationReadinessReviewPage } from "./InstallationReadinessReviewPage";
@@ -24,6 +25,7 @@ vi.mock("../api/installationExecutionAdmission", async (original) => {
     const module = await original<typeof import("../api/installationExecutionAdmission")>();
     return { ...module, listInstallationExecutionAdmissions: vi.fn(), createInstallationExecutionAdmission: vi.fn(), installationExecutionAdmissionIdempotencyKey: () => "stable-admission-key" };
 });
+vi.mock("../api/runnerBindingPlan", () => ({ listRunnerBindingPlans: vi.fn() }));
 
 function renderPage(path = `/installation/candidate-records/${uuid4}/readiness-review`) {
     return render(<MemoryRouter initialEntries={[path]}><Routes>
@@ -33,7 +35,7 @@ function renderPage(path = `/installation/candidate-records/${uuid4}/readiness-r
 }
 
 describe("InstallationReadinessReviewPage", () => {
-    beforeEach(() => { vi.resetAllMocks(); session.value = { authenticated: false, principal: null, csrfToken: null }; vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ admissions: [], evidence_only: true, execution_start_allowed: false, runner_binding_allowed: false, execution_authorized: false, installation_allowed: false, dispatch_allowed: false, mutation_allowed: false, replay_allowed: false }); });
+    beforeEach(() => { vi.resetAllMocks(); session.value = { authenticated: false, principal: null, csrfToken: null }; vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ admissions: [], evidence_only: true, execution_start_allowed: false, runner_binding_allowed: false, execution_authorized: false, installation_allowed: false, dispatch_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listRunnerBindingPlans).mockResolvedValue({ schema: "runner-binding-plan-collection-v1", plans: [], evidence_only: true, execution_authorized: false, mutation_allowed: false }); });
 
     it("renders loading then the readiness-gated evidence, linkage, audit, and authority boundary", async () => {
         let resolve!: (value: typeof readinessGatedFixture) => void;

@@ -193,3 +193,28 @@ and the execution-start boundary are undefined. Installation, execution,
 dispatch, retry/resend, Agent invocation, worker/workflow/process start,
 Docker/Podman/shell, provider/repository/in-guest mutation, deployment,
 rollback, and Home Assistant artifacts remain blocked through P0–P5.
+
+## Completed v0.37 boundary
+
+Atlas v0.37 selects **Runner Binding Plan**. Its normative contract is [Runner
+Binding Plan v1](../../docs/architecture/runner-binding-plan-v1.md).
+
+The released-scope record is Core-owned evidence over the
+already exported v0.20–v0.36 chain and one abstract Core-readable runner
+reference. It adds no Agent model, reader, route, callback, permission,
+credential, endpoint, registration, runner identity, invocation, executable
+capability, worker/workflow consumer, or runtime behavior. The runner reference
+cannot name or infer an Agent execution backend.
+
+Every successful v0.37 record remains `binding_planned`; no runner is
+registered, contacted, reserved, bound, or invoked. Installation, execution,
+worker/workflow start, dispatch, retry/resend, Agent invocation, Docker/Podman/
+shell/process, provider/repository/in-guest mutation, deployment, rollback,
+and Home Assistant artifacts remain blocked through P0–P5.
+
+P1–P4 add only Core evidence contracts/service/store/API and a strict Mission
+Control evidence panel. P5 confirms through the full Agent regression suite
+and an explicit source-isolation lock that Agent has no runner-binding-plan
+model, reader, route, callback, credential, runner integration, invocation, or
+effect consumer. P0–P5 are complete; no Home Assistant deployment artifact
+was added.

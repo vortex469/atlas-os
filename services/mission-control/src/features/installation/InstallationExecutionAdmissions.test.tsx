@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createInstallationExecutionAdmission, listInstallationExecutionAdmissions } from "../../api/installationExecutionAdmission";
+import { listRunnerBindingPlans } from "../../api/runnerBindingPlan";
 import { grantResultFixture } from "../../test/executionPermissionGrant";
 import { admissionResultFixture } from "../../test/installationExecutionAdmission";
 import { uuid4 } from "../../test/installationReadinessReview";
@@ -14,11 +15,12 @@ vi.mock("../../api/installationExecutionAdmission", async (original) => {
     const module = await original<typeof import("../../api/installationExecutionAdmission")>();
     return { ...module, listInstallationExecutionAdmissions: vi.fn(), createInstallationExecutionAdmission: vi.fn(), installationExecutionAdmissionIdempotencyKey: () => "stable-admission-key" };
 });
+vi.mock("../../api/runnerBindingPlan", () => ({ listRunnerBindingPlans: vi.fn() }));
 
 const empty: InstallationExecutionAdmissionCollectionV1 = { admissions: [], evidence_only: true, execution_start_allowed: false, runner_binding_allowed: false, execution_authorized: false, installation_allowed: false, dispatch_allowed: false, mutation_allowed: false, replay_allowed: false };
 
 describe("InstallationExecutionAdmissions", () => {
-    beforeEach(() => { vi.resetAllMocks(); session.value = { authenticated: false, principal: null, csrfToken: null }; vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue(empty); });
+    beforeEach(() => { vi.resetAllMocks(); session.value = { authenticated: false, principal: null, csrfToken: null }; vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue(empty); vi.mocked(listRunnerBindingPlans).mockResolvedValue({ schema: "runner-binding-plan-collection-v1", plans: [], evidence_only: true, execution_authorized: false, mutation_allowed: false }); });
 
     it("renders loading, empty, and redacted error states", async () => {
         let resolve!: (value: typeof empty) => void;
