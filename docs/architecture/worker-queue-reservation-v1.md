@@ -1,6 +1,6 @@
 # Worker Queue Reservation Boundary v1 planning contract
 
-Status: **Atlas v0.39 P0 selected; P1-P5 not implemented**
+Status: **Atlas v0.39 P0–P5 complete**
 
 This document freezes the v0.39 boundary before runtime work. A worker queue
 reservation is an append-only Core evidence record. It is not a reservation in
@@ -392,6 +392,13 @@ start-workflow, rollback, or mutation.
 - **P5 — release isolation and closure:** regression, authority, no-replay,
   Agent/execution-worker zero-consumer, Home Assistant non-artifact, exact API/
   UI isolation, release documentation, and full gates only.
+
+P1–P4 implemented only the frozen closed models, explicitly injected
+append-only evidence service/store, exact guarded create/list/get API, and
+nested Mission Control evidence presentation. P5 added isolation and authority
+locks only. Closure validation passed both Ruff gates, 76 focused Core tests,
+1049 Agent tests, 610 Mission Control tests, Mission Control lint/build, and
+`git diff --check`.
 
 The validation threat model explicitly covers foreign-owner probing, caller-
 forged timestamps/permissions/references, nested-link substitution, stale or

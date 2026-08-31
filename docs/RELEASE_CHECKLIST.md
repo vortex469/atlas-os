@@ -3,11 +3,12 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.39 P0 Worker Queue Reservation Boundary — selected
+## Atlas v0.39 P0–P5 Worker Queue Reservation Boundary — complete
 
-Atlas v0.39 is **Worker Queue Reservation Boundary**. P0 freezes the
-documentation-only [v1 contract](architecture/worker-queue-reservation-v1.md);
-P1-P5 are not implemented.
+Atlas v0.39 is **Worker Queue Reservation Boundary**. P0–P5 are complete from
+the frozen [v1 contract](architecture/worker-queue-reservation-v1.md). P5
+validation started from P4 commit
+`ead37036b4843a262ad4b46f3d7b24257ec43abc`.
 
 - [x] Inspect post-v0.38 `main` at
   `570bb7c1ef103dfce1c377baf8b7be9f4ec509ff`, after annotated
@@ -43,13 +44,35 @@ P1-P5 are not implemented.
   permission/UI, persistence, migration, queue/worker/Agent/network/process
   call, installation, execution, dispatch, retry/resend, mutation, deployment,
   rollback, artifact, tag, push, publication, or release action.
-- [ ] P1 — closed immutable Core contract models and pure validation only.
-- [ ] P2 — explicitly constructed append-only Core evidence service/store with
+- [x] P1 — closed immutable Core contract models and pure validation only.
+- [x] P2 — explicitly constructed append-only Core evidence service/store with
   injected owner-scoped readers and permanent no-replay.
-- [ ] P3 — exact guarded Core create/list/get evidence API only.
-- [ ] P4 — strict Mission Control evidence presentation only.
-- [ ] P5 — release isolation, regression, authority, no-replay, redaction,
+- [x] P3 — exact guarded Core create/list/get evidence API only.
+- [x] P4 — strict Mission Control evidence presentation only.
+- [x] P5 — release isolation, regression, authority, no-replay, redaction,
   Agent/execution-worker parity, Home Assistant, and release evidence only.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates: `All checks passed!`.
+- [x] Focused Atlas Core release suite: `76 passed, 155 warnings in 18.24s`.
+- [x] Full Atlas Agent pytest: `1049 passed, 32 warnings in 11.55s`.
+- [x] Mission Control: `102 passed` test files / `610 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed with only the advisory
+  chunk-size warning.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, live queue,
+  enqueue/dequeue, worker start, execution, workflow/Agent invocation,
+  dispatch, retry/resend, process execution, mutation, installation,
+  deployment, rollback, Home Assistant artifact, tag, push, publication, or
+  release action.
+- [ ] Full Atlas Core clean-environment gate.
+- [ ] Exact reviewed implementation/validation SHA after P5 review.
+- [ ] Tracked worktree clean at final release commit.
+- [ ] Immutable annotated `atlas-v0.39.0` tag.
+- [ ] Push branch and tag to `origin`.
+- [ ] Publish the GitHub release for `atlas-v0.39.0`.
 
 ## Atlas v0.38 P0–P5 Worker Admission Stub — complete
 

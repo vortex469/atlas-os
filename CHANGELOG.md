@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.39 P0 — Worker Queue Reservation Boundary
+#### v0.39 P0–P5 — Worker Queue Reservation Boundary
 
 - Selected Atlas v0.39 **Worker Queue Reservation Boundary** and froze the
   documentation-only [v1 planning contract](docs/architecture/worker-queue-reservation-v1.md).
@@ -29,6 +29,24 @@ release boundaries.
   worker/Agent/network/process call, installation, execution, dispatch,
   retry/resend, mutation, deployment, rollback, artifact, tag, push,
   publication, or release action.
+- P1 adds closed immutable request/reference/linkage/reservation/status/audit/
+  error models, deterministic fingerprints, exact inherited-limit validation,
+  fixed blockers, bounds, redaction, and fixed-false authority.
+- P2 adds an explicitly constructed append-only Core evidence service/store
+  over injected owner-scoped readers, with permanent atomic idempotency and
+  subject reservations, exact-duplicate readback, quotas, and corruption
+  closure, but no queue or runtime dependency.
+- P3 exposes only guarded candidate-scoped collection GET/POST and owned item
+  GET with strict authentication, permissions, CSRF/origin/rate/parsing,
+  ownership non-disclosure, redaction, and no effect-bearing sibling route.
+- P4 adds strict Mission Control create/list/get typing and a nested list-only
+  evidence panel with no polling, navigation, sensitive rendering, invented
+  queue context, editable limits, or prohibited effect controls.
+- P5 locks zero-consumer isolation, exact API/UI closure, byte-exact inherited
+  ceilings, fixed-false authority, permanent no-replay, Agent/execution-worker
+  parity, and blocked/non-artifact Home Assistant behavior. Validation passed
+  both Ruff gates, 76 focused Core tests, 1049 Agent tests, 610 Mission Control
+  tests, Mission Control lint/build, and `git diff --check`.
 
 #### v0.38 P0–P5 — Worker Admission Stub
 

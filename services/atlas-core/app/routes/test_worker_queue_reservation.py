@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import json
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI
 
@@ -345,3 +346,94 @@ def test_route_has_no_queue_worker_execution_or_mutation_consumers() -> None:
     assert not [
         name for name in imports if any(marker in name for marker in forbidden)
     ]
+
+
+def test_v039_authority_limits_and_exact_duplicate_remain_evidence_only(
+    tmp_path: Path,
+) -> None:
+    from app.worker_queue_reservation.contract import (
+        NoAuthorityV1,
+        WorkerQueueReservationAuditEvidenceV1,
+    )
+
+    values = _application(tmp_path)
+    client, session, _, stub, _, _, create, *_, url, _ = values
+    payload = create.model_dump(mode="json")
+    first = client.post(
+        url, json=payload, cookies=_cookies(session), headers=_headers(session)
+    )
+    duplicate = client.post(
+        url, json=payload, cookies=_cookies(session), headers=_headers(session)
+    )
+    assert first.status_code == 201
+    assert duplicate.status_code == 200
+    assert duplicate.json()["disposition"] == "exact_duplicate"
+    record = first.json()["reservation"]
+    assert record["inherited_limits"] == record["queue_intake_reference"][
+        "inherited_limits"
+    ]
+    assert record["linkage"]["inherited_limits_fingerprint"] == record[
+        "inherited_limits"
+    ]["limits_fingerprint"]
+    assert record["linkage"]["worker_admission_stub_fingerprint"] == stub.model_dump(
+        mode="json"
+    )["stub_fingerprint"]
+    for model in (NoAuthorityV1, WorkerQueueReservationAuditEvidenceV1):
+        for name, field in model.model_fields.items():
+            if name.endswith(("_allowed", "_attempted")):
+                assert field.annotation == Literal[False]
+
+
+def test_v039_has_no_runtime_agent_worker_or_mutation_consumer() -> None:
+    repository_root = Path(__file__).parents[4]
+    package = Path(__file__).parents[1] / "worker_queue_reservation"
+    allowed = {package / name for name in ("contract.py", "service.py", "store.py")}
+    route = Path(__file__).with_name("worker_queue_reservation.py")
+    allowed.add(route)
+    allowed.add(Path(__file__).parents[1] / "config" / "settings.py")
+    markers = (
+        "app.worker_queue_reservation",
+        "WorkerQueueReservationV1",
+        "worker-queue-reservation-v1",
+        "worker_queue_reservations",
+    )
+    roots = (
+        Path(__file__).parents[1],
+        repository_root / "services" / "atlas-agent" / "app",
+        repository_root / "services" / "atlas-execution-worker",
+    )
+    violations = []
+    for root in roots:
+        for path in root.rglob("*.py"):
+            if path.name.startswith("test_") or path in allowed or package in path.parents:
+                continue
+            source = path.read_text(encoding="utf-8")
+            violations.extend(
+                f"{path.relative_to(repository_root)} -> {marker}"
+                for marker in markers
+                if marker in source
+            )
+    assert violations == []
+    service_source = (package / "service.py").read_text(encoding="utf-8").lower()
+    for forbidden in (
+        "subprocess", "docker", "podman", "shell", "socket", "httpx",
+        "requests", "enqueue(", "dequeue(", "dispatch(", "execute(",
+        "start_worker", "start_workflow", "agent invocation", "rollback(",
+    ):
+        assert forbidden not in service_source
+
+
+def test_v039_home_assistant_stays_blocked_without_deployment_artifact() -> None:
+    repository_root = Path(__file__).parents[4]
+    agent_models = repository_root / "services/atlas-agent/app/candidate_planning/models.py"
+    assert "install-container" not in agent_models.read_text(encoding="utf-8")
+    artifacts = [
+        path.relative_to(repository_root)
+        for root in (repository_root / "compose", repository_root / "deploy")
+        if root.exists()
+        for path in root.rglob("*")
+        if path.is_file()
+        and "home-assistant" in path.name.lower()
+        and path.suffix.lower() in {".yaml", ".yml", ".json", ".toml"}
+    ]
+    assert artifacts == []

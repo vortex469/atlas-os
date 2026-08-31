@@ -105,13 +105,13 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Selected v0.39 plan — Worker Queue Reservation Boundary
+## Completed v0.39 plan — Worker Queue Reservation Boundary
 
-Atlas v0.39 selects **Worker Queue Reservation Boundary**. The normative
-documentation-only P0 contract is [Worker Queue Reservation Boundary
+Atlas v0.39 implements **Worker Queue Reservation Boundary**. The normative
+contract is [Worker Queue Reservation Boundary
 v1](docs/architecture/worker-queue-reservation-v1.md).
 
-V0.39 may later append one same-owner Core evidence record binding the exact
+V0.39 appends one same-owner Core evidence record binding the exact
 v0.20–v0.37 chain, one active v0.38 worker-admission stub, one abstract
 server-owned queue intake reference, one derived payload-free queue item
 reference, and byte-exact inherited sandbox/resource/network/filesystem
@@ -125,19 +125,21 @@ The phase order is P0 → P1 → P2 → P3 → P4 → P5:
   eligibility/blockers, ownership/permissions, freshness, inherited limits,
   permanent reservations, audit/redaction, API/UI, threats, later enablement,
   and must-not-change contracts. P0 changes planning documents only.
-- P1 may add closed immutable models, deterministic domain-separated
+- P1 added closed immutable models, deterministic domain-separated
   fingerprints, exact bounds/linkage/limits, fixed blockers, and pure
   validation only.
-- P2 may add an explicitly constructed Core append-only evidence service/store
+- P2 added an explicitly constructed Core append-only evidence service/store
   with injected owner-scoped readers and permanent no-replay.
-- P3 may add only dedicated record/read permissions and the frozen candidate-
+- P3 added only dedicated record/read permissions and the frozen candidate-
   scoped collection GET/guarded POST plus owned item GET.
-- P4 may add only strict Mission Control typing and a nested evidence panel,
+- P4 added only strict Mission Control typing and a nested evidence panel,
   with no polling, live queue/worker selector, editable limit, standalone
   navigation, sensitive rendering, or effect control.
-- P5 may add only release isolation, concurrency/restart no-replay,
+- P5 locks release isolation, permanent no-replay, byte-exact inherited limits,
   regression, authority, redaction, Agent/execution-worker parity, Home
-  Assistant, and release evidence.
+  Assistant blocking, and release evidence. Validation passed both Ruff gates,
+  76 focused Core tests, 1049 Agent tests, 610 Mission Control tests, Mission
+  Control lint/build, and `git diff --check`.
 
 V0.39 can enable a later milestone to require an active queue-reservation
 evidence record before independently defining live enqueue admission. It does
