@@ -75,6 +75,9 @@ def test_operator_auth_is_disabled_safely_by_default() -> None:
     assert OperatorAuthSettings().worker_admission_stub_database == (
         "/opt/atlas/data/worker_admission_stubs.db"
     )
+    assert OperatorAuthSettings().worker_queue_reservation_database == (
+        "/opt/atlas/data/worker_queue_reservations.db"
+    )
 
 
 @pytest.mark.parametrize("database", [":memory:", "relative/selections.db", ""])
@@ -139,6 +142,14 @@ def test_worker_admission_stub_database_requires_durable_absolute_path(
 ) -> None:
     with pytest.raises(ValidationError, match="absolute"):
         OperatorAuthSettings(worker_admission_stub_database=database)
+
+
+@pytest.mark.parametrize("database", [":memory:", "relative/reservations.db", ""])
+def test_worker_queue_reservation_database_requires_durable_absolute_path(
+    database: str,
+) -> None:
+    with pytest.raises(ValidationError, match="absolute"):
+        OperatorAuthSettings(worker_queue_reservation_database=database)
 
 
 def test_dynamic_discovery_refresh_is_disabled_safely_by_default() -> None:
