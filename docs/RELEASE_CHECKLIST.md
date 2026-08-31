@@ -73,9 +73,16 @@ P5 validation evidence:
   `3423 passed, 546 warnings in 261.17s (0:04:21)`.
 - [x] Exact reviewed implementation/validation SHA after P5 review:
   `7e78747edf702629d7d2b6da26f7773a31bc9697`.
-- [ ] Tracked worktree clean at final release commit.
-- [ ] Immutable annotated `atlas-v0.39.0` tag.
-- [ ] Push branch and tag to `origin`.
+- [x] Final release-preparation commit:
+  `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684 docs(v0.39): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit; unrelated untracked `compose.execution-smoke.override.yaml` remained
+  untouched and uncommitted.
+- [x] Verified immutable annotated tag `atlas-v0.39.0` targets
+  `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
+- [x] Verified branch `v039-worker-queue-reservation-clean` and annotated tag
+  `atlas-v0.39.0` were pushed to `origin`; the remote branch and peeled tag
+  target are `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 - [ ] Publish the GitHub release for `atlas-v0.39.0`.
 
 ## Atlas v0.38 P0–P5 Worker Admission Stub — complete
