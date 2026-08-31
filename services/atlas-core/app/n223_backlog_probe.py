@@ -1,0 +1,64 @@
+"""N22.3 backlog binding proof helper.
+
+Tiny pure helper for the N22.3 backlog binding proof stage. It binds one
+backlog binding attempt's stable fields (backlog item identity, binding
+target, and observed verdict) to a single domain-separated SHA-256
+fingerprint. The helper is deterministic, performs no I/O and no clock
+reads, and grants no authority: a backlog binding proof is evidence only.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+
+PROOF_DOMAIN = "atlas:n223-backlog-binding-proof:v1"
+
+BACKLOG_VERDICTS = ("bound", "unbound")
+
+
+def _require_nonblank_ascii(value: str, name: str) -> str:
+    if not value or value != value.strip():
+        raise ValueError(f"{name} must be non-blank ASCII text")
+    if not value.isascii() or any(character < " " for character in value):
+        raise ValueError(f"{name} must be printable ASCII text")
+    return value
+
+
+def build_backlog_binding_proof(
+    *,
+    backlog_item: str,
+    binding_target: str,
+    observed_verdict: str,
+) -> str:
+    """Return the N22.3 backlog binding proof for one exact attempt.
+
+    The proof is the lowercase hex SHA-256 of the proof domain, a NUL
+    separator, and the compact canonical-JSON (sorted keys) encoding of
+    the exact backlog-item/binding-target/observed-verdict triple. A
+    backlog binding proof is verdict-bound: the proof binds the observed
+    verdict to the item's declared binding target, so a bound verdict and
+    an unbound verdict for the same pair yield different proofs.
+    Repeated calls with the same inputs return the same proof; any other
+    input returns a different proof.
+    """
+    backlog_item = _require_nonblank_ascii(backlog_item, "backlog_item")
+    binding_target = _require_nonblank_ascii(binding_target, "binding_target")
+    if observed_verdict not in BACKLOG_VERDICTS:
+        raise ValueError(
+            "observed_verdict must be one of: " + ", ".join(BACKLOG_VERDICTS)
+        )
+
+    canonical = json.dumps(
+        {
+            "backlog_item": backlog_item,
+            "binding_target": binding_target,
+            "observed_verdict": observed_verdict,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(
+        PROOF_DOMAIN.encode("ascii") + b"\0" + canonical
+    ).hexdigest()
