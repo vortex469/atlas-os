@@ -3,6 +3,88 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.39 P0–P5 Worker Queue Reservation Boundary — complete
+
+Atlas v0.39 is **Worker Queue Reservation Boundary**. P0–P5 are complete from
+the frozen [v1 contract](architecture/worker-queue-reservation-v1.md). P5
+validation started from P4 commit
+`ead37036b4843a262ad4b46f3d7b24257ec43abc`.
+
+- [x] Inspect post-v0.38 `main` at
+  `570bb7c1ef103dfce1c377baf8b7be9f4ec509ff`, after annotated
+  `atlas-v0.38.0` targeting
+  `1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7`.
+- [x] Freeze exact create, queue-intake reference, payload-free queue-item
+  reference, inherited-limit, linkage, record/status, reservation,
+  idempotency, audit, error, result, and collection schemas.
+- [x] Freeze exact same-owner v0.20-v0.37 linkage, active v0.38 worker-
+  admission-stub binding, server-owned trusted clock/reference dependencies,
+  and byte-exact inherited limit fingerprints.
+- [x] Freeze `worker_queue_reservation_recorded | readiness_gated | blocked`,
+  the closed blocker vocabulary, and permanent successful-record blockers for
+  live enqueue, dequeue, worker start, and execution start.
+- [x] Freeze authenticated ownership, dedicated
+  `installation.execution.worker_queue_reservation.record` and `.read`
+  permissions, exact reservation-only scope, foreign/not-found non-disclosure,
+  maximum inherited 30-second freshness, and earliest expiry.
+- [x] Freeze atomic permanent idempotency and subject reservations, exact-
+  duplicate zero-I/O readback, and no consume/release/refresh/replacement/
+  supersession/retry/resend/replay bypass.
+- [x] Freeze strict bounds, deterministic domain-separated fingerprints,
+  closed audit/redaction, and exclusion of raw keys, payloads, credentials,
+  commands, logs, paths, endpoints, addresses, and arbitrary metadata.
+- [x] Freeze only candidate-scoped collection GET/guarded POST and item GET,
+  plus an optional nested Mission Control evidence panel with no polling,
+  selectors, editable limits, sensitive rendering, extra mutation, or effect
+  control.
+- [x] Freeze Home Assistant blocked/non-artifact behavior, Agent and execution-
+  worker zero-consumer isolation, exact authority boundary, later enablement,
+  P0-P5, threats, and must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/service/store/reader/route/
+  permission/UI, persistence, migration, queue/worker/Agent/network/process
+  call, installation, execution, dispatch, retry/resend, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+- [x] P1 — closed immutable Core contract models and pure validation only.
+- [x] P2 — explicitly constructed append-only Core evidence service/store with
+  injected owner-scoped readers and permanent no-replay.
+- [x] P3 — exact guarded Core create/list/get evidence API only.
+- [x] P4 — strict Mission Control evidence presentation only.
+- [x] P5 — release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, and release evidence only.
+
+P5 validation evidence:
+
+- [x] Atlas Core and Atlas Agent Ruff gates: `All checks passed!`.
+- [x] Focused Atlas Core release suite: `76 passed, 155 warnings in 18.24s`.
+- [x] Full Atlas Agent pytest: `1049 passed, 32 warnings in 11.55s`.
+- [x] Mission Control: `102 passed` test files / `610 passed` tests; lint
+  completed with zero errors and one pre-existing `WorkflowShellPage.tsx`
+  hook-dependency warning; production build completed with only the advisory
+  chunk-size warning.
+- [x] `git diff --check`.
+- [x] No runtime behavior, authority expansion, migration, live queue,
+  enqueue/dequeue, worker start, execution, workflow/Agent invocation,
+  dispatch, retry/resend, process execution, mutation, installation,
+  deployment, rollback, Home Assistant artifact, tag, push, publication, or
+  release action.
+- [x] P5 closure commit:
+  `7e78747edf702629d7d2b6da26f7773a31bc9697 test(v0.39): close worker queue reservation`.
+- [x] Full Atlas Core clean-environment gate:
+  `3423 passed, 546 warnings in 261.17s (0:04:21)`.
+- [x] Exact reviewed implementation/validation SHA after P5 review:
+  `7e78747edf702629d7d2b6da26f7773a31bc9697`.
+- [x] Final release-preparation commit:
+  `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684 docs(v0.39): prepare release checklist`.
+- [x] Verified the tracked worktree was clean at the final release-preparation
+  commit; unrelated untracked `compose.execution-smoke.override.yaml` remained
+  untouched and uncommitted.
+- [x] Verified immutable annotated tag `atlas-v0.39.0` targets
+  `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
+- [x] Verified branch `v039-worker-queue-reservation-clean` and annotated tag
+  `atlas-v0.39.0` were pushed to `origin`; the remote branch and peeled tag
+  target are `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
+- [ ] Publish the GitHub release for `atlas-v0.39.0`.
+
 ## Atlas v0.38 P0–P5 Worker Admission Stub — complete
 
 Atlas v0.38 is **Worker Admission Stub**. P0–P5 are complete from the frozen

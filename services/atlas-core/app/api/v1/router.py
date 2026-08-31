@@ -66,6 +66,9 @@ from app.routes.proxmox import router as proxmox_router
 from app.routes.runner_binding_plan import router as runner_binding_plan_router
 from app.routes.status import router as status_router
 from app.routes.worker_admission_stub import router as worker_admission_stub_router
+from app.routes.worker_queue_reservation import (
+    router as worker_queue_reservation_router,
+)
 
 router = APIRouter(prefix="/api/v1")
 
@@ -120,6 +123,7 @@ router.include_router(installation_execution_request_router)
 router.include_router(installation_execution_admission_router)
 router.include_router(runner_binding_plan_router)
 router.include_router(worker_admission_stub_router)
+router.include_router(worker_queue_reservation_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
 router.include_router(execution_permission_grant_router)

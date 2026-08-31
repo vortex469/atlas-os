@@ -31,6 +31,7 @@ describe("v0.38 worker admission stub presentation boundary", () => {
             "../features/installation/RunnerBindingPlans.tsx",
             "../features/installation/WorkerAdmissionStubs.tsx",
             "../types/workerAdmissionStub.ts",
+            "../types/workerQueueReservation.ts",
         ]);
     });
 });

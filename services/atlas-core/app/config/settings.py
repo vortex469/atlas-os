@@ -150,6 +150,9 @@ class OperatorAuthSettings(BaseModel):
     worker_admission_stub_database: str = (
         "/opt/atlas/data/worker_admission_stubs.db"
     )
+    worker_queue_reservation_database: str = (
+        "/opt/atlas/data/worker_queue_reservations.db"
+    )
 
     @model_validator(mode="after")
     def validate_enabled_configuration(self) -> "OperatorAuthSettings":
@@ -251,6 +254,19 @@ class OperatorAuthSettings(BaseModel):
         ):
             raise ValueError(
                 "worker admission stub database must be an absolute path"
+            )
+        worker_queue_reservation_database = Path(
+            self.worker_queue_reservation_database
+        )
+        if (
+            not self.worker_queue_reservation_database
+            or self.worker_queue_reservation_database
+            != self.worker_queue_reservation_database.strip()
+            or not worker_queue_reservation_database.is_absolute()
+            or self.worker_queue_reservation_database == ":memory:"
+        ):
+            raise ValueError(
+                "worker queue reservation database must be an absolute path"
             )
         if not self.enabled:
             return self
@@ -361,6 +377,9 @@ def load_settings() -> Settings:
             ),
             "worker_admission_stub_database": os.getenv(
                 "ATLAS_OPERATOR_AUTH_WORKER_ADMISSION_STUB_DATABASE"
+            ),
+            "worker_queue_reservation_database": os.getenv(
+                "ATLAS_OPERATOR_AUTH_WORKER_QUEUE_RESERVATION_DATABASE"
             ),
         }
         for key, value in environment_overrides.items():

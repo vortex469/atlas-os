@@ -2,16 +2,18 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listWorkerAdmissionStubs } from "../../api/workerAdmissionStub";
+import { listWorkerQueueReservations } from "../../api/workerQueueReservation";
 import { runnerBindingPlanResultFixture } from "../../test/runnerBindingPlan";
 import { workerAdmissionStubResultFixture } from "../../test/workerAdmissionStub";
 import type { WorkerAdmissionStubCollectionV1 } from "../../types/workerAdmissionStub";
 import { WorkerAdmissionStubs } from "./WorkerAdmissionStubs";
 
 vi.mock("../../api/workerAdmissionStub", () => ({ listWorkerAdmissionStubs: vi.fn() }));
+vi.mock("../../api/workerQueueReservation", () => ({ listWorkerQueueReservations: vi.fn().mockResolvedValue({ schema: "worker-queue-reservation-collection-v1", items: [], count: 0, evidence_only: true }) }));
 const empty: WorkerAdmissionStubCollectionV1 = { schema: "worker-admission-stub-collection-v1", stubs: [], evidence_only: true, worker_start_allowed: false, enqueue_allowed: false, execution_authorized: false, mutation_allowed: false };
 
 describe("WorkerAdmissionStubs", () => {
-    beforeEach(() => { vi.resetAllMocks(); vi.mocked(listWorkerAdmissionStubs).mockResolvedValue(empty); });
+    beforeEach(() => { vi.resetAllMocks(); vi.mocked(listWorkerAdmissionStubs).mockResolvedValue(empty); vi.mocked(listWorkerQueueReservations).mockResolvedValue({ schema: "worker-queue-reservation-collection-v1", items: [], count: 0, evidence_only: true }); });
     it("renders loading, empty, and redacted error states without leaking details", async () => {
         let resolve!: (value: typeof empty) => void;
         vi.mocked(listWorkerAdmissionStubs).mockReturnValue(new Promise((done) => { resolve = done; }));

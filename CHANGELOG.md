@@ -6,6 +6,48 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.39 P0–P5 — Worker Queue Reservation Boundary
+
+- Selected Atlas v0.39 **Worker Queue Reservation Boundary** and froze the
+  documentation-only [v1 planning contract](docs/architecture/worker-queue-reservation-v1.md).
+- Defined one future append-only, operator-owned Core evidence record binding
+  the exact v0.20–v0.37 chain, active v0.38 worker-admission stub, abstract
+  server-owned queue intake reference, derived payload-free queue item
+  reference, and byte-exact inherited sandbox/resource/network/filesystem
+  ceilings.
+- Froze `worker_queue_reservation_recorded` as evidence only, with permanent
+  ordered blockers `live_enqueue_not_defined`, `dequeue_not_defined`,
+  `worker_start_not_defined`, and `execution_start_boundary_not_defined`.
+- Froze closed schemas/vocabulary, exact fingerprints/linkage, dedicated
+  record/read permissions, maximum inherited 30-second freshness, earliest
+  expiry, permanent idempotency/subject reservations, audit/redaction, strict
+  bounds, Home Assistant golden, exact candidate-scoped GET/guarded POST/item
+  GET, optional nested Mission Control presentation, P0-P5, and must-not-change
+  rules.
+- P0 changes planning documents only. It adds no runtime model/service/store/
+  route/permission/UI, persistence, migration, live queue, enqueue/dequeue,
+  worker/Agent/network/process call, installation, execution, dispatch,
+  retry/resend, mutation, deployment, rollback, artifact, tag, push,
+  publication, or release action.
+- P1 adds closed immutable request/reference/linkage/reservation/status/audit/
+  error models, deterministic fingerprints, exact inherited-limit validation,
+  fixed blockers, bounds, redaction, and fixed-false authority.
+- P2 adds an explicitly constructed append-only Core evidence service/store
+  over injected owner-scoped readers, with permanent atomic idempotency and
+  subject reservations, exact-duplicate readback, quotas, and corruption
+  closure, but no queue or runtime dependency.
+- P3 exposes only guarded candidate-scoped collection GET/POST and owned item
+  GET with strict authentication, permissions, CSRF/origin/rate/parsing,
+  ownership non-disclosure, redaction, and no effect-bearing sibling route.
+- P4 adds strict Mission Control create/list/get typing and a nested list-only
+  evidence panel with no polling, navigation, sensitive rendering, invented
+  queue context, editable limits, or prohibited effect controls.
+- P5 locks zero-consumer isolation, exact API/UI closure, byte-exact inherited
+  ceilings, fixed-false authority, permanent no-replay, Agent/execution-worker
+  parity, and blocked/non-artifact Home Assistant behavior. Validation passed
+  both Ruff gates, 76 focused Core tests, 1049 Agent tests, 610 Mission Control
+  tests, Mission Control lint/build, and `git diff --check`.
+
 #### v0.38 P0–P5 — Worker Admission Stub
 
 - Selected Atlas v0.38 **Worker Admission Stub** and froze the

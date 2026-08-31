@@ -4,6 +4,7 @@ import { listWorkerAdmissionStubs } from "../../api/workerAdmissionStub";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { RunnerBindingPlanResultV1 } from "../../types/runnerBindingPlan";
 import type { WorkerAdmissionStubResultV1 } from "../../types/workerAdmissionStub";
+import { WorkerQueueReservations } from "./WorkerQueueReservations";
 
 const BLOCKERS: Record<string, string> = {
     worker_not_started: "Worker is not started",
@@ -31,11 +32,11 @@ export function WorkerAdmissionStubs({ candidateId, bindingPlan, homeAssistantBl
         {stubs === null && !error && <p role="status" className="mt-4">Loading worker admission stub evidence…</p>}
         {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>Worker admission stub evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no provider payload, credential, command, log, endpoint, address, queue, worker address, mount source, or internal path is shown.</p></div>}
         {stubs?.length === 0 && <p role="status" className="mt-4">No worker admission stub evidence has been recorded. Worker start, queueing, and execution remain blocked.</p>}
-        {stubs && stubs.length > 0 && <ol aria-label="Worker admission stubs" className="mt-4 space-y-4">{stubs.map((item) => <Stub key={item.stub!.stub_id} result={item} />)}</ol>}
+        {stubs && stubs.length > 0 && <ol aria-label="Worker admission stubs" className="mt-4 space-y-4">{stubs.map((item) => <Stub key={item.stub!.stub_id} result={item} candidateId={candidateId} homeAssistantBlocked={homeAssistantBlocked} />)}</ol>}
     </section>;
 }
 
-function Stub({ result }: { result: WorkerAdmissionStubResultV1 }) {
+function Stub({ result, candidateId, homeAssistantBlocked }: { result: WorkerAdmissionStubResultV1; candidateId: string; homeAssistantBlocked: boolean }) {
     const stub = result.stub!; const status = result.status!; const audit = result.audit_evidence!;
     const worker = stub.worker_reference; const intent = stub.worker_admission_intent; const intake = stub.worker_admission_intake; const limits = stub.inherited_limits; const linkage = stub.linkage;
     return <li className="rounded border border-slate-800 p-3 text-sm">
@@ -60,6 +61,7 @@ function Stub({ result }: { result: WorkerAdmissionStubResultV1 }) {
         <dl className="mt-3 grid gap-2 sm:grid-cols-2"><Value name="Request fingerprint" value={stub.request_fingerprint.value} /><Value name="Idempotency-key fingerprint" value={stub.idempotency_key_fingerprint.value} /><Value name="Audit event" value={audit.event} /><Value name="Audit outcome" value={audit.outcome} /><Value name="Audit fingerprint" value={audit.audit_fingerprint.value} /><Value name="Correlation fingerprint" value={audit.correlation_fingerprint.value} /></dl>
         <p className="mt-3 text-xs">Permanent worker-admission-subject reservation: true · permanent idempotency reservation: true · raw idempotency key persisted: false · retry allowed: false · replay allowed: false.</p>
         <dl aria-label="Worker admission fixed-false authority fields" className="mt-3 grid gap-2 sm:grid-cols-2">{["Runner binding allowed", "Worker registered", "Worker contacted", "Worker reserved", "Worker bound", "Worker started", "Queue created", "Queue allowed", "Work enqueued", "Enqueue allowed", "Dispatch allowed", "Execution start allowed", "Execution authorized", "Installation allowed", "Retry allowed", "Resend allowed", "Agent invocation allowed", "Workflow allowed", "Docker allowed", "Podman allowed", "Shell allowed", "Process allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Deployment allowed", "Rollback allowed", "Replay allowed"].map((name) => <Value key={name} name={name} value="false" />)}</dl>
+        <WorkerQueueReservations candidateId={candidateId} stubId={stub.stub_id} homeAssistantBlocked={homeAssistantBlocked} />
     </li>;
 }
 

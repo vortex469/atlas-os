@@ -1,0 +1,15 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { atlas } from "./atlas";
+import { createWorkerQueueReservation, getWorkerQueueReservation, listWorkerQueueReservations, parseWorkerQueueReservationCollection, parseWorkerQueueReservationResult } from "./workerQueueReservation";
+
+vi.mock("./atlas", () => ({ atlas: { get: vi.fn(), post: vi.fn() } }));
+const fp = { algorithm: "sha256", canonicalization: "atlas-jcs-nfc-v1", value: "a".repeat(64) } as const;
+const blocked = { schema: "worker-queue-reservation-result-v1", disposition: "blocked", reservation: null, status: null, audit_evidence: null, error: { schema: "worker-queue-reservation-error-v1", error_code: "not_found", message: "worker queue reservation request could not be completed", retryable: false, correlation_fingerprint: fp, redacted: true, evidence_only: true }, evidence_only: true };
+const collection = { schema: "worker-queue-reservation-collection-v1", items: [blocked], count: 1, evidence_only: true };
+const create = { schema: "worker-queue-reservation-create-v1", worker_admission_stub_id: "123e4567-e89b-42d3-a456-426614174000", worker_admission_stub_fingerprint: fp, worker_admission_stub_valid_until: "2026-08-31T00:00:30Z", queue_intake_reference_id: "123e4567-e89b-42d3-a456-426614174001", queue_intake_reference_fingerprint: fp, queue_item_reference_id: "123e4567-e89b-52d3-a456-426614174002", queue_item_reference_fingerprint: fp, inherited_limits_fingerprint: fp, requested_scope: "installation_worker_queue_reservation_only", evidence_only: true, live_enqueue_allowed: false, dequeue_allowed: false, worker_start_allowed: false, execution_authorized: false, replay_allowed: false } as const;
+
+describe("worker queue reservation API", () => {
+    beforeEach(() => { vi.resetAllMocks(); vi.mocked(atlas.get).mockResolvedValueOnce({ data: collection }).mockResolvedValue({ data: blocked }); vi.mocked(atlas.post).mockResolvedValue({ data: blocked }); });
+    it("uses only guarded create/list/get endpoints", async () => { await listWorkerQueueReservations("candidate/id"); await getWorkerQueueReservation("candidate/id", "reservation/id"); await createWorkerQueueReservation("candidate/id", create, "csrf", "visible-stable-key"); expect(atlas.get).toHaveBeenNthCalledWith(1, "/installation/candidate-records/candidate%2Fid/worker-queue-reservations", { withCredentials: true }); expect(atlas.get).toHaveBeenNthCalledWith(2, "/installation/candidate-records/candidate%2Fid/worker-queue-reservations/reservation%2Fid", { withCredentials: true }); expect(atlas.post).toHaveBeenCalledTimes(1); });
+    it("parses redacted evidence and rejects authority", () => { expect(parseWorkerQueueReservationCollection(collection).count).toBe(1); expect(parseWorkerQueueReservationResult(blocked).error?.redacted).toBe(true); expect(() => parseWorkerQueueReservationResult({ ...blocked, live_enqueue_allowed: true })).toThrow(); expect(() => parseWorkerQueueReservationCollection({ ...collection, count: 2 })).toThrow(); });
+});
