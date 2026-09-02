@@ -542,6 +542,28 @@ class LiveEnqueueAdmissionSubjectReservationV1(ContractModel):
         return self
 
 
+class LiveEnqueueAdmissionAuditEvidenceV1(NoAuthorityV1):
+    schema: Literal["live-enqueue-admission-audit-v1"] = (
+        "live-enqueue-admission-audit-v1"
+    )
+    event: Literal["live_enqueue_admission_recorded", "live_enqueue_admission_read"]
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked"]
+    operator_fingerprint: FingerprintV1
+    candidate_record_fingerprint: FingerprintV1
+    admission_id: CanonicalUuid5 | None
+    subject_fingerprint: FingerprintV1 | None
+    record_fingerprint: FingerprintV1 | None
+    correlation_fingerprint: FingerprintV1
+    occurred_at: UtcSecond
+    audit_fingerprint: FingerprintV1
+
+    @model_validator(mode="after")
+    def exact(self) -> LiveEnqueueAdmissionAuditEvidenceV1:
+        if self.audit_fingerprint != audit_fingerprint(self):
+            raise ValueError("live enqueue admission audit fingerprint mismatch")
+        return self
+
+
 class LiveEnqueueAdmissionRedactedErrorV1(NoAuthorityV1):
     schema: Literal["live-enqueue-admission-error-v1"] = (
         "live-enqueue-admission-error-v1"
@@ -928,7 +950,6 @@ def _subject_fields(raw: dict[str, Any]) -> dict[str, Any]:
             "queue_item_reference_fingerprint",
             "worker_identity_fingerprint",
             "worker_intake_reference_fingerprint",
-            "live_enqueue_admission_decision_fingerprint",
             "inherited_limits_fingerprint",
         )
     }
@@ -994,6 +1015,15 @@ def reservation_fingerprint(
     return fingerprint(
         "atlas:live-enqueue-admission-reservation:v1",
         _without(value, "reservation_fingerprint"),
+    )
+
+
+def audit_fingerprint(
+    value: LiveEnqueueAdmissionAuditEvidenceV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:live-enqueue-admission-audit:v1",
+        _without(value, "audit_fingerprint"),
     )
 
 
@@ -1279,6 +1309,41 @@ def build_admission(
         }
     )
     return record, idempotency, permanent
+
+
+def build_audit(
+    admission: LiveEnqueueAdmissionV1,
+    *,
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked"],
+    correlation_fingerprint: FingerprintV1,
+    occurred_at: str,
+) -> LiveEnqueueAdmissionAuditEvidenceV1:
+    raw = {
+        "event": "live_enqueue_admission_recorded"
+        if outcome in {"recorded", "exact_duplicate", "blocked"}
+        else "live_enqueue_admission_read",
+        "outcome": outcome,
+        "operator_fingerprint": opaque_fingerprint(
+            "atlas:live-enqueue-admission-operator:v1",
+            admission.operator_id,
+        ),
+        "candidate_record_fingerprint": opaque_fingerprint(
+            "atlas:live-enqueue-admission-candidate:v1",
+            admission.candidate_record_id,
+        ),
+        "admission_id": admission.admission_id,
+        "subject_fingerprint": admission.subject_fingerprint,
+        "record_fingerprint": admission.record_fingerprint,
+        "correlation_fingerprint": correlation_fingerprint,
+        "occurred_at": occurred_at,
+    }
+    seed = LiveEnqueueAdmissionAuditEvidenceV1.model_construct(
+        **raw,
+        audit_fingerprint=fingerprint("atlas:seed:v1", "audit"),
+    )
+    return LiveEnqueueAdmissionAuditEvidenceV1.model_validate(
+        {**raw, "audit_fingerprint": audit_fingerprint(seed)}
+    )
 
 
 def derive_status(
