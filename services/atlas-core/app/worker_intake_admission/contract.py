@@ -687,6 +687,95 @@ class WorkerIntakeAdmissionCollectionV1(NoAuthorityV1):
         return self
 
 
+class WorkerIntakeAdmissionQueueReservationEvidenceV1(NoAuthorityV1):
+    schema: Literal["worker-intake-admission-queue-reservation-evidence-v1"] = (
+        "worker-intake-admission-queue-reservation-evidence-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    reservations: tuple[WorkerQueueReservationV1, ...]
+    statuses: tuple[WorkerQueueReservationStatusV1, ...]
+    count: int
+    recognized_as_inert_evidence: Literal[True] = True
+    queue_operation_defined: Literal[False] = False
+    live_enqueue_defined: Literal[False] = False
+    dequeue_defined: Literal[False] = False
+    worker_start_defined: Literal[False] = False
+    execution_start_defined: Literal[False] = False
+    evidence_fingerprint: FingerprintV1
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerIntakeAdmissionQueueReservationEvidenceV1:
+        if self.count != 1 or len(self.reservations) != 1 or len(self.statuses) != 1:
+            raise ValueError("exactly one v0.39 queue reservation must be recognized")
+        reservation = self.reservations[0]
+        status = self.statuses[0]
+        if (
+            reservation.operator_id != self.operator_id
+            or status.operator_id != self.operator_id
+            or reservation.candidate_record_id != self.candidate_record_id
+            or status.candidate_record_id != self.candidate_record_id
+            or status.reservation_id != reservation.reservation_id
+            or status.record_fingerprint != reservation.record_fingerprint
+            or status.status_fingerprint != v039_status_fingerprint(status)
+            or reservation.record_fingerprint != v039_record_fingerprint(reservation)
+            or status.lifecycle != "active"
+            or status.eligibility != "worker_queue_reservation_recorded"
+            or status.blockers != QUEUE_RESERVATION_BLOCKERS
+        ):
+            raise ValueError("v0.39 queue reservation evidence is not active inert evidence")
+        if self.evidence_fingerprint != queue_reservation_evidence_fingerprint(self):
+            raise ValueError("worker intake queue reservation evidence fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class WorkerIntakeAdmissionEvaluationV1(NoAuthorityV1):
+    schema: Literal["worker-intake-admission-evaluation-v1"] = (
+        "worker-intake-admission-evaluation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    evaluated_at: UtcSecond
+    eligibility: Literal["worker_intake_admission_recorded", "readiness_gated", "blocked"]
+    blockers: tuple[BlockerV1, ...]
+    queue_reservation_evidence: WorkerIntakeAdmissionQueueReservationEvidenceV1 | None
+    recognized_v039_queue_reservation_count: int
+    recognized_v039_queue_reservation_as_inert_evidence: bool
+    admission_record_build_allowed: bool
+    evaluation_fingerprint: FingerprintV1
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerIntakeAdmissionEvaluationV1:
+        if tuple(sorted(self.blockers, key=BLOCKER_ORDER.index)) != self.blockers:
+            raise ValueError("worker intake admission evaluation blockers are not ordered")
+        if len(set(self.blockers)) != len(self.blockers):
+            raise ValueError("worker intake admission evaluation blockers contain duplicates")
+        has_inert_reservation = self.queue_reservation_evidence is not None
+        if self.recognized_v039_queue_reservation_count != (1 if has_inert_reservation else 0):
+            raise ValueError("worker intake admission queue reservation count mismatch")
+        if self.recognized_v039_queue_reservation_as_inert_evidence != has_inert_reservation:
+            raise ValueError("worker intake admission inert evidence recognition mismatch")
+        if self.admission_record_build_allowed != (
+            self.eligibility == "worker_intake_admission_recorded"
+        ):
+            raise ValueError("worker intake admission record build flag mismatch")
+        if (
+            self.eligibility == "worker_intake_admission_recorded"
+            and (self.blockers != ADMISSION_BLOCKERS or not has_inert_reservation)
+        ):
+            raise ValueError("recordable intake admission requires inert v0.39 evidence")
+        if (
+            self.eligibility != "worker_intake_admission_recorded"
+            and self.admission_record_build_allowed
+        ):
+            raise ValueError("blocked intake admission cannot build a record")
+        if self.evaluation_fingerprint != evaluation_fingerprint(self):
+            raise ValueError("worker intake admission evaluation fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
 class WorkerIntakeAdmissionValidationInputV1(ContractModel):
     """Injected P1 facts only; no reader, store, queue, worker, or I/O."""
 
@@ -967,8 +1056,171 @@ def collection_fingerprint(
     )
 
 
+def queue_reservation_evidence_fingerprint(
+    value: WorkerIntakeAdmissionQueueReservationEvidenceV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-intake-admission-queue-reservation-evidence:v1",
+        _without(value, "evidence_fingerprint"),
+    )
+
+
+def evaluation_fingerprint(
+    value: WorkerIntakeAdmissionEvaluationV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-intake-admission-evaluation:v1",
+        _without(value, "evaluation_fingerprint"),
+    )
+
+
 def opaque_fingerprint(domain: str, value: str) -> FingerprintV1:
     return fingerprint(domain, value)
+
+
+def build_queue_reservation_evidence(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    reservation: WorkerQueueReservationV1,
+    status: WorkerQueueReservationStatusV1,
+) -> WorkerIntakeAdmissionQueueReservationEvidenceV1:
+    raw = {
+        "operator_id": operator_id,
+        "candidate_record_id": candidate_record_id,
+        "reservations": (reservation,),
+        "statuses": (status,),
+        "count": 1,
+    }
+    seed = WorkerIntakeAdmissionQueueReservationEvidenceV1.model_construct(
+        **raw,
+        evidence_fingerprint=fingerprint("atlas:seed:v1", "queue-reservation-evidence"),
+    )
+    return WorkerIntakeAdmissionQueueReservationEvidenceV1.model_validate(
+        {**raw, "evidence_fingerprint": queue_reservation_evidence_fingerprint(seed)}
+    )
+
+
+def evaluate_worker_intake_admission(
+    value: WorkerIntakeAdmissionValidationInputV1 | dict[str, Any],
+) -> WorkerIntakeAdmissionEvaluationV1:
+    try:
+        validation = (
+            value
+            if isinstance(value, WorkerIntakeAdmissionValidationInputV1)
+            else WorkerIntakeAdmissionValidationInputV1.model_validate(value)
+        )
+    except (TypeError, ValueError) as error:
+        return _blocked_evaluation(value, str(error))
+
+    queue_evidence = build_queue_reservation_evidence(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        reservation=validation.worker_queue_reservation,
+        status=validation.worker_queue_reservation_status,
+    )
+    return _evaluation(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        evaluated_at=validation.authority.request_received_at,
+        eligibility="worker_intake_admission_recorded",
+        blockers=ADMISSION_BLOCKERS,
+        queue_evidence=queue_evidence,
+    )
+
+
+def _evaluation(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    evaluated_at: str,
+    eligibility: Literal["worker_intake_admission_recorded", "readiness_gated", "blocked"],
+    blockers: tuple[BlockerV1, ...],
+    queue_evidence: WorkerIntakeAdmissionQueueReservationEvidenceV1 | None,
+) -> WorkerIntakeAdmissionEvaluationV1:
+    raw = {
+        "operator_id": operator_id,
+        "candidate_record_id": candidate_record_id,
+        "evaluated_at": evaluated_at,
+        "eligibility": eligibility,
+        "blockers": blockers,
+        "queue_reservation_evidence": queue_evidence,
+        "recognized_v039_queue_reservation_count": 1 if queue_evidence is not None else 0,
+        "recognized_v039_queue_reservation_as_inert_evidence": (
+            queue_evidence is not None
+        ),
+        "admission_record_build_allowed": (
+            eligibility == "worker_intake_admission_recorded"
+        ),
+    }
+    seed = WorkerIntakeAdmissionEvaluationV1.model_construct(
+        **raw,
+        evaluation_fingerprint=fingerprint("atlas:seed:v1", "evaluation"),
+    )
+    return WorkerIntakeAdmissionEvaluationV1.model_validate(
+        {**raw, "evaluation_fingerprint": evaluation_fingerprint(seed)}
+    )
+
+
+def _blocked_evaluation(
+    value: WorkerIntakeAdmissionValidationInputV1 | dict[str, Any],
+    reason: str,
+) -> WorkerIntakeAdmissionEvaluationV1:
+    raw = value.model_dump(mode="python") if isinstance(value, BaseModel) else dict(value)
+    authority = raw.get("authority") if isinstance(raw.get("authority"), dict) else {}
+    operator_id = raw.get("operator_id") or authority.get("authenticated_operator_id")
+    candidate_record_id = raw.get("candidate_record_id")
+    evaluated_at = authority.get("request_received_at") or "1970-01-01T00:00:00Z"
+    blocker = _blocker_from_reason(reason)
+    eligibility: Literal["readiness_gated", "blocked"] = (
+        "readiness_gated"
+        if blocker
+        in {
+            "evidence_stale",
+            "evidence_expired",
+            "worker_queue_reservation_not_active",
+            "worker_identity_ineligible",
+            "worker_intake_reference_ineligible",
+        }
+        else "blocked"
+    )
+    return _evaluation(
+        operator_id=operator_id,
+        candidate_record_id=candidate_record_id,
+        evaluated_at=evaluated_at,
+        eligibility=eligibility,
+        blockers=(blocker,),
+        queue_evidence=None,
+    )
+
+
+def _blocker_from_reason(reason: str) -> BlockerV1:
+    lowered = reason.lower()
+    if "home assistant" in lowered or "unsupported" in lowered:
+        return "installation_capability_unsupported"
+    if "ownership" in lowered:
+        return "ownership_mismatch"
+    if "permission" in lowered:
+        return "permission_scope_missing"
+    if "linkage" in lowered:
+        return "linkage_mismatch"
+    if "fingerprint" in lowered:
+        return "fingerprint_mismatch"
+    if "stale" in lowered or "future" in lowered:
+        return "evidence_stale"
+    if "expired" in lowered:
+        return "evidence_expired"
+    if "not active" in lowered:
+        return "worker_queue_reservation_not_active"
+    if "worker identity" in lowered:
+        return "worker_identity_ineligible"
+    if "intake reference" in lowered:
+        return "worker_intake_reference_ineligible"
+    if "queue reservation binding" in lowered:
+        return "queue_reservation_binding_mismatch"
+    if "limits" in lowered:
+        return "inherited_limits_mismatch"
+    return "evidence_not_found"
 
 
 def build_worker_identity(
