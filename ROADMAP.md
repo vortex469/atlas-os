@@ -1,18 +1,22 @@
 # Atlas OS Roadmap
 
-## 1. Current released baseline — v0.38
+## 1. Current released baseline — v0.39
 
-Atlas v0.38.0 is released as `atlas-v0.38.0` at
-`1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7`; its completed milestone and
+Atlas v0.39.0 is released as `atlas-v0.39.0` at
+`474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`; its completed milestone and
 release-checklist reconciliation are merged to current `main` at
-`570bb7c1ef103dfce1c377baf8b7be9f4ec509ff`.
+`fc2bd1edeab334837516243e7cc12b9d1dc58009`.
 
 The released system includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
 (`restart-service / proxmox / qemu`); identity-bound Proxmox QEMU
 `monitoring-policy` Provider Intent; and Discovery through dynamic evidence,
 compatibility/upgrade intelligence, exact Compose image observation, accepted
-image evidence, grounding, and provenance.
+image evidence, grounding, and provenance. The v0.20-v0.39 installation
+evidence chain remains non-executing through durable candidate preservation,
+approval, Agent validation, request/handoff/simulation/delivery evidence,
+readiness, permission, execution admission, runner binding plan, worker
+admission stub, and worker queue reservation evidence.
 
 ## 2. Enduring architectural constraints
 
@@ -100,10 +104,63 @@ image evidence, grounding, and provenance.
   v0.20–v0.37 chain and byte-exact inherited limits while remaining
   `worker_admission_stubbed`, with no queue, enqueue, worker start, or effect
   consumer.
+- v0.39 released durable worker-queue-reservation evidence over the exact
+  v0.20-v0.38 chain and byte-exact inherited limits while remaining
+  `worker_queue_reservation_recorded`, with no live enqueue, dequeue, worker
+  start, or effect consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Current v0.40 plan - Worker Intake Admission Boundary
+
+Atlas v0.40 selects **Worker Intake Admission Boundary**. The normative
+documentation-only P0 contract is [Worker Intake Admission Boundary
+v1](docs/architecture/worker-intake-admission-boundary-v1.md).
+
+V0.40 may append one same-owner Core evidence record binding the exact
+v0.20-v0.39 chain, one active v0.39 worker queue reservation, one
+server-owned worker identity, one abstract worker intake reference, one
+derived non-executing admission decision, and byte-exact inherited
+sandbox/resource/network/filesystem ceilings. Its strongest state is
+`worker_intake_admission_recorded`, always blocked by
+`live_enqueue_not_defined`, `dequeue_not_defined`, `worker_start_not_defined`,
+and `execution_start_boundary_not_defined`.
+
+The phase order is P0 -> P1 -> P2 -> P3 -> P4 -> P5:
+
+- P0 freezes exact request/result schemas, v0.20-v0.39 linkage and
+  fingerprints, queue-reservation binding, worker identity, inherited
+  sandbox/resource/network/filesystem ceilings, auth/ownership, freshness,
+  idempotency/no-replay, lifecycle/blockers, redaction/audit, UI/API
+  boundaries, P0-P5, must-not-change contracts, and the Home Assistant blocked
+  golden. P0 changes planning documents only.
+- P1 will add closed immutable Core models, deterministic domain-separated
+  fingerprints, exact bounds/linkage/limits, queue-reservation binding,
+  worker-identity and intake-reference validation, fixed blockers, redaction,
+  fixed-false authority, and pure validation only.
+- P2 will add an explicitly constructed append-only Core evidence service/store
+  with injected owner-scoped readers and permanent no-replay, without any
+  production queue, worker, Agent, or execution-worker consumer.
+- P3 will add only dedicated record/read permissions and the frozen
+  candidate-scoped collection GET/guarded POST plus owned item GET.
+- P4 will add only strict Mission Control typing and a nested evidence panel,
+  with no polling, live queue/worker selector, editable limit, standalone
+  navigation, sensitive rendering, or effect control.
+- P5 will lock release isolation, permanent no-replay, byte-exact inherited
+  limits, regression, authority, redaction, Agent/execution-worker parity, Home
+  Assistant blocking, exact API/UI isolation, and release evidence.
+
+V0.40 can enable a later milestone to require an active worker-intake-
+admission evidence record before independently defining live enqueue admission.
+It does not define that admission, create a payload, or make a queue/worker
+consumer. Live enqueue, dequeue, polling, worker discovery/registration/
+contact/binding/start, runner binding, execution start, installation,
+dispatch, retry/resend, Agent or workflow invocation, Docker/Podman/shell/
+process execution, provider/repository/in-guest mutation, deployment,
+rollback, endpoints/credentials, and Home Assistant artifacts remain blocked.
+The Agent and execution-worker gain no v0.40 consumer or integration.
 
 ## Completed v0.39 plan — Worker Queue Reservation Boundary
 
