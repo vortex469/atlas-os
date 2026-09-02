@@ -29,9 +29,16 @@ from app.worker_intake_admission.contract import (
     queue_reservation_evidence_fingerprint,
     record_fingerprint,
 )
-from app.worker_queue_reservation.contract import build_reservation
+from app.worker_queue_reservation.contract import (
+    build_reservation,
+)
+from app.worker_queue_reservation.contract import (
+    status_fingerprint as queue_status_fingerprint,
+)
 from app.worker_queue_reservation.test_contract import (
     RESERVATION_ID,
+)
+from app.worker_queue_reservation.test_contract import (
     _input as queue_input,
 )
 
@@ -164,12 +171,15 @@ def test_queue_reservation_evidence_requires_exactly_one_active_v039_record(
         evidence
     )
     raw = evidence.model_dump(mode="python")
-    raw["reservations"] = [raw["reservations"][0], raw["reservations"][0]]
+    raw["reservations"] = (raw["reservations"][0], raw["reservations"][0])
     raw["count"] = 2
     with pytest.raises(ValidationError, match="exactly one v0.39"):
         WorkerIntakeAdmissionQueueReservationEvidenceV1.model_validate(raw)
     raw = evidence.model_dump(mode="python")
     raw["statuses"][0]["lifecycle"] = "expired"
+    raw["statuses"][0]["status_fingerprint"] = queue_status_fingerprint(
+        raw["statuses"][0]
+    )
     with pytest.raises(ValidationError, match="active inert"):
         WorkerIntakeAdmissionQueueReservationEvidenceV1.model_validate(raw)
 

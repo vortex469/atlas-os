@@ -3,10 +3,10 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.40 P0 Worker Intake Admission Boundary - complete; P1-P5 pending
+## Atlas v0.40 P0-P5 Worker Intake Admission Boundary - complete
 
-Atlas v0.40 is **Worker Intake Admission Boundary**. P0 freezes the
-documentation-only [v1 contract](architecture/worker-intake-admission-boundary-v1.md).
+Atlas v0.40 is **Worker Intake Admission Boundary**. P0-P5 are complete from
+the frozen [v1 contract](architecture/worker-intake-admission-boundary-v1.md).
 
 - [x] Inspect post-v0.39 `main` at
   `fc2bd1edeab334837516243e7cc12b9d1dc58009`, after annotated
@@ -43,13 +43,37 @@ documentation-only [v1 contract](architecture/worker-intake-admission-boundary-v
   permission/UI, persistence, migration, queue/worker/Agent/network/process
   call, installation, execution, dispatch, retry/resend, mutation, deployment,
   rollback, artifact, tag, push, publication, or release action.
-- [ ] P1 - closed immutable Core contract models and pure validation only.
-- [ ] P2 - explicitly constructed append-only Core evidence service/store with
+- [x] P1 - closed immutable Core contract models and pure validation only.
+- [x] P2 - explicitly constructed append-only Core evidence service/store with
   injected owner-scoped readers and permanent no-replay.
-- [ ] P3 - exact guarded Core create/list/get evidence API only.
-- [ ] P4 - strict Mission Control evidence presentation only.
-- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+- [x] P3 - exact guarded Core create/list/get evidence API only.
+- [x] P4 - strict Mission Control evidence presentation only.
+- [x] P5 - release isolation, regression, authority, no-replay, redaction,
   Agent/execution-worker parity, Home Assistant, and release evidence only.
+
+P5 validation evidence:
+
+- [x] Integrated Core OpenAPI exposes only candidate-scoped
+  `GET`/guarded `POST` collection and owned item `GET` for
+  `worker-intake-admissions`; no enqueue, dequeue, worker-start, execution,
+  dispatch, retry/resend, Agent/workflow, install, deploy, rollback, replay,
+  release, or mutation sibling route is present.
+- [x] Closed models remain evidence-only with fixed-false queue, worker,
+  execution, Agent/workflow, process, provider/repository/guest mutation,
+  installation, deployment, rollback, retry/resend, and replay-bypass fields.
+- [x] Service/store/contract isolation has no forbidden authority imports or
+  effect calls, and the append-only store exposes no consume/release/update/
+  delete/effect API.
+- [x] Permanent idempotency and subject reservations survive concurrent
+  duplicate creates, restart readback, and expiry; exact duplicates return
+  without re-reading evidence or reissuing IDs, same-subject/different-key
+  replay conflicts before expiry, and expired replay attempts fail closed.
+- [x] Agent, execution-worker, dispatch, provider-intent, action, and deploy
+  code contain no v0.40 worker-intake-admission consumer.
+- [x] Home Assistant remains the blocked golden:
+  `installation_capability_unsupported`, no admission record, no queue or
+  worker authority, no execution authority, no deployment artifact, and
+  Mission Control blocked/non-installable/non-executable copy.
 
 ## Atlas v0.39 P0–P5 Worker Queue Reservation Boundary — complete
 

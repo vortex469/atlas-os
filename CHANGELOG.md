@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.40 P0 - Worker Intake Admission Boundary
+#### v0.40 P0-P5 - Worker Intake Admission Boundary
 
 - Selected Atlas v0.40 **Worker Intake Admission Boundary** and froze the
   documentation-only [v1 planning contract](docs/architecture/worker-intake-admission-boundary-v1.md).
@@ -28,6 +28,26 @@ release boundaries.
   polling, worker start/contact, Agent/execution-worker consumer, process
   execution, installation, dispatch, retry/resend, mutation, deployment,
   rollback, artifact, tag, push, publication, or release action.
+- P1 adds closed immutable Core models, pure deterministic validation, exact
+  v0.20-v0.39 linkage/fingerprint checks, active v0.39 queue-reservation
+  recognition, abstract worker identity/intake-reference contracts, strict
+  bounds, redacted errors, blocked Home Assistant evaluation, and fixed-false
+  authority.
+- P2 adds an explicitly constructed append-only Core evidence service/store
+  over injected owner-scoped readers, with durable idempotency/subject
+  reservations, restart-safe readback, exact-duplicate zero-I/O replay,
+  quotas, record bounds, and corruption closure, but no queue or worker
+  runtime dependency.
+- P3 exposes only guarded candidate-scoped collection GET/POST and owned item
+  GET with strict authentication, dedicated permissions, CSRF/origin/rate/body
+  validation, ownership non-disclosure, OpenAPI/method closure, and redacted
+  failure handling.
+- P4 adds strict Mission Control read-only typing and a nested worker-flow
+  evidence panel with no polling, standalone route/navigation, editable limits,
+  sensitive rendering, or prohibited effect controls.
+- P5 locks integrated OpenAPI, forbidden-authority isolation, durable
+  concurrency/restart/no-replay behavior, Agent/execution-worker zero-consumer
+  parity, Home Assistant blocked/non-artifact behavior, and release evidence.
 
 #### v0.39 P0–P5 — Worker Queue Reservation Boundary
 

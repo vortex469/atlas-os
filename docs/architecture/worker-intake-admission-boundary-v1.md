@@ -1,11 +1,11 @@
 # Worker Intake Admission Boundary v1 planning contract
 
-Status: **Atlas v0.40 P0 frozen planning contract; runtime work not started**.
+Status: **Atlas v0.40 P0-P5 complete release contract**.
 
-This document freezes the v0.40 Worker Intake Admission boundary before any
-runtime implementation. Worker intake admission is one future append-only Core
-evidence record that binds an exact, fresh v0.20-v0.39 chain to one
-server-owned worker identity and one abstract intake admission decision.
+This document freezes the v0.40 Worker Intake Admission boundary. Worker intake
+admission is one append-only Core evidence record that binds an exact, fresh
+v0.20-v0.39 chain to one server-owned worker identity and one abstract intake
+admission decision.
 
 The authority invariant is:
 
@@ -475,7 +475,7 @@ text, stack traces, or foreign-owner facts.
 
 ## 16. API boundary
 
-The only planned Core surface is:
+The only Core surface is:
 
 - `GET /api/v1/installation/candidate-records/{candidate_record_id}/worker-intake-admissions`
 - `POST /api/v1/installation/candidate-records/{candidate_record_id}/worker-intake-admissions`
