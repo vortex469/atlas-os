@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { listWorkerQueueReservations } from "../../api/workerQueueReservation";
 import type { WorkerQueueReservationResultV1 } from "../../types/workerQueueReservation";
+import { WorkerIntakeAdmissions } from "./WorkerIntakeAdmissions";
 
 export function WorkerQueueReservations({ candidateId, stubId, homeAssistantBlocked }: { candidateId: string; stubId: string; homeAssistantBlocked: boolean }) {
     const [items, setItems] = useState<WorkerQueueReservationResultV1[] | null>(null); const [error, setError] = useState(false);
@@ -14,11 +15,11 @@ export function WorkerQueueReservations({ candidateId, stubId, homeAssistantBloc
         {items === null && !error && <p role="status">Loading worker queue reservation evidence…</p>}
         {error && <div role="alert"><p>Worker queue reservation evidence is unavailable.</p><p className="text-xs">The error is redacted; no credential, payload, command, log, address, endpoint, or internal path is shown.</p></div>}
         {items?.length === 0 && <p role="status">No worker queue reservation evidence has been recorded. Enqueue, dequeue, worker start, dispatch, and execution remain blocked.</p>}
-        {items && <ol className="mt-3 space-y-3">{items.map((result) => <Reservation key={result.reservation!.reservation_id} result={result} />)}</ol>}
+        {items && <ol className="mt-3 space-y-3">{items.map((result) => <Reservation key={result.reservation!.reservation_id} result={result} homeAssistantBlocked={homeAssistantBlocked} />)}</ol>}
     </section>;
 }
 
-function Reservation({ result }: { result: WorkerQueueReservationResultV1 }) {
+function Reservation({ result, homeAssistantBlocked }: { result: WorkerQueueReservationResultV1; homeAssistantBlocked: boolean }) {
     const record = result.reservation!; const status = result.status!; const intake = record.queue_intake_reference; const item = record.queue_item_reference; const link = record.linkage; const limits = record.inherited_limits; const audit = result.audit_evidence!;
     return <li className="rounded border border-slate-800 p-3 text-sm">
         <p className="font-semibold">{status.lifecycle} {status.eligibility} evidence</p><p>Owner: {record.operator_id} · recorded: {record.recorded_at} · valid until: {record.valid_until} · observed: {status.observed_at}. Freshness is at most 30 seconds and expiry is passive.</p>
@@ -29,6 +30,7 @@ function Reservation({ result }: { result: WorkerQueueReservationResultV1 }) {
         <p>Permanent queue-subject reservation: true · permanent idempotency reservation: true · raw idempotency key persisted: false · consumed: false · released: false · retry: false · replay bypass: false.</p>
         <p>Audit: {audit.event} / {audit.outcome} · {audit.audit_fingerprint.value} · correlation {audit.correlation_fingerprint.value}</p>
         <dl aria-label="Queue reservation fixed-false authority fields">{["Live enqueue", "Dequeue", "Worker start", "Dispatch", "Execution", "Agent invocation", "Workflow start", "Provider mutation", "Repository mutation", "In-guest mutation", "Installation", "Deployment", "Rollback", "Retry", "Resend", "Replay bypass"].map((name) => <Value key={name} n={name} v="false" />)}</dl>
+        <WorkerIntakeAdmissions candidateId={record.candidate_record_id} reservationId={record.reservation_id} homeAssistantBlocked={homeAssistantBlocked} />
     </li>;
 }
 function Value({ n, v }: { n: string; v: string }) { return <div><dt>{n}</dt><dd className="break-all">{v}</dd></div>; }
