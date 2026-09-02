@@ -36,6 +36,7 @@ describe("v0.40 worker intake admission Mission Control boundary", () => {
             "../api/workerIntakeAdmission.ts",
             "../features/installation/WorkerIntakeAdmissions.tsx",
             "../features/installation/WorkerQueueReservations.tsx",
+            "../types/liveEnqueueAdmission.ts",
             "../types/workerIntakeAdmission.ts",
         ]);
     });

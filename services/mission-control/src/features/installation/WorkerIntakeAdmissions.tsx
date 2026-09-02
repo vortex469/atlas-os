@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { listWorkerIntakeAdmissions } from "../../api/workerIntakeAdmission";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { WorkerIntakeAdmissionV1 } from "../../types/workerIntakeAdmission";
+import { LiveEnqueueAdmissions } from "./LiveEnqueueAdmissions";
 
 const BLOCKERS: Record<string, string> = {
     live_enqueue_not_defined: "Live enqueue is not defined",
@@ -31,11 +32,11 @@ export function WorkerIntakeAdmissions({ candidateId, reservationId, homeAssista
         {items === null && !error && <p role="status" className="mt-3">Loading worker intake admission status…</p>}
         {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Worker intake admission status is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, endpoint, worker address, queue detail, or internal path is shown.</p></div>}
         {items?.length === 0 && <p role="status" className="mt-3">No worker intake admission evidence has been recorded. Queue handoff, worker start, and execution remain blocked.</p>}
-        {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Worker intake admissions">{items.map((item) => <Admission key={item.admission_id} admission={item} />)}</ol>}
+        {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Worker intake admissions">{items.map((item) => <Admission key={item.admission_id} admission={item} homeAssistantBlocked={homeAssistantBlocked} />)}</ol>}
     </section>;
 }
 
-function Admission({ admission }: { admission: WorkerIntakeAdmissionV1 }) {
+function Admission({ admission, homeAssistantBlocked }: { admission: WorkerIntakeAdmissionV1; homeAssistantBlocked: boolean }) {
     const status = isExpired(admission.valid_until) ? "Expired" : "Recorded";
     const identity = admission.worker_identity;
     const intake = admission.worker_intake_reference;
@@ -93,6 +94,7 @@ function Admission({ admission }: { admission: WorkerIntakeAdmissionV1 }) {
                 {["Live enqueue allowed", "Dequeue allowed", "Queue polling allowed", "Worker contact allowed", "Worker start allowed", "Execution start allowed", "Runner binding allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Agent invocation allowed", "Workflow start allowed", "Docker execution allowed", "Podman execution allowed", "Shell execution allowed", "Process execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <LiveEnqueueAdmissions candidateId={admission.candidate_record_id} workerIntakeAdmissionId={admission.admission_id} homeAssistantBlocked={homeAssistantBlocked} />
     </li>;
 }
 
