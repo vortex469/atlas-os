@@ -8,6 +8,7 @@ import type { WorkerIntakeAdmissionCollectionV1 } from "../../types/workerIntake
 import { WorkerIntakeAdmissions } from "./WorkerIntakeAdmissions";
 
 vi.mock("../../api/workerIntakeAdmission", () => ({ listWorkerIntakeAdmissions: vi.fn() }));
+vi.mock("./LiveEnqueueAdmissions", () => ({ LiveEnqueueAdmissions: () => <section aria-label="Live enqueue admission evidence">Nested live enqueue evidence</section> }));
 
 const reservation = workerQueueReservationResultFixture.reservation!;
 const empty: WorkerIntakeAdmissionCollectionV1 = { ...workerIntakeAdmissionCollectionFixture, items: [], count: 0 };
