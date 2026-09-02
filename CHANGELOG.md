@@ -6,6 +6,37 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.41 P0 - Live Enqueue Admission Boundary
+
+- Selected Atlas v0.41 **Live Enqueue Admission Boundary** and froze the
+  documentation-only [v1 planning contract](docs/architecture/live-enqueue-admission-v1.md).
+- Defined one future append-only, operator-owned Core evidence record binding
+  the exact v0.20-v0.40 chain, active v0.40 worker intake admission, active
+  v0.39 worker queue reservation, server-owned worker identity, abstract worker
+  intake reference, derived non-enqueueing admission decision, and byte-exact
+  inherited sandbox/resource/network/filesystem ceilings.
+- Froze `live_enqueue_admission_recorded` as evidence only. Admission evidence
+  is not an enqueue operation; it defines no payload, no queue message, no
+  enqueue operation, no dequeue, no worker start, and no execution authority.
+- Froze exact closed create, linkage, decision, record, status, result,
+  collection, reservation, audit, and error schemas; dedicated
+  `installation_live_enqueue_admission_only` scope; domain-separated
+  deterministic fingerprint names; exact same-owner v0.20-v0.40 linkage and
+  fingerprints; active v0.40 lifecycle/freshness/earliest-expiry requirements;
+  dedicated record/read permissions; permanent idempotency-key and
+  enqueue-admission-subject reservations; strict bounds; candidate-scoped API;
+  optional nested Mission Control presentation; threat model; later enablement;
+  must-not-change rules; and the blocked/non-artifact Home Assistant golden.
+- P0 changes planning documents only. It adds no runtime model, store,
+  migration, setting, permission, route, OpenAPI operation, UI code, queue
+  library, payload schema, serializer, worker client, credential, endpoint,
+  background task, Agent change, execution-worker change, live enqueue/dequeue,
+  worker start/contact, installation, dispatch, execution, retry/resend,
+  mutation, deployment, rollback, artifact, tag, push, publication, or release
+  action.
+- Every new authority field is fixed false, and prior v0.20-v0.40 contracts
+  remain unmodified.
+
 #### v0.40 P0-P5 - Worker Intake Admission Boundary
 
 - Selected Atlas v0.40 **Worker Intake Admission Boundary** and froze the

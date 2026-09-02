@@ -3,6 +3,61 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.41 P0 Live Enqueue Admission Boundary - selected
+
+Atlas v0.41 is **Live Enqueue Admission Boundary**. P0 freezes the
+documentation-only [v1 contract](architecture/live-enqueue-admission-v1.md).
+
+- [x] Freeze exact closed create, enqueue-subject, admission-decision,
+  inherited-limit, linkage, record/status, reservation, idempotency, audit,
+  error, result, and collection schemas.
+- [x] Freeze dedicated scope
+  `installation_live_enqueue_admission_only`.
+- [x] Freeze exact same-owner v0.20-v0.40 linkage and fingerprints, active
+  v0.40 worker-intake-admission binding, active v0.39 queue-reservation
+  binding, v0.40 worker identity/intake-reference binding, active lifecycle,
+  freshness, earliest inherited expiry, and byte-exact inherited limit
+  fingerprints.
+- [x] Freeze `live_enqueue_admission_recorded | readiness_gated | blocked`,
+  closed lifecycle, eligibility, blocker, audit-event, error, and authority
+  vocabularies, and permanent successful-record blockers for undefined enqueue
+  operation, dequeue, worker start, and execution start.
+- [x] Freeze the invariant that admission evidence is not an enqueue operation
+  and cannot define, serialize, submit, poll, claim, lease, dequeue, start, or
+  execute work.
+- [x] Freeze authenticated ownership, dedicated
+  `installation.execution.live_enqueue_admission.record` and `.read`
+  permissions, foreign/not-found non-disclosure, maximum inherited 30-second
+  freshness, and earliest expiry.
+- [x] Freeze atomic permanent idempotency-key and
+  enqueue-admission-subject reservations, exact-duplicate zero-I/O readback,
+  and no consume/release/refresh/replacement/supersession/retry/resend/replay
+  bypass.
+- [x] Freeze strict request, record, collection, nesting, quota, and identifier
+  bounds, deterministic domain-separated fingerprints, closed audit/redaction,
+  and exclusion of raw keys, payloads, credentials, commands, logs, paths,
+  endpoints, addresses, queue names, and arbitrary metadata.
+- [x] Freeze only candidate-scoped collection GET/guarded POST and item GET,
+  plus an optional nested Mission Control evidence panel with no polling,
+  selectors, editable limits, sensitive rendering, extra mutation, or effect
+  control.
+- [x] Freeze Home Assistant blocked/non-artifact behavior, Agent and
+  execution-worker zero-consumer isolation, exact authority boundary, later
+  enablement, P0-P5, threat model, and must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/store/migration/setting/
+  permission/route/OpenAPI operation/UI code, queue library, payload schema,
+  serializer, worker client, credential, endpoint, background task, Agent
+  change, execution-worker change, live enqueue/dequeue, worker start/contact,
+  installation, dispatch, execution, retry/resend, mutation, deployment,
+  rollback, artifact, tag, push, publication, or release action.
+- [ ] P1 - closed immutable Core contract models and pure validation only.
+- [ ] P2 - explicitly constructed append-only Core evidence service/store with
+  injected owner-scoped readers and permanent no-replay.
+- [ ] P3 - exact guarded Core create/list/get evidence API only.
+- [ ] P4 - strict Mission Control evidence presentation only.
+- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, and release evidence only.
+
 ## Atlas v0.40 P0-P5 Worker Intake Admission Boundary - complete
 
 Atlas v0.40 is **Worker Intake Admission Boundary**. P0-P5 are complete from
