@@ -476,6 +476,13 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-queue-reservations/{reservation_id}": {
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-intake-admissions": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-intake-admissions/{admission_id}": {
+            "get",
+        },
     }
     prohibited = ("approve", "execute", "dispatch", "install", "deploy", "rollback")
     assert not any(
