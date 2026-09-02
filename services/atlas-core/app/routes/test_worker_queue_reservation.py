@@ -391,6 +391,18 @@ def test_v039_has_no_runtime_agent_worker_or_mutation_consumer() -> None:
     route = Path(__file__).with_name("worker_queue_reservation.py")
     allowed.add(route)
     allowed.add(Path(__file__).parents[1] / "config" / "settings.py")
+    allowed.add(Path(__file__).parents[1] / "worker_intake_admission" / "contract.py")
+    allowed.add(Path(__file__).parents[1] / "worker_intake_admission" / "service.py")
+    allowed.add(
+        Path(__file__).parents[1]
+        / "installation_live_enqueue_admission"
+        / "contract.py"
+    )
+    allowed.add(
+        Path(__file__).parents[1]
+        / "installation_live_enqueue_admission"
+        / "service.py"
+    )
     markers = (
         "app.worker_queue_reservation",
         "WorkerQueueReservationV1",
