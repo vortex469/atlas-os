@@ -41,6 +41,9 @@ from app.routes.installation_execution_admission import (
 from app.routes.installation_execution_request import (
     router as installation_execution_request_router,
 )
+from app.routes.installation_live_enqueue_admission import (
+    router as installation_live_enqueue_admission_router,
+)
 from app.routes.installation_plan import router as installation_plan_router
 from app.routes.installation_readiness_review import (
     router as installation_readiness_review_router,
@@ -128,6 +131,7 @@ router.include_router(runner_binding_plan_router)
 router.include_router(worker_admission_stub_router)
 router.include_router(worker_queue_reservation_router)
 router.include_router(worker_intake_admission_router)
+router.include_router(installation_live_enqueue_admission_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
 router.include_router(execution_permission_grant_router)
