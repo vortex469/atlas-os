@@ -16,6 +16,7 @@ from .contract import (
     WorkerIntakeAdmissionCreateV1,
     WorkerIntakeAdmissionRedactedErrorV1,
     WorkerIntakeAdmissionResultV1,
+    WorkerIntakeAdmissionV1,
     WorkerIntakeAdmissionValidationInputV1,
     WorkerIntakeReferenceV1,
     WorkerIntakeWorkerIdentityV1,
@@ -218,10 +219,12 @@ class WorkerIntakeAdmissionService:
             record = self._store.get(operator_id=operator, admission_id=admission_id)
             return _success(record, correlation_id)
         except WorkerIntakeAdmissionStoreError as error:
-            return _failure(
-                "not_found" if error.code == "not_found" else "internal_error",
-                correlation_id,
+            code = (
+                error.code
+                if error.code in {"not_found", "store_corrupt"}
+                else "internal_error"
             )
+            return _failure(code, correlation_id)
         except Exception:  # noqa: BLE001 - read details remain redacted
             return _failure("internal_error", correlation_id)
 

@@ -785,7 +785,7 @@ class WorkerIntakeAdmissionValidationInputV1(ContractModel):
             raise ValueError("Home Assistant installation capability is unsupported")
         starts = (
             _instant(reservation.recorded_at),
-            _instant(status.evaluated_at),
+            _instant(status.observed_at),
             _instant(identity.valid_from),
             _instant(intake.valid_from),
         )
