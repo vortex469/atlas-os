@@ -403,6 +403,16 @@ def test_v039_has_no_runtime_agent_worker_or_mutation_consumer() -> None:
         / "installation_live_enqueue_admission"
         / "service.py"
     )
+    allowed.add(
+        Path(__file__).parents[1]
+        / "installation_one_shot_live_enqueue"
+        / "contract.py"
+    )
+    allowed.add(
+        Path(__file__).parents[1]
+        / "installation_one_shot_live_enqueue"
+        / "service.py"
+    )
     markers = (
         "app.worker_queue_reservation",
         "WorkerQueueReservationV1",
