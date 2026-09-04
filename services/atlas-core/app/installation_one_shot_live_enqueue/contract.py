@@ -1393,6 +1393,50 @@ def build_collection(
     )
 
 
+def build_audit(
+    record: OneShotLiveEnqueueV1,
+    *,
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"],
+    event: Literal[
+        "one_shot_live_enqueue_recorded",
+        "one_shot_live_enqueue_read",
+        "one_shot_live_enqueue_indeterminate",
+    ],
+    correlation_fingerprint: FingerprintV1,
+    occurred_at: str,
+) -> OneShotLiveEnqueueAuditEvidenceV1:
+    raw = {
+        "event": event,
+        "audit_id": derived_uuid5(
+            "atlas:one-shot-live-enqueue-audit-id:v1",
+            {
+                "enqueue_id": record.enqueue_id,
+                "record_fingerprint": record.record_fingerprint,
+                "event": event,
+                "outcome": outcome,
+                "occurred_at": occurred_at,
+                "correlation_fingerprint": correlation_fingerprint,
+            },
+        ),
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "enqueue_id": record.enqueue_id,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "correlation_fingerprint": correlation_fingerprint,
+        "item_subject_fingerprint": record.item_subject_fingerprint,
+        "record_fingerprint": record.record_fingerprint,
+        "one_shot_live_enqueue_recorded": event == "one_shot_live_enqueue_recorded",
+    }
+    seed = OneShotLiveEnqueueAuditEvidenceV1.model_construct(
+        **raw,
+        audit_fingerprint=fingerprint("atlas:seed:v1", "audit"),
+    )
+    return OneShotLiveEnqueueAuditEvidenceV1.model_validate(
+        {**raw, "audit_fingerprint": audit_fingerprint(seed)}
+    )
+
+
 def evaluate_one_shot_live_enqueue(
     value: OneShotLiveEnqueueValidationInputV1 | dict[str, Any],
 ) -> OneShotLiveEnqueueEvaluationV1:
