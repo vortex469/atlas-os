@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { listLiveEnqueueAdmissions } from "../../api/liveEnqueueAdmission";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { LiveEnqueueAdmissionV1 } from "../../types/liveEnqueueAdmission";
+import { OneShotLiveEnqueues } from "./OneShotLiveEnqueues";
 
 const BLOCKERS: Record<string, string> = {
     installation_capability_unsupported: "Installation capability is unsupported",
@@ -46,11 +47,11 @@ export function LiveEnqueueAdmissions({ candidateId, workerIntakeAdmissionId, ho
         {items === null && !error && <p role="status" className="mt-3">Loading live enqueue admission evidence...</p>}
         {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Live enqueue admission evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, endpoint, worker address, queue detail, or internal path is shown.</p></div>}
         {items?.length === 0 && <p role="status" className="mt-3">No live enqueue admission evidence has been recorded. Enqueue, dequeue, polling, worker contact, worker start, dispatch, install, and execution remain blocked.</p>}
-        {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Live enqueue admissions">{items.map((item) => <Admission key={item.admission_id} admission={item} />)}</ol>}
+        {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Live enqueue admissions">{items.map((item) => <Admission key={item.admission_id} admission={item} homeAssistantBlocked={homeAssistantBlocked} />)}</ol>}
     </section>;
 }
 
-function Admission({ admission }: { admission: LiveEnqueueAdmissionV1 }) {
+function Admission({ admission, homeAssistantBlocked }: { admission: LiveEnqueueAdmissionV1; homeAssistantBlocked: boolean }) {
     const status = isExpired(admission.valid_until) ? "Expired" : "Recorded";
     const decision = admission.admission_decision;
     const link = admission.linkage;
@@ -107,6 +108,7 @@ function Admission({ admission }: { admission: LiveEnqueueAdmissionV1 }) {
                 {["Live enqueue allowed", "Enqueue operation defined", "Queue item payload defined", "Payload constructed", "Payload serialized", "Queue publish allowed", "Queue send allowed", "Dequeue allowed", "Queue polling allowed", "Queue claim allowed", "Queue ack allowed", "Worker contact allowed", "Worker authentication allowed", "Worker binding allowed", "Worker start allowed", "Execution start allowed", "Runner binding allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Agent invocation allowed", "Workflow start allowed", "Docker execution allowed", "Podman execution allowed", "Shell execution allowed", "Process execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <OneShotLiveEnqueues candidateId={admission.candidate_record_id} liveEnqueueAdmissionId={admission.admission_id} homeAssistantBlocked={homeAssistantBlocked} />
     </li>;
 }
 

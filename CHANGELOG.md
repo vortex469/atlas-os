@@ -30,6 +30,28 @@ release boundaries.
   publication, deployment, rollback, or change to
   `compose.execution-smoke.override.yaml`.
 - Previous v0.20-v0.41 authority boundaries remain unchanged.
+- P1 adds closed immutable Core models and pure deterministic validation for
+  exact same-owner v0.41 linkage, active freshness/expiry, fingerprint
+  sensitivity, bounded redacted contracts, fixed-false downstream authority,
+  terminal outcomes, and the inert reference-only one-shot item shape.
+- P2 adds an explicitly constructed default-off append-only Core service/store
+  over injected owner-scoped readers, with durable reservation-before-effect,
+  permanent idempotency and item-subject no-replay, restart-safe readback,
+  conflict/indeterminate closure, quotas, bounds, and secret-free persistence.
+- P3 exposes only guarded candidate-scoped collection `GET`/`POST` and owned
+  item `GET`, with dedicated permissions, auth/CSRF/origin/rate/body limits,
+  OpenAPI/method closure, ownership non-disclosure, and redacted failures.
+- P4 adds strict Mission Control read-only typing and a nested v0.42 evidence
+  panel under v0.41 Live Enqueue Admission, with no standalone navigation,
+  creation controls, polling, editable limits, sensitive rendering, or effect
+  controls.
+- P5 locks the final release boundary: exact v0.41 prerequisite linkage,
+  concurrency, permanent single-use/no-replay, terminal ambiguous outcomes,
+  bounded/redacted/secret-free persistence, API/UI limits, default-off
+  construction, Agent/worker zero-consumer isolation, Home Assistant blocked
+  behavior, and no dequeue, queue polling consumer, worker/Agent invocation,
+  execution, retry/resend, scheduler/workflow, install, mutation, deployment,
+  rollback, or Compose smoke override change.
 
 #### v0.41 P0 - Live Enqueue Admission Boundary
 

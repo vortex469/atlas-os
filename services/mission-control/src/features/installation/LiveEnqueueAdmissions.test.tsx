@@ -8,6 +8,7 @@ import type { LiveEnqueueAdmissionCollectionV1 } from "../../types/liveEnqueueAd
 import { LiveEnqueueAdmissions } from "./LiveEnqueueAdmissions";
 
 vi.mock("../../api/liveEnqueueAdmission", () => ({ listLiveEnqueueAdmissions: vi.fn() }));
+vi.mock("./OneShotLiveEnqueues", () => ({ OneShotLiveEnqueues: () => <section aria-label="One-shot live enqueue evidence">Nested one-shot live enqueue evidence</section> }));
 
 const empty: LiveEnqueueAdmissionCollectionV1 = { ...liveEnqueueAdmissionCollectionFixture, items: [], count: 0 };
 const props = { candidateId: workerIntakeAdmissionFixture.candidate_record_id, workerIntakeAdmissionId: workerIntakeAdmissionFixture.admission_id, homeAssistantBlocked: false };
@@ -37,6 +38,7 @@ describe("LiveEnqueueAdmissions", () => {
         expect(screen.getByText(/queue item constructed: false; payload constructed: false; payload serialized: false; request sent: false; queue enqueued: false/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/ordered live enqueue admission blockers/i)).toHaveTextContent(/enqueue_operation_not_defined.*dequeue_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
         expect(screen.getByText("Advanced live enqueue evidence")).toBeInTheDocument();
+        expect(screen.getByLabelText(/one-shot live enqueue evidence/i)).toHaveTextContent(/nested one-shot live enqueue evidence/i);
         expect(screen.getByText(/Permanent live-enqueue subject reservation: true/i)).toHaveTextContent(/replay bypass allowed: false/i);
         expect(screen.getByText(/Audit facts are server-owned/i)).toHaveTextContent(/correlation fingerprints returned by Core/i);
         expect(screen.getByLabelText(/live enqueue admission fixed-false authority fields/i)).toHaveTextContent(/live enqueue allowedfalse.*queue polling allowedfalse.*process execution allowedfalse/i);

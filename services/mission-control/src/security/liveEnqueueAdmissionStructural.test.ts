@@ -39,6 +39,7 @@ describe("v0.41 live enqueue admission Mission Control boundary", () => {
             "../features/installation/LiveEnqueueAdmissions.tsx",
             "../features/installation/WorkerIntakeAdmissions.tsx",
             "../types/liveEnqueueAdmission.ts",
+            "../types/oneShotLiveEnqueue.ts",
         ]);
     });
 });

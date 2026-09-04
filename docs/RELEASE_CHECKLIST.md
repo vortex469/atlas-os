@@ -3,7 +3,7 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.42 P0 One-Shot Live Enqueue Boundary - selected
+## Atlas v0.42 P0-P5 One-Shot Live Enqueue Boundary - complete
 
 Atlas v0.42 is **One-Shot Live Enqueue Boundary**. P0 freezes the
 documentation-only [v1 contract](architecture/one-shot-live-enqueue-boundary-v1.md).
@@ -57,14 +57,42 @@ documentation-only [v1 contract](architecture/one-shot-live-enqueue-boundary-v1.
   Docker/Podman/container/shell/process execution, installation, mutation,
   deployment, rollback, artifact, tag, push, publication, or change to
   `compose.execution-smoke.override.yaml`.
-- [ ] P1 - closed immutable Core contract models and pure validation only.
-- [ ] P2 - explicitly constructed append-only Core evidence service/store with
+- [x] P1 - closed immutable Core contract models and pure validation only.
+- [x] P2 - explicitly constructed append-only Core evidence service/store with
   injected owner-scoped readers, reservation-before-effect, permanent
   no-replay, and indeterminate append handling.
-- [ ] P3 - exact guarded Core create/list/get evidence API only.
-- [ ] P4 - strict Mission Control evidence presentation only.
-- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+- [x] P3 - exact guarded Core create/list/get evidence API only.
+- [x] P4 - strict Mission Control evidence presentation only.
+- [x] P5 - release isolation, regression, authority, no-replay, redaction,
   Agent/execution-worker parity, Home Assistant, and release evidence only.
+
+P5 validation evidence:
+
+- [x] Core contract/service/store regressions prove exact v0.41 linkage,
+  same-owner binding, active freshness and expiry, fingerprint sensitivity,
+  permanent single-use/no-replay, reservation-before-effect, durable
+  concurrency/restart behavior, indeterminate append closure, bounded records,
+  redacted errors, and secret-free persistence.
+- [x] Core API regressions prove only candidate-scoped collection `GET`,
+  guarded `POST`, and owned item `GET` exist for `one-shot-live-enqueues`, with
+  dedicated record/read permissions, strict JSON/content/idempotency/rate
+  limits, OpenAPI/method closure, non-disclosing foreign ownership, and no
+  dequeue, poll, claim, lease, start, run, execute, dispatch, retry, resend,
+  deploy, rollback, or sibling effect route.
+- [x] Mission Control regressions prove v0.42 is read-only and nested under the
+  v0.41 Live Enqueue Admission panel, with no standalone route/navigation,
+  polling, mutation client, selectors, editors, effect controls, sensitive
+  values, or creation UI.
+- [x] Authority isolation regressions prove the only intentionally new
+  production effect is the explicitly authorized one-shot record of one inert
+  reference-only queue item; all dequeue, queue polling, worker contact/start,
+  Agent invocation, execution, scheduler/workflow, Docker/Podman/container/
+  shell/process execution, automatic retry/resend, install, provider/
+  repository/in-guest mutation, deployment, rollback, and Home Assistant
+  exception authority remains absent.
+- [x] Release closure preserves prior v0.20-v0.41 goldens and does not modify
+  `compose.execution-smoke.override.yaml`, auto-push, tag, publish, deploy, or
+  release.
 
 ## Atlas v0.41 P0 Live Enqueue Admission Boundary - selected
 
