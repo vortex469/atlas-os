@@ -6,6 +6,30 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.43 P0 - Queue Observation and Enqueue Receipt Evidence
+
+- Selected Atlas v0.43 **Queue Observation and Enqueue Receipt Evidence** and
+  froze the documentation-only [v1 planning contract](docs/architecture/queue-observation-enqueue-receipt-evidence-v1.md).
+- Started from the completed v0.42 One-Shot Live Enqueue implementation and
+  froze v0.42 prerequisite lineage, exact inert queue item identity, intended
+  queue identity, enqueue receipt linkage, observation dispositions,
+  fingerprints, ownership, freshness, lifecycle, ambiguity handling,
+  redaction, bounded evidence, default-off construction, API/UI expectations,
+  threats, goldens, and must-not-change authority boundaries.
+- Defined observation as bounded evidence that the exact inert v0.42 item was
+  accepted by or observed at its intended queue. Observation evidence does not
+  authorize or cause dequeue, queue-driven action, worker start/invocation,
+  Agent invocation, execution, retry/resend, scheduler/workflow execution,
+  Docker/Podman/container/shell/process execution, installation, provider/
+  repository/in-guest mutation, deployment, or rollback.
+- P0 changes planning documents only. It adds no runtime model, service,
+  store, migration, setting, permission, route, OpenAPI operation, UI code,
+  queue library, broker integration, serializer, worker client, credential,
+  endpoint, background task, Agent change, execution-worker change, artifact,
+  tag, push, publication, deployment, rollback, or change to
+  `compose.execution-smoke.override.yaml`.
+- Previous v0.20-v0.42 authority boundaries remain unchanged.
+
 #### v0.42 P0 - One-Shot Live Enqueue Boundary
 
 - Selected Atlas v0.42 **One-Shot Live Enqueue Boundary** and froze the

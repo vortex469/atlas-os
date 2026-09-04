@@ -1,8 +1,8 @@
 # Atlas OS Roadmap
 
-## 1. Current completed baseline - v0.41
+## 1. Current completed baseline - v0.42
 
-Atlas v0.41 P0-P5 is complete in the repository-supported baseline for this
+Atlas v0.42 P0-P5 is complete in the repository-supported baseline for this
 worktree. The latest immutable annotated release tag recorded in this checkout
 remains `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
@@ -116,15 +116,75 @@ evidence.
   v0.20-v0.40 chain and byte-exact inherited limits while remaining
   `live_enqueue_admission_recorded`, with no queue item enqueue, dequeue,
   worker start, or effect consumer.
+- v0.42 released a one-shot live enqueue boundary over the exact v0.20-v0.41
+  chain, recording one inert reference-only queue item while leaving dequeue,
+  queue polling, worker start, Agent invocation, retry/resend, scheduler/
+  workflow execution, process execution, install, mutation, deployment,
+  rollback, and effect consumers undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Current v0.42 plan - One-Shot Live Enqueue Boundary
+## Current v0.43 plan - Queue Observation and Enqueue Receipt Evidence
+
+Atlas v0.43 selects **Queue Observation and Enqueue Receipt Evidence**. The
+normative documentation-only P0 contract is [Queue Observation and Enqueue
+Receipt Evidence v1](docs/architecture/queue-observation-enqueue-receipt-evidence-v1.md).
+
+V0.43 defines one future evidence authority: after one active same-owner v0.42
+One-Shot Live Enqueue record, Core may preserve bounded proof that the exact
+inert v0.42 queue item was accepted by, or observed at, the queue identity
+already intended by the v0.39-v0.42 lineage. Its strongest state is
+`queue_observation_recorded`, always blocked by `dequeue_not_defined`,
+`queue_polling_consumer_not_defined`, `worker_start_not_defined`,
+`agent_invocation_not_defined`, and
+`execution_start_boundary_not_defined`.
+
+This is observation and enqueue-receipt evidence only. It is not dequeue,
+queue-driven action, worker start/invocation, Agent invocation, execution,
+retry/resend, scheduler/workflow execution, Docker/Podman/container/shell/
+process execution, installation, provider/repository/in-guest mutation,
+deployment, or rollback.
+
+The phase order is P0 -> P1 -> P2 -> P3 -> P4 -> P5:
+
+- P0 freezes exact v0.42 prerequisite lineage, queue identity, queue-item
+  identity, enqueue receipt linkage, observation schemas and dispositions,
+  fingerprints, ownership, freshness, lifecycle, ambiguity handling,
+  redaction, bounded evidence, default-off construction, API/UI expectations,
+  threats, goldens, and must-not-change authority boundaries. P0 changes
+  planning documents only.
+- P1 will add closed immutable Core models, deterministic domain-separated
+  fingerprints, exact v0.20-v0.42 lineage, queue identity and item identity
+  validation, receipt disposition validation, fixed blockers, redaction,
+  fixed-false downstream authority, and pure validation only.
+- P2 will add an explicitly constructed append-only Core evidence service/
+  store with injected owner-scoped readers, injected bounded receipt source,
+  atomic reservation-before-append, permanent no-replay, and indeterminate
+  append handling, without any production dequeue, polling, worker, Agent,
+  scheduler, workflow, or execution-worker consumer.
+- P3 will add only dedicated record/read permissions and the frozen
+  candidate-scoped collection GET/guarded POST plus owned item GET.
+- P4 will add only strict Mission Control typing and an optional nested
+  evidence panel under the v0.42 one-shot live enqueue evidence, with no
+  polling, live queue/worker selector, editable limit, standalone navigation,
+  sensitive rendering, creation of effects, or effect control.
+- P5 will lock release isolation, permanent no-replay, byte-exact inherited
+  limits, receipt disposition goldens, indeterminate outcome, regression,
+  authority, redaction, Agent/execution-worker parity, Home Assistant blocking,
+  exact API/UI isolation, and release evidence.
+
+V0.43 can enable a later milestone to require bounded proof that the exact
+inert v0.42 item was accepted by or observed at its intended queue before
+independently defining dequeue, polling, claim/lease/ack, worker start, Agent
+invocation, scheduler/workflow execution, or execution start. It does not make
+the item consumable by a worker and does not define any consumer.
+
+## Completed v0.42 plan - One-Shot Live Enqueue Boundary
 
 Atlas v0.42 selects **One-Shot Live Enqueue Boundary**. The normative
-documentation-only P0 contract is [One-Shot Live Enqueue Boundary
+contract is [One-Shot Live Enqueue Boundary
 v1](docs/architecture/one-shot-live-enqueue-boundary-v1.md).
 
 V0.42 defines exactly one new future authority: after one active same-owner
