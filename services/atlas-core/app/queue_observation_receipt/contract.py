@@ -41,6 +41,7 @@ from app.installation_targets.contract import CanonicalUuid4
 MAX_CREATE_BYTES = 16 * 1024
 MAX_CREATE_NESTING = 16
 MAX_MODEL_BYTES = 128 * 1024
+MAX_COLLECTION_RECORDS = 16
 MAX_FRESHNESS_SECONDS = 30
 PERMISSION = "installation.execution.queue_observation_receipt.record"
 SCOPE = "installation_queue_observation_receipt_only"
@@ -436,6 +437,209 @@ class QueueObservationReceiptEvaluationV1(ClosedAuthorityV1):
         return self
 
 
+class QueueObservationReceiptStatusV1(ClosedAuthorityV1):
+    schema: Literal["queue-observation-receipt-status-v1"] = (
+        "queue-observation-receipt-status-v1"
+    )
+    receipt_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    lifecycle: Literal["active", "expired"]
+    disposition: Literal["observation_recorded"]
+    blockers: tuple[BlockerV1, ...] = SUCCESS_BLOCKERS
+    evaluated_at: UtcSecond
+    valid_until: UtcSecond
+    receipt_record_fingerprint: FingerprintV1
+    status_fingerprint: FingerprintV1
+    queue_observation_recorded: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> QueueObservationReceiptStatusV1:
+        if self.blockers != SUCCESS_BLOCKERS:
+            raise ValueError("queue observation receipt status blockers must remain fixed")
+        if self.status_fingerprint != status_fingerprint(self):
+            raise ValueError("queue observation receipt status fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class QueueObservationReceiptIdempotencyReservationV1(ContractModel):
+    schema: Literal["queue-observation-receipt-idempotency-reservation-v1"] = (
+        "queue-observation-receipt-idempotency-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    receipt_id: CanonicalUuid5
+    receipt_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    permanent: Literal[True] = True
+
+
+class QueueObservationReceiptSubjectReservationV1(ContractModel):
+    schema: Literal["queue-observation-receipt-subject-reservation-v1"] = (
+        "queue-observation-receipt-subject-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    receipt_id: CanonicalUuid5
+    receipt_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    reservation_fingerprint: FingerprintV1
+    permanent: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> QueueObservationReceiptSubjectReservationV1:
+        if self.reservation_fingerprint != reservation_fingerprint(self):
+            raise ValueError("queue observation receipt reservation fingerprint mismatch")
+        return self
+
+
+class QueueObservationReceiptAuditEvidenceV1(ClosedAuthorityV1):
+    schema: Literal["queue-observation-receipt-audit-v1"] = (
+        "queue-observation-receipt-audit-v1"
+    )
+    event: Literal[
+        "queue_observation_receipt_recorded",
+        "queue_observation_receipt_read",
+        "queue_observation_receipt_indeterminate",
+    ]
+    audit_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    receipt_id: CanonicalUuid5 | None
+    occurred_at: UtcSecond
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"]
+    correlation_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1 | None
+    receipt_record_fingerprint: FingerprintV1 | None
+    audit_fingerprint: FingerprintV1
+    queue_observation_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> QueueObservationReceiptAuditEvidenceV1:
+        if self.audit_fingerprint != audit_fingerprint(self):
+            raise ValueError("queue observation receipt audit fingerprint mismatch")
+        return self
+
+
+class QueueObservationReceiptRedactedErrorV1(ClosedAuthorityV1):
+    schema: Literal["queue-observation-receipt-error-v1"] = (
+        "queue-observation-receipt-error-v1"
+    )
+    error_code: Literal[
+        "installation_capability_unsupported",
+        "evidence_not_found",
+        "ownership_mismatch",
+        "permission_scope_missing",
+        "linkage_mismatch",
+        "fingerprint_mismatch",
+        "evidence_stale",
+        "evidence_expired",
+        "v042_enqueue_not_active",
+        "v042_enqueue_not_recorded",
+        "queue_identity_mismatch",
+        "item_identity_mismatch",
+        "receipt_evidence_invalid",
+        "observation_malformed",
+        "ambiguous_state",
+        "executable_payload",
+        "unsupported_authority",
+        "reservation_before_effect_failed",
+        "append_indeterminate",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "invalid_request",
+        "rate_limited",
+        "quota_exceeded",
+        "conflict",
+        "record_too_large",
+        "store_corrupt",
+        "internal_error",
+    ]
+    message: Literal[SAFE_MESSAGE] = SAFE_MESSAGE
+    retryable: Literal[False] = False
+    correlation_fingerprint: FingerprintV1
+    redacted: Literal[True] = True
+    queue_observation_recorded: Literal[False] = False
+
+
+class QueueObservationReceiptResultV1(ClosedAuthorityV1):
+    schema: Literal["queue-observation-receipt-result-v1"] = (
+        "queue-observation-receipt-result-v1"
+    )
+    ok: bool
+    outcome: Literal["success", "failure", "indeterminate"]
+    record: QueueObservationReceiptV1 | None
+    status: QueueObservationReceiptStatusV1 | None
+    error: QueueObservationReceiptRedactedErrorV1 | None
+    correlation_fingerprint: FingerprintV1
+    queue_observation_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> QueueObservationReceiptResultV1:
+        if self.outcome == "success":
+            good = (
+                self.ok
+                and self.record is not None
+                and self.status is not None
+                and self.error is None
+                and self.queue_observation_recorded
+            )
+        else:
+            good = (
+                not self.ok
+                and self.record is None
+                and self.status is None
+                and self.error is not None
+                and not self.queue_observation_recorded
+            )
+        if not good:
+            raise ValueError("queue observation receipt result shape mismatch")
+        if self.record is not None and self.status.receipt_id != self.record.receipt_id:
+            raise ValueError("queue observation receipt result status binding mismatch")
+        _bounded(self)
+        return self
+
+
+class QueueObservationReceiptCollectionV1(ClosedAuthorityV1):
+    schema: Literal["queue-observation-receipt-collection-v1"] = (
+        "queue-observation-receipt-collection-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    items: tuple[QueueObservationReceiptV1, ...]
+    count: int
+    collection_fingerprint: FingerprintV1
+    queue_observation_recorded: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact(self) -> QueueObservationReceiptCollectionV1:
+        if self.count != len(self.items) or self.count > MAX_COLLECTION_RECORDS:
+            raise ValueError("queue observation receipt collection exceeds bound")
+        ordered = tuple(sorted(self.items, key=lambda item: (item.recorded_at, item.receipt_id)))
+        if ordered != self.items:
+            raise ValueError("queue observation receipt collection is not ordered")
+        if any(
+            item.operator_id != self.operator_id
+            or item.candidate_record_id != self.candidate_record_id
+            for item in self.items
+        ):
+            raise ValueError("queue observation receipt collection ownership mismatch")
+        if self.collection_fingerprint != collection_fingerprint(self):
+            raise ValueError("queue observation receipt collection fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
 class QueueObservationReceiptValidationInputV1(ContractModel):
     """Injected facts only; no store, live queue operation, worker, network, or I/O."""
 
@@ -605,6 +809,74 @@ def evaluation_fingerprint(value: QueueObservationReceiptEvaluationV1 | dict[str
     )
 
 
+def idempotency_key_fingerprint(operator_id: str, raw_key: str) -> FingerprintV1:
+    key = _visible(raw_key)
+    return fingerprint(
+        "atlas:queue-observation-receipt-idempotency:v1",
+        {"operator_id": operator_id, "idempotency_key": key},
+    )
+
+
+def request_fingerprint(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    create: QueueObservationReceiptCreateV1,
+    request_received_at: str,
+    idempotency_fingerprint: FingerprintV1,
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:queue-observation-receipt-request:v1",
+        {
+            "operator_id": operator_id,
+            "candidate_record_id": candidate_record_id,
+            "create": create,
+            "request_received_at": request_received_at,
+            "idempotency_key_fingerprint": idempotency_fingerprint,
+        },
+    )
+
+
+def reservation_fingerprint(
+    value: QueueObservationReceiptSubjectReservationV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:queue-observation-receipt-reservation:v1",
+        _without(value, "reservation_fingerprint"),
+    )
+
+
+def status_fingerprint(
+    value: QueueObservationReceiptStatusV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:queue-observation-receipt-status:v1",
+        _without(value, "status_fingerprint"),
+    )
+
+
+def audit_fingerprint(
+    value: QueueObservationReceiptAuditEvidenceV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:queue-observation-receipt-audit:v1",
+        _without(value, "audit_fingerprint"),
+    )
+
+
+def collection_fingerprint(
+    value: QueueObservationReceiptCollectionV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:queue-observation-receipt-collection:v1",
+        _without(value, "collection_fingerprint"),
+    )
+
+
+def opaque_fingerprint(domain: str, value: str) -> FingerprintV1:
+    return fingerprint(domain, value)
+
+
 def derived_uuid5(domain: str, value: Any) -> str:
     seed = fingerprint(domain, value).value
     return str(uuid.uuid5(_UUID5_NAMESPACE, f"{domain}:{seed}"))
@@ -709,6 +981,133 @@ def build_receipt(
             "subject_fingerprint": subject,
             "receipt_record_fingerprint": receipt_record_fingerprint(record_seed),
         }
+    )
+
+
+def build_reservations(
+    validation: QueueObservationReceiptValidationInputV1,
+    receipt: QueueObservationReceiptV1,
+) -> tuple[
+    QueueObservationReceiptIdempotencyReservationV1,
+    QueueObservationReceiptSubjectReservationV1,
+]:
+    idem = idempotency_key_fingerprint(validation.operator_id, validation.idempotency_key)
+    request = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=idem,
+    )
+    raw = {
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "idempotency_key_fingerprint": idem,
+        "request_fingerprint": request,
+        "subject_fingerprint": receipt.subject_fingerprint,
+        "receipt_id": receipt.receipt_id,
+        "receipt_record_fingerprint": receipt.receipt_record_fingerprint,
+        "reserved_at": validation.authority.request_received_at,
+    }
+    idempotency = QueueObservationReceiptIdempotencyReservationV1.model_validate(raw)
+    seed = QueueObservationReceiptSubjectReservationV1.model_construct(
+        **raw,
+        reservation_fingerprint=fingerprint("atlas:seed:v1", "reservation"),
+    )
+    subject = QueueObservationReceiptSubjectReservationV1.model_validate(
+        {**raw, "reservation_fingerprint": reservation_fingerprint(seed)}
+    )
+    return idempotency, subject
+
+
+def derive_status(
+    record: QueueObservationReceiptV1,
+    *,
+    evaluated_at: str,
+) -> QueueObservationReceiptStatusV1:
+    lifecycle = "active" if _instant(evaluated_at) < _instant(record.valid_until) else "expired"
+    raw = {
+        "receipt_id": record.receipt_id,
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "lifecycle": lifecycle,
+        "disposition": record.disposition,
+        "blockers": record.blockers,
+        "evaluated_at": evaluated_at,
+        "valid_until": record.valid_until,
+        "receipt_record_fingerprint": record.receipt_record_fingerprint,
+    }
+    seed = QueueObservationReceiptStatusV1.model_construct(
+        **raw,
+        status_fingerprint=fingerprint("atlas:seed:v1", "status"),
+    )
+    return QueueObservationReceiptStatusV1.model_validate(
+        {**raw, "status_fingerprint": status_fingerprint(seed)}
+    )
+
+
+def build_collection(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    items: tuple[QueueObservationReceiptV1, ...],
+) -> QueueObservationReceiptCollectionV1:
+    ordered = tuple(sorted(items, key=lambda item: (item.recorded_at, item.receipt_id)))
+    raw = {
+        "operator_id": operator_id,
+        "candidate_record_id": candidate_record_id,
+        "items": ordered,
+        "count": len(ordered),
+    }
+    seed = QueueObservationReceiptCollectionV1.model_construct(
+        **raw,
+        collection_fingerprint=fingerprint("atlas:seed:v1", "collection"),
+    )
+    return QueueObservationReceiptCollectionV1.model_validate(
+        {**raw, "collection_fingerprint": collection_fingerprint(seed)}
+    )
+
+
+def build_audit(
+    record: QueueObservationReceiptV1,
+    *,
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"],
+    event: Literal[
+        "queue_observation_receipt_recorded",
+        "queue_observation_receipt_read",
+        "queue_observation_receipt_indeterminate",
+    ],
+    correlation_fingerprint: FingerprintV1,
+    occurred_at: str,
+) -> QueueObservationReceiptAuditEvidenceV1:
+    raw = {
+        "event": event,
+        "audit_id": derived_uuid5(
+            "atlas:queue-observation-receipt-audit-id:v1",
+            {
+                "receipt_id": record.receipt_id,
+                "receipt_record_fingerprint": record.receipt_record_fingerprint,
+                "event": event,
+                "outcome": outcome,
+                "occurred_at": occurred_at,
+            },
+        ),
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "receipt_id": record.receipt_id,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "correlation_fingerprint": correlation_fingerprint,
+        "subject_fingerprint": record.subject_fingerprint,
+        "receipt_record_fingerprint": record.receipt_record_fingerprint,
+        "queue_observation_recorded": outcome == "recorded",
+    }
+    seed = QueueObservationReceiptAuditEvidenceV1.model_construct(
+        **raw,
+        audit_fingerprint=fingerprint("atlas:seed:v1", "audit"),
+    )
+    return QueueObservationReceiptAuditEvidenceV1.model_validate(
+        {**raw, "audit_fingerprint": audit_fingerprint(seed)}
     )
 
 
