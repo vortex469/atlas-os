@@ -3,6 +3,69 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.42 P0 One-Shot Live Enqueue Boundary - selected
+
+Atlas v0.42 is **One-Shot Live Enqueue Boundary**. P0 freezes the
+documentation-only [v1 contract](architecture/one-shot-live-enqueue-boundary-v1.md).
+
+- [x] Inspect the repository-supported v0.41 Live Enqueue Admission contracts,
+  implementation, and release-isolation tests before defining v0.42.
+- [x] Freeze exactly one new future authority: one explicitly authorized,
+  single-use enqueue of one inert reference-only queue item after a valid
+  same-owner v0.41 Live Enqueue Admission.
+- [x] Freeze exact closed create, lineage, queue item, record/status, result,
+  collection, reservation, idempotency, audit, and error schemas.
+- [x] Freeze dedicated scope `installation_one_shot_live_enqueue_only` and
+  dedicated `installation.execution.one_shot_live_enqueue.record` and `.read`
+  permissions.
+- [x] Freeze exact same-owner v0.20-v0.41 lineage and fingerprints, active
+  v0.41 live-enqueue-admission binding, active v0.40 worker-intake-admission
+  binding, active v0.39 queue-reservation binding, v0.40 worker identity and
+  intake-reference binding, queue-intake-reference and queue-item-reference
+  identity, active lifecycle, freshness, earliest inherited expiry, and
+  byte-exact inherited limit fingerprints.
+- [x] Freeze `one_shot_live_enqueue_recorded | readiness_gated | blocked |
+  indeterminate`, closed lifecycle, outcome, blocker, audit-event, error, and
+  authority vocabularies, and permanent successful-record blockers for
+  undefined dequeue, queue polling, worker start, and execution start.
+- [x] Freeze reservation-before-effect: durable permanent idempotency-key and
+  item-subject reservations must complete before appending the inert queue
+  item, and no failure or indeterminate outcome may release, consume, refresh,
+  replace, supersede, retry, resend, or bypass a reservation.
+- [x] Freeze success, failure, and indeterminate outcomes. Success creates
+  exactly one inert reference-only item; failure creates no item; indeterminate
+  keeps the subject permanently reserved and grants no retry/resend authority.
+- [x] Freeze authenticated ownership, foreign/not-found non-disclosure,
+  maximum inherited 30-second freshness, strict request/record/collection/
+  nesting/quota/identifier bounds, deterministic domain-separated
+  fingerprints, closed audit/redaction, and exclusion of raw keys, payloads,
+  credentials, commands, logs, paths, endpoints, addresses, queue names,
+  broker details, and arbitrary metadata.
+- [x] Freeze only candidate-scoped collection GET/guarded POST and item GET,
+  plus an optional nested Mission Control evidence panel with no polling,
+  selectors, editable limits, sensitive rendering, extra mutation, or effect
+  control.
+- [x] Freeze Home Assistant blocked/non-artifact behavior, Agent and
+  execution-worker zero-consumer isolation, default-off explicit construction,
+  exact authority boundary, later enablement, P0-P5, threat model, and
+  must-not-change contracts.
+- [x] Keep P0 planning-only: no runtime model/store/migration/setting/
+  permission/route/OpenAPI operation/UI code, queue library, payload schema,
+  serializer, worker client, credential, endpoint, background task, Agent
+  change, execution-worker change, dequeue, queue polling, worker
+  start/contact, Agent invocation, scheduler/workflow execution,
+  Docker/Podman/container/shell/process execution, installation, mutation,
+  deployment, rollback, artifact, tag, push, publication, or change to
+  `compose.execution-smoke.override.yaml`.
+- [ ] P1 - closed immutable Core contract models and pure validation only.
+- [ ] P2 - explicitly constructed append-only Core evidence service/store with
+  injected owner-scoped readers, reservation-before-effect, permanent
+  no-replay, and indeterminate append handling.
+- [ ] P3 - exact guarded Core create/list/get evidence API only.
+- [ ] P4 - strict Mission Control evidence presentation only.
+- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, and release evidence only.
+
 ## Atlas v0.41 P0 Live Enqueue Admission Boundary - selected
 
 Atlas v0.41 is **Live Enqueue Admission Boundary**. P0 freezes the

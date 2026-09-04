@@ -6,6 +6,31 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.42 P0 - One-Shot Live Enqueue Boundary
+
+- Selected Atlas v0.42 **One-Shot Live Enqueue Boundary** and froze the
+  documentation-only [v1 planning contract](docs/architecture/one-shot-live-enqueue-boundary-v1.md).
+- Defined exactly one future authority: after a valid same-owner v0.41 Live
+  Enqueue Admission, Core may record one explicitly authorized, single-use
+  enqueue of one inert reference-only queue item.
+- Froze exact prerequisite lineage over v0.20-v0.41, active v0.41 admission
+  binding, queue and item identity, fingerprints, ownership, freshness,
+  lifecycle, redaction, idempotency/no-replay, reservation-before-effect,
+  success/failure/indeterminate outcomes, default-off construction, API/UI
+  expectations, threats, goldens, and must-not-change contracts.
+- The v0.42 item is inert and reference-only. It defines no executable
+  payload, dequeue, queue polling, worker start, Agent invocation,
+  scheduler/workflow execution, Docker/Podman/container/shell/process
+  execution, installation, mutation, deployment, rollback, retry, or resend
+  authority.
+- P0 changes planning documents only. It adds no runtime model, service,
+  store, migration, setting, permission, route, OpenAPI operation, UI code,
+  queue library, serializer, worker client, credential, endpoint, background
+  task, Agent change, execution-worker change, artifact, tag, push,
+  publication, deployment, rollback, or change to
+  `compose.execution-smoke.override.yaml`.
+- Previous v0.20-v0.41 authority boundaries remain unchanged.
+
 #### v0.41 P0 - Live Enqueue Admission Boundary
 
 - Selected Atlas v0.41 **Live Enqueue Admission Boundary** and froze the

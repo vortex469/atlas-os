@@ -1,11 +1,10 @@
 # Atlas OS Roadmap
 
-## 1. Current completed baseline - v0.40
+## 1. Current completed baseline - v0.41
 
-Atlas v0.40 P0-P5 is complete in current `main` at
-`e7774fe7931354b18eaf68b608ba2d632aab6806`. The latest immutable annotated
-release tag recorded in this checkout remains `atlas-v0.39.0` at
-`474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
+Atlas v0.41 P0-P5 is complete in the repository-supported baseline for this
+worktree. The latest immutable annotated release tag recorded in this checkout
+remains `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
 The completed baseline includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -113,15 +112,84 @@ evidence.
   v0.20-v0.39 chain and byte-exact inherited limits while remaining
   `worker_intake_admission_recorded`, with no live enqueue, dequeue, worker
   start, or effect consumer.
+- v0.41 released durable live-enqueue-admission evidence over the exact
+  v0.20-v0.40 chain and byte-exact inherited limits while remaining
+  `live_enqueue_admission_recorded`, with no queue item enqueue, dequeue,
+  worker start, or effect consumer.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Current v0.41 plan - Live Enqueue Admission Boundary
+## Current v0.42 plan - One-Shot Live Enqueue Boundary
+
+Atlas v0.42 selects **One-Shot Live Enqueue Boundary**. The normative
+documentation-only P0 contract is [One-Shot Live Enqueue Boundary
+v1](docs/architecture/one-shot-live-enqueue-boundary-v1.md).
+
+V0.42 defines exactly one new future authority: after one active same-owner
+v0.41 Live Enqueue Admission, Core may record one explicitly authorized,
+single-use enqueue of one inert reference-only queue item. The item binds the
+exact v0.20-v0.41 lineage, active v0.41 admission, active v0.40 worker intake
+admission, active v0.39 queue reservation, server-owned worker identity,
+abstract worker intake reference, abstract queue intake reference, queue item
+reference, and byte-exact inherited sandbox/resource/network/filesystem
+ceilings. Its strongest state is `one_shot_live_enqueue_recorded`, always
+blocked by `dequeue_not_defined`, `queue_polling_not_defined`,
+`worker_start_not_defined`, and `execution_start_boundary_not_defined`.
+
+This is an inert reference-only queue item, not dequeue, queue polling, worker
+start, execution start, dispatch, retry/resend, Agent invocation, workflow or
+scheduler execution, Docker/Podman/container/shell/process execution,
+installation, provider/repository/in-guest mutation, deployment, or rollback.
+
+The phase order is P0 -> P1 -> P2 -> P3 -> P4 -> P5:
+
+- P0 freezes exact closed create, lineage, queue item, record, status, result,
+  collection, reservation, idempotency, audit, and error schemas; dedicated
+  `installation_one_shot_live_enqueue_only` scope; exact same-owner
+  v0.20-v0.41 lineage and fingerprints; active v0.41 lifecycle/freshness/
+  earliest-expiry requirements; exact v0.39-v0.41 binding; deterministic
+  domain-separated fingerprints; closed lifecycle/outcome/blocker/audit/error/
+  authority vocabularies; dedicated record/read permissions; permanent
+  idempotency-key and item-subject reservations; reservation-before-effect;
+  success/failure/indeterminate outcomes; strict bounds; candidate-scoped API;
+  optional nested Mission Control presentation; Home Assistant golden; threat
+  model; later enablement; and must-not-change rules. P0 changes planning
+  documents only.
+- P1 will add closed immutable Core models, deterministic domain-separated
+  fingerprints, exact bounds/lineage/limits, active v0.41, v0.40, and v0.39
+  binding validation, fixed blockers, redaction, fixed-false downstream
+  authority, and pure validation only.
+- P2 will add an explicitly constructed append-only Core evidence service/
+  store with injected owner-scoped readers, atomic reservation-before-effect,
+  permanent no-replay, and indeterminate append handling, without any
+  production dequeue, polling, worker, Agent, or execution-worker consumer.
+- P3 will add only dedicated record/read permissions and the frozen
+  candidate-scoped collection GET/guarded POST plus owned item GET.
+- P4 will add only strict Mission Control typing and an optional nested
+  evidence panel, with no polling, live queue/worker selector, editable limit,
+  standalone navigation, sensitive rendering, or effect control.
+- P5 will lock release isolation, permanent no-replay, byte-exact inherited
+  limits, reservation-before-effect, indeterminate outcome, regression,
+  authority, redaction, Agent/execution-worker parity, Home Assistant blocking,
+  exact API/UI isolation, and release evidence.
+
+V0.42 can enable a later milestone to require an active inert reference-only
+queue item before independently defining dequeue, polling, worker claim/lease,
+worker start, or execution start. It does not make the item consumable by a
+worker. Dequeue, queue polling, claim/lease/ack, worker discovery/
+registration/contact/binding/start, runner binding, execution start,
+installation, dispatch, retry/resend, Agent or workflow invocation, scheduler/
+workflow execution, Docker/Podman/container/shell/process execution, provider/
+repository/in-guest mutation, deployment, rollback, endpoints/credentials, and
+Home Assistant artifacts remain blocked. The Agent and execution-worker gain
+no v0.42 consumer or integration.
+
+## Completed v0.41 plan - Live Enqueue Admission Boundary
 
 Atlas v0.41 selects **Live Enqueue Admission Boundary**. The normative
-documentation-only P0 contract is [Live Enqueue Admission
+contract is [Live Enqueue Admission
 v1](docs/architecture/live-enqueue-admission-v1.md).
 
 V0.41 may append one same-owner Core evidence record binding the exact
@@ -151,19 +219,19 @@ The phase order is P0 -> P1 -> P2 -> P3 -> P4 -> P5:
   API; optional nested Mission Control presentation; Home Assistant golden;
   threat model; P0-P5; later enablement; and must-not-change rules. P0 changes
   planning documents only.
-- P1 will add closed immutable Core models, deterministic domain-separated
+- P1 added closed immutable Core models, deterministic domain-separated
   fingerprints, exact bounds/linkage/limits, active v0.40 and v0.39 binding
   validation, fixed blockers, redaction, fixed-false authority, and pure
   validation only.
-- P2 will add an explicitly constructed append-only Core evidence service/
+- P2 added an explicitly constructed append-only Core evidence service/
   store with injected owner-scoped readers and permanent no-replay, without
   any production queue, worker, Agent, or execution-worker consumer.
-- P3 will add only dedicated record/read permissions and the frozen
+- P3 added only dedicated record/read permissions and the frozen
   candidate-scoped collection GET/guarded POST plus owned item GET.
-- P4 will add only strict Mission Control typing and an optional nested
+- P4 added only strict Mission Control typing and an optional nested
   evidence panel, with no polling, live queue/worker selector, editable limit,
   standalone navigation, sensitive rendering, or effect control.
-- P5 will lock release isolation, permanent no-replay, byte-exact inherited
+- P5 locked release isolation, permanent no-replay, byte-exact inherited
   limits, regression, authority, redaction, Agent/execution-worker parity, Home
   Assistant blocking, exact API/UI isolation, and release evidence.
 
