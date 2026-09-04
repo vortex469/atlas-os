@@ -497,6 +497,13 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/one-shot-live-enqueues/{enqueue_id}": {
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/queue-observations": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/queue-observations/{observation_id}": {
+            "get",
+        },
     }
     prohibited = (
         "approve",
