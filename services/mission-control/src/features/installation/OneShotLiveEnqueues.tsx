@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { listOneShotLiveEnqueues } from "../../api/oneShotLiveEnqueue";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { OneShotLiveEnqueueV1 } from "../../types/oneShotLiveEnqueue";
+import { QueueObservationEvidence } from "./QueueObservationEvidence";
 
 const BLOCKERS: Record<string, string> = {
     dequeue_not_defined: "Dequeue is not defined",
@@ -91,6 +92,7 @@ function OneShot({ item }: { item: OneShotLiveEnqueueV1 }) {
                 {["Payload schema defined", "Payload constructed", "Payload serialized", "Dequeue defined", "Dequeue allowed", "Queue polling allowed", "Queue claim allowed", "Queue lease allowed", "Queue ack allowed", "Worker contact allowed", "Worker authentication allowed", "Worker binding allowed", "Worker start allowed", "Execution start allowed", "Runner binding allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Agent invocation allowed", "Workflow start allowed", "Scheduler allowed", "Docker execution allowed", "Podman execution allowed", "Container execution allowed", "Shell execution allowed", "Process execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <QueueObservationEvidence candidateId={item.candidate_record_id} oneShot={item} />
     </li>;
 }
 

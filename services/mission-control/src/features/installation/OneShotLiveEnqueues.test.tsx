@@ -7,6 +7,7 @@ import type { OneShotLiveEnqueueCollectionV1 } from "../../types/oneShotLiveEnqu
 import { OneShotLiveEnqueues } from "./OneShotLiveEnqueues";
 
 vi.mock("../../api/oneShotLiveEnqueue", () => ({ listOneShotLiveEnqueues: vi.fn() }));
+vi.mock("./QueueObservationEvidence", () => ({ QueueObservationEvidence: () => <section aria-label="Queue observation and enqueue receipt evidence">Nested queue observation evidence</section> }));
 
 const empty: OneShotLiveEnqueueCollectionV1 = { ...oneShotLiveEnqueueCollectionFixture, items: [], count: 0 };
 const props = {
@@ -40,6 +41,7 @@ describe("OneShotLiveEnqueues", () => {
         expect(screen.getByText(/inert reference-only item: true; payload constructed: false; payload serialized: false; dequeue defined: false; queue polling allowed: false/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/ordered one-shot live enqueue blockers/i)).toHaveTextContent(/dequeue_not_defined.*queue_polling_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
         expect(screen.getByText("Advanced one-shot enqueue evidence")).toBeInTheDocument();
+        expect(screen.getByLabelText(/queue observation and enqueue receipt evidence/i)).toHaveTextContent(/nested queue observation evidence/i);
         expect(screen.getByText(/Permanent one-shot subject reservation: true/i)).toHaveTextContent(/replay bypass allowed: false/i);
         expect(screen.getByLabelText(/one-shot live enqueue fixed-false authority fields/i)).toHaveTextContent(/dequeue allowedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
         expect(screen.getByText(/For Home Assistant, one-shot live enqueue remains blocked/i)).toHaveTextContent(/non-installable and non-executable/i);

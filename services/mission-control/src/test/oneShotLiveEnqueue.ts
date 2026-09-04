@@ -1,5 +1,5 @@
 import type { FingerprintV1 } from "../types/installationReadinessReview";
-import type { OneShotLiveEnqueueCollectionV1, OneShotLiveEnqueueResultV1, OneShotLiveEnqueueV1 } from "../types/oneShotLiveEnqueue";
+import type { OneShotLiveEnqueueCollectionV1, OneShotLiveEnqueueResultV1, OneShotLiveEnqueueStatusV1, OneShotLiveEnqueueV1 } from "../types/oneShotLiveEnqueue";
 import { liveEnqueueAdmissionFixture } from "./liveEnqueueAdmission";
 
 const fp = (value: string): FingerprintV1 => ({ algorithm: "sha256", canonicalization: "atlas-jcs-nfc-v1", value: value.repeat(64) });
@@ -150,6 +150,34 @@ export const oneShotLiveEnqueueCollectionFixture: OneShotLiveEnqueueCollectionV1
     count: 1,
     collection_fingerprint: fp("4"),
     one_shot_live_enqueue_recorded: false,
+    ...authority,
+};
+
+export const oneShotLiveEnqueueStatusFixture: OneShotLiveEnqueueStatusV1 = {
+    schema: "one-shot-live-enqueue-status-v1",
+    enqueue_id: enqueueId,
+    operator_id: live.operator_id,
+    candidate_record_id: live.candidate_record_id,
+    lifecycle: "active",
+    outcome: "one_shot_live_enqueue_recorded",
+    blockers: [...blockers],
+    evaluated_at: "2099-08-27T12:00:45Z",
+    valid_until: "2099-08-27T12:01:12Z",
+    record_fingerprint: recordFingerprint,
+    status_fingerprint: fp("5"),
+    one_shot_live_enqueue_recorded: true,
+    ...authority,
+};
+
+export const oneShotLiveEnqueueResultFixture: OneShotLiveEnqueueResultV1 = {
+    schema: "one-shot-live-enqueue-result-v1",
+    ok: true,
+    outcome: "success",
+    record: oneShotLiveEnqueueFixture,
+    status: oneShotLiveEnqueueStatusFixture,
+    error: null,
+    correlation_fingerprint: fp("6"),
+    one_shot_live_enqueue_recorded: true,
     ...authority,
 };
 

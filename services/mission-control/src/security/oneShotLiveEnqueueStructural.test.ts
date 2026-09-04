@@ -34,9 +34,12 @@ describe("v0.42 one-shot live enqueue Mission Control boundary", () => {
         const consumers = Object.entries(productionModules).filter(([, source]) => /one-shot-live-enqueues|OneShotLiveEnqueue/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/oneShotLiveEnqueue.ts",
+            "../api/queueObservation.ts",
             "../features/installation/LiveEnqueueAdmissions.tsx",
             "../features/installation/OneShotLiveEnqueues.tsx",
+            "../features/installation/QueueObservationEvidence.tsx",
             "../types/oneShotLiveEnqueue.ts",
+            "../types/queueObservation.ts",
         ]);
     });
 });
