@@ -3,6 +3,45 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.43 P0 Queue Observation and Enqueue Receipt Evidence - selected
+
+Atlas v0.43 is **Queue Observation and Enqueue Receipt Evidence**. P0 freezes
+the documentation-only [v1 contract](architecture/queue-observation-enqueue-receipt-evidence-v1.md).
+
+- [x] Inspect the repository-supported v0.42 One-Shot Live Enqueue contracts,
+  implementation, API/UI structural tests, and release checklist before
+  defining v0.43.
+- [x] Freeze exactly one new future evidence authority: bounded proof that the
+  exact inert v0.42 queue item was accepted by or observed at the intended
+  queue identity from the v0.39-v0.42 lineage.
+- [x] Freeze exact v0.42 prerequisite lineage, queue identity, queue-item
+  identity, enqueue receipt linkage, observation schemas and dispositions,
+  fingerprints, ownership, freshness, lifecycle, ambiguity handling,
+  redaction, bounded evidence, default-off construction, API/UI expectations,
+  threats, goldens, and must-not-change authority boundaries.
+- [x] Freeze dedicated scope `installation_queue_observation_only` and
+  dedicated `installation.execution.queue_observation.record` and `.read`
+  permissions for later phases.
+- [x] Freeze observation as evidence only: it does not authorize or cause
+  dequeue, queue-driven action, worker start/invocation, Agent invocation,
+  execution, retry/resend, scheduler/workflow execution, Docker/Podman/
+  container/shell/process execution, installation, provider/repository/
+  in-guest mutation, deployment, or rollback.
+- [x] Keep P0 planning-only: no runtime model/service/store/migration/setting/
+  permission/route/OpenAPI operation/UI code, queue library, broker
+  integration, serializer, worker client, credential, endpoint, background
+  task, Agent change, execution-worker change, artifact, tag, push,
+  publication, deployment, rollback, or change to
+  `compose.execution-smoke.override.yaml`.
+- [ ] P1 - closed immutable Core contract models and pure validation only.
+- [ ] P2 - explicitly constructed append-only Core evidence service/store with
+  injected owner-scoped readers, injected bounded receipt source, permanent
+  no-replay, and indeterminate append handling.
+- [ ] P3 - exact guarded Core create/list/get evidence API only.
+- [ ] P4 - strict Mission Control evidence presentation only.
+- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, and release evidence only.
+
 ## Atlas v0.42 P0-P5 One-Shot Live Enqueue Boundary - complete
 
 Atlas v0.42 is **One-Shot Live Enqueue Boundary**. P0 freezes the
