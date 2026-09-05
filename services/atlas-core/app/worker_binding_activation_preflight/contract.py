@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 import unicodedata
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
@@ -42,6 +43,7 @@ from app.one_shot_dequeue_worker_binding.contract import (
 MAX_CREATE_BYTES = 16 * 1024
 MAX_CREATE_NESTING = 16
 MAX_MODEL_BYTES = 192 * 1024
+MAX_COLLECTION_RECORDS = 100
 MAX_FRESHNESS_SECONDS = 30
 PERMISSION = "installation.execution.worker_binding_activation_preflight.record"
 SCOPE = "worker_binding_activation_preflight_only"
@@ -49,6 +51,7 @@ SAFE_MESSAGE = "worker binding activation preflight request could not be complet
 _VISIBLE = re.compile(r"[\x20-\x7e]{16,128}")
 _BLOCKED_OPERATOR_ID = "blocked-evaluation"
 _BLOCKED_CANDIDATE_ID = "00000000-0000-4000-8000-000000000000"
+_UUID5_NAMESPACE = uuid.UUID("6ba7b812-9dad-11d1-80b4-00c04fd430c8")
 _CREDENTIAL_KEYS = frozenset({"credential", "credentials", "secret", "token"})
 _ENDPOINT_KEYS = frozenset({"endpoint", "endpoints", "url", "uri"})
 _COMMAND_KEYS = frozenset({"command", "commands", "cmd", "shell", "payload"})
@@ -335,6 +338,279 @@ class WorkerBindingActivationPreflightEvaluationV1(ClosedAuthorityV1):
             raise ValueError("blocked v0.47 preflight shape mismatch")
         if self.evaluation_fingerprint != evaluation_fingerprint(self):
             raise ValueError("v0.47 evaluation fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class WorkerBindingActivationPreflightV1(ClosedAuthorityV1):
+    schema: Literal["worker-binding-activation-preflight-v1"] = (
+        "worker-binding-activation-preflight-v1"
+    )
+    preflight_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    recorded_at: UtcSecond
+    valid_until: UtcSecond
+    lifecycle: Literal["active"] = "active"
+    preflight_state: Literal["readiness_gated"] = "readiness_gated"
+    eligibility: Literal["worker_binding_activation_preflight_recorded"] = (
+        "worker_binding_activation_preflight_recorded"
+    )
+    blockers: tuple[BlockerV1, ...] = SUCCESS_BLOCKERS
+    one_shot_dequeue_worker_binding: OneShotDequeueWorkerBindingV1
+    one_shot_dequeue_worker_binding_status: OneShotDequeueWorkerBindingStatusV1
+    binding_subject_fingerprint: FingerprintV1
+    worker_subject_fingerprint: FingerprintV1
+    queue_item_reference_fingerprint: FingerprintV1
+    inherited_limits_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    idempotency_key_fingerprint: FingerprintV1
+    preflight_record_fingerprint: FingerprintV1
+    worker_binding_activation_preflight_recorded: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerBindingActivationPreflightV1:
+        if self.blockers != SUCCESS_BLOCKERS:
+            raise ValueError("v0.47 preflight blockers must remain fixed")
+        recorded, expiry = _instant(self.recorded_at), _instant(self.valid_until)
+        if not recorded < expiry <= recorded + timedelta(seconds=MAX_FRESHNESS_SECONDS):
+            raise ValueError("v0.47 preflight expiry exceeds freshness bound")
+        binding, status = (
+            self.one_shot_dequeue_worker_binding,
+            self.one_shot_dequeue_worker_binding_status,
+        )
+        if (
+            self.operator_id != binding.operator_id
+            or self.operator_id != status.operator_id
+            or self.candidate_record_id != binding.candidate_record_id
+            or self.candidate_record_id != status.candidate_record_id
+            or status.binding_id != binding.binding_id
+            or status.binding_record_fingerprint != binding.binding_record_fingerprint
+            or self.valid_until > binding.valid_until
+            or self.valid_until > status.valid_until
+        ):
+            raise ValueError("v0.47 preflight ownership or linkage mismatch")
+        if (
+            self.binding_subject_fingerprint != binding.subject_fingerprint
+            or self.worker_subject_fingerprint != binding.worker_subject_fingerprint
+            or self.queue_item_reference_fingerprint
+            != binding.queue_item_reference_fingerprint
+            or self.inherited_limits_fingerprint != binding.inherited_limits_fingerprint
+        ):
+            raise ValueError("v0.47 preflight subject or limits mismatch")
+        if self.subject_fingerprint != preflight_subject_fingerprint(self):
+            raise ValueError("v0.47 preflight subject fingerprint mismatch")
+        if self.preflight_id != derived_preflight_id(self.subject_fingerprint):
+            raise ValueError("v0.47 preflight id mismatch")
+        if self.preflight_record_fingerprint != preflight_record_fingerprint(self):
+            raise ValueError("v0.47 preflight record fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class WorkerBindingActivationPreflightStatusV1(ClosedAuthorityV1):
+    schema: Literal["worker-binding-activation-preflight-status-v1"] = (
+        "worker-binding-activation-preflight-status-v1"
+    )
+    preflight_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    lifecycle: Literal["active", "expired"]
+    preflight_state: Literal["worker_binding_activation_preflight_recorded"]
+    eligibility: Literal["worker_binding_activation_preflight_recorded"]
+    blockers: tuple[BlockerV1, ...] = SUCCESS_BLOCKERS
+    evaluated_at: UtcSecond
+    valid_until: UtcSecond
+    preflight_record_fingerprint: FingerprintV1
+    status_fingerprint: FingerprintV1
+    worker_binding_activation_preflight_recorded: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerBindingActivationPreflightStatusV1:
+        if self.blockers != SUCCESS_BLOCKERS:
+            raise ValueError("v0.47 preflight status blockers are fixed")
+        if self.status_fingerprint != status_fingerprint(self):
+            raise ValueError("v0.47 preflight status fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class WorkerBindingActivationPreflightIdempotencyReservationV1(ContractModel):
+    schema: Literal["worker-binding-activation-preflight-idempotency-reservation-v1"] = (
+        "worker-binding-activation-preflight-idempotency-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    preflight_id: CanonicalUuid5
+    preflight_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    permanent: Literal[True] = True
+
+
+class WorkerBindingActivationPreflightSubjectReservationV1(ContractModel):
+    schema: Literal["worker-binding-activation-preflight-subject-reservation-v1"] = (
+        "worker-binding-activation-preflight-subject-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    preflight_id: CanonicalUuid5
+    preflight_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    reservation_fingerprint: FingerprintV1
+    permanent: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerBindingActivationPreflightSubjectReservationV1:
+        if self.reservation_fingerprint != reservation_fingerprint(self):
+            raise ValueError("v0.47 preflight reservation fingerprint mismatch")
+        return self
+
+
+class WorkerBindingActivationPreflightAuditEvidenceV1(ClosedAuthorityV1):
+    schema: Literal["worker-binding-activation-preflight-audit-v1"] = (
+        "worker-binding-activation-preflight-audit-v1"
+    )
+    event: Literal[
+        "worker_binding_activation_preflight_recorded",
+        "worker_binding_activation_preflight_read",
+        "worker_binding_activation_preflight_indeterminate",
+    ]
+    audit_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    preflight_id: CanonicalUuid5 | None
+    occurred_at: UtcSecond
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"]
+    correlation_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1 | None
+    preflight_record_fingerprint: FingerprintV1 | None
+    audit_fingerprint: FingerprintV1
+    worker_binding_activation_preflight_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerBindingActivationPreflightAuditEvidenceV1:
+        if self.audit_fingerprint != audit_fingerprint(self):
+            raise ValueError("v0.47 preflight audit fingerprint mismatch")
+        return self
+
+
+class WorkerBindingActivationPreflightRedactedErrorV1(ClosedAuthorityV1):
+    schema: Literal["worker-binding-activation-preflight-error-v1"] = (
+        "worker-binding-activation-preflight-error-v1"
+    )
+    error_code: Literal[
+        "installation_capability_unsupported",
+        "evidence_not_found",
+        "ownership_mismatch",
+        "permission_scope_missing",
+        "v046_binding_not_active",
+        "v046_binding_not_recorded",
+        "linkage_mismatch",
+        "fingerprint_mismatch",
+        "inherited_limits_mismatch",
+        "evidence_stale",
+        "evidence_expired",
+        "ambiguous_state",
+        "caller_supplied_credential",
+        "caller_supplied_endpoint",
+        "caller_supplied_command",
+        "unsupported_authority",
+        "reservation_before_effect_failed",
+        "permanent_subject_reserved",
+        "idempotency_conflict",
+        "append_indeterminate",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "invalid_request",
+        "rate_limited",
+        "quota_exceeded",
+        "conflict",
+        "record_too_large",
+        "store_corrupt",
+        "internal_error",
+    ]
+    message: Literal[SAFE_MESSAGE] = SAFE_MESSAGE
+    retryable: Literal[False] = False
+    correlation_fingerprint: FingerprintV1
+    redacted: Literal[True] = True
+    worker_binding_activation_preflight_recorded: Literal[False] = False
+
+
+class WorkerBindingActivationPreflightResultV1(ClosedAuthorityV1):
+    schema: Literal["worker-binding-activation-preflight-result-v1"] = (
+        "worker-binding-activation-preflight-result-v1"
+    )
+    ok: bool
+    outcome: Literal["success", "failure", "indeterminate"]
+    record: WorkerBindingActivationPreflightV1 | None
+    status: WorkerBindingActivationPreflightStatusV1 | None
+    error: WorkerBindingActivationPreflightRedactedErrorV1 | None
+    correlation_fingerprint: FingerprintV1
+    worker_binding_activation_preflight_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerBindingActivationPreflightResultV1:
+        if self.outcome == "success":
+            good = (
+                self.ok
+                and self.record is not None
+                and self.status is not None
+                and self.error is None
+                and self.worker_binding_activation_preflight_recorded
+            )
+        else:
+            good = (
+                not self.ok
+                and self.record is None
+                and self.status is None
+                and self.error is not None
+                and not self.worker_binding_activation_preflight_recorded
+            )
+        if not good:
+            raise ValueError("v0.47 preflight result shape mismatch")
+        if self.record is not None and self.status.preflight_id != self.record.preflight_id:
+            raise ValueError("v0.47 preflight result status mismatch")
+        _bounded(self)
+        return self
+
+
+class WorkerBindingActivationPreflightCollectionV1(ClosedAuthorityV1):
+    schema: Literal["worker-binding-activation-preflight-collection-v1"] = (
+        "worker-binding-activation-preflight-collection-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    items: tuple[WorkerBindingActivationPreflightV1, ...]
+    count: int
+    collection_fingerprint: FingerprintV1
+    worker_binding_activation_preflight_recorded: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerBindingActivationPreflightCollectionV1:
+        if self.count != len(self.items) or self.count > MAX_COLLECTION_RECORDS:
+            raise ValueError("v0.47 preflight collection exceeds bound")
+        ordered = tuple(
+            sorted(self.items, key=lambda item: (item.recorded_at, item.preflight_id))
+        )
+        if ordered != self.items:
+            raise ValueError("v0.47 preflight collection is not ordered")
+        if any(
+            item.operator_id != self.operator_id
+            or item.candidate_record_id != self.candidate_record_id
+            for item in self.items
+        ):
+            raise ValueError("v0.47 preflight collection ownership mismatch")
+        if self.collection_fingerprint != collection_fingerprint(self):
+            raise ValueError("v0.47 preflight collection fingerprint mismatch")
         _bounded(self)
         return self
 
@@ -644,6 +920,316 @@ def evaluation_fingerprint(
     return fingerprint(
         "atlas:worker-binding-activation-preflight-evaluation:v1",
         _without(value, "evaluation_fingerprint"),
+    )
+
+
+def opaque_fingerprint(domain: str, value: str) -> FingerprintV1:
+    return fingerprint(domain, value)
+
+
+def derived_uuid5(domain: str, value: Any) -> str:
+    seed = fingerprint(domain, value).value
+    return str(uuid.uuid5(_UUID5_NAMESPACE, f"{domain}:{seed}"))
+
+
+def idempotency_key_fingerprint(operator_id: str, raw_key: str) -> FingerprintV1:
+    key = _visible(raw_key)
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-idempotency:v1",
+        {"operator_id": operator_id, "idempotency_key": key},
+    )
+
+
+def request_fingerprint(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    create: WorkerBindingActivationPreflightCreateV1,
+    request_received_at: str,
+    idempotency_fingerprint: FingerprintV1,
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-request:v1",
+        {
+            "operator_id": operator_id,
+            "candidate_record_id": candidate_record_id,
+            "create": create,
+            "idempotency_key_fingerprint": idempotency_fingerprint,
+        },
+    )
+
+
+def preflight_subject_fingerprint(
+    value: WorkerBindingActivationPreflightV1 | dict[str, Any],
+) -> FingerprintV1:
+    raw = value.model_dump(mode="json") if isinstance(value, BaseModel) else dict(value)
+    binding = raw["one_shot_dequeue_worker_binding"]
+    status = raw["one_shot_dequeue_worker_binding_status"]
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-subject:v1",
+        {
+            "operator_id": raw["operator_id"],
+            "candidate_record_id": raw["candidate_record_id"],
+            "binding_id": binding["binding_id"],
+            "binding_record_fingerprint": binding["binding_record_fingerprint"],
+            "binding_status_fingerprint": status["status_fingerprint"],
+            "binding_subject_fingerprint": binding["subject_fingerprint"],
+            "worker_subject_fingerprint": binding["worker_subject_fingerprint"],
+            "queue_item_reference_fingerprint": binding[
+                "queue_item_reference_fingerprint"
+            ],
+            "inherited_limits_fingerprint": binding["inherited_limits_fingerprint"],
+        },
+    )
+
+
+def reservation_subject_fingerprint(
+    validation: WorkerBindingActivationPreflightValidationInputV1 | dict[str, Any],
+) -> FingerprintV1:
+    raw = validation.model_dump(mode="json") if isinstance(validation, BaseModel) else dict(validation)
+    binding = raw["one_shot_dequeue_worker_binding"]
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-subject:v1",
+        {
+            "operator_id": raw["operator_id"],
+            "candidate_record_id": raw["candidate_record_id"],
+            "binding_id": binding["binding_id"],
+            "binding_record_fingerprint": raw["create"]["binding_record_fingerprint"],
+            "binding_status_fingerprint": raw["create"]["binding_status_fingerprint"],
+            "binding_subject_fingerprint": raw["create"]["binding_subject_fingerprint"],
+            "worker_subject_fingerprint": raw["create"]["worker_subject_fingerprint"],
+            "queue_item_reference_fingerprint": raw["create"][
+                "queue_item_reference_fingerprint"
+            ],
+            "inherited_limits_fingerprint": raw["create"][
+                "inherited_limits_fingerprint"
+            ],
+        },
+    )
+
+
+def derived_preflight_id(subject_fingerprint: FingerprintV1) -> str:
+    return derived_uuid5(
+        "atlas:worker-binding-activation-preflight-id:v1", subject_fingerprint
+    )
+
+
+def preflight_record_fingerprint(
+    value: WorkerBindingActivationPreflightV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-record:v1",
+        _without(value, "preflight_record_fingerprint"),
+    )
+
+
+def status_fingerprint(
+    value: WorkerBindingActivationPreflightStatusV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-status:v1",
+        _without(value, "status_fingerprint"),
+    )
+
+
+def reservation_fingerprint(
+    value: WorkerBindingActivationPreflightSubjectReservationV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-reservation:v1",
+        _without(value, "reservation_fingerprint"),
+    )
+
+
+def audit_fingerprint(
+    value: WorkerBindingActivationPreflightAuditEvidenceV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-audit:v1",
+        _without(value, "audit_fingerprint"),
+    )
+
+
+def collection_fingerprint(
+    value: WorkerBindingActivationPreflightCollectionV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-binding-activation-preflight-collection:v1",
+        _without(value, "collection_fingerprint"),
+    )
+
+
+def build_preflight(
+    validation: WorkerBindingActivationPreflightValidationInputV1,
+) -> WorkerBindingActivationPreflightV1:
+    now = _instant(validation.authority.request_received_at)
+    valid_until = min(
+        now + timedelta(seconds=MAX_FRESHNESS_SECONDS),
+        _instant(validation.one_shot_dequeue_worker_binding.valid_until),
+        _instant(validation.one_shot_dequeue_worker_binding_status.valid_until),
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    subject = reservation_subject_fingerprint(validation)
+    raw = {
+        "preflight_id": derived_preflight_id(subject),
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "recorded_at": validation.authority.request_received_at,
+        "valid_until": valid_until,
+        "one_shot_dequeue_worker_binding": validation.one_shot_dequeue_worker_binding,
+        "one_shot_dequeue_worker_binding_status": (
+            validation.one_shot_dequeue_worker_binding_status
+        ),
+        "binding_subject_fingerprint": validation.create.binding_subject_fingerprint,
+        "worker_subject_fingerprint": validation.create.worker_subject_fingerprint,
+        "queue_item_reference_fingerprint": (
+            validation.create.queue_item_reference_fingerprint
+        ),
+        "inherited_limits_fingerprint": validation.create.inherited_limits_fingerprint,
+        "subject_fingerprint": subject,
+        "idempotency_key_fingerprint": idempotency_key_fingerprint(
+            validation.operator_id, validation.idempotency_key
+        ),
+    }
+    seed = WorkerBindingActivationPreflightV1.model_construct(
+        **raw,
+        preflight_record_fingerprint=fingerprint("atlas:seed:v1", "record"),
+    )
+    return WorkerBindingActivationPreflightV1.model_validate(
+        {**raw, "preflight_record_fingerprint": preflight_record_fingerprint(seed)}
+    )
+
+
+def build_reservations(
+    validation: WorkerBindingActivationPreflightValidationInputV1,
+    record: WorkerBindingActivationPreflightV1,
+) -> tuple[
+    WorkerBindingActivationPreflightIdempotencyReservationV1,
+    WorkerBindingActivationPreflightSubjectReservationV1,
+]:
+    idem = idempotency_key_fingerprint(validation.operator_id, validation.idempotency_key)
+    request_fp = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=idem,
+    )
+    raw = {
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "idempotency_key_fingerprint": idem,
+        "request_fingerprint": request_fp,
+        "subject_fingerprint": record.subject_fingerprint,
+        "preflight_id": record.preflight_id,
+        "preflight_record_fingerprint": record.preflight_record_fingerprint,
+        "reserved_at": validation.authority.request_received_at,
+    }
+    idempotency = WorkerBindingActivationPreflightIdempotencyReservationV1.model_validate(
+        raw
+    )
+    reservation_seed = (
+        WorkerBindingActivationPreflightSubjectReservationV1.model_construct(
+            **raw,
+            reservation_fingerprint=fingerprint("atlas:seed:v1", "reservation"),
+        )
+    )
+    reservation = WorkerBindingActivationPreflightSubjectReservationV1.model_validate(
+        {**raw, "reservation_fingerprint": reservation_fingerprint(reservation_seed)}
+    )
+    return idempotency, reservation
+
+
+def build_audit(
+    record: WorkerBindingActivationPreflightV1,
+    *,
+    event: Literal[
+        "worker_binding_activation_preflight_recorded",
+        "worker_binding_activation_preflight_read",
+        "worker_binding_activation_preflight_indeterminate",
+    ],
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"],
+    correlation_fingerprint: FingerprintV1,
+    occurred_at: str,
+) -> WorkerBindingActivationPreflightAuditEvidenceV1:
+    raw = {
+        "event": event,
+        "audit_id": derived_uuid5(
+            "atlas:worker-binding-activation-preflight-audit-id:v1",
+            {
+                "operator_id": record.operator_id,
+                "candidate_record_id": record.candidate_record_id,
+                "preflight_id": record.preflight_id,
+                "event": event,
+                "outcome": outcome,
+                "correlation_fingerprint": correlation_fingerprint,
+                "occurred_at": occurred_at,
+            },
+        ),
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "preflight_id": record.preflight_id,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "correlation_fingerprint": correlation_fingerprint,
+        "subject_fingerprint": record.subject_fingerprint,
+        "preflight_record_fingerprint": record.preflight_record_fingerprint,
+        "worker_binding_activation_preflight_recorded": outcome == "recorded",
+    }
+    seed = WorkerBindingActivationPreflightAuditEvidenceV1.model_construct(
+        **raw,
+        audit_fingerprint=fingerprint("atlas:seed:v1", "audit"),
+    )
+    return WorkerBindingActivationPreflightAuditEvidenceV1.model_validate(
+        {**raw, "audit_fingerprint": audit_fingerprint(seed)}
+    )
+
+
+def derive_status(
+    record: WorkerBindingActivationPreflightV1,
+    *,
+    evaluated_at: str,
+) -> WorkerBindingActivationPreflightStatusV1:
+    raw = {
+        "preflight_id": record.preflight_id,
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "lifecycle": (
+            "expired" if _instant(evaluated_at) >= _instant(record.valid_until) else "active"
+        ),
+        "preflight_state": "worker_binding_activation_preflight_recorded",
+        "eligibility": record.eligibility,
+        "blockers": record.blockers,
+        "evaluated_at": evaluated_at,
+        "valid_until": record.valid_until,
+        "preflight_record_fingerprint": record.preflight_record_fingerprint,
+    }
+    seed = WorkerBindingActivationPreflightStatusV1.model_construct(
+        **raw,
+        status_fingerprint=fingerprint("atlas:seed:v1", "status"),
+    )
+    return WorkerBindingActivationPreflightStatusV1.model_validate(
+        {**raw, "status_fingerprint": status_fingerprint(seed)}
+    )
+
+
+def build_collection(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    items: tuple[WorkerBindingActivationPreflightV1, ...],
+) -> WorkerBindingActivationPreflightCollectionV1:
+    raw = {
+        "operator_id": operator_id,
+        "candidate_record_id": candidate_record_id,
+        "items": items,
+        "count": len(items),
+    }
+    seed = WorkerBindingActivationPreflightCollectionV1.model_construct(
+        **raw,
+        collection_fingerprint=fingerprint("atlas:seed:v1", "collection"),
+    )
+    return WorkerBindingActivationPreflightCollectionV1.model_validate(
+        {**raw, "collection_fingerprint": collection_fingerprint(seed)}
     )
 
 
