@@ -6,6 +6,42 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.46 P0-P5 - One-Shot Dequeue Worker Binding
+
+- Selected and completed Atlas v0.46 **One-Shot Dequeue Worker Binding** with
+  the closed [v1 planning contract](docs/architecture/one-shot-dequeue-worker-binding-v1.md).
+- Added immutable Core models, explicit default-off service/store
+  construction, guarded candidate-scoped API, and nested Mission Control
+  read-only evidence for binding one exact successful same-owner v0.45
+  one-shot controlled dequeue receipt to one exact same-owner v0.40 worker
+  intake subject.
+- P5 closes the boundary with regression locks for exact v0.45 lineage,
+  worker-subject ownership, freshness/expiry, fingerprints, inherited limits,
+  permanent idempotency and subject no-replay, indeterminate reservations,
+  bounded/redacted/secret-free persistence, API/UI isolation, and
+  Agent/execution-worker zero-consumer checks.
+- V0.46 remains binding evidence only. It introduces no worker store contact,
+  worker runtime contact, worker start/invocation, Agent invocation, execution
+  authorization/start, queue polling consumer, claim, lease, acknowledgement,
+  retry/resend, scheduler/workflow execution, Docker/Podman/container/shell/
+  process authority, installation execution, provider/repository/in-guest
+  mutation, deployment, rollback, Home Assistant exception, release
+  publication, or change to `compose.execution-smoke.override.yaml`.
+- P5 adds focused tests and release documentation only.
+
+#### v0.45 P0-P5 - One-Shot Controlled Dequeue Boundary
+
+- Completed Atlas v0.45 **One-Shot Controlled Dequeue Boundary** over one
+  active valid same-owner v0.44 controlled dequeue admission record and its
+  exact v0.43/v0.42 inert queue item lineage.
+- V0.45 records bounded one-shot dequeue receipt evidence for the exact
+  admitted inert item only, with permanent no-replay and no queue polling,
+  claim, lease, acknowledgement, worker start, Agent invocation, execution
+  start, installation, mutation, deployment, or rollback authority.
+- P5 locks exact lineage, inherited limits, adapter receipt redaction,
+  indeterminate outcome, default-off construction, API/UI limits, Home
+  Assistant blocking, and Agent/execution-worker zero-consumer isolation.
+
 #### v0.44 P0-P5 - Controlled Dequeue Admission
 
 - Selected Atlas v0.44 **Controlled Dequeue Admission** and froze the
