@@ -28,6 +28,7 @@ from app.worker_intake_admission.contract import (
     WorkerIntakeAdmissionLinkageV1,
     WorkerIntakeAdmissionStatusV1,
     WorkerIntakeAdmissionV1,
+    v020_v038_chain_fingerprint,
 )
 from app.worker_intake_admission.contract import (
     record_fingerprint as v040_record_fingerprint,
@@ -35,7 +36,6 @@ from app.worker_intake_admission.contract import (
 from app.worker_intake_admission.contract import (
     status_fingerprint as v040_status_fingerprint,
 )
-from app.worker_intake_admission.contract import v020_v038_chain_fingerprint
 from app.worker_queue_reservation.contract import (
     RESERVATION_BLOCKERS as QUEUE_RESERVATION_BLOCKERS,
 )

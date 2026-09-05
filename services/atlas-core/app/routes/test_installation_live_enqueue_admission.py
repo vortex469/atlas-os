@@ -19,8 +19,8 @@ from app.operator_auth.models import (
     INSTALLATION_LIVE_ENQUEUE_ADMISSION_RECORD,
     INSTALLATION_WORKER_INTAKE_ADMISSION_READ,
     INSTALLATION_WORKER_INTAKE_ADMISSION_RECORD,
-    OperatorCredential,
     SUPPORTED_OPERATOR_PERMISSIONS,
+    OperatorCredential,
 )
 from app.operator_auth.rate_limit import OperatorRateLimiter
 from app.operator_auth.sessions import OperatorSessionStore
