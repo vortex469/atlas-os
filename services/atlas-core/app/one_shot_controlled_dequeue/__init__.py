@@ -3,6 +3,8 @@
 from .contract import (
     PERMISSION,
     SUCCESS_BLOCKERS,
+    OneShotControlledDequeueAdapterRequestV1,
+    OneShotControlledDequeueAdapterResultV1,
     OneShotControlledDequeueAuditEvidenceV1,
     OneShotControlledDequeueAuthorityContextV1,
     OneShotControlledDequeueCollectionV1,
@@ -15,6 +17,7 @@ from .contract import (
     OneShotControlledDequeueStatusV1,
     OneShotControlledDequeueSubjectReservationV1,
     OneShotControlledDequeueValidationInputV1,
+    build_adapter_request,
     build_audit,
     build_collection,
     build_receipt,
@@ -27,6 +30,8 @@ from .contract import (
 __all__ = (
     "PERMISSION",
     "SUCCESS_BLOCKERS",
+    "OneShotControlledDequeueAdapterRequestV1",
+    "OneShotControlledDequeueAdapterResultV1",
     "OneShotControlledDequeueAuditEvidenceV1",
     "OneShotControlledDequeueAuthorityContextV1",
     "OneShotControlledDequeueCollectionV1",
@@ -39,6 +44,7 @@ __all__ = (
     "OneShotControlledDequeueStatusV1",
     "OneShotControlledDequeueSubjectReservationV1",
     "OneShotControlledDequeueValidationInputV1",
+    "build_adapter_request",
     "build_audit",
     "build_collection",
     "build_receipt",

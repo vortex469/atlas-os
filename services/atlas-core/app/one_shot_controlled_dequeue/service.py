@@ -15,6 +15,8 @@ from app.controlled_dequeue_admission.contract import (
 
 from .contract import (
     PERMISSION,
+    OneShotControlledDequeueAdapterRequestV1,
+    OneShotControlledDequeueAdapterResultV1,
     OneShotControlledDequeueAuthorityContextV1,
     OneShotControlledDequeueCollectionV1,
     OneShotControlledDequeueCreateV1,
@@ -22,8 +24,10 @@ from .contract import (
     OneShotControlledDequeueResultV1,
     OneShotControlledDequeueValidationInputV1,
     OperatorId,
+    build_adapter_request,
     build_audit,
     build_collection,
+    build_receipt,
     build_reservations,
     derive_status,
     evaluate_one_shot_controlled_dequeue,
@@ -47,8 +51,16 @@ class OneShotControlledDequeueEvidenceReader(Protocol):
     ) -> tuple[ControlledDequeueAdmissionV1, ControlledDequeueAdmissionStatusV1] | None: ...
 
 
+class OneShotControlledDequeueQueueAdapter(Protocol):
+    """Single supported adapter effect for one exact server-owned inert item."""
+
+    def attempt_exact_item(
+        self, request: OneShotControlledDequeueAdapterRequestV1
+    ) -> OneShotControlledDequeueAdapterResultV1: ...
+
+
 class OneShotControlledDequeueReservationService:
-    """Create/get/list bounded reservation evidence; no live dequeue consumer exists."""
+    """Create/get/list bounded dequeue evidence; no live consumer exists."""
 
     def __init__(
         self,
@@ -56,11 +68,13 @@ class OneShotControlledDequeueReservationService:
         evidence_reader: OneShotControlledDequeueEvidenceReader,
         store: OneShotControlledDequeueStore,
         clock: Callable[[], datetime],
+        queue_adapter: OneShotControlledDequeueQueueAdapter | None = None,
         enabled: bool = False,
     ) -> None:
         self._evidence_reader = evidence_reader
         self._store = store
         self._clock = clock
+        self._queue_adapter = queue_adapter
         self._enabled = enabled
 
     def create(
@@ -176,11 +190,38 @@ class OneShotControlledDequeueReservationService:
                     exact_create.controlled_dequeue_admission_valid_until
                 ),
             )
-            return _failure(
-                "dequeue_adapter_unavailable",
-                correlation_id,
-                outcome="indeterminate",
+            if self._queue_adapter is None:
+                return _failure(
+                    "dequeue_adapter_unavailable",
+                    correlation_id,
+                    outcome="indeterminate",
+                )
+            adapter_result = self._attempt_exact_item(
+                build_adapter_request(validation, subject_reservation)
             )
+            record = build_receipt(
+                validation,
+                adapter_receipt_fingerprint=adapter_result.adapter_receipt_fingerprint,
+                outcome=adapter_result.outcome,
+                dequeue_id=subject_reservation.dequeue_id,
+                dequeue_subject=subject_reservation.dequeue_subject_fingerprint,
+            )
+            recorded_audit = build_audit(
+                operator_id=operator,
+                candidate_record_id=candidate_record_id,
+                dequeue_id=record.dequeue_id,
+                event="one_shot_controlled_dequeue_recorded",
+                outcome="recorded",
+                correlation_fingerprint=_correlation_fingerprint(correlation_id),
+                occurred_at=received_at,
+                dequeue_subject_fingerprint=record.subject_fingerprint,
+                dequeue_record_fingerprint=record.dequeue_record_fingerprint,
+            )
+            stored = self._store.append_receipt(
+                record=record,
+                audit_evidence=recorded_audit,
+            )
+            return _success(stored, correlation_id, self._server_now())
         except OneShotControlledDequeueStoreError as error:
             code = (
                 error.code
@@ -200,6 +241,28 @@ class OneShotControlledDequeueReservationService:
             return _validation_failure(str(error), correlation_id)
         except Exception:  # noqa: BLE001 - injected dependency details are redacted
             return _failure("internal_error", correlation_id)
+
+    def _attempt_exact_item(
+        self, request: OneShotControlledDequeueAdapterRequestV1
+    ) -> OneShotControlledDequeueAdapterResultV1:
+        try:
+            assert self._queue_adapter is not None
+            raw = self._queue_adapter.attempt_exact_item(request)
+            result = OneShotControlledDequeueAdapterResultV1.model_validate(
+                raw.model_dump(mode="python")
+                if hasattr(raw, "model_dump")
+                else raw
+            )
+            if (
+                result.queue_identity_fingerprint != request.queue_identity_fingerprint
+                or result.item_identity_fingerprint != request.item_identity_fingerprint
+            ):
+                raise ValueError("one-shot controlled dequeue adapter receipt mismatch")
+            return result
+        except TimeoutError:
+            return _adapter_indeterminate("timeout", request)
+        except Exception:  # noqa: BLE001 - adapter ambiguity must not leak or retry
+            return _adapter_indeterminate("ambiguous", request)
 
     def get(
         self,
@@ -267,13 +330,15 @@ def create_one_shot_controlled_dequeue_reservation_service(
     evidence_reader: OneShotControlledDequeueEvidenceReader,
     store: OneShotControlledDequeueStore,
     clock: Callable[[], datetime],
+    queue_adapter: OneShotControlledDequeueQueueAdapter | None = None,
     enabled: bool = False,
 ) -> OneShotControlledDequeueReservationService:
-    """Explicit P2 construction; no production composition calls this."""
+    """Explicit construction; production startup does not install an adapter."""
     return OneShotControlledDequeueReservationService(
         evidence_reader=evidence_reader,
         store=store,
         clock=clock,
+        queue_adapter=queue_adapter,
         enabled=enabled,
     )
 
@@ -286,12 +351,27 @@ def _success(
     correlation = _correlation_fingerprint(correlation_id)
     return OneShotControlledDequeueResultV1(
         ok=True,
-        outcome="success",
+        outcome=record.outcome,
         record=record,
         status=derive_status(record, evaluated_at=evaluated_at),
         error=None,
         correlation_fingerprint=correlation,
         one_shot_controlled_dequeue_recorded=True,
+    )
+
+
+def _adapter_indeterminate(
+    reason: str,
+    request: OneShotControlledDequeueAdapterRequestV1,
+) -> OneShotControlledDequeueAdapterResultV1:
+    return OneShotControlledDequeueAdapterResultV1(
+        outcome="indeterminate",
+        adapter_receipt_fingerprint=opaque_fingerprint(
+            "atlas:one-shot-controlled-dequeue-adapter-receipt:v1",
+            f"terminal-indeterminate:{reason}",
+        ),
+        queue_identity_fingerprint=request.queue_identity_fingerprint,
+        item_identity_fingerprint=request.item_identity_fingerprint,
     )
 
 
@@ -371,6 +451,7 @@ def _failure(
 
 __all__ = (
     "OneShotControlledDequeueEvidenceReader",
+    "OneShotControlledDequeueQueueAdapter",
     "OneShotControlledDequeueReservationService",
     "create_one_shot_controlled_dequeue_reservation_service",
 )
