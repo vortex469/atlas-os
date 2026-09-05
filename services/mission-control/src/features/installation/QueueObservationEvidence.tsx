@@ -6,6 +6,7 @@ import { useOperatorSession } from "../../hooks/operatorSessionContext";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { OneShotLiveEnqueueV1 } from "../../types/oneShotLiveEnqueue";
 import type { QueueObservationReceiptResultV1, QueueObservationReceiptV1 } from "../../types/queueObservation";
+import { ControlledDequeueAdmissions } from "./ControlledDequeueAdmissions";
 
 const CONFIRMATION = "Record bounded queue observation evidence only. This does not dequeue, poll as a consumer, claim, lease, acknowledge, contact or start a worker, invoke Agent or a workflow, dispatch, retry, resend, install, deploy, roll back, mutate, or execute anything.";
 
@@ -125,6 +126,7 @@ function Observation({ item }: { item: QueueObservationReceiptV1 }) {
                 {["Payload schema defined", "Payload constructed", "Payload serialized", "Executable payload allowed", "Live enqueue allowed", "Dequeue defined", "Dequeue allowed", "Queue polling allowed", "Queue claim allowed", "Queue lease allowed", "Queue ack allowed", "Worker contact allowed", "Worker start allowed", "Execution start allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Agent invocation allowed", "Workflow start allowed", "Docker execution allowed", "Podman execution allowed", "Container execution allowed", "Shell execution allowed", "Process execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <ControlledDequeueAdmissions candidateId={item.candidate_record_id} observation={item} />
     </li>;
 }
 

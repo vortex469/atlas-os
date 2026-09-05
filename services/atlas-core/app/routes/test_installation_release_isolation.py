@@ -565,6 +565,7 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/liveEnqueueAdmission.ts"),
         Path("api/oneShotLiveEnqueue.ts"),
         Path("api/queueObservation.ts"),
+        Path("api/controlledDequeueAdmission.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 

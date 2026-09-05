@@ -38,6 +38,7 @@ describe("v0.42 one-shot live enqueue Mission Control boundary", () => {
             "../features/installation/LiveEnqueueAdmissions.tsx",
             "../features/installation/OneShotLiveEnqueues.tsx",
             "../features/installation/QueueObservationEvidence.tsx",
+            "../types/controlledDequeueAdmission.ts",
             "../types/oneShotLiveEnqueue.ts",
             "../types/queueObservation.ts",
         ]);

@@ -24,9 +24,12 @@ describe("v0.43 queue observation Mission Control boundary", () => {
         expect(navigation).not.toMatch(/queue observation|queue_observation|enqueue receipt/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /queueObservation|QueueObservation/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
+            "../api/controlledDequeueAdmission.ts",
             "../api/queueObservation.ts",
+            "../features/installation/ControlledDequeueAdmissions.tsx",
             "../features/installation/OneShotLiveEnqueues.tsx",
             "../features/installation/QueueObservationEvidence.tsx",
+            "../types/controlledDequeueAdmission.ts",
             "../types/queueObservation.ts",
         ]);
     });
