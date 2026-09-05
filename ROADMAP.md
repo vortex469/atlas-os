@@ -137,8 +137,7 @@ One-Shot Live Enqueue record, Core may preserve bounded proof that the exact
 inert v0.42 queue item was accepted by, or observed at, the queue identity
 already intended by the v0.39-v0.42 lineage. Its strongest state is
 `queue_observation_recorded`, always blocked by `dequeue_not_defined`,
-`queue_polling_consumer_not_defined`, `worker_start_not_defined`,
-`agent_invocation_not_defined`, and
+`queue_polling_not_defined`, `worker_start_not_defined`, and
 `execution_start_boundary_not_defined`.
 
 This is observation and enqueue-receipt evidence only. It is not dequeue,
