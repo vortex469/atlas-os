@@ -327,6 +327,10 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "worker_queue_reservation/contract.py",
         "worker_intake_admission/contract.py",
         "installation_live_enqueue_admission/contract.py",
+        "installation_one_shot_live_enqueue/contract.py",
+        "queue_observation_receipt/contract.py",
+        "controlled_dequeue_admission/contract.py",
+        "one_shot_controlled_dequeue/contract.py",
     }
     consumers = []
     for path in app_root.rglob("*.py"):
