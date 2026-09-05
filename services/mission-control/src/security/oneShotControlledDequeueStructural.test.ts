@@ -26,9 +26,11 @@ describe("v0.45 one-shot controlled dequeue Mission Control boundary", () => {
         const consumers = Object.entries(productionModules).filter(([, source]) => /oneShotControlledDequeue|OneShotControlledDequeue|one-shot-controlled-dequeues/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/oneShotControlledDequeue.ts",
+            "../api/oneShotDequeueWorkerBinding.ts",
             "../features/installation/ControlledDequeueAdmissions.tsx",
             "../features/installation/OneShotControlledDequeues.tsx",
             "../types/oneShotControlledDequeue.ts",
+            "../types/oneShotDequeueWorkerBinding.ts",
         ]);
     });
 

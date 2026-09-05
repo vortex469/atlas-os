@@ -18,6 +18,7 @@ vi.mock("../../api/oneShotControlledDequeue", async (original) => {
     const module = await original<typeof import("../../api/oneShotControlledDequeue")>();
     return { ...module, listOneShotControlledDequeues: vi.fn(), createOneShotControlledDequeue: vi.fn(), oneShotControlledDequeueIdempotencyKey: () => "stable-one-shot-controlled-key" };
 });
+vi.mock("./OneShotDequeueWorkerBindings", () => ({ OneShotDequeueWorkerBindings: () => <section aria-label="One-shot dequeue worker binding evidence">Nested v0.46 binding evidence</section> }));
 
 const empty: OneShotControlledDequeueCollectionV1 = { ...oneShotControlledDequeueCollectionFixture, items: [], count: 0 };
 const props = {

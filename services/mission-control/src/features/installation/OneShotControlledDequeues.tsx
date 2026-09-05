@@ -6,6 +6,7 @@ import { useOperatorSession } from "../../hooks/operatorSessionContext";
 import type { ControlledDequeueAdmissionV1 } from "../../types/controlledDequeueAdmission";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { OneShotControlledDequeueResultV1, OneShotControlledDequeueV1 } from "../../types/oneShotControlledDequeue";
+import { OneShotDequeueWorkerBindings } from "./OneShotDequeueWorkerBindings";
 
 const CONFIRMATION = "Record one-shot controlled dequeue receipt for the exact admitted inert item only. This does not poll, claim, lease, acknowledge, contact or start a worker, invoke Agent or a workflow, dispatch, retry, resend, install, deploy, roll back, mutate, or execute anything else.";
 
@@ -170,6 +171,7 @@ function Receipt({ item }: { item: OneShotControlledDequeueV1 }) {
                 {["Payload schema defined", "Payload constructed", "Payload serialized", "Executable payload allowed", "Dequeue defined", "Dequeue allowed", "Queue polling allowed", "Queue polled", "Queue claim allowed", "Queue claimed", "Queue lease allowed", "Queue leased", "Queue ack allowed", "Queue acked", "Queue consumed", "Worker contact allowed", "Worker contacted", "Worker start allowed", "Worker started", "Agent invocation allowed", "Execution start allowed", "Process execution allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Scheduler allowed", "Workflow start allowed", "Docker execution allowed", "Podman execution allowed", "Container execution allowed", "Shell execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <OneShotDequeueWorkerBindings candidateId={item.candidate_record_id} dequeueId={item.dequeue_id} />
     </li>;
 }
 

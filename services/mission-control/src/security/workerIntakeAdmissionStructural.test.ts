@@ -33,10 +33,12 @@ describe("v0.40 worker intake admission Mission Control boundary", () => {
         expect(component).toMatch(/not live enqueue, dequeue, worker contact, worker start, dispatch, execution/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /worker-intake-admissions|WorkerIntakeAdmission/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
+            "../api/oneShotDequeueWorkerBinding.ts",
             "../api/workerIntakeAdmission.ts",
             "../features/installation/WorkerIntakeAdmissions.tsx",
             "../features/installation/WorkerQueueReservations.tsx",
             "../types/liveEnqueueAdmission.ts",
+            "../types/oneShotDequeueWorkerBinding.ts",
             "../types/workerIntakeAdmission.ts",
         ]);
     });
