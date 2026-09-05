@@ -61,6 +61,7 @@ from app.runner_binding_plan.contract import RunnerBindingLimitsV1
 MAX_CREATE_BYTES = 16 * 1024
 MAX_CREATE_NESTING = 16
 MAX_MODEL_BYTES = 192 * 1024
+MAX_COLLECTION_RECORDS = 16
 MAX_FRESHNESS_SECONDS = 30
 PERMISSION = "installation.execution.controlled_dequeue_admission.record"
 SCOPE = "installation_controlled_dequeue_admission_only"
@@ -416,6 +417,73 @@ class ControlledDequeueAdmissionStatusV1(ClosedAuthorityV1):
         return self
 
 
+class ControlledDequeueAdmissionIdempotencyReservationV1(ContractModel):
+    schema: Literal["controlled-dequeue-admission-idempotency-reservation-v1"] = (
+        "controlled-dequeue-admission-idempotency-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    admission_id: CanonicalUuid5
+    admission_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    permanent: Literal[True] = True
+
+
+class ControlledDequeueAdmissionSubjectReservationV1(ContractModel):
+    schema: Literal["controlled-dequeue-admission-subject-reservation-v1"] = (
+        "controlled-dequeue-admission-subject-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    admission_id: CanonicalUuid5
+    admission_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    reservation_fingerprint: FingerprintV1
+    permanent: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledDequeueAdmissionSubjectReservationV1:
+        if self.reservation_fingerprint != reservation_fingerprint(self):
+            raise ValueError("controlled dequeue admission reservation fingerprint mismatch")
+        return self
+
+
+class ControlledDequeueAdmissionAuditEvidenceV1(ClosedAuthorityV1):
+    schema: Literal["controlled-dequeue-admission-audit-v1"] = (
+        "controlled-dequeue-admission-audit-v1"
+    )
+    event: Literal[
+        "controlled_dequeue_admission_recorded",
+        "controlled_dequeue_admission_read",
+        "controlled_dequeue_admission_indeterminate",
+    ]
+    audit_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    admission_id: CanonicalUuid5 | None
+    occurred_at: UtcSecond
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"]
+    correlation_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1 | None
+    admission_record_fingerprint: FingerprintV1 | None
+    audit_fingerprint: FingerprintV1
+    controlled_dequeue_admission_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledDequeueAdmissionAuditEvidenceV1:
+        if self.audit_fingerprint != audit_fingerprint(self):
+            raise ValueError("controlled dequeue admission audit fingerprint mismatch")
+        return self
+
+
 class ControlledDequeueAdmissionEvaluationV1(ClosedAuthorityV1):
     schema: Literal["controlled-dequeue-admission-evaluation-v1"] = (
         "controlled-dequeue-admission-evaluation-v1"
@@ -488,13 +556,18 @@ class ControlledDequeueAdmissionRedactedErrorV1(ClosedAuthorityV1):
         "ambiguous_state",
         "executable_payload",
         "unsupported_authority",
+        "permanent_subject_reserved",
+        "idempotency_conflict",
         "append_indeterminate",
+        "reservation_before_effect_failed",
         "unauthenticated",
         "forbidden",
         "not_found",
         "invalid_request",
+        "quota_exceeded",
         "conflict",
         "record_too_large",
+        "store_corrupt",
         "internal_error",
     ]
     message: Literal[SAFE_MESSAGE] = SAFE_MESSAGE
@@ -502,6 +575,74 @@ class ControlledDequeueAdmissionRedactedErrorV1(ClosedAuthorityV1):
     correlation_fingerprint: FingerprintV1
     redacted: Literal[True] = True
     controlled_dequeue_admission_recorded: Literal[False] = False
+
+
+class ControlledDequeueAdmissionResultV1(ClosedAuthorityV1):
+    schema: Literal["controlled-dequeue-admission-result-v1"] = (
+        "controlled-dequeue-admission-result-v1"
+    )
+    ok: bool
+    outcome: Literal["success", "failure", "indeterminate"]
+    record: ControlledDequeueAdmissionV1 | None
+    status: ControlledDequeueAdmissionStatusV1 | None
+    error: ControlledDequeueAdmissionRedactedErrorV1 | None
+    correlation_fingerprint: FingerprintV1
+    controlled_dequeue_admission_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledDequeueAdmissionResultV1:
+        if self.outcome == "success":
+            good = (
+                self.ok
+                and self.record is not None
+                and self.status is not None
+                and self.error is None
+                and self.controlled_dequeue_admission_recorded
+            )
+        else:
+            good = (
+                not self.ok
+                and self.record is None
+                and self.status is None
+                and self.error is not None
+                and not self.controlled_dequeue_admission_recorded
+            )
+        if not good:
+            raise ValueError("controlled dequeue admission result shape mismatch")
+        if self.record is not None and self.status.admission_id != self.record.admission_id:
+            raise ValueError("controlled dequeue admission result status binding mismatch")
+        _bounded(self)
+        return self
+
+
+class ControlledDequeueAdmissionCollectionV1(ClosedAuthorityV1):
+    schema: Literal["controlled-dequeue-admission-collection-v1"] = (
+        "controlled-dequeue-admission-collection-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    items: tuple[ControlledDequeueAdmissionV1, ...]
+    count: int
+    collection_fingerprint: FingerprintV1
+    controlled_dequeue_admission_recorded: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledDequeueAdmissionCollectionV1:
+        if self.count != len(self.items) or self.count > MAX_COLLECTION_RECORDS:
+            raise ValueError("controlled dequeue admission collection exceeds bound")
+        ordered = tuple(sorted(self.items, key=lambda item: (item.recorded_at, item.admission_id)))
+        if ordered != self.items:
+            raise ValueError("controlled dequeue admission collection is not ordered")
+        if any(
+            item.operator_id != self.operator_id
+            or item.candidate_record_id != self.candidate_record_id
+            for item in self.items
+        ):
+            raise ValueError("controlled dequeue admission collection ownership mismatch")
+        if self.collection_fingerprint != collection_fingerprint(self):
+            raise ValueError("controlled dequeue admission collection fingerprint mismatch")
+        _bounded(self)
+        return self
 
 
 class ControlledDequeueAdmissionValidationInputV1(ContractModel):
@@ -864,6 +1005,15 @@ def request_fingerprint(
     )
 
 
+def reservation_fingerprint(
+    value: ControlledDequeueAdmissionSubjectReservationV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-dequeue-admission-reservation:v1",
+        _without(value, "reservation_fingerprint"),
+    )
+
+
 def opaque_fingerprint(domain: str, value: str) -> FingerprintV1:
     return fingerprint(domain, value)
 
@@ -876,6 +1026,24 @@ def derived_uuid5(domain: str, value: Any) -> str:
 def derived_admission_id(subject_fingerprint: FingerprintV1) -> str:
     return derived_uuid5(
         "atlas:controlled-dequeue-admission-id:v1", subject_fingerprint
+    )
+
+
+def audit_fingerprint(
+    value: ControlledDequeueAdmissionAuditEvidenceV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-dequeue-admission-audit:v1",
+        _without(value, "audit_fingerprint"),
+    )
+
+
+def collection_fingerprint(
+    value: ControlledDequeueAdmissionCollectionV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-dequeue-admission-collection:v1",
+        _without(value, "collection_fingerprint"),
     )
 
 
@@ -963,6 +1131,42 @@ def build_admission(
     )
 
 
+def build_reservations(
+    validation: ControlledDequeueAdmissionValidationInputV1,
+    admission: ControlledDequeueAdmissionV1,
+) -> tuple[
+    ControlledDequeueAdmissionIdempotencyReservationV1,
+    ControlledDequeueAdmissionSubjectReservationV1,
+]:
+    idem = idempotency_key_fingerprint(validation.operator_id, validation.idempotency_key)
+    request = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=idem,
+    )
+    raw = {
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "idempotency_key_fingerprint": idem,
+        "request_fingerprint": request,
+        "subject_fingerprint": admission.subject_fingerprint,
+        "admission_id": admission.admission_id,
+        "admission_record_fingerprint": admission.admission_record_fingerprint,
+        "reserved_at": validation.authority.request_received_at,
+    }
+    idempotency = ControlledDequeueAdmissionIdempotencyReservationV1.model_validate(raw)
+    seed = ControlledDequeueAdmissionSubjectReservationV1.model_construct(
+        **raw,
+        reservation_fingerprint=fingerprint("atlas:seed:v1", "reservation"),
+    )
+    subject = ControlledDequeueAdmissionSubjectReservationV1.model_validate(
+        {**raw, "reservation_fingerprint": reservation_fingerprint(seed)}
+    )
+    return idempotency, subject
+
+
 def derive_status(
     record: ControlledDequeueAdmissionV1,
     *,
@@ -987,6 +1191,71 @@ def derive_status(
     )
     return ControlledDequeueAdmissionStatusV1.model_validate(
         {**raw, "status_fingerprint": status_fingerprint(seed)}
+    )
+
+
+def build_collection(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    items: tuple[ControlledDequeueAdmissionV1, ...],
+) -> ControlledDequeueAdmissionCollectionV1:
+    ordered = tuple(sorted(items, key=lambda item: (item.recorded_at, item.admission_id)))
+    raw = {
+        "operator_id": operator_id,
+        "candidate_record_id": candidate_record_id,
+        "items": ordered,
+        "count": len(ordered),
+    }
+    seed = ControlledDequeueAdmissionCollectionV1.model_construct(
+        **raw,
+        collection_fingerprint=fingerprint("atlas:seed:v1", "collection"),
+    )
+    return ControlledDequeueAdmissionCollectionV1.model_validate(
+        {**raw, "collection_fingerprint": collection_fingerprint(seed)}
+    )
+
+
+def build_audit(
+    record: ControlledDequeueAdmissionV1,
+    *,
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"],
+    event: Literal[
+        "controlled_dequeue_admission_recorded",
+        "controlled_dequeue_admission_read",
+        "controlled_dequeue_admission_indeterminate",
+    ],
+    correlation_fingerprint: FingerprintV1,
+    occurred_at: str,
+) -> ControlledDequeueAdmissionAuditEvidenceV1:
+    raw = {
+        "event": event,
+        "audit_id": derived_uuid5(
+            "atlas:controlled-dequeue-admission-audit-id:v1",
+            {
+                "admission_id": record.admission_id,
+                "admission_record_fingerprint": record.admission_record_fingerprint,
+                "event": event,
+                "outcome": outcome,
+                "occurred_at": occurred_at,
+            },
+        ),
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "admission_id": record.admission_id,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "correlation_fingerprint": correlation_fingerprint,
+        "subject_fingerprint": record.subject_fingerprint,
+        "admission_record_fingerprint": record.admission_record_fingerprint,
+        "controlled_dequeue_admission_recorded": outcome == "recorded",
+    }
+    seed = ControlledDequeueAdmissionAuditEvidenceV1.model_construct(
+        **raw,
+        audit_fingerprint=fingerprint("atlas:seed:v1", "audit"),
+    )
+    return ControlledDequeueAdmissionAuditEvidenceV1.model_validate(
+        {**raw, "audit_fingerprint": audit_fingerprint(seed)}
     )
 
 
