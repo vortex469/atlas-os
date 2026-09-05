@@ -18,6 +18,7 @@ vi.mock("../../api/controlledDequeueAdmission", async (original) => {
     const module = await original<typeof import("../../api/controlledDequeueAdmission")>();
     return { ...module, listControlledDequeueAdmissions: vi.fn(), createControlledDequeueAdmission: vi.fn(), controlledDequeueAdmissionIdempotencyKey: () => "stable-controlled-dequeue-key" };
 });
+vi.mock("./OneShotControlledDequeues", () => ({ OneShotControlledDequeues: () => <section aria-label="One-shot controlled dequeue evidence">Nested one-shot controlled dequeue evidence</section> }));
 
 const empty: ControlledDequeueAdmissionCollectionV1 = { ...controlledDequeueAdmissionCollectionFixture, items: [], count: 0 };
 
@@ -46,6 +47,7 @@ describe("ControlledDequeueAdmissions", () => {
         expect(screen.getByText("Advanced controlled dequeue admission details")).toBeInTheDocument();
         expect(screen.getByLabelText(/ordered controlled dequeue admission blockers/i)).toHaveTextContent(/dequeue_not_defined.*queue_polling_not_defined.*queue_claim_not_defined.*queue_lease_not_defined.*queue_ack_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
         expect(screen.getByLabelText(/controlled dequeue admission fixed-false authority fields/i)).toHaveTextContent(/dequeue allowedfalse.*queue consumedfalse.*worker startedfalse.*process execution allowedfalse/i);
+        expect(screen.getByLabelText(/one-shot controlled dequeue evidence/i)).toHaveTextContent(/nested one-shot controlled dequeue evidence/i);
         expect(document.body.textContent).not.toMatch(/amqp|secret|internal\/path|10\.0\.0\.1|lease token|acknowledgement token/i);
         unmount();
 

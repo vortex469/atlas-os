@@ -26,9 +26,12 @@ describe("v0.44 controlled dequeue admission Mission Control boundary", () => {
         const consumers = Object.entries(productionModules).filter(([, source]) => /controlledDequeueAdmission|ControlledDequeueAdmission|controlled-dequeue-admissions/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/controlledDequeueAdmission.ts",
+            "../api/oneShotControlledDequeue.ts",
             "../features/installation/ControlledDequeueAdmissions.tsx",
+            "../features/installation/OneShotControlledDequeues.tsx",
             "../features/installation/QueueObservationEvidence.tsx",
             "../types/controlledDequeueAdmission.ts",
+            "../types/oneShotControlledDequeue.ts",
         ]);
     });
 
