@@ -58,6 +58,12 @@ INSTALLATION_QUEUE_OBSERVATION_RECORD = (
     "installation.execution.queue_observation.record"
 )
 INSTALLATION_QUEUE_OBSERVATION_READ = "installation.execution.queue_observation.read"
+INSTALLATION_CONTROLLED_DEQUEUE_ADMISSION_RECORD = (
+    "installation.execution.controlled_dequeue_admission.record"
+)
+INSTALLATION_CONTROLLED_DEQUEUE_ADMISSION_READ = (
+    "installation.execution.controlled_dequeue_admission.read"
+)
 SUPPORTED_OPERATOR_PERMISSIONS = frozenset(
     {
         OPERATIONAL_INTENT_CREATE,
@@ -85,6 +91,8 @@ SUPPORTED_OPERATOR_PERMISSIONS = frozenset(
         INSTALLATION_ONE_SHOT_LIVE_ENQUEUE_READ,
         INSTALLATION_QUEUE_OBSERVATION_RECORD,
         INSTALLATION_QUEUE_OBSERVATION_READ,
+        INSTALLATION_CONTROLLED_DEQUEUE_ADMISSION_RECORD,
+        INSTALLATION_CONTROLLED_DEQUEUE_ADMISSION_READ,
     }
 )
 

@@ -564,6 +564,7 @@ class ControlledDequeueAdmissionRedactedErrorV1(ClosedAuthorityV1):
         "forbidden",
         "not_found",
         "invalid_request",
+        "rate_limited",
         "quota_exceeded",
         "conflict",
         "record_too_large",

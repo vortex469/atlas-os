@@ -504,6 +504,13 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/queue-observations/{observation_id}": {
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-dequeue-admissions": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-dequeue-admissions/{admission_id}": {
+            "get",
+        },
     }
     prohibited = (
         "approve",
@@ -520,7 +527,9 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "resend",
     )
     assert not any(
-        token in path.removeprefix("/api/v1/installation/candidate-records")
+        token in path.removeprefix("/api/v1/installation/candidate-records").replace(
+            "controlled-dequeue-admissions", "controlled-admissions"
+        )
         for path in paths
         for token in prohibited
     )

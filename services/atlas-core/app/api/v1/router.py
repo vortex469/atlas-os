@@ -5,6 +5,9 @@ from app.models.api import APIDiscovery
 from app.routes.ace import router as ace_router
 from app.routes.ai import router as ai_router
 from app.routes.analysis import router as analysis_router
+from app.routes.controlled_dequeue_admission import (
+    router as controlled_dequeue_admission_router,
+)
 from app.routes.dashboard import router as dashboard_router
 from app.routes.delivery_activation_preflight import (
     router as delivery_activation_preflight_router,
@@ -138,6 +141,7 @@ router.include_router(worker_intake_admission_router)
 router.include_router(installation_live_enqueue_admission_router)
 router.include_router(installation_one_shot_live_enqueue_router)
 router.include_router(queue_observation_router)
+router.include_router(controlled_dequeue_admission_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
 router.include_router(execution_permission_grant_router)
