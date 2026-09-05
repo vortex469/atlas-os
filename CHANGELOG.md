@@ -6,6 +6,18 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.47 P3 - Worker Binding Activation Preflight Core API
+
+- Added the minimum guarded Core API surface for v0.47 worker-binding
+  activation preflight evidence: owner-scoped list/create/get under candidate
+  records, with dedicated operator permissions, CSRF/origin checks, strict
+  JSON and idempotency-key bounds, redacted errors, and OpenAPI registration.
+- The API remains default-off unless an explicit app-state service is supplied;
+  production startup still does not construct a preflight service, worker
+  client, queue consumer, Agent path, execution path, or activation path.
+- Locked P3 behavior with focused API/effect/isolation tests and adjacent
+  v0.46/operator-auth regressions.
+
 #### v0.47 P0 - Worker Binding Activation Preflight
 
 - Inspected the completed merged v0.46 baseline and selected the narrowest
