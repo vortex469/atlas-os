@@ -24,6 +24,17 @@ active same-owner v0.46 binding record. Activation, worker store/runtime
 contact, queue claim/lease/acknowledgement, worker start, Agent invocation,
 execution start, publication, deployment, and rollback remain blocked.
 
+The repository-supported next boundary for v0.48 is documentation-selected as
+**Worker Binding Activation Evidence**. Queue claim, lease, and
+acknowledgement prerequisites remain unsupported, so worker-start admission is
+not selected. The v0.48 boundary may only record evidence that one exact active
+same-owner v0.47 worker-binding activation preflight record was accepted as
+activation evidence for a later, separately released runtime activation
+boundary. Runtime activation, worker store/runtime contact, queue
+claim/lease/acknowledgement, worker-start admission, worker start, Agent
+invocation, execution start, publication, deployment, rollback, and effect
+consumers remain blocked.
+
 ## 2. Enduring architectural constraints
 
 - Local-first, provider-neutral evidence precedes mutation.
@@ -156,10 +167,58 @@ execution start, publication, deployment, and rollback remain blocked.
   activation, worker store/runtime contact, queue claim/lease/acknowledgement,
   worker start, Agent invocation, execution start, publication, deployment,
   rollback, and effect consumers undefined.
+- v0.48 selects worker-binding activation evidence over one active same-owner
+  v0.47 worker-binding activation preflight record as the next
+  repository-supported boundary while leaving runtime activation, worker
+  store/runtime contact, queue claim/lease/acknowledgement, worker-start
+  admission, worker start, Agent invocation, execution start, publication,
+  deployment, rollback, and effect consumers undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Selected v0.48 plan - Worker Binding Activation Evidence
+
+Atlas v0.48 selects **Worker Binding Activation Evidence**. The normative
+planning contract is [Worker Binding Activation Evidence
+v1](docs/architecture/worker-binding-activation-evidence-v1.md).
+
+V0.48 starts from the completed repository-supported v0.47 Worker Binding
+Activation Preflight baseline. The v0.47 implementation can record bounded
+evidence that one active same-owner v0.46 one-shot dequeue worker binding
+record is eligible to be considered by a later activation contract, but it has
+no binding activation, production worker store contact, worker runtime contact,
+queue claim, queue lease, queue acknowledgement, worker-start admission,
+worker start, Agent invocation, or execution-start boundary.
+
+The queue claim/lease/acknowledgement prerequisites are still not complete.
+The narrowest repository-supported next boundary is therefore not worker-start
+admission, claim, lease, acknowledgement, worker store contact, worker runtime
+contact, Agent invocation, or execution. It is only the evidence question of
+whether one exact active same-owner v0.47 preflight record may be accepted as
+worker-binding activation evidence for a later, separately released runtime
+activation boundary. Its strongest future state is
+`worker_binding_activation_evidence_recorded`, always blocked by
+`worker_activation_runtime_not_defined`, `store_contact_not_defined`,
+`runtime_contact_not_defined`, `queue_claim_not_defined`,
+`queue_lease_not_defined`, `queue_ack_not_defined`,
+`worker_start_admission_not_defined`, `worker_start_not_defined`,
+`agent_invocation_not_defined`, and
+`execution_start_boundary_not_defined`.
+
+This is activation evidence only. It is not binding activation, worker-start
+admission, worker store contact, worker runtime contact, queue claim, queue
+lease, queue acknowledgement, worker start, Agent invocation, execution
+authorization or start, queue polling, install, mutation, deployment, rollback,
+publication, or an effect consumer.
+
+Any later implementation must fail closed on unsupported architecture, preserve
+exact v0.47 lineage and ownership, retain permanent idempotency and subject
+no-replay, keep bounded append-only persistence, avoid secret storage or
+rendering, remain explicitly constructed and default-off, and prove API/UI
+isolation plus Agent/execution-worker zero-consumer behavior before any later
+worker-start admission can be considered.
 
 ## Completed v0.47 plan - Worker Binding Activation Preflight
 
