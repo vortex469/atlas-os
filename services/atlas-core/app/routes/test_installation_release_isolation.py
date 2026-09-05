@@ -518,6 +518,13 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/one-shot-controlled-dequeues/{dequeue_id}": {
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/one-shot-dequeue-worker-bindings": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/one-shot-dequeue-worker-bindings/{binding_id}": {
+            "get",
+        },
     }
     prohibited = (
         "approve",
@@ -538,6 +545,8 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
             "controlled-dequeue-admissions", "controlled-admissions"
         ).replace(
             "one-shot-controlled-dequeues", "one-shot-controlled-receipts"
+        ).replace(
+            "one-shot-dequeue-worker-bindings", "one-shot-worker-binding-evidence"
         ).replace(
             "{dequeue_id}", "{receipt_id}"
         )
@@ -578,6 +587,7 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/queueObservation.ts"),
         Path("api/controlledDequeueAdmission.ts"),
         Path("api/oneShotControlledDequeue.ts"),
+        Path("api/oneShotDequeueWorkerBinding.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 
