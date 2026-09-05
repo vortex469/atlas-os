@@ -1,6 +1,6 @@
 # Controlled Dequeue Admission v1 planning contract
 
-Status: **Atlas v0.44 P0 frozen planning contract**.
+Status: **Atlas v0.44 P0-P5 closed controlled dequeue admission contract**.
 
 This document freezes the v0.44 Controlled Dequeue Admission boundary before
 runtime work. It starts from the completed v0.43 Queue Observation and Enqueue

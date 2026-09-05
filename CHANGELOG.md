@@ -6,6 +6,29 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.44 P0-P5 - Controlled Dequeue Admission
+
+- Selected Atlas v0.44 **Controlled Dequeue Admission** and froze the
+  documentation-only [v1 planning contract](docs/architecture/controlled-dequeue-admission-v1.md).
+- Completed closed immutable Core models, explicit default-off service/store
+  construction, guarded candidate-scoped API, and nested Mission Control
+  evidence presentation for one exact same-owner active v0.43 queue
+  observation receipt over one exact inert v0.42 queue item.
+- P5 closes the boundary with regression locks for v0.43 observation lineage,
+  v0.42 queue-item identity, ownership, freshness/expiry, fingerprint
+  sensitivity, inherited-limit binding, concurrency, permanent idempotency and
+  no-replay, bounded/redacted/secret-free persistence, corruption/ambiguity
+  closure, API/UI limits, default-off construction, and Agent/execution-worker
+  zero-consumer isolation.
+- V0.44 remains admission/evidence only. It introduces no live dequeue, queue
+  polling consumer, claim, lease, acknowledgement, consume/remove operation,
+  worker start/invocation, Agent invocation, execution start, automatic
+  retry/resend, scheduler/workflow execution, Docker/Podman/container/shell/
+  process authority, installation execution, provider/repository/in-guest
+  mutation, deployment, rollback, Home Assistant exception, release
+  publication, or change to `compose.execution-smoke.override.yaml`.
+- P5 adds focused tests and release documentation only.
+
 #### v0.43 P0 - Queue Observation and Enqueue Receipt Evidence
 
 - Selected Atlas v0.43 **Queue Observation and Enqueue Receipt Evidence** and
