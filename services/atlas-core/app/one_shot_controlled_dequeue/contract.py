@@ -337,6 +337,40 @@ class BoundedDequeueReceiptEvidenceV1(ClosedAuthorityV1):
         return self
 
 
+class OneShotControlledDequeueAdapterRequestV1(ClosedAuthorityV1):
+    schema: Literal["one-shot-controlled-dequeue-adapter-request-v1"] = (
+        "one-shot-controlled-dequeue-adapter-request-v1"
+    )
+    dequeue_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    controlled_dequeue_admission_id: CanonicalUuid5
+    queue_observation_receipt_id: CanonicalUuid5
+    enqueue_id: CanonicalUuid5
+    inert_queue_item_id: CanonicalUuid5
+    queue_identity: Literal["abstract_installation_queue"] = "abstract_installation_queue"
+    item_identity: Literal["inert_reference_only_queue_item"] = (
+        "inert_reference_only_queue_item"
+    )
+    exact_admitted_item_only: Literal[True] = True
+    queue_identity_fingerprint: FingerprintV1
+    item_identity_fingerprint: FingerprintV1
+    lineage_fingerprint: FingerprintV1
+    dequeue_subject_fingerprint: FingerprintV1
+
+
+class OneShotControlledDequeueAdapterResultV1(ClosedAuthorityV1):
+    schema: Literal["one-shot-controlled-dequeue-adapter-result-v1"] = (
+        "one-shot-controlled-dequeue-adapter-result-v1"
+    )
+    outcome: Literal["success", "failure", "indeterminate"]
+    exact_admitted_item_only: Literal[True] = True
+    adapter_receipt_redacted: Literal[True] = True
+    adapter_receipt_fingerprint: FingerprintV1
+    queue_identity_fingerprint: FingerprintV1
+    item_identity_fingerprint: FingerprintV1
+
+
 class OneShotControlledDequeueReceiptV1(ClosedAuthorityV1):
     schema: Literal["one-shot-controlled-dequeue-v1"] = (
         "one-shot-controlled-dequeue-v1"
@@ -632,18 +666,18 @@ class OneShotControlledDequeueResultV1(ClosedAuthorityV1):
 
     @model_validator(mode="after")
     def exact(self) -> OneShotControlledDequeueResultV1:
-        if self.outcome == "success":
+        if self.record is not None:
             good = (
                 self.ok
-                and self.record is not None
                 and self.status is not None
                 and self.error is None
+                and self.outcome == self.record.outcome
+                and self.status.outcome == self.record.outcome
                 and self.one_shot_controlled_dequeue_recorded
             )
         else:
             good = (
                 not self.ok
-                and self.record is None
                 and self.status is None
                 and self.error is not None
                 and not self.one_shot_controlled_dequeue_recorded
@@ -1044,22 +1078,38 @@ def dequeue_subject_fingerprint(
     value: OneShotControlledDequeueReceiptV1 | dict[str, Any],
 ) -> FingerprintV1:
     raw = value.model_dump(mode="json") if isinstance(value, BaseModel) else dict(value)
+    admission = raw["controlled_dequeue_admission"]
+    status = raw["controlled_dequeue_admission_status"]
+    receipt = admission["queue_observation_receipt"]
+    receipt_status = admission["queue_observation_receipt_status"]
+    enqueue = receipt["v042_enqueue"]
+    enqueue_status = receipt["v042_enqueue_status"]
     return fingerprint(
         "atlas:one-shot-controlled-dequeue-subject:v1",
         {
             "operator_id": raw["operator_id"],
             "candidate_record_id": raw["candidate_record_id"],
-            "controlled_dequeue_admission_fingerprint": raw[
-                "controlled_dequeue_admission"
-            ]["admission_record_fingerprint"],
-            "controlled_dequeue_admission_status_fingerprint": raw[
-                "controlled_dequeue_admission_status"
-            ]["status_fingerprint"],
+            "v044_admission_record_fingerprint": (
+                admission["admission_record_fingerprint"]
+            ),
+            "v044_admission_status_fingerprint": status["status_fingerprint"],
+            "v044_subject_fingerprint": admission["subject_fingerprint"],
+            "v043_receipt_record_fingerprint": receipt["receipt_record_fingerprint"],
+            "v043_receipt_status_fingerprint": receipt_status["status_fingerprint"],
+            "v043_queue_observation_fingerprint": (
+                receipt["queue_observation"]["observation_fingerprint"]
+            ),
+            "v043_enqueue_receipt_evidence_fingerprint": (
+                receipt["receipt_evidence"]["receipt_fingerprint"]
+            ),
+            "v042_enqueue_record_fingerprint": enqueue["record_fingerprint"],
+            "v042_queue_item_fingerprint": enqueue["queue_item"]["item_fingerprint"],
+            "v042_status_fingerprint": enqueue_status["status_fingerprint"],
             "queue_identity_fingerprint": raw["queue_identity_fingerprint"],
             "item_identity_fingerprint": raw["item_identity_fingerprint"],
-            "lineage_fingerprint": raw["lineage_fingerprint"],
-            "bounded_receipt_fingerprint": raw["bounded_receipt"]["receipt_fingerprint"],
-            "idempotency_key_fingerprint": raw["idempotency_key_fingerprint"],
+            "inherited_limits_fingerprint": raw["inherited_limits"][
+                "limits_fingerprint"
+            ],
         },
     )
 
@@ -1112,7 +1162,7 @@ def reservation_subject_fingerprint(
     enqueue = receipt["v042_enqueue"]
     enqueue_status = receipt["v042_enqueue_status"]
     return fingerprint(
-        "atlas:one-shot-controlled-dequeue-reservation-subject:v1",
+        "atlas:one-shot-controlled-dequeue-subject:v1",
         {
             "operator_id": raw["operator_id"],
             "candidate_record_id": raw["candidate_record_id"],
@@ -1236,6 +1286,28 @@ def build_reservations(
     return idempotency, reservation
 
 
+def build_adapter_request(
+    validation: OneShotControlledDequeueValidationInputV1,
+    reservation: OneShotControlledDequeueSubjectReservationV1,
+) -> OneShotControlledDequeueAdapterRequestV1:
+    admission = validation.controlled_dequeue_admission
+    receipt = admission.queue_observation_receipt
+    item = receipt.v042_enqueue.queue_item
+    return OneShotControlledDequeueAdapterRequestV1(
+        dequeue_id=reservation.dequeue_id,
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        controlled_dequeue_admission_id=admission.admission_id,
+        queue_observation_receipt_id=receipt.receipt_id,
+        enqueue_id=receipt.v042_enqueue.enqueue_id,
+        inert_queue_item_id=item.queue_item_id,
+        queue_identity_fingerprint=validation.create.queue_identity_fingerprint,
+        item_identity_fingerprint=validation.create.item_identity_fingerprint,
+        lineage_fingerprint=validation.create.lineage_fingerprint,
+        dequeue_subject_fingerprint=reservation.dequeue_subject_fingerprint,
+    )
+
+
 def build_audit(
     *,
     operator_id: str,
@@ -1340,6 +1412,8 @@ def build_receipt(
     *,
     adapter_receipt_fingerprint: FingerprintV1 | None = None,
     outcome: Literal["success", "failure", "indeterminate"] = "success",
+    dequeue_id: str | None = None,
+    dequeue_subject: FingerprintV1 | None = None,
 ) -> OneShotControlledDequeueReceiptV1:
     admission, status = (
         validation.controlled_dequeue_admission,
@@ -1382,27 +1456,10 @@ def build_receipt(
         {**bounded_raw, "receipt_fingerprint": bounded_receipt_fingerprint(bounded_seed)}
     )
     idem = idempotency_key_fingerprint(validation.operator_id, validation.idempotency_key)
+    subject = dequeue_subject or reservation_subject_fingerprint(validation)
+    exact_dequeue_id = dequeue_id or derived_dequeue_id(subject)
     raw = {
-        "dequeue_id": derived_dequeue_id(
-            fingerprint(
-                "atlas:one-shot-controlled-dequeue-subject:v1",
-                {
-                    "operator_id": validation.operator_id,
-                    "candidate_record_id": validation.candidate_record_id,
-                    "controlled_dequeue_admission_fingerprint": (
-                        admission.admission_record_fingerprint
-                    ),
-                    "controlled_dequeue_admission_status_fingerprint": (
-                        status.status_fingerprint
-                    ),
-                    "queue_identity_fingerprint": queue_fp,
-                    "item_identity_fingerprint": item_fp,
-                    "lineage_fingerprint": line_fp,
-                    "bounded_receipt_fingerprint": bounded.receipt_fingerprint,
-                    "idempotency_key_fingerprint": idem,
-                },
-            )
-        ),
+        "dequeue_id": exact_dequeue_id,
         "operator_id": validation.operator_id,
         "candidate_record_id": validation.candidate_record_id,
         "recorded_at": validation.authority.request_received_at,
@@ -1418,21 +1475,14 @@ def build_receipt(
         "lineage_fingerprint": line_fp,
         "idempotency_key_fingerprint": idem,
     }
-    subject_seed = OneShotControlledDequeueReceiptV1.model_construct(
-        **raw,
-        subject_fingerprint=fingerprint("atlas:seed:v1", "subject"),
-        dequeue_record_fingerprint=fingerprint("atlas:seed:v1", "record"),
-    )
-    subject = dequeue_subject_fingerprint(subject_seed)
     record_seed = OneShotControlledDequeueReceiptV1.model_construct(
-        **{**raw, "dequeue_id": derived_dequeue_id(subject)},
+        **raw,
         subject_fingerprint=subject,
         dequeue_record_fingerprint=fingerprint("atlas:seed:v1", "record"),
     )
     return OneShotControlledDequeueReceiptV1.model_validate(
         {
             **raw,
-            "dequeue_id": derived_dequeue_id(subject),
             "subject_fingerprint": subject,
             "dequeue_record_fingerprint": dequeue_record_fingerprint(record_seed),
         }

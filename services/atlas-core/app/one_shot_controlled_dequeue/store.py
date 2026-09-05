@@ -258,6 +258,94 @@ class OneShotControlledDequeueStore:
         except sqlite3.Error as error:
             raise OneShotControlledDequeueStoreError("unavailable") from error
 
+    def append_receipt(
+        self,
+        *,
+        record: OneShotControlledDequeueReceiptV1,
+        audit_evidence: OneShotControlledDequeueAuditEvidenceV1,
+    ) -> OneShotControlledDequeueReceiptV1:
+        record_json = record.model_dump_json()
+        audit_json = audit_evidence.model_dump_json()
+        if max(len(value.encode()) for value in (record_json, audit_json)) > self.max_model_bytes:
+            raise OneShotControlledDequeueStoreError("record_too_large")
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    """SELECT * FROM one_shot_controlled_dequeue_records
+                    WHERE operator_id = ? AND dequeue_id = ?""",
+                    (record.operator_id, record.dequeue_id),
+                ).fetchone()
+                reservation = connection.execute(
+                    """SELECT * FROM one_shot_controlled_dequeue_reservations
+                    WHERE operator_id = ? AND dequeue_id = ?""",
+                    (record.operator_id, record.dequeue_id),
+                ).fetchone()
+                if reservation is None:
+                    raise OneShotControlledDequeueStoreError(
+                        "reservation_before_effect_failed"
+                    )
+                self._validate_reservation(reservation, operator_id=record.operator_id)
+                if (
+                    reservation["dequeue_subject_fingerprint"]
+                    != record.subject_fingerprint.value
+                    or reservation["idempotency_key_fingerprint"]
+                    != record.idempotency_key_fingerprint.value
+                ):
+                    raise OneShotControlledDequeueStoreError(
+                        "reservation_before_effect_failed"
+                    )
+                if row is not None:
+                    existing = self._decode_record(
+                        row, reservation, operator_id=record.operator_id
+                    )
+                    if existing != record:
+                        raise OneShotControlledDequeueStoreError(
+                            "permanent_subject_reserved"
+                        )
+                    connection.execute("COMMIT")
+                    return existing
+                admission = record.controlled_dequeue_admission
+                status = record.controlled_dequeue_admission_status
+                item = admission.queue_observation_receipt.v042_enqueue.queue_item
+                connection.execute(
+                    """INSERT INTO one_shot_controlled_dequeue_records (
+                    operator_id, dequeue_id, candidate_record_id,
+                    idempotency_key_fingerprint, request_fingerprint,
+                    dequeue_subject_fingerprint, dequeue_record_fingerprint,
+                    admission_id, admission_record_fingerprint,
+                    admission_status_fingerprint, queue_item_fingerprint,
+                    lineage_fingerprint, recorded_at, valid_until, record_json,
+                    audit_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        record.operator_id,
+                        record.dequeue_id,
+                        record.candidate_record_id,
+                        record.idempotency_key_fingerprint.value,
+                        reservation["request_fingerprint"],
+                        record.subject_fingerprint.value,
+                        record.dequeue_record_fingerprint.value,
+                        admission.admission_id,
+                        admission.admission_record_fingerprint.value,
+                        status.status_fingerprint.value,
+                        item.item_fingerprint.value,
+                        record.lineage_fingerprint.value,
+                        record.recorded_at,
+                        record.valid_until,
+                        record_json,
+                        audit_json,
+                    ),
+                )
+                connection.execute("COMMIT")
+                return record
+        except OneShotControlledDequeueStoreError:
+            raise
+        except sqlite3.IntegrityError as error:
+            raise OneShotControlledDequeueStoreError("conflict") from error
+        except sqlite3.Error as error:
+            raise OneShotControlledDequeueStoreError("unavailable") from error
+
     def get(self, *, operator_id: str, dequeue_id: str) -> OneShotControlledDequeueReceiptV1:
         try:
             with self._connect() as connection:

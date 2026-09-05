@@ -8,8 +8,10 @@ from pathlib import Path
 
 from app.one_shot_controlled_dequeue import service, store
 from app.one_shot_controlled_dequeue.contract import (
+    OneShotControlledDequeueAdapterResultV1,
     build_reservations,
     idempotency_key_fingerprint,
+    opaque_fingerprint,
     request_fingerprint,
 )
 from app.one_shot_controlled_dequeue.service import (
@@ -32,6 +34,27 @@ class Reader:
         return self.value
 
 
+class Adapter:
+    def __init__(self, *, outcome: str = "success", fail: BaseException | None = None) -> None:
+        self.outcome = outcome
+        self.fail = fail
+        self.calls = []
+
+    def attempt_exact_item(self, request):
+        self.calls.append(request)
+        if self.fail is not None:
+            raise self.fail
+        return OneShotControlledDequeueAdapterResultV1(
+            outcome=self.outcome,
+            adapter_receipt_fingerprint=opaque_fingerprint(
+                "atlas:one-shot-controlled-dequeue-adapter-receipt:v1",
+                f"adapter:{self.outcome}",
+            ),
+            queue_identity_fingerprint=request.queue_identity_fingerprint,
+            item_identity_fingerprint=request.item_identity_fingerprint,
+        )
+
+
 def _clock(second: int = 36):
     instant = datetime(2026, 8, 27, 12, 0, tzinfo=UTC) + timedelta(seconds=second)
     return lambda: instant
@@ -45,6 +68,7 @@ def _service(
     quota: int = 16,
     max_model_bytes: int = 224 * 1024,
     enabled: bool = True,
+    queue_adapter=None,
 ):
     admission, admission_status, create = _facts(tmp_path)
     reader = Reader(evidence if evidence is not None else (admission, admission_status))
@@ -57,6 +81,7 @@ def _service(
         evidence_reader=reader,
         store=reservation_store,
         clock=_clock(second),
+        queue_adapter=queue_adapter,
         enabled=enabled,
     )
     return reservation_service, reservation_store, reader, admission, admission_status, create
@@ -131,6 +156,67 @@ def test_create_reserves_before_effect_and_restart_keeps_no_replay(
         candidate_record_id=admission.candidate_record_id,
         correlation_id="list",
     ).count == 0
+
+
+def test_injected_adapter_records_one_exact_success_and_never_replays(
+    tmp_path: Path,
+) -> None:
+    adapter = Adapter(outcome="success")
+    dequeue_service, dequeue_store, reader, admission, _, create = _service(
+        tmp_path, queue_adapter=adapter
+    )
+    created = _record(dequeue_service, admission, create)
+    assert created.ok is True
+    assert created.outcome == "success"
+    assert created.record is not None
+    assert created.record.disposition == "exact_inert_item_dequeued"
+    assert created.record.dequeue_id == _reserved_dequeue_id(admission, create, tmp_path)
+    assert adapter.calls[0].dequeue_id == created.record.dequeue_id
+    assert adapter.calls[0].inert_queue_item_id == (
+        admission.queue_observation_receipt.v042_enqueue.queue_item.queue_item_id
+    )
+    assert reader.calls == 1
+
+    duplicate = _record(dequeue_service, admission, create)
+    assert duplicate.record == created.record
+    assert len(adapter.calls) == 1
+    assert reader.calls == 1
+    attempts = dequeue_store.list_attempts(
+        operator_id=admission.operator_id,
+        dequeue_id=created.record.dequeue_id,
+    )
+    assert tuple(attempt.outcome for attempt in attempts) == ("indeterminate",)
+
+
+def test_adapter_failure_and_timeout_are_terminal_redacted_records(
+    tmp_path: Path,
+) -> None:
+    failure_adapter = Adapter(outcome="failure")
+    failure_service, _, _, admission, _, create = _service(
+        tmp_path / "failure", queue_adapter=failure_adapter
+    )
+    failure = _record(failure_service, admission, create)
+    assert failure.ok is True
+    assert failure.outcome == "failure"
+    assert failure.record is not None
+    assert failure.record.disposition == "exact_inert_item_not_dequeued"
+    assert failure.error is None
+    assert len(failure_adapter.calls) == 1
+
+    timeout_adapter = Adapter(fail=TimeoutError("secret queue endpoint timed out"))
+    timeout_service, _, _, admission2, _, create2 = _service(
+        tmp_path / "timeout", queue_adapter=timeout_adapter
+    )
+    timeout = _record(timeout_service, admission2, create2)
+    assert timeout.ok is True
+    assert timeout.outcome == "indeterminate"
+    assert timeout.record is not None
+    assert timeout.record.disposition == "dequeue_completion_indeterminate"
+    assert "secret queue endpoint" not in timeout.model_dump_json()
+
+    duplicate = _record(timeout_service, admission2, create2)
+    assert duplicate.record == timeout.record
+    assert len(timeout_adapter.calls) == 1
 
 
 def test_auth_permission_disabled_missing_and_redaction_fail_before_effect(
