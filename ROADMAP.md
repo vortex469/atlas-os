@@ -152,6 +152,41 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
+## Planned v0.47 P0 - Worker Binding Activation Preflight
+
+Atlas v0.47 P0 selects **Worker Binding Activation Preflight**. The normative
+planning contract is [Worker Binding Activation Preflight v1](docs/architecture/worker-binding-activation-preflight-v1.md).
+
+V0.47 starts from the completed repository-supported v0.46 One-Shot Dequeue
+Worker Binding baseline. The v0.46 implementation can record bounded evidence
+that one successful same-owner v0.45 one-shot controlled dequeue receipt is
+bound to one exact same-owner v0.40 worker intake subject, but it has no
+production worker store contact, worker runtime contact, worker start, Agent
+invocation, execution-start boundary, queue polling consumer, claim, lease, or
+acknowledgement primitive.
+
+The narrowest repository-supported next boundary is therefore not claim, lease,
+acknowledgement, worker contact, worker start, Agent invocation, or execution.
+It is only a documentation-selected future preflight/admission question:
+whether one active same-owner v0.46 binding record is eligible to be considered
+by a later, separately released worker-binding activation contract. Its
+strongest future state is
+`worker_binding_activation_preflight_recorded`, always blocked by
+`worker_binding_activation_not_defined`, `store_contact_not_defined`,
+`runtime_contact_not_defined`, `queue_claim_not_defined`,
+`queue_lease_not_defined`, `queue_ack_not_defined`,
+`worker_start_not_defined`, `agent_invocation_not_defined`, and
+`execution_start_boundary_not_defined`.
+
+This is planning evidence only. P0 changes documentation only and adds no
+runtime model, service, store, migration, setting, permission, route, OpenAPI
+operation, UI code, queue library, worker client, runtime client, credential,
+endpoint, payload schema, background task, Agent change, execution-worker
+change, artifact, tag, push, publication, deployment, rollback, or change to
+`compose.execution-smoke.override.yaml`. All prior lineage, ownership, limits,
+no-replay, redaction, default-off, API/UI isolation, Home Assistant blocking,
+and Agent/execution-worker zero-consumer contracts remain unchanged.
+
 ## Completed v0.46 plan - One-Shot Dequeue Worker Binding
 
 Atlas v0.46 selects **One-Shot Dequeue Worker Binding**. The normative

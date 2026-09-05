@@ -6,6 +6,24 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.47 P0 - Worker Binding Activation Preflight
+
+- Inspected the completed merged v0.46 baseline and selected the narrowest
+  repository-supported next authority boundary: documentation-only
+  [Worker Binding Activation Preflight](docs/architecture/worker-binding-activation-preflight-v1.md).
+- P0 records that v0.47 may only ask whether one active same-owner v0.46
+  one-shot dequeue worker binding record is eligible to be considered by a
+  later, separately released worker-binding activation contract.
+- P0 does not select queue polling, claim, lease, acknowledgement, worker store
+  contact, worker runtime contact, worker start, Agent invocation, execution
+  authorization/start, retry/resend, scheduler/workflow execution, process
+  authority, installation, mutation, deployment, rollback, publication, or a
+  change to `compose.execution-smoke.override.yaml`.
+- Prior v0.20-v0.46 lineage, ownership, limits, permanent no-replay,
+  redaction, default-off construction, API/UI isolation, Home Assistant
+  blocking, and Agent/execution-worker zero-consumer contracts remain
+  unchanged.
+
 #### v0.46 P0-P5 - One-Shot Dequeue Worker Binding
 
 - Selected and completed Atlas v0.46 **One-Shot Dequeue Worker Binding** with
