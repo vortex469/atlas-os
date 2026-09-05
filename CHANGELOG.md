@@ -6,6 +6,26 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.47 P0-P5 - Worker Binding Activation Preflight
+
+- Selected and completed Atlas v0.47 **Worker Binding Activation Preflight**
+  with the closed [v1 planning contract](docs/architecture/worker-binding-activation-preflight-v1.md).
+- Added immutable Core models, explicit default-off service/store
+  construction, guarded candidate-scoped API, and nested Mission Control
+  read-only evidence for one active same-owner v0.46 one-shot dequeue worker
+  binding record.
+- P5 closes the boundary with regression locks proving only the exact P0
+  authority advanced: `worker_binding_activation_preflight_recorded`. Binding
+  activation, worker store/runtime contact, queue claim/lease/acknowledgement,
+  worker start, Agent invocation, execution start, publication, deployment,
+  rollback, and effect consumers remain blocked by fixed blockers.
+- V0.47 preserves exact v0.46 lineage, ownership, freshness/expiry,
+  fingerprints, inherited limits, permanent idempotency and subject no-replay,
+  bounded/redacted/secret-free persistence, API/UI isolation, Home Assistant
+  blocking, Agent/execution-worker zero-consumer checks, and the absence of
+  `compose.execution-smoke.override.yaml`.
+- P5 adds focused tests and release documentation only.
+
 #### v0.47 P3 - Worker Binding Activation Preflight Core API
 
 - Added the minimum guarded Core API surface for v0.47 worker-binding

@@ -1,10 +1,10 @@
 # Worker Binding Activation Preflight v1 planning contract
 
-Status: **Atlas v0.47 P0 documentation-only selected boundary**.
+Status: **Atlas v0.47 P0-P5 closed worker binding activation preflight contract**.
 
-This document records the repository-supported v0.47 P0 decision after
-inspection of the completed merged v0.46 baseline. The narrowest next boundary
-is a Core-local **Worker Binding Activation Preflight** over one exact v0.46
+This document records the repository-supported v0.47 closed release boundary
+after inspection of the completed merged v0.46 baseline. The narrowest next
+boundary is a Core-local **Worker Binding Activation Preflight** over one exact v0.46
 one-shot dequeue worker binding record. It may only answer whether that binding
 evidence is eligible to be considered by a later, separately released
 activation contract. It does not activate a binding, contact a worker store,
@@ -121,14 +121,17 @@ the queue-consumption primitives needed to support them safely.
 
 ## Persistence, Redaction, and Defaults
 
-P0 changes planning documents only. It adds no runtime model, service, store,
-migration, setting, permission, route, OpenAPI operation, UI code, queue
-library, worker client, runtime client, credential, endpoint, payload schema,
-background task, Agent change, execution-worker change, artifact, tag, push,
-publication, deployment, rollback, or change to
-`compose.execution-smoke.override.yaml`.
+P0 selected the planning boundary only. P1-P4 added closed immutable Core
+models, explicit default-off service/store construction, guarded candidate-
+scoped Core API, and nested read-only Mission Control evidence. P5 adds only
+release-wide closure tests and documentation.
 
-Any later phase must preserve v0.46 permanent idempotency and subject
+V0.47 remains preflight evidence only. It adds no queue library, worker client,
+runtime client, credential, endpoint, payload schema, background task, Agent
+change, execution-worker change, artifact, tag, push, release publication,
+deployment, rollback, or change to `compose.execution-smoke.override.yaml`.
+
+The closed release preserves v0.46 permanent idempotency and subject
 no-replay, bounded append-only persistence, redacted failure behavior,
 secret-free storage and rendering, explicit construction, default-off
 activation, API/UI isolation, Home Assistant blocking, and Agent/
@@ -136,7 +139,7 @@ execution-worker zero-consumer contracts.
 
 ## Must Not Change
 
-V0.47 P0 does not modify any prior authority boundary. The completed v0.20-v0.46
+V0.47 does not modify any prior authority boundary. The completed v0.20-v0.46
 lineage, ownership, limits, freshness, no-replay, redaction, and default-off
 contracts remain authoritative. Future worker-binding activation, worker store
 contact, runtime contact, worker start, Agent invocation, queue claim/lease/

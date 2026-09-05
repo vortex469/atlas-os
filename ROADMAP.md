@@ -1,8 +1,8 @@
 # Atlas OS Roadmap
 
-## 1. Current completed baseline - v0.46
+## 1. Current completed baseline - v0.47
 
-Atlas v0.46 P0-P5 is complete in the repository-supported baseline for this
+Atlas v0.47 P0-P5 is complete in the repository-supported baseline for this
 worktree. The latest immutable annotated release tag recorded in this checkout
 remains `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
@@ -19,6 +19,10 @@ admission stub, worker queue reservation evidence, worker intake admission
 evidence, live enqueue admission, one-shot live enqueue evidence, queue
 observation receipt evidence, controlled dequeue admission evidence, one-shot
 controlled dequeue evidence, and one-shot dequeue worker binding evidence.
+V0.47 adds only worker-binding activation preflight evidence over one exact
+active same-owner v0.46 binding record. Activation, worker store/runtime
+contact, queue claim/lease/acknowledgement, worker start, Agent invocation,
+execution start, publication, deployment, and rollback remain blocked.
 
 ## 2. Enduring architectural constraints
 
@@ -147,15 +151,20 @@ controlled dequeue evidence, and one-shot dequeue worker binding evidence.
   worker start, Agent invocation, execution authorization/start, queue
   polling, install, mutation, deployment, rollback, and effect consumers
   undefined.
+- v0.47 released worker-binding activation preflight evidence over one active
+  same-owner v0.46 one-shot dequeue worker binding record while leaving binding
+  activation, worker store/runtime contact, queue claim/lease/acknowledgement,
+  worker start, Agent invocation, execution start, publication, deployment,
+  rollback, and effect consumers undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Planned v0.47 P0 - Worker Binding Activation Preflight
+## Completed v0.47 plan - Worker Binding Activation Preflight
 
-Atlas v0.47 P0 selects **Worker Binding Activation Preflight**. The normative
-planning contract is [Worker Binding Activation Preflight v1](docs/architecture/worker-binding-activation-preflight-v1.md).
+Atlas v0.47 selects **Worker Binding Activation Preflight**. The normative
+contract is [Worker Binding Activation Preflight v1](docs/architecture/worker-binding-activation-preflight-v1.md).
 
 V0.47 starts from the completed repository-supported v0.46 One-Shot Dequeue
 Worker Binding baseline. The v0.46 implementation can record bounded evidence
@@ -178,14 +187,28 @@ strongest future state is
 `worker_start_not_defined`, `agent_invocation_not_defined`, and
 `execution_start_boundary_not_defined`.
 
-This is planning evidence only. P0 changes documentation only and adds no
-runtime model, service, store, migration, setting, permission, route, OpenAPI
-operation, UI code, queue library, worker client, runtime client, credential,
-endpoint, payload schema, background task, Agent change, execution-worker
-change, artifact, tag, push, publication, deployment, rollback, or change to
-`compose.execution-smoke.override.yaml`. All prior lineage, ownership, limits,
-no-replay, redaction, default-off, API/UI isolation, Home Assistant blocking,
-and Agent/execution-worker zero-consumer contracts remain unchanged.
+This is preflight evidence only. It is not worker-binding activation, worker
+store contact, worker runtime contact, queue claim, queue lease, queue
+acknowledgement, worker start, Agent invocation, execution authorization or
+start, queue polling, install, mutation, deployment, rollback, publication, or
+an effect consumer.
+
+P0-P5 are complete. P5 locks exact v0.46 binding lineage, ownership,
+freshness/expiry, fingerprints, inherited limits, permanent idempotency and
+subject no-replay, bounded persistence, API/UI isolation, Home Assistant
+blocking, and Agent/execution-worker zero-consumer checks. It proves only
+`worker_binding_activation_preflight_recorded` advanced and every later
+authority remains blocked by `worker_binding_activation_not_defined`,
+`store_contact_not_defined`, `runtime_contact_not_defined`,
+`queue_claim_not_defined`, `queue_lease_not_defined`,
+`queue_ack_not_defined`, `worker_start_not_defined`,
+`agent_invocation_not_defined`, and `execution_start_boundary_not_defined`.
+
+V0.47 can enable a later milestone to require worker-binding activation
+preflight evidence before independently defining worker store/runtime contact,
+queue claim/lease/acknowledgement, worker start, Agent invocation,
+scheduler/workflow execution, or execution start. It does not authorize,
+start, contact, claim, lease, acknowledge, or invoke any of those effects.
 
 ## Completed v0.46 plan - One-Shot Dequeue Worker Binding
 
