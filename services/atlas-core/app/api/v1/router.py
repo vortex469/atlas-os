@@ -61,6 +61,9 @@ from app.routes.internal_operational_actions import (
 from app.routes.one_shot_controlled_dequeue import (
     router as one_shot_controlled_dequeue_router,
 )
+from app.routes.one_shot_dequeue_worker_binding import (
+    router as one_shot_dequeue_worker_binding_router,
+)
 from app.routes.operator_auth import router as operator_auth_router
 from app.routes.ops import router as ops_router
 from app.routes.policies import router as policies_router
@@ -146,6 +149,7 @@ router.include_router(installation_one_shot_live_enqueue_router)
 router.include_router(queue_observation_router)
 router.include_router(controlled_dequeue_admission_router)
 router.include_router(one_shot_controlled_dequeue_router)
+router.include_router(one_shot_dequeue_worker_binding_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
 router.include_router(execution_permission_grant_router)
