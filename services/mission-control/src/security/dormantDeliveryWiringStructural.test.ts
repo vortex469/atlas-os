@@ -8,21 +8,32 @@ const sourceModules = import.meta.glob(
     { eager: true, import: "default", query: "?raw" },
 ) as Record<string, string>;
 
-const productionSources = Object.fromEntries(
-    Object.entries(sourceModules).filter(([path]) => (
-        !path.includes(".test.")
-        && !path.includes("/test/")
-        && !path.includes("/security/")
-        && !path.toLowerCase().includes("installationreadinessreview")
-        && !path.toLowerCase().includes("deliveryactivationpreflight")
-        && !path.toLowerCase().includes("deliveryenablement")
-        && !path.toLowerCase().includes("runnerbindingplan")
-    )),
+const approvedLaterQueueObservationSurface = new Set([
+    "../api/queueObservation.ts",
+    "../features/installation/QueueObservationEvidence.tsx",
+    "../types/queueObservation.ts",
+]);
+
+const isProductionSource = (path: string) => (
+    !path.includes(".test.")
+    && !path.includes("/test/")
+    && !path.includes("/security/")
+    && !path.toLowerCase().includes("installationreadinessreview")
+    && !path.toLowerCase().includes("deliveryactivationpreflight")
+    && !path.toLowerCase().includes("deliveryenablement")
+    && !path.toLowerCase().includes("runnerbindingplan")
+    && !approvedLaterQueueObservationSurface.has(path)
 );
 
-const source = Object.entries(productionSources)
+const combinedSource = (sources: Record<string, string>) => Object.entries(sources)
     .map(([path, contents]) => `${path}\n${contents}`)
     .join("\n");
+
+const productionSources = Object.fromEntries(
+    Object.entries(sourceModules).filter(([path]) => isProductionSource(path)),
+);
+
+const source = combinedSource(productionSources);
 
 const v028Markers = [
     /dormant[-_ ](?:core[-_ ](?:to[-_ ])?)?agent[-_ ](?:intake[-_ ])?delivery/i,
@@ -34,6 +45,36 @@ const v028Markers = [
     /core_prepared_agent_intake_delivery_wiring_only/i,
     /production_delivery_observed/i,
 ];
+
+function expectNoDormantDeliveryTransport(sourceText: string) {
+    expect(sourceText).not.toMatch(
+        /atlas(?:Agent)?\.(?:get|post|put|patch|delete)[^\n]*(?:dormant[-_/ ]delivery|agent[-_/ ]intake[-_/ ]delivery)/i,
+    );
+    expect(sourceText).not.toMatch(
+        /(?:fetch|axios)[^\n]*(?:dormant[-_/ ]delivery|agent[-_/ ]intake[-_/ ]delivery)/i,
+    );
+    expect(sourceText).not.toMatch(
+        /(?:href|to|navigate\()[^\n]*(?:dormant[-_/ ]delivery|agent[-_/ ]intake[-_/ ]delivery)/i,
+    );
+    expect(sourceText).not.toMatch(
+        /(?:prepare|validateResponse|getPreparation)\s*\([^\n]*(?:delivery|intake)/i,
+    );
+}
+
+function expectNoEndpointAuthenticationSecretEvidence(sourceText: string) {
+    for (const marker of [
+        /endpoint_fingerprint/i,
+        /credential_(?:source|file)/i,
+        /ca_bundle_file/i,
+        /tls_server_name/i,
+        /installation_intake:create/i,
+        /mode-0400-file/i,
+    ]) {
+        expect(sourceText).not.toMatch(marker);
+    }
+    expect(sourceText).not.toMatch(/authorization:\s*bearer/i);
+    expect(sourceText).not.toMatch(/api\/v1\/internal\/installation-intake/i);
+}
 
 describe("v0.28 dormant Core-to-Agent delivery wiring presentation boundary", () => {
     it("has no type, API client, hook, component, page, route, or navigation", () => {
@@ -51,33 +92,32 @@ describe("v0.28 dormant Core-to-Agent delivery wiring presentation boundary", ()
     });
 
     it("has no read, prepare, response-validation, or mutation call", () => {
-        expect(source).not.toMatch(
-            /atlas(?:Agent)?\.(?:get|post|put|patch|delete)[^\n]*(?:dormant[-_/ ]delivery|agent[-_/ ]intake[-_/ ]delivery)/i,
-        );
-        expect(source).not.toMatch(
-            /(?:fetch|axios)[^\n]*(?:dormant[-_/ ]delivery|agent[-_/ ]intake[-_/ ]delivery)/i,
-        );
-        expect(source).not.toMatch(
-            /(?:href|to|navigate\()[^\n]*(?:dormant[-_/ ]delivery|agent[-_/ ]intake[-_/ ]delivery)/i,
-        );
-        expect(source).not.toMatch(
-            /(?:prepare|validateResponse|getPreparation)\s*\([^\n]*(?:delivery|intake)/i,
-        );
+        expectNoDormantDeliveryTransport(source);
     });
 
     it("renders no endpoint, authentication reference, secret, or evidence", () => {
-        for (const marker of [
-            /endpoint_fingerprint/i,
-            /credential_(?:source|file)/i,
-            /ca_bundle_file/i,
-            /tls_server_name/i,
-            /installation_intake:create/i,
-            /mode-0400-file/i,
-        ]) {
-            expect(source).not.toMatch(marker);
-        }
-        expect(source).not.toMatch(/authorization:\s*bearer/i);
-        expect(source).not.toMatch(/api\/v1\/internal\/installation-intake/i);
+        expectNoEndpointAuthenticationSecretEvidence(source);
+    });
+
+    it("still catches dormant delivery endpoint and authentication leaks while ignoring approved queue observation fields", () => {
+        const scopedEndpointSource = combinedSource(Object.fromEntries(
+            Object.entries({
+                "../api/queueObservation.ts": "const NETWORK = ['allowed_endpoint_fingerprints']; const path = '/installation/candidate-records/id/queue-observations';",
+                "../features/installation/DormantDeliveryLeak.ts": "atlas.get('/dormant-delivery'); const endpoint_fingerprint = 'leaked';",
+            }).filter(([path]) => isProductionSource(path)),
+        ));
+        const scopedAuthenticationSource = combinedSource(Object.fromEntries(
+            Object.entries({
+                "../api/queueObservation.ts": "const NETWORK = ['allowed_endpoint_fingerprints'];",
+                "../features/installation/DormantDeliveryLeak.ts": "const leaked = 'authorization: bearer leaked';",
+            }).filter(([path]) => isProductionSource(path)),
+        ));
+
+        expect(scopedEndpointSource).not.toMatch(/allowed_endpoint_fingerprints/);
+        expect(scopedAuthenticationSource).not.toMatch(/allowed_endpoint_fingerprints/);
+        expect(() => expectNoDormantDeliveryTransport(scopedEndpointSource)).toThrow();
+        expect(() => expectNoEndpointAuthenticationSecretEvidence(scopedEndpointSource)).toThrow();
+        expect(() => expectNoEndpointAuthenticationSecretEvidence(scopedAuthenticationSource)).toThrow();
     });
 
     it("has no live delivery, execution, or authority control", () => {
