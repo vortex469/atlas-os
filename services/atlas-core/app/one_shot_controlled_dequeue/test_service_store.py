@@ -188,6 +188,61 @@ def test_injected_adapter_records_one_exact_success_and_never_replays(
     assert tuple(attempt.outcome for attempt in attempts) == ("indeterminate",)
 
 
+def test_injected_adapter_receives_only_exact_inert_dequeue_request(
+    tmp_path: Path,
+) -> None:
+    adapter = Adapter(outcome="success")
+    dequeue_service, _, _, admission, _, create = _service(
+        tmp_path, queue_adapter=adapter
+    )
+    created = _record(dequeue_service, admission, create)
+
+    assert created.record is not None
+    assert len(adapter.calls) == 1
+    request = adapter.calls[0]
+    assert request.dequeue_id == created.record.dequeue_id
+    assert request.operator_id == admission.operator_id
+    assert request.candidate_record_id == admission.candidate_record_id
+    assert request.controlled_dequeue_admission_id == admission.admission_id
+    assert request.queue_observation_receipt_id == (
+        admission.queue_observation_receipt.receipt_id
+    )
+    assert (
+        request.enqueue_id
+        == admission.queue_observation_receipt.v042_enqueue.enqueue_id
+    )
+    assert request.inert_queue_item_id == (
+        admission.queue_observation_receipt.v042_enqueue.queue_item.queue_item_id
+    )
+    assert request.exact_admitted_item_only is True
+    assert (
+        request.queue_identity_fingerprint
+        == created.record.queue_identity_fingerprint
+    )
+    assert request.item_identity_fingerprint == (
+        created.record.item_identity_fingerprint
+    )
+    assert request.lineage_fingerprint == created.record.lineage_fingerprint
+    assert request.dequeue_subject_fingerprint == created.record.subject_fingerprint
+    for field, value in request.model_dump(mode="python").items():
+        if field.endswith("_allowed") or field in {
+            "payload_schema_defined",
+            "payload_constructed",
+            "payload_serialized",
+            "dequeue_defined",
+            "queue_polled",
+            "queue_claimed",
+            "queue_leased",
+            "queue_acked",
+            "queue_consumed",
+            "worker_contacted",
+            "worker_started",
+        }:
+            assert value is False
+    assert request.payload_bytes == 0
+    assert "raw" not in request.model_dump_json()
+
+
 def test_adapter_failure_and_timeout_are_terminal_redacted_records(
     tmp_path: Path,
 ) -> None:
@@ -396,6 +451,32 @@ def test_service_store_have_no_effect_imports_calls_or_production_consumers() ->
             }
             for node in ast.walk(tree)
         )
+    service_tree = ast.parse(Path(service.__file__).read_text())
+    adapter_calls = [
+        node.attr
+        for node in ast.walk(service_tree)
+        if isinstance(node, ast.Attribute)
+        and node.attr.startswith(
+            (
+                "attempt",
+                "poll",
+                "claim",
+                "lease",
+                "ack",
+                "consume",
+                "start",
+                "invoke",
+                "execute",
+                "dispatch",
+                "retry",
+                "resend",
+                "install",
+                "deploy",
+                "rollback",
+            )
+        )
+    ]
+    assert adapter_calls == ["attempt_exact_item"]
     consumers = []
     for path in root.rglob("*.py"):
         if path.parent.name == "one_shot_controlled_dequeue" or path.name.startswith(
