@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { listOneShotDequeueWorkerBindings } from "../../api/oneShotDequeueWorkerBinding";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { OneShotDequeueWorkerBindingV1 } from "../../types/oneShotDequeueWorkerBinding";
+import { WorkerBindingActivationPreflights } from "./WorkerBindingActivationPreflights";
 
 const BLOCKERS: Record<string, string> = {
     store_contact_not_defined: "Store contact is not defined",
@@ -89,6 +90,7 @@ function Binding({ item }: { item: OneShotDequeueWorkerBindingV1 }) {
                 {["Caller-supplied credentials allowed", "Caller-supplied endpoint allowed", "Caller-supplied command allowed", "Store contact allowed", "Runtime contact allowed", "Queue polling allowed", "Queue claim allowed", "Queue lease allowed", "Queue acknowledgement allowed", "Queue mutation allowed", "Worker contact allowed", "Worker start allowed", "Agent invocation allowed", "Execution start allowed", "Process execution allowed", "Dispatch allowed", "Retry allowed", "Workflow start allowed", "Shell execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <WorkerBindingActivationPreflights candidateId={item.candidate_record_id} bindingId={item.binding_id} />
     </li>;
 }
 

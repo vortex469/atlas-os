@@ -37,9 +37,11 @@ describe("v0.46 one-shot dequeue worker binding Mission Control boundary", () =>
         const consumers = Object.entries(productionModules).filter(([, source]) => /oneShotDequeueWorkerBinding|OneShotDequeueWorkerBinding|one-shot-dequeue-worker-bindings/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/oneShotDequeueWorkerBinding.ts",
+            "../api/workerBindingActivationPreflight.ts",
             "../features/installation/OneShotControlledDequeues.tsx",
             "../features/installation/OneShotDequeueWorkerBindings.tsx",
             "../types/oneShotDequeueWorkerBinding.ts",
+            "../types/workerBindingActivationPreflight.ts",
         ]);
     });
 });
