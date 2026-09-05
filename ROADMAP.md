@@ -128,10 +128,75 @@ observation receipt evidence, and controlled dequeue admission evidence.
   Agent invocation, retry/resend, scheduler/workflow execution, process
   execution, install, mutation, deployment, rollback, and effect consumers
   undefined.
+- v0.44 released controlled dequeue admission evidence over one active valid
+  same-owner v0.43 queue observation receipt record and its exact inert v0.42
+  queue item while leaving dequeue, queue polling, claim, lease,
+  acknowledgement, worker start, Agent invocation, retry/resend, scheduler/
+  workflow execution, process execution, install, mutation, deployment,
+  rollback, and effect consumers undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Selected v0.45 P0 plan - One-Shot Controlled Dequeue Boundary
+
+Atlas v0.45 selects **One-Shot Controlled Dequeue Boundary**. The normative
+documentation-only P0 contract is [One-Shot Controlled Dequeue Boundary
+v1](docs/architecture/one-shot-controlled-dequeue-boundary-v1.md).
+
+V0.45 starts from the completed repository-supported v0.44 Controlled Dequeue
+Admission baseline. After one active valid same-owner v0.44
+`controlled-dequeue-admission-v1` record over one exact inert v0.42 queue item
+and its v0.43 queue observation receipt evidence, Core may perform at most one
+explicitly authorized, single-use controlled dequeue of that exact admitted
+inert queue item. Its strongest state is
+`one_shot_controlled_dequeue_recorded`, always blocked by
+`queue_polling_not_defined`, `queue_claim_not_defined`,
+`queue_lease_not_defined`, `queue_ack_not_defined`,
+`worker_start_not_defined`, and `execution_start_boundary_not_defined`.
+
+This is bounded dequeue receipt evidence for the exact admitted inert item
+only. It is not autonomous queue polling, work discovery, claim, lease,
+acknowledgement, queue item mutation or replacement, worker start/invocation,
+Agent invocation, execution authorization/start, retry/resend, scheduler/
+workflow execution, Docker/Podman/container/shell/process execution,
+installation, provider/repository/in-guest mutation, deployment, or rollback.
+
+The phase order is P0 -> P1 -> P2 -> P3 -> P4 -> P5:
+
+- P0 freezes exact prerequisite lineage, queue identity, queue-item identity,
+  ownership, freshness/expiry, inherited limits, reservation-before-effect,
+  permanent no-replay, success/failure/indeterminate outcomes, dequeue receipt
+  evidence, redaction, default-off construction, API/UI boundaries, threats,
+  goldens, and must-not-change contracts. P0 changes planning documents only.
+- P1 will add closed immutable Core models, deterministic domain-separated
+  fingerprints, exact v0.20-v0.44 lineage, exact v0.44/v0.43/v0.42 linkage,
+  exact admitted inert queue item validation, fixed blockers, redaction,
+  fixed-false downstream authority, and pure validation only.
+- P2 will add an explicitly constructed append-only Core evidence service/
+  store with injected owner-scoped v0.44, v0.43, and v0.42 readers, one
+  injected single-use dequeue adapter, atomic reservation-before-effect,
+  permanent no-replay, and indeterminate append/dequeue handling, without any
+  autonomous queue polling, claim, lease, acknowledgement, worker, Agent,
+  scheduler, workflow, or execution-worker consumer.
+- P3 will add only dedicated record/read permissions and the frozen
+  candidate-scoped collection GET/guarded POST plus owned item GET.
+- P4 will add only strict Mission Control typing and an optional nested
+  evidence panel under the v0.44 controlled dequeue admission evidence, with
+  no polling, live queue/worker selector, editable limit, standalone
+  navigation, sensitive rendering, or effect control beyond the guarded
+  one-shot dequeue evidence acknowledgement.
+- P5 will lock release isolation, permanent no-replay, byte-exact inherited
+  limits, dequeue receipt goldens, indeterminate outcome, regression,
+  authority, redaction, Agent/execution-worker parity, Home Assistant
+  blocking, exact API/UI isolation, and release evidence.
+
+V0.45 can enable a later milestone to require one-shot controlled dequeue
+receipt evidence before independently defining acknowledgement, worker start,
+Agent invocation, scheduler/workflow execution, or execution start. It does
+not make the item executable, start a worker, invoke Agent, define a queue
+polling consumer, or define any effect consumer.
 
 ## Completed v0.44 plan - Controlled Dequeue Admission
 
