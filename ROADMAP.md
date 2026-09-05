@@ -1,8 +1,8 @@
 # Atlas OS Roadmap
 
-## 1. Current completed baseline - v0.44
+## 1. Current completed baseline - v0.46
 
-Atlas v0.44 P0-P5 is complete in the repository-supported baseline for this
+Atlas v0.46 P0-P5 is complete in the repository-supported baseline for this
 worktree. The latest immutable annotated release tag recorded in this checkout
 remains `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
@@ -15,9 +15,10 @@ image evidence, grounding, and provenance. The v0.20-v0.40 installation
 evidence chain remains non-executing through durable candidate preservation,
 approval, Agent validation, request/handoff/simulation/delivery evidence,
 readiness, permission, execution admission, runner binding plan, worker
-admission stub, worker queue reservation evidence, and worker intake admission
+admission stub, worker queue reservation evidence, worker intake admission
 evidence, live enqueue admission, one-shot live enqueue evidence, queue
-observation receipt evidence, and controlled dequeue admission evidence.
+observation receipt evidence, controlled dequeue admission evidence, one-shot
+controlled dequeue evidence, and one-shot dequeue worker binding evidence.
 
 ## 2. Enduring architectural constraints
 
@@ -134,15 +135,60 @@ observation receipt evidence, and controlled dequeue admission evidence.
   acknowledgement, worker start, Agent invocation, retry/resend, scheduler/
   workflow execution, process execution, install, mutation, deployment,
   rollback, and effect consumers undefined.
+- v0.45 released a one-shot controlled dequeue boundary over one active valid
+  same-owner v0.44 controlled dequeue admission and its exact inert v0.42 queue
+  item lineage, recording bounded dequeue receipt evidence while leaving queue
+  polling, claim, lease, acknowledgement, worker start, Agent invocation,
+  execution start, install, mutation, deployment, rollback, and effect
+  consumers undefined.
+- v0.46 released one-shot dequeue worker binding evidence over one successful
+  same-owner v0.45 one-shot controlled dequeue receipt and one exact same-owner
+  v0.40 worker intake subject while leaving worker store/runtime contact,
+  worker start, Agent invocation, execution authorization/start, queue
+  polling, install, mutation, deployment, rollback, and effect consumers
+  undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Selected v0.45 P0 plan - One-Shot Controlled Dequeue Boundary
+## Completed v0.46 plan - One-Shot Dequeue Worker Binding
+
+Atlas v0.46 selects **One-Shot Dequeue Worker Binding**. The normative
+contract is [One-Shot Dequeue Worker Binding v1](docs/architecture/one-shot-dequeue-worker-binding-v1.md).
+
+V0.46 starts from the completed repository-supported v0.45 One-Shot Controlled
+Dequeue Boundary baseline. After one active successful same-owner v0.45
+`one-shot-controlled-dequeue-v1` record and one active same-owner v0.40
+`worker-intake-admission-v1` subject, Core may record bounded binding evidence
+between that exact dequeued inert queue item lineage and that exact worker
+subject. Its strongest state is
+`one_shot_dequeue_worker_binding_recorded`, always blocked by
+`store_contact_not_defined`, `runtime_contact_not_defined`,
+`worker_start_not_defined`, and `execution_start_boundary_not_defined`.
+
+This is binding evidence only. It is not worker store contact, worker runtime
+contact, worker start/invocation, Agent invocation, execution authorization or
+start, queue polling, claim, lease, acknowledgement, queue mutation,
+retry/resend, scheduler/workflow execution, Docker/Podman/container/shell/
+process execution, installation, provider/repository/in-guest mutation,
+deployment, or rollback.
+
+P0-P5 are complete. P5 locks exact v0.45 lineage, v0.40 worker-subject
+binding, ownership, freshness/expiry, fingerprints, inherited limits,
+permanent idempotency and subject no-replay, bounded persistence, API/UI
+isolation, Home Assistant blocking, and Agent/execution-worker zero-consumer
+checks.
+
+V0.46 can enable a later milestone to require worker binding evidence before
+independently defining worker store/runtime contact, worker start, Agent
+invocation, scheduler/workflow execution, or execution start. It does not
+authorize, start, or invoke any of those effects.
+
+## Completed v0.45 plan - One-Shot Controlled Dequeue Boundary
 
 Atlas v0.45 selects **One-Shot Controlled Dequeue Boundary**. The normative
-documentation-only P0 contract is [One-Shot Controlled Dequeue Boundary
+contract is [One-Shot Controlled Dequeue Boundary
 v1](docs/architecture/one-shot-controlled-dequeue-boundary-v1.md).
 
 V0.45 starts from the completed repository-supported v0.44 Controlled Dequeue
@@ -170,24 +216,24 @@ The phase order is P0 -> P1 -> P2 -> P3 -> P4 -> P5:
   permanent no-replay, success/failure/indeterminate outcomes, dequeue receipt
   evidence, redaction, default-off construction, API/UI boundaries, threats,
   goldens, and must-not-change contracts. P0 changes planning documents only.
-- P1 will add closed immutable Core models, deterministic domain-separated
+- P1 adds closed immutable Core models, deterministic domain-separated
   fingerprints, exact v0.20-v0.44 lineage, exact v0.44/v0.43/v0.42 linkage,
   exact admitted inert queue item validation, fixed blockers, redaction,
   fixed-false downstream authority, and pure validation only.
-- P2 will add an explicitly constructed append-only Core evidence service/
+- P2 adds an explicitly constructed append-only Core evidence service/
   store with injected owner-scoped v0.44, v0.43, and v0.42 readers, one
   injected single-use dequeue adapter, atomic reservation-before-effect,
   permanent no-replay, and indeterminate append/dequeue handling, without any
   autonomous queue polling, claim, lease, acknowledgement, worker, Agent,
   scheduler, workflow, or execution-worker consumer.
-- P3 will add only dedicated record/read permissions and the frozen
+- P3 adds only dedicated record/read permissions and the frozen
   candidate-scoped collection GET/guarded POST plus owned item GET.
-- P4 will add only strict Mission Control typing and an optional nested
+- P4 adds only strict Mission Control typing and an optional nested
   evidence panel under the v0.44 controlled dequeue admission evidence, with
   no polling, live queue/worker selector, editable limit, standalone
   navigation, sensitive rendering, or effect control beyond the guarded
   one-shot dequeue evidence acknowledgement.
-- P5 will lock release isolation, permanent no-replay, byte-exact inherited
+- P5 locks release isolation, permanent no-replay, byte-exact inherited
   limits, dequeue receipt goldens, indeterminate outcome, regression,
   authority, redaction, Agent/execution-worker parity, Home Assistant
   blocking, exact API/UI isolation, and release evidence.
