@@ -3,6 +3,49 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.44 P0 Controlled Dequeue Admission - selected
+
+Atlas v0.44 is **Controlled Dequeue Admission**. P0 freezes the
+documentation-only [v1 contract](architecture/controlled-dequeue-admission-v1.md).
+
+- [x] Inspect the repository-supported v0.42 One-Shot Live Enqueue and v0.43
+  Queue Observation and Enqueue Receipt contracts, implementation, API/UI
+  structural tests, and release checklist before defining v0.44.
+- [x] Freeze exactly one new evidence-only authority: evaluate whether one
+  exact same-owner inert v0.42 queue item, backed by one active valid v0.43
+  Queue Observation and Enqueue Receipt record, is eligible for later dequeue
+  consideration.
+- [x] Freeze exact prerequisite lineage, queue identity, queue-item identity,
+  observation/receipt linkage, ownership, freshness/expiry, lifecycle,
+  fingerprints, inherited limits, admission request/result/status/audit/error
+  schemas, blocker vocabulary, idempotency/no-replay, redaction, default-off
+  construction, API/UI expectations, threat model, goldens, and
+  must-not-change contracts.
+- [x] Freeze dedicated scope `installation_controlled_dequeue_admission_only`
+  and dedicated `installation.execution.controlled_dequeue_admission.record`
+  and `.read` permissions for later phases.
+- [x] Freeze controlled dequeue admission as evidence only: it does not
+  authorize or cause dequeue, queue polling, claim, lease, acknowledgement,
+  queue item consumption, removal, mutation, or replacement, worker start or
+  invocation, Agent invocation, execution authorization/start, retry/resend,
+  scheduler/workflow execution, Docker/Podman/container/shell/process
+  execution, installation, provider/repository/in-guest mutation, deployment,
+  or rollback.
+- [x] Keep P0 planning-only: no runtime model/service/store/migration/setting/
+  permission/route/OpenAPI operation/UI code, queue library, broker
+  integration, serializer, worker client, credential, endpoint, background
+  task, Agent change, execution-worker change, artifact, tag, push,
+  publication, deployment, rollback, or change to
+  `compose.execution-smoke.override.yaml`.
+- [ ] P1 - closed immutable Core contract models and pure validation only.
+- [ ] P2 - explicitly constructed append-only Core evidence service/store with
+  injected owner-scoped v0.43/v0.42 readers, permanent no-replay, and
+  indeterminate append handling.
+- [ ] P3 - exact guarded Core create/list/get evidence API only.
+- [ ] P4 - strict Mission Control evidence presentation only.
+- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, and release evidence only.
+
 ## Atlas v0.43 P0-P5 Queue Observation and Enqueue Receipt Evidence - complete
 
 Atlas v0.43 is **Queue Observation and Enqueue Receipt Evidence**. P0 freezes

@@ -1,8 +1,8 @@
 # Atlas OS Roadmap
 
-## 1. Current completed baseline - v0.42
+## 1. Current completed baseline - v0.43
 
-Atlas v0.42 P0-P5 is complete in the repository-supported baseline for this
+Atlas v0.43 P0-P5 is complete in the repository-supported baseline for this
 worktree. The latest immutable annotated release tag recorded in this checkout
 remains `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
@@ -121,15 +121,77 @@ evidence.
   queue polling, worker start, Agent invocation, retry/resend, scheduler/
   workflow execution, process execution, install, mutation, deployment,
   rollback, and effect consumers undefined.
+- v0.43 released queue observation and enqueue receipt evidence over one exact
+  same-owner inert v0.42 queue item and its intended queue identity while
+  leaving dequeue, queue polling, claim, lease, acknowledgement, worker start,
+  Agent invocation, retry/resend, scheduler/workflow execution, process
+  execution, install, mutation, deployment, rollback, and effect consumers
+  undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Current v0.43 plan - Queue Observation and Enqueue Receipt Evidence
+## Current v0.44 plan - Controlled Dequeue Admission
+
+Atlas v0.44 selects **Controlled Dequeue Admission**. The normative
+documentation-only P0 contract is [Controlled Dequeue Admission
+v1](docs/architecture/controlled-dequeue-admission-v1.md).
+
+V0.44 defines one evidence-only authority: after one active valid same-owner
+v0.43 Queue Observation and Enqueue Receipt record over one exact inert v0.42
+queue item, Core may record whether that same item is eligible for later
+dequeue consideration. Its strongest state is
+`controlled_dequeue_admission_recorded`, always blocked by
+`dequeue_not_defined`, `queue_polling_not_defined`, `queue_claim_not_defined`,
+`queue_lease_not_defined`, `queue_ack_not_defined`,
+`worker_start_not_defined`, and `execution_start_boundary_not_defined`.
+
+This is admission evidence for later consideration only. It is not dequeue,
+queue polling, claim, lease, acknowledgement, queue item consumption, removal,
+mutation, or replacement, worker start/invocation, Agent invocation,
+execution authorization/start, retry/resend, scheduler/workflow execution,
+Docker/Podman/container/shell/process execution, installation, provider/
+repository/in-guest mutation, deployment, or rollback.
+
+The phase order is P0 -> P1 -> P2 -> P3 -> P4 -> P5:
+
+- P0 freezes exact prerequisite lineage, queue identity, queue-item identity,
+  observation/receipt linkage, ownership, freshness/expiry, lifecycle,
+  fingerprints, inherited limits, admission request/result/status/audit/error
+  schemas, blocker vocabulary, idempotency/no-replay, redaction, default-off
+  construction, API/UI expectations, threat model, goldens, and
+  must-not-change contracts. P0 changes planning documents only.
+- P1 will add closed immutable Core models, deterministic domain-separated
+  fingerprints, exact v0.20-v0.43 lineage, exact v0.43 observation/receipt
+  linkage, exact v0.42 inert queue item validation, fixed blockers,
+  redaction, fixed-false downstream authority, and pure validation only.
+- P2 will add an explicitly constructed append-only Core evidence service/
+  store with injected owner-scoped v0.43 and prerequisite readers, atomic
+  reservation-before-append, permanent no-replay, and indeterminate append
+  handling, without any production dequeue, polling, claim, lease,
+  acknowledgement, worker, Agent, scheduler, workflow, or execution-worker
+  consumer.
+- P3 will add only dedicated record/read permissions and the frozen
+  candidate-scoped collection GET/guarded POST plus owned item GET.
+- P4 will add only strict Mission Control typing and an optional nested
+  evidence panel under the v0.43 queue observation receipt evidence, with no
+  polling, live queue/worker selector, editable limit, standalone navigation,
+  sensitive rendering, creation of effects, or effect control.
+- P5 will lock release isolation, permanent no-replay, byte-exact inherited
+  limits, eligibility goldens, indeterminate outcome, regression, authority,
+  redaction, Agent/execution-worker parity, Home Assistant blocking, exact
+  API/UI isolation, and release evidence.
+
+V0.44 can enable a later milestone to require controlled admission evidence
+before independently defining dequeue, polling, claim/lease/ack, worker start,
+Agent invocation, scheduler/workflow execution, or execution start. It does
+not make the item consumable by a worker and does not define any consumer.
+
+## Completed v0.43 plan - Queue Observation and Enqueue Receipt Evidence
 
 Atlas v0.43 selects **Queue Observation and Enqueue Receipt Evidence**. The
-normative documentation-only P0 contract is [Queue Observation and Enqueue
+normative contract is [Queue Observation and Enqueue
 Receipt Evidence v1](docs/architecture/queue-observation-enqueue-receipt-evidence-v1.md).
 
 V0.43 defines one future evidence authority: after one active same-owner v0.42
