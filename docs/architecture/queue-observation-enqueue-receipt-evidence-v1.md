@@ -141,10 +141,9 @@ The strongest successful outcome is `queue_observation_recorded`.
 Every successful record carries these ordered blockers:
 
 1. `dequeue_not_defined`
-2. `queue_polling_consumer_not_defined`
+2. `queue_polling_not_defined`
 3. `worker_start_not_defined`
-4. `agent_invocation_not_defined`
-5. `execution_start_boundary_not_defined`
+4. `execution_start_boundary_not_defined`
 
 The closed ordered blocker vocabulary is:
 
@@ -152,28 +151,24 @@ The closed ordered blocker vocabulary is:
 - `evidence_not_found`
 - `ownership_mismatch`
 - `permission_scope_missing`
-- `v042_enqueue_not_found`
 - `v042_enqueue_not_active`
 - `v042_enqueue_not_recorded`
-- `v042_lineage_mismatch`
+- `linkage_mismatch`
 - `queue_identity_mismatch`
-- `queue_item_identity_mismatch`
-- `enqueue_receipt_missing`
-- `enqueue_receipt_stale`
-- `enqueue_receipt_ambiguous`
-- `enqueue_receipt_mismatched`
+- `item_identity_mismatch`
+- `receipt_evidence_invalid`
+- `observation_malformed`
+- `ambiguous_state`
+- `executable_payload`
+- `unsupported_authority`
 - `fingerprint_mismatch`
 - `evidence_stale`
 - `evidence_expired`
-- `inherited_limits_mismatch`
 - `reservation_before_effect_failed`
-- `permanent_subject_reserved`
-- `idempotency_conflict`
 - `append_indeterminate`
 - `dequeue_not_defined`
-- `queue_polling_consumer_not_defined`
+- `queue_polling_not_defined`
 - `worker_start_not_defined`
-- `agent_invocation_not_defined`
 - `execution_start_boundary_not_defined`
 
 Audit events are exactly `queue_observation_recorded`,
@@ -259,7 +254,7 @@ and are not interchangeable with v0.43 fingerprints.
 - `worker_intake_admission_id`
 - `worker_intake_admission_fingerprint`
 - `inherited_limits_fingerprint`
-- `requested_scope = installation_queue_observation_only`
+- `requested_scope = installation_queue_observation_receipt_only`
 - `receipt_evidence_intent = enqueue_receipt_observation_only`
 - `reference_only = true`
 - `observation_only = true`
@@ -360,7 +355,7 @@ and fixed authority. Items are ordered by `(recorded_at, observation_id)`.
 Every operation requires an authenticated operator. Create requires exactly
 `installation.execution.queue_observation.record`; list/get requires exactly
 `installation.execution.queue_observation.read`. The frozen scope is
-`installation_queue_observation_only`.
+`installation_queue_observation_receipt_only`.
 
 Candidate, v0.42 enqueue record, v0.42 queue item, v0.41 admission, v0.40
 worker intake admission, v0.39 queue reservation, queue intake reference,
@@ -575,8 +570,7 @@ acceptance by or observation at the intended queue, and an unused idempotency
 key and observation subject. It produces exactly one durable
 `queue_observation_recorded` record, an accepted or observed disposition,
 ordered blockers for undefined dequeue, queue polling consumer, worker start,
-Agent invocation, and execution start, no sensitive output, and no downstream
-consumer.
+and execution start, no sensitive output, and no downstream consumer.
 
 The exact duplicate golden returns the same record without re-reading evidence
 or appending anything. Same key/different request and same subject/different

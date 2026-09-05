@@ -18,16 +18,21 @@ from app.installation_one_shot_live_enqueue.test_contract import (
 from app.queue_observation_receipt import contract
 from app.queue_observation_receipt.contract import (
     PERMISSION,
+    SCOPE,
     SUCCESS_BLOCKERS,
     QueueObservationReceiptAuthorityContextV1,
     QueueObservationReceiptCreateV1,
     QueueObservationReceiptValidationInputV1,
     build_receipt,
     evaluate_queue_observation_receipt,
+    idempotency_key_fingerprint,
+    lineage_fingerprint,
     observation_fingerprint,
     parse_create_json,
     receipt_fingerprint,
     receipt_record_fingerprint,
+    receipt_subject_fingerprint,
+    request_fingerprint,
 )
 
 REQUESTED_AT = "2026-08-27T12:00:34Z"
@@ -105,6 +110,45 @@ def test_evaluation_records_one_exact_contract_eligible_v042_attempt(
     assert evaluation.recognized_contract_eligible_enqueue
     assert evaluation.receipt_build_allowed
     assert evaluation.blockers == SUCCESS_BLOCKERS
+
+
+def test_lineage_scope_and_fingerprints_bind_exact_v042_enqueue(tmp_path: Path) -> None:
+    validation = _input(tmp_path)
+    receipt = build_receipt(validation)
+    assert validation.create.requested_scope == SCOPE
+    assert receipt.lineage_fingerprint == lineage_fingerprint(
+        validation.v042_enqueue,
+        validation.v042_enqueue_status,
+    )
+    assert receipt.subject_fingerprint == receipt_subject_fingerprint(receipt)
+
+    different_key = idempotency_key_fingerprint(
+        validation.operator_id,
+        "queue-observation-receipt-key-2",
+    )
+    first_request = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=idempotency_key_fingerprint(
+            validation.operator_id,
+            validation.idempotency_key,
+        ),
+    )
+    second_request = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=different_key,
+    )
+    assert first_request != second_request
+
+    tampered = receipt.model_dump(mode="python")
+    tampered["v042_enqueue_status"]["status_fingerprint"]["value"] = "d" * 64
+    with pytest.raises(ValidationError, match="fingerprint"):
+        contract.QueueObservationReceiptV1.model_validate(tampered)
 
 
 def test_parse_create_rejects_duplicate_keys_utf8_nfc_non_finite_unknown_and_bounds(

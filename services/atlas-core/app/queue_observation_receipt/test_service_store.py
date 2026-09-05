@@ -160,6 +160,28 @@ def test_disabled_auth_permission_and_missing_fail_before_reservation(
     assert "secret/internal/path" not in result.model_dump_json()
 
 
+def test_factory_default_is_disabled_and_has_zero_effect_before_enablement(
+    tmp_path: Path,
+) -> None:
+    enqueue, status, create = _facts(tmp_path)
+    reader = Reader((enqueue, status))
+    receipt_store = QueueObservationReceiptStore(
+        tmp_path / "default-off" / "queue-observation-receipt.sqlite3"
+    )
+    receipt_service = create_queue_observation_receipt_service(
+        evidence_reader=reader,
+        store=receipt_store,
+        clock=_clock(),
+    )
+    result = _record(receipt_service, enqueue, create)
+    assert result.error.error_code == "installation_capability_unsupported"
+    assert reader.calls == 0
+    assert receipt_store.list_owned(
+        operator_id=enqueue.operator_id,
+        candidate_record_id=enqueue.candidate_record_id,
+    ) == ()
+
+
 def test_exact_duplicate_zero_reader_raw_key_not_persisted_and_expiry_readable(
     tmp_path: Path,
 ) -> None:
@@ -461,4 +483,30 @@ def test_service_store_have_no_effect_imports_calls_or_production_consumers() ->
             or "QueueObservationReceiptService" in source_text
         ):
             consumers.append(path)
+    assert consumers == []
+
+
+def test_agent_and_execution_worker_do_not_consume_queue_observation_receipts() -> None:
+    root = Path(__file__).resolve().parents[4]
+    forbidden_markers = (
+        "queue_observation_receipt",
+        "QueueObservationReceipt",
+        "queueObservation",
+        "queue-observations",
+        "queue_observation_recorded",
+        "enqueue-receipt-evidence",
+    )
+    consumers = []
+    for directory in (
+        root / "services" / "atlas-agent",
+        root / "services" / "atlas-execution-worker",
+    ):
+        for path in directory.rglob("*"):
+            if path.is_dir() or path.suffix not in {".py", ".ts", ".tsx", ".md"}:
+                continue
+            if path.name.startswith("test_") or "/tests/" in path.as_posix():
+                continue
+            source_text = path.read_text(encoding="utf-8")
+            if any(marker in source_text for marker in forbidden_markers):
+                consumers.append(path.relative_to(root).as_posix())
     assert consumers == []

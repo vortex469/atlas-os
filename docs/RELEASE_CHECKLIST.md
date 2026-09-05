@@ -3,7 +3,7 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.43 P0 Queue Observation and Enqueue Receipt Evidence - selected
+## Atlas v0.43 P0-P5 Queue Observation and Enqueue Receipt Evidence - complete
 
 Atlas v0.43 is **Queue Observation and Enqueue Receipt Evidence**. P0 freezes
 the documentation-only [v1 contract](architecture/queue-observation-enqueue-receipt-evidence-v1.md).
@@ -19,7 +19,7 @@ the documentation-only [v1 contract](architecture/queue-observation-enqueue-rece
   fingerprints, ownership, freshness, lifecycle, ambiguity handling,
   redaction, bounded evidence, default-off construction, API/UI expectations,
   threats, goldens, and must-not-change authority boundaries.
-- [x] Freeze dedicated scope `installation_queue_observation_only` and
+- [x] Freeze dedicated scope `installation_queue_observation_receipt_only` and
   dedicated `installation.execution.queue_observation.record` and `.read`
   permissions for later phases.
 - [x] Freeze observation as evidence only: it does not authorize or cause
@@ -33,14 +33,46 @@ the documentation-only [v1 contract](architecture/queue-observation-enqueue-rece
   task, Agent change, execution-worker change, artifact, tag, push,
   publication, deployment, rollback, or change to
   `compose.execution-smoke.override.yaml`.
-- [ ] P1 - closed immutable Core contract models and pure validation only.
-- [ ] P2 - explicitly constructed append-only Core evidence service/store with
+- [x] P1 - closed immutable Core contract models and pure validation only.
+- [x] P2 - explicitly constructed append-only Core evidence service/store with
   injected owner-scoped readers, injected bounded receipt source, permanent
   no-replay, and indeterminate append handling.
-- [ ] P3 - exact guarded Core create/list/get evidence API only.
-- [ ] P4 - strict Mission Control evidence presentation only.
-- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+- [x] P3 - exact guarded Core create/list/get evidence API only.
+- [x] P4 - strict Mission Control evidence presentation only.
+- [x] P5 - release isolation, regression, authority, no-replay, redaction,
   Agent/execution-worker parity, Home Assistant, and release evidence only.
+
+P5 validation evidence:
+
+- [x] Core contract/service/store regressions prove exact v0.42 lineage,
+  queue identity, queue-item identity, ownership, freshness/expiry,
+  fingerprint sensitivity, deterministic receipt/status/collection/audit
+  fingerprints, permanent idempotency/subject reservations, concurrency,
+  restart-safe readback, indeterminate append closure, bounded records,
+  corruption closure, redacted failures, secret-free persistence, default-off
+  construction, and no effect API.
+- [x] Core API regressions prove only candidate-scoped collection `GET`,
+  guarded `POST`, and owned item `GET` exist for `queue-observations`, with
+  dedicated record/read permissions, strict JSON/content/idempotency/rate
+  limits, OpenAPI/method closure, non-disclosing foreign ownership, redacted
+  errors, and no dequeue, poll, claim, lease, ack, worker, start, run,
+  execute, dispatch, retry, resend, install, deploy, rollback, Agent,
+  workflow, scheduler, or sibling effect route.
+- [x] Mission Control regressions prove v0.43 is nested under v0.42 one-shot
+  live enqueue evidence, uses only guarded list/get/create clients, has no
+  polling transport, standalone route/navigation, selectors, editable limits,
+  sensitive rendering, raw receipt rendering, or effect controls, and keeps
+  the two-step acknowledgement copy.
+- [x] Authority isolation regressions prove queue observation remains
+  evidence-only and does not dequeue or drive queue processing, start or
+  invoke a worker, invoke Agent, authorize/start execution, retry/resend
+  automatically, run Docker/Podman/container/shell/process work, execute
+  installation, mutate provider/repository/in-guest state, deploy, roll back,
+  or create a Home Assistant exception.
+- [x] Release closure preserves prior release goldens, keeps
+  `compose.execution-smoke.override.yaml` unchanged, and performs no
+  auto-push, tag, release publication, deployment, rollback, or runtime
+  authority expansion.
 
 ## Atlas v0.42 P0-P5 One-Shot Live Enqueue Boundary - complete
 
