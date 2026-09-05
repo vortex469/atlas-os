@@ -332,7 +332,40 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "controlled_dequeue_admission/contract.py",
         "one_shot_controlled_dequeue/contract.py",
         "one_shot_dequeue_worker_binding/contract.py",
+        "worker_binding_activation_preflight/contract.py",
     }
+    consumers = _execution_admission_consumers(app_root, allowed, boundary_only)
+    assert consumers == []
+
+
+def test_service_store_consumer_scanner_rejects_unapproved_effect_consumer(
+    tmp_path: Path,
+) -> None:
+    app_root = tmp_path / "app"
+    effect_consumer = app_root / "unauthorized_worker" / "service.py"
+    effect_consumer.parent.mkdir(parents=True)
+    effect_consumer.write_text(
+        "from app.installation_execution_admission.contract import FingerprintV1\n"
+        "def activate_worker() -> None:\n"
+        "    raise RuntimeError(FingerprintV1)\n"
+    )
+    boundary_contract = app_root / "worker_binding_activation_preflight" / "contract.py"
+    boundary_contract.parent.mkdir(parents=True)
+    boundary_contract.write_text(
+        "from app.installation_execution_admission.contract import FingerprintV1\n"
+    )
+
+    consumers = _execution_admission_consumers(
+        app_root,
+        allowed=set(),
+        boundary_only={"worker_binding_activation_preflight/contract.py"},
+    )
+    assert consumers == ["unauthorized_worker/service.py"]
+
+
+def _execution_admission_consumers(
+    app_root: Path, allowed: set[str], boundary_only: set[str]
+) -> list[str]:
     consumers = []
     for path in app_root.rglob("*.py"):
         if str(path) in allowed or path.name.startswith("test_"):
@@ -341,4 +374,4 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
             relative = str(path.relative_to(app_root))
             if relative not in boundary_only:
                 consumers.append(relative)
-    assert consumers == []
+    return consumers
