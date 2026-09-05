@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import unicodedata
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
@@ -54,12 +55,14 @@ from app.worker_intake_admission.contract import (
 MAX_CREATE_BYTES = 16 * 1024
 MAX_CREATE_NESTING = 16
 MAX_MODEL_BYTES = 192 * 1024
+MAX_COLLECTION_RECORDS = 16
 MAX_FRESHNESS_SECONDS = 30
 PERMISSION = "installation.execution.one_shot_dequeue_worker_binding.record"
 READ_PERMISSION = "installation.execution.one_shot_dequeue_worker_binding.read"
 SCOPE = "installation_one_shot_dequeue_worker_binding_only"
 SAFE_MESSAGE = "one-shot dequeue worker binding request could not be completed"
 _VISIBLE = re.compile(r"[\x20-\x7e]{16,128}")
+_UUID5_NAMESPACE = uuid.UUID("956c05df-4558-50e4-8874-ea1c6e81d9f6")
 _BLOCKED_OPERATOR_ID = "blocked-evaluation"
 _BLOCKED_CANDIDATE_ID = "00000000-0000-4000-8000-000000000000"
 _CREDENTIAL_KEYS = frozenset({"credential", "credentials", "secret", "token"})
@@ -126,6 +129,10 @@ BlockerV1 = Literal[
     "runtime_contact_not_defined",
     "worker_start_not_defined",
     "execution_start_boundary_not_defined",
+    "reservation_before_effect_failed",
+    "permanent_subject_reserved",
+    "idempotency_conflict",
+    "append_indeterminate",
 ]
 BLOCKER_ORDER: tuple[BlockerV1, ...] = (
     "installation_capability_unsupported",
@@ -153,6 +160,10 @@ BLOCKER_ORDER: tuple[BlockerV1, ...] = (
     "runtime_contact_not_defined",
     "worker_start_not_defined",
     "execution_start_boundary_not_defined",
+    "reservation_before_effect_failed",
+    "permanent_subject_reserved",
+    "idempotency_conflict",
+    "append_indeterminate",
 )
 SUCCESS_BLOCKERS: tuple[BlockerV1, ...] = (
     "store_contact_not_defined",
@@ -331,6 +342,298 @@ class OneShotDequeueWorkerBindingEvaluationV1(ClosedAuthorityV1):
             raise ValueError("blocked v0.46 binding shape mismatch")
         if self.evaluation_fingerprint != evaluation_fingerprint(self):
             raise ValueError("v0.46 evaluation fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class OneShotDequeueWorkerBindingV1(ClosedAuthorityV1):
+    schema: Literal["one-shot-dequeue-worker-binding-v1"] = (
+        "one-shot-dequeue-worker-binding-v1"
+    )
+    binding_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    recorded_at: UtcSecond
+    valid_until: UtcSecond
+    lifecycle: Literal["active"] = "active"
+    binding_state: Literal["readiness_gated"] = "readiness_gated"
+    eligibility: Literal["one_shot_dequeue_worker_binding_recorded"] = (
+        "one_shot_dequeue_worker_binding_recorded"
+    )
+    blockers: tuple[BlockerV1, ...] = SUCCESS_BLOCKERS
+    one_shot_controlled_dequeue: OneShotControlledDequeueReceiptV1
+    one_shot_controlled_dequeue_status: OneShotControlledDequeueStatusV1
+    worker_intake_admission: WorkerIntakeAdmissionV1
+    worker_intake_admission_status: WorkerIntakeAdmissionStatusV1
+    worker_subject_fingerprint: FingerprintV1
+    queue_item_reference_fingerprint: FingerprintV1
+    inherited_limits_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    idempotency_key_fingerprint: FingerprintV1
+    binding_record_fingerprint: FingerprintV1
+    one_shot_dequeue_worker_binding_recorded: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> OneShotDequeueWorkerBindingV1:
+        if self.blockers != SUCCESS_BLOCKERS:
+            raise ValueError("v0.46 binding blockers must remain fixed")
+        recorded, expiry = _instant(self.recorded_at), _instant(self.valid_until)
+        if not recorded < expiry <= recorded + timedelta(seconds=MAX_FRESHNESS_SECONDS):
+            raise ValueError("v0.46 binding expiry exceeds freshness bound")
+        dequeue, dequeue_status = (
+            self.one_shot_controlled_dequeue,
+            self.one_shot_controlled_dequeue_status,
+        )
+        worker, worker_status = (
+            self.worker_intake_admission,
+            self.worker_intake_admission_status,
+        )
+        if (
+            self.operator_id != dequeue.operator_id
+            or self.operator_id != dequeue_status.operator_id
+            or self.operator_id != worker.operator_id
+            or self.operator_id != worker_status.operator_id
+            or self.candidate_record_id != dequeue.candidate_record_id
+            or self.candidate_record_id != dequeue_status.candidate_record_id
+            or self.candidate_record_id != worker.candidate_record_id
+            or self.candidate_record_id != worker_status.candidate_record_id
+            or dequeue_status.dequeue_id != dequeue.dequeue_id
+            or dequeue_status.dequeue_record_fingerprint
+            != dequeue.dequeue_record_fingerprint
+            or worker_status.admission_id != worker.admission_id
+            or worker_status.record_fingerprint != worker.record_fingerprint
+            or self.valid_until > dequeue.valid_until
+            or self.valid_until > dequeue_status.valid_until
+            or self.valid_until > worker.valid_until
+            or self.valid_until > worker_status.valid_until
+        ):
+            raise ValueError("v0.46 binding ownership or linkage mismatch")
+        if (
+            self.worker_subject_fingerprint != worker.subject_fingerprint
+            or self.queue_item_reference_fingerprint
+            != worker.linkage.queue_item_reference_fingerprint
+            or self.inherited_limits_fingerprint
+            != dequeue.inherited_limits.limits_fingerprint
+            or self.inherited_limits_fingerprint
+            != worker.inherited_limits.limits_fingerprint
+        ):
+            raise ValueError("v0.46 binding subject or limits mismatch")
+        if self.subject_fingerprint != binding_subject_fingerprint(self):
+            raise ValueError("v0.46 binding subject fingerprint mismatch")
+        if self.binding_id != derived_binding_id(self.subject_fingerprint):
+            raise ValueError("v0.46 binding id mismatch")
+        if self.binding_record_fingerprint != binding_record_fingerprint(self):
+            raise ValueError("v0.46 binding record fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class OneShotDequeueWorkerBindingStatusV1(ClosedAuthorityV1):
+    schema: Literal["one-shot-dequeue-worker-binding-status-v1"] = (
+        "one-shot-dequeue-worker-binding-status-v1"
+    )
+    binding_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    lifecycle: Literal["active", "expired"]
+    binding_state: Literal["one_shot_dequeue_worker_binding_recorded"]
+    eligibility: Literal["one_shot_dequeue_worker_binding_recorded"]
+    blockers: tuple[BlockerV1, ...] = SUCCESS_BLOCKERS
+    evaluated_at: UtcSecond
+    valid_until: UtcSecond
+    binding_record_fingerprint: FingerprintV1
+    status_fingerprint: FingerprintV1
+    one_shot_dequeue_worker_binding_recorded: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> OneShotDequeueWorkerBindingStatusV1:
+        if self.blockers != SUCCESS_BLOCKERS:
+            raise ValueError("v0.46 binding status blockers are fixed")
+        if self.status_fingerprint != status_fingerprint(self):
+            raise ValueError("v0.46 binding status fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class OneShotDequeueWorkerBindingIdempotencyReservationV1(ContractModel):
+    schema: Literal["one-shot-dequeue-worker-binding-idempotency-reservation-v1"] = (
+        "one-shot-dequeue-worker-binding-idempotency-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    binding_id: CanonicalUuid5
+    binding_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    permanent: Literal[True] = True
+
+
+class OneShotDequeueWorkerBindingSubjectReservationV1(ContractModel):
+    schema: Literal["one-shot-dequeue-worker-binding-subject-reservation-v1"] = (
+        "one-shot-dequeue-worker-binding-subject-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    binding_id: CanonicalUuid5
+    binding_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    reservation_fingerprint: FingerprintV1
+    permanent: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> OneShotDequeueWorkerBindingSubjectReservationV1:
+        if self.reservation_fingerprint != reservation_fingerprint(self):
+            raise ValueError("v0.46 binding reservation fingerprint mismatch")
+        return self
+
+
+class OneShotDequeueWorkerBindingAuditEvidenceV1(ClosedAuthorityV1):
+    schema: Literal["one-shot-dequeue-worker-binding-audit-v1"] = (
+        "one-shot-dequeue-worker-binding-audit-v1"
+    )
+    event: Literal[
+        "one_shot_dequeue_worker_binding_recorded",
+        "one_shot_dequeue_worker_binding_read",
+        "one_shot_dequeue_worker_binding_indeterminate",
+    ]
+    audit_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    binding_id: CanonicalUuid5 | None
+    occurred_at: UtcSecond
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"]
+    correlation_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1 | None
+    binding_record_fingerprint: FingerprintV1 | None
+    audit_fingerprint: FingerprintV1
+    one_shot_dequeue_worker_binding_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> OneShotDequeueWorkerBindingAuditEvidenceV1:
+        if self.audit_fingerprint != audit_fingerprint(self):
+            raise ValueError("v0.46 binding audit fingerprint mismatch")
+        return self
+
+
+class OneShotDequeueWorkerBindingRedactedErrorV1(ClosedAuthorityV1):
+    schema: Literal["one-shot-dequeue-worker-binding-error-v1"] = (
+        "one-shot-dequeue-worker-binding-error-v1"
+    )
+    error_code: Literal[
+        "installation_capability_unsupported",
+        "evidence_not_found",
+        "ownership_mismatch",
+        "permission_scope_missing",
+        "v045_dequeue_not_active",
+        "v045_dequeue_not_recorded",
+        "v045_dequeue_not_successful",
+        "v040_worker_intake_not_active",
+        "v040_worker_intake_not_recorded",
+        "linkage_mismatch",
+        "worker_subject_mismatch",
+        "queue_item_reference_mismatch",
+        "fingerprint_mismatch",
+        "inherited_limits_mismatch",
+        "evidence_stale",
+        "evidence_expired",
+        "ambiguous_state",
+        "caller_supplied_credential",
+        "caller_supplied_endpoint",
+        "caller_supplied_command",
+        "unsupported_authority",
+        "reservation_before_effect_failed",
+        "permanent_subject_reserved",
+        "idempotency_conflict",
+        "append_indeterminate",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "invalid_request",
+        "rate_limited",
+        "quota_exceeded",
+        "conflict",
+        "record_too_large",
+        "store_corrupt",
+        "internal_error",
+    ]
+    message: Literal[SAFE_MESSAGE] = SAFE_MESSAGE
+    retryable: Literal[False] = False
+    correlation_fingerprint: FingerprintV1
+    redacted: Literal[True] = True
+    one_shot_dequeue_worker_binding_recorded: Literal[False] = False
+
+
+class OneShotDequeueWorkerBindingResultV1(ClosedAuthorityV1):
+    schema: Literal["one-shot-dequeue-worker-binding-result-v1"] = (
+        "one-shot-dequeue-worker-binding-result-v1"
+    )
+    ok: bool
+    outcome: Literal["success", "failure", "indeterminate"]
+    record: OneShotDequeueWorkerBindingV1 | None
+    status: OneShotDequeueWorkerBindingStatusV1 | None
+    error: OneShotDequeueWorkerBindingRedactedErrorV1 | None
+    correlation_fingerprint: FingerprintV1
+    one_shot_dequeue_worker_binding_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> OneShotDequeueWorkerBindingResultV1:
+        if self.outcome == "success":
+            good = (
+                self.ok
+                and self.record is not None
+                and self.status is not None
+                and self.error is None
+                and self.one_shot_dequeue_worker_binding_recorded
+            )
+        else:
+            good = (
+                not self.ok
+                and self.record is None
+                and self.status is None
+                and self.error is not None
+                and not self.one_shot_dequeue_worker_binding_recorded
+            )
+        if not good:
+            raise ValueError("v0.46 binding result shape mismatch")
+        if self.record is not None and self.status.binding_id != self.record.binding_id:
+            raise ValueError("v0.46 binding result status binding mismatch")
+        _bounded(self)
+        return self
+
+
+class OneShotDequeueWorkerBindingCollectionV1(ClosedAuthorityV1):
+    schema: Literal["one-shot-dequeue-worker-binding-collection-v1"] = (
+        "one-shot-dequeue-worker-binding-collection-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    items: tuple[OneShotDequeueWorkerBindingV1, ...]
+    count: int
+    collection_fingerprint: FingerprintV1
+    one_shot_dequeue_worker_binding_recorded: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact(self) -> OneShotDequeueWorkerBindingCollectionV1:
+        if self.count != len(self.items) or self.count > MAX_COLLECTION_RECORDS:
+            raise ValueError("v0.46 binding collection exceeds bound")
+        ordered = tuple(sorted(self.items, key=lambda item: (item.recorded_at, item.binding_id)))
+        if ordered != self.items:
+            raise ValueError("v0.46 binding collection is not ordered")
+        if any(
+            item.operator_id != self.operator_id
+            or item.candidate_record_id != self.candidate_record_id
+            for item in self.items
+        ):
+            raise ValueError("v0.46 binding collection ownership mismatch")
+        if self.collection_fingerprint != collection_fingerprint(self):
+            raise ValueError("v0.46 binding collection fingerprint mismatch")
         _bounded(self)
         return self
 
@@ -731,6 +1034,332 @@ def _blocker_from_reason(reason: str) -> BlockerV1:
     if "unsupported authority" in lowered:
         return "unsupported_authority"
     return "evidence_not_found"
+
+
+def opaque_fingerprint(domain: str, value: str) -> FingerprintV1:
+    return fingerprint(domain, value)
+
+
+def derived_uuid5(domain: str, value: Any) -> str:
+    seed = fingerprint(domain, value).value
+    return str(uuid.uuid5(_UUID5_NAMESPACE, f"{domain}:{seed}"))
+
+
+def binding_subject_fingerprint(
+    value: OneShotDequeueWorkerBindingV1 | dict[str, Any],
+) -> FingerprintV1:
+    raw = value.model_dump(mode="json") if isinstance(value, BaseModel) else dict(value)
+    dequeue = raw["one_shot_controlled_dequeue"]
+    dequeue_status = raw["one_shot_controlled_dequeue_status"]
+    worker = raw["worker_intake_admission"]
+    worker_status = raw["worker_intake_admission_status"]
+    return fingerprint(
+        "atlas:one-shot-dequeue-worker-binding-subject:v1",
+        {
+            "operator_id": raw["operator_id"],
+            "candidate_record_id": raw["candidate_record_id"],
+            "v045_dequeue_id": dequeue["dequeue_id"],
+            "v045_dequeue_record_fingerprint": dequeue["dequeue_record_fingerprint"],
+            "v045_dequeue_status_fingerprint": dequeue_status["status_fingerprint"],
+            "v045_subject_fingerprint": dequeue["subject_fingerprint"],
+            "v040_worker_intake_admission_id": worker["admission_id"],
+            "v040_worker_intake_record_fingerprint": worker["record_fingerprint"],
+            "v040_worker_intake_status_fingerprint": worker_status["status_fingerprint"],
+            "worker_subject_fingerprint": worker["subject_fingerprint"],
+            "worker_identity_fingerprint": worker["worker_identity"][
+                "worker_identity_fingerprint"
+            ],
+            "worker_intake_reference_fingerprint": worker["worker_intake_reference"][
+                "intake_reference_fingerprint"
+            ],
+            "queue_intake_reference_fingerprint": worker["linkage"][
+                "queue_intake_reference_fingerprint"
+            ],
+            "queue_item_reference_fingerprint": worker["linkage"][
+                "queue_item_reference_fingerprint"
+            ],
+            "inherited_limits_fingerprint": raw["inherited_limits_fingerprint"],
+        },
+    )
+
+
+def reservation_subject_fingerprint(
+    validation: OneShotDequeueWorkerBindingValidationInputV1 | dict[str, Any],
+) -> FingerprintV1:
+    raw = validation.model_dump(mode="json") if isinstance(validation, BaseModel) else dict(validation)
+    dequeue = raw["one_shot_controlled_dequeue"]
+    dequeue_status = raw["one_shot_controlled_dequeue_status"]
+    worker = raw["worker_intake_admission"]
+    worker_status = raw["worker_intake_admission_status"]
+    return fingerprint(
+        "atlas:one-shot-dequeue-worker-binding-subject:v1",
+        {
+            "operator_id": raw["operator_id"],
+            "candidate_record_id": raw["candidate_record_id"],
+            "v045_dequeue_id": dequeue["dequeue_id"],
+            "v045_dequeue_record_fingerprint": dequeue["dequeue_record_fingerprint"],
+            "v045_dequeue_status_fingerprint": dequeue_status["status_fingerprint"],
+            "v045_subject_fingerprint": dequeue["subject_fingerprint"],
+            "v040_worker_intake_admission_id": worker["admission_id"],
+            "v040_worker_intake_record_fingerprint": worker["record_fingerprint"],
+            "v040_worker_intake_status_fingerprint": worker_status["status_fingerprint"],
+            "worker_subject_fingerprint": raw["create"]["worker_subject_fingerprint"],
+            "worker_identity_fingerprint": raw["create"]["worker_identity_fingerprint"],
+            "worker_intake_reference_fingerprint": raw["create"][
+                "worker_intake_reference_fingerprint"
+            ],
+            "queue_intake_reference_fingerprint": raw["create"][
+                "queue_intake_reference_fingerprint"
+            ],
+            "queue_item_reference_fingerprint": raw["create"][
+                "queue_item_reference_fingerprint"
+            ],
+            "inherited_limits_fingerprint": raw["create"][
+                "inherited_limits_fingerprint"
+            ],
+        },
+    )
+
+
+def derived_binding_id(subject_fingerprint: FingerprintV1) -> str:
+    return derived_uuid5(
+        "atlas:one-shot-dequeue-worker-binding-id:v1", subject_fingerprint
+    )
+
+
+def binding_record_fingerprint(
+    value: OneShotDequeueWorkerBindingV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:one-shot-dequeue-worker-binding-record:v1",
+        _without(value, "binding_record_fingerprint"),
+    )
+
+
+def status_fingerprint(
+    value: OneShotDequeueWorkerBindingStatusV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:one-shot-dequeue-worker-binding-status:v1",
+        _without(value, "status_fingerprint"),
+    )
+
+
+def request_fingerprint(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    create: OneShotDequeueWorkerBindingCreateV1,
+    request_received_at: str,
+    idempotency_fingerprint: FingerprintV1,
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:one-shot-dequeue-worker-binding-request:v1",
+        {
+            "operator_id": operator_id,
+            "candidate_record_id": candidate_record_id,
+            "create": create,
+            "idempotency_key_fingerprint": idempotency_fingerprint,
+        },
+    )
+
+
+def reservation_fingerprint(
+    value: OneShotDequeueWorkerBindingSubjectReservationV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:one-shot-dequeue-worker-binding-reservation:v1",
+        _without(value, "reservation_fingerprint"),
+    )
+
+
+def audit_fingerprint(
+    value: OneShotDequeueWorkerBindingAuditEvidenceV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:one-shot-dequeue-worker-binding-audit:v1",
+        _without(value, "audit_fingerprint"),
+    )
+
+
+def collection_fingerprint(
+    value: OneShotDequeueWorkerBindingCollectionV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:one-shot-dequeue-worker-binding-collection:v1",
+        _without(value, "collection_fingerprint"),
+    )
+
+
+def build_binding(
+    validation: OneShotDequeueWorkerBindingValidationInputV1,
+) -> OneShotDequeueWorkerBindingV1:
+    now = _instant(validation.authority.request_received_at)
+    valid_until = min(
+        now + timedelta(seconds=MAX_FRESHNESS_SECONDS),
+        _instant(validation.one_shot_controlled_dequeue.valid_until),
+        _instant(validation.one_shot_controlled_dequeue_status.valid_until),
+        _instant(validation.worker_intake_admission.valid_until),
+        _instant(validation.worker_intake_admission_status.valid_until),
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    subject = reservation_subject_fingerprint(validation)
+    raw = {
+        "binding_id": derived_binding_id(subject),
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "recorded_at": validation.authority.request_received_at,
+        "valid_until": valid_until,
+        "one_shot_controlled_dequeue": validation.one_shot_controlled_dequeue,
+        "one_shot_controlled_dequeue_status": validation.one_shot_controlled_dequeue_status,
+        "worker_intake_admission": validation.worker_intake_admission,
+        "worker_intake_admission_status": validation.worker_intake_admission_status,
+        "worker_subject_fingerprint": validation.create.worker_subject_fingerprint,
+        "queue_item_reference_fingerprint": (
+            validation.create.queue_item_reference_fingerprint
+        ),
+        "inherited_limits_fingerprint": validation.create.inherited_limits_fingerprint,
+        "subject_fingerprint": subject,
+        "idempotency_key_fingerprint": idempotency_key_fingerprint(
+            validation.operator_id, validation.idempotency_key
+        ),
+    }
+    seed = OneShotDequeueWorkerBindingV1.model_construct(
+        **raw,
+        binding_record_fingerprint=fingerprint("atlas:seed:v1", "record"),
+    )
+    return OneShotDequeueWorkerBindingV1.model_validate(
+        {**raw, "binding_record_fingerprint": binding_record_fingerprint(seed)}
+    )
+
+
+def build_reservations(
+    validation: OneShotDequeueWorkerBindingValidationInputV1,
+    record: OneShotDequeueWorkerBindingV1,
+) -> tuple[
+    OneShotDequeueWorkerBindingIdempotencyReservationV1,
+    OneShotDequeueWorkerBindingSubjectReservationV1,
+]:
+    idem = idempotency_key_fingerprint(validation.operator_id, validation.idempotency_key)
+    request_fp = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=idem,
+    )
+    raw = {
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "idempotency_key_fingerprint": idem,
+        "request_fingerprint": request_fp,
+        "subject_fingerprint": record.subject_fingerprint,
+        "binding_id": record.binding_id,
+        "binding_record_fingerprint": record.binding_record_fingerprint,
+        "reserved_at": validation.authority.request_received_at,
+    }
+    idempotency = OneShotDequeueWorkerBindingIdempotencyReservationV1.model_validate(raw)
+    reservation_seed = OneShotDequeueWorkerBindingSubjectReservationV1.model_construct(
+        **raw,
+        reservation_fingerprint=fingerprint("atlas:seed:v1", "reservation"),
+    )
+    reservation = OneShotDequeueWorkerBindingSubjectReservationV1.model_validate(
+        {**raw, "reservation_fingerprint": reservation_fingerprint(reservation_seed)}
+    )
+    return idempotency, reservation
+
+
+def build_audit(
+    record: OneShotDequeueWorkerBindingV1,
+    *,
+    event: Literal[
+        "one_shot_dequeue_worker_binding_recorded",
+        "one_shot_dequeue_worker_binding_read",
+        "one_shot_dequeue_worker_binding_indeterminate",
+    ],
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"],
+    correlation_fingerprint: FingerprintV1,
+    occurred_at: str,
+) -> OneShotDequeueWorkerBindingAuditEvidenceV1:
+    raw = {
+        "event": event,
+        "audit_id": derived_uuid5(
+            "atlas:one-shot-dequeue-worker-binding-audit-id:v1",
+            {
+                "operator_id": record.operator_id,
+                "candidate_record_id": record.candidate_record_id,
+                "binding_id": record.binding_id,
+                "event": event,
+                "outcome": outcome,
+                "correlation_fingerprint": correlation_fingerprint,
+                "occurred_at": occurred_at,
+            },
+        ),
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "binding_id": record.binding_id,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "correlation_fingerprint": correlation_fingerprint,
+        "subject_fingerprint": record.subject_fingerprint,
+        "binding_record_fingerprint": record.binding_record_fingerprint,
+        "one_shot_dequeue_worker_binding_recorded": outcome == "recorded",
+    }
+    seed = OneShotDequeueWorkerBindingAuditEvidenceV1.model_construct(
+        **raw,
+        audit_fingerprint=fingerprint("atlas:seed:v1", "audit"),
+    )
+    return OneShotDequeueWorkerBindingAuditEvidenceV1.model_validate(
+        {**raw, "audit_fingerprint": audit_fingerprint(seed)}
+    )
+
+
+def derive_status(
+    record: OneShotDequeueWorkerBindingV1,
+    *,
+    evaluated_at: str,
+) -> OneShotDequeueWorkerBindingStatusV1:
+    raw = {
+        "binding_id": record.binding_id,
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "lifecycle": (
+            "expired" if _instant(evaluated_at) >= _instant(record.valid_until) else "active"
+        ),
+        "binding_state": "one_shot_dequeue_worker_binding_recorded",
+        "eligibility": record.eligibility,
+        "blockers": record.blockers,
+        "evaluated_at": evaluated_at,
+        "valid_until": record.valid_until,
+        "binding_record_fingerprint": record.binding_record_fingerprint,
+    }
+    seed = OneShotDequeueWorkerBindingStatusV1.model_construct(
+        **raw,
+        status_fingerprint=fingerprint("atlas:seed:v1", "status"),
+    )
+    return OneShotDequeueWorkerBindingStatusV1.model_validate(
+        {**raw, "status_fingerprint": status_fingerprint(seed)}
+    )
+
+
+def build_collection(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    items: tuple[OneShotDequeueWorkerBindingV1, ...],
+) -> OneShotDequeueWorkerBindingCollectionV1:
+    raw = {
+        "operator_id": operator_id,
+        "candidate_record_id": candidate_record_id,
+        "items": items,
+        "count": len(items),
+    }
+    seed = OneShotDequeueWorkerBindingCollectionV1.model_construct(
+        **raw,
+        collection_fingerprint=fingerprint("atlas:seed:v1", "collection"),
+    )
+    return OneShotDequeueWorkerBindingCollectionV1.model_validate(
+        {**raw, "collection_fingerprint": collection_fingerprint(seed)}
+    )
 
 
 def parse_create_json(raw: bytes | str) -> OneShotDequeueWorkerBindingCreateV1:
