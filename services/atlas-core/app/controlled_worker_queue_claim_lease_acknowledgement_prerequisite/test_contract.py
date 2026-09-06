@@ -127,6 +127,13 @@ def test_create_is_closed_strict_nfc_and_size_bounded(tmp_path: Path) -> None:
     )
     with pytest.raises(contract.StrictContractError):
         parse_create_json(non_nfc)
+    duplicate_key = create.model_dump_json().replace(
+        '"admission_id":',
+        '"admission_id":"00000000-0000-0000-0000-000000000000","admission_id":',
+        1,
+    )
+    with pytest.raises(contract.StrictContractError):
+        parse_create_json(duplicate_key)
     raw = create.model_dump(mode="python")
     raw["queue_selector"] = "default"
     with pytest.raises(ValidationError):
