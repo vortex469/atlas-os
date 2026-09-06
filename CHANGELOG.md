@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.49 P0-P1 - Controlled Worker Queue Claim Admission
+#### v0.49 P0-P5 - Controlled Worker Queue Claim Admission
 
 - Inspected the completed merged v0.48 baseline and selected the narrowest
   repository-supported next authority boundary toward controlled worker start:
@@ -30,6 +30,13 @@ release boundaries.
   persistence, service, route, production construction, queue claim, lease,
   acknowledgement, worker contact, Agent invocation, execution, deployment,
   rollback, publication, or effect consumer.
+- P2 adds explicitly constructed append-only Core service/store support for
+  bounded durable v0.49 admission records. The service remains default-off and
+  accepts only an injected owner-scoped v0.48 activation-evidence reader; the
+  store preserves permanent idempotency, subject no-replay, bounded/redacted
+  secret-free persistence, restart-safe readback, and terminal indeterminate
+  reservations without queue, worker, Agent, execution, deployment, rollback,
+  publication, or effect consumers.
 - P3 adds the guarded default-off Core API for the exact v0.49 evidence
   boundary: owner-scoped list/create/get under candidate records with dedicated
   operator permissions, CSRF/origin checks, strict JSON and idempotency bounds,
@@ -37,6 +44,24 @@ release boundaries.
   construct the service or any queue claim, lease, acknowledgement, worker
   contact, worker-start, Agent invocation, execution, deployment, rollback,
   publication, or effect consumer.
+- P4 adds nested Mission Control read-only evidence presentation under the
+  existing worker-binding activation evidence view. It uses only guarded read
+  APIs and adds no standalone route, navigation, polling transport, browser
+  storage authority, queue selector, claim/lease/acknowledgement control,
+  worker-start control, Agent/workflow action, execution control, deployment
+  control, or raw secret rendering.
+- P5 closes the boundary with regression locks proving only the exact P0
+  authority advanced: `controlled_worker_queue_claim_admission_recorded`.
+  Queue claim, queue lease, queue acknowledgement, worker activation runtime,
+  worker store/runtime contact, worker-start admission, worker start, Agent
+  invocation, execution start, publication, deployment, rollback, and effect
+  consumers remain blocked by fixed blockers.
+- V0.49 preserves exact v0.48 lineage, ownership, freshness/expiry,
+  fingerprints, inherited limits, permanent idempotency and subject no-replay,
+  bounded/redacted/secret-free persistence, API/UI isolation, Home Assistant
+  blocking, Agent/execution-worker zero-consumer checks, and the absence of
+  `compose.execution-smoke.override.yaml`.
+- P5 adds focused tests and release documentation only.
 
 [v049-plan]: docs/architecture/controlled-worker-queue-claim-admission-v1.md
 

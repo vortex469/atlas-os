@@ -1,6 +1,6 @@
 # Controlled Worker Queue Claim Admission v1 planning contract
 
-Status: **Atlas v0.49 P0 frozen planning contract**.
+Status: **Atlas v0.49 P0-P5 closed controlled worker queue claim admission contract**.
 
 This document freezes the repository-supported v0.49 boundary after inspection
 of the completed merged v0.48 baseline. The v0.48 baseline can record
@@ -143,6 +143,26 @@ acknowledgement control, worker selector, endpoint input, credential input,
 payload editor, command editor, worker-start control, execute control,
 deploy/rollback control, browser storage authority, or raw secret rendering.
 
+## P5 Release Closure
+
+P0 through P5 are complete. The repository-supported v0.49 boundary advanced
+only to `controlled_worker_queue_claim_admission_recorded` over one exact
+active same-owner v0.48 worker-binding activation evidence record. Queue
+claim, queue lease, queue acknowledgement, worker activation runtime, worker
+store/runtime contact, worker-start admission, worker start, Agent invocation,
+execution authorization/start, publication, deployment, rollback, and effect
+consumers remain fixed false and blocked by the downstream blockers listed in
+this contract.
+
+P5 preserves exact v0.48 lineage and ownership, freshness/expiry,
+fingerprints, inherited limits, permanent idempotency and subject no-replay,
+bounded append-only secret-free persistence, redacted errors, default-off
+production construction, guarded API isolation, nested read-only Mission
+Control presentation, Home Assistant blocking, Agent/execution-worker
+zero-consumer checks, and the absence of
+`compose.execution-smoke.override.yaml`. P5 adds focused tests and release
+evidence only.
+
 ## Must Not Change
 
 V0.49 does not modify any prior authority boundary. The completed v0.20-v0.48
@@ -156,9 +176,11 @@ depends on, or deliberately prove why any omitted prerequisite is not required
 for that specific authority. Until then, unsupported architectures must fail
 closed with the explicit blockers listed in this document.
 
-V0.49 P0 adds documentation only. It introduces no Core model, service, store,
-route, production construction, Mission Control surface, queue adapter,
-queue polling consumer, claim, lease, acknowledgement, worker store contact,
-worker runtime contact, worker-start admission, worker start, Agent invocation,
-execution start, publication, deployment, rollback, effect consumer, or change
-to `compose.execution-smoke.override.yaml`.
+V0.49 P0 added documentation only. Later phases added the closed model,
+explicitly constructed service/store, guarded Core API, nested read-only
+Mission Control evidence, and P5 release locks. They introduced no production
+construction, queue adapter, queue polling consumer, claim, lease,
+acknowledgement, worker store contact, worker runtime contact,
+worker-start admission, worker start, Agent invocation, execution start,
+publication, deployment, rollback, effect consumer, or change to
+`compose.execution-smoke.override.yaml`.

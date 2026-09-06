@@ -3,6 +3,53 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.49 P0-P5 Controlled Worker Queue Claim Admission - complete
+
+Atlas v0.49 is **Controlled Worker Queue Claim Admission**. P0-P5 are complete
+from the frozen
+[v1 contract](architecture/controlled-worker-queue-claim-admission-v1.md).
+
+- [x] Inspect the completed repository-supported v0.48 Worker Binding
+  Activation Evidence contract, implementation, API/UI structural tests, and
+  release checklist before defining v0.49.
+- [x] Freeze exactly one new evidence-only authority:
+  `controlled_worker_queue_claim_admission_recorded` over one exact active
+  same-owner v0.48 worker-binding activation evidence record.
+- [x] Preserve exact v0.48 lineage, ownership, freshness/expiry,
+  fingerprints, inherited limits, permanent idempotency and subject no-replay,
+  redaction, default-off construction, API/UI isolation, Home Assistant
+  blocking, Agent/execution-worker zero-consumer behavior, and absence of
+  `compose.execution-smoke.override.yaml`.
+- [x] Keep downstream authority blocked by
+  `queue_claim_not_defined`, `queue_lease_not_defined`,
+  `queue_ack_not_defined`, `worker_activation_runtime_not_defined`,
+  `store_contact_not_defined`, `runtime_contact_not_defined`,
+  `worker_start_admission_not_defined`, `worker_start_not_defined`,
+  `agent_invocation_not_defined`, and
+  `execution_start_boundary_not_defined`.
+- [x] P1 - closed immutable Core contract models and pure validation only.
+- [x] P2 - explicitly constructed append-only Core evidence service/store
+  with injected owner-scoped v0.48 reader, permanent idempotency, subject
+  no-replay, bounded/redacted secret-free persistence, restart-safe readback,
+  and terminal indeterminate reservations.
+- [x] P3 - exact guarded Core create/list/get evidence API only.
+- [x] P4 - strict nested Mission Control read-only evidence presentation only.
+- [x] P5 - release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, Mission Control validation,
+  Ruff, and release evidence only.
+
+### P5 validation evidence
+
+- [x] Focused v0.49/prior Core regressions cover contract, service/store,
+  guarded route, release closure, and the inherited v0.48 boundary.
+- [x] Agent and execution-worker isolation remains zero-consumer for v0.49
+  admission markers.
+- [x] Full Mission Control validation covers read-only v0.49 API/parsing,
+  structural UI isolation, lint, and production build.
+- [x] Repository Ruff gate and `git diff --check` remain required closure
+  gates.
+- [x] P5 adds focused tests and release documentation only.
+
 ## Atlas v0.45 P0 One-Shot Controlled Dequeue Boundary - selected
 
 Atlas v0.45 is **One-Shot Controlled Dequeue Boundary**. P0 freezes the

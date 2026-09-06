@@ -1,12 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - v0.49 P1
+## 1. Current baseline - v0.49 P5
 
-Atlas v0.49 P1 implements the closed immutable Core models and pure
-fail-closed evaluator selected by the frozen documentation-only v0.49 P0 plan
-over the completed repository-supported v0.48 P0-P5 baseline in this
-worktree. The latest
-immutable annotated release tag recorded in this checkout remains
+Atlas v0.49 P0-P5 completes the controlled worker queue claim admission
+evidence boundary selected by the frozen documentation-only v0.49 P0 plan over
+the completed repository-supported v0.48 P0-P5 baseline in this worktree. The
+latest immutable annotated release tag recorded in this checkout remains
 `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
 The completed baseline includes the hardened production topology; repository
@@ -30,12 +29,12 @@ adds only worker-binding activation evidence over one exact active same-owner
 v0.47 preflight record. Runtime activation, worker store/runtime contact,
 queue claim/lease/acknowledgement, worker-start admission, worker start, Agent
 invocation, execution start, publication, deployment, rollback, and effect
-consumers remain blocked. V0.49 P1 therefore models and purely evaluates only
-controlled worker queue claim admission evidence over one exact active
-same-owner v0.48 activation-evidence record. Queue claim/lease/
-acknowledgement, worker-start admission, worker start, Agent invocation,
-execution start, publication, deployment, rollback, persistence, and effect
-consumers remain blocked.
+consumers remain blocked. V0.49 adds only controlled worker queue claim
+admission evidence over one exact active same-owner v0.48 activation-evidence
+record. Queue claim/lease/acknowledgement, worker activation runtime, worker
+store/runtime contact, worker-start admission, worker start, Agent invocation,
+execution start, publication, deployment, rollback, and effect consumers remain
+blocked.
 
 ## 2. Enduring architectural constraints
 
@@ -175,18 +174,18 @@ consumers remain blocked.
   store/runtime contact, queue claim/lease/acknowledgement, worker-start
   admission, worker start, Agent invocation, execution start, publication,
   deployment, rollback, and effect consumers undefined.
-- v0.49 P0 freezes controlled worker queue claim admission evidence over one
-  active same-owner v0.48 worker-binding activation evidence record as the next
-  repository-supported boundary while leaving queue claim/lease/
-  acknowledgement, worker-start admission, worker start, Agent invocation,
-  execution start, publication, deployment, rollback, and effect consumers
-  undefined.
+- v0.49 released controlled worker queue claim admission evidence over one
+  active same-owner v0.48 worker-binding activation evidence record while
+  leaving queue claim/lease/acknowledgement, worker activation runtime,
+  worker store/runtime contact, worker-start admission, worker start, Agent
+  invocation, execution start, publication, deployment, rollback, and effect
+  consumers undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Frozen v0.49 P0 plan - Controlled Worker Queue Claim Admission
+## Completed v0.49 plan - Controlled Worker Queue Claim Admission
 
 Atlas v0.49 P0 selects **Controlled Worker Queue Claim Admission**. The
 normative planning contract is [Controlled Worker Queue Claim Admission
@@ -194,11 +193,25 @@ v1](docs/architecture/controlled-worker-queue-claim-admission-v1.md).
 
 P0 is documentation-only and frozen. It adds no runtime architecture.
 
+P0-P5 are complete.
+
 P1 is complete in Core as closed immutable models plus pure fail-closed
-evaluation only. It adds no persistence, service, store, route, production
-construction, queue adapter, queue claim, lease, acknowledgement, worker
-contact, worker start, Agent invocation, execution start, deployment,
-rollback, publication, or effect consumer.
+evaluation only. P2 adds explicitly constructed append-only Core service/store
+support with an injected owner-scoped v0.48 activation-evidence reader,
+permanent idempotency, subject no-replay, bounded/redacted secret-free
+persistence, restart-safe readback, and terminal indeterminate reservations.
+P3 adds the guarded default-off owner-scoped Core list/create/get API under
+candidate records with dedicated operator permissions, CSRF/origin checks,
+strict JSON and idempotency bounds, redacted errors, and OpenAPI registration.
+P4 adds nested Mission Control read-only evidence presentation under the
+existing worker-binding activation evidence view using guarded read APIs only.
+P5 locks release isolation, permanent no-replay, exact inherited lineage and
+limits, fixed-false downstream authority, default-off production construction,
+API/UI isolation, Home Assistant blocking, Agent/execution-worker zero-consumer
+checks, and release evidence. It adds no queue adapter, queue claim, lease,
+acknowledgement, worker activation runtime, worker store/runtime contact,
+worker-start admission, worker start, Agent invocation, execution start,
+deployment, rollback, publication, or effect consumer.
 
 V0.49 starts from the completed repository-supported v0.48 Worker Binding
 Activation Evidence baseline. The v0.48 implementation can record bounded
