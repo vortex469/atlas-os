@@ -334,6 +334,7 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "one_shot_dequeue_worker_binding/contract.py",
         "worker_binding_activation_preflight/contract.py",
         "worker_binding_activation_evidence/contract.py",
+        "controlled_worker_queue_claim_admission/contract.py",
     }
     consumers = _execution_admission_consumers(app_root, allowed, boundary_only)
     assert consumers == []

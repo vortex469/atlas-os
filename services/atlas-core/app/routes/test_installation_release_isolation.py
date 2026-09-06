@@ -532,6 +532,20 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-binding-activation-preflights/{preflight_id}": {
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-binding-activation-evidence": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-binding-activation-evidence/{activation_evidence_id}": {
+            "get",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-admissions": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-admissions/{admission_id}": {
+            "get",
+        },
     }
     prohibited = (
         "approve",
@@ -554,6 +568,9 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
             "one-shot-controlled-dequeues", "one-shot-controlled-receipts"
         ).replace(
             "one-shot-dequeue-worker-bindings", "one-shot-worker-binding-evidence"
+        ).replace(
+            "controlled-worker-queue-claim-admissions",
+            "controlled-worker-queue-admission-evidence",
         ).replace(
             "{dequeue_id}", "{receipt_id}"
         )
@@ -596,6 +613,8 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/oneShotControlledDequeue.ts"),
         Path("api/oneShotDequeueWorkerBinding.ts"),
         Path("api/workerBindingActivationPreflight.ts"),
+        Path("api/workerBindingActivationEvidence.ts"),
+        Path("api/controlledWorkerQueueClaimAdmission.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 
