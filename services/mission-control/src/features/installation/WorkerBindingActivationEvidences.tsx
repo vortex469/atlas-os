@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { listWorkerBindingActivationEvidences } from "../../api/workerBindingActivationEvidence";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { WorkerBindingActivationEvidenceV1 } from "../../types/workerBindingActivationEvidence";
+import { ControlledWorkerQueueClaimAdmissions } from "./ControlledWorkerQueueClaimAdmissions";
 
 const BLOCKERS: Record<string, string> = {
     worker_activation_runtime_not_defined: "Worker activation runtime is not defined",
@@ -96,6 +97,7 @@ function ActivationEvidence({ item }: { item: WorkerBindingActivationEvidenceV1 
                 {["Binding activation allowed", "Worker activation runtime allowed", "Worker start admission allowed", "Caller-supplied credentials allowed", "Caller-supplied endpoint allowed", "Caller-supplied command allowed", "Caller-supplied payload allowed", "Store contact allowed", "Runtime contact allowed", "Queue polling allowed", "Queue claim allowed", "Queue lease allowed", "Queue acknowledgement allowed", "Queue consume allowed", "Queue mutation allowed", "Worker store contact allowed", "Worker runtime contact allowed", "Worker contact allowed", "Worker start allowed", "Worker invocation allowed", "Agent invocation allowed", "Execution authorization allowed", "Execution start allowed", "Process execution allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Workflow start allowed", "Shell execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Artifact publication allowed", "Tag push allowed", "Release publication allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <ControlledWorkerQueueClaimAdmissions candidateId={item.candidate_record_id} activationEvidenceId={item.activation_evidence_id} />
     </li>;
 }
 

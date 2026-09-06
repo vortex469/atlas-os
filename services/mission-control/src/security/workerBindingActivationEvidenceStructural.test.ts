@@ -36,9 +36,11 @@ describe("v0.48 worker binding activation evidence Mission Control boundary", ()
         expect(component).not.toMatch(/worker selector|payload editor|command editor|endpoint input|credential input|raw receipt document|raw queue identity value|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /workerBindingActivationEvidence|WorkerBindingActivationEvidence|worker-binding-activation-evidence/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
+            "../api/controlledWorkerQueueClaimAdmission.ts",
             "../api/workerBindingActivationEvidence.ts",
             "../features/installation/WorkerBindingActivationEvidences.tsx",
             "../features/installation/WorkerBindingActivationPreflights.tsx",
+            "../types/controlledWorkerQueueClaimAdmission.ts",
             "../types/workerBindingActivationEvidence.ts",
         ]);
     });
