@@ -1,8 +1,8 @@
 # Atlas OS Roadmap
 
-## 1. Current completed baseline - v0.47
+## 1. Current completed baseline - v0.48
 
-Atlas v0.47 P0-P5 is complete in the repository-supported baseline for this
+Atlas v0.48 P0-P5 is complete in the repository-supported baseline for this
 worktree. The latest immutable annotated release tag recorded in this checkout
 remains `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
@@ -22,16 +22,10 @@ controlled dequeue evidence, and one-shot dequeue worker binding evidence.
 V0.47 adds only worker-binding activation preflight evidence over one exact
 active same-owner v0.46 binding record. Activation, worker store/runtime
 contact, queue claim/lease/acknowledgement, worker start, Agent invocation,
-execution start, publication, deployment, and rollback remain blocked.
-
-The repository-supported next boundary for v0.48 is documentation-selected as
-**Worker Binding Activation Evidence**. Queue claim, lease, and
-acknowledgement prerequisites remain unsupported, so worker-start admission is
-not selected. The v0.48 boundary may only record evidence that one exact active
-same-owner v0.47 worker-binding activation preflight record was accepted as
-activation evidence for a later, separately released runtime activation
-boundary. Runtime activation, worker store/runtime contact, queue
-claim/lease/acknowledgement, worker-start admission, worker start, Agent
+execution start, publication, deployment, and rollback remain blocked. V0.48
+adds only worker-binding activation evidence over one exact active same-owner
+v0.47 preflight record. Runtime activation, worker store/runtime contact,
+queue claim/lease/acknowledgement, worker-start admission, worker start, Agent
 invocation, execution start, publication, deployment, rollback, and effect
 consumers remain blocked.
 
@@ -178,11 +172,13 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Selected v0.48 plan - Worker Binding Activation Evidence
+## Completed v0.48 plan - Worker Binding Activation Evidence
 
 Atlas v0.48 selects **Worker Binding Activation Evidence**. The normative
 planning contract is [Worker Binding Activation Evidence
 v1](docs/architecture/worker-binding-activation-evidence-v1.md).
+
+P0-P5 are complete.
 
 V0.48 starts from the completed repository-supported v0.47 Worker Binding
 Activation Preflight baseline. The v0.47 implementation can record bounded

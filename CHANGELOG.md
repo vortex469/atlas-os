@@ -6,6 +6,27 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.48 P0-P5 - Worker Binding Activation Evidence
+
+- Selected and completed Atlas v0.48 **Worker Binding Activation Evidence**
+  with the closed [v1 planning contract](docs/architecture/worker-binding-activation-evidence-v1.md).
+- Added immutable Core models, explicit default-off service/store
+  construction, guarded candidate-scoped API, and nested Mission Control
+  read-only evidence for one active same-owner v0.47 worker-binding activation
+  preflight record.
+- P5 closes the boundary with regression locks proving only the exact P0
+  authority advanced: `worker_binding_activation_evidence_recorded`. Runtime
+  activation, worker store/runtime contact, queue claim/lease/acknowledgement,
+  worker-start admission, worker start, Agent invocation, execution start,
+  publication, deployment, rollback, and effect consumers remain blocked by
+  fixed blockers.
+- V0.48 preserves exact v0.47 lineage, ownership, freshness/expiry,
+  fingerprints, inherited limits, permanent idempotency and subject no-replay,
+  bounded/redacted/secret-free persistence, API/UI isolation, Home Assistant
+  blocking, Agent/execution-worker zero-consumer checks, and the absence of
+  `compose.execution-smoke.override.yaml`.
+- P5 adds focused tests and release documentation only.
+
 #### v0.48 P2 - Worker Binding Activation Evidence Service/Store
 
 - Added explicit default-off Core service/store construction for bounded

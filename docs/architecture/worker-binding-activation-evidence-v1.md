@@ -1,14 +1,14 @@
 # Worker Binding Activation Evidence v1 planning contract
 
-Status: **Atlas v0.48 P0 selected documentation-only authority boundary**.
+Status: **Atlas v0.48 P0-P5 closed worker binding activation evidence contract**.
 
 This document freezes the repository-supported v0.48 boundary after inspection
-of the completed merged v0.47 baseline. The v0.47 baseline can record
-worker-binding activation preflight evidence over one active same-owner v0.46
-one-shot dequeue worker binding record. It still does not define binding
-activation, worker store contact, worker runtime contact, queue claim, queue
-lease, queue acknowledgement, worker start, Agent invocation, or execution
-start.
+of the completed merged v0.47 baseline and records its P5 closure. The v0.47
+baseline can record worker-binding activation preflight evidence over one
+active same-owner v0.46 one-shot dequeue worker binding record. It still does
+not define binding activation, worker store contact, worker runtime contact,
+queue claim, queue lease, queue acknowledgement, worker start, Agent
+invocation, or execution start.
 
 Because queue claim, lease, and acknowledgement prerequisites remain
 unsupported, v0.48 cannot safely select worker-start admission, worker store
@@ -122,11 +122,10 @@ queue item, lineage, or inherited-limit mismatch must fail closed.
 
 ## Persistence and Defaults
 
-The v0.48 boundary is documentation-only until separately implemented. Any
-later implementation must use explicit construction, default-off service/store
-registration, bounded append-only persistence, permanent idempotency and
-subject no-replay, redacted errors, secret-free storage, and guarded
-candidate-scoped API access.
+The v0.48 boundary uses explicit construction and remains default-off in
+production composition. Its service/store use bounded append-only persistence,
+permanent idempotency and subject no-replay, redacted errors, secret-free
+storage, and guarded candidate-scoped API access.
 
 Mission Control may display the resulting evidence only as nested read-only
 installation workflow evidence. It must not add a standalone route, navigation
@@ -145,3 +144,11 @@ boundary defines the queue claim, lease, and acknowledgement prerequisites it
 depends on, or deliberately proves why they are not prerequisites for that
 specific authority. Until then, unsupported architectures must fail closed with
 the explicit blockers listed in this document.
+
+P5 release closure adds focused regression checks and documentation only. It
+proves the only advanced authority is
+`worker_binding_activation_evidence_recorded`, while runtime activation,
+worker store/runtime contact, queue claim/lease/acknowledgement, worker-start
+admission, worker start, Agent invocation, execution start, publication,
+deployment, rollback, effect consumers, and `compose.execution-smoke.override.yaml`
+remain blocked or absent.
