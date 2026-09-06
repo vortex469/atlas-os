@@ -448,6 +448,45 @@ class WorkerBindingActivationEvidenceStatusV1(ClosedAuthorityV1):
         return self
 
 
+class WorkerBindingActivationEvidenceIdempotencyReservationV1(ContractModel):
+    schema: Literal["worker-binding-activation-evidence-idempotency-reservation-v1"] = (
+        "worker-binding-activation-evidence-idempotency-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    activation_evidence_id: CanonicalUuid5
+    activation_evidence_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    permanent: Literal[True] = True
+
+
+class WorkerBindingActivationEvidenceSubjectReservationV1(ContractModel):
+    schema: Literal["worker-binding-activation-evidence-subject-reservation-v1"] = (
+        "worker-binding-activation-evidence-subject-reservation-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    activation_evidence_id: CanonicalUuid5
+    activation_evidence_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    reservation_fingerprint: FingerprintV1
+    permanent: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> WorkerBindingActivationEvidenceSubjectReservationV1:
+        if self.reservation_fingerprint != reservation_fingerprint(self):
+            raise ValueError("v0.48 activation evidence reservation fingerprint mismatch")
+        return self
+
+
 class WorkerBindingActivationEvidenceAuditEvidenceV1(ClosedAuthorityV1):
     schema: Literal["worker-binding-activation-evidence-audit-v1"] = (
         "worker-binding-activation-evidence-audit-v1"
@@ -931,6 +970,25 @@ def idempotency_key_fingerprint(operator_id: str, raw_key: str) -> FingerprintV1
     )
 
 
+def request_fingerprint(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    create: WorkerBindingActivationEvidenceCreateV1,
+    request_received_at: str,
+    idempotency_fingerprint: FingerprintV1,
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-binding-activation-evidence-request:v1",
+        {
+            "operator_id": operator_id,
+            "candidate_record_id": candidate_record_id,
+            "create": create,
+            "idempotency_key_fingerprint": idempotency_fingerprint,
+        },
+    )
+
+
 def activation_evidence_subject_fingerprint(
     value: WorkerBindingActivationEvidenceV1 | dict[str, Any],
 ) -> FingerprintV1:
@@ -1012,6 +1070,15 @@ def status_fingerprint(
     )
 
 
+def reservation_fingerprint(
+    value: WorkerBindingActivationEvidenceSubjectReservationV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:worker-binding-activation-evidence-reservation:v1",
+        _without(value, "reservation_fingerprint"),
+    )
+
+
 def audit_fingerprint(
     value: WorkerBindingActivationEvidenceAuditEvidenceV1 | dict[str, Any],
 ) -> FingerprintV1:
@@ -1077,6 +1144,48 @@ def build_activation_evidence(
             ),
         }
     )
+
+
+def build_reservations(
+    validation: WorkerBindingActivationEvidenceValidationInputV1,
+    record: WorkerBindingActivationEvidenceV1,
+) -> tuple[
+    WorkerBindingActivationEvidenceIdempotencyReservationV1,
+    WorkerBindingActivationEvidenceSubjectReservationV1,
+]:
+    idem = idempotency_key_fingerprint(validation.operator_id, validation.idempotency_key)
+    request_fp = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=idem,
+    )
+    raw = {
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "idempotency_key_fingerprint": idem,
+        "request_fingerprint": request_fp,
+        "subject_fingerprint": record.subject_fingerprint,
+        "activation_evidence_id": record.activation_evidence_id,
+        "activation_evidence_record_fingerprint": (
+            record.activation_evidence_record_fingerprint
+        ),
+        "reserved_at": validation.authority.request_received_at,
+    }
+    idempotency = WorkerBindingActivationEvidenceIdempotencyReservationV1.model_validate(
+        raw
+    )
+    reservation_seed = (
+        WorkerBindingActivationEvidenceSubjectReservationV1.model_construct(
+            **raw,
+            reservation_fingerprint=fingerprint("atlas:seed:v1", "reservation"),
+        )
+    )
+    reservation = WorkerBindingActivationEvidenceSubjectReservationV1.model_validate(
+        {**raw, "reservation_fingerprint": reservation_fingerprint(reservation_seed)}
+    )
+    return idempotency, reservation
 
 
 def build_audit(

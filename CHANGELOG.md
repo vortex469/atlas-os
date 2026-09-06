@@ -6,6 +6,20 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.48 P2 - Worker Binding Activation Evidence Service/Store
+
+- Added explicit default-off Core service/store construction for bounded
+  durable v0.48 worker-binding activation evidence over one exact active
+  same-owner v0.47 preflight record.
+- The store uses append-only SQLite reservations for permanent idempotency and
+  subject no-replay, restart-safe owner readback, quotas, bounded/redacted
+  secret-free persistence, terminal indeterminate reservations, concurrency
+  safety, and fail-closed corruption handling.
+- No route, Mission Control surface, production construction, worker store or
+  runtime contact, queue claim/lease/acknowledgement, worker start, Agent
+  invocation, execution, mutation, deployment, rollback, publication, or replay
+  bypass was added.
+
 #### v0.47 P0-P5 - Worker Binding Activation Preflight
 
 - Selected and completed Atlas v0.47 **Worker Binding Activation Preflight**
