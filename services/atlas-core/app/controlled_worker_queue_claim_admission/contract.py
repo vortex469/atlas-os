@@ -41,6 +41,7 @@ from app.worker_binding_activation_evidence.contract import (
 )
 
 MAX_CREATE_BYTES = 16 * 1024
+MAX_COLLECTION_RECORDS = 100
 MAX_CREATE_NESTING = 16
 MAX_MODEL_BYTES = 192 * 1024
 MAX_FRESHNESS_SECONDS = 30
@@ -454,6 +455,186 @@ class ControlledWorkerQueueClaimAdmissionStatusV1(ClosedAuthorityV1):
         return self
 
 
+class ControlledWorkerQueueClaimAdmissionIdempotencyReservationV1(ContractModel):
+    schema: Literal[
+        "controlled-worker-queue-claim-admission-idempotency-reservation-v1"
+    ] = "controlled-worker-queue-claim-admission-idempotency-reservation-v1"
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    admission_id: CanonicalUuid5
+    admission_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    permanent: Literal[True] = True
+
+
+class ControlledWorkerQueueClaimAdmissionSubjectReservationV1(ContractModel):
+    schema: Literal[
+        "controlled-worker-queue-claim-admission-subject-reservation-v1"
+    ] = "controlled-worker-queue-claim-admission-subject-reservation-v1"
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    admission_id: CanonicalUuid5
+    admission_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    reservation_fingerprint: FingerprintV1
+    permanent: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimAdmissionSubjectReservationV1:
+        if self.reservation_fingerprint != reservation_fingerprint(self):
+            raise ValueError("v0.49 admission reservation fingerprint mismatch")
+        return self
+
+
+class ControlledWorkerQueueClaimAdmissionAuditEvidenceV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-admission-audit-v1"] = (
+        "controlled-worker-queue-claim-admission-audit-v1"
+    )
+    event: Literal[
+        "controlled_worker_queue_claim_admission_recorded",
+        "controlled_worker_queue_claim_admission_read",
+        "controlled_worker_queue_claim_admission_indeterminate",
+    ]
+    audit_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    admission_id: CanonicalUuid5 | None
+    occurred_at: UtcSecond
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"]
+    correlation_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1 | None
+    admission_record_fingerprint: FingerprintV1 | None
+    audit_fingerprint: FingerprintV1
+    controlled_worker_queue_claim_admission_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimAdmissionAuditEvidenceV1:
+        if self.audit_fingerprint != audit_fingerprint(self):
+            raise ValueError("v0.49 admission audit fingerprint mismatch")
+        return self
+
+
+class ControlledWorkerQueueClaimAdmissionRedactedErrorV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-admission-error-v1"] = (
+        "controlled-worker-queue-claim-admission-error-v1"
+    )
+    error_code: Literal[
+        "installation_capability_unsupported",
+        "evidence_not_found",
+        "ownership_mismatch",
+        "permission_scope_missing",
+        "v048_activation_evidence_not_active",
+        "v048_activation_evidence_not_recorded",
+        "linkage_mismatch",
+        "fingerprint_mismatch",
+        "inherited_limits_mismatch",
+        "evidence_stale",
+        "evidence_expired",
+        "ambiguous_state",
+        "caller_supplied_credential",
+        "caller_supplied_endpoint",
+        "caller_supplied_command",
+        "unsupported_authority",
+        "reservation_before_effect_failed",
+        "permanent_subject_reserved",
+        "idempotency_conflict",
+        "append_indeterminate",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "invalid_request",
+        "rate_limited",
+        "quota_exceeded",
+        "conflict",
+        "record_too_large",
+        "store_corrupt",
+        "internal_error",
+    ]
+    message: Literal[SAFE_MESSAGE] = SAFE_MESSAGE
+    retryable: Literal[False] = False
+    correlation_fingerprint: FingerprintV1
+    redacted: Literal[True] = True
+    controlled_worker_queue_claim_admission_recorded: Literal[False] = False
+
+
+class ControlledWorkerQueueClaimAdmissionResultV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-admission-result-v1"] = (
+        "controlled-worker-queue-claim-admission-result-v1"
+    )
+    ok: bool
+    outcome: Literal["success", "failure", "indeterminate"]
+    record: ControlledWorkerQueueClaimAdmissionV1 | None
+    status: ControlledWorkerQueueClaimAdmissionStatusV1 | None
+    error: ControlledWorkerQueueClaimAdmissionRedactedErrorV1 | None
+    correlation_fingerprint: FingerprintV1
+    controlled_worker_queue_claim_admission_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimAdmissionResultV1:
+        if self.outcome == "success":
+            good = (
+                self.ok
+                and self.record is not None
+                and self.status is not None
+                and self.error is None
+                and self.controlled_worker_queue_claim_admission_recorded
+            )
+        else:
+            good = (
+                not self.ok
+                and self.record is None
+                and self.status is None
+                and self.error is not None
+                and not self.controlled_worker_queue_claim_admission_recorded
+            )
+        if not good:
+            raise ValueError("v0.49 admission result shape mismatch")
+        if self.record is not None and self.status.admission_id != self.record.admission_id:
+            raise ValueError("v0.49 admission result status mismatch")
+        _bounded(self)
+        return self
+
+
+class ControlledWorkerQueueClaimAdmissionCollectionV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-admission-collection-v1"] = (
+        "controlled-worker-queue-claim-admission-collection-v1"
+    )
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    items: tuple[ControlledWorkerQueueClaimAdmissionV1, ...]
+    count: int
+    collection_fingerprint: FingerprintV1
+    controlled_worker_queue_claim_admission_recorded: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimAdmissionCollectionV1:
+        if self.count != len(self.items) or self.count > MAX_COLLECTION_RECORDS:
+            raise ValueError("v0.49 admission collection exceeds bound")
+        ordered = tuple(
+            sorted(self.items, key=lambda item: (item.recorded_at, item.admission_id))
+        )
+        if ordered != self.items:
+            raise ValueError("v0.49 admission collection is not ordered")
+        if any(
+            item.operator_id != self.operator_id
+            or item.candidate_record_id != self.candidate_record_id
+            for item in self.items
+        ):
+            raise ValueError("v0.49 admission collection ownership mismatch")
+        if self.collection_fingerprint != collection_fingerprint(self):
+            raise ValueError("v0.49 admission collection fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
 class ControlledWorkerQueueClaimAdmissionValidationInputV1(ContractModel):
     """Injected facts only; no store, runtime, queue, worker, endpoint, or I/O."""
 
@@ -784,6 +965,10 @@ def evaluation_fingerprint(
     )
 
 
+def opaque_fingerprint(domain: str, value: str) -> FingerprintV1:
+    return fingerprint(domain, value)
+
+
 def derived_uuid5(domain: str, value: Any) -> str:
     seed = fingerprint(domain, value).value
     return str(uuid.uuid5(_UUID5_NAMESPACE, f"{domain}:{seed}"))
@@ -794,6 +979,25 @@ def idempotency_key_fingerprint(operator_id: str, raw_key: str) -> FingerprintV1
     return fingerprint(
         "atlas:controlled-worker-queue-claim-admission-idempotency:v1",
         {"operator_id": operator_id, "idempotency_key": key},
+    )
+
+
+def request_fingerprint(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    create: ControlledWorkerQueueClaimAdmissionCreateV1,
+    request_received_at: str,
+    idempotency_fingerprint: FingerprintV1,
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-admission-request:v1",
+        {
+            "operator_id": operator_id,
+            "candidate_record_id": candidate_record_id,
+            "create": create,
+            "idempotency_key_fingerprint": idempotency_fingerprint,
+        },
     )
 
 
@@ -880,6 +1084,33 @@ def status_fingerprint(
     )
 
 
+def reservation_fingerprint(
+    value: ControlledWorkerQueueClaimAdmissionSubjectReservationV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-admission-reservation:v1",
+        _without(value, "reservation_fingerprint"),
+    )
+
+
+def audit_fingerprint(
+    value: ControlledWorkerQueueClaimAdmissionAuditEvidenceV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-admission-audit:v1",
+        _without(value, "audit_fingerprint"),
+    )
+
+
+def collection_fingerprint(
+    value: ControlledWorkerQueueClaimAdmissionCollectionV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-admission-collection:v1",
+        _without(value, "collection_fingerprint"),
+    )
+
+
 def build_admission(
     validation: ControlledWorkerQueueClaimAdmissionValidationInputV1,
 ) -> ControlledWorkerQueueClaimAdmissionV1:
@@ -924,6 +1155,91 @@ def build_admission(
     )
 
 
+def build_reservations(
+    validation: ControlledWorkerQueueClaimAdmissionValidationInputV1,
+    record: ControlledWorkerQueueClaimAdmissionV1,
+) -> tuple[
+    ControlledWorkerQueueClaimAdmissionIdempotencyReservationV1,
+    ControlledWorkerQueueClaimAdmissionSubjectReservationV1,
+]:
+    idem = idempotency_key_fingerprint(validation.operator_id, validation.idempotency_key)
+    request_fp = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=idem,
+    )
+    raw = {
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "idempotency_key_fingerprint": idem,
+        "request_fingerprint": request_fp,
+        "subject_fingerprint": record.subject_fingerprint,
+        "admission_id": record.admission_id,
+        "admission_record_fingerprint": record.admission_record_fingerprint,
+        "reserved_at": validation.authority.request_received_at,
+    }
+    idempotency = (
+        ControlledWorkerQueueClaimAdmissionIdempotencyReservationV1.model_validate(raw)
+    )
+    reservation_seed = (
+        ControlledWorkerQueueClaimAdmissionSubjectReservationV1.model_construct(
+            **raw,
+            reservation_fingerprint=fingerprint("atlas:seed:v1", "reservation"),
+        )
+    )
+    reservation = ControlledWorkerQueueClaimAdmissionSubjectReservationV1.model_validate(
+        {**raw, "reservation_fingerprint": reservation_fingerprint(reservation_seed)}
+    )
+    return idempotency, reservation
+
+
+def build_audit(
+    record: ControlledWorkerQueueClaimAdmissionV1,
+    *,
+    event: Literal[
+        "controlled_worker_queue_claim_admission_recorded",
+        "controlled_worker_queue_claim_admission_read",
+        "controlled_worker_queue_claim_admission_indeterminate",
+    ],
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"],
+    correlation_fingerprint: FingerprintV1,
+    occurred_at: str,
+) -> ControlledWorkerQueueClaimAdmissionAuditEvidenceV1:
+    raw = {
+        "event": event,
+        "audit_id": derived_uuid5(
+            "atlas:controlled-worker-queue-claim-admission-audit-id:v1",
+            {
+                "operator_id": record.operator_id,
+                "candidate_record_id": record.candidate_record_id,
+                "admission_id": record.admission_id,
+                "event": event,
+                "outcome": outcome,
+                "correlation_fingerprint": correlation_fingerprint,
+                "occurred_at": occurred_at,
+            },
+        ),
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "admission_id": record.admission_id,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "correlation_fingerprint": correlation_fingerprint,
+        "subject_fingerprint": record.subject_fingerprint,
+        "admission_record_fingerprint": record.admission_record_fingerprint,
+        "controlled_worker_queue_claim_admission_recorded": outcome == "recorded",
+    }
+    seed = ControlledWorkerQueueClaimAdmissionAuditEvidenceV1.model_construct(
+        **raw,
+        audit_fingerprint=fingerprint("atlas:seed:v1", "audit"),
+    )
+    return ControlledWorkerQueueClaimAdmissionAuditEvidenceV1.model_validate(
+        {**raw, "audit_fingerprint": audit_fingerprint(seed)}
+    )
+
+
 def derive_status(
     record: ControlledWorkerQueueClaimAdmissionV1,
     *,
@@ -951,6 +1267,27 @@ def derive_status(
     )
     return ControlledWorkerQueueClaimAdmissionStatusV1.model_validate(
         {**raw, "status_fingerprint": status_fingerprint(seed)}
+    )
+
+
+def build_collection(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    items: tuple[ControlledWorkerQueueClaimAdmissionV1, ...],
+) -> ControlledWorkerQueueClaimAdmissionCollectionV1:
+    raw = {
+        "operator_id": operator_id,
+        "candidate_record_id": candidate_record_id,
+        "items": items,
+        "count": len(items),
+    }
+    seed = ControlledWorkerQueueClaimAdmissionCollectionV1.model_construct(
+        **raw,
+        collection_fingerprint=fingerprint("atlas:seed:v1", "collection"),
+    )
+    return ControlledWorkerQueueClaimAdmissionCollectionV1.model_validate(
+        {**raw, "collection_fingerprint": collection_fingerprint(seed)}
     )
 
 
