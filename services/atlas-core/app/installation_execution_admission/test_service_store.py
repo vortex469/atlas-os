@@ -333,6 +333,7 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "one_shot_controlled_dequeue/contract.py",
         "one_shot_dequeue_worker_binding/contract.py",
         "worker_binding_activation_preflight/contract.py",
+        "worker_binding_activation_evidence/contract.py",
     }
     consumers = _execution_admission_consumers(app_root, allowed, boundary_only)
     assert consumers == []
@@ -354,13 +355,32 @@ def test_service_store_consumer_scanner_rejects_unapproved_effect_consumer(
     boundary_contract.write_text(
         "from app.installation_execution_admission.contract import FingerprintV1\n"
     )
+    evidence_contract = app_root / "worker_binding_activation_evidence" / "contract.py"
+    evidence_contract.parent.mkdir(parents=True)
+    evidence_contract.write_text(
+        "from app.installation_execution_admission.contract import FingerprintV1\n"
+    )
+    evidence_effect_consumer = (
+        app_root / "worker_binding_activation_evidence" / "service.py"
+    )
+    evidence_effect_consumer.write_text(
+        "from app.installation_execution_admission.contract import FingerprintV1\n"
+        "def activate_worker() -> None:\n"
+        "    raise RuntimeError(FingerprintV1)\n"
+    )
 
     consumers = _execution_admission_consumers(
         app_root,
         allowed=set(),
-        boundary_only={"worker_binding_activation_preflight/contract.py"},
+        boundary_only={
+            "worker_binding_activation_preflight/contract.py",
+            "worker_binding_activation_evidence/contract.py",
+        },
     )
-    assert consumers == ["unauthorized_worker/service.py"]
+    assert sorted(consumers) == [
+        "unauthorized_worker/service.py",
+        "worker_binding_activation_evidence/service.py",
+    ]
 
 
 def _execution_admission_consumers(
