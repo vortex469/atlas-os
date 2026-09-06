@@ -16,23 +16,23 @@ export function DashboardHeader({
     onRefresh,
 }: DashboardHeaderProps) {
     return (
-        <header className="border-b border-slate-800 bg-slate-900">
-            <div className="mx-auto flex min-h-20 max-w-7xl flex-col justify-between gap-4 px-8 py-4 sm:flex-row sm:items-center">
+        <header className="border-b border-mc-divider bg-mc-surface">
+            <div className="mc-container flex min-h-20 flex-col justify-between gap-4 py-4 sm:flex-row sm:items-center">
                 <div>
-                    <h1 className="text-xl font-bold tracking-[0.2em] text-slate-100">
+                    <h1 className="text-xl font-bold tracking-[0.2em] text-mc-text-primary">
                         ATLAS
                     </h1>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-mc-text-muted">
                         Mission Control
                     </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="text-left sm:text-right">
-                        <p className="text-xs uppercase tracking-wider text-slate-500">
+                        <p className="text-xs uppercase tracking-wider text-mc-text-muted">
                             Last Updated
                         </p>
-                        <p className="mt-1 text-sm text-slate-300">
+                        <p className="mt-1 text-sm text-mc-text-secondary">
                             {lastUpdated
                                 ? lastUpdated.toLocaleTimeString()
                                 : "Connecting..."}
@@ -50,7 +50,7 @@ export function DashboardHeader({
                             type="button"
                             onClick={() => void onRefresh()}
                             disabled={isRefreshing}
-                            className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="mc-control mc-focusable px-4 py-2 text-sm"
                         >
                             {isRefreshing ? "Refreshing..." : "Refresh"}
                         </button>

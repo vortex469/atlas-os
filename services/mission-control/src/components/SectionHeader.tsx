@@ -9,12 +9,12 @@ export function SectionHeader({
 }: SectionHeaderProps) {
     return (
         <div className="mb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-200">
+            <h2 className="mc-section-heading">
                 {title}
             </h2>
 
             {description && (
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mc-section-description mt-1">
                     {description}
                 </p>
             )}

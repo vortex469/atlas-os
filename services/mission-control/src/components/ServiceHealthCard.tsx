@@ -32,15 +32,15 @@ export function ServiceHealthCard({
         <button
             type="button"
             onClick={onSelect}
-            className="w-full rounded-lg border border-slate-800 bg-slate-900 p-5 text-left shadow-sm transition hover:border-slate-700 hover:bg-slate-800/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            className="mc-panel-interactive mc-focusable w-full p-5 text-left"
             aria-label={`View details for ${name}`}
         >
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h3 className="font-semibold text-slate-100">
+                    <h3 className="font-semibold text-mc-text-primary">
                         {name}
                     </h3>
-                    <p className="mt-1 text-xs uppercase tracking-wider text-slate-500">
+                    <p className="mt-1 text-xs uppercase tracking-wider text-mc-text-muted">
                         Service health
                     </p>
                 </div>
@@ -48,28 +48,28 @@ export function ServiceHealthCard({
                 <StatusBadge status={health.status} />
             </div>
 
-            <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-800 pt-4">
+            <dl className="mc-divider mt-5 grid grid-cols-2 gap-4 border-t pt-4">
                 <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
+                    <dt className="text-xs uppercase tracking-wider text-mc-text-muted">
                         Latency
                     </dt>
-                    <dd className="mt-1 text-sm font-medium text-slate-300">
+                    <dd className="mt-1 text-sm font-medium text-mc-text-secondary">
                         {formatLatency(health.latency_ms)}
                     </dd>
                 </div>
 
                 <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
+                    <dt className="text-xs uppercase tracking-wider text-mc-text-muted">
                         HTTP
                     </dt>
-                    <dd className="mt-1 text-sm font-medium text-slate-300">
+                    <dd className="mt-1 text-sm font-medium text-mc-text-secondary">
                         {formatHttpStatus(health.http_status)}
                     </dd>
                 </div>
             </dl>
 
             {health.message && (
-                <p className="mt-4 rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-200">
+                <p className="mc-status-warning mt-4 rounded-mc-sm p-3 text-sm">
                     {health.message}
                 </p>
             )}

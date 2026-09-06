@@ -3,46 +3,25 @@ type StatusBadgeProps = {
 };
 
 type StatusStyle = {
-    badge: string;
-    dot: string;
+    variant: string;
 };
 
 const statusStyles: Record<string, StatusStyle> = {
-    healthy: {
-        badge:
-            "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-        dot: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.75)]",
-    },
-    online: {
-        badge:
-            "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-        dot: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.75)]",
-    },
-    degraded: {
-        badge:
-            "border-amber-500/30 bg-amber-500/10 text-amber-400",
-        dot: "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.65)]",
-    },
-    warning: {
-        badge:
-            "border-amber-500/30 bg-amber-500/10 text-amber-400",
-        dot: "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.65)]",
-    },
-    critical: {
-        badge:
-            "border-red-500/30 bg-red-500/10 text-red-400",
-        dot: "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.75)]",
-    },
-    offline: {
-        badge:
-            "border-red-500/30 bg-red-500/10 text-red-400",
-        dot: "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.75)]",
-    },
-    unknown: {
-        badge:
-            "border-slate-600 bg-slate-800 text-slate-300",
-        dot: "bg-slate-500",
-    },
+    healthy: { variant: "mc-status-success" },
+    online: { variant: "mc-status-success" },
+    success: { variant: "mc-status-success" },
+    degraded: { variant: "mc-status-warning" },
+    warning: { variant: "mc-status-warning" },
+    critical: { variant: "mc-status-error" },
+    error: { variant: "mc-status-error" },
+    failed: { variant: "mc-status-error" },
+    offline: { variant: "mc-status-error" },
+    running: { variant: "mc-status-info" },
+    pending: { variant: "mc-status-info" },
+    "in-progress": { variant: "mc-status-info" },
+    unavailable: { variant: "mc-status-disabled" },
+    disabled: { variant: "mc-status-disabled" },
+    unknown: { variant: "mc-status-neutral" },
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
@@ -55,13 +34,13 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     return (
         <span
             className={[
-                "inline-flex items-center gap-2 rounded-full border",
-                "px-3 py-1 text-xs font-semibold uppercase tracking-wider",
-                style.badge,
+                "mc-status-badge",
+                style.variant,
             ].join(" ")}
+            data-mc-status={style.variant.replace("mc-status-", "")}
         >
             <span
-                className={`h-1.5 w-1.5 rounded-full ${style.dot}`}
+                className="mc-status-dot"
                 aria-hidden="true"
             />
 
