@@ -1,55 +1,146 @@
 # Atlas OS
 
 Atlas OS is a local-first infrastructure control plane that turns provider,
-inventory, policy, and Discovery evidence into operator-facing explanations,
-recommendations, and tightly bounded approved actions.
+inventory, policy, Discovery, installation, and execution-boundary evidence
+into operator-facing explanations, recommendations, and tightly bounded
+approved actions.
 
-## Current release
+Atlas is intentionally conservative: evidence precedes mutation, each authority
+surface is separate, and later authority remains fail-closed and default-off
+unless a released contract explicitly activates it.
 
-The current release is **Atlas v0.15.0**, published as `atlas-v0.15.0` at
-`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab` on 2026-08-25.
+## Current repository state
+
+The current repository baseline is **Atlas v0.49 P5**, completing Controlled
+Worker Queue Claim Admission evidence. This is the latest completed development
+baseline recorded in [the roadmap](ROADMAP.md) and
+[release checklist](docs/RELEASE_CHECKLIST.md).
+
+The latest immutable annotated release tag present in this checkout is
+**`atlas-v0.39.0`** at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`. Do not
+treat v0.49 as a published/tagged release unless a later explicit release tag
+exists.
 
 ## What Atlas does today
 
 Atlas Core collects and normalizes infrastructure state, evaluates policy,
-serves the API, and owns durable control-plane state. Mission Control provides
-the browser experience. Atlas Agent manages approval-gated engineering
-workflows. Discovery Center supplies curated and dynamic read-only evidence,
-compatibility and release intelligence, proposals, exact Compose image
-observation, image grounding, and provenance.
+serves typed APIs, owns durable control-plane state, and guards operator
+sessions, Provider Intent, Discovery, installation evidence, and operational
+lifecycle state.
 
-Released mutation surfaces are deliberately separate:
+Mission Control is the browser operator surface. It presents provider health,
+policy findings, recommendations, Discovery evidence, installation planning and
+candidate evidence, approval and execution-admission records, queue and worker
+evidence, and review surfaces. Its installation workflow panels are evidence and
+review surfaces; authoritative validation remains server-side.
+
+Atlas Agent owns approval-gated repository workflow orchestration, verification,
+review, and local commit boundaries. The released repository execution intent
+remains exactly `update-compose-stack`.
+
+The packaged execution-worker stack provides an optional isolated backend for
+Agent repository execution. Base production uses the local Agent backend; worker,
+relay, egress-proxy, and auth-staging infrastructure are packaged but
+separately gated. The worker path does not expand the allowed repository intent
+or absorb Provider Intent, provider actions, operational dispatch,
+backup/restore, deployment, rollback, or release-publication authority.
+
+Implemented side-effect surfaces remain deliberately separate:
 
 - legacy provider actions exposed by individual providers;
-- Provider Intent mutation, limited to Proxmox QEMU `monitoring-policy`;
+- Provider Intent mutation, limited to identity-bound Proxmox QEMU
+  `monitoring-policy`;
 - hardened operational dispatch, exactly `restart-service / proxmox / qemu`;
 - repository candidate execution, exactly `update-compose-stack`.
 
+The v0.20-v0.49 installation chain records evidence for planning, prospective
+destination review, capability assessment, candidate admission and preservation,
+operator approval statements, validation-only Agent install-container
+contracts, execution requests, dispatch handoffs, simulated and inert delivery,
+readiness, permission, execution admission, runner binding plans, worker
+admission stubs, queue reservations, worker intake admission, live enqueue
+admission, one-shot live enqueue, queue observation, controlled dequeue
+admission, one-shot controlled dequeue, dequeue worker binding, worker-binding
+activation preflight, worker-binding activation evidence, and controlled worker
+queue claim admission evidence.
+
 ## What Atlas deliberately does not do
 
-Atlas does not automatically remediate, approve, update, deploy, roll back, or
-publish releases. Discovery is GET-only/read-only. V0.14 image evidence and
-grounding are informational and grant no operational authority. The generic
-image collector is inactive: production descriptor and adapter registries are
-empty and no startup or scheduled collection is wired.
+Atlas does not automatically remediate, approve, update, deploy, roll back,
+publish releases, or install arbitrary applications.
+
+Discovery remains GET-only/read-only and grants no operational authority. Image
+grounding is informational; the generic image collector remains inactive in
+production unless a future released contract changes that.
+
+The installation pipeline through v0.49 is not installation execution. The
+strongest v0.49 installation state is
+`controlled_worker_queue_claim_admission_recorded`: evidence that one exact
+active same-owner v0.48 worker-binding activation evidence record may be
+considered by a later, separately released controlled queue claim/lease/
+acknowledgement boundary.
+
+V0.49 does not define queue claim, queue lease, queue acknowledgement, worker
+activation runtime, worker store contact, worker runtime contact, worker-start
+admission, worker start, Agent invocation, execution authorization, execution
+start, installation, deployment, rollback, publication, or an effect consumer.
+Home Assistant remains blocked where the repository lacks a supported
+deployment artifact and execution authority.
 
 ## Architecture overview
 
 ```text
-browser -> Mission Control -> Atlas Core -> providers / runtime state
-                      |           |
-                      v           v
-                 Atlas Agent   operational dispatch
-                      |
-             local execution backend (default)
-                      |
-             optional, separately gated:
-             authenticated worker requests through relay
-                      -> isolated execution worker -> egress proxy
+operator browser
+  -> Mission Control
+       -> Atlas Core
+            -> providers / runtime state / durable evidence stores
+            -> guarded operational dispatch
+       -> Atlas Agent
+            -> local repository execution backend (default)
+            -> optional, separately gated isolated backend:
+                 authenticated worker requests through relay
+                      -> runsc-isolated execution worker
+                           -> allowlisted egress proxy
+
+one-shot stagers:
+  atlas-agent-auth-stager
+  atlas-execution-auth-stager
+  atlas-core-agent-auth-stager
 ```
 
-The optional HTTPS overlay puts Atlas Edge in front of Mission Control. See
-[the canonical architecture](ARCHITECTURE.md).
+`compose.production.yaml` defines the hardened base production package. HTTPS
+ingress, Core-owned operator authentication, and Provider Intent activation are
+enabled by overlays. Development can run Core and Mission Control directly, but
+that two-process setup is not the production topology.
+
+The guarded installation authority chain is Core-owned and stage-specific. Each
+stage binds exact same-owner evidence from the prior stage, records bounded and
+redacted evidence, uses dedicated operator permissions where exposed by API, and
+keeps downstream authority false until a later released boundary explicitly
+defines it.
+
+For the freshest normative details, start with:
+
+- [Roadmap](ROADMAP.md)
+- [Release checklist and evidence](docs/RELEASE_CHECKLIST.md)
+- [Controlled Worker Queue Claim Admission v1](docs/architecture/controlled-worker-queue-claim-admission-v1.md)
+- [Worker Binding Activation Evidence v1](docs/architecture/worker-binding-activation-evidence-v1.md)
+- [One-Shot Dequeue Worker Binding v1](docs/architecture/one-shot-dequeue-worker-binding-v1.md)
+- [InstallationPlan v1](docs/architecture/installation-plan-v1.md)
+- [Execution worker README](services/atlas-execution-worker/README.md)
+
+## Installation pipeline summary
+
+Atlas can assemble read-only installation plans and operator review evidence,
+then preserve exact non-executable candidate records and approval statements.
+Later stages progressively record validation, request, handoff, delivery,
+readiness, permission, execution-admission, runner, worker, queue, dequeue,
+binding, activation, and queue-claim-admission evidence.
+
+Those records are useful because they make the authority chain inspectable and
+auditable before any future runtime authority is considered. They are not
+commands, payloads, credentials, deployment recipes, rollback plans, or hidden
+approval to run work.
 
 ## Production services
 
@@ -92,60 +183,18 @@ production layout from the two-process development example.
 ## Security / authority model
 
 Core owns API contracts, operator sessions, Provider Intent, operational
-dispatch, and Discovery state. Agent owns repository workflow orchestration and
-independently enforces execution capabilities. Backup/restore is operator
-maintenance tooling, never an Agent execution intent. Credentials remain
-outside tracked configuration and side effects require the authority specific
-to their surface.
+dispatch, Discovery state, and the installation evidence chain. Agent owns
+repository workflow orchestration and independently enforces execution
+capabilities. The execution worker is an optional isolated backend, not a new
+authority surface.
+
+Backup/restore is operator maintenance tooling, never an Agent execution
+intent. Credentials remain outside tracked configuration. Side effects require
+the authority specific to their surface, and new authority must fail closed, be
+explicitly activated, and be independently enforceable at each trust boundary.
 
 ## Release history links
 
 - [Changelog](CHANGELOG.md)
 - [Release checklist and evidence](docs/RELEASE_CHECKLIST.md)
 - [Deployment and historical upgrade notes](docs/DEPLOYMENT.md)
-
-## v0.15 released state
-
-See the [Atlas roadmap](ROADMAP.md). The v0.15 theme is
-**Deployment Image Grounding Operator Surface**, a read-only operator-facing
-surface over released image grounding; remaining future directions are
-uncommitted.
-
-P0 through P5 and production acceptance are complete. The release is
-`atlas-v0.15.0` at `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
-The implemented chain reuses the released binding/observation/evidence grounding
-chain, exposes it at
-`GET /api/v1/discovery/items/{item_id}/image-grounding`, and renders it as
-advisory Mission Control information. The completed P4 matrix validated authority
-isolation and absence of startup, scheduled, and request-time acquisition. P5
-completed exact-SHA gates and read-only production acceptance. The GET
-uses only already-accepted local evidence and reviewed local readers; it cannot
-trigger GHCR access, registry
-acquisition, Sigstore verification, collector execution, or evidence refresh.
-The plan adds no durable state, mutation, or execution authority.
-
-## Atlas v0.16 release candidate
-
-The current theme is **Grounded Installation Planning**: deterministic,
-immutable, provenance-linked, ephemeral read models answering what would be
-required to install an application here. P0 through P5 are complete under the
-normative [InstallationPlan v1 contract](docs/architecture/installation-plan-v1.md).
-The deterministic assembler/evaluator, bounded read-only InstallationPlan GET
-API, Mission Control read-only review, and fail-closed candidate-admission
-projection are implemented and release-validated. An
-`InstallationPlan` is informational and
-cannot
-approve, execute, deploy, persist, create candidates/intents/workflows, invoke
-workers, or contain commands, executable payloads, secrets, or credentials.
-`plan_ready_for_review` is not approved, executable, or deployable.
-
-The current Home Assistant binding points to absent
-`compose/home-assistant.yaml`, so planning must report
-`missing_deployment_artifact`. Legacy `POST /analysis/deployments` and
-`POST /api/v1/analysis/deployments` remain isolated; the intended v0.16
-operator path is GET-only/read-only. See
-the [Atlas roadmap](ROADMAP.md) for the completed P0–P5 contract and deferrals.
-V0.16.0 is ready for a separate explicit release commit and annotated
-`atlas-v0.16.0` tag. It does not mean Atlas can install Home Assistant; approved
-target identity, a supported Agent installation intent, and installation
-execution authority remain future-release work.
