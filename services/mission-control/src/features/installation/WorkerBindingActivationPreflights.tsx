@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { listWorkerBindingActivationPreflights } from "../../api/workerBindingActivationPreflight";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { WorkerBindingActivationPreflightV1 } from "../../types/workerBindingActivationPreflight";
+import { WorkerBindingActivationEvidences } from "./WorkerBindingActivationEvidences";
 
 const BLOCKERS: Record<string, string> = {
     worker_binding_activation_not_defined: "Worker binding activation is not defined",
@@ -95,6 +96,7 @@ function Preflight({ item }: { item: WorkerBindingActivationPreflightV1 }) {
                 {["Binding activation allowed", "Caller-supplied credentials allowed", "Caller-supplied endpoint allowed", "Caller-supplied command allowed", "Caller-supplied payload allowed", "Store contact allowed", "Runtime contact allowed", "Queue polling allowed", "Queue claim allowed", "Queue lease allowed", "Queue acknowledgement allowed", "Queue consume allowed", "Queue mutation allowed", "Worker store contact allowed", "Worker runtime contact allowed", "Worker contact allowed", "Worker start allowed", "Worker invocation allowed", "Agent invocation allowed", "Execution authorization allowed", "Execution start allowed", "Process execution allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Workflow start allowed", "Shell execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Artifact publication allowed", "Tag push allowed", "Release publication allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <WorkerBindingActivationEvidences candidateId={item.candidate_record_id} preflightId={item.preflight_id} />
     </li>;
 }
 

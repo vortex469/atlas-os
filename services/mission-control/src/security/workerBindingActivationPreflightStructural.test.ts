@@ -36,9 +36,11 @@ describe("v0.47 worker binding activation preflight Mission Control boundary", (
         expect(component).not.toMatch(/worker selector|payload editor|editable limit|raw receipt document|raw queue identity value|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /workerBindingActivationPreflight|WorkerBindingActivationPreflight|worker-binding-activation-preflights/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
+            "../api/workerBindingActivationEvidence.ts",
             "../api/workerBindingActivationPreflight.ts",
             "../features/installation/OneShotDequeueWorkerBindings.tsx",
             "../features/installation/WorkerBindingActivationPreflights.tsx",
+            "../types/workerBindingActivationEvidence.ts",
             "../types/workerBindingActivationPreflight.ts",
         ]);
     });
