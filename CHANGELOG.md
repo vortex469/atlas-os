@@ -6,6 +6,18 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.50 P1 - Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite Models
+
+- Added closed immutable Core contract models and a pure fail-closed evaluator
+  for exactly the v0.50 prerequisite boundary frozen by P0.
+- The evaluator accepts only injected active same-owner v0.49 controlled worker
+  queue claim admission facts, verifies lineage/freshness/fingerprints, and
+  returns `v0.50_prerequisite_frozen` with fixed downstream blockers.
+- No persistence, service, store, route, permission wiring, queue adapter,
+  queue polling consumer, claim, lease, acknowledgement, worker contact,
+  worker-start admission, worker start, Agent invocation, execution start,
+  deployment, rollback, publication, or effect consumer was added.
+
 #### v0.50 P0 - Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite
 
 - Inspected the completed merged v0.49 baseline and selected the narrowest
