@@ -6,6 +6,29 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.50 P0 - Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite
+
+- Inspected the completed merged v0.49 baseline and selected the narrowest
+  repository-supported next boundary toward controlled worker invocation or
+  execution-start admission: documentation-only [Controlled Worker Queue
+  Claim/Lease/Acknowledgement Prerequisite][v050-plan].
+- P0 records that v0.50 cannot select controlled worker invocation,
+  worker-start admission, worker start, execution-start admission, or
+  execution because queue claim, lease, acknowledgement, worker activation
+  runtime, worker store/runtime contact, and worker-start prerequisites remain
+  unsupported.
+- P0 adds no runtime model, service, store, migration, setting, permission,
+  route, OpenAPI operation, UI code, queue adapter, queue polling consumer,
+  claim, lease, acknowledgement, worker contact, worker-start path, Agent
+  invocation, execution start, publication, deployment, rollback, effect
+  consumer, or change to `compose.execution-smoke.override.yaml`.
+- Prior v0.20-v0.49 lineage, ownership, limits, permanent no-replay,
+  redaction, ambiguity handling, default-off construction, API/UI isolation,
+  Home Assistant blocking, and Agent/execution-worker zero-consumer contracts
+  remain unchanged.
+
+[v050-plan]: docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-prerequisite-v1.md
+
 #### v0.49 P0-P5 - Controlled Worker Queue Claim Admission
 
 - Inspected the completed merged v0.48 baseline and selected the narrowest

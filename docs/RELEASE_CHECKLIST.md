@@ -3,6 +3,48 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.50 P0 Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite - selected
+
+Atlas v0.50 is **Controlled Worker Queue Claim/Lease/Acknowledgement
+Prerequisite**. P0 freezes the documentation-only
+[v1 contract](architecture/controlled-worker-queue-claim-lease-acknowledgement-prerequisite-v1.md).
+
+- [x] Inspect the completed repository-supported v0.49 Controlled Worker Queue
+  Claim Admission contract, implementation, API/UI structural tests, and
+  release checklist before defining v0.50.
+- [x] Freeze the remaining missing prerequisite boundary for controlled queue
+  claim, lease, and acknowledgement before any worker-start admission,
+  controlled worker invocation, worker start, execution-start admission, or
+  execution boundary may be considered.
+- [x] Preserve exact v0.49 lineage, ownership, freshness/expiry,
+  fingerprints, inherited limits, permanent idempotency and subject no-replay,
+  redaction, ambiguity handling, default-off construction, API/UI isolation,
+  Home Assistant blocking, Agent/execution-worker zero-consumer behavior, and
+  absence of `compose.execution-smoke.override.yaml`.
+- [x] Keep downstream authority blocked by
+  `queue_claim_not_defined`, `queue_lease_not_defined`,
+  `queue_ack_not_defined`, `worker_activation_runtime_not_defined`,
+  `store_contact_not_defined`, `runtime_contact_not_defined`,
+  `worker_start_admission_not_defined`, `worker_start_not_defined`,
+  `agent_invocation_not_defined`, and
+  `execution_start_boundary_not_defined`.
+- [x] Keep P0 planning-only: no runtime model/service/store/migration/setting/
+  permission/route/OpenAPI operation/UI code, queue library, broker
+  integration, serializer, worker client, credential, endpoint, background
+  task, Agent change, execution-worker change, artifact, tag, push,
+  publication, deployment, rollback, or change to
+  `compose.execution-smoke.override.yaml`.
+- [ ] P1 - closed immutable prerequisite contract models and pure validation
+  only, if a later roadmap item deliberately chooses implementation.
+- [ ] P2 - explicitly constructed append-only prerequisite evidence
+  service/store only, if still required after P1 and still default-off.
+- [ ] P3 - exact guarded Core evidence API only, if a service/store exists.
+- [ ] P4 - strict nested Mission Control read-only evidence presentation only,
+  if a guarded read API exists.
+- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, Mission Control validation,
+  Ruff, and release evidence only.
+
 ## Atlas v0.49 P0-P5 Controlled Worker Queue Claim Admission - complete
 
 Atlas v0.49 is **Controlled Worker Queue Claim Admission**. P0-P5 are complete
