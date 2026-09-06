@@ -38,6 +38,23 @@ release boundaries.
   Core create/list/get APIs, nested read-only Mission Control presentation,
   and release isolation only.
 
+#### v0.52 P1 - Closed Queue Receipt Contract Evaluation
+
+- P1 adds closed immutable Core contract models and a pure fail-closed
+  evaluator for exactly the v0.52 boundary frozen by P0. The evaluator accepts
+  only one injected active same-owner v0.51 admission record/status pair plus
+  injected bounded redacted adapter receipt facts for the exact inherited
+  queue subject, verifies lineage/fingerprints/freshness/inherited limits, and
+  fails closed on malformed lineage, foreign ownership, stale or expired
+  evidence, fingerprint drift, replay, corruption, ambiguity, caller-supplied
+  selectors/tokens/handles/material, and unsupported authority.
+- Successful P1 evaluation returns only
+  `controlled_worker_queue_claim_lease_acknowledgement_recorded`, with
+  worker activation runtime, store/runtime contact, worker-start admission,
+  worker start, Agent invocation, and execution start still fixed false and
+  blocked. P1 adds no persistence, route, Mission Control UI, Agent/worker
+  runtime effect, deployment, rollback, publication, or effect consumer.
+
 [v052-plan]: docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-boundary-v1.md
 
 #### v0.51 P0-P5 - Controlled Worker Queue Claim/Lease/Acknowledgement Admission

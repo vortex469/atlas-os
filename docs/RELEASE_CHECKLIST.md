@@ -43,7 +43,7 @@ Boundary**. P0 freezes the documentation-only
   store/runtime contact, worker-start admission, worker start, Agent
   invocation, execution authorization/start, installation, mutation,
   deployment, rollback, publication, release, or effect consumers.
-- [ ] P1 - closed immutable Core contract models and pure validation only.
+- [x] P1 - closed immutable Core contract models and pure validation only.
 - [ ] P2 - explicitly constructed append-only Core receipt service/store with
   injected owner-scoped v0.51 reader, one injected queue adapter,
   reservation-before-effect, permanent no-replay, bounded/redacted
@@ -53,6 +53,19 @@ Boundary**. P0 freezes the documentation-only
 - [ ] P5 - release isolation, regression, authority, no-replay, redaction,
   Agent/execution-worker parity, Home Assistant, Mission Control validation,
   Ruff, and release evidence only.
+
+### P1 validation evidence
+
+- [x] P1 includes a pure fail-closed evaluator for the closed immutable v0.52
+  Core contract.
+- [x] Focused v0.52 Core contract tests cover exact active same-owner v0.51
+  admission/status prerequisites, injected redacted adapter receipt facts,
+  deterministic fingerprints, closed immutable schemas, malformed lineage,
+  foreign ownership, stale/expired evidence, wrong fingerprints, replay,
+  corruption, ambiguity, caller-supplied material, and unsupported authority.
+- [x] P1 remains validation-only: no v0.52 service, store, route, Mission
+  Control UI, Agent change, execution-worker change, deployment, rollback,
+  publication, polling, retry, resend, or effect consumer is introduced.
 
 ## Atlas v0.51 P0-P5 Controlled Worker Queue Claim/Lease/Acknowledgement Admission - complete
 

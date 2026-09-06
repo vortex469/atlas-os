@@ -158,6 +158,15 @@ claim, lease, acknowledgement, or ambiguity mismatch fails closed.
   rejection of caller-supplied queue selectors, credentials, endpoints,
   payloads, claim tokens, lease tokens, acknowledgement handles, commands,
   worker contact, Agent invocation, and execution authority.
+  Implemented in Core as validation-only models and a deterministic evaluator
+  over exactly one injected active same-owner v0.51 admission record/status
+  pair plus injected bounded redacted adapter receipt facts for the exact
+  inherited queue subject. P1 fails closed on malformed lineage, wrong
+  ownership, stale or expired evidence, wrong fingerprints, inherited-limit
+  drift, replay, corruption, ambiguity, malformed authority state, and unknown
+  fields, while adding no persistence, route, Mission Control UI, worker
+  runtime effect, Agent invocation, execution start, deployment, rollback, or
+  publication authority.
 - P2 - explicitly constructed append-only Core receipt service/store with an
   injected owner-scoped v0.51 admission reader and one injected queue adapter,
   reservation-before-effect, permanent idempotency and subject no-replay,
