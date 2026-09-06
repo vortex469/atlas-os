@@ -45,7 +45,6 @@ describe("v0.49 controlled worker queue claim admission Mission Control boundary
             "../api/controlledWorkerQueueClaimAdmission.ts",
             "../api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",
             "../features/installation/ControlledWorkerQueueClaimAdmissions.tsx",
-            "../features/installation/ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions.tsx",
             "../features/installation/WorkerBindingActivationEvidences.tsx",
             "../types/controlledWorkerQueueClaimAdmission.ts",
             "../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",

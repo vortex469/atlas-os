@@ -1,6 +1,6 @@
 # Controlled Worker Queue Claim/Lease/Acknowledgement Admission v1 planning contract
 
-Status: **Atlas v0.51 P0 frozen controlled worker queue claim/lease/acknowledgement admission contract**.
+Status: **Atlas v0.51 P0-P5 closed controlled worker queue claim/lease/acknowledgement admission contract**.
 
 This document freezes the repository-supported v0.51 P0 boundary after
 inspection of the completed merged v0.50 baseline. The v0.50 baseline can
@@ -24,12 +24,50 @@ acknowledgement, worker-start admission, worker start, Agent invocation,
 execution authorization, execution start, publication, deployment, rollback,
 or effect consumer.
 
-P0 does not implement runtime authority. It adds no runtime model, service,
-store, migration, setting, permission, route, OpenAPI operation, UI code,
-queue adapter, broker integration, serializer, worker client, credential,
-endpoint, background task, Agent change, execution-worker change, artifact,
-tag, push, publication, deployment, rollback, or change to
-`compose.execution-smoke.override.yaml`.
+P0 does not implement runtime authority. P1-P5 add only the closed Core
+contract, explicitly constructed default-off evidence service/store, guarded
+owner-scoped evidence API, nested read-only Mission Control presentation, and
+release-closure regressions required by this contract. V0.51 still adds no
+production service construction, queue adapter, broker integration,
+serializer, worker client, credential, endpoint, background task, Agent
+change, execution-worker change, artifact, tag, push, publication, deployment,
+rollback, or change to `compose.execution-smoke.override.yaml`.
+
+## Completed Implementation
+
+V0.51 P0-P5 are complete. The implementation records only bounded admission
+evidence that one exact active same-owner v0.50 prerequisite record is admitted
+for separately released controlled queue claim/lease/acknowledgement
+implementation consideration. The only successful eligibility state is:
+
+```text
+controlled_worker_queue_claim_lease_acknowledgement_admission_recorded
+```
+
+The Core contract accepts only injected v0.50 prerequisite record/status
+facts, recomputes and verifies the v0.50 prerequisite record fingerprint,
+v0.50 prerequisite status fingerprint, v0.49 admission record/status
+fingerprints, binding subject fingerprint, worker subject fingerprint, queue
+item reference fingerprint, and inherited limits fingerprint, and fails closed
+on ownership, linkage, lifecycle, freshness, expiry, ambiguity, Home
+Assistant, caller-supplied material, or unsupported authority drift.
+
+The evidence service and store are not constructed by production startup. When
+explicitly constructed for the guarded API, the service is default-off and
+uses only an injected owner-scoped v0.50 prerequisite reader. The SQLite store
+is append-only for successful records, reserves idempotency and subject
+identity before append, preserves permanent no-replay across restart, bounds
+record size and per-operator count, stores only redacted/fingerprinted
+evidence, and treats ambiguous append outcomes as terminal indeterminate
+reservations.
+
+Mission Control displays v0.51 admission evidence only as nested read-only
+installation workflow evidence below v0.49 claim admission and v0.50
+prerequisite evidence. It uses guarded Core read APIs only and provides no
+standalone route, navigation entry, polling transport, browser storage
+authority, form, selector, claim/lease/acknowledgement control, worker-start
+control, Agent/workflow action, execution control, deployment control, or raw
+secret rendering.
 
 ## Repository Inspection Baseline
 
@@ -124,8 +162,7 @@ All downstream authority remains fixed false/default off:
 
 ## Required Lineage
 
-Any later implementation of this boundary must accept exactly one active
-same-owner v0.50
+The v0.51 implementation accepts exactly one active same-owner v0.50
 `controlled-worker-queue-claim-lease-acknowledgement-prerequisite-v1` record
 and its status fingerprint as the only direct input. The v0.50 record remains
 the only accepted source for the exact v0.49 controlled worker queue claim
@@ -135,23 +172,23 @@ dequeue receipt, v0.40 worker intake subject, worker identity, abstract worker
 intake reference, abstract queue intake reference, inert queue-item reference,
 and byte-exact inherited limits.
 
-Older evidence may be accepted only through the already-validated v0.50
-prerequisite lineage unless a later phase explicitly requires read-only
-recomputation for fingerprint verification. Any owner, candidate, lifecycle,
-freshness, expiry, fingerprint, worker subject, queue item, lineage, or
-inherited-limit mismatch must fail closed.
+Older evidence is accepted only through the already-validated v0.50
+prerequisite lineage plus read-only fingerprint recomputation of that v0.50
+record and status. Any owner, candidate, lifecycle, freshness, expiry,
+fingerprint, worker subject, queue item, lineage, or inherited-limit mismatch
+fails closed.
 
 ## Persistence and Replay Rules
 
-P0 is documentation-only and creates no durable v0.51 record. Any later
-implementation must use explicitly constructed bounded append-only persistence
-with redacted, secret-free storage and readback. It must reserve idempotency
-and subject identity before recording admission evidence, preserve permanent
-no-replay across admission attempts, fail closed on changed content under a
-reserved identity, and treat ambiguous commit or storage outcomes as terminal
-indeterminate reservations.
+P0 is documentation-only and creates no durable v0.51 record. P2 implements
+explicitly constructed bounded append-only persistence with redacted,
+secret-free storage and readback. It reserves idempotency and subject identity
+before recording admission evidence, preserves permanent no-replay across
+admission attempts, fails closed on changed content under a reserved identity,
+and treats ambiguous commit or storage outcomes as terminal indeterminate
+reservations.
 
-No future admission record may store raw credentials, raw endpoints, raw claim
+No v0.51 admission record stores raw credentials, raw endpoints, raw claim
 tokens, raw lease tokens, raw acknowledgement handles, raw payloads, raw
 idempotency keys, or unredacted adapter errors. Expired, failed, ambiguous, or
 foreign prerequisite evidence remains durable evidence only and cannot be
@@ -159,24 +196,24 @@ renewed, retried, replayed, resent, rekeyed, or promoted to authority by v0.51.
 
 ## API and UI Exposure
 
-V0.51 P0 exposes no API or UI surface. It creates no Core route, OpenAPI
-operation, operator permission, Mission Control route, navigation entry,
-standalone action, browser storage authority, polling transport, queue
-selector, claim/lease/acknowledgement control, worker selector, endpoint
-input, credential input, payload editor, command editor, worker-start control,
-execute control, deploy/rollback control, publication control, or raw secret
-rendering.
+V0.51 P3 exposes only owner-scoped, candidate-scoped Core evidence APIs:
+guarded `POST` to record admission evidence, guarded collection `GET`, and
+guarded owned item `GET`. They use dedicated operator permissions,
+CSRF/origin checks, strict JSON and idempotency bounds, redacted errors, and
+default-off service construction.
 
-Any later API must remain owner-scoped, candidate-scoped, guarded by dedicated
-operator permissions, CSRF/origin checks, strict JSON and idempotency bounds,
-redacted errors, and default-off service construction. Mission Control may
-present admission evidence only as nested read-only installation workflow
-evidence under the v0.50 prerequisite evidence chain until a later release
-explicitly freezes and implements a separate action authority.
+V0.51 creates no Mission Control route, navigation entry, standalone action,
+browser storage authority, polling transport, queue selector, claim/lease/
+acknowledgement control, worker selector, endpoint input, credential input,
+payload editor, command editor, worker-start control, execute control,
+deploy/rollback control, publication control, or raw secret rendering. Mission
+Control presents admission evidence only as nested read-only installation
+workflow evidence under the v0.50 prerequisite evidence chain until a later
+release explicitly freezes and implements a separate action authority.
 
 ## Agent and Execution-Worker Isolation
 
-V0.51 P0 makes no Agent or execution-worker change. Agent and the packaged
+V0.51 P0-P5 make no Agent or execution-worker change. Agent and the packaged
 execution worker must have zero consumers for
 `controlled_worker_queue_claim_lease_acknowledgement_admission_recorded`,
 `v0.50_prerequisite_frozen`, or any v0.51 admission marker. They must not poll,
@@ -188,23 +225,21 @@ on v0.51 evidence.
 
 ## Release-Isolation Requirements
 
-Any later v0.51 phase must prove exact v0.50-v0.20 lineage and ownership,
-freshness/expiry, fingerprints, inherited limits, permanent idempotency and
-subject no-replay, bounded/redacted/secret-free persistence, default-off
-production construction, API/UI isolation, Home Assistant blocking,
-Agent/execution-worker zero-consumer behavior, and the absence of
-`compose.execution-smoke.override.yaml`.
+V0.51 P5 proves exact v0.50-v0.20 lineage and ownership, freshness/expiry,
+fingerprints, inherited limits, permanent idempotency and subject no-replay,
+bounded/redacted/secret-free persistence, default-off production construction,
+API/UI isolation, Home Assistant blocking, Agent/execution-worker
+zero-consumer behavior, and the absence of `compose.execution-smoke.override.yaml`.
 
-Release closure for v0.51 may add tests and documentation only unless a later
-roadmap item explicitly authorizes a runtime phase. Runtime queue adapters,
-queue claim, queue lease, acknowledgement, worker activation runtime, worker
-store/runtime contact, worker-start admission, worker start, Agent invocation,
-execution authorization/start, publication, deployment, rollback, and effect
-consumers remain out of scope for P0.
+Release closure for v0.51 adds tests and documentation only. Runtime queue
+adapters, queue claim, queue lease, acknowledgement, worker activation
+runtime, worker store/runtime contact, worker-start admission, worker start,
+Agent invocation, execution authorization/start, publication, deployment,
+rollback, and effect consumers remain out of scope.
 
 ## Must Not Change
 
-V0.51 P0 does not modify any prior authority boundary. The completed
+V0.51 P0-P5 do not modify any prior authority boundary. The completed
 v0.20-v0.50 lineage, ownership, limits, freshness, permanent no-replay,
 redaction, ambiguity handling, default-off construction, API/UI isolation,
 Home Assistant blocking, and Agent/execution-worker zero-consumer contracts

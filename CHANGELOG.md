@@ -6,34 +6,61 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.51 P0 - Controlled Worker Queue Claim/Lease/Acknowledgement Admission
+#### v0.51 P0-P5 - Controlled Worker Queue Claim/Lease/Acknowledgement Admission
 
 - Inspected the completed merged v0.50 baseline and selected the narrowest
-  repository-supported next authority boundary after v0.50: documentation-only
+  repository-supported next authority boundary after v0.50:
   [Controlled Worker Queue Claim/Lease/Acknowledgement Admission][v051-plan].
 - P0 records that v0.51 may only ask whether one exact active same-owner
   v0.50 prerequisite record can be admitted for later, separately released
   controlled queue claim/lease/acknowledgement implementation consideration.
-- P0 does not select controlled worker invocation, worker-start admission,
-  worker start, execution-start admission, execution, queue adapter
-  construction, queue claim, queue lease, acknowledgement, worker activation
-  runtime, worker store/runtime contact, Agent invocation, publication,
-  deployment, rollback, or an effect consumer.
 - Prior v0.20-v0.50 lineage, ownership, limits, permanent no-replay,
   redaction, ambiguity handling, default-off construction, API/UI isolation,
   Home Assistant blocking, and Agent/execution-worker zero-consumer contracts
   remain unchanged.
-- The only authority that may advance in later v0.51 phases is
+- P1 adds closed immutable Core contract models and a pure fail-closed
+  evaluator for exactly the v0.51 admission boundary frozen by P0. The
+  evaluator accepts only injected active same-owner v0.50 prerequisite facts,
+  verifies exact lineage/freshness/fingerprints/inherited limits, rejects
+  caller-supplied credentials, endpoints, commands, queue selectors, claim
+  tokens, lease tokens, acknowledgement handles, payload material, Home
+  Assistant, ambiguity, and unsupported authority, and returns only
+  `controlled_worker_queue_claim_lease_acknowledgement_admission_recorded`
+  with fixed downstream blockers.
+- P2 adds explicitly constructed append-only Core service/store support for
+  bounded durable v0.51 admission records. The service remains default-off and
+  accepts only an injected owner-scoped v0.50 prerequisite reader; the store
+  preserves permanent idempotency, subject no-replay, bounded/redacted
+  secret-free persistence, restart-safe readback, quota limits, corruption
+  closure, and terminal indeterminate reservations without queue, worker,
+  Agent, execution, deployment, rollback, publication, or effect consumers.
+- P3 adds the guarded default-off Core API for the exact v0.51 admission
+  boundary: owner-scoped list/create/get under candidate records with
+  dedicated operator permissions, CSRF/origin checks, strict JSON and
+  idempotency bounds, redacted errors, and OpenAPI registration. Production
+  startup still does not construct the service or any queue adapter, queue
+  claim, lease, acknowledgement, worker contact, worker-start, Agent
+  invocation, execution, deployment, rollback, publication, or effect
+  consumer.
+- P4 keeps Mission Control nested and read-only by presenting v0.51 admission
+  evidence under the existing controlled worker queue claim admission and
+  v0.50 prerequisite evidence chain. It adds no standalone route, navigation,
+  polling transport, browser storage authority, queue selector, claim/lease/
+  acknowledgement control, worker-start control, Agent/workflow action,
+  execution control, deployment control, or raw secret rendering.
+- P5 closes the boundary with regression locks proving only the exact P0
+  authority advanced:
   `controlled_worker_queue_claim_lease_acknowledgement_admission_recorded`.
   Queue adapter, queue claim, queue lease, queue acknowledgement, worker
   activation runtime, worker store/runtime contact, worker-start admission,
   worker start, Agent invocation, execution start, publication, deployment,
   rollback, and effect consumers remain blocked by fixed blockers.
-- P0 adds no runtime model, service, store, migration, setting, permission,
-  route, OpenAPI operation, UI code, queue library, broker integration,
-  serializer, worker client, credential, endpoint, background task, Agent
-  change, execution-worker change, artifact, tag, push, publication,
-  deployment, rollback, or change to `compose.execution-smoke.override.yaml`.
+- V0.51 preserves exact v0.50-v0.20 lineage, ownership, freshness/expiry,
+  fingerprints, inherited limits, permanent idempotency and subject no-replay,
+  bounded/redacted/secret-free persistence, API/UI isolation, Home Assistant
+  blocking, Agent/execution-worker zero-consumer checks, and the absence of
+  `compose.execution-smoke.override.yaml`.
+- P5 adds focused tests and release documentation only.
 
 [v051-plan]: docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-admission-v1.md
 

@@ -2,8 +2,8 @@ import { atlas } from "./atlas";
 import { parseControlledWorkerQueueClaimAdmissionResult } from "./controlledWorkerQueueClaimAdmission";
 import type { ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionCollectionV1, ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionResultV1, ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1, ControlledWorkerQueueClaimLeaseAcknowledgementPrerequisiteStatusV1, ControlledWorkerQueueClaimLeaseAcknowledgementPrerequisiteV1 } from "../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission";
 
-const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{12}$/;
-const UUID5 = /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{12}$/;
+const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const UUID5 = /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const UTC_SECOND = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const SUCCESS_BLOCKERS = ["queue_adapter_not_defined", "queue_claim_not_defined", "queue_lease_not_defined", "queue_ack_not_defined", "worker_activation_runtime_not_defined", "store_contact_not_defined", "runtime_contact_not_defined", "worker_start_admission_not_defined", "worker_start_not_defined", "agent_invocation_not_defined", "execution_start_boundary_not_defined"];
 const BLOCKER_ORDER = ["installation_capability_unsupported", "evidence_not_found", "ownership_mismatch", "permission_scope_missing", "v050_prerequisite_not_active", "v050_prerequisite_not_frozen", "linkage_mismatch", "fingerprint_mismatch", "inherited_limits_mismatch", "evidence_stale", "evidence_expired", "ambiguous_state", "caller_supplied_credential", "caller_supplied_endpoint", "caller_supplied_command", "caller_supplied_queue_selector", "caller_supplied_claim_token", "caller_supplied_lease_token", "caller_supplied_acknowledgement_handle", "unsupported_authority", ...SUCCESS_BLOCKERS, "reservation_before_effect_failed", "permanent_subject_reserved", "idempotency_conflict", "append_indeterminate"];
@@ -21,15 +21,17 @@ const forbiddenTrue = (value: unknown): boolean => {
     if (!object(value)) return false;
     return Object.entries(value).some(([key, item]) => ((!ALLOWED_TRUE.has(key) && /(allowed|authorized|attempted|present|exists|reachable|contacted|started|dequeued|claimed|leased|executable|serialized|defined|released|consumed|replaceable|supersedable|bypass|polling|authenticated|sent|open|constructed|publish|send|ack|activation|mutation|deployment|rollback|frozen)/.test(key) && item === true) || forbiddenTrue(item)));
 };
-const sensitiveField = (value: unknown): boolean => {
-    if (Array.isArray(value)) return value.some(sensitiveField);
+const sensitiveField = (value: unknown, skipKeys = new Set<string>()): boolean => {
+    if (Array.isArray(value)) return value.some((item) => sensitiveField(item));
     if (!object(value)) return false;
-    return Object.entries(value).some(([key, item]) => (SENSITIVE.test(key) && item !== false && item !== null && item !== undefined && !(Array.isArray(item) && item.length === 0) && key !== "worker_store_contact_allowed" && key !== "worker_runtime_contact_allowed" && key !== "store_contact_allowed" && key !== "runtime_contact_allowed") || sensitiveField(item));
+    return Object.entries(value).some(([key, item]) => !skipKeys.has(key) && ((SENSITIVE.test(key) && item !== false && item !== null && item !== undefined && !(Array.isArray(item) && item.length === 0) && key !== "worker_store_contact_allowed" && key !== "worker_runtime_contact_allowed" && key !== "store_contact_allowed" && key !== "runtime_contact_allowed") || sensitiveField(item)));
 };
 
 function validatePrerequisite(value: unknown): ControlledWorkerQueueClaimLeaseAcknowledgementPrerequisiteV1 {
-    if (!object(value) || !falseAuthority(value) || value.schema !== "controlled-worker-queue-claim-lease-acknowledgement-prerequisite-v1" || !UUID5.test(String(value.prerequisite_id)) || !UUID4.test(String(value.candidate_record_id)) || !utc(value.recorded_at) || !utc(value.valid_until) || value.lifecycle !== "active" || value.prerequisite_state !== "frozen" || value.eligibility !== "v0.50_prerequisite_frozen" || value.v0_50_prerequisite_frozen !== true || !successBlockers(value.blockers) || !fp(value.admission_record_fingerprint) || !fp(value.admission_status_fingerprint) || !fp(value.binding_subject_fingerprint) || !fp(value.worker_subject_fingerprint) || !fp(value.queue_item_reference_fingerprint) || !fp(value.inherited_limits_fingerprint) || !fp(value.subject_fingerprint) || !fp(value.idempotency_key_fingerprint) || !fp(value.prerequisite_record_fingerprint)) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission response.");
-    const admission = parseControlledWorkerQueueClaimAdmissionResult({ ...value.controlled_worker_queue_claim_admission, schema: "controlled-worker-queue-claim-admission-result-v1", ok: true, outcome: "success", record: value.controlled_worker_queue_claim_admission, status: value.controlled_worker_queue_claim_admission_status, error: null, correlation_fingerprint: value.subject_fingerprint, controlled_worker_queue_claim_admission_recorded: true }).record;
+    if (!object(value) || !falseAuthority(value) || value.schema !== "controlled-worker-queue-claim-lease-acknowledgement-prerequisite-v1" || !UUID5.test(String(value.prerequisite_id)) || !UUID4.test(String(value.candidate_record_id)) || !utc(value.recorded_at) || !utc(value.valid_until) || value.lifecycle !== "active" || value.prerequisite_state !== "frozen" || value.eligibility !== "v0.50_prerequisite_frozen" || value.v0_50_prerequisite_frozen !== true || !successBlockers(value.blockers) || !fp(value.admission_record_fingerprint) || !fp(value.admission_status_fingerprint) || !fp(value.binding_subject_fingerprint) || !fp(value.worker_subject_fingerprint) || !fp(value.queue_item_reference_fingerprint) || !fp(value.inherited_limits_fingerprint) || !fp(value.subject_fingerprint) || !fp(value.idempotency_key_fingerprint) || !fp(value.prerequisite_record_fingerprint) || forbiddenTrue(value) || sensitiveField(value, new Set(["controlled_worker_queue_claim_admission", "controlled_worker_queue_claim_admission_status"]))) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission response.");
+    const claimAdmission = value.controlled_worker_queue_claim_admission;
+    if (!object(claimAdmission)) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission response.");
+    const admission = parseControlledWorkerQueueClaimAdmissionResult({ ...claimAdmission, schema: "controlled-worker-queue-claim-admission-result-v1", ok: true, outcome: "success", record: claimAdmission, status: value.controlled_worker_queue_claim_admission_status, error: null, correlation_fingerprint: value.subject_fingerprint, controlled_worker_queue_claim_admission_recorded: true }).record;
     const prerequisite = value as ControlledWorkerQueueClaimLeaseAcknowledgementPrerequisiteV1;
     if (!admission || prerequisite.operator_id !== admission.operator_id || prerequisite.candidate_record_id !== admission.candidate_record_id || prerequisite.admission_id !== admission.admission_id || prerequisite.valid_until > admission.valid_until || prerequisite.admission_record_fingerprint.value !== admission.admission_record_fingerprint.value || prerequisite.binding_subject_fingerprint.value !== admission.binding_subject_fingerprint.value || prerequisite.worker_subject_fingerprint.value !== admission.worker_subject_fingerprint.value || prerequisite.queue_item_reference_fingerprint.value !== admission.queue_item_reference_fingerprint.value || prerequisite.inherited_limits_fingerprint.value !== admission.inherited_limits_fingerprint.value) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission response.");
     return prerequisite;
@@ -41,7 +43,31 @@ function validatePrerequisiteStatus(value: unknown, prerequisite: ControlledWork
 }
 
 function validateRecord(value: unknown): ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1 {
-    if (!object(value) || !falseAuthority(value, true) || value.schema !== "controlled-worker-queue-claim-lease-acknowledgement-admission-v1" || !UUID5.test(String(value.admission_id)) || !UUID4.test(String(value.candidate_record_id)) || !utc(value.recorded_at) || !utc(value.valid_until) || value.lifecycle !== "active" || value.admission_state !== "recorded" || value.eligibility !== "controlled_worker_queue_claim_lease_acknowledgement_admission_recorded" || !successBlockers(value.blockers) || !fp(value.prerequisite_record_fingerprint) || !fp(value.prerequisite_status_fingerprint) || !fp(value.v049_admission_record_fingerprint) || !fp(value.v049_admission_status_fingerprint) || !fp(value.binding_subject_fingerprint) || !fp(value.worker_subject_fingerprint) || !fp(value.queue_item_reference_fingerprint) || !fp(value.inherited_limits_fingerprint) || !fp(value.subject_fingerprint) || !fp(value.idempotency_key_fingerprint) || !fp(value.admission_record_fingerprint) || forbiddenTrue(value) || sensitiveField(value)) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission response.");
+    if (!object(value)) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission response: object.");
+    const checks: [string, boolean][] = [
+        ["authority", falseAuthority(value, true)],
+        ["schema", value.schema === "controlled-worker-queue-claim-lease-acknowledgement-admission-v1"],
+        ["admission_id", UUID5.test(String(value.admission_id))],
+        ["candidate_record_id", UUID4.test(String(value.candidate_record_id))],
+        ["time", utc(value.recorded_at) && utc(value.valid_until)],
+        ["state", value.lifecycle === "active" && value.admission_state === "recorded" && value.eligibility === "controlled_worker_queue_claim_lease_acknowledgement_admission_recorded"],
+        ["blockers", successBlockers(value.blockers)],
+        ["prerequisite_record_fingerprint", fp(value.prerequisite_record_fingerprint)],
+        ["prerequisite_status_fingerprint", fp(value.prerequisite_status_fingerprint)],
+        ["v049_admission_record_fingerprint", fp(value.v049_admission_record_fingerprint)],
+        ["v049_admission_status_fingerprint", fp(value.v049_admission_status_fingerprint)],
+        ["binding_subject_fingerprint", fp(value.binding_subject_fingerprint)],
+        ["worker_subject_fingerprint", fp(value.worker_subject_fingerprint)],
+        ["queue_item_reference_fingerprint", fp(value.queue_item_reference_fingerprint)],
+        ["inherited_limits_fingerprint", fp(value.inherited_limits_fingerprint)],
+        ["subject_fingerprint", fp(value.subject_fingerprint)],
+        ["idempotency_key_fingerprint", fp(value.idempotency_key_fingerprint)],
+        ["admission_record_fingerprint", fp(value.admission_record_fingerprint)],
+        ["forbidden_true", !forbiddenTrue(value)],
+        ["sensitive", !sensitiveField(value, new Set(["controlled_worker_queue_claim_lease_acknowledgement_prerequisite", "controlled_worker_queue_claim_lease_acknowledgement_prerequisite_status"]))],
+    ];
+    const failed = checks.find(([, ok]) => !ok);
+    if (failed) throw new Error(`Invalid controlled worker queue claim lease acknowledgement admission response: ${failed[0]}.`);
     const prerequisite = validatePrerequisite(value.controlled_worker_queue_claim_lease_acknowledgement_prerequisite);
     const status = validatePrerequisiteStatus(value.controlled_worker_queue_claim_lease_acknowledgement_prerequisite_status, prerequisite);
     const record = value as ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1;
@@ -50,7 +76,7 @@ function validateRecord(value: unknown): ControlledWorkerQueueClaimLeaseAcknowle
 }
 
 export function parseControlledWorkerQueueClaimLeaseAcknowledgementAdmissionResult(value: unknown): ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionResultV1 {
-    if (!object(value) || !falseAuthority(value) || value.schema !== "controlled-worker-queue-claim-lease-acknowledgement-admission-result-v1" || !fp(value.correlation_fingerprint) || forbiddenTrue(value) || sensitiveField(value)) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission response.");
+    if (!object(value) || !falseAuthority(value) || value.schema !== "controlled-worker-queue-claim-lease-acknowledgement-admission-result-v1" || !fp(value.correlation_fingerprint) || forbiddenTrue(value) || sensitiveField(value, new Set(["record", "status"]))) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission response.");
     if (value.record) {
         const record = validateRecord(value.record);
         const status = value.status;
@@ -63,7 +89,7 @@ export function parseControlledWorkerQueueClaimLeaseAcknowledgementAdmissionResu
 }
 
 export function parseControlledWorkerQueueClaimLeaseAcknowledgementAdmissionCollection(value: unknown): ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionCollectionV1 {
-    if (!object(value) || !falseAuthority(value, false) || value.schema !== "controlled-worker-queue-claim-lease-acknowledgement-admission-collection-v1" || !Array.isArray(value.items) || value.count !== value.items.length || value.items.length > 100 || !fp(value.collection_fingerprint) || forbiddenTrue(value) || sensitiveField(value)) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission collection.");
+    if (!object(value) || !falseAuthority(value, false) || value.schema !== "controlled-worker-queue-claim-lease-acknowledgement-admission-collection-v1" || !Array.isArray(value.items) || value.count !== value.items.length || value.items.length > 100 || !fp(value.collection_fingerprint) || forbiddenTrue(value) || sensitiveField(value, new Set(["items"]))) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission collection.");
     const items = value.items.map(validateRecord);
     const ordered = [...items].sort((left, right) => `${left.recorded_at}:${left.admission_id}`.localeCompare(`${right.recorded_at}:${right.admission_id}`));
     if (items.some((item, index) => item !== ordered[index] || item.operator_id !== value.operator_id || item.candidate_record_id !== value.candidate_record_id)) throw new Error("Invalid controlled worker queue claim lease acknowledgement admission collection.");
