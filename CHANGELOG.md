@@ -6,6 +6,37 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.51 P0 - Controlled Worker Queue Claim/Lease/Acknowledgement Admission
+
+- Inspected the completed merged v0.50 baseline and selected the narrowest
+  repository-supported next authority boundary after v0.50: documentation-only
+  [Controlled Worker Queue Claim/Lease/Acknowledgement Admission][v051-plan].
+- P0 records that v0.51 may only ask whether one exact active same-owner
+  v0.50 prerequisite record can be admitted for later, separately released
+  controlled queue claim/lease/acknowledgement implementation consideration.
+- P0 does not select controlled worker invocation, worker-start admission,
+  worker start, execution-start admission, execution, queue adapter
+  construction, queue claim, queue lease, acknowledgement, worker activation
+  runtime, worker store/runtime contact, Agent invocation, publication,
+  deployment, rollback, or an effect consumer.
+- Prior v0.20-v0.50 lineage, ownership, limits, permanent no-replay,
+  redaction, ambiguity handling, default-off construction, API/UI isolation,
+  Home Assistant blocking, and Agent/execution-worker zero-consumer contracts
+  remain unchanged.
+- The only authority that may advance in later v0.51 phases is
+  `controlled_worker_queue_claim_lease_acknowledgement_admission_recorded`.
+  Queue adapter, queue claim, queue lease, queue acknowledgement, worker
+  activation runtime, worker store/runtime contact, worker-start admission,
+  worker start, Agent invocation, execution start, publication, deployment,
+  rollback, and effect consumers remain blocked by fixed blockers.
+- P0 adds no runtime model, service, store, migration, setting, permission,
+  route, OpenAPI operation, UI code, queue library, broker integration,
+  serializer, worker client, credential, endpoint, background task, Agent
+  change, execution-worker change, artifact, tag, push, publication,
+  deployment, rollback, or change to `compose.execution-smoke.override.yaml`.
+
+[v051-plan]: docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-admission-v1.md
+
 #### v0.50 P0-P5 - Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite
 
 - Inspected the completed merged v0.49 baseline and selected the narrowest

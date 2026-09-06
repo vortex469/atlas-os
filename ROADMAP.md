@@ -1,11 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - v0.50 P5
+## 1. Current baseline - v0.51 P0
 
-Atlas v0.50 P0 freezes the documentation-only Controlled Worker Queue
-Claim/Lease/Acknowledgement Prerequisite boundary after inspecting the
-completed merged v0.49 P0-P5 baseline in this worktree. The latest immutable
-annotated release tag recorded in this checkout remains `atlas-v0.39.0` at
+Atlas v0.51 P0 freezes the documentation-only Controlled Worker Queue
+Claim/Lease/Acknowledgement Admission boundary after inspecting the completed
+merged v0.50 baseline in this worktree. The latest immutable annotated
+release tag recorded in this checkout remains `atlas-v0.39.0` at
 `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
 The completed baseline includes the hardened production topology; repository
@@ -22,32 +22,22 @@ evidence, live enqueue admission, one-shot live enqueue evidence, queue
 observation receipt evidence, controlled dequeue admission evidence, one-shot
 controlled dequeue evidence, and one-shot dequeue worker binding evidence.
 V0.47 adds only worker-binding activation preflight evidence over one exact
-active same-owner v0.46 binding record. Activation, worker store/runtime
-contact, queue claim/lease/acknowledgement, worker start, Agent invocation,
-execution start, publication, deployment, and rollback remain blocked. V0.48
-adds only worker-binding activation evidence over one exact active same-owner
-v0.47 preflight record. Runtime activation, worker store/runtime contact,
-queue claim/lease/acknowledgement, worker-start admission, worker start, Agent
-invocation, execution start, publication, deployment, rollback, and effect
-consumers remain blocked. V0.49 adds only controlled worker queue claim
-admission evidence over one exact active same-owner v0.48 activation-evidence
-record. Queue claim/lease/acknowledgement, worker activation runtime, worker
-store/runtime contact, worker-start admission, worker start, Agent invocation,
-execution start, publication, deployment, rollback, and effect consumers remain
-blocked. V0.50 adds no runtime architecture. It freezes only the missing
-controlled queue claim/lease/acknowledgement prerequisite definition that any
-later worker-start admission, worker invocation, or execution-start admission
-boundary must satisfy. Queue claim/lease/acknowledgement, worker activation
-runtime, worker store/runtime contact, worker-start admission, worker start,
-Agent invocation, execution start, publication, deployment, rollback, and
-effect consumers remain blocked. V0.50 P1 adds closed immutable Core contract
-models and pure fail-closed evaluation for that exact P0 prerequisite boundary.
-P2 adds explicitly constructed append-only service/store support, P3 adds the
-guarded default-off Core API, P4 keeps Mission Control nested and read-only
-under controlled worker queue claim admission evidence, and P5 closes release
-isolation. V0.50 adds no queue adapter, queue claim, lease, acknowledgement,
-worker contact, Agent invocation, execution start, deployment, rollback,
-publication, or effect consumer.
+active same-owner v0.46 binding record. V0.48 adds only worker-binding
+activation evidence over one exact active same-owner v0.47 preflight record.
+V0.49 adds only controlled worker queue claim admission evidence over one
+exact active same-owner v0.48 activation-evidence record. V0.50 adds bounded
+controlled worker queue claim/lease/acknowledgement prerequisite evidence over
+one exact active same-owner v0.49 controlled worker queue claim admission
+record, with P1-P5 closing immutable Core validation, explicitly constructed
+append-only service/store support, guarded default-off Core API, nested
+read-only Mission Control presentation, and release isolation. V0.51 P0 adds
+no runtime architecture. It freezes only the next admission-evidence boundary
+that may later admit one exact active same-owner v0.50 prerequisite record for
+separately released controlled queue claim/lease/acknowledgement
+implementation consideration. Queue adapter, queue claim/lease/
+acknowledgement, worker activation runtime, worker store/runtime contact,
+worker-start admission, worker start, Agent invocation, execution start,
+publication, deployment, rollback, and effect consumers remain blocked.
 
 ## 2. Enduring architectural constraints
 
@@ -200,10 +190,65 @@ publication, or effect consumer.
   worker-start admission, worker start, Agent invocation, execution start,
   publication, deployment, rollback, Home Assistant exception, and effect
   consumers undefined.
+- v0.51 P0 freezes documentation-only controlled worker queue
+  claim/lease/acknowledgement admission evidence over one exact active
+  same-owner v0.50 prerequisite record as the narrowest
+  repository-supported next boundary while leaving runtime queue adapter,
+  queue claim, lease, acknowledgement, worker activation runtime, worker
+  store/runtime contact, worker-start admission, worker start, Agent
+  invocation, execution start, publication, deployment, rollback, Home
+  Assistant exception, and effect consumers undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Selected v0.51 P0 plan - Controlled Worker Queue Claim/Lease/Acknowledgement Admission
+
+Atlas v0.51 P0 selects **Controlled Worker Queue Claim/Lease/Acknowledgement
+Admission**. The normative planning contract is [Controlled Worker Queue
+Claim/Lease/Acknowledgement Admission
+v1](docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-admission-v1.md).
+
+P0 is documentation-only and frozen. It adds no runtime architecture.
+
+V0.51 starts from the completed repository-supported v0.50 Controlled Worker
+Queue Claim/Lease/Acknowledgement Prerequisite baseline. The v0.50
+implementation can record bounded prerequisite evidence over one exact active
+same-owner v0.49 controlled worker queue claim admission record, but it has no
+queue adapter, queue claim, queue lease, queue acknowledgement, worker
+activation runtime, worker store/runtime contact, worker-start admission,
+worker start, Agent invocation, or execution-start boundary.
+
+The narrowest repository-supported next boundary is therefore not controlled
+worker invocation, worker-start admission, worker start, execution-start
+admission, or execution. It is only the admission-evidence question of whether
+one exact active same-owner v0.50 prerequisite record may later be admitted
+for separately released controlled queue claim/lease/acknowledgement
+implementation consideration. Its strongest future state is
+`controlled_worker_queue_claim_lease_acknowledgement_admission_recorded`,
+always blocked by `queue_adapter_not_defined`, `queue_claim_not_defined`,
+`queue_lease_not_defined`, `queue_ack_not_defined`,
+`worker_activation_runtime_not_defined`, `store_contact_not_defined`,
+`runtime_contact_not_defined`, `worker_start_admission_not_defined`,
+`worker_start_not_defined`, `agent_invocation_not_defined`, and
+`execution_start_boundary_not_defined`.
+
+This is admission evidence only. It is not queue adapter construction, queue
+claim, queue lease, acknowledgement, runtime activation, worker-start
+admission, worker store contact, worker runtime contact, worker start, Agent
+invocation, execution authorization or start, queue polling, install,
+mutation, deployment, rollback, publication, release, or an effect consumer.
+
+Any later implementation must fail closed on unsupported architecture, accept
+only one exact active same-owner v0.50 prerequisite record and its inherited
+lineage, preserve ownership and byte-exact inherited limits, retain permanent
+idempotency and subject no-replay, keep bounded append-only persistence, avoid
+secret storage or rendering, handle ambiguity terminally, remain explicitly
+constructed and default-off, avoid Home Assistant or workload-specific
+authority exceptions, and prove API/UI isolation plus Agent/execution-worker
+zero-consumer behavior before any later queue claim, lease, acknowledgement,
+worker-start admission, or execution-start admission can be considered.
 
 ## Completed v0.50 plan - Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite
 
