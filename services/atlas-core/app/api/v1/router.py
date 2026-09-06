@@ -8,6 +8,9 @@ from app.routes.analysis import router as analysis_router
 from app.routes.controlled_dequeue_admission import (
     router as controlled_dequeue_admission_router,
 )
+from app.routes.controlled_worker_queue_claim_admission import (
+    router as controlled_worker_queue_claim_admission_router,
+)
 from app.routes.dashboard import router as dashboard_router
 from app.routes.delivery_activation_preflight import (
     router as delivery_activation_preflight_router,
@@ -158,6 +161,7 @@ router.include_router(one_shot_controlled_dequeue_router)
 router.include_router(one_shot_dequeue_worker_binding_router)
 router.include_router(worker_binding_activation_preflight_router)
 router.include_router(worker_binding_activation_evidence_router)
+router.include_router(controlled_worker_queue_claim_admission_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
 router.include_router(execution_permission_grant_router)

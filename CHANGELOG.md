@@ -30,6 +30,13 @@ release boundaries.
   persistence, service, route, production construction, queue claim, lease,
   acknowledgement, worker contact, Agent invocation, execution, deployment,
   rollback, publication, or effect consumer.
+- P3 adds the guarded default-off Core API for the exact v0.49 evidence
+  boundary: owner-scoped list/create/get under candidate records with dedicated
+  operator permissions, CSRF/origin checks, strict JSON and idempotency bounds,
+  redacted errors, and OpenAPI registration. Production startup still does not
+  construct the service or any queue claim, lease, acknowledgement, worker
+  contact, worker-start, Agent invocation, execution, deployment, rollback,
+  publication, or effect consumer.
 
 [v049-plan]: docs/architecture/controlled-worker-queue-claim-admission-v1.md
 
