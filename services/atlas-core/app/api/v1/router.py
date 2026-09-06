@@ -82,6 +82,9 @@ from app.routes.queue_observation import router as queue_observation_router
 from app.routes.runner_binding_plan import router as runner_binding_plan_router
 from app.routes.status import router as status_router
 from app.routes.worker_admission_stub import router as worker_admission_stub_router
+from app.routes.worker_binding_activation_evidence import (
+    router as worker_binding_activation_evidence_router,
+)
 from app.routes.worker_binding_activation_preflight import (
     router as worker_binding_activation_preflight_router,
 )
@@ -154,6 +157,7 @@ router.include_router(controlled_dequeue_admission_router)
 router.include_router(one_shot_controlled_dequeue_router)
 router.include_router(one_shot_dequeue_worker_binding_router)
 router.include_router(worker_binding_activation_preflight_router)
+router.include_router(worker_binding_activation_evidence_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
 router.include_router(execution_permission_grant_router)
