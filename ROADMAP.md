@@ -1,6 +1,6 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - v0.50 P0
+## 1. Current baseline - v0.50 P1
 
 Atlas v0.50 P0 freezes the documentation-only Controlled Worker Queue
 Claim/Lease/Acknowledgement Prerequisite boundary after inspecting the
@@ -40,7 +40,11 @@ later worker-start admission, worker invocation, or execution-start admission
 boundary must satisfy. Queue claim/lease/acknowledgement, worker activation
 runtime, worker store/runtime contact, worker-start admission, worker start,
 Agent invocation, execution start, publication, deployment, rollback, and
-effect consumers remain blocked.
+effect consumers remain blocked. V0.50 P1 adds closed immutable Core contract
+models and pure fail-closed evaluation for that exact P0 prerequisite boundary
+only; it adds no persistence, service, store, route, queue adapter, worker
+contact, Agent invocation, execution start, deployment, rollback, publication,
+or effect consumer.
 
 ## 2. Enduring architectural constraints
 
