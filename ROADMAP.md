@@ -1,9 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - v0.49 P0
+## 1. Current baseline - v0.49 P1
 
-Atlas v0.49 P0 is frozen as documentation-only planning over the completed
-repository-supported v0.48 P0-P5 baseline in this worktree. The latest
+Atlas v0.49 P1 implements the closed immutable Core models and pure
+fail-closed evaluator selected by the frozen documentation-only v0.49 P0 plan
+over the completed repository-supported v0.48 P0-P5 baseline in this
+worktree. The latest
 immutable annotated release tag recorded in this checkout remains
 `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
@@ -28,11 +30,12 @@ adds only worker-binding activation evidence over one exact active same-owner
 v0.47 preflight record. Runtime activation, worker store/runtime contact,
 queue claim/lease/acknowledgement, worker-start admission, worker start, Agent
 invocation, execution start, publication, deployment, rollback, and effect
-consumers remain blocked. V0.49 P0 therefore freezes only controlled worker
-queue claim admission evidence over one exact active same-owner v0.48
-activation-evidence record. Queue claim/lease/acknowledgement, worker-start
-admission, worker start, Agent invocation, execution start, publication,
-deployment, rollback, and effect consumers remain blocked.
+consumers remain blocked. V0.49 P1 therefore models and purely evaluates only
+controlled worker queue claim admission evidence over one exact active
+same-owner v0.48 activation-evidence record. Queue claim/lease/
+acknowledgement, worker-start admission, worker start, Agent invocation,
+execution start, publication, deployment, rollback, persistence, and effect
+consumers remain blocked.
 
 ## 2. Enduring architectural constraints
 
@@ -190,6 +193,12 @@ normative planning contract is [Controlled Worker Queue Claim Admission
 v1](docs/architecture/controlled-worker-queue-claim-admission-v1.md).
 
 P0 is documentation-only and frozen. It adds no runtime architecture.
+
+P1 is complete in Core as closed immutable models plus pure fail-closed
+evaluation only. It adds no persistence, service, store, route, production
+construction, queue adapter, queue claim, lease, acknowledgement, worker
+contact, worker start, Agent invocation, execution start, deployment,
+rollback, publication, or effect consumer.
 
 V0.49 starts from the completed repository-supported v0.48 Worker Binding
 Activation Evidence baseline. The v0.48 implementation can record bounded

@@ -6,7 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.49 P0 - Controlled Worker Queue Claim Admission
+#### v0.49 P0-P1 - Controlled Worker Queue Claim Admission
 
 - Inspected the completed merged v0.48 baseline and selected the narrowest
   repository-supported next authority boundary toward controlled worker start:
@@ -24,6 +24,12 @@ release boundaries.
   redaction, default-off construction, API/UI isolation, Home Assistant
   blocking, and Agent/execution-worker zero-consumer contracts remain
   unchanged.
+- P1 adds closed immutable Core contract models and a pure fail-closed
+  evaluator for the exact v0.49 boundary. The implementation accepts only
+  injected active same-owner v0.48 activation-evidence facts and introduces no
+  persistence, service, route, production construction, queue claim, lease,
+  acknowledgement, worker contact, Agent invocation, execution, deployment,
+  rollback, publication, or effect consumer.
 
 [v049-plan]: docs/architecture/controlled-worker-queue-claim-admission-v1.md
 
