@@ -6,19 +6,7 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.50 P1 - Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite Models
-
-- Added closed immutable Core contract models and a pure fail-closed evaluator
-  for exactly the v0.50 prerequisite boundary frozen by P0.
-- The evaluator accepts only injected active same-owner v0.49 controlled worker
-  queue claim admission facts, verifies lineage/freshness/fingerprints, and
-  returns `v0.50_prerequisite_frozen` with fixed downstream blockers.
-- No persistence, service, store, route, permission wiring, queue adapter,
-  queue polling consumer, claim, lease, acknowledgement, worker contact,
-  worker-start admission, worker start, Agent invocation, execution start,
-  deployment, rollback, publication, or effect consumer was added.
-
-#### v0.50 P0 - Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite
+#### v0.50 P0-P5 - Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite
 
 - Inspected the completed merged v0.49 baseline and selected the narrowest
   repository-supported next boundary toward controlled worker invocation or
@@ -38,6 +26,44 @@ release boundaries.
   redaction, ambiguity handling, default-off construction, API/UI isolation,
   Home Assistant blocking, and Agent/execution-worker zero-consumer contracts
   remain unchanged.
+- P1 adds closed immutable Core contract models and a pure fail-closed
+  evaluator for exactly the v0.50 prerequisite boundary frozen by P0. The
+  evaluator accepts only injected active same-owner v0.49 controlled worker
+  queue claim admission facts, verifies lineage/freshness/fingerprints, and
+  returns `v0.50_prerequisite_frozen` with fixed downstream blockers.
+- P2 adds explicitly constructed append-only Core service/store support for
+  bounded durable v0.50 prerequisite records. The service remains default-off
+  and accepts only an injected owner-scoped v0.49 admission reader; the store
+  preserves permanent idempotency, subject no-replay, bounded/redacted
+  secret-free persistence, restart-safe readback, and terminal indeterminate
+  reservations without queue, worker, Agent, execution, deployment, rollback,
+  publication, or effect consumers.
+- P3 adds the guarded default-off Core API for the exact v0.50 prerequisite
+  boundary: owner-scoped list/create/get under candidate records with
+  dedicated operator permissions, CSRF/origin checks, strict JSON and
+  idempotency bounds, redacted errors, and OpenAPI registration. Production
+  startup still does not construct the service or any queue adapter, queue
+  claim, lease, acknowledgement, worker contact, worker-start, Agent
+  invocation, execution, deployment, rollback, publication, or effect
+  consumer.
+- P4 keeps Mission Control nested and read-only by presenting v0.50
+  prerequisite status under the existing controlled worker queue claim
+  admission evidence view. It adds no standalone route, navigation, polling
+  transport, browser storage authority, queue selector, claim/lease/
+  acknowledgement control, worker-start control, Agent/workflow action,
+  execution control, deployment control, or raw secret rendering.
+- P5 closes the boundary with regression locks proving only the exact P0
+  authority advanced: `v0.50_prerequisite_frozen`. Queue claim, queue lease,
+  queue acknowledgement, worker activation runtime, worker store/runtime
+  contact, worker-start admission, worker start, Agent invocation, execution
+  start, publication, deployment, rollback, and effect consumers remain blocked
+  by fixed blockers.
+- V0.50 preserves exact v0.49-v0.20 lineage, ownership, freshness/expiry,
+  fingerprints, inherited limits, permanent idempotency and subject no-replay,
+  bounded/redacted/secret-free persistence, API/UI isolation, Home Assistant
+  blocking, Agent/execution-worker zero-consumer checks, and the absence of
+  `compose.execution-smoke.override.yaml`.
+- P5 adds focused tests and release documentation only.
 
 [v050-plan]: docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-prerequisite-v1.md
 

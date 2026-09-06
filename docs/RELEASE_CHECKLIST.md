@@ -3,10 +3,10 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.50 P0 Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite - selected
+## Atlas v0.50 P0-P5 Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite - complete
 
 Atlas v0.50 is **Controlled Worker Queue Claim/Lease/Acknowledgement
-Prerequisite**. P0 freezes the documentation-only
+Prerequisite**. P0-P5 are complete from the frozen
 [v1 contract](architecture/controlled-worker-queue-claim-lease-acknowledgement-prerequisite-v1.md).
 
 - [x] Inspect the completed repository-supported v0.49 Controlled Worker Queue
@@ -22,7 +22,7 @@ Prerequisite**. P0 freezes the documentation-only
   Home Assistant blocking, Agent/execution-worker zero-consumer behavior, and
   absence of `compose.execution-smoke.override.yaml`.
 - [x] Keep downstream authority blocked by
-  `queue_claim_not_defined`, `queue_lease_not_defined`,
+  `queue_adapter_not_defined`, `queue_claim_not_defined`, `queue_lease_not_defined`,
   `queue_ack_not_defined`, `worker_activation_runtime_not_defined`,
   `store_contact_not_defined`, `runtime_contact_not_defined`,
   `worker_start_admission_not_defined`, `worker_start_not_defined`,
@@ -34,16 +34,30 @@ Prerequisite**. P0 freezes the documentation-only
   task, Agent change, execution-worker change, artifact, tag, push,
   publication, deployment, rollback, or change to
   `compose.execution-smoke.override.yaml`.
-- [ ] P1 - closed immutable prerequisite contract models and pure validation
-  only, if a later roadmap item deliberately chooses implementation.
-- [ ] P2 - explicitly constructed append-only prerequisite evidence
-  service/store only, if still required after P1 and still default-off.
-- [ ] P3 - exact guarded Core evidence API only, if a service/store exists.
-- [ ] P4 - strict nested Mission Control read-only evidence presentation only,
-  if a guarded read API exists.
-- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+- [x] P1 - closed immutable prerequisite contract models and pure validation
+  only.
+- [x] P2 - explicitly constructed append-only prerequisite evidence
+  service/store only, default-off, with injected owner-scoped v0.49 reader,
+  permanent idempotency, subject no-replay, bounded/redacted persistence,
+  restart-safe readback, and terminal indeterminate reservations.
+- [x] P3 - exact guarded Core create/list/get evidence API only.
+- [x] P4 - strict nested Mission Control read-only evidence presentation only.
+- [x] P5 - release isolation, regression, authority, no-replay, redaction,
   Agent/execution-worker parity, Home Assistant, Mission Control validation,
   Ruff, and release evidence only.
+
+### P5 validation evidence
+
+- [x] Focused v0.50/prior Core regressions cover contract, service/store,
+  guarded route, release closure, and the inherited v0.49 boundary.
+- [x] Agent and execution-worker isolation remains zero-consumer for v0.50
+  prerequisite markers.
+- [x] Full Mission Control validation covers nested read-only v0.50
+  prerequisite presentation through v0.49 admission evidence, structural UI
+  isolation, lint, and production build.
+- [x] Repository Ruff gate and `git diff --check` remain required closure
+  gates.
+- [x] P5 adds focused tests and release documentation only.
 
 ## Atlas v0.49 P0-P5 Controlled Worker Queue Claim Admission - complete
 

@@ -8,7 +8,7 @@ import router from "../app/router.tsx?raw";
 
 const productionModules = import.meta.glob(["../**/*.{ts,tsx}", "!../**/*.test.{ts,tsx}", "!../test/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
-describe("v0.49/v0.50 controlled worker queue claim admission Mission Control boundary", () => {
+describe("v0.49 controlled worker queue claim admission Mission Control boundary with v0.50 prerequisite isolation", () => {
     it("uses only guarded read APIs and no polling transport", () => {
         expect(api.match(/atlas\.get/g)).toHaveLength(2);
         expect(api).not.toMatch(/atlas\.(post|put|patch|delete)|setInterval|setTimeout|refetchInterval|WebSocket|EventSource|Worker\(/);

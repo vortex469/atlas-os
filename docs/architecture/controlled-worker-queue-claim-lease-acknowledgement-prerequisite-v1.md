@@ -1,6 +1,6 @@
 # Controlled Worker Queue Claim/Lease/Acknowledgement Prerequisite v1 planning contract
 
-Status: **Atlas v0.50 P0 frozen documentation-only prerequisite contract**.
+Status: **Atlas v0.50 P0-P5 closed controlled worker queue claim/lease/acknowledgement prerequisite contract**.
 
 This document freezes the repository-supported v0.50 boundary after inspection
 of the completed merged v0.49 baseline. The v0.49 baseline can record
@@ -181,3 +181,21 @@ worker activation runtime, worker store/runtime contact, and worker-start
 prerequisites, or deliberately prove why any omitted prerequisite is not
 required for that specific authority. Until then, unsupported architectures
 must fail closed with the explicit blockers listed in this document.
+
+## P0-P5 Closure
+
+P0 froze the narrow prerequisite boundary. P1 added closed immutable Core
+models and pure validation. P2 added explicitly constructed default-off
+service/store persistence with permanent idempotency, subject no-replay,
+bounded/redacted persistence, restart-safe readback, and terminal
+indeterminate reservations. P3 added only the guarded candidate-scoped Core
+create/list/get API. P4 kept Mission Control nested and read-only under the
+controlled worker queue claim admission evidence view. P5 locks release
+isolation and adds focused tests plus release documentation only.
+
+The closed v0.50 boundary advances only `v0.50_prerequisite_frozen`. It does
+not create queue claim, queue lease, queue acknowledgement, worker activation
+runtime, worker store contact, worker runtime contact, worker-start admission,
+worker start, Agent invocation, execution authorization, execution start,
+installation, mutation, deployment, rollback, publication, release, or effect
+consumer authority.
