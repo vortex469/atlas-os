@@ -3,6 +3,57 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.52 P0 Controlled Worker Queue Claim/Lease/Acknowledgement Boundary - selected
+
+Atlas v0.52 is **Controlled Worker Queue Claim/Lease/Acknowledgement
+Boundary**. P0 freezes the documentation-only
+[v1 contract](architecture/controlled-worker-queue-claim-lease-acknowledgement-boundary-v1.md).
+
+- [x] Verify the released v0.51.0 baseline at
+  `8d1ece090b14e6fc2d06332b14b03559b252555d` (`atlas-v0.51.0`) before
+  defining v0.52.
+- [x] Inspect the completed repository-supported v0.51 Controlled Worker
+  Queue Claim/Lease/Acknowledgement Admission contract, implementation,
+  API/UI structural tests, Agent and execution-worker isolation tests, release
+  checklist, roadmap, changelog, and normative architecture documents before
+  defining v0.52.
+- [x] Freeze exactly one new future authority:
+  `controlled_worker_queue_claim_lease_acknowledgement_recorded` over one
+  exact active same-owner v0.51 admission record and its inherited inert
+  queue-item lineage.
+- [x] Keep downstream authority blocked by
+  `worker_activation_runtime_not_defined`, `store_contact_not_defined`,
+  `runtime_contact_not_defined`, `worker_start_admission_not_defined`,
+  `worker_start_not_defined`, `agent_invocation_not_defined`, and
+  `execution_start_boundary_not_defined`.
+- [x] Preserve exact v0.51-v0.20 lineage, ownership, freshness/expiry,
+  fingerprints, inherited limits, reservation-before-effect, permanent
+  idempotency and subject no-replay, redaction, ambiguity handling,
+  default-off construction, API/UI isolation, Home Assistant blocking,
+  Agent/execution-worker zero-consumer behavior, and absence of
+  `compose.execution-smoke.override.yaml`.
+- [x] Keep P0 planning-only: no runtime model/service/store/migration/setting/
+  permission/route/OpenAPI operation/UI code, queue library, broker
+  integration, serializer, worker client, credential, endpoint, background
+  task, Agent change, execution-worker change, artifact, tag, push,
+  publication, deployment, rollback, or change to
+  `compose.execution-smoke.override.yaml`.
+- [x] Freeze v0.52 as queue receipt evidence only: it does not authorize
+  autonomous queue polling, work discovery, worker activation runtime, worker
+  store/runtime contact, worker-start admission, worker start, Agent
+  invocation, execution authorization/start, installation, mutation,
+  deployment, rollback, publication, release, or effect consumers.
+- [ ] P1 - closed immutable Core contract models and pure validation only.
+- [ ] P2 - explicitly constructed append-only Core receipt service/store with
+  injected owner-scoped v0.51 reader, one injected queue adapter,
+  reservation-before-effect, permanent no-replay, bounded/redacted
+  persistence, restart-safe readback, and terminal indeterminate outcomes.
+- [ ] P3 - exact guarded Core create/list/get receipt API only.
+- [ ] P4 - strict nested Mission Control read-only receipt presentation only.
+- [ ] P5 - release isolation, regression, authority, no-replay, redaction,
+  Agent/execution-worker parity, Home Assistant, Mission Control validation,
+  Ruff, and release evidence only.
+
 ## Atlas v0.51 P0-P5 Controlled Worker Queue Claim/Lease/Acknowledgement Admission - complete
 
 Atlas v0.51 is **Controlled Worker Queue Claim/Lease/Acknowledgement

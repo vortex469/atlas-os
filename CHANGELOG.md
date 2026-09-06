@@ -6,6 +6,40 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.52 P0 - Controlled Worker Queue Claim/Lease/Acknowledgement Boundary
+
+- Verified the released v0.51.0 baseline at
+  `8d1ece090b14e6fc2d06332b14b03559b252555d` (`atlas-v0.51.0`) and selected
+  the narrowest repository-supported next boundary:
+  [Controlled Worker Queue Claim/Lease/Acknowledgement Boundary][v052-plan].
+- P0 records that v0.52 may only define a later Core-owned, explicitly
+  constructed, default-off, single-subject queue receipt boundary over one
+  exact active same-owner v0.51 admission record and its inherited inert
+  queue-item lineage.
+- The strongest future state is
+  `controlled_worker_queue_claim_lease_acknowledgement_recorded`, still
+  blocked by `worker_activation_runtime_not_defined`,
+  `store_contact_not_defined`, `runtime_contact_not_defined`,
+  `worker_start_admission_not_defined`, `worker_start_not_defined`,
+  `agent_invocation_not_defined`, and
+  `execution_start_boundary_not_defined`.
+- P0 does not add runtime models, services, stores, migrations, settings,
+  permissions, routes, OpenAPI operations, UI code, queue libraries, broker
+  integrations, serializers, worker clients, credentials, endpoints,
+  background tasks, Agent changes, execution-worker changes, artifacts, tags,
+  pushes, publication, deployment, rollback, or changes to
+  `compose.execution-smoke.override.yaml`.
+- V0.52 does not authorize autonomous queue polling, work discovery, worker
+  activation runtime, worker store/runtime contact, worker-start admission,
+  worker start, Agent invocation, execution authorization/start, installation,
+  mutation, deployment, rollback, publication, release, or effect consumers.
+- P1-P5 are scoped to immutable Core validation, explicitly constructed
+  append-only receipt service/store with one injected queue adapter, guarded
+  Core create/list/get APIs, nested read-only Mission Control presentation,
+  and release isolation only.
+
+[v052-plan]: docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-boundary-v1.md
+
 #### v0.51 P0-P5 - Controlled Worker Queue Claim/Lease/Acknowledgement Admission
 
 - Inspected the completed merged v0.50 baseline and selected the narrowest
