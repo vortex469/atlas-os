@@ -69,10 +69,37 @@ def test_v051_p0_adds_no_runtime_or_effect_surface() -> None:
     ).lower()
 
     assert not ROOT.joinpath("compose.execution-smoke.override.yaml").exists()
-    assert not ROOT.joinpath(
+    admission_module = ROOT.joinpath(
         "services/atlas-core/app/"
         "controlled_worker_queue_claim_lease_acknowledgement_admission"
-    ).exists()
+    )
+    if admission_module.exists():
+        assert sorted(
+            path.name
+            for path in admission_module.iterdir()
+            if path.name != "__pycache__"
+        ) == [
+            "__init__.py",
+            "contract.py",
+            "test_contract.py",
+        ]
+        source = admission_module.joinpath("contract.py").read_text(
+            encoding="utf-8"
+        ).lower()
+        for forbidden in (
+            "fastapi",
+            "sqlite",
+            "subprocess",
+            "requests",
+            ".enqueue(",
+            ".dequeue(",
+            ".claim(",
+            ".lease(",
+            ".acknowledge(",
+            ".execute(",
+            ".invoke_agent(",
+        ):
+            assert forbidden not in source
 
     for phrase in (
         "p0 does not implement runtime authority",
