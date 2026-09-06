@@ -8,6 +8,7 @@ import type { ControlledWorkerQueueClaimAdmissionCollectionV1 } from "../../type
 import { ControlledWorkerQueueClaimAdmissions } from "./ControlledWorkerQueueClaimAdmissions";
 
 vi.mock("../../api/controlledWorkerQueueClaimAdmission", () => ({ listControlledWorkerQueueClaimAdmissions: vi.fn() }));
+vi.mock("./ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions", () => ({ ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions: () => <section aria-label="Controlled worker queue claim lease acknowledgement admission evidence">Nested v0.51 claim lease acknowledgement evidence</section> }));
 
 const empty: ControlledWorkerQueueClaimAdmissionCollectionV1 = { ...controlledWorkerQueueClaimAdmissionCollectionFixture, items: [], count: 0 };
 
@@ -37,6 +38,8 @@ describe("ControlledWorkerQueueClaimAdmissions", () => {
         expect(screen.getByText(/readiness\/start-admission state: queue-claim admission evidence recorded/i)).toHaveTextContent(/worker-start admission: not defined; blocked: yes/i);
         expect(screen.getByText(/readiness\/start-admission state: queue-claim admission evidence recorded/i)).toHaveTextContent(/queue claimed: false; queue leased: false; queue acknowledged: false; worker started: false; Agent invoked: false; execution started: false/i);
         expect(screen.getByText(/v0\.50 progress: prerequisite frozen, documentation-only/i)).toHaveTextContent(/queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution are still unavailable/i);
+        expect(screen.getByText(/v0\.51 state is shown below when Core has recorded it/i)).toHaveTextContent(/read-only evidence/i);
+        expect(screen.getByLabelText(/controlled worker queue claim lease acknowledgement admission evidence/i)).toHaveTextContent(/nested v0\.51/i);
         const advanced = screen.getByText("Advanced details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");

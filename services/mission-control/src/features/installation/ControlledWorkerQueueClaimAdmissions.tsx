@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { listControlledWorkerQueueClaimAdmissions } from "../../api/controlledWorkerQueueClaimAdmission";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { ControlledWorkerQueueClaimAdmissionV1 } from "../../types/controlledWorkerQueueClaimAdmission";
+import { ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions } from "./ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions";
 
 const BLOCKERS: Record<string, string> = {
     queue_claim_not_defined: "Queue claim is not defined",
@@ -65,6 +66,7 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
         <p className="font-semibold">Recorded controlled worker queue claim admission evidence</p>
         <p className="mt-1">Readiness/start-admission state: queue-claim admission evidence recorded; queue claim: not defined; worker-start admission: not defined; blocked: yes. Queue claimed: false; queue leased: false; queue acknowledged: false; worker started: false; Agent invoked: false; execution started: false.</p>
         <p className="mt-1">v0.50 progress: prerequisite frozen, documentation-only. Queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution are still unavailable.</p>
+        <p className="mt-1">v0.51 state is shown below when Core has recorded it. It remains read-only evidence and does not create queue, lease, acknowledgement, worker-start, Agent, or execution authority.</p>
         <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never claims work, leases work, acknowledges work, admits worker start, contacts a worker, starts execution, or retries delivery.</p>
         <details className="mt-3">
             <summary>Advanced details</summary>
@@ -121,6 +123,7 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
                 {["Queue polling allowed", "Queue claim allowed", "Queue claimed", "Queue lease allowed", "Queue leased", "Queue acknowledgement allowed", "Queue acknowledged", "Queue consume allowed", "Queue mutation allowed", "Worker activation runtime allowed", "Worker start admission allowed", "Worker start admitted", "Worker start allowed", "Worker started", "Worker invocation allowed", "Agent invocation allowed", "Execution authorization allowed", "Execution start allowed", "Execution started", "Process execution allowed", "Store contact allowed", "Runtime contact allowed", "Worker store contact allowed", "Worker runtime contact allowed", "Worker contact allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Workflow start allowed", "Shell execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Artifact publication allowed", "Tag push allowed", "Release publication allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
             </dl>
         </details>
+        <ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions candidateId={item.candidate_record_id} v049AdmissionId={item.admission_id} />
     </li>;
 }
 

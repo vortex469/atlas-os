@@ -43,9 +43,12 @@ describe("v0.49 controlled worker queue claim admission Mission Control boundary
         const consumers = Object.entries(productionModules).filter(([, source]) => /controlledWorkerQueueClaimAdmission|ControlledWorkerQueueClaimAdmission|controlled-worker-queue-claim-admissions/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/controlledWorkerQueueClaimAdmission.ts",
+            "../api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",
             "../features/installation/ControlledWorkerQueueClaimAdmissions.tsx",
+            "../features/installation/ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions.tsx",
             "../features/installation/WorkerBindingActivationEvidences.tsx",
             "../types/controlledWorkerQueueClaimAdmission.ts",
+            "../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",
         ]);
     });
 });
