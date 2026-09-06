@@ -1,10 +1,11 @@
 # Atlas OS Roadmap
 
-## 1. Current completed baseline - v0.48
+## 1. Current baseline - v0.49 P0
 
-Atlas v0.48 P0-P5 is complete in the repository-supported baseline for this
-worktree. The latest immutable annotated release tag recorded in this checkout
-remains `atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
+Atlas v0.49 P0 is frozen as documentation-only planning over the completed
+repository-supported v0.48 P0-P5 baseline in this worktree. The latest
+immutable annotated release tag recorded in this checkout remains
+`atlas-v0.39.0` at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`.
 
 The completed baseline includes the hardened production topology; repository
 candidate execution (`update-compose-stack`); operational dispatch
@@ -27,7 +28,11 @@ adds only worker-binding activation evidence over one exact active same-owner
 v0.47 preflight record. Runtime activation, worker store/runtime contact,
 queue claim/lease/acknowledgement, worker-start admission, worker start, Agent
 invocation, execution start, publication, deployment, rollback, and effect
-consumers remain blocked.
+consumers remain blocked. V0.49 P0 therefore freezes only controlled worker
+queue claim admission evidence over one exact active same-owner v0.48
+activation-evidence record. Queue claim/lease/acknowledgement, worker-start
+admission, worker start, Agent invocation, execution start, publication,
+deployment, rollback, and effect consumers remain blocked.
 
 ## 2. Enduring architectural constraints
 
@@ -161,16 +166,67 @@ consumers remain blocked.
   activation, worker store/runtime contact, queue claim/lease/acknowledgement,
   worker start, Agent invocation, execution start, publication, deployment,
   rollback, and effect consumers undefined.
-- v0.48 selects worker-binding activation evidence over one active same-owner
+- v0.48 released worker-binding activation evidence over one active same-owner
   v0.47 worker-binding activation preflight record as the next
   repository-supported boundary while leaving runtime activation, worker
   store/runtime contact, queue claim/lease/acknowledgement, worker-start
   admission, worker start, Agent invocation, execution start, publication,
   deployment, rollback, and effect consumers undefined.
+- v0.49 P0 freezes controlled worker queue claim admission evidence over one
+  active same-owner v0.48 worker-binding activation evidence record as the next
+  repository-supported boundary while leaving queue claim/lease/
+  acknowledgement, worker-start admission, worker start, Agent invocation,
+  execution start, publication, deployment, rollback, and effect consumers
+  undefined.
 
 The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
+
+## Frozen v0.49 P0 plan - Controlled Worker Queue Claim Admission
+
+Atlas v0.49 P0 selects **Controlled Worker Queue Claim Admission**. The
+normative planning contract is [Controlled Worker Queue Claim Admission
+v1](docs/architecture/controlled-worker-queue-claim-admission-v1.md).
+
+P0 is documentation-only and frozen. It adds no runtime architecture.
+
+V0.49 starts from the completed repository-supported v0.48 Worker Binding
+Activation Evidence baseline. The v0.48 implementation can record bounded
+evidence that one active same-owner v0.47 worker-binding activation preflight
+record has been accepted as activation evidence for a later runtime activation
+boundary, but it has no runtime activation, production worker store contact,
+worker runtime contact, queue claim, queue lease, queue acknowledgement,
+worker-start admission, worker start, Agent invocation, or execution-start
+boundary.
+
+The queue claim/lease/acknowledgement prerequisites are still not complete.
+The narrowest repository-supported next boundary is therefore not
+worker-start admission evidence, worker start, Agent invocation, or execution.
+It is only the evidence question of whether one exact active same-owner v0.48
+activation-evidence record may be admitted for later, separately released
+controlled queue claim/lease/acknowledgement consideration. Its strongest
+future state is `controlled_worker_queue_claim_admission_recorded`, always
+blocked by `queue_claim_not_defined`, `queue_lease_not_defined`,
+`queue_ack_not_defined`, `worker_activation_runtime_not_defined`,
+`store_contact_not_defined`, `runtime_contact_not_defined`,
+`worker_start_admission_not_defined`, `worker_start_not_defined`,
+`agent_invocation_not_defined`, and
+`execution_start_boundary_not_defined`.
+
+This is admission evidence only. It is not queue claim, queue lease,
+acknowledgement, runtime activation, worker-start admission, worker store
+contact, worker runtime contact, worker start, Agent invocation, execution
+authorization or start, queue polling, install, mutation, deployment, rollback,
+publication, or an effect consumer.
+
+Any later implementation must fail closed on unsupported architecture, preserve
+exact v0.48 lineage and ownership, retain permanent idempotency and subject
+no-replay, keep bounded append-only persistence, avoid secret storage or
+rendering, remain explicitly constructed and default-off, and prove API/UI
+isolation plus Agent/execution-worker zero-consumer behavior before any later
+queue claim, lease, acknowledgement, or worker-start admission can be
+considered.
 
 ## Completed v0.48 plan - Worker Binding Activation Evidence
 

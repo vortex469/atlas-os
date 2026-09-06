@@ -6,6 +6,27 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.49 P0 - Controlled Worker Queue Claim Admission
+
+- Inspected the completed merged v0.48 baseline and selected the narrowest
+  repository-supported next authority boundary toward controlled worker start:
+  documentation-only [Controlled Worker Queue Claim Admission][v049-plan].
+- P0 records that v0.49 may only ask whether one active same-owner v0.48
+  worker-binding activation evidence record can be admitted for later,
+  separately released controlled queue claim/lease/acknowledgement
+  consideration.
+- P0 does not select worker-start admission evidence because queue claim,
+  lease, and acknowledgement prerequisites remain unsupported. It adds no
+  queue claim, lease, acknowledgement, worker store/runtime contact, worker
+  start, Agent invocation, execution start, publication, deployment, rollback,
+  effect consumer, or change to `compose.execution-smoke.override.yaml`.
+- Prior v0.20-v0.48 lineage, ownership, limits, permanent no-replay,
+  redaction, default-off construction, API/UI isolation, Home Assistant
+  blocking, and Agent/execution-worker zero-consumer contracts remain
+  unchanged.
+
+[v049-plan]: docs/architecture/controlled-worker-queue-claim-admission-v1.md
+
 #### v0.48 P0-P5 - Worker Binding Activation Evidence
 
 - Selected and completed Atlas v0.48 **Worker Binding Activation Evidence**
