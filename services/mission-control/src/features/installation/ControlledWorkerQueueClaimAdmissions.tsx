@@ -17,6 +17,20 @@ const BLOCKERS: Record<string, string> = {
     execution_start_boundary_not_defined: "Execution start boundary is not defined",
 };
 
+const V050_PREREQUISITES = [
+    "one active same-owner v0.49 controlled worker queue claim admission",
+    "exact inherited lineage, ownership, freshness, fingerprints, and limits",
+    "bounded queue and item identity derived from admitted lineage only",
+    "default-off queue adapter before any future effect",
+    "reservation-before-effect for any future claim attempt",
+    "permanent idempotency and subject no-replay across claim, lease, and acknowledgement",
+    "terminal ambiguity handling",
+    "bounded append-only redacted persistence",
+    "secret-free lease and acknowledgement handle treatment",
+    "operator-scoped API and UI isolation",
+    "Agent and execution-worker zero-consumer behavior",
+];
+
 export function ControlledWorkerQueueClaimAdmissions({ candidateId, activationEvidenceId }: { candidateId: string; activationEvidenceId: string }) {
     const [items, setItems] = useState<ControlledWorkerQueueClaimAdmissionV1[] | null>(null);
     const [error, setError] = useState(false);
@@ -32,10 +46,11 @@ export function ControlledWorkerQueueClaimAdmissions({ candidateId, activationEv
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Controlled worker queue claim admission evidence">
         <h6 className="font-semibold">Controlled worker queue claim admission</h6>
         <p className="mt-2 text-sm">Mission Control shows v0.49 admission evidence inside the existing installation workflow. It records that one exact v0.48 activation evidence record reached readiness for later controlled queue claim consideration only.</p>
+        <p className="mt-1 text-sm">v0.50 prerequisite state: documentation-only prerequisite frozen; claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain not defined.</p>
         <p className="mt-1 text-sm">No queue claim, queue lease, queue acknowledgement, worker-start admission, worker start, Agent invocation, execution, installation, deployment, rollback, retry, or resend control is available here.</p>
         {items === null && !error && <p role="status" className="mt-3">Loading controlled worker queue claim admission evidence...</p>}
         {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Controlled worker queue claim admission evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue detail, claim material, lease material, acknowledgement handle, worker address, store, runtime, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No controlled worker queue claim admission evidence has been recorded. Queue claim, worker-start admission, worker start, Agent invocation, and execution remain blocked.</p>}
+        {items?.length === 0 && <p role="status" className="mt-3">No controlled worker queue claim admission evidence has been recorded. v0.50 remains documentation-only prerequisite closure; queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain blocked.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Controlled worker queue claim admissions">{items.map((item) => <ClaimAdmission key={item.admission_id} item={item} />)}</ol>}
     </section>;
 }
@@ -49,6 +64,7 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
     return <li className="rounded border border-slate-800 p-3 text-sm">
         <p className="font-semibold">Recorded controlled worker queue claim admission evidence</p>
         <p className="mt-1">Readiness/start-admission state: queue-claim admission evidence recorded; queue claim: not defined; worker-start admission: not defined; blocked: yes. Queue claimed: false; queue leased: false; queue acknowledged: false; worker started: false; Agent invoked: false; execution started: false.</p>
+        <p className="mt-1">v0.50 progress: prerequisite frozen, documentation-only. Queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution are still unavailable.</p>
         <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never claims work, leases work, acknowledges work, admits worker start, contacts a worker, starts execution, or retries delivery.</p>
         <details className="mt-3">
             <summary>Advanced details</summary>
@@ -81,6 +97,14 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
             <ol aria-label="Ordered controlled worker queue claim admission blockers" className="mt-2 list-decimal pl-5">
                 {item.blockers.map((value) => <li key={value}>{BLOCKERS[value] ?? value} <code className="text-xs text-slate-400">{value}</code></li>)}
             </ol>
+            <h6 className="mt-3 font-semibold">v0.50 prerequisite details</h6>
+            <p className="mt-2 text-xs">The strongest v0.50 state is documentation-only prerequisite closure. It does not create a runtime record, route, schema, permission, queue operation, worker operation, Agent operation, execution operation, deployment operation, or release operation.</p>
+            <ol aria-label="v0.50 controlled worker queue prerequisites" className="mt-2 list-decimal pl-5">
+                {V050_PREREQUISITES.map((value) => <li key={value}>{value}</li>)}
+            </ol>
+            <dl aria-label="v0.50 fixed-false prerequisite equations" className="mt-3 grid gap-2 sm:grid-cols-2">
+                {["v0.50 prerequisite frozen equals queue claimed", "v0.50 prerequisite frozen equals queue leased", "v0.50 prerequisite frozen equals queue acknowledged", "v0.50 prerequisite frozen equals worker start admitted", "v0.50 prerequisite frozen equals worker started", "v0.50 prerequisite frozen equals Agent invoked", "v0.50 prerequisite frozen equals execution started", "Claim admission recorded equals queue claimed"].map((name) => <Value key={name} name={name} value="false" />)}
+            </dl>
             <h6 className="mt-3 font-semibold">Inherited sandbox, resource, network, and filesystem limits</h6>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Sandbox profile" value={limits.sandbox.profile} />

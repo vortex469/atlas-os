@@ -21,6 +21,7 @@ describe("ControlledWorkerQueueClaimAdmissions", () => {
         expect(screen.getByRole("status")).toHaveTextContent(/loading controlled worker queue claim admission evidence/i);
         resolve(empty);
         await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no controlled worker queue claim admission evidence/i));
+        expect(screen.getByRole("status")).toHaveTextContent(/v0\.50 remains documentation-only prerequisite closure/i);
         unmount();
 
         vi.mocked(listControlledWorkerQueueClaimAdmissions).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
@@ -35,9 +36,13 @@ describe("ControlledWorkerQueueClaimAdmissions", () => {
         expect(await screen.findByText(/recorded controlled worker queue claim admission evidence/i)).toBeInTheDocument();
         expect(screen.getByText(/readiness\/start-admission state: queue-claim admission evidence recorded/i)).toHaveTextContent(/worker-start admission: not defined; blocked: yes/i);
         expect(screen.getByText(/readiness\/start-admission state: queue-claim admission evidence recorded/i)).toHaveTextContent(/queue claimed: false; queue leased: false; queue acknowledged: false; worker started: false; Agent invoked: false; execution started: false/i);
+        expect(screen.getByText(/v0\.50 progress: prerequisite frozen, documentation-only/i)).toHaveTextContent(/queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution are still unavailable/i);
         const advanced = screen.getByText("Advanced details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
+        expect(advanced).toHaveTextContent(/v0\.50 prerequisite details/i);
+        expect(screen.getByLabelText(/v0\.50 controlled worker queue prerequisites/i)).toHaveTextContent(/one active same-owner v0\.49 controlled worker queue claim admission.*Agent and execution-worker zero-consumer behavior/i);
+        expect(screen.getByLabelText(/v0\.50 fixed-false prerequisite equations/i)).toHaveTextContent(/v0\.50 prerequisite frozen equals queue claimedfalse.*v0\.50 prerequisite frozen equals execution startedfalse.*Claim admission recorded equals queue claimedfalse/i);
         expect(screen.getByLabelText(/ordered controlled worker queue claim admission blockers/i)).toHaveTextContent(/queue_claim_not_defined.*queue_lease_not_defined.*queue_ack_not_defined.*worker_activation_runtime_not_defined.*store_contact_not_defined.*runtime_contact_not_defined.*worker_start_admission_not_defined.*worker_start_not_defined.*agent_invocation_not_defined.*execution_start_boundary_not_defined/i);
         expect(screen.getByText(/inherited sandbox, resource, network, and filesystem limits/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/controlled worker queue claim admission fixed-false authority fields/i)).toHaveTextContent(/queue claim allowedfalse.*queue claimedfalse.*worker start admission allowedfalse.*worker start admittedfalse.*execution startedfalse/i);
