@@ -16,13 +16,13 @@ pair and its complete v0.52-v0.20 lineage. Runtime/contact/start primitives are
 absent from the released lineage, so admission records acceptance for future
 runtime design consideration only. All seven blockers remain unchanged.
 
-P0 is documentation only. Future P1 defines immutable models/pure evaluation;
-P2 adds default-off bounded durable evidence and permanent no-replay; P3 adds
+P0 is documentation only. P1 implements immutable models/pure evaluation;
+P2 implements default-off bounded durable evidence and permanent no-replay; P3 adds
 guarded evidence create/list/get without production construction; P4 adds nested
 GET-only Mission Control presentation; P5 proves failure, ownership, lineage,
 concurrency, corruption and historical isolation, with zero Agent/execution-worker
-consumers. P1-P5 remain unimplemented. Exact requirements and gates are in the
-contract and [release checklist](docs/RELEASE_CHECKLIST.md).
+consumers. P1/P2 are implemented; P3-P5 remain open. Exact requirements and
+gates are in the contract and [release checklist](docs/RELEASE_CHECKLIST.md).
 
 Queue effects, runtime activation, store/runtime contact, worker-start admission
 and its construction, worker start/invocation, Agent invocation, execution

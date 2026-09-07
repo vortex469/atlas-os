@@ -1,6 +1,6 @@
 # Worker Activation Runtime Admission v1 contract
 
-Status: **Atlas v0.54 P0 frozen; P1 pure Core contract implemented; P2-P5 not implemented**.
+Status: **Atlas v0.54 P0 frozen; P1 pure Core contract and P2 durable evidence implemented; P3-P5 not implemented**.
 
 P0 froze this normative boundary. P1 implements only the pure Core models and
 evaluator; neither phase introduces runtime, API, UI, permission registration,
@@ -321,3 +321,26 @@ remain byte-exact and all downstream authority remains false.
 
 Only this exact successor contract is added to the v0.53 consumer allowlists.
 P1 adds no service, reader, store, route, settings, UI or effect consumer.
+
+
+## P2 implementation reference
+
+The explicitly constructed [service](../../services/atlas-core/app/worker_activation_runtime_admission/service.py),
+[owned v0.53 reader](../../services/atlas-core/app/worker_activation_runtime_admission/readers.py)
+and [journal](../../services/atlas-core/app/worker_activation_runtime_admission/store.py)
+implement this frozen persistence boundary. Creation defaults off. SQLite
+application ID 54 separates the journal from predecessor storage. Every
+connection checks exact schema/index definitions, integrity, canonical bounded
+models, fingerprints, owner indexes and reservation/record/audit linkage.
+
+Both prerequisite reads run under independent journal write locks. Permanent
+subject and owner/key reservation commits before the evidence/audit transaction;
+an interruption cannot resume. Exact duplicates read historical evidence without
+predecessor access. Reservations, including incomplete ones, are retained without
+eviction. Limits can only decrease from the frozen ceilings; the database page
+limit does not claim a journal or filesystem quota.
+
+The service preserves P1 IDs, hashes, recursive predecessor models and seven
+blockers. Clock rollback between reads and malformed correlation material fail
+closed. Only the exact three successor persistence modules join the historical
+v0.53 consumer allowlists. No production construction or effect consumer is added.
