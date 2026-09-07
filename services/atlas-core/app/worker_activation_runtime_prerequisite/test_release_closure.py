@@ -9,6 +9,8 @@ from pydantic import ValidationError
 
 from app.controlled_worker_queue_claim_lease_acknowledgement.test_service_store import (
     _record,
+)
+from app.controlled_worker_queue_claim_lease_acknowledgement.test_service_store import (
     _service as prior_service,
 )
 from app.worker_activation_runtime_prerequisite import contract as c

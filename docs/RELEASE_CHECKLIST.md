@@ -50,8 +50,11 @@ bounded permanent reservations, two locked revalidation points, concurrency,
 corruption closure, redacted errors, authenticated owner/candidate scope,
 CSRF/origin enforcement, exact API methods and non-authoritative UI isolation.
 
-Only the historical installation UI route-consumer set needed a new exact entry:
-`api/workerActivationRuntimePrerequisite.ts`. No wildcard or future exclusion,
+Historical isolation needed exactly two additions: the installation UI route
+consumer `api/workerActivationRuntimePrerequisite.ts`, and v0.36
+`worker_activation_runtime_prerequisite/contract.py`. The latter remains subject
+to the AST assertion permitting only `FingerprintV1` from the execution-admission
+contract, never its service. No wildcard or future exclusion,
 production behavior change, or `compose.execution-smoke.override.yaml` change.
 
 Observed checks (selected Python interpreter, repository root working directory):
@@ -59,8 +62,26 @@ Observed checks (selected Python interpreter, repository root working directory)
 - Focused v0.53 contract/service/store/API and v0.52 prerequisite regressions:
   **182 passed** (142.42 seconds); existing Pydantic/HTTPX warnings.
 - Agent v0.36/v0.37/delivery-preflight isolation: **6 passed**.
-- Final closure, historical suites, Core Ruff and diff review: results recorded
-  below after the final validation run.
+- Focused tests passed: **68** new closure plus historical installation tests;
+  **232** historical release/isolation/scope tests across 38 files; **9** v0.36
+  service/store tests including its updated exact fingerprint-only allowlist.
+  The final new closure file also passes independently (**2 tests**), and the
+  final combined closure/v0.36 store run passes **11 tests**. A whole-Core
+  selection `-k "consumer or isolation or effect_dependencies"` passes **250**
+  tests (3556 deselected), including Agent/execution-worker zero-consumer scans.
+  These overlapping suites are reported separately, not summed as unique tests.
+- Core Ruff gate passed with the selected environment on PATH.
+  `git diff --check` and normative relative documentation links passed.
+- Full Core pytest was attempted and interrupted after progress stopped in
+  `intelligence/test_coordinator.py::test_build_report`; no full-suite pass
+  is claimed. Its observed failures were the corrected v0.36 allowlist,
+  `test_non_owned_existing_root_fails_closed` (sandbox `chown` returns EINVAL),
+  and the Proxmox projection test (read-only default provider-secret path).
+  The latter passes when `ATLAS_PROVIDER_SECRET_FILE` points inside the worktree.
+  The ownership test is unchanged and remains an environment limitation.
+  An isolated intelligence reproduction also exceeded 25 seconds; its 10-second
+  faulthandler trace shows `asyncio.run` waiting during runner shutdown. No
+  TestClient failure or CI timeout was observed in the focused gates.
 - Mission Control `npm ci`: failed; registry tarball requests exhausted DNS
   retries with `EAI_AGAIN`, followed by npm “Exit handler never called”.
   `npm test` and `npm run lint` fail because Vitest/ESLint are unavailable;
@@ -79,6 +100,13 @@ Run historical `test_*isolation.py`, `test_release_closure.py`, and `test_*scope
 under Core, plus the Agent targets listed below. Ruff uses
 `PATH=/opt/atlas/.venv/bin:$PATH bash scripts/rc1-python-ruff-gate services/atlas-core`.
 Mission Control uses the package scripts `test`, `build`, and `lint` after `npm ci`.
+
+Hostile review passed: exact consumer sets reject additional modules; the v0.36
+AST guard still permits only the historical fingerprint type. Durable nested
+JSON equality preserves complete lineage, and strict-false checks reject true,
+integer and string coercion at the serialized boundary. Existing auth,
+corruption, capacity and replay tests remain unchanged. Only regression tests
+and documentation changed; external gates are not waived.
 
 - [ ] Rerun Mission Control test/build/lint with installed lockfile dependencies.
 - [ ] Complete any unavailable full-suite/external acceptance checks; historical
