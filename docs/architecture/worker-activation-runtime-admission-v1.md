@@ -1,9 +1,10 @@
 # Worker Activation Runtime Admission v1 contract
 
-Status: **Atlas v0.54 P0 frozen; P1-P5 not implemented**.
+Status: **Atlas v0.54 P0 frozen; P1 pure Core contract implemented; P2-P5 not implemented**.
 
-This is normative documentation planning only. P0 introduces no runtime, API,
-UI, permission, configuration or production startup behavior.
+P0 froze this normative boundary. P1 implements only the pure Core models and
+evaluator; neither phase introduces runtime, API, UI, permission registration,
+configuration or production startup behavior.
 
 ## Decision and released evidence
 
@@ -290,3 +291,33 @@ and Mission Control dependency gates; this P0 does not waive or rerun them as
 runtime probes. Do not modify `compose.execution-smoke.override.yaml`. No push,
 tag, release, publication, deployment, rollback, worker start, Agent invocation
 or execution start is authorized by this plan.
+
+
+## P1 implementation reference
+
+The [pure Core contract](../../services/atlas-core/app/worker_activation_runtime_admission/contract.py)
+implements the closed create, authority, validation, evaluation, record, status,
+result, collection, reservation, audit and redacted error models.
+The complete v0.53 pair is recursively reparsed without modifying its canonical
+representation. The distinct `runtime_admission_id` binds the permanent subject;
+`prerequisite_id` and inherited `admission_id` remain separate exact identities.
+
+P1 freezes domain strings `atlas:worker-activation-runtime-admission-{kind}:v1`
+for `subject`, `request`, `record`, `status`, `collection`, `idempotency-key`,
+`reservation`, `audit` and `evaluation`, using the released canonical fingerprint
+envelope. UUID5 uses `atlas:worker-activation-runtime-admission-id:v1`.
+[Committed vectors](../../services/atlas-core/app/worker_activation_runtime_admission/fingerprint_vectors.json)
+lock these domains and the subject-derived identity.
+
+The evaluator accepts only injected facts; its authority context and complete
+predecessor pair are internal Core inputs, never a public nested-evidence request.
+Required strict-false `subject_previously_reserved` and
+`idempotency_key_previously_reserved` facts reject replay or unknown reservation
+state. P2 must obtain these facts under its journal locks; the pure evaluator
+does not establish durable uniqueness or handle historical duplicate retrieval.
+The redacted refusal vocabulary is closed by `RefusalV1`; every refusal recognizes
+zero prerequisites, has no expiry and grants no marker. All seven success blockers
+remain byte-exact and all downstream authority remains false.
+
+Only this exact successor contract is added to the v0.53 consumer allowlists.
+P1 adds no service, reader, store, route, settings, UI or effect consumer.

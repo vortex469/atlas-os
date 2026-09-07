@@ -8,26 +8,32 @@ from typing import Literal, get_args, get_origin
 import pytest
 from pydantic import ValidationError
 
-from app.controlled_worker_queue_claim_lease_acknowledgement import contract as v052
-from app.controlled_worker_queue_claim_lease_acknowledgement.test_contract import (
-    _input as v052_input,
+from app.worker_activation_runtime_admission import contract as c
+from app.worker_activation_runtime_prerequisite import contract as v053
+from app.worker_activation_runtime_prerequisite.test_contract import (
+    facts as prior_facts,  # noqa: F401
 )
-from app.worker_activation_runtime_prerequisite import contract as c
 
-RECEIPT = "controlled_worker_queue_claim_lease_acknowledgement"
+RECEIPT = "worker_activation_runtime_prerequisite"
 STATUS = RECEIPT + "_status"
 
 
 @pytest.fixture(scope="module")
-def facts(tmp_path_factory):
-    prior = v052.build_receipt(v052_input(tmp_path_factory.mktemp("v053")))
-    status = v052.derive_status(prior, evaluated_at=prior.recorded_at)
-    return c.WorkerActivationRuntimePrerequisiteValidationInputV1(
+def facts(request):
+    predecessor = request.getfixturevalue("prior_facts")
+    prior = v053.build_prerequisite(
+        predecessor, idempotency_key="v053-prerequisite-key"
+    )
+    status = v053.derive_status(prior, evaluated_at=prior.recorded_at)
+    return c.WorkerActivationRuntimeAdmissionValidationInputV1(
+        subject_previously_reserved=False,
+        idempotency_key_previously_reserved=False,
         operator_id=prior.operator_id,
         candidate_record_id=prior.candidate_record_id,
-        authority=c.WorkerActivationRuntimePrerequisiteAuthorityContextV1(
+        authority=c.WorkerActivationRuntimeAdmissionAuthorityContextV1(
             authenticated_operator_id=prior.operator_id,
             permission=c.PERMISSION,
+            permission_verified=True,
             request_received_at=prior.recorded_at,
         ),
         create=c.build_create(receipt=prior, receipt_status=status),
@@ -36,9 +42,9 @@ def facts(tmp_path_factory):
 
 
 def refused(raw):
-    result = c.evaluate_worker_activation_runtime_prerequisite(raw)
-    assert not result.worker_activation_runtime_prerequisite_recorded
-    assert result.recognized_v052_receipt_count == 0
+    result = c.evaluate_worker_activation_runtime_admission(raw)
+    assert not result.worker_activation_runtime_admission_recorded
+    assert result.recognized_v053_prerequisite_count == 0
     assert result.earliest_expiry is None
     assert result.operator_id == "blocked-evaluation"
     assert result.evaluation_fingerprint == c.evaluation_fingerprint(result)
@@ -48,14 +54,16 @@ def refused(raw):
 def test_success_is_deterministic_immutable_and_preserves_complete_lineage(facts):
     raw = facts.model_dump(mode="python")
     before = copy.deepcopy(raw)
-    first = c.evaluate_worker_activation_runtime_prerequisite(raw)
-    assert first == c.evaluate_worker_activation_runtime_prerequisite(facts)
+    first = c.evaluate_worker_activation_runtime_admission(raw)
+    assert first == c.evaluate_worker_activation_runtime_admission(facts)
     assert raw == before
-    assert first.worker_activation_runtime_prerequisite_recorded is True
-    assert first.recognized_v052_receipt_count == 1
-    assert first.blockers == v052.SUCCESS_BLOCKERS
-    record = c.build_prerequisite(facts, idempotency_key="v053-idempotency-key")
-    assert record == c.build_prerequisite(facts, idempotency_key="v053-idempotency-key")
+    assert first.worker_activation_runtime_admission_recorded is True
+    assert first.recognized_v053_prerequisite_count == 1
+    assert first.blockers == v053.SUCCESS_BLOCKERS
+    record = c.build_runtime_admission(facts, idempotency_key="v054-idempotency-key")
+    assert record == c.build_runtime_admission(
+        facts, idempotency_key="v054-idempotency-key"
+    )
     assert (
         getattr(record, RECEIPT).model_dump_json()
         == getattr(facts, RECEIPT).model_dump_json()
@@ -70,19 +78,19 @@ def test_success_is_deterministic_immutable_and_preserves_complete_lineage(facts
         with pytest.raises(ValidationError):
             model.operator_id = "foreign"
     assert (
-        c.WorkerActivationRuntimePrerequisiteV1.model_validate_json(
+        c.WorkerActivationRuntimeAdmissionV1.model_validate_json(
             record.model_dump_json()
         )
         == record
     )
     status = c.derive_status(record, evaluated_at=record.recorded_at)
-    result = c.WorkerActivationRuntimePrerequisiteResultV1(record=record, status=status)
+    result = c.WorkerActivationRuntimeAdmissionResultV1(record=record, status=status)
     assert result.record == record
     expired = c.derive_status(record, evaluated_at=record.valid_until)
     assert expired.lifecycle == "expired"
-    assert expired.worker_activation_runtime_prerequisite_recorded
+    assert expired.worker_activation_runtime_admission_recorded
     assert (
-        c.WorkerActivationRuntimePrerequisiteResultV1(
+        c.WorkerActivationRuntimeAdmissionResultV1(
             record=record, status=expired, exact_duplicate=True
         ).status
         == expired
@@ -111,7 +119,7 @@ def test_missing_or_invalid_envelope_is_redacted(raw):
         ("authority", "request_received_at", "2026-08-27T12:00:43Z"),
         ("authority", "request_received_at", "2026-08-27T12:01:30Z"),
         ("authority", "request_received_at", "not-a-clock-secret-do-not-echo"),
-        ("create", "admission_id", "00000000-0000-5000-8000-000000000000"),
+        ("create", "prerequisite_id", "00000000-0000-5000-8000-000000000000"),
         ("create", "valid_until", "2099-01-01T00:00:00Z"),
         ("create", "adapter", "secret-do-not-echo"),
         ("create", "worker_identity", "secret-do-not-echo"),
@@ -135,7 +143,7 @@ def test_false_authority_cannot_be_coerced(facts, section, value):
 
 
 def test_every_inherited_false_authority_is_retained_and_strict(facts):
-    for field, definition in v052.ClosedAuthorityV1.model_fields.items():
+    for field, definition in v053.ClosedAuthorityV1.model_fields.items():
         if (
             get_origin(definition.annotation) is Literal
             and get_args(definition.annotation)[0] is False
@@ -161,15 +169,10 @@ def test_every_inherited_false_authority_is_retained_and_strict(facts):
 @pytest.mark.parametrize(
     "section,field",
     [
-        ("create", "receipt_record_fingerprint"),
+        ("create", "prerequisite_record_fingerprint"),
         ("create", "status_fingerprint"),
-        (RECEIPT, "receipt_record_fingerprint"),
+        (RECEIPT, "prerequisite_record_fingerprint"),
         (RECEIPT, "subject_fingerprint"),
-        (RECEIPT, "v051_admission_record_fingerprint"),
-        (RECEIPT, "v050_prerequisite_status_fingerprint"),
-        (RECEIPT, "v049_admission_record_fingerprint"),
-        (RECEIPT, "inherited_limits_fingerprint"),
-        (RECEIPT, "worker_subject_fingerprint"),
         (STATUS, "status_fingerprint"),
     ],
 )
@@ -195,9 +198,9 @@ def test_forged_model_instances_and_nested_lineage_are_reparsed(facts):
         forged = receipt.model_copy(update=changes)
         refused(facts.model_copy(update={RECEIPT: forged}))
         with pytest.raises(ValidationError):
-            c.build_prerequisite(
+            c.build_runtime_admission(
                 facts.model_copy(update={RECEIPT: forged}),
-                idempotency_key="v053-idempotency-key",
+                idempotency_key="v054-idempotency-key",
             )
     raw = facts.model_dump(mode="python")
     # Walk the actual embedded chain and attack every inherited model independently.
@@ -221,7 +224,7 @@ def test_forged_model_instances_and_nested_lineage_are_reparsed(facts):
         refused(hostile)
     # Deep marker coercion cannot disappear through JSON serialization.
     hostile = copy.deepcopy(raw)
-    nested = hostile[RECEIPT][RECEIPT + "_admission"]
+    nested = hostile[RECEIPT]["controlled_worker_queue_claim_lease_acknowledgement"]
     nested["worker_start_allowed"] = 0
     refused(hostile)
     nested["worker_start_allowed"] = False
@@ -239,11 +242,13 @@ def test_recomputed_outer_fingerprints_do_not_authorize_corrupt_facts(facts):
     ):
         raw = facts.model_dump(mode="python")
         raw[RECEIPT][field] = value
-        fp = v052.receipt_record_fingerprint(raw[RECEIPT]).model_dump(mode="python")
-        raw[RECEIPT]["receipt_record_fingerprint"] = fp
-        raw["create"]["receipt_record_fingerprint"] = fp
-        raw[STATUS]["receipt_record_fingerprint"] = fp
-        sfp = v052.status_fingerprint(raw[STATUS]).model_dump(mode="python")
+        fp = v053.prerequisite_record_fingerprint(raw[RECEIPT]).model_dump(
+            mode="python"
+        )
+        raw[RECEIPT]["prerequisite_record_fingerprint"] = fp
+        raw["create"]["prerequisite_record_fingerprint"] = fp
+        raw[STATUS]["prerequisite_record_fingerprint"] = fp
+        sfp = v053.status_fingerprint(raw[STATUS]).model_dump(mode="python")
         raw[STATUS]["status_fingerprint"] = sfp
         raw["create"]["status_fingerprint"] = sfp
         refused(raw)
@@ -264,7 +269,7 @@ def test_stable_status_does_not_renew_expiry_and_status_drift_is_rejected(facts)
     ):
         raw = facts.model_dump(mode="python")
         raw[STATUS].update(changes)
-        fp = v052.status_fingerprint(raw[STATUS]).model_dump(mode="python")
+        fp = v053.status_fingerprint(raw[STATUS]).model_dump(mode="python")
         raw[STATUS]["status_fingerprint"] = fp
         raw["create"]["status_fingerprint"] = fp
         refused(raw)
@@ -276,7 +281,9 @@ def test_request_is_closed_bounded_and_strict_json(facts):
     for invalid in (
         b"\xff",
         "{" + " " * c.MAX_CREATE_BYTES + "}",
-        text.replace('"admission_id":', '"admission_id":"bad","admission_id":'),
+        text.replace(
+            '"prerequisite_id":', '"prerequisite_id":"bad","prerequisite_id":'
+        ),
         text.replace("-create-v1", "-create-v1-e\u0301"),
         '{"secret":' + "[" * 1000 + "0" + "]" * 1000 + "}",
     ):
@@ -288,7 +295,7 @@ def test_request_is_closed_bounded_and_strict_json(facts):
 
 
 def test_versioned_domains_and_permanent_subject(facts):
-    record = c.build_prerequisite(facts, idempotency_key="v053-idempotency-key")
+    record = c.build_runtime_admission(facts, idempotency_key="v054-idempotency-key")
     assert (
         len(
             {
@@ -305,12 +312,14 @@ def test_versioned_domains_and_permanent_subject(facts):
         )
         == 6
     )
-    other_key = c.build_prerequisite(facts, idempotency_key="another-idempotency-key")
+    other_key = c.build_runtime_admission(
+        facts, idempotency_key="another-idempotency-key"
+    )
     assert other_key.subject_fingerprint == record.subject_fingerprint
-    assert other_key.prerequisite_id == record.prerequisite_id
+    assert other_key.runtime_admission_id == record.runtime_admission_id
     assert (
-        other_key.prerequisite_record_fingerprint
-        != record.prerequisite_record_fingerprint
+        other_key.runtime_admission_record_fingerprint
+        != record.runtime_admission_record_fingerprint
     )
     changed = facts.create.model_copy(update={"valid_until": "2099-01-01T00:00:00Z"})
     kwargs = {
@@ -321,36 +330,38 @@ def test_versioned_domains_and_permanent_subject(facts):
         **kwargs, create=facts.create
     )
     assert (
-        c.subject_fingerprint(**kwargs, admission_id=facts.create.admission_id)
+        c.subject_fingerprint(**kwargs, prerequisite_id=facts.create.prerequisite_id)
         == record.subject_fingerprint
     )
 
 
 def test_rehashed_evaluation_and_evidence_cannot_change_authority_or_shape(facts):
-    evaluation = c.evaluate_worker_activation_runtime_prerequisite(facts)
+    evaluation = c.evaluate_worker_activation_runtime_admission(facts)
     for changes in (
-        {"recognized_v052_receipt_count": 2},
+        {"recognized_v053_prerequisite_count": 2},
         {"blockers": ()},
         {"worker_start_allowed": True},
-        {"worker_activation_runtime_prerequisite_recorded": False},
+        {"worker_activation_runtime_admission_recorded": False},
         {"earliest_expiry": "2099-01-01T00:00:00Z"},
     ):
         raw = evaluation.model_dump(mode="python")
         raw.update(changes)
         raw["evaluation_fingerprint"] = c.evaluation_fingerprint(raw)
         with pytest.raises(ValidationError):
-            c.WorkerActivationRuntimePrerequisiteEvaluationV1.model_validate(raw)
-    record = c.build_prerequisite(facts, idempotency_key="v053-idempotency-key")
+            c.WorkerActivationRuntimeAdmissionEvaluationV1.model_validate(raw)
+    record = c.build_runtime_admission(facts, idempotency_key="v054-idempotency-key")
     for changes in (
         {"valid_until": "2099-01-01T00:00:00Z"},
         {"blockers": ()},
-        {"admission_id": "00000000-0000-5000-8000-000000000000"},
+        {"prerequisite_id": "00000000-0000-5000-8000-000000000000"},
     ):
         raw = record.model_dump(mode="python")
         raw.update(changes)
-        raw["prerequisite_record_fingerprint"] = c.prerequisite_record_fingerprint(raw)
+        raw["runtime_admission_record_fingerprint"] = (
+            c.runtime_admission_record_fingerprint(raw)
+        )
         with pytest.raises(ValidationError):
-            c.WorkerActivationRuntimePrerequisiteV1.model_validate(raw)
+            c.WorkerActivationRuntimeAdmissionV1.model_validate(raw)
 
 
 def test_no_io_or_production_consumers():
@@ -364,7 +375,7 @@ def test_no_io_or_production_consumers():
         "datetime",
         "typing",
         "pydantic",
-        "app.controlled_worker_queue_claim_lease_acknowledgement",
+        "app.worker_activation_runtime_prerequisite",
         "app.execution_permission_grant.contract",
         "app.installation_execution_admission.contract",
         "app.installation_plan.contract",
@@ -403,26 +414,36 @@ def test_no_io_or_production_consumers():
             ) not in forbidden
     root = path.parents[4]
     consumers = set()
-    for service in ("atlas-core", "atlas-agent", "atlas-execution-worker"):
-        for source in (root / "services" / service).rglob("*.py"):
+    markers = (
+        "worker_activation_runtime_admission",
+        "worker-activation-runtime-admission",
+        "WorkerActivationRuntimeAdmission",
+        "workerActivationRuntimeAdmission",
+        "WORKER_ACTIVATION_RUNTIME_ADMISSION",
+    )
+    for service in (
+        "atlas-core",
+        "atlas-agent",
+        "atlas-execution-worker",
+        "mission-control",
+    ):
+        for source in (root / "services" / service).rglob("*"):
+            if source.suffix not in {".py", ".ts", ".tsx", ".json", ".yaml", ".yml"}:
+                continue
             if source.parent == path.parent or source.name.startswith("test_"):
                 continue
-            if "worker_activation_runtime_prerequisite" in source.read_text():
+            if ".test." in source.name or "test" in source.parts:
+                continue
+            if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
-    # Exact evidence-only successor contract plus P3 API/permissions.
-    assert consumers == {
-        "services/atlas-core/app/worker_activation_runtime_admission/contract.py",
-        "services/atlas-core/app/routes/worker_activation_runtime_prerequisite.py",
-        "services/atlas-core/app/api/v1/router.py",
-        "services/atlas-core/app/operator_auth/models.py",
-    }
+    assert consumers == set()
 
 
 def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
-    record = c.build_prerequisite(facts, idempotency_key="v053-idempotency-key")
+    record = c.build_runtime_admission(facts, idempotency_key="v054-idempotency-key")
     status = c.derive_status(record, evaluated_at=record.recorded_at)
     collection = c._signed(
-        c.WorkerActivationRuntimePrerequisiteCollectionV1,
+        c.WorkerActivationRuntimeAdmissionCollectionV1,
         {
             "operator_id": record.operator_id,
             "candidate_record_id": record.candidate_record_id,
@@ -433,11 +454,11 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
         c.collection_fingerprint,
     )
     reservation = c._signed(
-        c.WorkerActivationRuntimePrerequisiteSubjectReservationV1,
+        c.WorkerActivationRuntimeAdmissionSubjectReservationV1,
         {
             "operator_id": record.operator_id,
             "candidate_record_id": record.candidate_record_id,
-            "admission_id": record.admission_id,
+            "prerequisite_id": record.prerequisite_id,
             "reserved_at": record.recorded_at,
             "subject_fingerprint": record.subject_fingerprint,
             "idempotency_key_fingerprint": record.idempotency_key_fingerprint,
@@ -451,7 +472,7 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
         c.reservation_fingerprint,
     )
     audit = c._signed(
-        c.WorkerActivationRuntimePrerequisiteAuditEvidenceV1,
+        c.WorkerActivationRuntimeAdmissionAuditEvidenceV1,
         {
             "operator_id": record.operator_id,
             "candidate_record_id": record.candidate_record_id,
@@ -459,13 +480,13 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
             "outcome": "recorded",
             "subject_fingerprint": record.subject_fingerprint,
             "correlation_fingerprint": c.fingerprint("correlation", "test"),
-            "prerequisite_record_fingerprint": record.prerequisite_record_fingerprint,
-            "worker_activation_runtime_prerequisite_recorded": True,
+            "runtime_admission_record_fingerprint": record.runtime_admission_record_fingerprint,
+            "worker_activation_runtime_admission_recorded": True,
         },
         "audit_fingerprint",
         c.audit_fingerprint,
     )
-    error = c.WorkerActivationRuntimePrerequisiteRedactedErrorV1(
+    error = c.WorkerActivationRuntimeAdmissionRedactedErrorV1(
         error_code="invalid_request",
         correlation_fingerprint=c.fingerprint("correlation", "test"),
     )
@@ -476,8 +497,8 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
         reservation,
         audit,
         error,
-        c.WorkerActivationRuntimePrerequisiteResultV1(record=record, status=status),
-        c.evaluate_worker_activation_runtime_prerequisite(facts),
+        c.WorkerActivationRuntimeAdmissionResultV1(record=record, status=status),
+        c.evaluate_worker_activation_runtime_admission(facts),
         facts.create,
         facts.authority,
     )
@@ -533,20 +554,20 @@ def test_stable_status_cannot_extend_earliest_inherited_expiry(facts):
     assert receipt.valid_until == "2026-08-27T12:00:45Z"
     raw = facts.model_dump(mode="python")
     assert (
-        c.evaluate_worker_activation_runtime_prerequisite(
+        c.evaluate_worker_activation_runtime_admission(
             raw
-        ).recognized_v052_receipt_count
+        ).recognized_v053_prerequisite_count
         == 1
     )
     raw["authority"]["request_received_at"] = receipt.valid_until
     refused(raw)
-    current = v052.derive_status(receipt, evaluated_at=receipt.valid_until)
+    current = v053.derive_status(receipt, evaluated_at=receipt.valid_until)
     raw[STATUS] = current.model_dump(mode="python")
     raw["create"]["status_fingerprint"] = current.status_fingerprint
     refused(raw)
     with pytest.raises(ValidationError):
-        c.WorkerActivationRuntimePrerequisiteValidationInputV1.model_validate(raw)
-    stable = c.build_prerequisite(facts, idempotency_key="v053-idempotency-key")
+        c.WorkerActivationRuntimeAdmissionValidationInputV1.model_validate(raw)
+    stable = c.build_runtime_admission(facts, idempotency_key="v054-idempotency-key")
     assert stable.valid_until == receipt.valid_until
     assert (
         c.derive_status(stable, evaluated_at=receipt.valid_until).lifecycle == "expired"
@@ -572,4 +593,144 @@ def test_serialized_bound_includes_expanded_defaults(facts, monkeypatch):
     assert size_without_defaults < len(c.canonical_json(facts.create))
     monkeypatch.setattr(c, "MAX_MODEL_BYTES", size_without_defaults + 1)
     with pytest.raises(ValidationError, match="contract envelope exceeds bound"):
-        c.WorkerActivationRuntimePrerequisiteCreateV1.model_validate(minimal)
+        c.WorkerActivationRuntimeAdmissionCreateV1.model_validate(minimal)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "subject_previously_reserved",
+        "idempotency_key_previously_reserved",
+    ],
+)
+@pytest.mark.parametrize("value", [True, None, 0, 1, "false", "missing"])
+def test_replayed_or_unknown_reservation_facts_fail_closed(facts, field, value):
+    raw = facts.model_dump(mode="python")
+    if value == "missing":
+        del raw[field]
+    else:
+        raw[field] = value
+    refused(raw)
+    with pytest.raises(ValidationError):
+        c.build_runtime_admission(
+            type(facts).model_construct(**raw), idempotency_key="v054-hostile-replay"
+        )
+
+
+def test_frozen_versioned_hash_and_uuid_vectors():
+    import hashlib
+    import json
+
+    vectors = json.loads(
+        Path(__file__).with_name("fingerprint_vectors.json").read_text()
+    )
+    for domain in (
+        "subject",
+        "request",
+        "record",
+        "status",
+        "collection",
+        "idempotency-key",
+        "reservation",
+        "audit",
+        "evaluation",
+    ):
+        actual = c.fingerprint(domain, {})
+        assert actual.value == vectors[domain]
+        assert actual.algorithm == "sha256"
+        assert actual.canonicalization == "atlas-jcs-nfc-v1"
+        assert (
+            actual.value
+            == hashlib.sha256(
+                f"atlas:worker-activation-runtime-admission-{domain}:v1".encode()
+                + b"\0{}"
+            ).hexdigest()
+        )
+    subject = c.subject_fingerprint(
+        operator_id="operator-a",
+        candidate_record_id="00000000-0000-4000-8000-000000000000",
+        prerequisite_id="00000000-0000-5000-8000-000000000000",
+    )
+    assert subject.value == vectors["subject_vector"]
+    assert c.derived_runtime_admission_id(subject) == vectors["runtime_admission_id"]
+
+
+def test_distinct_identities_and_canonical_recursive_evidence(facts):
+    record = c.build_runtime_admission(facts, idempotency_key="v054-exact-lineage")
+    prior = getattr(facts, RECEIPT)
+    assert record.prerequisite_id == prior.prerequisite_id
+    assert record.admission_id == prior.admission_id
+    assert (
+        len({record.runtime_admission_id, record.prerequisite_id, record.admission_id})
+        == 3
+    )
+    assert c.canonical_json(getattr(record, RECEIPT)) == c.canonical_json(prior)
+    assert c.canonical_json(getattr(record, STATUS)) == c.canonical_json(
+        getattr(facts, STATUS)
+    )
+    for field in ("runtime_admission_id", "prerequisite_id", "admission_id"):
+        raw = record.model_dump(mode="python")
+        raw[field] = "00000000-0000-5000-8000-000000000000"
+        raw["runtime_admission_record_fingerprint"] = (
+            c.runtime_admission_record_fingerprint(raw)
+        )
+        with pytest.raises(ValidationError):
+            c.WorkerActivationRuntimeAdmissionV1.model_validate(raw)
+
+
+def test_recursive_hash_and_owner_corruption(facts):
+    raw = facts.model_dump(mode="python")
+    paths = []
+
+    def walk(node, path):
+        if not isinstance(node, dict):
+            return
+        for key, value in node.items():
+            if key in ("operator_id", "candidate_record_id") or key.endswith(
+                "_fingerprint"
+            ):
+                paths.append((*path, key))
+            else:
+                walk(value, (*path, key))
+
+    walk(raw[RECEIPT], (RECEIPT,))
+    assert len(paths) > 100
+    for path in paths:
+        hostile = copy.deepcopy(raw)
+        node = hostile
+        for key in path[:-1]:
+            node = node[key]
+        field = path[-1]
+        if field.endswith("_fingerprint"):
+            node[field]["value"] = "f" * 64
+        elif field == "operator_id":
+            node[field] = "foreign-owner"
+        else:
+            node[field] = "ffffffff-ffff-4fff-8fff-ffffffffffff"
+        refused(hostile)
+
+
+def test_missing_verification_and_forged_top_level_models_fail_closed(facts):
+    raw = facts.model_dump(mode="python")
+    del raw["authority"]["permission_verified"]
+    refused(raw)
+    for changes in (
+        {"unknown": "secret"},
+        {"home_assistant": True},
+        {"authority": {}},
+        {"worker_start_allowed": True},
+    ):
+        forged = facts.model_copy(update=changes)
+        refused(forged)
+        with pytest.raises(ValidationError):
+            c.build_runtime_admission(forged, idempotency_key="v054-forged-input")
+
+
+def test_rehashed_status_identity_is_derived_from_exact_subject(facts):
+    record = c.build_runtime_admission(facts, idempotency_key="v054-status-identity-key")
+    status = c.derive_status(record, evaluated_at=record.recorded_at)
+    raw = status.model_dump(mode="python")
+    raw["runtime_admission_id"] = record.prerequisite_id
+    raw["status_fingerprint"] = c.status_fingerprint(raw)
+    with pytest.raises(ValidationError):
+        c.WorkerActivationRuntimeAdmissionStatusV1.model_validate(raw)
