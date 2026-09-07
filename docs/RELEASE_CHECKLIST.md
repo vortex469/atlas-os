@@ -3,6 +3,103 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.52 P0-P5 Queue Receipt Evidence - repository closure
+
+P1-P4 implementation is complete; P5 adds regression and release documentation.
+The final normative contract records injected, already-observed adapter receipt
+facts over one exact active same-owner v0.51 admission record. Core has no queue
+client, does not perform claim/lease/acknowledgement effects, and does not grant
+worker start, execution start, install, deploy, rollback, or publication authority.
+The P0/P1 sections below preserve historical selection evidence, not pending work.
+
+- [x] P2: explicitly constructed default-off service, owner-scoped readers,
+  permanent reservations before append, bounded persistence and corruption closure.
+- [x] P3: dedicated authenticated owner-scoped create/list/get API with CSRF,
+  trusted-origin, permission, strict-body, and idempotency checks.
+- [x] P4: nested read-only Mission Control evidence; no standalone navigation,
+  polling, mutation, raw queue selector/token/handle, or later authority controls.
+- [x] P5: exact Core/API/UI consumer allowlists and zero Agent/execution-worker
+  consumers; durable prerequisite and fixed-false authority regression coverage.
+- [x] Normative contract matches the narrower implemented receipt-reader boundary.
+- [x] Historical isolation preserved; no production behavior or
+  `compose.execution-smoke.override.yaml` change; no push/tag/release/deploy.
+
+### P5 validation evidence (2026-09-07)
+
+Focused tests passed: 69 v0.52/v0.51 contract, service/store, API, scope and
+release-closure regressions. The focused API suite uses the repository's
+thread-free ASGITestClient and passed authentication/CSRF/owner scoping checks.
+The final historical Core release-closure/isolation run passed 257 tests
+(3407 deselected); this includes Home Assistant isolation. The final eight
+v0.52 closure/scope tests also passed after the consumer scan was strengthened.
+
+| Boundary | Regression evidence |
+| --- | --- |
+| Exact prerequisite IDs/fingerprints/lineage and limits | v0.52 `test_contract.py`, durable closure test, v0.51 prerequisite suites |
+| Fixed-false/default-off later authority | every receipt `Literal[False]` rejects true; contract, service and API tests |
+| Permanent no-replay | duplicate reader-call counts, concurrency, restart, expiry, append failure and terminal reservation tests |
+| Bounded persistence/corruption closure | quotas/model size/audit caps, malformed record/index/schema, restart readback tests |
+| Authenticated owner scoping | guarded API auth/CSRF/permission, foreign owner/candidate and durable reader tests |
+| API/UI isolation | exact three external Core consumers and four UI consumers; historical route method allowlist |
+| Zero Agent/execution-worker consumers | production source scans in v0.52 closure and service/store tests; 27 Agent isolation tests passed |
+| No later effects | worker start, Agent invocation, execution start, install, deploy, rollback and publication fixed false; forbidden effect imports/calls |
+
+Historical allowlist additions are the exact
+`api/controlledWorkerQueueReceipt.ts` guarded GET-only evidence module and the
+v0.50 prerequisite, v0.51 admission, and v0.52 receipt `contract.py` files that
+inherit `FingerprintV1` from the v0.36 contract. New assertions restrict those
+three imports to that closed type. The v0.36 service/store suite passed all nine
+tests; a broader consumer/effect-dependency scan passed 67 tests (3597 deselected).
+No wildcard allowlist or production behavior change was needed.
+
+- [x] Atlas Core Ruff gate with the selected virtualenv on PATH.
+- [x] `git diff --check`.
+- [x] Hostile review passed: exact allowlists only, fixed-false tests distinguish
+  booleans from integer zero, no production or compose changes, and documented
+  receipt-reader semantics agree with implementation. Environment gates below
+  are explicitly excluded from this diff-review result.
+- [ ] Mission Control test/build/lint: **Environment error:** local Vitest,
+  ESLint, Vite and TypeScript dependencies are unavailable. `npm ci` using the
+  worktree-local cache failed with registry DNS `EAI_AGAIN` and npm's exit-handler
+  error. `npm test` reports missing Vitest; lint reports missing ESLint; build
+  falls back to an incompatible TypeScript and lacks Vite/Node type definitions.
+  Node 22.23.1 and npm 10.9.8 are present. No package/lockfile changes were made.
+- [ ] Full execution-worker runtime validation: the unmodified durable API test
+  stalled in Starlette TestClient (20-second traceback, 45-second process timeout).
+  The non-TestClient worker subset reached 37 passed, 1 failed, 1 deselected:
+  the different-owner clone test fails because `os.chown(..., 65534, 65534)`
+  returns EINVAL in this UID-0 sandbox. No production workaround was introduced.
+- [ ] Full Atlas Core pytest: attempted with a 300-second bound and traceback
+  diagnostics; it timed out after 2227 recorded passes and three failures.
+  The stale v0.36 fingerprint-consumer allowlist failure was corrected and
+  revalidated above. The unrelated Discovery cache ownership test fails at
+  `os.chown(..., 12345, 12345)` with EINVAL in this sandbox (confirmed in an
+  isolated rerun). The Proxmox projection test also encountered the read-only
+  default provider-secret location; its isolated worktree-local rerun is
+  recorded below. This is not a full-suite pass; no production behavior was
+  changed to accommodate sandbox restrictions.
+- [ ] Docker validation: Docker CLI is present but Docker socket access is denied.
+
+Reproduction from the task worktree root (selected interpreter required):
+
+```sh
+/opt/atlas/.venv/bin/python -m pytest services/atlas-core/app/controlled_worker_queue_claim_lease_acknowledgement services/atlas-core/app/controlled_worker_queue_claim_lease_acknowledgement_admission services/atlas-core/app/routes/test_controlled_worker_queue_claim_lease_acknowledgement.py services/atlas-core/app/routes/test_controlled_worker_queue_claim_lease_acknowledgement_admission.py --basetemp=.pytest-v052 -q
+/opt/atlas/.venv/bin/python -m pytest services/atlas-core/app -k 'release_closure or isolation' --basetemp=.pytest-isolation -q
+PATH=/opt/atlas/.venv/bin:$PATH scripts/rc1-python-ruff-gate services/atlas-core
+git diff --check
+```
+
+Mission Control commands, from `services/mission-control`: `npm ci`, `npm test`,
+`npm run build`, `npm run lint`. Agent checks require `PYTHONPATH=services/atlas-agent`
+and `ATLAS_AGENT_STATE_DIR` under this worktree; packaged worker tests require
+`PYTHONPATH=services/atlas-agent:services/atlas-execution-worker`. Initial collection
+without those package paths failed; the correctly configured runs are reported
+above. The Proxmox projection rerun passed with `ATLAS_PROVIDER_SECRET_FILE`
+pointing to an empty task-owned file under this worktree, resolving that default
+path limitation without touching production configuration. Use that override
+for a future full Core rerun. All remaining broad validation limitations remain
+open release gates.
+
 ## Atlas v0.52 P0 Controlled Worker Queue Claim/Lease/Acknowledgement Boundary - selected
 
 Atlas v0.52 is **Controlled Worker Queue Claim/Lease/Acknowledgement
@@ -44,12 +141,12 @@ Boundary**. P0 freezes the documentation-only
   invocation, execution authorization/start, installation, mutation,
   deployment, rollback, publication, release, or effect consumers.
 - [x] P1 - closed immutable Core contract models and pure validation only.
-- [ ] P2 - explicitly constructed append-only Core receipt service/store with
-  injected owner-scoped v0.51 reader, one injected queue adapter,
+- [x] P2 - explicitly constructed append-only Core receipt service/store with
+  injected owner-scoped v0.51 reader, one injected adapter receipt reader,
   reservation-before-effect, permanent no-replay, bounded/redacted
   persistence, restart-safe readback, and terminal indeterminate outcomes.
-- [ ] P3 - exact guarded Core create/list/get receipt API only.
-- [ ] P4 - strict nested Mission Control read-only receipt presentation only.
+- [x] P3 - exact guarded Core create/list/get receipt API only.
+- [x] P4 - strict nested Mission Control read-only receipt presentation only.
 - [ ] P5 - release isolation, regression, authority, no-replay, redaction,
   Agent/execution-worker parity, Home Assistant, Mission Control validation,
   Ruff, and release evidence only.

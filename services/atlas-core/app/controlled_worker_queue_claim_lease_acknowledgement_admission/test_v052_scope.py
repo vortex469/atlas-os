@@ -19,12 +19,12 @@ def test_v052_scope_is_frozen_from_released_v051_baseline() -> None:
     )
 
     assert (
-        "Status: **Atlas v0.52 P0 selected controlled worker queue "
-        "claim/lease/acknowledgement boundary**."
+        "Status: **Atlas v0.52 P0-P5 closed controlled worker queue "
+        "claim/lease/acknowledgement receipt evidence contract**."
         in contract
     )
     assert (
-        "## Selected v0.52 P0 plan - Controlled Worker Queue Claim/Lease/"
+        "## Completed v0.52 plan - Controlled Worker Queue Claim/Lease/"
         "Acknowledgement Boundary"
         in roadmap
     )

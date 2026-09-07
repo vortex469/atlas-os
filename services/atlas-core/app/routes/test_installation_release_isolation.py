@@ -646,6 +646,8 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/workerBindingActivationEvidence.ts"),
         Path("api/controlledWorkerQueueClaimAdmission.ts"),
         Path("api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts"),
+        # v0.52 nested, guarded GET-only receipt evidence.
+        Path("api/controlledWorkerQueueReceipt.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 

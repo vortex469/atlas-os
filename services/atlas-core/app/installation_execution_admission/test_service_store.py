@@ -336,6 +336,25 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "worker_binding_activation_evidence/contract.py",
         "controlled_worker_queue_claim_admission/contract.py",
     }
+    # v0.50-v0.52 inherit only the closed fingerprint type, never a service.
+    fingerprint_contracts = {
+        "controlled_worker_queue_claim_lease_acknowledgement_prerequisite/contract.py",
+        "controlled_worker_queue_claim_lease_acknowledgement_admission/contract.py",
+        "controlled_worker_queue_claim_lease_acknowledgement/contract.py",
+    }
+    for relative in fingerprint_contracts:
+        tree = ast.parse((app_root / relative).read_text())
+        imports = [
+            (node.module, tuple(alias.name for alias in node.names))
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.startswith("app.installation_execution_admission")
+        ]
+        assert imports == [
+            ("app.installation_execution_admission.contract", ("FingerprintV1",))
+        ]
+    boundary_only.update(fingerprint_contracts)
     consumers = _execution_admission_consumers(app_root, allowed, boundary_only)
     assert consumers == []
 

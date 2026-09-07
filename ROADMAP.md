@@ -1,6 +1,6 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - v0.51 P0-P5 and selected v0.52 P0
+## 1. Current baseline - v0.52 P0-P5 receipt evidence closure
 
 Atlas v0.51 P0-P5 closes the Controlled Worker Queue Claim/Lease/
 Acknowledgement Admission boundary after inspecting the completed merged
@@ -42,21 +42,15 @@ store/runtime contact, worker-start admission, worker start, Agent invocation,
 execution start, publication, deployment, rollback, and effect consumers
 remain blocked.
 
-V0.52 P0 selects only the next repository-supported boundary:
-**Controlled Worker Queue Claim/Lease/Acknowledgement Boundary**. It is a
-documentation-only freeze for a later Core-owned, explicitly constructed,
-default-off, single-subject queue receipt boundary over one exact active
-same-owner v0.51 admission record. Its strongest future state is
-`controlled_worker_queue_claim_lease_acknowledgement_recorded`, always still
-blocked by `worker_activation_runtime_not_defined`,
-`store_contact_not_defined`, `runtime_contact_not_defined`,
-`worker_start_admission_not_defined`, `worker_start_not_defined`,
-`agent_invocation_not_defined`, and
-`execution_start_boundary_not_defined`. It does not authorize queue polling,
-autonomous work discovery, worker activation runtime, worker store/runtime
-contact, worker-start admission, worker start, Agent invocation, execution
-authorization/start, installation, mutation, deployment, rollback,
-publication, release, or effect consumers.
+V0.52 P0-P5 completes the Controlled Worker Queue Claim/Lease/Acknowledgement
+Boundary as receipt evidence only. The explicitly constructed, default-off Core
+service reads already-observed adapter receipt facts over one exact active
+same-owner v0.51 admission record. It never contacts a queue or authorizes queue
+effects. Exact lineage, permanent no-replay, bounded append-only persistence,
+corruption closure, owner-scoped API, and nested read-only Mission Control
+presentation preserve all later authority blockers and zero Agent/execution-worker
+consumers. See the completed contract and release checklist for validation and
+environment limitations. Completion does not imply a published release.
 
 ## 2. Enduring architectural constraints
 
@@ -221,65 +215,27 @@ The detailed v0.6-v0.15 milestone plans are historical and completed. Their
 release records remain in [CHANGELOG.md](CHANGELOG.md), the release checklist,
 and Git history; they are not current work queues.
 
-## Selected v0.52 P0 plan - Controlled Worker Queue Claim/Lease/Acknowledgement Boundary
+## Completed v0.52 plan - Controlled Worker Queue Claim/Lease/Acknowledgement Boundary
 
-Atlas v0.52 P0 selects **Controlled Worker Queue Claim/Lease/Acknowledgement
-Boundary**. The normative planning contract is [Controlled Worker Queue
-Claim/Lease/Acknowledgement Boundary
-v1](docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-boundary-v1.md).
+P0-P5 repository scope is implemented. Environment-dependent release validation
+remains open in the release checklist. The normative contract is [Controlled Worker Queue
+Claim/Lease/Acknowledgement Boundary v1](docs/architecture/controlled-worker-queue-claim-lease-acknowledgement-boundary-v1.md).
 
-P0 is documentation-only and frozen. It adds no runtime architecture.
+- P0 froze the scope from released v0.51 commit
+  `8d1ece090b14e6fc2d06332b14b03559b252555d` (`atlas-v0.51.0`).
+- P1 closes immutable validation and exact prerequisite IDs/fingerprints/lineage.
+- P2 records injected receipt facts with permanent reservations, bounded durable
+  persistence, restart-safe readback, and corruption closure; no queue effect.
+- P3 registers guarded owner-scoped create/list/get, default-off and without
+  production construction.
+- P4 presents nested read-only evidence with exact API/UI consumer isolation.
+- P5 adds release-closure regression coverage and documentation, preserving
+  historical isolation and Agent/execution-worker zero-consumer guarantees.
 
-V0.52 starts from the released repository-supported v0.51 Controlled Worker
-Queue Claim/Lease/Acknowledgement Admission baseline at
-`8d1ece090b14e6fc2d06332b14b03559b252555d` (`atlas-v0.51.0`). The v0.51
-implementation can record bounded admission evidence over one exact active
-same-owner v0.50 prerequisite record, but it has no queue adapter, queue
-claim, queue lease, queue acknowledgement, worker activation runtime, worker
-store/runtime contact, worker-start admission, worker start, Agent
-invocation, execution authorization, or execution-start boundary.
-
-The narrowest repository-supported next boundary is therefore not controlled
-worker invocation, worker-start admission, worker start, execution-start
-admission, or execution. It is only the controlled queue claim/lease/
-acknowledgement boundary over one exact active same-owner v0.51 admission
-record and its inherited inert queue-item lineage. A later implementation may
-define at most one explicitly authorized claim, bounded lease observation, and
-terminal acknowledgement receipt through an injected queue adapter for that
-exact subject.
-
-The strongest future state is
-`controlled_worker_queue_claim_lease_acknowledgement_recorded`. That state is
-queue receipt evidence only. It is not autonomous queue polling, work
-discovery, worker activation runtime, worker store contact, worker runtime
-contact, worker-start admission, worker start, Agent invocation, execution
-authorization or start, install, mutation, deployment, rollback, publication,
-release, or an effect consumer.
-
-P1-P5 must proceed incrementally:
-
-- P1 - closed immutable Core contract models and pure fail-closed validation
-  only.
-- P2 - explicitly constructed append-only Core receipt service/store with an
-  injected owner-scoped v0.51 admission reader and one injected queue adapter,
-  reservation-before-effect, permanent no-replay, bounded/redacted
-  persistence, restart-safe readback, quota and corruption closure, and
-  terminal indeterminate outcomes.
-- P3 - exact guarded default-off Core create/list/get receipt API only.
-- P4 - strict nested Mission Control read-only receipt presentation only.
-- P5 - release isolation, regression, authority, no-replay, redaction,
-  Agent/execution-worker parity, Home Assistant, Mission Control validation,
-  Ruff, and release evidence only.
-
-Any later implementation must fail closed on unsupported architecture, accept
-only one exact active same-owner v0.51 admission record and its inherited
-lineage, preserve ownership and byte-exact inherited limits, retain
-reservation-before-effect, permanent idempotency and subject no-replay, keep
-bounded append-only persistence, avoid secret storage or rendering, handle
-ambiguity terminally, remain explicitly constructed and default-off, avoid
-Home Assistant or workload-specific authority exceptions, and prove API/UI
-isolation plus Agent/execution-worker zero-consumer behavior before any later
-worker-start admission or execution-start admission can be considered.
+Worker activation runtime, store/runtime contact, worker-start admission, worker
+start, Agent invocation, execution authorization/start, install, deployment,
+rollback, and publication remain blocked. No change to
+`compose.execution-smoke.override.yaml` is authorized or made.
 
 ## Completed v0.51 plan - Controlled Worker Queue Claim/Lease/Acknowledgement Admission
 

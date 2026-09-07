@@ -6,6 +6,22 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.52 P0-P5 - Queue Receipt Evidence Release Closure
+
+- Completed immutable validation, explicitly constructed default-off receipt
+  service/store, guarded owner-scoped Core create/list/get API, and nested
+  read-only Mission Control evidence presentation.
+- P5 adds release-closure regressions and aligns the normative contract with
+  the final implementation: injected already-observed adapter receipt facts,
+  no queue contact or effect authorization. Exact prerequisite IDs/fingerprints/
+  lineage, no-replay, bounded persistence, corruption closure, authenticated
+  ownership, and historical isolation remain enforced.
+- Worker start, execution start, install, deployment, rollback, and publication
+  authority remain fixed false. Agent and execution-worker have zero consumers.
+- Validation results and environment limitations are recorded in
+  [release evidence](docs/RELEASE_CHECKLIST.md). No production behavior or
+  `compose.execution-smoke.override.yaml` change, push, tag, release, or deploy.
+
 #### v0.52 P0 - Controlled Worker Queue Claim/Lease/Acknowledgement Boundary
 
 - Verified the released v0.51.0 baseline at
