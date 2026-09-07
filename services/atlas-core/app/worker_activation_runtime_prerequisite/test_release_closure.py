@@ -110,6 +110,9 @@ def test_exact_v053_production_consumers():
     )
     expected = {
         "services/atlas-core/app/worker_activation_runtime_admission/contract.py",
+        "services/atlas-core/app/worker_activation_runtime_admission/readers.py",
+        "services/atlas-core/app/worker_activation_runtime_admission/service.py",
+        "services/atlas-core/app/worker_activation_runtime_admission/store.py",
         "services/atlas-core/app/worker_activation_runtime_prerequisite/contract.py",
         "services/atlas-core/app/worker_activation_runtime_prerequisite/readers.py",
         "services/atlas-core/app/worker_activation_runtime_prerequisite/service.py",

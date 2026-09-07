@@ -3,6 +3,49 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.54 P2 durable evidence validation (2026-09-07)
+
+Baseline HEAD `d0c3007` includes committed P1 `fd3295e`; ancestry verified.
+P2 implements the explicit default-off service, owner-scoped durable v0.53
+reader and separate bounded append-only SQLite journal. P0/P1 domains, models,
+authority and deterministic fingerprints are unchanged. P3-P5 remain open.
+
+Focused tests passed:
+
+- Combined `worker_activation_runtime_admission` and
+  `worker_activation_runtime_prerequisite` packages: **236 passed**
+  (141.29 seconds), including P1 contracts, P2 persistence and historical
+  consumer/closure regressions.
+- Final v0.54 `test_service_store.py`: **49 passed** (53.31 seconds),
+  including the additional clock rollback, malformed correlation redaction and
+  failed-response tests. The rollback fixture was corrected to stay within its
+  one-second remaining eligibility before inducing rollback.
+- Commands used the selected interpreter with `-m pytest -q`,
+  `PYTHONPATH=services/atlas-core`, and `--disable-warnings --maxfail=1`
+  from the managed worktree. The final run used
+  `--basetemp=.tmp-v054-final`. Both runs emitted 295 existing model warnings.
+- `scripts/rc1-python-ruff-gate services/atlas-core` passed with the selected
+  interpreter on PATH; `git diff --check` passed.
+
+Hostile review passed: exact duplicate reads cannot renew eligibility or read
+predecessors; competing keys/instances produce one permanent reservation;
+incomplete reservations survive restart and count against bounds. Both reads
+hold SQLite write locks with FULL synchronous durability. Partial writes,
+uncertain commit, audit/disk failure, damaged indexes, malformed JSON and
+owner/linkage/hash corruption fail closed. Raw keys and correlation material
+are absent from persisted/public evidence. Real durable v0.53 readback preserves
+the complete predecessor model. Historical allowlists add exactly three named
+Core evidence modules. Source scans and tests confirm zero Agent/execution-worker
+consumers and no production construction or effect consumers.
+
+Required local commit is blocked: Git staging cannot create its index lock
+because the managed worktree Git metadata is on a read-only filesystem.
+Implementation files remain modified in this worktree; no P2 commit was created.
+
+The compose smoke override is unchanged. No push, tag, release, publication,
+deployment or runtime action occurred. Historical external validation limitations
+remain as recorded below.
+
 ## Atlas v0.54 P0 Worker Activation Runtime Admission evidence - frozen
 
 The [normative v0.54 contract](architecture/worker-activation-runtime-admission-v1.md)

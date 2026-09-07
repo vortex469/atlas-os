@@ -8,30 +8,33 @@ from pathlib import Path
 
 import pytest
 
-from app.worker_activation_runtime_prerequisite import contract as c
-from app.worker_activation_runtime_prerequisite import test_contract as p1
-from app.worker_activation_runtime_prerequisite.readers import (
-    WorkerActivationRuntimePrerequisiteReceiptStoreReader,
+from app.worker_activation_runtime_admission import contract as c
+from app.worker_activation_runtime_admission import test_contract as p1
+from app.worker_activation_runtime_admission.readers import (
+    WorkerActivationRuntimeAdmissionPrerequisiteStoreReader,
 )
-from app.worker_activation_runtime_prerequisite.service import (
-    WorkerActivationRuntimePrerequisiteService,
+from app.worker_activation_runtime_admission.service import (
+    WorkerActivationRuntimeAdmissionService,
 )
-from app.worker_activation_runtime_prerequisite.store import (
-    WorkerActivationRuntimePrerequisiteStore,
-    WorkerActivationRuntimePrerequisiteStoreError,
+from app.worker_activation_runtime_admission.store import (
+    WorkerActivationRuntimeAdmissionStore,
+    WorkerActivationRuntimeAdmissionStoreError,
+)
+from app.worker_activation_runtime_admission.test_contract import (
+    prior_facts,  # noqa: F401
 )
 
 
 @pytest.fixture(scope="module")
-def facts(tmp_path_factory):
-    return p1.facts.__wrapped__(tmp_path_factory)
+def facts(request):
+    return p1.facts.__wrapped__(request)
 
 
 class Reader:
     def __init__(self, facts):
         self.pair = (
-            facts.controlled_worker_queue_claim_lease_acknowledgement,
-            facts.controlled_worker_queue_claim_lease_acknowledgement_status,
+            facts.worker_activation_runtime_prerequisite,
+            facts.worker_activation_runtime_prerequisite_status,
         )
         self.calls = 0
         self.hook = None
@@ -52,13 +55,11 @@ class Clock:
 
 
 def setup(tmp_path, facts, *, enabled=True, **bounds):
-    journal = WorkerActivationRuntimePrerequisiteStore(
-        tmp_path / "v053.sqlite", **bounds
-    )
+    journal = WorkerActivationRuntimeAdmissionStore(tmp_path / "v054.sqlite", **bounds)
     reader = Reader(facts)
     clock = Clock(facts)
-    service = WorkerActivationRuntimePrerequisiteService(
-        receipt_reader=reader, store=journal, clock=clock, enabled=enabled
+    service = WorkerActivationRuntimeAdmissionService(
+        prerequisite_reader=reader, store=journal, clock=clock, enabled=enabled
     )
     return service, journal, reader, clock
 
@@ -68,7 +69,7 @@ def create(service, facts, **kwargs):
         "authenticated_operator_id": facts.operator_id,
         "permission_verified": True,
         "candidate_record_id": facts.candidate_record_id,
-        "idempotency_key": "v053-service-idempotency",
+        "idempotency_key": "v054-service-idempotency",
         "correlation_id": "private-correlation",
     }
     arguments.update(kwargs)
@@ -84,7 +85,7 @@ def counts(journal):
 
 
 def error(result, code):
-    assert isinstance(result, c.WorkerActivationRuntimePrerequisiteRedactedErrorV1)
+    assert isinstance(result, c.WorkerActivationRuntimeAdmissionRedactedErrorV1)
     assert result.error_code == code
     assert result.retryable is False
     assert "private" not in result.model_dump_json()
@@ -93,18 +94,18 @@ def error(result, code):
 def test_restart_duplicate_expiry_ownership_and_subject_replay(tmp_path, facts):
     service, journal, reader, clock = setup(tmp_path, facts)
     first = create(service, facts)
-    assert isinstance(first, c.WorkerActivationRuntimePrerequisiteResultV1)
+    assert isinstance(first, c.WorkerActivationRuntimeAdmissionResultV1)
     assert reader.calls == 2
     assert not first.exact_duplicate
     assert first.record.blockers == c.SUCCESS_BLOCKERS
     assert (
-        first.record.prerequisite_record_fingerprint
-        == c.prerequisite_record_fingerprint(first.record)
+        first.record.runtime_admission_record_fingerprint
+        == c.runtime_admission_record_fingerprint(first.record)
     )
     assert counts(journal) == (1, 1, 0)
     clock.now = datetime.fromisoformat(first.record.valid_until) + timedelta(seconds=1)
     reader.hook = lambda _: pytest.fail("duplicate must not read prerequisites")
-    restarted = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+    restarted = WorkerActivationRuntimeAdmissionStore(journal.database_path)
     service._store = restarted
     duplicate = create(service, facts)
     assert duplicate.exact_duplicate
@@ -112,7 +113,7 @@ def test_restart_duplicate_expiry_ownership_and_subject_replay(tmp_path, facts):
     assert duplicate.status.lifecycle == "expired"
     assert counts(journal) == (1, 1, 0)
     error(
-        create(service, facts, idempotency_key="a-different-v053-key"),
+        create(service, facts, idempotency_key="a-different-v054-key"),
         "permanent_subject_reserved",
     )
     altered = facts.create.model_copy(update={"valid_until": "2099-01-01T00:00:00Z"})
@@ -122,7 +123,7 @@ def test_restart_duplicate_expiry_ownership_and_subject_replay(tmp_path, facts):
             authenticated_operator_id=facts.operator_id,
             permission_verified=True,
             candidate_record_id=facts.candidate_record_id,
-            idempotency_key="v053-service-idempotency",
+            idempotency_key="v054-service-idempotency",
             correlation_id="private",
         ),
         "idempotency_conflict",
@@ -136,7 +137,7 @@ def test_restart_duplicate_expiry_ownership_and_subject_replay(tmp_path, facts):
                 authenticated_operator_id=owner,
                 permission_verified=True,
                 candidate_record_id=candidate,
-                prerequisite_id=first.record.prerequisite_id,
+                runtime_admission_id=first.record.runtime_admission_id,
                 correlation_id="private",
             ),
             "evidence_not_found",
@@ -149,7 +150,7 @@ def test_restart_duplicate_expiry_ownership_and_subject_replay(tmp_path, facts):
     )
     assert collection.items == (first.record,)
     assert collection.collection_fingerprint == c.collection_fingerprint(collection)
-    assert "v053-service-idempotency" not in journal.database_path.read_bytes().decode(
+    assert "v054-service-idempotency" not in journal.database_path.read_bytes().decode(
         errors="ignore"
     )
 
@@ -176,8 +177,8 @@ def test_authorization_and_scope(tmp_path, facts, changes, code):
 
 def test_default_off(tmp_path, facts):
     _, journal, reader, clock = setup(tmp_path, facts)
-    service = WorkerActivationRuntimePrerequisiteService(
-        receipt_reader=reader, store=journal, clock=clock
+    service = WorkerActivationRuntimeAdmissionService(
+        prerequisite_reader=reader, store=journal, clock=clock
     )
     error(create(service, facts), "installation_capability_unsupported")
     assert reader.calls == 0
@@ -194,8 +195,8 @@ def test_bounds_lower_only_and_no_eviction(tmp_path, facts, bound):
     )
     assert counts(journal) == (0, 0, 0)
     for value in (True, -1, 999999999):
-        with pytest.raises(WorkerActivationRuntimePrerequisiteStoreError):
-            WorkerActivationRuntimePrerequisiteStore(
+        with pytest.raises(WorkerActivationRuntimeAdmissionStoreError):
+            WorkerActivationRuntimeAdmissionStore(
                 tmp_path / "invalid.sqlite", **{bound: value}
             )
 
@@ -217,7 +218,9 @@ def test_revalidation_at_both_write_boundaries(tmp_path, facts, boundary, damage
                 record, status = reader.pair
                 record = record.model_copy(
                     update={
-                        "receipt_record_fingerprint": c.fingerprint("bad", "private")
+                        "prerequisite_record_fingerprint": c.fingerprint(
+                            "bad", "private"
+                        )
                     }
                 )
                 return record, status
@@ -225,18 +228,18 @@ def test_revalidation_at_both_write_boundaries(tmp_path, facts, boundary, damage
 
     reader.hook = hook
     result = create(service, facts)
-    assert isinstance(result, c.WorkerActivationRuntimePrerequisiteRedactedErrorV1)
+    assert isinstance(result, c.WorkerActivationRuntimeAdmissionRedactedErrorV1)
     assert "private" not in result.model_dump_json()
     if boundary == 1:
         assert counts(journal) == (0, 0, 0)
     else:
         error(result, "append_indeterminate")
         assert counts(journal) == (1, 0, 1)
-        service._store = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+        service._store = WorkerActivationRuntimeAdmissionStore(journal.database_path)
         reader.hook = lambda _: pytest.fail("interrupted reservation cannot resume")
         error(create(service, facts), "append_indeterminate")
         error(
-            create(service, facts, idempotency_key="different-v053-key"),
+            create(service, facts, idempotency_key="different-v054-key"),
             "permanent_subject_reserved",
         )
 
@@ -255,7 +258,7 @@ def test_disk_append_failure_is_permanent_even_if_audit_fails(
         monkeypatch.setattr(journal, "_append_failure", fail)
     error(create(service, facts), "append_indeterminate")
     assert counts(journal) == (1, 0, 0 if audit_fails else 1)
-    service._store = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+    service._store = WorkerActivationRuntimeAdmissionStore(journal.database_path)
     reader.hook = lambda _: pytest.fail("must not retry")
     error(create(service, facts), "append_indeterminate")
 
@@ -270,7 +273,7 @@ def test_interrupted_reservation_counts_against_capacity(tmp_path, facts, monkey
     with pytest.raises(KeyboardInterrupt):
         create(service, facts)
     assert counts(journal) == (1, 0, 0)
-    service._store = WorkerActivationRuntimePrerequisiteStore(
+    service._store = WorkerActivationRuntimeAdmissionStore(
         journal.database_path, max_total_records=1
     )
     error(create(service, facts), "append_indeterminate")
@@ -283,9 +286,9 @@ def test_interrupted_reservation_counts_against_capacity(tmp_path, facts, monkey
 def test_concurrent_independent_instances(tmp_path, facts):
     service, journal, _, _ = setup(tmp_path, facts)
     services = [service] + [
-        WorkerActivationRuntimePrerequisiteService(
-            store=WorkerActivationRuntimePrerequisiteStore(journal.database_path),
-            receipt_reader=Reader(facts),
+        WorkerActivationRuntimeAdmissionService(
+            store=WorkerActivationRuntimeAdmissionStore(journal.database_path),
+            prerequisite_reader=Reader(facts),
             clock=Clock(facts),
             enabled=True,
         )
@@ -296,7 +299,7 @@ def test_concurrent_independent_instances(tmp_path, facts):
     successes = [
         item
         for item in results
-        if isinstance(item, c.WorkerActivationRuntimePrerequisiteResultV1)
+        if isinstance(item, c.WorkerActivationRuntimeAdmissionResultV1)
     ]
     assert successes
     assert sum(not item.exact_duplicate for item in successes) == 1
@@ -332,7 +335,7 @@ def test_corruption_closes_all_connections_and_restart(tmp_path, facts, sql):
             authenticated_operator_id=facts.operator_id,
             permission_verified=True,
             candidate_record_id=facts.candidate_record_id,
-            prerequisite_id=first.record.prerequisite_id,
+            runtime_admission_id=first.record.runtime_admission_id,
             correlation_id="private",
         ),
         "store_corrupt",
@@ -347,9 +350,9 @@ def test_corruption_closes_all_connections_and_restart(tmp_path, facts, sql):
         "store_corrupt",
     )
     with pytest.raises(
-        WorkerActivationRuntimePrerequisiteStoreError, match="store_corrupt"
+        WorkerActivationRuntimeAdmissionStoreError, match="store_corrupt"
     ):
-        WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+        WorkerActivationRuntimeAdmissionStore(journal.database_path)
 
 
 def test_lock_contention_rejects_before_reservation(tmp_path, facts):
@@ -359,38 +362,40 @@ def test_lock_contention_rejects_before_reservation(tmp_path, facts):
         error(create(service, facts), "unavailable")
     assert counts(journal) == (0, 0, 0)
     assert isinstance(
-        create(service, facts), c.WorkerActivationRuntimePrerequisiteResultV1
+        create(service, facts), c.WorkerActivationRuntimeAdmissionResultV1
     )
 
 
-def test_durable_owner_scoped_reader(tmp_path, facts):
-    from app.controlled_worker_queue_claim_lease_acknowledgement.test_service_store import (
-        _service as prior_service,
+def test_durable_owner_scoped_reader(tmp_path, facts, request):
+    from app.worker_activation_runtime_prerequisite.test_service_store import (
+        create as prior_create,
+    )
+    from app.worker_activation_runtime_prerequisite.test_service_store import (
+        setup as prior_setup,
     )
 
-    prior, journal, _, _, _, _, _, request = prior_service(tmp_path)
-    result = prior.create(
-        request,
-        authenticated_operator_id=facts.operator_id,
-        permission_verified=True,
-        candidate_record_id=facts.candidate_record_id,
-        idempotency_key="v052-reader-test-key",
-        correlation_id="test",
-    )
-    assert result.ok
-    clock = Clock(facts)
-    reader = WorkerActivationRuntimePrerequisiteReceiptStoreReader(
+    prior, journal, _, clock = prior_setup(tmp_path, request.getfixturevalue("prior_facts"))
+    result = prior_create(prior, request.getfixturevalue("prior_facts"))
+    reader = WorkerActivationRuntimeAdmissionPrerequisiteStoreReader(
         store=type(journal)(journal.database_path), clock=clock
     )
     arguments = {
         "operator_id": result.record.operator_id,
         "candidate_record_id": result.record.candidate_record_id,
-        "admission_id": result.record.admission_id,
+        "prerequisite_id": result.record.prerequisite_id,
         "valid_until": result.record.valid_until,
     }
     pair = reader.read_owned(**arguments)
-    assert pair[0] == result.record
+    assert pair[0].model_dump_json() == result.record.model_dump_json()
     assert pair[1].evaluated_at == result.record.recorded_at
+    service, successor, _, _ = setup(tmp_path, facts)
+    service._prerequisite_reader = reader
+    request = c.build_create(receipt=pair[0], receipt_status=pair[1])
+    successor_facts = facts.model_copy(update={"create": request})
+    admitted = create(service, successor_facts)
+    assert isinstance(admitted, c.WorkerActivationRuntimeAdmissionResultV1)
+    assert admitted.record.worker_activation_runtime_prerequisite == pair[0]
+    assert counts(successor) == (1, 1, 0)
     assert reader.read_owned(**{**arguments, "operator_id": "foreign"}) is None
     assert (
         reader.read_owned(
@@ -410,26 +415,17 @@ def test_no_production_or_effect_consumers():
     for area in ("atlas-agent", "atlas-execution-worker"):
         assert (root / area).is_dir()
         for path in (root / area).rglob("*.py"):
-            assert "worker_activation_runtime_prerequisite" not in path.read_text()
+            assert "worker_activation_runtime_admission" not in path.read_text()
     package = Path(__file__).parent
     app = root / "atlas-core" / "app"
-    # V0.54 permits its exact contract/persistence modules; v0.53 retains its routes.
-    # Route tests lock exact methods, recursive validation and zero effect calls.
     consumers = {
         path.relative_to(app).as_posix()
         for path in app.rglob("*.py")
-        if path.parent != package and not path.name.startswith("test_")
-        and "worker_activation_runtime_prerequisite" in path.read_text()
+        if path.parent != package
+        and not path.name.startswith("test_")
+        and "worker_activation_runtime_admission" in path.read_text()
     }
-    assert consumers == {
-        "worker_activation_runtime_admission/contract.py",
-        "worker_activation_runtime_admission/readers.py",
-        "worker_activation_runtime_admission/service.py",
-        "worker_activation_runtime_admission/store.py",
-        "routes/worker_activation_runtime_prerequisite.py",
-        "api/v1/router.py",
-        "operator_auth/models.py",
-    }
+    assert consumers == set()
     for name in ("service.py", "store.py", "readers.py"):
         tree = ast.parse((package / name).read_text())
         for node in ast.walk(tree):
@@ -451,7 +447,7 @@ def test_database_page_bound_fails_closed(tmp_path, facts):
             * connection.execute("PRAGMA page_size").fetchone()[0]
             <= 64 * 1024
         )
-    service._store = WorkerActivationRuntimePrerequisiteStore(
+    service._store = WorkerActivationRuntimeAdmissionStore(
         journal.database_path, max_database_bytes=64 * 1024
     )
     error(create(service, facts), "append_indeterminate")
@@ -473,9 +469,9 @@ def test_damaged_index_root_closes_restart(tmp_path, facts):
         )
     error(create(service, facts), "store_corrupt")
     with pytest.raises(
-        WorkerActivationRuntimePrerequisiteStoreError, match="store_corrupt"
+        WorkerActivationRuntimeAdmissionStoreError, match="store_corrupt"
     ):
-        WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+        WorkerActivationRuntimeAdmissionStore(journal.database_path)
 
 
 def test_uncertain_reservation_commit_is_indeterminate(tmp_path, facts, monkeypatch):
@@ -495,12 +491,12 @@ def test_uncertain_reservation_commit_is_indeterminate(tmp_path, facts, monkeypa
                 0
             ]
         if after > before:
-            raise WorkerActivationRuntimePrerequisiteStoreError("unavailable")
+            raise WorkerActivationRuntimeAdmissionStoreError("unavailable")
 
     monkeypatch.setattr(journal, "_connect", uncertain)
     error(create(service, facts), "append_indeterminate")
     assert counts(journal) == (1, 0, 0)
-    service._store = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+    service._store = WorkerActivationRuntimeAdmissionStore(journal.database_path)
     reader.hook = lambda _: pytest.fail("uncertain commit cannot retry")
     error(create(service, facts), "append_indeterminate")
 
@@ -523,25 +519,25 @@ def test_partial_evidence_write_rolls_back_and_remains_reserved(
     monkeypatch.setattr(journal, "_connect", interrupted)
     error(create(service, facts), "append_indeterminate")
     assert counts(journal) == (1, 0, 1)
-    service._store = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+    service._store = WorkerActivationRuntimeAdmissionStore(journal.database_path)
     error(create(service, facts), "append_indeterminate")
 
 
 def test_competing_keys_cannot_reserve_same_subject(tmp_path, facts):
     service, journal, _, _ = setup(tmp_path, facts)
-    other = WorkerActivationRuntimePrerequisiteService(
-        store=WorkerActivationRuntimePrerequisiteStore(journal.database_path),
-        receipt_reader=Reader(facts),
+    other = WorkerActivationRuntimeAdmissionService(
+        store=WorkerActivationRuntimeAdmissionStore(journal.database_path),
+        prerequisite_reader=Reader(facts),
         clock=Clock(facts),
         enabled=True,
     )
     with ThreadPoolExecutor(max_workers=2) as pool:
         first = pool.submit(create, service, facts)
-        second = pool.submit(create, other, facts, idempotency_key="competing-v053-key")
+        second = pool.submit(create, other, facts, idempotency_key="competing-v054-key")
         results = [first.result(), second.result()]
     assert (
         sum(
-            isinstance(item, c.WorkerActivationRuntimePrerequisiteResultV1)
+            isinstance(item, c.WorkerActivationRuntimeAdmissionResultV1)
             for item in results
         )
         == 1
@@ -549,7 +545,7 @@ def test_competing_keys_cannot_reserve_same_subject(tmp_path, facts):
     failure = next(
         item
         for item in results
-        if isinstance(item, c.WorkerActivationRuntimePrerequisiteRedactedErrorV1)
+        if isinstance(item, c.WorkerActivationRuntimeAdmissionRedactedErrorV1)
     )
     error(failure, "permanent_subject_reserved")
     assert counts(journal) == (1, 1, 0)
@@ -568,7 +564,7 @@ def test_both_prerequisite_reads_hold_sqlite_write_lock(tmp_path, facts):
 
     reader.hook = inspect_lock
     assert isinstance(
-        create(service, facts), c.WorkerActivationRuntimePrerequisiteResultV1
+        create(service, facts), c.WorkerActivationRuntimeAdmissionResultV1
     )
     assert reader.calls == 2
     with journal._connect() as connection:
@@ -584,6 +580,46 @@ def test_lowered_restart_bounds_close_existing_state(tmp_path, facts):
         {"max_model_bytes": 1},
     ):
         with pytest.raises(
-            WorkerActivationRuntimePrerequisiteStoreError, match="store_corrupt"
+            WorkerActivationRuntimeAdmissionStoreError, match="store_corrupt"
         ):
-            WorkerActivationRuntimePrerequisiteStore(journal.database_path, **bounds)
+            WorkerActivationRuntimeAdmissionStore(journal.database_path, **bounds)
+
+
+def test_clock_rollback_between_locked_reads_is_terminal(tmp_path, facts):
+    service, journal, reader, clock = setup(tmp_path, facts)
+    original = clock.now
+
+    def hook(call):
+        clock.now = original + timedelta(seconds=0 if call == 1 else -1)
+        return reader.pair
+
+    reader.hook = hook
+    error(create(service, facts), "append_indeterminate")
+    assert counts(journal) == (1, 0, 1)
+
+
+@pytest.mark.parametrize(
+    "correlation", ["e\u0301", "\ud800", "\x00", {"private": True}]
+)
+def test_hostile_correlation_is_redacted(tmp_path, facts, correlation):
+    service, journal, _, _ = setup(tmp_path, facts)
+    error(
+        create(service, facts, permission_verified=False, correlation_id=correlation),
+        "forbidden",
+    )
+    assert counts(journal) == (0, 0, 0)
+
+
+def test_response_failure_does_not_renew_evidence(tmp_path, facts, monkeypatch):
+    service, journal, reader, _ = setup(tmp_path, facts)
+    original = service._result
+
+    def fail(*args):
+        raise RuntimeError("private response token")
+
+    monkeypatch.setattr(service, "_result", fail)
+    error(create(service, facts), "append_indeterminate")
+    assert counts(journal) == (1, 1, 0)
+    monkeypatch.setattr(service, "_result", original)
+    reader.hook = lambda _: pytest.fail("response failure must not replay")
+    assert create(service, facts).exact_duplicate
