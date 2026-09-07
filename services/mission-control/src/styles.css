@@ -41,6 +41,8 @@
     --spacing-mc-section: 1.5rem;
     --spacing-mc-panel: 1.25rem;
     --container-mc-content: 80rem;
+    --width-mc-sidebar: 15rem;
+    --width-mc-mobile-drawer: 20rem;
     --ease-mc-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -78,6 +80,20 @@
             radial-gradient(circle at top left, rgb(96 165 250 / 0.12), transparent 30rem),
             var(--color-mc-app);
         color: var(--color-mc-text-primary);
+    }
+
+    .mc-shell-header {
+        background: color-mix(in oklab, var(--color-mc-app-subtle) 95%, transparent);
+        border-bottom: 1px solid var(--color-mc-divider);
+    }
+
+    .mc-main-content {
+        min-width: 0;
+        width: 100%;
+        max-width: var(--container-mc-content);
+        margin-inline: auto;
+        overflow-x: auto;
+        overflow-wrap: anywhere;
     }
 
     .mc-container {
@@ -256,4 +272,17 @@
     .mc-status-neutral .mc-status-dot {
         background: var(--color-mc-text-muted);
     }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mc-transition,
+    .mc-panel-interactive,
+    .mc-control {
+        transition: none;
+    }
+}
+
+/* Shell spacing overrides legacy page padding utilities, preserving page widths. */
+.mc-main-content > :first-child {
+    padding-inline: var(--spacing-mc-page-x);
 }
