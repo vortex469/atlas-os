@@ -4,6 +4,8 @@ import { listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions } from "..
 import type { ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1 } from "../../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 
+import { ControlledWorkerQueueReceipt } from "./ControlledWorkerQueueReceipt";
+
 const BLOCKERS: Record<string, string> = {
     queue_adapter_not_defined: "Queue adapter is not defined",
     queue_claim_not_defined: "Queue claim is not defined",
@@ -19,6 +21,10 @@ const BLOCKERS: Record<string, string> = {
 };
 
 export function ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions({ candidateId, v049AdmissionId }: { candidateId: string; v049AdmissionId: string }) {
+    return <AdmissionReader key={`${candidateId}:${v049AdmissionId}`} candidateId={candidateId} v049AdmissionId={v049AdmissionId} />;
+}
+
+function AdmissionReader({ candidateId, v049AdmissionId }: { candidateId: string; v049AdmissionId: string }) {
     const [items, setItems] = useState<ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1[] | null>(null);
     const [error, setError] = useState(false);
 
@@ -81,6 +87,7 @@ function Admission({ item }: { item: ControlledWorkerQueueClaimLeaseAcknowledgem
             </dl>
             <p className="mt-3 text-xs">Core-owned evidence only. Mission Control displays identifiers and fingerprints returned by Core; raw queue selectors, claim tokens, lease tokens, acknowledgement handles, payloads, commands, endpoints, and credentials are not accepted or shown.</p>
         </details>
+        <ControlledWorkerQueueReceipt candidateId={item.candidate_record_id} admissionId={item.admission_id} operatorId={item.operator_id} />
     </li>;
 }
 

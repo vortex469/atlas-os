@@ -37,6 +37,7 @@ describe("v0.51 controlled queue claim lease acknowledgement admission Mission C
         const consumers = Object.entries(productionModules).filter(([, source]) => /controlledWorkerQueueClaimLeaseAcknowledgementAdmission|ControlledWorkerQueueClaimLeaseAcknowledgementAdmission|controlled-worker-queue-claim-lease-acknowledgement-admissions/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",
+            "../api/controlledWorkerQueueReceipt.ts",
             "../features/installation/ControlledWorkerQueueClaimAdmissions.tsx",
             "../features/installation/ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions.tsx",
             "../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",
