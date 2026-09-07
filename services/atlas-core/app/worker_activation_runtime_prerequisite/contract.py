@@ -643,7 +643,20 @@ class WorkerActivationRuntimePrerequisiteRedactedErrorV1(ClosedAuthorityV1):
     schema: Literal["worker-activation-runtime-prerequisite-error-v1"] = (
         "worker-activation-runtime-prerequisite-error-v1"
     )
-    error_code: RefusalV1
+    error_code: (
+        RefusalV1
+        | Literal[
+            "unauthenticated",
+            "forbidden",
+            "store_corrupt",
+            "unavailable",
+            "quota_exceeded",
+            "record_too_large",
+            "idempotency_conflict",
+            "permanent_subject_reserved",
+            "append_indeterminate",
+        ]
+    )
     message: Literal[SAFE_MESSAGE] = SAFE_MESSAGE
     correlation_fingerprint: FingerprintV1
     retryable: Literal[False] = False

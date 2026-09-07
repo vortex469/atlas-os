@@ -1,0 +1,585 @@
+"""Hostile P2 persistence checks using the complete P1 prerequisite chain."""
+
+import ast
+import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import pytest
+
+from app.worker_activation_runtime_prerequisite import contract as c
+from app.worker_activation_runtime_prerequisite import test_contract as p1
+from app.worker_activation_runtime_prerequisite.readers import (
+    WorkerActivationRuntimePrerequisiteReceiptStoreReader,
+)
+from app.worker_activation_runtime_prerequisite.service import (
+    WorkerActivationRuntimePrerequisiteService,
+)
+from app.worker_activation_runtime_prerequisite.store import (
+    WorkerActivationRuntimePrerequisiteStore,
+    WorkerActivationRuntimePrerequisiteStoreError,
+)
+
+
+@pytest.fixture(scope="module")
+def facts(tmp_path_factory):
+    return p1.facts.__wrapped__(tmp_path_factory)
+
+
+class Reader:
+    def __init__(self, facts):
+        self.pair = (
+            facts.controlled_worker_queue_claim_lease_acknowledgement,
+            facts.controlled_worker_queue_claim_lease_acknowledgement_status,
+        )
+        self.calls = 0
+        self.hook = None
+
+    def read_owned(self, **kwargs):
+        self.calls += 1
+        if self.hook:
+            return self.hook(self.calls)
+        return self.pair
+
+
+class Clock:
+    def __init__(self, facts):
+        self.now = datetime.fromisoformat(facts.authority.request_received_at)
+
+    def __call__(self):
+        return self.now
+
+
+def setup(tmp_path, facts, *, enabled=True, **bounds):
+    journal = WorkerActivationRuntimePrerequisiteStore(
+        tmp_path / "v053.sqlite", **bounds
+    )
+    reader = Reader(facts)
+    clock = Clock(facts)
+    service = WorkerActivationRuntimePrerequisiteService(
+        receipt_reader=reader, store=journal, clock=clock, enabled=enabled
+    )
+    return service, journal, reader, clock
+
+
+def create(service, facts, **kwargs):
+    arguments = {
+        "authenticated_operator_id": facts.operator_id,
+        "permission_verified": True,
+        "candidate_record_id": facts.candidate_record_id,
+        "idempotency_key": "v053-service-idempotency",
+        "correlation_id": "private-correlation",
+    }
+    arguments.update(kwargs)
+    return service.create(facts.create, **arguments)
+
+
+def counts(journal):
+    with sqlite3.connect(journal.database_path) as connection:
+        return tuple(
+            connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+            for table in ("reservations", "evidence", "failures")
+        )
+
+
+def error(result, code):
+    assert isinstance(result, c.WorkerActivationRuntimePrerequisiteRedactedErrorV1)
+    assert result.error_code == code
+    assert result.retryable is False
+    assert "private" not in result.model_dump_json()
+
+
+def test_restart_duplicate_expiry_ownership_and_subject_replay(tmp_path, facts):
+    service, journal, reader, clock = setup(tmp_path, facts)
+    first = create(service, facts)
+    assert isinstance(first, c.WorkerActivationRuntimePrerequisiteResultV1)
+    assert reader.calls == 2
+    assert not first.exact_duplicate
+    assert first.record.blockers == c.SUCCESS_BLOCKERS
+    assert (
+        first.record.prerequisite_record_fingerprint
+        == c.prerequisite_record_fingerprint(first.record)
+    )
+    assert counts(journal) == (1, 1, 0)
+    clock.now = datetime.fromisoformat(first.record.valid_until) + timedelta(seconds=1)
+    reader.hook = lambda _: pytest.fail("duplicate must not read prerequisites")
+    restarted = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+    service._store = restarted
+    duplicate = create(service, facts)
+    assert duplicate.exact_duplicate
+    assert duplicate.record == first.record
+    assert duplicate.status.lifecycle == "expired"
+    assert counts(journal) == (1, 1, 0)
+    error(
+        create(service, facts, idempotency_key="a-different-v053-key"),
+        "permanent_subject_reserved",
+    )
+    altered = facts.create.model_copy(update={"valid_until": "2099-01-01T00:00:00Z"})
+    error(
+        service.create(
+            altered,
+            authenticated_operator_id=facts.operator_id,
+            permission_verified=True,
+            candidate_record_id=facts.candidate_record_id,
+            idempotency_key="v053-service-idempotency",
+            correlation_id="private",
+        ),
+        "idempotency_conflict",
+    )
+    for owner, candidate in (
+        ("foreign", facts.candidate_record_id),
+        (facts.operator_id, "00000000-0000-4000-8000-000000000000"),
+    ):
+        error(
+            service.get(
+                authenticated_operator_id=owner,
+                permission_verified=True,
+                candidate_record_id=candidate,
+                prerequisite_id=first.record.prerequisite_id,
+                correlation_id="private",
+            ),
+            "evidence_not_found",
+        )
+    collection = service.list(
+        authenticated_operator_id=facts.operator_id,
+        permission_verified=True,
+        candidate_record_id=facts.candidate_record_id,
+        correlation_id="private",
+    )
+    assert collection.items == (first.record,)
+    assert collection.collection_fingerprint == c.collection_fingerprint(collection)
+    assert "v053-service-idempotency" not in journal.database_path.read_bytes().decode(
+        errors="ignore"
+    )
+
+
+@pytest.mark.parametrize(
+    "changes,code",
+    [
+        ({"authenticated_operator_id": None}, "unauthenticated"),
+        ({"permission_verified": False}, "forbidden"),
+        ({"permission_verified": 1}, "forbidden"),
+        ({"authenticated_operator_id": "foreign"}, "evidence_not_found"),
+        (
+            {"candidate_record_id": "00000000-0000-4000-8000-000000000000"},
+            "evidence_not_found",
+        ),
+        ({"idempotency_key": "private"}, "invalid_request"),
+    ],
+)
+def test_authorization_and_scope(tmp_path, facts, changes, code):
+    service, journal, _, _ = setup(tmp_path, facts)
+    error(create(service, facts, **changes), code)
+    assert counts(journal) == (0, 0, 0)
+
+
+def test_default_off(tmp_path, facts):
+    _, journal, reader, clock = setup(tmp_path, facts)
+    service = WorkerActivationRuntimePrerequisiteService(
+        receipt_reader=reader, store=journal, clock=clock
+    )
+    error(create(service, facts), "installation_capability_unsupported")
+    assert reader.calls == 0
+
+
+@pytest.mark.parametrize(
+    "bound", ["max_records_per_operator", "max_total_records", "max_model_bytes"]
+)
+def test_bounds_lower_only_and_no_eviction(tmp_path, facts, bound):
+    service, journal, _, _ = setup(tmp_path, facts, **{bound: 0})
+    error(
+        create(service, facts),
+        "record_too_large" if bound == "max_model_bytes" else "quota_exceeded",
+    )
+    assert counts(journal) == (0, 0, 0)
+    for value in (True, -1, 999999999):
+        with pytest.raises(WorkerActivationRuntimePrerequisiteStoreError):
+            WorkerActivationRuntimePrerequisiteStore(
+                tmp_path / "invalid.sqlite", **{bound: value}
+            )
+
+
+@pytest.mark.parametrize("boundary", [1, 2])
+@pytest.mark.parametrize("damage", ["missing", "stale", "fingerprint", "exception"])
+def test_revalidation_at_both_write_boundaries(tmp_path, facts, boundary, damage):
+    service, journal, reader, clock = setup(tmp_path, facts)
+
+    def hook(call):
+        if call == boundary:
+            if damage == "missing":
+                return None
+            if damage == "stale":
+                clock.now += timedelta(seconds=31)
+            if damage == "exception":
+                raise RuntimeError("private endpoint token")
+            if damage == "fingerprint":
+                record, status = reader.pair
+                record = record.model_copy(
+                    update={
+                        "receipt_record_fingerprint": c.fingerprint("bad", "private")
+                    }
+                )
+                return record, status
+        return reader.pair
+
+    reader.hook = hook
+    result = create(service, facts)
+    assert isinstance(result, c.WorkerActivationRuntimePrerequisiteRedactedErrorV1)
+    assert "private" not in result.model_dump_json()
+    if boundary == 1:
+        assert counts(journal) == (0, 0, 0)
+    else:
+        error(result, "append_indeterminate")
+        assert counts(journal) == (1, 0, 1)
+        service._store = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+        reader.hook = lambda _: pytest.fail("interrupted reservation cannot resume")
+        error(create(service, facts), "append_indeterminate")
+        error(
+            create(service, facts, idempotency_key="different-v053-key"),
+            "permanent_subject_reserved",
+        )
+
+
+@pytest.mark.parametrize("audit_fails", [False, True])
+def test_disk_append_failure_is_permanent_even_if_audit_fails(
+    tmp_path, facts, monkeypatch, audit_fails
+):
+    service, journal, reader, _ = setup(tmp_path, facts)
+
+    def fail(*args):
+        raise sqlite3.OperationalError("private disk path and token")
+
+    monkeypatch.setattr(journal, "_append_record", fail)
+    if audit_fails:
+        monkeypatch.setattr(journal, "_append_failure", fail)
+    error(create(service, facts), "append_indeterminate")
+    assert counts(journal) == (1, 0, 0 if audit_fails else 1)
+    service._store = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+    reader.hook = lambda _: pytest.fail("must not retry")
+    error(create(service, facts), "append_indeterminate")
+
+
+def test_interrupted_reservation_counts_against_capacity(tmp_path, facts, monkeypatch):
+    service, journal, _, _ = setup(tmp_path, facts, max_total_records=1)
+
+    def crash(*args):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(journal, "_append_record", crash)
+    with pytest.raises(KeyboardInterrupt):
+        create(service, facts)
+    assert counts(journal) == (1, 0, 0)
+    service._store = WorkerActivationRuntimePrerequisiteStore(
+        journal.database_path, max_total_records=1
+    )
+    error(create(service, facts), "append_indeterminate")
+    error(
+        create(service, facts, authenticated_operator_id="different-owner"),
+        "quota_exceeded",
+    )
+
+
+def test_concurrent_independent_instances(tmp_path, facts):
+    service, journal, _, _ = setup(tmp_path, facts)
+    services = [service] + [
+        WorkerActivationRuntimePrerequisiteService(
+            store=WorkerActivationRuntimePrerequisiteStore(journal.database_path),
+            receipt_reader=Reader(facts),
+            clock=Clock(facts),
+            enabled=True,
+        )
+        for _ in range(3)
+    ]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda item: create(item, facts), services))
+    successes = [
+        item
+        for item in results
+        if isinstance(item, c.WorkerActivationRuntimePrerequisiteResultV1)
+    ]
+    assert successes
+    assert sum(not item.exact_duplicate for item in successes) == 1
+    assert all(item.record == successes[0].record for item in successes)
+    assert counts(journal) == (1, 1, 0)
+    for result in results:
+        if result not in successes:
+            assert result.error_code in {"append_indeterminate", "unavailable"}
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "DROP TABLE failures",
+        "CREATE INDEX unexpected_index ON reservations(operator_id)",
+        "UPDATE reservations SET operator_id='foreign'",
+        "UPDATE reservations SET request='sha256:private'",
+        "UPDATE evidence SET record_json=substr(record_json, 1, length(record_json)-1)",
+        "UPDATE evidence SET record_json=replace(record_json, '\"evidence_only\":true', '\"evidence_only\":1')",
+        'UPDATE evidence SET record_json=replace(record_json, \'"schema":\', \'"schema":"duplicate","schema":\')',
+        'UPDATE evidence SET audit_json=replace(audit_json, \'"outcome":"recorded"\', \'"outcome":"indeterminate"\')',
+        "PRAGMA application_id=52",
+    ],
+)
+def test_corruption_closes_all_connections_and_restart(tmp_path, facts, sql):
+    service, journal, _, _ = setup(tmp_path, facts)
+    first = create(service, facts)
+    with sqlite3.connect(journal.database_path) as connection:
+        connection.execute(sql)
+    error(create(service, facts), "store_corrupt")
+    error(
+        service.get(
+            authenticated_operator_id=facts.operator_id,
+            permission_verified=True,
+            candidate_record_id=facts.candidate_record_id,
+            prerequisite_id=first.record.prerequisite_id,
+            correlation_id="private",
+        ),
+        "store_corrupt",
+    )
+    error(
+        service.list(
+            authenticated_operator_id=facts.operator_id,
+            permission_verified=True,
+            candidate_record_id=facts.candidate_record_id,
+            correlation_id="private",
+        ),
+        "store_corrupt",
+    )
+    with pytest.raises(
+        WorkerActivationRuntimePrerequisiteStoreError, match="store_corrupt"
+    ):
+        WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+
+
+def test_lock_contention_rejects_before_reservation(tmp_path, facts):
+    service, journal, _, _ = setup(tmp_path, facts)
+    with sqlite3.connect(journal.database_path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        error(create(service, facts), "unavailable")
+    assert counts(journal) == (0, 0, 0)
+    assert isinstance(
+        create(service, facts), c.WorkerActivationRuntimePrerequisiteResultV1
+    )
+
+
+def test_durable_owner_scoped_reader(tmp_path, facts):
+    from app.controlled_worker_queue_claim_lease_acknowledgement.test_service_store import (
+        _service as prior_service,
+    )
+
+    prior, journal, _, _, _, _, _, request = prior_service(tmp_path)
+    result = prior.create(
+        request,
+        authenticated_operator_id=facts.operator_id,
+        permission_verified=True,
+        candidate_record_id=facts.candidate_record_id,
+        idempotency_key="v052-reader-test-key",
+        correlation_id="test",
+    )
+    assert result.ok
+    clock = Clock(facts)
+    reader = WorkerActivationRuntimePrerequisiteReceiptStoreReader(
+        store=type(journal)(journal.database_path), clock=clock
+    )
+    arguments = {
+        "operator_id": result.record.operator_id,
+        "candidate_record_id": result.record.candidate_record_id,
+        "admission_id": result.record.admission_id,
+        "valid_until": result.record.valid_until,
+    }
+    pair = reader.read_owned(**arguments)
+    assert pair[0] == result.record
+    assert pair[1].evaluated_at == result.record.recorded_at
+    assert reader.read_owned(**{**arguments, "operator_id": "foreign"}) is None
+    assert (
+        reader.read_owned(
+            **{
+                **arguments,
+                "candidate_record_id": "00000000-0000-4000-8000-000000000000",
+            }
+        )
+        is None
+    )
+    clock.now += timedelta(seconds=31)
+    assert reader.read_owned(**arguments) is None
+
+
+def test_no_production_or_effect_consumers():
+    root = Path(__file__).resolve().parents[3]
+    for area in ("atlas-agent", "atlas-execution-worker"):
+        assert (root / area).is_dir()
+        for path in (root / area).rglob("*.py"):
+            assert "worker_activation_runtime_prerequisite" not in path.read_text()
+    package = Path(__file__).parent
+    app = root / "atlas-core" / "app"
+    # P3 permits only the guarded evidence route, its registration and permissions.
+    # Route tests lock exact methods, recursive validation and zero effect calls.
+    consumers = {
+        path.relative_to(app).as_posix()
+        for path in app.rglob("*.py")
+        if path.parent != package and not path.name.startswith("test_")
+        and "worker_activation_runtime_prerequisite" in path.read_text()
+    }
+    assert consumers == {
+        "routes/worker_activation_runtime_prerequisite.py",
+        "api/v1/router.py",
+        "operator_auth/models.py",
+    }
+    for name in ("service.py", "store.py", "readers.py"):
+        tree = ast.parse((package / name).read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                assert all(
+                    item.name not in {"subprocess", "httpx", "requests", "socket"}
+                    for item in node.names
+                )
+
+
+def test_database_page_bound_fails_closed(tmp_path, facts):
+    service, journal, _, _ = setup(tmp_path, facts, max_database_bytes=64 * 1024)
+    result = create(service, facts)
+    error(result, "append_indeterminate")
+    assert counts(journal)[0:2] == (1, 0)
+    with sqlite3.connect(journal.database_path) as connection:
+        assert (
+            connection.execute("PRAGMA page_count").fetchone()[0]
+            * connection.execute("PRAGMA page_size").fetchone()[0]
+            <= 64 * 1024
+        )
+    service._store = WorkerActivationRuntimePrerequisiteStore(
+        journal.database_path, max_database_bytes=64 * 1024
+    )
+    error(create(service, facts), "append_indeterminate")
+
+
+def test_serialized_record_bound_precedes_reservation(tmp_path, facts):
+    service, journal, _, _ = setup(tmp_path, facts, max_model_bytes=16 * 1024)
+    error(create(service, facts), "record_too_large")
+    assert counts(journal) == (0, 0, 0)
+
+
+def test_damaged_index_root_closes_restart(tmp_path, facts):
+    service, journal, _, _ = setup(tmp_path, facts)
+    create(service, facts)
+    with sqlite3.connect(journal.database_path) as connection:
+        connection.execute("PRAGMA writable_schema=ON")
+        connection.execute(
+            "UPDATE sqlite_master SET rootpage=999999 WHERE name='sqlite_autoindex_reservations_2'"
+        )
+    error(create(service, facts), "store_corrupt")
+    with pytest.raises(
+        WorkerActivationRuntimePrerequisiteStoreError, match="store_corrupt"
+    ):
+        WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+
+
+def test_uncertain_reservation_commit_is_indeterminate(tmp_path, facts, monkeypatch):
+    from contextlib import contextmanager
+
+    service, journal, reader, _ = setup(tmp_path, facts)
+    original = journal._connect
+
+    @contextmanager
+    def uncertain():
+        with original() as connection:
+            before = connection.execute("SELECT count(*) FROM reservations").fetchone()[
+                0
+            ]
+            yield connection
+            after = connection.execute("SELECT count(*) FROM reservations").fetchone()[
+                0
+            ]
+        if after > before:
+            raise WorkerActivationRuntimePrerequisiteStoreError("unavailable")
+
+    monkeypatch.setattr(journal, "_connect", uncertain)
+    error(create(service, facts), "append_indeterminate")
+    assert counts(journal) == (1, 0, 0)
+    service._store = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+    reader.hook = lambda _: pytest.fail("uncertain commit cannot retry")
+    error(create(service, facts), "append_indeterminate")
+
+
+def test_partial_evidence_write_rolls_back_and_remains_reserved(
+    tmp_path, facts, monkeypatch
+):
+    from contextlib import contextmanager
+
+    service, journal, _, _ = setup(tmp_path, facts)
+    original = journal._connect
+
+    @contextmanager
+    def interrupted():
+        with original() as connection:
+            yield connection
+            if connection.execute("SELECT count(*) FROM evidence").fetchone()[0]:
+                raise sqlite3.OperationalError("private write failure")
+
+    monkeypatch.setattr(journal, "_connect", interrupted)
+    error(create(service, facts), "append_indeterminate")
+    assert counts(journal) == (1, 0, 1)
+    service._store = WorkerActivationRuntimePrerequisiteStore(journal.database_path)
+    error(create(service, facts), "append_indeterminate")
+
+
+def test_competing_keys_cannot_reserve_same_subject(tmp_path, facts):
+    service, journal, _, _ = setup(tmp_path, facts)
+    other = WorkerActivationRuntimePrerequisiteService(
+        store=WorkerActivationRuntimePrerequisiteStore(journal.database_path),
+        receipt_reader=Reader(facts),
+        clock=Clock(facts),
+        enabled=True,
+    )
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(create, service, facts)
+        second = pool.submit(create, other, facts, idempotency_key="competing-v053-key")
+        results = [first.result(), second.result()]
+    assert (
+        sum(
+            isinstance(item, c.WorkerActivationRuntimePrerequisiteResultV1)
+            for item in results
+        )
+        == 1
+    )
+    failure = next(
+        item
+        for item in results
+        if isinstance(item, c.WorkerActivationRuntimePrerequisiteRedactedErrorV1)
+    )
+    error(failure, "permanent_subject_reserved")
+    assert counts(journal) == (1, 1, 0)
+
+
+def test_both_prerequisite_reads_hold_sqlite_write_lock(tmp_path, facts):
+    service, journal, reader, _ = setup(tmp_path, facts)
+
+    def inspect_lock(_call):
+        with (
+            sqlite3.connect(journal.database_path, timeout=0) as competitor,
+            pytest.raises(sqlite3.OperationalError, match="locked"),
+        ):
+            competitor.execute("BEGIN IMMEDIATE")
+        return reader.pair
+
+    reader.hook = inspect_lock
+    assert isinstance(
+        create(service, facts), c.WorkerActivationRuntimePrerequisiteResultV1
+    )
+    assert reader.calls == 2
+    with journal._connect() as connection:
+        assert connection.execute("PRAGMA synchronous").fetchone()[0] == 2
+
+
+def test_lowered_restart_bounds_close_existing_state(tmp_path, facts):
+    service, journal, _, _ = setup(tmp_path, facts)
+    create(service, facts)
+    for bounds in (
+        {"max_total_records": 0},
+        {"max_records_per_operator": 0},
+        {"max_model_bytes": 1},
+    ):
+        with pytest.raises(
+            WorkerActivationRuntimePrerequisiteStoreError, match="store_corrupt"
+        ):
+            WorkerActivationRuntimePrerequisiteStore(journal.database_path, **bounds)

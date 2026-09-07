@@ -402,13 +402,19 @@ def test_no_io_or_production_consumers():
                 else ""
             ) not in forbidden
     root = path.parents[4]
+    consumers = set()
     for service in ("atlas-core", "atlas-agent", "atlas-execution-worker"):
         for source in (root / "services" / service).rglob("*.py"):
             if source.parent == path.parent or source.name.startswith("test_"):
                 continue
-            assert "worker_activation_runtime_prerequisite" not in source.read_text(), (
-                source
-            )
+            if "worker_activation_runtime_prerequisite" in source.read_text():
+                consumers.add(source.relative_to(root).as_posix())
+    # P3: exact evidence API registration and dedicated permissions only.
+    assert consumers == {
+        "services/atlas-core/app/routes/worker_activation_runtime_prerequisite.py",
+        "services/atlas-core/app/api/v1/router.py",
+        "services/atlas-core/app/operator_auth/models.py",
+    }
 
 
 def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
