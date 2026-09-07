@@ -229,6 +229,14 @@ def test_v052_exact_core_and_ui_consumer_allowlists() -> None:
         # v0.53 P1 embeds the exact immutable receipt/status pair only. Its
         # contract tests prove strict false authority and zero effect consumers.
         "worker_activation_runtime_prerequisite/contract.py",
+        # P2 only reads the exact owner-scoped receipt and persists closed
+        # evidence. Its service/store tests prove default-off, no-effect isolation.
+        "worker_activation_runtime_prerequisite/readers.py",
+        "worker_activation_runtime_prerequisite/service.py",
+        "worker_activation_runtime_prerequisite/store.py",
+        # P3 validates the exact nested receipt in bounded evidence responses;
+        # route tests prove no worker/runtime authority or effect calls.
+        "routes/worker_activation_runtime_prerequisite.py",
     }
     ui = ROOT / "services/mission-control/src"
     consumers = {

@@ -1,6 +1,6 @@
 # Worker Activation Runtime Prerequisite v1 contract
 
-Status: **Atlas v0.53 P0 frozen; P1 implemented; P2-P5 unimplemented**.
+Status: **Atlas v0.53 P0 frozen; P1-P3 implemented; P4-P5 unimplemented**.
 
 P1 implementation: [Core contract and pure evaluator](../../services/atlas-core/app/worker_activation_runtime_prerequisite/contract.py)
 and [hostile contract tests](../../services/atlas-core/app/worker_activation_runtime_prerequisite/test_contract.py).
@@ -12,6 +12,28 @@ retains all seven blockers. Refusals recognize zero and expose bounded codes
 without caller material. Subject identity binds only owner/candidate/admission;
 request, record, status, reservation and audit use separate v0.53 domains.
 Reservation/audit models are pure data definitions, with no persistence in P1.
+
+P2 implementation: [explicit default-off service](../../services/atlas-core/app/worker_activation_runtime_prerequisite/service.py),
+[owner-scoped durable v0.52 reader](../../services/atlas-core/app/worker_activation_runtime_prerequisite/readers.py),
+[bounded SQLite journal](../../services/atlas-core/app/worker_activation_runtime_prerequisite/store.py),
+and [service/store regressions](../../services/atlas-core/app/worker_activation_runtime_prerequisite/test_service_store.py).
+The journal commits permanent reservations before the terminal evidence transaction,
+uses FULL synchronous writes and validates schema, indexes, bounds and complete
+models on every connection. Incomplete reservations never resume. P2 extends only
+the redacted error vocabulary with authentication and storage failure codes; the
+pure evaluator refusal vocabulary and authority ceiling are unchanged. No production
+startup composition, routes, settings or effect consumers are added.
+
+P3 implementation: [guarded Core routes](../../services/atlas-core/app/routes/worker_activation_runtime_prerequisite.py)
+and [route/security tests](../../services/atlas-core/app/routes/test_worker_activation_runtime_prerequisite.py).
+Only collection POST/GET and item GET are registered. Dedicated evaluate/read
+permissions bind authenticated owner and candidate; creation also requires trusted
+origin, CSRF and a bounded idempotency key. Strict request decoding and recursive
+response reparsing retain the P1 authority ceiling and P2 permanent reservations.
+Errors use the existing P1/P2 redacted envelope: missing service is `unavailable`
+(503), disabled creation is `installation_capability_unsupported` (409), foreign
+lookups are `evidence_not_found` (404), and mutation throttling is `forbidden` (429).
+Production startup does not construct the service or its stores.
 
 ## Decision and inspected baseline
 
@@ -213,7 +235,7 @@ P0 changed documentation only. P1 adds the models and pure evaluator linked
 above; no migration, setting, permission registry, route, OpenAPI operation, UI,
 production wiring or effect is implemented.
 The following responsibilities progress in strict P1 -> P2 -> P3 -> P4 -> P5
-order (P1 implemented; P2-P5 future work); listing them grants no current API authority.
+order (P1-P3 implemented; P4-P5 future work); listing them grants no current API authority.
 
 | Phase | Required implementation and exit evidence |
 | --- | --- |
