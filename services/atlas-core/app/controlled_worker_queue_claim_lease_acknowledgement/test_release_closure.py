@@ -226,6 +226,9 @@ def test_v052_exact_core_and_ui_consumer_allowlists() -> None:
         "api/v1/router.py",
         "operator_auth/models.py",
         "routes/controlled_worker_queue_claim_lease_acknowledgement.py",
+        # v0.53 P1 embeds the exact immutable receipt/status pair only. Its
+        # contract tests prove strict false authority and zero effect consumers.
+        "worker_activation_runtime_prerequisite/contract.py",
     }
     ui = ROOT / "services/mission-control/src"
     consumers = {

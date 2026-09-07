@@ -1,6 +1,17 @@
 # Worker Activation Runtime Prerequisite v1 contract
 
-Status: **Atlas v0.53 P0 frozen; P1-P5 unimplemented**.
+Status: **Atlas v0.53 P0 frozen; P1 implemented; P2-P5 unimplemented**.
+
+P1 implementation: [Core contract and pure evaluator](../../services/atlas-core/app/worker_activation_runtime_prerequisite/contract.py)
+and [hostile contract tests](../../services/atlas-core/app/worker_activation_runtime_prerequisite/test_contract.py).
+The request binds `admission_id`, `valid_until`, `receipt_record_fingerprint`
+and `status_fingerprint`; the record embeds the complete immutable v0.52 pair.
+Every input, including existing model instances, is recursively reparsed with
+strict literal types. Successful evaluation recognizes exactly one receipt and
+retains all seven blockers. Refusals recognize zero and expose bounded codes
+without caller material. Subject identity binds only owner/candidate/admission;
+request, record, status, reservation and audit use separate v0.53 domains.
+Reservation/audit models are pure data definitions, with no persistence in P1.
 
 ## Decision and inspected baseline
 
@@ -198,10 +209,11 @@ foreign owner/candidate lookups must not disclose record existence.
 
 ## P1-P5 implementation progression
 
-P0 changes documentation only. No model, migration, setting, permission, route,
-OpenAPI operation, UI, production wiring or effect is implemented here.
-The following responsibilities are future work in strict P1 -> P2 -> P3 -> P4 -> P5
-order; listing them grants no current API authority.
+P0 changed documentation only. P1 adds the models and pure evaluator linked
+above; no migration, setting, permission registry, route, OpenAPI operation, UI,
+production wiring or effect is implemented.
+The following responsibilities progress in strict P1 -> P2 -> P3 -> P4 -> P5
+order (P1 implemented; P2-P5 future work); listing them grants no current API authority.
 
 | Phase | Required implementation and exit evidence |
 | --- | --- |

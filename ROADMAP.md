@@ -52,23 +52,25 @@ presentation preserve all later authority blockers and zero Agent/execution-work
 consumers. See the completed contract and release checklist for validation and
 environment limitations. Completion does not imply a published release.
 
-## Selected v0.53 P0 plan - Worker Activation Runtime Prerequisite
+## Selected v0.53 plan - Worker Activation Runtime Prerequisite
 
 P0 freezes the [normative v1 contract](docs/architecture/worker-activation-runtime-prerequisite-v1.md)
 from completed repository v0.52 P5 at
-`f6e9de8e57685967541369073e45f42e804989c8`. P1-P5 remain unimplemented.
+`f6e9de8e57685967541369073e45f42e804989c8`. P1 is implemented; P2-P5 remain unimplemented.
 The only future advance is `worker_activation_runtime_prerequisite_recorded`
 over one exact active same-owner v0.52 receipt/status pair and its complete
 v0.51-v0.20 lineage. V0.52 recorded already-observed receipt assertions; it
 established no queue effect primitive. V0.53 therefore records prerequisite
 evidence only, with all seven runtime/contact/start blockers unchanged.
 
-P1 defines pure immutable validation; P2 adds explicitly constructed default-off
+P1 implements closed immutable models and pure fail-closed evaluation over the
+complete v0.52 receipt/status pair, with hostile lineage/authority regressions.
+P2 adds explicitly constructed default-off
 Core evidence persistence and an owned v0.52 reader with permanent no-replay;
 P3 adds only the contract's guarded evidence create/list/get API; P4 adds nested
 GET-only Mission Control presentation; P5 proves release isolation, failure,
-redaction, ownership and zero Agent/execution-worker consumers. These are future
-implementation responsibilities, not API or runtime changes in P0.
+redaction, ownership and zero Agent/execution-worker consumers. P2-P5 remain future
+implementation responsibilities; P1 adds no API or runtime composition.
 
 Worker activation runtime, worker store/runtime contact, worker-start admission,
 worker start, Agent invocation, execution authorization/start, installation,

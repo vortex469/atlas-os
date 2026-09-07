@@ -3,7 +3,7 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.53 P0 Worker Activation Runtime Prerequisite - frozen
+## Atlas v0.53 Worker Activation Runtime Prerequisite - P0 frozen, P1 implemented
 
 The [normative v1 contract](architecture/worker-activation-runtime-prerequisite-v1.md)
 selects evidence-only prerequisite recording from v0.52 P5 repository commit
@@ -21,13 +21,30 @@ release gates below remain open.
   ambiguity/corruption and zero Agent/execution-worker consumers.
 - [x] P0 documentation only; no production runtime/API/UI/permission/configuration
   changes or `compose.execution-smoke.override.yaml` change.
-- [ ] P1: closed immutable prerequisite models and pure validation.
+- [x] P1: closed immutable prerequisite models and pure validation, exact nested
+  v0.52 lineage, deterministic domains and strict false authority.
 - [ ] P2: explicit default-off durable service/store and owned v0.52 reader,
   concurrent permanent reservations, restart/expiry no-replay and failure closure.
 - [ ] P3: exact guarded owner-scoped evidence API specified by the contract.
 - [ ] P4: nested read-only Mission Control evidence beneath the v0.52 receipt.
 - [ ] P5: release-isolation, redaction, failure, API/UI and historical regressions,
   Agent/execution-worker zero-consumer checks and release validation evidence.
+
+### P1 validation evidence (2026-09-07)
+
+Focused tests passed: 67 v0.53 contract/evaluator tests and 48 directly relevant
+v0.52 receipt contract/service/store/closure and v0.51/v0.50 prerequisite
+contract/scope regressions, using the selected interpreter. Atlas Core Ruff
+passed with the selected virtual environment on PATH; `git diff --check` passed.
+
+Hostile review passed: nested model-instance reparsing, all inherited strict
+false authority fields, malformed lineage/fingerprint metadata, complete model
+JSON round trips and duplicate-key rejection, expanded serialized bounds,
+redaction, missing/foreign/stale/future/expired evidence, status drift and
+permanent subject identity. Exact isolation tests confirm zero production effect
+consumers; P1 adds no persistence, API, UI, worker or Agent invocation. The
+v0.52 consumer allowlist adds only the exact v0.53 evidence contract module.
+P2-P5 and historical environment-dependent release gates remain open.
 
 ### P0 validation evidence (2026-09-07)
 
