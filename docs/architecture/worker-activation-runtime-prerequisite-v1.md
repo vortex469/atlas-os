@@ -1,6 +1,10 @@
 # Worker Activation Runtime Prerequisite v1 contract
 
-Status: **Atlas v0.53 P0 frozen; P1-P4 implemented; P5 unimplemented**.
+Status: **Atlas v0.53 P0-P5 repository implementation; external validation gates open**.
+
+P5 recovery baseline is P4 `fe781fb`, containing P3 `7b5831c` through
+reconciled merge `b78ca94`. [Release evidence](../RELEASE_CHECKLIST.md) records
+observed validation and unresolved environment gates; this is not publication.
 
 P1 implementation: [Core contract and pure evaluator](../../services/atlas-core/app/worker_activation_runtime_prerequisite/contract.py)
 and [hostile contract tests](../../services/atlas-core/app/worker_activation_runtime_prerequisite/test_contract.py).
@@ -21,8 +25,9 @@ The journal commits permanent reservations before the terminal evidence transact
 uses FULL synchronous writes and validates schema, indexes, bounds and complete
 models on every connection. Incomplete reservations never resume. P2 extends only
 the redacted error vocabulary with authentication and storage failure codes; the
-pure evaluator refusal vocabulary and authority ceiling are unchanged. No production
-startup composition, routes, settings or effect consumers are added.
+pure evaluator refusal vocabulary and authority ceiling are unchanged. P2 adds no production
+startup composition, routes, settings or effect consumers; P3 adds only the
+guarded evidence routes described below.
 
 P3 implementation: [guarded Core routes](../../services/atlas-core/app/routes/worker_activation_runtime_prerequisite.py)
 and [route/security tests](../../services/atlas-core/app/routes/test_worker_activation_runtime_prerequisite.py).
@@ -102,7 +107,7 @@ matching authenticated `operator_id`, candidate UUID4 `candidate_record_id`,
 and UUID5 `admission_id`. V0.52 reuses the v0.51 admission ID: do not invent a
 separate v0.52 receipt ID or resolve by latest candidate/worker/queue match.
 
-The future request selects only that exact ID, exact `valid_until`,
+The request selects only that exact ID, exact `valid_until`,
 `receipt_record_fingerprint`, and `status_fingerprint`. It cannot submit a
 replacement nested receipt, worker identity, adapter, endpoint, or queue selector.
 An injected owner-scoped durable v0.52 reader supplies the record/status pair;
@@ -153,7 +158,7 @@ unchanged. A stable status evaluated at the receipt's `recorded_at` may be used
 for fingerprint matching, following the v0.52 reader pattern, but current-time
 freshness and expiry must be checked independently. Maximum freshness is 30
 seconds, never extended by read, duplicate, restart, or status regeneration.
-Future new evidence expiry must not exceed the earliest inherited expiry.
+New evidence expiry must not exceed the earliest inherited expiry.
 Reject missing, future, stale, expired, foreign, ambiguous, corrupt, mismatched,
 unsupported-capability or altered-authority evidence. Home Assistant remains
 blocked and produces no installation/deployment artifact.
@@ -202,7 +207,7 @@ unchanged. No runtime probe or Agent invocation is part of validation.
 
 ## Persistence, replay, concurrency and failure
 
-P2 must use an explicitly constructed default-off Core-local append-only store
+P2 uses an explicitly constructed default-off Core-local append-only store
 and an owner-scoped durable v0.52 reader. Production startup must never construct
 or enable either automatically. No broker, transport, worker database or network
 client is allowed. Pure P1 validation performs no persistence or I/O.
@@ -245,10 +250,11 @@ foreign owner/candidate lookups must not disclose record existence.
 ## P1-P5 implementation progression
 
 P0 changed documentation only. P1 adds the models and pure evaluator linked
-above; no migration, setting, permission registry, route, OpenAPI operation, UI,
-production wiring or effect is implemented.
+above; that phase introduced no I/O or production wiring. P3 and P4 add the
+evidence API and UI described here, retaining the same authority ceiling.
 The following responsibilities progress in strict P1 -> P2 -> P3 -> P4 -> P5
-order (P1-P4 implemented; P5 future work); listing them grants no current API authority.
+order. P5 adds durable predecessor-to-successor closure regressions and exact
+production consumer allowlists. External validation limitations remain explicit.
 
 | Phase | Required implementation and exit evidence |
 | --- | --- |

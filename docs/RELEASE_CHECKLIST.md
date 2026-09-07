@@ -3,7 +3,7 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
-## Atlas v0.53 Worker Activation Runtime Prerequisite - P0 frozen, P1 implemented
+## Atlas v0.53 Worker Activation Runtime Prerequisite - P5 recovery evidence
 
 The [normative v1 contract](architecture/worker-activation-runtime-prerequisite-v1.md)
 selects evidence-only prerequisite recording from v0.52 P5 repository commit
@@ -23,12 +23,95 @@ release gates below remain open.
   changes or `compose.execution-smoke.override.yaml` change.
 - [x] P1: closed immutable prerequisite models and pure validation, exact nested
   v0.52 lineage, deterministic domains and strict false authority.
-- [ ] P2: explicit default-off durable service/store and owned v0.52 reader,
+- [x] P2: explicit default-off durable service/store and owned v0.52 reader,
   concurrent permanent reservations, restart/expiry no-replay and failure closure.
-- [ ] P3: exact guarded owner-scoped evidence API specified by the contract.
-- [ ] P4: nested read-only Mission Control evidence beneath the v0.52 receipt.
+- [x] P3: exact guarded owner-scoped evidence API specified by the contract.
+- [x] P4: nested read-only Mission Control evidence beneath the v0.52 receipt.
 - [ ] P5: release-isolation, redaction, failure, API/UI and historical regressions,
   Agent/execution-worker zero-consumer checks and release validation evidence.
+
+### P5 recovery validation evidence (2026-09-07)
+
+Recovery starts at P4 `fe781fb`; `git merge-base --is-ancestor` succeeds for
+both P3 `7b5831c` and P4 `fe781fb`. Reconciled merge `b78ca94` is in ancestry.
+This supersedes the stale P1-only status above the historical P0/P1 evidence.
+The local recovery commit is identified by the Git commit containing this section;
+no remote merge, tag or published release is implied.
+
+The new `worker_activation_runtime_prerequisite/test_release_closure.py` joins
+real durable v0.52 and v0.53 stores, compares complete immutable predecessor
+JSON (all inherited IDs, fingerprints, ownership and limits), rejects strict-false
+field coercion at the serialized trust boundary, and proves restart/expiry
+readback cannot replay or re-read prerequisites. Its exact production consumer
+set includes only the five Core evidence/route modules, router/permission entries,
+and four approved Mission Control surfaces. Agent and execution-worker have
+zero consumers. Existing P1-P4 tests additionally prove default-off composition,
+bounded permanent reservations, two locked revalidation points, concurrency,
+corruption closure, redacted errors, authenticated owner/candidate scope,
+CSRF/origin enforcement, exact API methods and non-authoritative UI isolation.
+
+Historical isolation needed exactly two additions: the installation UI route
+consumer `api/workerActivationRuntimePrerequisite.ts`, and v0.36
+`worker_activation_runtime_prerequisite/contract.py`. The latter remains subject
+to the AST assertion permitting only `FingerprintV1` from the execution-admission
+contract, never its service. No wildcard or future exclusion,
+production behavior change, or `compose.execution-smoke.override.yaml` change.
+
+Observed checks (selected Python interpreter, repository root working directory):
+
+- Focused v0.53 contract/service/store/API and v0.52 prerequisite regressions:
+  **182 passed** (142.42 seconds); existing Pydantic/HTTPX warnings.
+- Agent v0.36/v0.37/delivery-preflight isolation: **6 passed**.
+- Focused tests passed: **68** new closure plus historical installation tests;
+  **232** historical release/isolation/scope tests across 38 files; **9** v0.36
+  service/store tests including its updated exact fingerprint-only allowlist.
+  The final new closure file also passes independently (**2 tests**), and the
+  final combined closure/v0.36 store run passes **11 tests**. A whole-Core
+  selection `-k "consumer or isolation or effect_dependencies"` passes **250**
+  tests (3556 deselected), including Agent/execution-worker zero-consumer scans.
+  These overlapping suites are reported separately, not summed as unique tests.
+- Core Ruff gate passed with the selected environment on PATH.
+  `git diff --check` and normative relative documentation links passed.
+- Full Core pytest was attempted and interrupted after progress stopped in
+  `intelligence/test_coordinator.py::test_build_report`; no full-suite pass
+  is claimed. Its observed failures were the corrected v0.36 allowlist,
+  `test_non_owned_existing_root_fails_closed` (sandbox `chown` returns EINVAL),
+  and the Proxmox projection test (read-only default provider-secret path).
+  The latter passes when `ATLAS_PROVIDER_SECRET_FILE` points inside the worktree.
+  The ownership test is unchanged and remains an environment limitation.
+  An isolated intelligence reproduction also exceeded 25 seconds; its 10-second
+  faulthandler trace shows `asyncio.run` waiting during runner shutdown. No
+  TestClient failure or CI timeout was observed in the focused gates.
+- Mission Control `npm ci`: failed; registry tarball requests exhausted DNS
+  retries with `EAI_AGAIN`, followed by npm “Exit handler never called”.
+  `npm test` and `npm run lint` fail because Vitest/ESLint are unavailable;
+  `npm run build` fails because the project TypeScript/Vite/Node type dependencies
+  are unavailable (fallback compiler also rejects `erasableSyntaxOnly`).
+  **Environment error: Mission Control dependency installation is network-blocked.**
+  None of these three UI gates is marked passed or waived.
+
+Reproduce focused tests with `PYTHONPATH=services/atlas-core`, the selected
+interpreter's `-m pytest`, a worktree-local `--basetemp`, and these targets:
+`services/atlas-core/app/worker_activation_runtime_prerequisite`,
+`services/atlas-core/app/routes/test_worker_activation_runtime_prerequisite.py`,
+`services/atlas-core/app/controlled_worker_queue_claim_lease_acknowledgement`,
+`services/atlas-core/app/routes/test_controlled_worker_queue_claim_lease_acknowledgement.py`.
+Run historical `test_*isolation.py`, `test_release_closure.py`, and `test_*scope.py`
+under Core, plus the Agent targets listed below. Ruff uses
+`PATH=/opt/atlas/.venv/bin:$PATH bash scripts/rc1-python-ruff-gate services/atlas-core`.
+Mission Control uses the package scripts `test`, `build`, and `lint` after `npm ci`.
+
+Hostile review passed: exact consumer sets reject additional modules; the v0.36
+AST guard still permits only the historical fingerprint type. Durable nested
+JSON equality preserves complete lineage, and strict-false checks reject true,
+integer and string coercion at the serialized boundary. Existing auth,
+corruption, capacity and replay tests remain unchanged. Only regression tests
+and documentation changed; external gates are not waived.
+
+- [ ] Rerun Mission Control test/build/lint with installed lockfile dependencies.
+- [ ] Complete any unavailable full-suite/external acceptance checks; historical
+  Docker/production release gates remain open. No Docker/runtime probe, push,
+  tag, publication, deployment, rollback or unauthorized worker start occurred.
 
 ### P1 validation evidence (2026-09-07)
 

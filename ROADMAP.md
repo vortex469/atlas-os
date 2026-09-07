@@ -1,6 +1,6 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - v0.52 P0-P5 receipt evidence closure
+## 1. Current baseline - v0.53 runtime prerequisite evidence
 
 Atlas v0.51 P0-P5 closes the Controlled Worker Queue Claim/Lease/
 Acknowledgement Admission boundary after inspecting the completed merged
@@ -52,12 +52,15 @@ presentation preserve all later authority blockers and zero Agent/execution-work
 consumers. See the completed contract and release checklist for validation and
 environment limitations. Completion does not imply a published release.
 
-## Selected v0.53 plan - Worker Activation Runtime Prerequisite
+## Implemented v0.53 plan - Worker Activation Runtime Prerequisite
 
 P0 freezes the [normative v1 contract](docs/architecture/worker-activation-runtime-prerequisite-v1.md)
 from completed repository v0.52 P5 at
-`f6e9de8e57685967541369073e45f42e804989c8`. P1 is implemented; P2-P5 remain unimplemented.
-The only future advance is `worker_activation_runtime_prerequisite_recorded`
+`f6e9de8e57685967541369073e45f42e804989c8`. P1-P4 are implemented; P5 recovery
+adds closure regressions and documentation from `fe781fb`, with P3 `7b5831c`
+and reconciled merge `b78ca94` in its ancestry. Environment-dependent validation
+remains open as recorded in the release checklist.
+The only advance is `worker_activation_runtime_prerequisite_recorded`
 over one exact active same-owner v0.52 receipt/status pair and its complete
 v0.51-v0.20 lineage. V0.52 recorded already-observed receipt assertions; it
 established no queue effect primitive. V0.53 therefore records prerequisite
@@ -69,8 +72,8 @@ P2 adds explicitly constructed default-off
 Core evidence persistence and an owned v0.52 reader with permanent no-replay;
 P3 adds only the contract's guarded evidence create/list/get API; P4 adds nested
 GET-only Mission Control presentation; P5 proves release isolation, failure,
-redaction, ownership and zero Agent/execution-worker consumers. P2-P5 remain future
-implementation responsibilities; P1 adds no API or runtime composition.
+redaction, ownership and zero Agent/execution-worker consumers. Production
+startup does not construct or enable the service or its stores.
 
 Worker activation runtime, worker store/runtime contact, worker-start admission,
 worker start, Agent invocation, execution authorization/start, installation,
