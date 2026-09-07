@@ -3,6 +3,82 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.54 P0 Worker Activation Runtime Admission evidence - frozen
+
+The [normative v0.54 contract](architecture/worker-activation-runtime-admission-v1.md)
+selects only `worker_activation_runtime_admission_recorded` over one exact
+active same-owner v0.53 prerequisite/status pair. The inspected local release
+tag `atlas-v0.53.0` resolves to starting HEAD
+`b55f6520527fe37a729c6f72c183f1a3c8d26d50` (`b55f652`). This records the supplied
+released baseline without rewriting historical validation evidence below.
+
+- [x] Inspect released v0.53 models/evaluator, service/readers/store, guarded
+  routes, Mission Control reader/view, closure and structural isolation tests,
+  Agent architecture and the actual packaged execution-worker API.
+- [x] Freeze exactly one Core evidence admission boundary; runtime/contact/start
+  primitives are absent and cannot be inferred from receipt or prerequisite flags.
+- [x] Pin exact v0.53 prerequisite ID, record/status fingerprints, expiry,
+  authenticated owner/candidate, embedded v0.52 pair and full v0.51-v0.20 lineage.
+- [x] Enumerate all seven unchanged blockers and the complete released false
+  authority/material inventory; preserve permanent replay protection, ownership,
+  bounded persistence, concurrency, corruption closure and historical isolation.
+- [x] Define P1-P5 responsibilities, API/UI ceilings and zero Agent/execution-worker
+  consumers. P0 changes documentation only; no production behavior or compose change.
+- [ ] P1: immutable admission models, pure evaluator, deterministic domains and
+  hostile lineage/freshness/authority tests.
+- [ ] P2: explicit default-off durable owned predecessor reader and bounded
+  journal, permanent reservation, concurrency/restart/corruption failure tests.
+- [ ] P3: guarded evidence-only create/list/get and dedicated permissions, without
+  production construction, activation settings or start endpoints.
+- [ ] P4: exact nested GET-only Mission Control reader, hostile UI fixtures and
+  scope-race coverage; test/build/lint.
+- [ ] P5: durable predecessor-to-successor closure, exact consumer sets,
+  historical isolation, Home Assistant goldens and applicable release validation.
+
+Worker activation runtime, store/runtime contact, worker-start admission/build,
+worker start/invocation, Agent invocation, execution authorization/start, queue
+effects, installation, deployment, rollback, publication, retry/resend and all
+unrelated effects stay fixed false/default-off. Historical external gates remain
+open as recorded. No push, tag, release, deploy or runtime probe is part of P0.
+`compose.execution-smoke.override.yaml` must not be modified.
+
+### P0 validation evidence (2026-09-07)
+
+Focused tests passed: **208 Core tests** (118.91 seconds), covering the full
+v0.53 contract/service/store/closure/UI structural suite, guarded API and
+historical installation release isolation; **6 Agent isolation tests** (0.06
+seconds). Core emitted 357 existing Pydantic/HTTPX warnings; no failures.
+
+Reproduction: from the managed worktree root, use the selected interpreter's
+`-m pytest -q` with worktree-local temporary state:
+
+- Core: `PYTHONPATH=services/atlas-core`, `--basetemp=.tmp-v054-core`, targets
+  `services/atlas-core/app/worker_activation_runtime_prerequisite`,
+  `services/atlas-core/app/routes/test_worker_activation_runtime_prerequisite.py`,
+  `services/atlas-core/app/routes/test_installation_release_isolation.py`.
+- Agent: `PYTHONPATH=services/atlas-agent`, `--basetemp=.tmp-v054-agent`, targets
+  `services/atlas-agent/tests/test_v036_installation_execution_admission_isolation.py`,
+  `services/atlas-agent/tests/test_v037_runner_binding_plan_isolation.py`,
+  `services/atlas-agent/tests/test_delivery_activation_preflight_isolation.py`.
+
+Documentation consistency passed: local tag/starting HEAD match the pinned SHA;
+AST checks against tagged v0.52/v0.53 contracts match all 67 closed authority/
+material fields, seven ordered blockers and every direct v0.53 record/status field.
+New relative links and the lineage anchor resolve; roadmap/checklist/contract
+agree on the sole marker. `git diff --check` passed.
+
+Hostile review passed: admission cannot imply runtime definition/readiness or
+worker-start admission; exact predecessor identity and stable status matching
+remain separate from current-time eligibility. Permanent subjects exclude mutable
+key/status/expiry, interrupted reservations cannot resume, foreign/corrupt reads
+fail closed, nested lineage is never truncated and historical consumer guards
+remain unchanged. Only three Markdown files changed; production source, tests,
+API/UI behavior, configuration and compose are identical to the released baseline.
+P1-P5 and historical external gates remain open; no full UI/build/runtime gate
+pass is claimed for this documentation-only P0.
+
+The local P0 commit is the commit containing this section; no publication is implied.
+
 ## Atlas v0.53 Worker Activation Runtime Prerequisite - P5 recovery evidence
 
 The [normative v1 contract](architecture/worker-activation-runtime-prerequisite-v1.md)
