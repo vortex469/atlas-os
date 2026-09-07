@@ -6,6 +6,20 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.53 P5 Recovery - Worker Activation Runtime Prerequisite Closure
+
+- Recovered from P4 `fe781fb`, with P3 `7b5831c` and merge `b78ca94` in ancestry.
+- Added durable v0.52-to-v0.53 lineage, strict false authority, restart/no-replay
+  and exact Core/API/UI consumer regression locks. Historical isolation permits
+  only exact approved evidence surfaces. No production behavior changed.
+- Finalized the normative contract, roadmap and [release evidence](docs/RELEASE_CHECKLIST.md).
+  The sole new marker is `worker_activation_runtime_prerequisite_recorded`;
+  all seven blockers remain. Mission Control is non-authoritative; Agent and
+  execution-worker have zero consumers. Worker/execution start, installation,
+  deployment, rollback, publication and retry/resend remain forbidden.
+- External validation gates remain open where the environment cannot run them.
+  No compose override change, push, tag, publication or deployment.
+
 #### v0.52 P0-P5 - Queue Receipt Evidence Release Closure
 
 - Completed immutable validation, explicitly constructed default-off receipt
