@@ -28,3 +28,22 @@ A reservation is committed before receipt append. A crash or uncertain append
 leaves a permanent reservation; an exact retry may return a verified committed
 receipt, otherwise it remains indeterminate. No subsequent request can reuse the
 subject to make another append attempt. The store never repairs malformed state.
+
+## P3 guarded Core API
+
+The registered candidate-record surface is
+`/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-lease-acknowledgements`:
+POST records receipt evidence, GET lists at most 16 owned records, and
+GET `/{admission_id}` reads one owned receipt under the exact candidate.
+POST requires the dedicated
+`installation.execution.controlled_worker_queue_claim_lease_acknowledgement.evaluate`
+permission, trusted origin, CSRF token, strict bounded JSON, and one bounded
+Idempotency-Key. Reads require the corresponding `.read` permission.
+
+Routes use only an explicitly supplied
+`app.state.controlled_worker_queue_claim_lease_acknowledgement_service`.
+Production startup does not construct it. Missing service returns a redacted
+503; disabled creation returns 409. P1 validates request and response models,
+and P2 retains exact lineage validation and permanent reservation semantics.
+Exact duplicates return historical evidence without another effect or append.
+No queue primitive or later effect authority is added.

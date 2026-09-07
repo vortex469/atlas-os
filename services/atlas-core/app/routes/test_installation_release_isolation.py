@@ -546,6 +546,27 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-admissions/{admission_id}": {
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-lease-acknowledgement-prerequisites": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-lease-acknowledgement-prerequisites/{prerequisite_id}": {
+            "get",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-lease-acknowledgement-admissions": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-lease-acknowledgement-admissions/{admission_id}": {
+            "get",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-lease-acknowledgements": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-lease-acknowledgements/{admission_id}": {
+            "get",
+        },
     }
     prohibited = (
         "approve",
@@ -571,6 +592,15 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         ).replace(
             "controlled-worker-queue-claim-admissions",
             "controlled-worker-queue-admission-evidence",
+        ).replace(
+            "controlled-worker-queue-claim-lease-acknowledgement-prerequisites",
+            "controlled-receipt-evidence",
+        ).replace(
+            "controlled-worker-queue-claim-lease-acknowledgement-admissions",
+            "controlled-receipt-evidence",
+        ).replace(
+            "controlled-worker-queue-claim-lease-acknowledgements",
+            "controlled-receipt-evidence",
         ).replace(
             "{dequeue_id}", "{receipt_id}"
         )
@@ -615,6 +645,7 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/workerBindingActivationPreflight.ts"),
         Path("api/workerBindingActivationEvidence.ts"),
         Path("api/controlledWorkerQueueClaimAdmission.ts"),
+        Path("api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 

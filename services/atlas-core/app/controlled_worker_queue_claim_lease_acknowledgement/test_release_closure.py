@@ -112,7 +112,7 @@ def test_v052_contract_advances_only_queue_receipt_and_blocks_later_authority() 
 
 def test_v052_p2_adds_only_local_service_store_without_effect_consumers() -> None:
     assert not ROOT.joinpath("compose.execution-smoke.override.yaml").exists()
-    assert not ROOT.joinpath(
+    assert ROOT.joinpath(
         "services/atlas-core/app/routes/"
         "controlled_worker_queue_claim_lease_acknowledgement.py"
     ).exists()
