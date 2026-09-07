@@ -253,6 +253,10 @@ def test_v052_exact_core_and_ui_consumer_allowlists() -> None:
     }
     assert consumers == {
         "api/controlledWorkerQueueReceipt.ts",
+        # P4 read-only nested prerequisite projection; UI isolation tests enforce GET only.
+        "api/workerActivationRuntimePrerequisite.ts",
+        "features/installation/WorkerActivationRuntimePrerequisite.tsx",
+        "types/workerActivationRuntimePrerequisite.ts",
         "features/installation/ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions.tsx",
         "features/installation/ControlledWorkerQueueReceipt.tsx",
         "types/controlledWorkerQueueReceipt.ts",

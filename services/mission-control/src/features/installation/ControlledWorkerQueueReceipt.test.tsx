@@ -8,6 +8,7 @@ import { listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions } from "..
 
 vi.mock("../../api/controlledWorkerQueueReceipt", async (original) => ({ ...await original<object>(), getControlledWorkerQueueReceipt: vi.fn() }));
 vi.mock("../../api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission", async (original) => ({ ...await original<object>(), listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions: vi.fn() }));
+vi.mock("./WorkerActivationRuntimePrerequisite", () => ({ WorkerActivationRuntimePrerequisite: () => null }));
 const props = { candidateId: fixture.record.candidate_record_id, admissionId: fixture.record.admission_id, operatorId: fixture.record.operator_id };
 const receipt = parseControlledWorkerQueueReceipt(fixture, props.candidateId, props.admissionId, props.operatorId);
 

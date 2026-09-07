@@ -1,6 +1,6 @@
 # Worker Activation Runtime Prerequisite v1 contract
 
-Status: **Atlas v0.53 P0 frozen; P1-P3 implemented; P4-P5 unimplemented**.
+Status: **Atlas v0.53 P0 frozen; P1-P4 implemented; P5 unimplemented**.
 
 P1 implementation: [Core contract and pure evaluator](../../services/atlas-core/app/worker_activation_runtime_prerequisite/contract.py)
 and [hostile contract tests](../../services/atlas-core/app/worker_activation_runtime_prerequisite/test_contract.py).
@@ -34,6 +34,19 @@ Errors use the existing P1/P2 redacted envelope: missing service is `unavailable
 (503), disabled creation is `installation_capability_unsupported` (409), foreign
 lookups are `evidence_not_found` (404), and mutation throttling is `forbidden` (429).
 Production startup does not construct the service or its stores.
+
+P4 implementation: [Mission Control guarded reader](../../services/mission-control/src/api/workerActivationRuntimePrerequisite.ts)
+and [nested view](../../services/mission-control/src/features/installation/WorkerActivationRuntimePrerequisite.tsx).
+The existing v0.52 receipt view lists owner/candidate-scoped prerequisite records,
+selects only the exact admission and immutable receipt fingerprint, then reads its
+Core status by prerequisite ID. The reader checks closed v0.53 fields, inherited
+v0.52 lineage, fingerprint metadata/linkage, lifecycle consistency, seven blockers
+and fixed-false authority. It does not compute canonical hashes or current-time
+eligibility; Core remains authoritative. Missing evidence and unavailable reads
+are distinct, bounded states. Scope changes clear evidence and ignore late responses.
+The normal view says runtime prerequisites remain incomplete; collapsed details
+retain IDs, timestamps, fingerprints, duplicate evidence, blockers and authority.
+No create control, polling, storage, navigation or downstream effect is introduced.
 
 ## Decision and inspected baseline
 
@@ -235,7 +248,7 @@ P0 changed documentation only. P1 adds the models and pure evaluator linked
 above; no migration, setting, permission registry, route, OpenAPI operation, UI,
 production wiring or effect is implemented.
 The following responsibilities progress in strict P1 -> P2 -> P3 -> P4 -> P5
-order (P1-P3 implemented; P4-P5 future work); listing them grants no current API authority.
+order (P1-P4 implemented; P5 future work); listing them grants no current API authority.
 
 | Phase | Required implementation and exit evidence |
 | --- | --- |

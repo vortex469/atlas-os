@@ -21,9 +21,12 @@ describe("v0.52 read-only Mission Control isolation", () => {
         const consumers = Object.entries(modules).filter(([, source]) => /controlledWorkerQueueReceipt|ControlledWorkerQueueReceipt/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/controlledWorkerQueueReceipt.ts",
+            "../api/workerActivationRuntimePrerequisite.ts",
             "../features/installation/ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions.tsx",
             "../features/installation/ControlledWorkerQueueReceipt.tsx",
+            "../features/installation/WorkerActivationRuntimePrerequisite.tsx",
             "../types/controlledWorkerQueueReceipt.ts",
+            "../types/workerActivationRuntimePrerequisite.ts",
         ]);
     });
 });
