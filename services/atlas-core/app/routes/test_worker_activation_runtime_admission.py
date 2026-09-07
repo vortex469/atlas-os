@@ -799,7 +799,10 @@ def test_security_headers_and_authentication_fail_before_evidence_access(
     assert reader.calls == 0
 
 
-def test_valid_service_response_must_match_exact_request(tmp_path, facts, monkeypatch):
+@pytest.mark.parametrize("field", [
+    "prerequisite_id", "valid_until", "prerequisite_record_fingerprint", "status_fingerprint",
+])
+def test_valid_service_response_must_match_exact_request(tmp_path, facts, monkeypatch, field):
     client, session, _, create, _, url, _ = _application(tmp_path, facts)
     service = client._app.state.worker_activation_runtime_admission_service
     result = service.create(
@@ -815,10 +818,17 @@ def test_valid_service_response_must_match_exact_request(tmp_path, facts, monkey
     assert client.get(wrong_item, cookies=_cookies(session)).status_code == 404
     monkeypatch.setattr(service, "create", lambda *args, **kwargs: result)
     payload = create.model_dump(mode="json")
-    payload["status_fingerprint"]["value"] = "0" * 64
+    if field.endswith("fingerprint"):
+        payload[field]["value"] = "0" * 64
+    else:
+        payload[field] = (
+            "a70ea6f4-18ba-57f3-867e-f5eae39bfb2d"
+            if field == "prerequisite_id" else "2099-01-01T00:00:00Z"
+        )
     assert (
         client.post(
-            url, json=payload, cookies=_cookies(session), headers=_headers(session)
+            url, json=payload, cookies=_cookies(session),
+            headers=_headers(session, "v054-response-linkage"),
         ).status_code
         == 503
     )
@@ -962,3 +972,34 @@ def test_api_durable_lineage_restart_expiry_and_corrupt_readback(
         assert response.json()["error_code"] == "store_corrupt"
         assert response.json()["retryable"] is False
         assert "sqlite" not in response.text
+
+
+def test_route_rejects_valid_foreign_service_results(tmp_path, facts, monkeypatch):
+    client, session, _, create, _, url, sessions = _application(tmp_path, facts)
+    service = client._app.state.worker_activation_runtime_admission_service
+    result = service.create(
+        create, authenticated_operator_id=facts.operator_id, permission_verified=True,
+        candidate_record_id=facts.candidate_record_id,
+        idempotency_key=_headers(session)["Idempotency-Key"], correlation_id="test",
+    )
+    collection = service.list(
+        authenticated_operator_id=facts.operator_id, permission_verified=True,
+        candidate_record_id=facts.candidate_record_id, correlation_id="test",
+    )
+    foreign = sessions.create(OperatorCredential(
+        operator_id="foreign", password_hash="unused", permissions=(
+            INSTALLATION_WORKER_ACTIVATION_RUNTIME_ADMISSION_EVALUATE,
+            INSTALLATION_WORKER_ACTIVATION_RUNTIME_ADMISSION_READ,
+        ),
+    ))
+    monkeypatch.setattr(service, "get", lambda **kwargs: result)
+    monkeypatch.setattr(service, "create", lambda *args, **kwargs: result)
+    monkeypatch.setattr(service, "list", lambda **kwargs: collection)
+    for response in (
+        client.get(url, cookies=_cookies(foreign)),
+        client.get(f"{url}/{result.record.runtime_admission_id}", cookies=_cookies(foreign)),
+        client.post(url, json=create.model_dump(mode="json"), cookies=_cookies(foreign), headers=_headers(foreign)),
+    ):
+        assert response.status_code == 404
+        assert response.json()["error_code"] == "evidence_not_found"
+        assert facts.operator_id not in response.text

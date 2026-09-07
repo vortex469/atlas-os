@@ -436,7 +436,12 @@ def test_no_io_or_production_consumers():
                 continue
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
-    assert consumers == set()
+    # P3 adds only the guarded evidence route and dedicated registration.
+    assert consumers == {
+        "services/atlas-core/app/routes/worker_activation_runtime_admission.py",
+        "services/atlas-core/app/api/v1/router.py",
+        "services/atlas-core/app/operator_auth/models.py",
+    }
 
 
 def test_all_envelopes_close_authority_and_validate_fingerprints(facts):

@@ -409,13 +409,14 @@ def test_no_io_or_production_consumers():
                 continue
             if "worker_activation_runtime_prerequisite" in source.read_text():
                 consumers.add(source.relative_to(root).as_posix())
-    # Exact v0.54 contract/persistence modules plus v0.53 API/permissions.
+    # Exact v0.54 evidence modules/API plus v0.53 API/permissions.
     assert consumers == {
         "services/atlas-core/app/worker_activation_runtime_admission/contract.py",
         "services/atlas-core/app/worker_activation_runtime_admission/readers.py",
         "services/atlas-core/app/worker_activation_runtime_admission/service.py",
         "services/atlas-core/app/worker_activation_runtime_admission/store.py",
         "services/atlas-core/app/routes/worker_activation_runtime_prerequisite.py",
+        "services/atlas-core/app/routes/worker_activation_runtime_admission.py",
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",
     }
