@@ -3,6 +3,111 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.54 P5 release-closure validation (2026-09-07)
+
+Baseline HEAD `7a3ec1f` is the committed P4 integration; P3 merge `04a66a4`
+and P2/P1 commits are in its ancestry. This supersedes P4's historical local
+commit blocker only for the prerequisite: P4 is committed in this baseline.
+P5 adds tests and documentation only. Release sign-off is **not complete**:
+the required P5 commit and environment-blocked gates below remain open.
+
+The sole newly true marker remains
+`worker_activation_runtime_admission_recorded`. Complete durable v0.53
+prerequisite/status JSON, IDs, record/status fingerprints, ownership, candidate,
+expiry and nested v0.52-v0.20 lineage remain exact. Seven ordered blockers and
+all 67 closed authority/material fields remain unchanged. No Agent or
+execution-worker consumer, production service construction, enabling setting,
+worker/execution start, installation, deployment, rollback, publication or
+retry/resend authority is added. Mission Control remains GET-only evidence.
+
+Focused tests passed:
+
+- Combined v0.54/v0.53 contract/service/store/API and historical Core
+  release-closure/isolation/Home Assistant golden selection: **544 passed**
+  (317.48 seconds). The subsequently added normative inventory test and final
+  closure assertions are covered by the three-test rerun below.
+- New v0.54 release-closure file: **3 passed**. Covers durable predecessor
+  database immutability, default-off, byte-exact lineage, strict false authority
+  and material (including boolean coercions), restart at expiry, permanent subject
+  denial, exact production consumers and normative authority/blocker agreement.
+- Exact corrected v0.54 contract and v0.53 closure consumer checks: **2 passed**.
+  Only four exact P4 UI paths enter the former; only the three admission UI
+  modules embedding v0.53 evidence enter the latter. No wildcard ignores or
+  future exclusions; no production changes to accommodate stale assertions.
+- Agent historical isolation/closure selection: **27 passed**, with
+  `PYTHONPATH=services/atlas-agent` and `ATLAS_AGENT_STATE_DIR` set to a
+  worktree-local directory. The initial default-state-directory attempt was
+  read-only; the documented configuration resolved it without source changes.
+- Historical v0.36 service/store and consumer scanner suite: **9 passed**.
+  Only `worker_activation_runtime_admission/contract.py` is added to the existing
+  fingerprint-only set; the AST still requires exactly `FingerprintV1`, with no
+  service/store imports. Unauthorized-consumer scanner tests remain unchanged.
+- Proxmox projection isolated rerun with worktree-local `ATLAS_PROVIDER_SECRET_FILE`:
+  **1 passed**, without production configuration or code changes.
+- Atlas Core Ruff gate: **passed**, using
+  `PATH=/opt/atlas/.venv/bin:$PATH scripts/rc1-python-ruff-gate services/atlas-core`.
+
+Hostile review passed: reviewed the complete P5 diff and the approved P4 reader/
+view and Core default-off service. Exact byte-level predecessor comparisons and
+strict boolean/material checks prevent lineage/authority weakening. Historical
+allowlists retain exact paths and fingerprint-only AST restrictions. No source
+behavior, production setting, package lockfile or execution-smoke override is
+changed. `git diff --check` passed. These review results do not close the missing
+UI, full-suite or commit gates. Inherited Pydantic schema/serializer warnings
+remain visible (462 warnings in the combined run); none were suppressed.
+
+Regression coverage mapping (existing P1-P4 tests remain required):
+
+| Gate | Repository evidence |
+| --- | --- |
+| v0.53 identity, ownership, recursive lineage and canonical fingerprints | v0.54 `test_contract.py`, `test_release_closure.py`; v0.53 package |
+| Default-off and strict false downstream authority | Contract/service tests; exact consumer and normative inventory checks |
+| Bounded persistence, no eviction, incomplete reservation quotas | v0.54 `test_service_store.py` |
+| Restart, duplicate expiry, competing keys, lock serialization, no replay | Service/store and release-closure tests |
+| Corrupt schema/index/model/hash, disk/append/audit/response failures | Service/store and guarded API tests |
+| Session, permission, CSRF, owner/candidate, response binding and API isolation | `routes/test_worker_activation_runtime_admission.py` and v0.53 routes |
+| Non-authoritative nested UI, fixed-false ceiling, zero effect consumers | Core UI isolation; P4 UI tests remain an environment-blocked gate here |
+| Historical release/isolation and Home Assistant golden evidence | Selected Core isolation/release-closure/golden files |
+
+Open environment and completion gates:
+
+- **Environment error:** Mission Control dependencies cannot be installed.
+  `npm ci --cache ../../.task-evidence/npm-cache` failed with registry DNS
+  `EAI_AGAIN` and npm's exit-handler error. `npm test` lacks Vitest; lint lacks
+  ESLint; build lacks Vite/Node types and invokes an incompatible fallback
+  TypeScript. Node 22.23.1/npm 10.9.8 are present. No lockfile change or weakened
+  UI test is substituted for the required test/build/lint gates.
+- Full execution-worker suite: 90-second timeout, with 30-second traceback in
+  Starlette TestClient at `test_durable_api_reuses_disabled_result_after_restart`.
+  A second attempt excluding that case also stalls in TestClient at
+  `test_health_and_disabled_submission_have_bounded_contract`. Non-TestClient
+  config/ledger/health/relay/workspace selection: **37 passed, 1 failed,
+  1 deselected**; `test_real_clone_succeeds_for_differently_owned_configured_source`
+  fails at `os.chown(..., 65534, 65534)` with EINVAL in this sandbox. These runtime
+  limitations do not invalidate the independently passing zero-consumer checks.
+- Full Atlas Core run: interrupted after progress recorded **2227 passes and
+  3 failures**, then stalled before `intelligence/test_coordinator.py::test_build_report`.
+  Isolated reruns identified the stale v0.36 fingerprint consumer expectation
+  (corrected and validated above), Discovery cache `os.chown(..., 12345, 12345)`
+  failing with EINVAL, and a read-only default provider-secret location. The
+  latter passes with its existing worktree-local configuration option. No full
+  Core pass is claimed, and the ownership test remains unchanged.
+- Required P5 commit: staging attempted, but managed Git metadata is read-only
+  and cannot create `index.lock`. No commit was created; no alternate Git metadata
+  or permission bypass was used. A writable managed Git environment is required.
+- Docker/production validation is not performed by this evidence-only closure;
+  historical socket/production gates remain open. No runtime probe, push, tag,
+  release, publication, deployment or execution-smoke override change.
+
+Reproduction uses `/opt/atlas/.venv/bin/python -m pytest` from the managed
+worktree root. Focused selection is the complete v0.54 and v0.53 packages,
+both guarded route test files, and every Core test file whose filename contains
+`isolation`, `release_closure` or `golden`. Agent selection comprises the v0.36,
+v0.37 and delivery activation isolation files and the live-intake, real-intake
+and simulated-delivery closure files. Worker commands use
+`PYTHONPATH=services/atlas-agent:services/atlas-execution-worker`; the diagnostic
+non-TestClient selection is explicit and is not a full-worker pass.
+
 ## Atlas v0.54 P4 Mission Control validation (2026-09-07)
 
 Baseline `04a66a4` contains committed P3 `d6dab4c` and `d4b27f9`;

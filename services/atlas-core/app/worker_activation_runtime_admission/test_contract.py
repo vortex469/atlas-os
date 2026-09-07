@@ -436,11 +436,15 @@ def test_no_io_or_production_consumers():
                 continue
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
-    # P3 adds only the guarded evidence route and dedicated registration.
+    # P3 registers guarded evidence only; P4 adds the exact nested GET-only UI.
     assert consumers == {
         "services/atlas-core/app/routes/worker_activation_runtime_admission.py",
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",
+        "services/mission-control/src/api/workerActivationRuntimeAdmission.ts",
+        "services/mission-control/src/types/workerActivationRuntimeAdmission.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimeAdmission.tsx",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimePrerequisite.tsx",
     }
 
 

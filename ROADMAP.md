@@ -7,7 +7,7 @@ The inspected released baseline is `atlas-v0.53.0` at
 complete in the released repository. Historical validation limitations below
 remain recorded; release identity does not imply production enablement.
 
-## Frozen v0.54 plan - Worker Activation Runtime Admission evidence
+## Implemented v0.54 evidence boundary - Worker Activation Runtime Admission evidence
 
 The [normative v0.54 contract](docs/architecture/worker-activation-runtime-admission-v1.md)
 freezes exactly one advance: `worker_activation_runtime_admission_recorded`,
@@ -21,7 +21,9 @@ P2 implements default-off bounded durable evidence and permanent no-replay; P3 a
 guarded evidence create/list/get without production construction; P4 adds nested
 GET-only Mission Control presentation; P5 proves failure, ownership, lineage,
 concurrency, corruption and historical isolation, with zero Agent/execution-worker
-consumers. P1/P2/P3/P4 are implemented; P5 remains open. Exact requirements and
+consumers. P1-P4 are committed; P5 adds release-closure regressions and normative
+documentation over committed P4 `7a3ec1f`. Release sign-off remains open for the
+required local commit and environment-blocked validation gates. Exact requirements and
 gates are in the contract and [release checklist](docs/RELEASE_CHECKLIST.md).
 
 Queue effects, runtime activation, store/runtime contact, worker-start admission

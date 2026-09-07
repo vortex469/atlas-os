@@ -109,6 +109,10 @@ def test_exact_v053_production_consumers():
         "WORKER_ACTIVATION_RUNTIME_PREREQUISITE",
     )
     expected = {
+        # v0.54 P4 embeds exact prerequisite evidence in the nested GET-only view.
+        "services/mission-control/src/api/workerActivationRuntimeAdmission.ts",
+        "services/mission-control/src/types/workerActivationRuntimeAdmission.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimeAdmission.tsx",
         "services/atlas-core/app/worker_activation_runtime_admission/contract.py",
         "services/atlas-core/app/worker_activation_runtime_admission/readers.py",
         "services/atlas-core/app/worker_activation_runtime_admission/service.py",

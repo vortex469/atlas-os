@@ -1,6 +1,6 @@
 # Worker Activation Runtime Admission v1 contract
 
-Status: **Atlas v0.54 P0 frozen; P1 pure Core contract, P2 durable evidence and P3 guarded API and P4 Mission Control implemented; P5 not implemented**.
+Status: **Atlas v0.54 normative contract finalized; P1-P4 committed; P5 closure coverage implemented, with commit and external validation gates open as recorded in the release checklist**.
 
 P0 froze this normative boundary. P1 implements only the pure Core models and
 evaluator; neither phase introduces runtime, API, UI, permission registration,
@@ -48,7 +48,7 @@ The only direct prerequisite is `WorkerActivationRuntimePrerequisiteV1`
 (schema `worker-activation-runtime-prerequisite-status-v1`). Both come from an
 injected owner-scoped durable Core reader, never caller-supplied nested evidence.
 
-The future create request pins `prerequisite_id`, exact `valid_until`,
+The create request pins `prerequisite_id`, exact `valid_until`,
 `prerequisite_record_fingerprint` and predecessor `status_fingerprint`, plus the
 closed scope `worker_activation_runtime_admission_only`. Authenticated
 `operator_id` and candidate UUID4 `candidate_record_id` must match both models.
@@ -105,7 +105,7 @@ stale, expired, corrupt, fingerprint-mismatched, altered-authority or unsupporte
 capability evidence. Home Assistant stays blocked without installation artifacts.
 
 Use schema `worker-activation-runtime-admission-v1` and a separate UUID5
-`runtime_admission_id`; never overload inherited `admission_id`. P1 must freeze
+`runtime_admission_id`; never overload inherited `admission_id`. P1 freezes
 separate versioned domains for admission ID, subject, request, record, status,
 collection, idempotency, reservation and audit, with deterministic test vectors.
 The permanent subject binds owner, candidate and exact v0.53 `prerequisite_id`;
@@ -220,7 +220,7 @@ and no-replay ledgers remain isolated and unchanged.
 
 ## Persistence, ownership, replay, concurrency and corruption
 
-P2 may add only an explicitly constructed, default-off Core-local append-only
+P2 provides only an explicitly constructed, default-off Core-local append-only
 SQLite journal and owned durable v0.53 reader. No startup construction, network,
 broker, worker database, queue adapter or runtime probe. P1 remains pure.
 
@@ -259,8 +259,8 @@ must be indistinguishable from missing evidence. Reads never drive consumers.
 
 ## P1-P5 responsibilities and exit gates
 
-These are future implementation requirements, in P1 -> P2 -> P3 -> P4 -> P5 order.
-P0 implements none of them.
+These are the normative phase responsibilities, implemented in
+P1 -> P2 -> P3 -> P4 -> P5 order. P0 froze the boundary without implementation.
 
 | Phase | Required responsibility and evidence |
 | --- | --- |
@@ -276,7 +276,7 @@ exception or weakening of historical isolation, including fingerprint-only impor
 restrictions. Production enablement and later runtime/contact/start contracts
 require separate authorization; P5 or a released tag cannot supply it.
 
-## Release isolation and P0 validation
+## Historical P0 validation scope
 
 P0 changes only this contract, ROADMAP and release checklist documentation.
 Inspect the local released tag, verify links, exact predecessor fields, marker
@@ -284,7 +284,7 @@ agreement, seven blockers, closed authority inventory and documentation-only dif
 Run focused v0.53 contract/service/store/API/closure/UI structural tests and
 historical installation/Agent isolation; record commands and observed results in
 the [release checklist](../RELEASE_CHECKLIST.md). Run `git diff --check`, perform
-hostile review and create a local documentation commit. P1-P5 remain open.
+hostile review and create a local documentation commit. P1-P5 were open at P0; current validation is recorded below.
 
 Historical external gates remain as recorded, including unavailable full-suite
 and Mission Control dependency gates; this P0 does not waive or rerun them as
@@ -369,7 +369,7 @@ construction, runtime primitive or downstream authority is added. The exact
 historical consumer allowlists name this evidence route and its registration.
 The [API tests](../../services/atlas-core/app/routes/test_worker_activation_runtime_admission.py)
 cover hostile requests/responses and durable v0.53 lineage through restart,
-expiry and corrupt readback. P4/P5 remain separate work.
+expiry and corrupt readback. P4 presentation and P5 closure retain this exact boundary.
 
 
 ## P4 implementation reference
@@ -389,4 +389,37 @@ reason codes, authority fields and complete prerequisite lineage are in collapse
 advanced details. Scope changes remount the reader and late responses are ignored.
 No polling, browser persistence, new navigation or downstream consumer is added.
 Focused hostile-response, scope-race, UI and structural regressions accompany the
-integration. P5 closure remains separate; production construction remains absent.
+integration. P5 closure locks these consumers; production construction remains absent.
+
+
+## P5 release closure and authority isolation
+
+The [release-closure regressions](../../services/atlas-core/app/worker_activation_runtime_admission/test_release_closure.py)
+run over committed P4 `7a3ec1f`. They preserve the byte-exact complete durable
+v0.53 prerequisite/status pair, exact identity and fingerprints, owner/candidate,
+expiry and seven blockers. The predecessor database remains byte-exact after
+admission and replay denial. Default construction refuses creation; a restarted
+explicitly enabled service returns expired historical duplicates without reading
+the predecessor, appending, renewing eligibility or allowing a replacement key.
+
+The exact production consumer set is the four Core contract/reader/service/store
+modules, guarded route, router and permission registry, plus Mission Control's
+admission API reader, types, nested admission view and prerequisite parent view.
+Agent and execution-worker have zero consumers. Historical v0.53 closure adds
+only the exact three admission UI modules that embed prerequisite evidence; the
+v0.54 P1 consumer check adds only the four committed P4 UI surfaces. The v0.36
+service/store isolation test permits only the v0.54 contract and still checks its
+exact `FingerprintV1`-only import with AST assertions. No wildcard
+exclusion, future consumer permission or production behavior change is introduced.
+
+Contract/service/store/API regressions remain normative for strict false authority,
+recursive corruption, owned reads, bounded persistence, concurrent reservation,
+failed append/audit/response delivery and authenticated scope. Mission Control is
+a non-authoritative GET-only projection. No worker or execution start, installation,
+deployment, rollback, publication, retry or resend authority advances. Only
+`worker_activation_runtime_admission_recorded` is new.
+
+The [P5 release evidence](../RELEASE_CHECKLIST.md) records actual gate outcomes
+and environment limitations. Repository coverage does not waive missing UI or
+full-suite validation, authorize production composition, or imply a release.
+The required P5 commit remains a separate unsatisfied gate if Git is read-only.

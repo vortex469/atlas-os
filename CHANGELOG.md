@@ -6,6 +6,18 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.54 P5 - Runtime Admission Evidence Closure
+
+- Added durable v0.53-to-v0.54 lineage, strict false authority, default-off,
+  restart/no-replay and exact Core/API/UI consumer regression locks over
+  committed P4 `7a3ec1f`. Narrow historical allowlists name only approved P4 UI
+  and the v0.54 contract with its exact fingerprint-only import restriction.
+- Finalized the normative architecture contract and roadmap. Only
+  `worker_activation_runtime_admission_recorded` advances; all seven blockers
+  remain, with zero Agent/execution-worker consumers and no production changes.
+- [Release evidence](docs/RELEASE_CHECKLIST.md) records validation and open
+  environment/commit gates. No push, tag, release, publication or deployment.
+
 #### v0.53 P5 Recovery - Worker Activation Runtime Prerequisite Closure
 
 - Recovered from P4 `fe781fb`, with P3 `7b5831c` and merge `b78ca94` in ancestry.
