@@ -662,6 +662,8 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/controlledWorkerQueueReceipt.ts"),
         # v0.53 P4: exact nested guarded GET-only prerequisite evidence reader.
         Path("api/workerActivationRuntimePrerequisite.ts"),
+        # v0.54 P4: exact nested guarded GET-only admission evidence reader.
+        Path("api/workerActivationRuntimeAdmission.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 

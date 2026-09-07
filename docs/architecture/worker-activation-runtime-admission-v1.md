@@ -1,6 +1,6 @@
 # Worker Activation Runtime Admission v1 contract
 
-Status: **Atlas v0.54 P0 frozen; P1 pure Core contract, P2 durable evidence and P3 guarded API implemented; P4-P5 not implemented**.
+Status: **Atlas v0.54 P0 frozen; P1 pure Core contract, P2 durable evidence and P3 guarded API and P4 Mission Control implemented; P5 not implemented**.
 
 P0 froze this normative boundary. P1 implements only the pure Core models and
 evaluator; neither phase introduces runtime, API, UI, permission registration,
@@ -370,3 +370,23 @@ historical consumer allowlists name this evidence route and its registration.
 The [API tests](../../services/atlas-core/app/routes/test_worker_activation_runtime_admission.py)
 cover hostile requests/responses and durable v0.53 lineage through restart,
 expiry and corrupt readback. P4/P5 remain separate work.
+
+
+## P4 implementation reference
+
+The [Mission Control reader](../../services/mission-control/src/api/workerActivationRuntimeAdmission.ts)
+and [nested view](../../services/mission-control/src/features/installation/WorkerActivationRuntimeAdmission.tsx)
+present admission evidence beneath the exact v0.53 prerequisite in the existing
+installation workflow. Credentialed collection/item GETs validate closed models,
+owner/candidate/prerequisite linkage, recursive predecessor evidence, immutable
+list/item equality, Core lifecycle timestamps, fingerprint metadata, the seven
+blockers and every fixed-false field. Core computes hashes and current eligibility;
+Mission Control adds no evidence creation, runtime authority or action control.
+
+Loading, missing, unavailable and expired states are distinct. Operator-facing
+copy says prerequisites remain incomplete; IDs, timestamps, duplicates, hashes,
+reason codes, authority fields and complete prerequisite lineage are in collapsed
+advanced details. Scope changes remount the reader and late responses are ignored.
+No polling, browser persistence, new navigation or downstream consumer is added.
+Focused hostile-response, scope-race, UI and structural regressions accompany the
+integration. P5 closure remains separate; production construction remains absent.

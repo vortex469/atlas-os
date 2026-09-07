@@ -73,12 +73,19 @@ export async function getWorkerActivationRuntimePrerequisite(receipt: Controlled
     const selected = matches[0];
     check(selected.receipt.fingerprints.receipt_record.value === receipt.fingerprints.receipt_record.value);
     const detail = await atlas.get<unknown>(`${path}/${encodeURIComponent(selected.prerequisiteId)}`, { withCredentials: true });
-    const result = object(detail.data);
+    const parsed = parseWorkerActivationRuntimePrerequisite(detail.data, candidateId, operatorId, selected.prerequisiteId, admissionId, receipt.fingerprints.receipt_record.value);
+    check(parsed.fingerprints.prerequisite_record.value === selected.fingerprints.prerequisite_record.value);
+    return { ...parsed, fingerprints: { ...parsed.fingerprints, collection: fp(collection.collection_fingerprint) } };
+}
+
+// Pure recursive envelope validation, also used by the exact v0.54 successor.
+export function parseWorkerActivationRuntimePrerequisite(value: unknown, candidateId: string, operatorId: string, prerequisiteId: string, admissionId: string, receiptFingerprint?: string): WorkerActivationRuntimePrerequisite {
+    const result = object(value);
     closed(result, ["record", "status", "exact_duplicate", MARKER]);
     check(result.schema === `${SCHEMA}-result-v1` && result[MARKER] === true && typeof result.exact_duplicate === "boolean");
     const parsed = record(result.record, candidateId, operatorId);
-    check(parsed.prerequisiteId === selected.prerequisiteId && parsed.admissionId === admissionId && parsed.fingerprints.prerequisite_record.value === selected.fingerprints.prerequisite_record.value);
-    check(parsed.receipt.fingerprints.receipt_record.value === receipt.fingerprints.receipt_record.value);
+    check(parsed.prerequisiteId === prerequisiteId && parsed.admissionId === admissionId);
+    if (receiptFingerprint) check(parsed.receipt.fingerprints.receipt_record.value === receiptFingerprint);
     const status = object(result.status);
     closed(status, [...COMMON, "evaluated_at", "status_fingerprint"]);
     check(status.schema === `${SCHEMA}-status-v1` && status[MARKER] === true);
@@ -93,7 +100,7 @@ export async function getWorkerActivationRuntimePrerequisite(receipt: Controlled
         prerequisiteId: parsed.prerequisiteId, admissionId, candidateId, operatorId,
         recordedAt: parsed.recordedAt, validUntil: parsed.validUntil, evaluatedAt,
         lifecycle: status.lifecycle, exactDuplicate: result.exact_duplicate, blockers: [...BLOCKERS],
-        fingerprints: { ...parsed.fingerprints, status: fp(status.status_fingerprint), collection: fp(collection.collection_fingerprint), v052_receipt_record: parsed.receipt.fingerprints.receipt_record, v052_receipt_status: parsed.receipt.fingerprints.status },
+        fingerprints: { ...parsed.fingerprints, status: fp(status.status_fingerprint), v052_receipt_record: parsed.receipt.fingerprints.receipt_record, v052_receipt_status: parsed.receipt.fingerprints.status },
         authority: Object.fromEntries(CLOSED_RUNTIME_AUTHORITY.map((key) => [key, status[key]])) as WorkerActivationRuntimePrerequisite["authority"],
     };
 }

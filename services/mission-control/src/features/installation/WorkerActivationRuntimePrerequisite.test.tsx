@@ -18,7 +18,7 @@ describe("v0.53 runtime prerequisite presentation", () => {
         const { container } = render(<WorkerActivationRuntimePrerequisite receipt={receipt} />);
         expect(screen.getByRole("status")).toHaveTextContent("Loading");
         expect(await screen.findByText(/Core recorded prerequisite evidence/)).toBeVisible();
-        expect(screen.getByText(/Runtime prerequisites remain incomplete/)).toBeVisible();
+        expect(screen.getAllByText(/Runtime prerequisites remain incomplete/).every((node) => node.textContent?.includes("Worker start and execution remain blocked"))).toBe(true);
         const details = screen.getByText("Advanced v0.53 evidence").closest("details");
         expect(details).not.toHaveAttribute("open");
         expect(screen.getByText(runtimeResult.record.prerequisite_id)).not.toBeVisible();
@@ -29,7 +29,7 @@ describe("v0.53 runtime prerequisite presentation", () => {
         responses({ ...runtimeResult, status: { ...runtimeResult.status, lifecycle: "expired", evaluated_at: runtimeResult.status.valid_until } });
         render(<WorkerActivationRuntimePrerequisite receipt={receipt} />);
         expect(await screen.findByText(/prerequisite evidence has expired/)).toBeVisible();
-        expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
+        expect(screen.getAllByText(/Worker start and execution remain blocked/)[0]).toBeVisible();
     });
     it.each([401, 403, 404, 409, 503])("redacts failure %s without retry controls", async (status) => {
         vi.mocked(atlas.get).mockRejectedValue({ response: { status, data: { message: "secret endpoint" } } });

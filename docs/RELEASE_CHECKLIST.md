@@ -3,6 +3,48 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.54 P4 Mission Control validation (2026-09-07)
+
+Baseline `04a66a4` contains committed P3 `d6dab4c` and `d4b27f9`;
+ancestry verified. P4 adds the frozen nested GET-only admission evidence view
+beneath the exact v0.53 prerequisite. Core remains authoritative and default-off;
+no creation, activation, worker, Agent, execution or publication control is added.
+P5 remains open. Historical validation entries below retain their original scope.
+
+Focused tests passed:
+
+- Mission Control v0.54/v0.53 API and component tests plus all `src/security`
+  tests: **41 files, 295 tests passed**.
+- Selected-interpreter module-form pytest from the managed repository root:
+  `services/atlas-core/app/worker_activation_runtime_admission/test_mission_control_isolation.py`:
+  **2 passed**; v0.53 `test_mission_control_isolation.py` and
+  `services/atlas-core/app/routes/test_installation_release_isolation.py`:
+  **68 passed**.
+- From `services/mission-control`: `npm test`: **146 files, 987 tests passed**;
+  `npm run build` and `npm run lint`: **passed**.
+- `git diff --check`: **passed**.
+
+Hostile review passed: closed schemas and strict false fields reject altered or
+coerced authority, including nested prerequisite records/statuses; parent scope,
+immutable collection/item equality, duplicate ambiguity, timestamp relationships
+and bounded evidence fail closed. Core status controls active/expired display;
+no browser clock or hash establishes eligibility. Scope remounts clear evidence
+and ignore late responses. Raw errors are redacted, advanced lineage is rendered
+as text inside collapsed details, and exact consumer allowlists preserve zero
+Agent/execution-worker consumers. No unrelated UI or execution-smoke override was
+changed. No push, tag, release, publish or deployment was performed.
+
+Required local commit remains blocked: staging failed because the managed
+worktree's Git metadata is on a read-only filesystem (Git could not create
+`index.lock`). Implementation files are modified in the managed worktree;
+no task commit was created. This P4 task's commit criterion remains open until
+those changes can be staged and committed in a writable Git environment.
+
+Pre-existing warnings, separate from passed gates: Vite's bundle-size warning;
+`WorkflowShellPage.tsx:87` hook dependency warning; inherited Pydantic schema
+shadowing and serializer warnings (295 on the new isolation run, 298 on the
+historical isolation run). These warnings were not suppressed or repaired here.
+
 ## Atlas v0.54 P3 guarded API validation (2026-09-07)
 
 Baseline `04c39a3` contains committed P2 `8aaa89e`; ancestry verified. The

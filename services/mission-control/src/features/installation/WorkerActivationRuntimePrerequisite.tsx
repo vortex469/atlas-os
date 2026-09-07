@@ -1,3 +1,4 @@
+import { WorkerActivationRuntimeAdmission } from "./WorkerActivationRuntimeAdmission";
 import { useEffect, useState } from "react";
 import { getWorkerActivationRuntimePrerequisite } from "../../api/workerActivationRuntimePrerequisite";
 import type { ControlledWorkerQueueReceipt } from "../../types/controlledWorkerQueueReceipt";
@@ -33,6 +34,7 @@ function PrerequisiteReader({ receipt }: { receipt: ControlledWorkerQueueReceipt
                 <ol>{state.blockers.map((code) => <li key={code}><code>{code}</code></li>)}</ol>
                 <dl aria-label="v0.53 fixed-false authority">{Object.entries(state.authority).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{String(value)}</dd></div>)}</dl>
             </details>
+            <WorkerActivationRuntimeAdmission prerequisite={state} />
         </>}
     </section>;
 }
