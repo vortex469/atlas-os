@@ -1,6 +1,36 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - v0.53 runtime prerequisite evidence
+## 1. Current baseline - released v0.53 runtime prerequisite evidence
+
+The inspected released baseline is `atlas-v0.53.0` at
+`b55f6520527fe37a729c6f72c183f1a3c8d26d50` (`b55f652`). V0.53 P0-P5 is
+complete in the released repository. Historical validation limitations below
+remain recorded; release identity does not imply production enablement.
+
+## Frozen v0.54 plan - Worker Activation Runtime Admission evidence
+
+The [normative v0.54 contract](docs/architecture/worker-activation-runtime-admission-v1.md)
+freezes exactly one advance: `worker_activation_runtime_admission_recorded`,
+Core-local evidence over one exact active same-owner v0.53 prerequisite/status
+pair and its complete v0.52-v0.20 lineage. Runtime/contact/start primitives are
+absent from the released lineage, so admission records acceptance for future
+runtime design consideration only. All seven blockers remain unchanged.
+
+P0 is documentation only. Future P1 defines immutable models/pure evaluation;
+P2 adds default-off bounded durable evidence and permanent no-replay; P3 adds
+guarded evidence create/list/get without production construction; P4 adds nested
+GET-only Mission Control presentation; P5 proves failure, ownership, lineage,
+concurrency, corruption and historical isolation, with zero Agent/execution-worker
+consumers. P1-P5 remain unimplemented. Exact requirements and gates are in the
+contract and [release checklist](docs/RELEASE_CHECKLIST.md).
+
+Queue effects, runtime activation, store/runtime contact, worker-start admission
+and its construction, worker start/invocation, Agent invocation, execution
+authorization/start, installation, deployment, rollback, publication, retry/resend
+and unrelated effects stay fixed false/default-off. No runtime/API behavior or
+`compose.execution-smoke.override.yaml` change; no push, tag, release or deploy.
+
+### Historical baseline context
 
 Atlas v0.51 P0-P5 closes the Controlled Worker Queue Claim/Lease/
 Acknowledgement Admission boundary after inspecting the completed merged
