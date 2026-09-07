@@ -3,6 +3,66 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.53 P0 Worker Activation Runtime Prerequisite - frozen
+
+The [normative v1 contract](architecture/worker-activation-runtime-prerequisite-v1.md)
+selects evidence-only prerequisite recording from v0.52 P5 repository commit
+`f6e9de8e57685967541369073e45f42e804989c8`. It does not claim a published v0.52
+release or independently verified remote merge. Prior environment-dependent
+release gates below remain open.
+
+- [x] Inspect actual v0.52 contract, service/readers/store, Core routes, Mission
+  Control, Agent architecture, packaged execution-worker API and isolation tests.
+- [x] Freeze only `worker_activation_runtime_prerequisite_recorded` over one
+  exact active same-owner v0.52 receipt/status pair, preserving exact IDs,
+  fingerprints, complete v0.51-v0.20 lineage and inherited limits.
+- [x] Preserve all seven v0.52 blockers, fixed-false downstream authority,
+  authenticated ownership, bounded persistence, permanent no-replay, fail-closed
+  ambiguity/corruption and zero Agent/execution-worker consumers.
+- [x] P0 documentation only; no production runtime/API/UI/permission/configuration
+  changes or `compose.execution-smoke.override.yaml` change.
+- [ ] P1: closed immutable prerequisite models and pure validation.
+- [ ] P2: explicit default-off durable service/store and owned v0.52 reader,
+  concurrent permanent reservations, restart/expiry no-replay and failure closure.
+- [ ] P3: exact guarded owner-scoped evidence API specified by the contract.
+- [ ] P4: nested read-only Mission Control evidence beneath the v0.52 receipt.
+- [ ] P5: release-isolation, redaction, failure, API/UI and historical regressions,
+  Agent/execution-worker zero-consumer checks and release validation evidence.
+
+### P0 validation evidence (2026-09-07)
+
+Focused tests passed: 69 v0.52/v0.51 contract, service/store, API, scope and
+closure tests; 66 historical installation release-isolation tests; six Agent
+v0.36/v0.37/delivery-preflight isolation tests. All 141 passed using the selected
+Python interpreter with test state confined to the task worktree. Existing
+Pydantic schema/serialization and HTTPX cookie warnings were emitted.
+
+Documentation consistency passed: relative links resolve; the frozen baseline
+SHA matches the inspected HEAD; all seven blockers and pinned receipt fingerprint
+field names match the v0.52 source; roadmap/checklist agree on the selected marker.
+`git diff --check` passed. Hostile review passed: corrected historical v0.25-v0.31
+lineage labels against the release plans, checked the shared v0.51/v0.52 admission
+ID, verified no queue-effect inference or runtime bridge, and confirmed only
+three Markdown files changed with no production or compose changes. P1-P5 and
+prior environment-dependent release gates remain explicitly uncompleted.
+
+Reproduction targets (run `python -m pytest` with the selected interpreter from
+the task worktree, a worktree-local `--basetemp`, and `-q`):
+
+- Core: `services/atlas-core/app/controlled_worker_queue_claim_lease_acknowledgement`,
+  `services/atlas-core/app/controlled_worker_queue_claim_lease_acknowledgement_admission`,
+  `services/atlas-core/app/routes/test_controlled_worker_queue_claim_lease_acknowledgement.py`,
+  `services/atlas-core/app/routes/test_controlled_worker_queue_claim_lease_acknowledgement_admission.py`.
+- Historical: `services/atlas-core/app/routes/test_installation_release_isolation.py`.
+- Agent: `services/atlas-agent/tests/test_v036_installation_execution_admission_isolation.py`,
+  `services/atlas-agent/tests/test_v037_runner_binding_plan_isolation.py`,
+  `services/atlas-agent/tests/test_delivery_activation_preflight_isolation.py`,
+  with `PYTHONPATH=services/atlas-agent` and worktree-local `ATLAS_AGENT_STATE_DIR`.
+
+No push, tag, publication, deployment or runtime invocation is part of this task. Successful prerequisite recording will not establish a runtime,
+contact a worker, admit/start a worker, invoke Agent, start execution, install,
+deploy, roll back, publish or authorize retry/resend.
+
 ## Atlas v0.52 P0-P5 Queue Receipt Evidence - repository closure
 
 P1-P4 implementation is complete; P5 adds regression and release documentation.
