@@ -413,7 +413,7 @@ def test_no_production_or_effect_consumers():
             assert "worker_activation_runtime_prerequisite" not in path.read_text()
     package = Path(__file__).parent
     app = root / "atlas-core" / "app"
-    # V0.54 permits its exact contract/persistence modules; v0.53 retains its routes.
+    # V0.54 permits its exact evidence modules/API; v0.53 retains its routes.
     # Route tests lock exact methods, recursive validation and zero effect calls.
     consumers = {
         path.relative_to(app).as_posix()
@@ -427,6 +427,7 @@ def test_no_production_or_effect_consumers():
         "worker_activation_runtime_admission/service.py",
         "worker_activation_runtime_admission/store.py",
         "routes/worker_activation_runtime_prerequisite.py",
+        "routes/worker_activation_runtime_admission.py",
         "api/v1/router.py",
         "operator_auth/models.py",
     }

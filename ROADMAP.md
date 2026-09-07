@@ -21,14 +21,14 @@ P2 implements default-off bounded durable evidence and permanent no-replay; P3 a
 guarded evidence create/list/get without production construction; P4 adds nested
 GET-only Mission Control presentation; P5 proves failure, ownership, lineage,
 concurrency, corruption and historical isolation, with zero Agent/execution-worker
-consumers. P1/P2 are implemented; P3-P5 remain open. Exact requirements and
+consumers. P1/P2/P3 are implemented; P4/P5 remain open. Exact requirements and
 gates are in the contract and [release checklist](docs/RELEASE_CHECKLIST.md).
 
 Queue effects, runtime activation, store/runtime contact, worker-start admission
 and its construction, worker start/invocation, Agent invocation, execution
 authorization/start, installation, deployment, rollback, publication, retry/resend
-and unrelated effects stay fixed false/default-off. No runtime/API behavior or
-`compose.execution-smoke.override.yaml` change; no push, tag, release or deploy.
+and unrelated effects stay fixed false/default-off. The API exposes evidence only.
+No runtime behavior or `compose.execution-smoke.override.yaml` change; no push, tag, release or deploy.
 
 ### Historical baseline context
 

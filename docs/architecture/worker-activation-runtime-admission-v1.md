@@ -1,6 +1,6 @@
 # Worker Activation Runtime Admission v1 contract
 
-Status: **Atlas v0.54 P0 frozen; P1 pure Core contract and P2 durable evidence implemented; P3-P5 not implemented**.
+Status: **Atlas v0.54 P0 frozen; P1 pure Core contract, P2 durable evidence and P3 guarded API implemented; P4-P5 not implemented**.
 
 P0 froze this normative boundary. P1 implements only the pure Core models and
 evaluator; neither phase introduces runtime, API, UI, permission registration,
@@ -344,3 +344,29 @@ The service preserves P1 IDs, hashes, recursive predecessor models and seven
 blockers. Clock rollback between reads and malformed correlation material fail
 closed. Only the exact three successor persistence modules join the historical
 v0.53 consumer allowlists. No production construction or effect consumer is added.
+
+
+## P3 implementation reference
+
+The [guarded Core route](../../services/atlas-core/app/routes/worker_activation_runtime_admission.py)
+registers only the frozen candidate collection POST/GET and runtime-admission
+item GET. Dedicated evaluate/read permissions require an operator session. POST
+also requires trusted-origin, CSRF and mutation throttling checks. Strict bounded JSON rejects
+extra fields, duplicate keys, excessive nesting, ambiguous headers and material.
+No query parameters or GET bodies are accepted.
+
+Every service response is recursively reparsed through P1, including constructed
+models and redacted errors. Owner/candidate/item linkage is checked at the route;
+POST additionally binds prerequisite ID, expiry, both predecessor fingerprints
+and the owner-scoped idempotency fingerprint to the exact request. P2 retains
+exclusive responsibility for locked prerequisite revalidation, permanent
+reservations and historical duplicate reads. Collections retain the P1 16-item
+and 192 KiB model ceilings.
+
+Missing service returns redacted 503; creation remains disabled unless explicitly
+composed and enabled outside production startup. No enabling setting, startup
+construction, runtime primitive or downstream authority is added. The exact
+historical consumer allowlists name this evidence route and its registration.
+The [API tests](../../services/atlas-core/app/routes/test_worker_activation_runtime_admission.py)
+cover hostile requests/responses and durable v0.53 lineage through restart,
+expiry and corrupt readback. P4/P5 remain separate work.

@@ -118,6 +118,7 @@ def test_exact_v053_production_consumers():
         "services/atlas-core/app/worker_activation_runtime_prerequisite/service.py",
         "services/atlas-core/app/worker_activation_runtime_prerequisite/store.py",
         "services/atlas-core/app/routes/worker_activation_runtime_prerequisite.py",
+        "services/atlas-core/app/routes/worker_activation_runtime_admission.py",
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",
         "services/mission-control/src/api/workerActivationRuntimePrerequisite.ts",

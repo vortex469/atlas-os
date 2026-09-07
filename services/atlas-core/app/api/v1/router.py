@@ -93,6 +93,9 @@ from app.routes.proxmox import router as proxmox_router
 from app.routes.queue_observation import router as queue_observation_router
 from app.routes.runner_binding_plan import router as runner_binding_plan_router
 from app.routes.status import router as status_router
+from app.routes.worker_activation_runtime_admission import (
+    router as worker_activation_runtime_admission_router,
+)
 from app.routes.worker_activation_runtime_prerequisite import (
     router as worker_activation_runtime_prerequisite_router,
 )
@@ -178,6 +181,7 @@ router.include_router(controlled_worker_queue_claim_lease_ack_prerequisite_route
 router.include_router(controlled_worker_queue_claim_lease_ack_admission_router)
 router.include_router(controlled_worker_queue_claim_lease_ack_router)
 router.include_router(worker_activation_runtime_prerequisite_router)
+router.include_router(worker_activation_runtime_admission_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
 router.include_router(execution_permission_grant_router)

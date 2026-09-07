@@ -3,6 +3,51 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.54 P3 guarded API validation (2026-09-07)
+
+Baseline `04c39a3` contains committed P2 `8aaa89e`; ancestry verified. The
+previous P2 worktree staging limitation below is historical: P2 is committed in
+this P3 baseline. P3 adds only the frozen evidence collection POST/GET and item
+GET, dedicated evaluate/read permissions, strict bounded request/response
+validation and redacted errors. Production service construction remains absent.
+P1-P3 are implemented; P4/P5 remain separate work. Historical checklists below
+preserve the results recorded at their respective phases.
+
+Focused tests passed:
+
+- Final v0.54 API/security suite: **38 passed** (55.29 seconds).
+- Complete v0.54 admission and v0.53 prerequisite packages (P1/P2, closure
+  and UI structural regressions): **242 passed** (142.75 seconds).
+- v0.53 route, historical installation isolation and API foundation suites:
+  **104 passed** (77.83 seconds).
+- Historical release-closure surface/registration/consumer selection:
+  **15 passed, 58 deselected** (30.73 seconds).
+- Tests used the selected interpreter's `-m pytest -q --disable-warnings`,
+  `PYTHONPATH=services/atlas-core`, and worktree-local `--basetemp` directories.
+  Existing model-shadowing and test-client cookie deprecation warnings remain.
+- Atlas Core `scripts/rc1-python-ruff-gate services/atlas-core` with the selected
+  interpreter on PATH and `git diff --check` passed.
+
+The optional broader operator-auth run stalled in the unchanged legacy login
+TestClient. An isolated diagnostic of
+`test_operator_auth.py::test_end_to_end_login_session_probe_and_logout` emitted
+an AnyIO/Starlette threaded portal wait traceback after 10 seconds and exited
+124 at a 25-second timeout. No pass is claimed for that optional suite. The
+v0.54 authentication/CSRF/permission/isolation tests use the repository's
+thread-free ASGI client and pass. Required regressions are run separately.
+
+Hostile review passed: the diff adds exactly two paths/three methods and two
+permissions. POST binds the authenticated owner, candidate, exact prerequisite,
+expiry, both pinned fingerprints and idempotency key. Constructed or tampered
+responses are recursively reparsed; foreign results and malformed requests fail
+closed. Durable API tests preserve byte-exact predecessor evidence, permanent
+reservations, expired historical duplicate readback and corruption refusal.
+All seven blockers and downstream false authority remain enforced by P1/P2.
+Historical allowlists add only named evidence consumers; there are no Agent or
+execution-worker consumers, runtime primitives, production construction or
+activation settings. P1/P2 production modules and the compose smoke override
+are unchanged. No push, tag, release, publication or deployment was performed.
+
 ## Atlas v0.54 P2 durable evidence validation (2026-09-07)
 
 Baseline HEAD `d0c3007` includes committed P1 `fd3295e`; ancestry verified.

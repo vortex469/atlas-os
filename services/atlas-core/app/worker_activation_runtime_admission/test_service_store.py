@@ -425,7 +425,12 @@ def test_no_production_or_effect_consumers():
         and not path.name.startswith("test_")
         and "worker_activation_runtime_admission" in path.read_text()
     }
-    assert consumers == set()
+    # P3 adds only the guarded evidence route and dedicated registration.
+    assert consumers == {
+        "routes/worker_activation_runtime_admission.py",
+        "api/v1/router.py",
+        "operator_auth/models.py",
+    }
     for name in ("service.py", "store.py", "readers.py"):
         tree = ast.parse((package / name).read_text())
         for node in ast.walk(tree):
