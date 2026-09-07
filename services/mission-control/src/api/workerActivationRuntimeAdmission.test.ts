@@ -104,16 +104,20 @@ describe("v0.54 immutable evidence boundary", () => {
         await expect(getWorkerActivationRuntimeAdmission(prerequisite)).rejects.toThrow(/unavailable/);
         expect(atlas.get).toHaveBeenCalledTimes(1);
     });
-    it("validates nested v0.53 authority in both the record and its status", async () => {
-        for (const key of CLOSED_RUNTIME_AUTHORITY) {
-            for (const field of ["worker_activation_runtime_prerequisite", "worker_activation_runtime_prerequisite_status"] as const) {
-                vi.resetAllMocks();
-                const result = structuredClone(admissionResult);
-                Object.assign(result.record[field], { [key]: true });
-                responses(admissionCollection, result);
-                await expect(getWorkerActivationRuntimeAdmission(prerequisite)).rejects.toThrow();
-            }
-        }
+    // Give every key/field pair its own timeout while retaining the full hostile matrix.
+    describe.each(["worker_activation_runtime_prerequisite", "worker_activation_runtime_prerequisite_status"] as const)("nested v0.53 authority in %s", (field) => {
+        it.each(CLOSED_RUNTIME_AUTHORITY)("rejects elevated %s", async (key) => {
+            // Copy the mutated path only; the reader does not mutate shared lineage.
+            const result = {
+                ...admissionResult,
+                record: {
+                    ...admissionResult.record,
+                    [field]: { ...admissionResult.record[field], [key]: true },
+                },
+            };
+            responses(admissionCollection, result);
+            await expect(getWorkerActivationRuntimeAdmission(prerequisite)).rejects.toThrow();
+        });
     });
     it("rejects mismatched prerequisite status fingerprints and IDs", async () => {
         for (const change of [
