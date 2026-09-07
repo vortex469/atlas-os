@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import unicodedata
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
@@ -41,10 +42,9 @@ from app.installation_targets.contract import CanonicalUuid4
 MAX_CREATE_BYTES = 16 * 1024
 MAX_CREATE_NESTING = 16
 MAX_MODEL_BYTES = 192 * 1024
+MAX_COLLECTION_RECORDS = 16
 MAX_FRESHNESS_SECONDS = 30
-PERMISSION = (
-    "installation.execution.controlled_worker_queue_claim_lease_acknowledgement.evaluate"
-)
+PERMISSION = "installation.execution.controlled_worker_queue_claim_lease_acknowledgement.evaluate"
 SCOPE = "controlled_worker_queue_claim_lease_acknowledgement_only"
 SAFE_MESSAGE = (
     "controlled worker queue claim lease acknowledgement request could not be completed"
@@ -53,6 +53,7 @@ _VISIBLE = re.compile(r"[\x20-\x7e]{16,128}")
 _SAFE_LABEL = re.compile(r"[a-z0-9][a-z0-9_.:-]{0,127}")
 _BLOCKED_OPERATOR_ID = "blocked-evaluation"
 _BLOCKED_CANDIDATE_ID = "00000000-0000-4000-8000-000000000000"
+_UUID5_NAMESPACE = uuid.UUID("7bdf38b6-89a9-5d12-a0c1-33db5f733183")
 _CREDENTIAL_KEYS = frozenset(
     {"credential", "credentials", "secret", "token", "claim_token", "lease_token"}
 )
@@ -319,9 +320,9 @@ class ClosedAuthorityV1(ContractModel):
 
 
 class ControlledWorkerQueueClaimLeaseAcknowledgementCreateV1(ClosedAuthorityV1):
-    schema: Literal[
+    schema: Literal["controlled-worker-queue-claim-lease-acknowledgement-create-v1"] = (
         "controlled-worker-queue-claim-lease-acknowledgement-create-v1"
-    ] = "controlled-worker-queue-claim-lease-acknowledgement-create-v1"
+    )
     admission_id: CanonicalUuid5
     admission_record_fingerprint: FingerprintV1
     admission_status_fingerprint: FingerprintV1
@@ -369,9 +370,7 @@ class ControlledWorkerQueueAdapterReceiptFactsV1(ContractModel):
 
     schema: Literal[
         "controlled-worker-queue-claim-lease-acknowledgement-adapter-receipt-facts-v1"
-    ] = (
-        "controlled-worker-queue-claim-lease-acknowledgement-adapter-receipt-facts-v1"
-    )
+    ] = "controlled-worker-queue-claim-lease-acknowledgement-adapter-receipt-facts-v1"
     adapter_label: SafeAdapterLabel
     adapter_identity_fingerprint: FingerprintV1
     queue_subject_fingerprint: FingerprintV1
@@ -443,6 +442,357 @@ class ControlledWorkerQueueClaimLeaseAcknowledgementEvaluationV1(ClosedAuthority
         return self
 
 
+class ControlledWorkerQueueClaimLeaseAcknowledgementV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-lease-acknowledgement-v1"] = (
+        "controlled-worker-queue-claim-lease-acknowledgement-v1"
+    )
+    admission_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    recorded_at: UtcSecond
+    valid_until: UtcSecond
+    lifecycle: Literal["active"] = "active"
+    receipt_state: Literal["recorded"] = "recorded"
+    eligibility: Literal[
+        "controlled_worker_queue_claim_lease_acknowledgement_recorded"
+    ] = "controlled_worker_queue_claim_lease_acknowledgement_recorded"
+    blockers: tuple[BlockerV1, ...] = SUCCESS_BLOCKERS
+    controlled_worker_queue_claim_lease_acknowledgement_admission: (
+        ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1
+    )
+    controlled_worker_queue_claim_lease_acknowledgement_admission_status: (
+        ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionStatusV1
+    )
+    adapter_receipt: ControlledWorkerQueueAdapterReceiptFactsV1
+    v051_admission_record_fingerprint: FingerprintV1
+    v051_admission_status_fingerprint: FingerprintV1
+    v050_prerequisite_record_fingerprint: FingerprintV1
+    v050_prerequisite_status_fingerprint: FingerprintV1
+    v049_admission_record_fingerprint: FingerprintV1
+    v049_admission_status_fingerprint: FingerprintV1
+    binding_subject_fingerprint: FingerprintV1
+    worker_subject_fingerprint: FingerprintV1
+    queue_item_reference_fingerprint: FingerprintV1
+    inherited_limits_fingerprint: FingerprintV1
+    adapter_identity_fingerprint: FingerprintV1
+    queue_subject_fingerprint: FingerprintV1
+    claim_receipt_fingerprint: FingerprintV1
+    lease_receipt_fingerprint: FingerprintV1
+    acknowledgement_receipt_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    idempotency_key_fingerprint: FingerprintV1
+    receipt_record_fingerprint: FingerprintV1
+    controlled_queue_claim_recorded: Literal[True] = True
+    controlled_queue_lease_recorded: Literal[True] = True
+    controlled_queue_acknowledgement_recorded: Literal[True] = True
+    controlled_worker_queue_claim_lease_acknowledgement_recorded: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimLeaseAcknowledgementV1:
+        if self.blockers != SUCCESS_BLOCKERS:
+            raise ValueError("v0.52 receipt blockers must remain fixed")
+        recorded, expiry = _instant(self.recorded_at), _instant(self.valid_until)
+        if not recorded < expiry <= recorded + timedelta(seconds=MAX_FRESHNESS_SECONDS):
+            raise ValueError("v0.52 receipt expiry exceeds freshness bound")
+        admission = self.controlled_worker_queue_claim_lease_acknowledgement_admission
+        status = (
+            self.controlled_worker_queue_claim_lease_acknowledgement_admission_status
+        )
+        receipt = self.adapter_receipt
+        if (
+            self.operator_id != admission.operator_id
+            or self.operator_id != status.operator_id
+            or self.candidate_record_id != admission.candidate_record_id
+            or self.candidate_record_id != status.candidate_record_id
+            or self.admission_id != admission.admission_id
+            or status.admission_id != admission.admission_id
+            or status.admission_record_fingerprint
+            != admission.admission_record_fingerprint
+            or self.valid_until > admission.valid_until
+            or self.valid_until > status.valid_until
+        ):
+            raise ValueError("v0.52 receipt ownership or linkage mismatch")
+        if (
+            self.v051_admission_record_fingerprint
+            != admission.admission_record_fingerprint
+            or self.v051_admission_status_fingerprint != status.status_fingerprint
+            or self.v050_prerequisite_record_fingerprint
+            != admission.prerequisite_record_fingerprint
+            or self.v050_prerequisite_status_fingerprint
+            != admission.prerequisite_status_fingerprint
+            or self.v049_admission_record_fingerprint
+            != admission.v049_admission_record_fingerprint
+            or self.v049_admission_status_fingerprint
+            != admission.v049_admission_status_fingerprint
+            or self.binding_subject_fingerprint != admission.binding_subject_fingerprint
+            or self.worker_subject_fingerprint != admission.worker_subject_fingerprint
+            or self.queue_item_reference_fingerprint
+            != admission.queue_item_reference_fingerprint
+            or self.inherited_limits_fingerprint
+            != admission.inherited_limits_fingerprint
+            or self.adapter_identity_fingerprint != receipt.adapter_identity_fingerprint
+            or self.queue_subject_fingerprint != receipt.queue_subject_fingerprint
+            or self.queue_subject_fingerprint != queue_subject_fingerprint(admission)
+            or self.claim_receipt_fingerprint != receipt.claim_receipt_fingerprint
+            or self.lease_receipt_fingerprint != receipt.lease_receipt_fingerprint
+            or self.acknowledgement_receipt_fingerprint
+            != receipt.acknowledgement_receipt_fingerprint
+        ):
+            raise ValueError("v0.52 receipt subject or limits mismatch")
+        # Persisted receipts must satisfy the same P1 facts at their write time.
+        ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1(
+            operator_id=self.operator_id,
+            candidate_record_id=self.candidate_record_id,
+            authority=ControlledWorkerQueueClaimLeaseAcknowledgementAuthorityContextV1(
+                authenticated_operator_id=self.operator_id,
+                permission=PERMISSION,
+                request_received_at=self.recorded_at,
+            ),
+            create=build_create(
+                admission=admission, admission_status=status, adapter_receipt=receipt
+            ),
+            controlled_worker_queue_claim_lease_acknowledgement_admission=admission,
+            controlled_worker_queue_claim_lease_acknowledgement_admission_status=status,
+            adapter_receipt=receipt,
+        )
+        if self.subject_fingerprint != receipt_subject_fingerprint(self):
+            raise ValueError("v0.52 receipt subject fingerprint mismatch")
+        if self.receipt_record_fingerprint != receipt_record_fingerprint(self):
+            raise ValueError("v0.52 receipt record fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class ControlledWorkerQueueClaimLeaseAcknowledgementStatusV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-lease-acknowledgement-status-v1"] = (
+        "controlled-worker-queue-claim-lease-acknowledgement-status-v1"
+    )
+    admission_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    lifecycle: Literal["active", "expired"]
+    receipt_state: Literal[
+        "controlled_worker_queue_claim_lease_acknowledgement_recorded"
+    ]
+    eligibility: Literal["controlled_worker_queue_claim_lease_acknowledgement_recorded"]
+    blockers: tuple[BlockerV1, ...] = SUCCESS_BLOCKERS
+    evaluated_at: UtcSecond
+    valid_until: UtcSecond
+    receipt_record_fingerprint: FingerprintV1
+    status_fingerprint: FingerprintV1
+    controlled_queue_claim_recorded: Literal[True] = True
+    controlled_queue_lease_recorded: Literal[True] = True
+    controlled_queue_acknowledgement_recorded: Literal[True] = True
+    controlled_worker_queue_claim_lease_acknowledgement_recorded: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimLeaseAcknowledgementStatusV1:
+        if self.blockers != SUCCESS_BLOCKERS:
+            raise ValueError("v0.52 receipt status blockers are fixed")
+        if self.status_fingerprint != status_fingerprint(self):
+            raise ValueError("v0.52 receipt status fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
+class ControlledWorkerQueueClaimLeaseAcknowledgementIdempotencyReservationV1(
+    ContractModel
+):
+    schema: Literal[
+        "controlled-worker-queue-claim-lease-acknowledgement-idempotency-reservation-v1"
+    ] = "controlled-worker-queue-claim-lease-acknowledgement-idempotency-reservation-v1"
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    admission_id: CanonicalUuid5
+    receipt_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    permanent: Literal[True] = True
+
+
+class ControlledWorkerQueueClaimLeaseAcknowledgementSubjectReservationV1(ContractModel):
+    schema: Literal[
+        "controlled-worker-queue-claim-lease-acknowledgement-subject-reservation-v1"
+    ] = "controlled-worker-queue-claim-lease-acknowledgement-subject-reservation-v1"
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    idempotency_key_fingerprint: FingerprintV1
+    request_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1
+    admission_id: CanonicalUuid5
+    receipt_record_fingerprint: FingerprintV1
+    reserved_at: UtcSecond
+    reservation_state: Literal["reserved"] = "reserved"
+    reservation_fingerprint: FingerprintV1
+    permanent: Literal[True] = True
+
+    @model_validator(mode="after")
+    def exact(
+        self,
+    ) -> ControlledWorkerQueueClaimLeaseAcknowledgementSubjectReservationV1:
+        if self.reservation_fingerprint != reservation_fingerprint(self):
+            raise ValueError("v0.52 receipt reservation fingerprint mismatch")
+        return self
+
+
+class ControlledWorkerQueueClaimLeaseAcknowledgementAuditEvidenceV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-lease-acknowledgement-audit-v1"] = (
+        "controlled-worker-queue-claim-lease-acknowledgement-audit-v1"
+    )
+    event: Literal[
+        "controlled_worker_queue_claim_lease_acknowledgement_recorded",
+        "controlled_worker_queue_claim_lease_acknowledgement_read",
+        "controlled_worker_queue_claim_lease_acknowledgement_indeterminate",
+    ]
+    audit_id: CanonicalUuid5
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    admission_id: CanonicalUuid5 | None
+    occurred_at: UtcSecond
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"]
+    correlation_fingerprint: FingerprintV1
+    subject_fingerprint: FingerprintV1 | None
+    receipt_record_fingerprint: FingerprintV1 | None
+    audit_fingerprint: FingerprintV1
+    controlled_worker_queue_claim_lease_acknowledgement_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimLeaseAcknowledgementAuditEvidenceV1:
+        if self.audit_fingerprint != audit_fingerprint(self):
+            raise ValueError("v0.52 receipt audit fingerprint mismatch")
+        return self
+
+
+class ControlledWorkerQueueClaimLeaseAcknowledgementRedactedErrorV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-lease-acknowledgement-error-v1"] = (
+        "controlled-worker-queue-claim-lease-acknowledgement-error-v1"
+    )
+    error_code: Literal[
+        "installation_capability_unsupported",
+        "evidence_not_found",
+        "ownership_mismatch",
+        "permission_scope_missing",
+        "v051_admission_not_active",
+        "v051_admission_not_recorded",
+        "linkage_mismatch",
+        "fingerprint_mismatch",
+        "inherited_limits_mismatch",
+        "evidence_stale",
+        "evidence_expired",
+        "ambiguous_state",
+        "adapter_identity_mismatch",
+        "reservation_before_effect_missing",
+        "claim_receipt_mismatch",
+        "lease_receipt_mismatch",
+        "acknowledgement_receipt_mismatch",
+        "replay_detected",
+        "corrupt_adapter_evidence",
+        "caller_supplied_credential",
+        "caller_supplied_endpoint",
+        "caller_supplied_command",
+        "caller_supplied_queue_selector",
+        "caller_supplied_claim_token",
+        "caller_supplied_lease_token",
+        "caller_supplied_acknowledgement_handle",
+        "unsupported_authority",
+        "reservation_before_effect_failed",
+        "permanent_subject_reserved",
+        "idempotency_conflict",
+        "append_indeterminate",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "invalid_request",
+        "rate_limited",
+        "quota_exceeded",
+        "conflict",
+        "record_too_large",
+        "store_corrupt",
+        "internal_error",
+    ]
+    message: Literal[SAFE_MESSAGE] = SAFE_MESSAGE
+    retryable: Literal[False] = False
+    correlation_fingerprint: FingerprintV1
+    redacted: Literal[True] = True
+    controlled_worker_queue_claim_lease_acknowledgement_recorded: Literal[False] = False
+
+
+class ControlledWorkerQueueClaimLeaseAcknowledgementResultV1(ClosedAuthorityV1):
+    schema: Literal["controlled-worker-queue-claim-lease-acknowledgement-result-v1"] = (
+        "controlled-worker-queue-claim-lease-acknowledgement-result-v1"
+    )
+    ok: bool
+    outcome: Literal["success", "failure", "indeterminate"]
+    record: ControlledWorkerQueueClaimLeaseAcknowledgementV1 | None
+    status: ControlledWorkerQueueClaimLeaseAcknowledgementStatusV1 | None
+    error: ControlledWorkerQueueClaimLeaseAcknowledgementRedactedErrorV1 | None
+    correlation_fingerprint: FingerprintV1
+    controlled_worker_queue_claim_lease_acknowledgement_recorded: bool = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimLeaseAcknowledgementResultV1:
+        if self.outcome == "success":
+            good = (
+                self.ok
+                and self.record is not None
+                and self.status is not None
+                and self.error is None
+                and self.controlled_worker_queue_claim_lease_acknowledgement_recorded
+            )
+        else:
+            good = (
+                not self.ok
+                and self.record is None
+                and self.status is None
+                and self.error is not None
+                and not self.controlled_worker_queue_claim_lease_acknowledgement_recorded
+            )
+        if not good:
+            raise ValueError("v0.52 receipt result shape mismatch")
+        if (
+            self.record is not None
+            and self.status.admission_id != self.record.admission_id
+        ):
+            raise ValueError("v0.52 receipt result status mismatch")
+        _bounded(self)
+        return self
+
+
+class ControlledWorkerQueueClaimLeaseAcknowledgementCollectionV1(ClosedAuthorityV1):
+    schema: Literal[
+        "controlled-worker-queue-claim-lease-acknowledgement-collection-v1"
+    ] = "controlled-worker-queue-claim-lease-acknowledgement-collection-v1"
+    operator_id: OperatorId
+    candidate_record_id: CanonicalUuid4
+    items: tuple[ControlledWorkerQueueClaimLeaseAcknowledgementV1, ...]
+    count: int
+    collection_fingerprint: FingerprintV1
+    controlled_worker_queue_claim_lease_acknowledgement_recorded: Literal[False] = False
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlledWorkerQueueClaimLeaseAcknowledgementCollectionV1:
+        if self.count != len(self.items) or self.count > MAX_COLLECTION_RECORDS:
+            raise ValueError("v0.52 receipt collection exceeds bound")
+        ordered = tuple(
+            sorted(self.items, key=lambda item: (item.recorded_at, item.admission_id))
+        )
+        if ordered != self.items:
+            raise ValueError("v0.52 receipt collection is not ordered")
+        if any(
+            item.operator_id != self.operator_id
+            or item.candidate_record_id != self.candidate_record_id
+            for item in self.items
+        ):
+            raise ValueError("v0.52 receipt collection ownership mismatch")
+        if self.collection_fingerprint != collection_fingerprint(self):
+            raise ValueError("v0.52 receipt collection fingerprint mismatch")
+        _bounded(self)
+        return self
+
+
 class ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1(ContractModel):
     """Injected facts only; no store, runtime, queue, worker, endpoint, or I/O."""
 
@@ -466,7 +816,9 @@ class ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1(ContractMo
     @model_validator(mode="after")
     def exact(self) -> ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1:
         admission = self.controlled_worker_queue_claim_lease_acknowledgement_admission
-        status = self.controlled_worker_queue_claim_lease_acknowledgement_admission_status
+        status = (
+            self.controlled_worker_queue_claim_lease_acknowledgement_admission_status
+        )
         receipt = self.adapter_receipt
         if self.home_assistant:
             raise ValueError("Home Assistant installation capability is unsupported")
@@ -487,11 +839,13 @@ class ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1(ContractMo
             self.create.admission_id != admission.admission_id
             or self.create.admission_valid_until != admission.valid_until
             or status.admission_id != admission.admission_id
-            or status.admission_record_fingerprint != admission.admission_record_fingerprint
+            or status.admission_record_fingerprint
+            != admission.admission_record_fingerprint
         ):
             raise ValueError("v0.51 admission linkage mismatch")
         if (
-            self.create.admission_record_fingerprint != admission.admission_record_fingerprint
+            self.create.admission_record_fingerprint
+            != admission.admission_record_fingerprint
             or self.create.admission_status_fingerprint != status.status_fingerprint
             or admission.admission_record_fingerprint
             != v051_record_fingerprint(admission)
@@ -532,9 +886,15 @@ class ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1(ContractMo
             != admission.queue_item_reference_fingerprint
         ):
             raise ValueError("v0.51 admission lineage fingerprint mismatch")
-        if self.create.inherited_limits_fingerprint != admission.inherited_limits_fingerprint:
+        if (
+            self.create.inherited_limits_fingerprint
+            != admission.inherited_limits_fingerprint
+        ):
             raise ValueError("v0.51 admission inherited limits mismatch")
-        if self.create.adapter_identity_fingerprint != receipt.adapter_identity_fingerprint:
+        if (
+            self.create.adapter_identity_fingerprint
+            != receipt.adapter_identity_fingerprint
+        ):
             raise ValueError("adapter identity mismatch")
         if (
             self.create.expected_queue_subject_fingerprint
@@ -545,9 +905,15 @@ class ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1(ContractMo
             raise ValueError("v0.52 queue subject linkage mismatch")
         if not receipt.reservation_before_effect:
             raise ValueError("reservation before effect missing")
-        if self.create.expected_claim_receipt_fingerprint != receipt.claim_receipt_fingerprint:
+        if (
+            self.create.expected_claim_receipt_fingerprint
+            != receipt.claim_receipt_fingerprint
+        ):
             raise ValueError("claim receipt mismatch")
-        if self.create.expected_lease_receipt_fingerprint != receipt.lease_receipt_fingerprint:
+        if (
+            self.create.expected_lease_receipt_fingerprint
+            != receipt.lease_receipt_fingerprint
+        ):
             raise ValueError("lease receipt mismatch")
         if (
             self.create.expected_acknowledgement_receipt_fingerprint
@@ -569,7 +935,10 @@ class ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1(ContractMo
             or self.create.lease_token_material_present
         ):
             raise ValueError("caller supplied credential")
-        if self.authority.endpoint_material_present or self.create.endpoint_material_present:
+        if (
+            self.authority.endpoint_material_present
+            or self.create.endpoint_material_present
+        ):
             raise ValueError("caller supplied endpoint")
         if (
             self.authority.command_material_present
@@ -637,7 +1006,8 @@ def build_create(
 
 
 def evaluate_controlled_worker_queue_claim_lease_acknowledgement(
-    value: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1 | dict[str, Any],
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1
+    | dict[str, Any],
 ) -> ControlledWorkerQueueClaimLeaseAcknowledgementEvaluationV1:
     preflight_blocker = _preflight_blocker(value)
     if preflight_blocker is not None:
@@ -645,7 +1015,9 @@ def evaluate_controlled_worker_queue_claim_lease_acknowledgement(
     try:
         validation = (
             value
-            if isinstance(value, ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1)
+            if isinstance(
+                value, ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1
+            )
             else ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1.model_validate(
                 value
             )
@@ -653,7 +1025,9 @@ def evaluate_controlled_worker_queue_claim_lease_acknowledgement(
     except (TypeError, ValueError) as error:
         return _blocked_evaluation(value, str(error))
     admission = validation.controlled_worker_queue_claim_lease_acknowledgement_admission
-    status = validation.controlled_worker_queue_claim_lease_acknowledgement_admission_status
+    status = (
+        validation.controlled_worker_queue_claim_lease_acknowledgement_admission_status
+    )
     earliest = min(
         _instant(admission.valid_until),
         _instant(status.valid_until),
@@ -670,7 +1044,8 @@ def evaluate_controlled_worker_queue_claim_lease_acknowledgement(
 
 
 def _preflight_blocker(
-    value: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1 | dict[str, Any],
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1
+    | dict[str, Any],
 ) -> BlockerV1 | None:
     if isinstance(value, BaseModel) or not isinstance(value, dict):
         return None
@@ -717,7 +1092,9 @@ def _preflight_blocker(
             return "ambiguous_state"
         if receipt.get("reservation_before_effect") is False:
             return "reservation_before_effect_missing"
-    admission = value.get("controlled_worker_queue_claim_lease_acknowledgement_admission")
+    admission = value.get(
+        "controlled_worker_queue_claim_lease_acknowledgement_admission"
+    )
     status = value.get(
         "controlled_worker_queue_claim_lease_acknowledgement_admission_status"
     )
@@ -796,7 +1173,8 @@ def _evaluation(
 
 
 def _blocked_evaluation(
-    value: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1 | dict[str, Any],
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1
+    | dict[str, Any],
     reason: str,
 ) -> ControlledWorkerQueueClaimLeaseAcknowledgementEvaluationV1:
     if isinstance(value, BaseModel):
@@ -887,6 +1265,201 @@ def evaluation_fingerprint(
     )
 
 
+def opaque_fingerprint(domain: str, value: str) -> FingerprintV1:
+    return fingerprint(domain, value)
+
+
+def derived_uuid5(domain: str, value: Any) -> str:
+    seed = fingerprint(domain, value).value
+    return str(uuid.uuid5(_UUID5_NAMESPACE, f"{domain}:{seed}"))
+
+
+def idempotency_key_fingerprint(operator_id: str, raw_key: str) -> FingerprintV1:
+    key = _visible(raw_key)
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-idempotency:v1",
+        {"operator_id": operator_id, "idempotency_key": key},
+    )
+
+
+def request_fingerprint(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    create: ControlledWorkerQueueClaimLeaseAcknowledgementCreateV1,
+    request_received_at: str,
+    idempotency_fingerprint: FingerprintV1,
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-request:v1",
+        {
+            "operator_id": operator_id,
+            "candidate_record_id": candidate_record_id,
+            "create": create,
+            "idempotency_key_fingerprint": idempotency_fingerprint,
+        },
+    )
+
+
+def receipt_subject_fingerprint(
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementV1 | dict[str, Any],
+) -> FingerprintV1:
+    raw = value.model_dump(mode="json") if isinstance(value, BaseModel) else dict(value)
+    admission = raw["controlled_worker_queue_claim_lease_acknowledgement_admission"]
+    status = raw["controlled_worker_queue_claim_lease_acknowledgement_admission_status"]
+    receipt = raw["adapter_receipt"]
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-subject:v1",
+        {
+            "operator_id": raw["operator_id"],
+            "candidate_record_id": raw["candidate_record_id"],
+            "admission_id": admission["admission_id"],
+            "v051_admission_record_fingerprint": admission[
+                "admission_record_fingerprint"
+            ],
+            "v051_admission_status_fingerprint": status["status_fingerprint"],
+            "v050_prerequisite_record_fingerprint": admission[
+                "prerequisite_record_fingerprint"
+            ],
+            "v050_prerequisite_status_fingerprint": admission[
+                "prerequisite_status_fingerprint"
+            ],
+            "v049_admission_record_fingerprint": admission[
+                "v049_admission_record_fingerprint"
+            ],
+            "v049_admission_status_fingerprint": admission[
+                "v049_admission_status_fingerprint"
+            ],
+            "binding_subject_fingerprint": admission["binding_subject_fingerprint"],
+            "worker_subject_fingerprint": admission["worker_subject_fingerprint"],
+            "queue_item_reference_fingerprint": admission[
+                "queue_item_reference_fingerprint"
+            ],
+            "inherited_limits_fingerprint": admission["inherited_limits_fingerprint"],
+            "adapter_identity_fingerprint": receipt["adapter_identity_fingerprint"],
+            "queue_subject_fingerprint": receipt["queue_subject_fingerprint"],
+            "claim_receipt_fingerprint": receipt["claim_receipt_fingerprint"],
+            "lease_receipt_fingerprint": receipt["lease_receipt_fingerprint"],
+            "acknowledgement_receipt_fingerprint": receipt[
+                "acknowledgement_receipt_fingerprint"
+            ],
+        },
+    )
+
+
+def reservation_subject_fingerprint(
+    validation: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1
+    | dict[str, Any],
+) -> FingerprintV1:
+    raw = (
+        validation.model_dump(mode="json")
+        if isinstance(validation, BaseModel)
+        else dict(validation)
+    )
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-subject:v1",
+        {
+            "operator_id": raw["operator_id"],
+            "candidate_record_id": raw["candidate_record_id"],
+            "admission_id": raw["create"]["admission_id"],
+            "v051_admission_record_fingerprint": raw["create"][
+                "admission_record_fingerprint"
+            ],
+            "v051_admission_status_fingerprint": raw["create"][
+                "admission_status_fingerprint"
+            ],
+            "v050_prerequisite_record_fingerprint": raw["create"][
+                "v050_prerequisite_record_fingerprint"
+            ],
+            "v050_prerequisite_status_fingerprint": raw["create"][
+                "v050_prerequisite_status_fingerprint"
+            ],
+            "v049_admission_record_fingerprint": raw["create"][
+                "v049_admission_record_fingerprint"
+            ],
+            "v049_admission_status_fingerprint": raw["create"][
+                "v049_admission_status_fingerprint"
+            ],
+            "binding_subject_fingerprint": raw["create"]["binding_subject_fingerprint"],
+            "worker_subject_fingerprint": raw["create"]["worker_subject_fingerprint"],
+            "queue_item_reference_fingerprint": raw["create"][
+                "queue_item_reference_fingerprint"
+            ],
+            "inherited_limits_fingerprint": raw["create"][
+                "inherited_limits_fingerprint"
+            ],
+            "adapter_identity_fingerprint": raw["create"][
+                "adapter_identity_fingerprint"
+            ],
+            "queue_subject_fingerprint": raw["create"][
+                "expected_queue_subject_fingerprint"
+            ],
+            "claim_receipt_fingerprint": raw["create"][
+                "expected_claim_receipt_fingerprint"
+            ],
+            "lease_receipt_fingerprint": raw["create"][
+                "expected_lease_receipt_fingerprint"
+            ],
+            "acknowledgement_receipt_fingerprint": raw["create"][
+                "expected_acknowledgement_receipt_fingerprint"
+            ],
+        },
+    )
+
+
+def receipt_record_fingerprint(
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-record:v1",
+        _without(value, "receipt_record_fingerprint"),
+    )
+
+
+def admission_record_fingerprint(
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementV1 | dict[str, Any],
+) -> FingerprintV1:
+    return receipt_record_fingerprint(value)
+
+
+def status_fingerprint(
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementStatusV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-status:v1",
+        _without(value, "status_fingerprint"),
+    )
+
+
+def reservation_fingerprint(
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementSubjectReservationV1
+    | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-reservation:v1",
+        _without(value, "reservation_fingerprint"),
+    )
+
+
+def audit_fingerprint(
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementAuditEvidenceV1
+    | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-audit:v1",
+        _without(value, "audit_fingerprint"),
+    )
+
+
+def collection_fingerprint(
+    value: ControlledWorkerQueueClaimLeaseAcknowledgementCollectionV1 | dict[str, Any],
+) -> FingerprintV1:
+    return fingerprint(
+        "atlas:controlled-worker-queue-claim-lease-acknowledgement-collection:v1",
+        _without(value, "collection_fingerprint"),
+    )
+
+
 def queue_subject_fingerprint(
     admission: ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1,
 ) -> FingerprintV1:
@@ -962,6 +1535,195 @@ def build_adapter_receipt(
     )
 
 
+def build_receipt(
+    validation: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1,
+) -> ControlledWorkerQueueClaimLeaseAcknowledgementV1:
+    admission = validation.controlled_worker_queue_claim_lease_acknowledgement_admission
+    status = (
+        validation.controlled_worker_queue_claim_lease_acknowledgement_admission_status
+    )
+    receipt = validation.adapter_receipt
+    subject = reservation_subject_fingerprint(validation)
+    idempotency = idempotency_key_fingerprint(
+        validation.operator_id, validation.idempotency_key or "missing-idempotency-key"
+    )
+    raw = {
+        "admission_id": admission.admission_id,
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "recorded_at": validation.authority.request_received_at,
+        "valid_until": min(admission.valid_until, status.valid_until),
+        "controlled_worker_queue_claim_lease_acknowledgement_admission": admission,
+        "controlled_worker_queue_claim_lease_acknowledgement_admission_status": status,
+        "adapter_receipt": receipt,
+        "v051_admission_record_fingerprint": admission.admission_record_fingerprint,
+        "v051_admission_status_fingerprint": status.status_fingerprint,
+        "v050_prerequisite_record_fingerprint": admission.prerequisite_record_fingerprint,
+        "v050_prerequisite_status_fingerprint": admission.prerequisite_status_fingerprint,
+        "v049_admission_record_fingerprint": admission.v049_admission_record_fingerprint,
+        "v049_admission_status_fingerprint": admission.v049_admission_status_fingerprint,
+        "binding_subject_fingerprint": admission.binding_subject_fingerprint,
+        "worker_subject_fingerprint": admission.worker_subject_fingerprint,
+        "queue_item_reference_fingerprint": admission.queue_item_reference_fingerprint,
+        "inherited_limits_fingerprint": admission.inherited_limits_fingerprint,
+        "adapter_identity_fingerprint": receipt.adapter_identity_fingerprint,
+        "queue_subject_fingerprint": receipt.queue_subject_fingerprint,
+        "claim_receipt_fingerprint": receipt.claim_receipt_fingerprint,
+        "lease_receipt_fingerprint": receipt.lease_receipt_fingerprint,
+        "acknowledgement_receipt_fingerprint": (
+            receipt.acknowledgement_receipt_fingerprint
+        ),
+        "subject_fingerprint": subject,
+        "idempotency_key_fingerprint": idempotency,
+    }
+    seed = ControlledWorkerQueueClaimLeaseAcknowledgementV1.model_construct(
+        **raw,
+        receipt_record_fingerprint=fingerprint("atlas:seed:v1", "receipt"),
+    )
+    return ControlledWorkerQueueClaimLeaseAcknowledgementV1.model_validate(
+        {**raw, "receipt_record_fingerprint": receipt_record_fingerprint(seed)}
+    )
+
+
+def build_reservations(
+    validation: ControlledWorkerQueueClaimLeaseAcknowledgementValidationInputV1,
+    record: ControlledWorkerQueueClaimLeaseAcknowledgementV1,
+) -> tuple[
+    ControlledWorkerQueueClaimLeaseAcknowledgementIdempotencyReservationV1,
+    ControlledWorkerQueueClaimLeaseAcknowledgementSubjectReservationV1,
+]:
+    idempotency = idempotency_key_fingerprint(
+        validation.operator_id, validation.idempotency_key or "missing-idempotency-key"
+    )
+    request = request_fingerprint(
+        operator_id=validation.operator_id,
+        candidate_record_id=validation.candidate_record_id,
+        create=validation.create,
+        request_received_at=validation.authority.request_received_at,
+        idempotency_fingerprint=idempotency,
+    )
+    raw = {
+        "operator_id": validation.operator_id,
+        "candidate_record_id": validation.candidate_record_id,
+        "idempotency_key_fingerprint": idempotency,
+        "request_fingerprint": request,
+        "subject_fingerprint": record.subject_fingerprint,
+        "admission_id": record.admission_id,
+        "receipt_record_fingerprint": record.receipt_record_fingerprint,
+        "reserved_at": record.recorded_at,
+    }
+    subject_seed = ControlledWorkerQueueClaimLeaseAcknowledgementSubjectReservationV1.model_construct(
+        **raw,
+        reservation_fingerprint=fingerprint("atlas:seed:v1", "reservation"),
+    )
+    return (
+        ControlledWorkerQueueClaimLeaseAcknowledgementIdempotencyReservationV1(**raw),
+        ControlledWorkerQueueClaimLeaseAcknowledgementSubjectReservationV1(
+            **raw,
+            reservation_fingerprint=reservation_fingerprint(subject_seed),
+        ),
+    )
+
+
+def build_audit(
+    record: ControlledWorkerQueueClaimLeaseAcknowledgementV1,
+    *,
+    event: Literal[
+        "controlled_worker_queue_claim_lease_acknowledgement_recorded",
+        "controlled_worker_queue_claim_lease_acknowledgement_read",
+        "controlled_worker_queue_claim_lease_acknowledgement_indeterminate",
+    ],
+    outcome: Literal["recorded", "exact_duplicate", "read", "blocked", "indeterminate"],
+    correlation_fingerprint: FingerprintV1,
+    occurred_at: str,
+) -> ControlledWorkerQueueClaimLeaseAcknowledgementAuditEvidenceV1:
+    raw = {
+        "event": event,
+        "audit_id": derived_uuid5(
+            "atlas:controlled-worker-queue-claim-lease-acknowledgement-audit-id:v1",
+            {
+                "event": event,
+                "outcome": outcome,
+                "receipt_record_fingerprint": record.receipt_record_fingerprint,
+                "correlation_fingerprint": correlation_fingerprint,
+                "occurred_at": occurred_at,
+            },
+        ),
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "admission_id": record.admission_id,
+        "occurred_at": occurred_at,
+        "outcome": outcome,
+        "correlation_fingerprint": correlation_fingerprint,
+        "subject_fingerprint": record.subject_fingerprint,
+        "receipt_record_fingerprint": record.receipt_record_fingerprint,
+        "controlled_worker_queue_claim_lease_acknowledgement_recorded": (
+            event == "controlled_worker_queue_claim_lease_acknowledgement_recorded"
+            and outcome == "recorded"
+        ),
+    }
+    seed = (
+        ControlledWorkerQueueClaimLeaseAcknowledgementAuditEvidenceV1.model_construct(
+            **raw,
+            audit_fingerprint=fingerprint("atlas:seed:v1", "audit"),
+        )
+    )
+    return ControlledWorkerQueueClaimLeaseAcknowledgementAuditEvidenceV1.model_validate(
+        {**raw, "audit_fingerprint": audit_fingerprint(seed)}
+    )
+
+
+def derive_status(
+    record: ControlledWorkerQueueClaimLeaseAcknowledgementV1,
+    *,
+    evaluated_at: str,
+) -> ControlledWorkerQueueClaimLeaseAcknowledgementStatusV1:
+    lifecycle: Literal["active", "expired"] = (
+        "expired"
+        if _instant(evaluated_at) >= _instant(record.valid_until)
+        else "active"
+    )
+    raw = {
+        "admission_id": record.admission_id,
+        "operator_id": record.operator_id,
+        "candidate_record_id": record.candidate_record_id,
+        "lifecycle": lifecycle,
+        "receipt_state": "controlled_worker_queue_claim_lease_acknowledgement_recorded",
+        "eligibility": "controlled_worker_queue_claim_lease_acknowledgement_recorded",
+        "evaluated_at": evaluated_at,
+        "valid_until": record.valid_until,
+        "receipt_record_fingerprint": record.receipt_record_fingerprint,
+    }
+    seed = ControlledWorkerQueueClaimLeaseAcknowledgementStatusV1.model_construct(
+        **raw,
+        status_fingerprint=fingerprint("atlas:seed:v1", "status"),
+    )
+    return ControlledWorkerQueueClaimLeaseAcknowledgementStatusV1.model_validate(
+        {**raw, "status_fingerprint": status_fingerprint(seed)}
+    )
+
+
+def build_collection(
+    *,
+    operator_id: str,
+    candidate_record_id: str,
+    items: tuple[ControlledWorkerQueueClaimLeaseAcknowledgementV1, ...],
+) -> ControlledWorkerQueueClaimLeaseAcknowledgementCollectionV1:
+    raw = {
+        "operator_id": operator_id,
+        "candidate_record_id": candidate_record_id,
+        "items": items,
+        "count": len(items),
+    }
+    seed = ControlledWorkerQueueClaimLeaseAcknowledgementCollectionV1.model_construct(
+        **raw,
+        collection_fingerprint=fingerprint("atlas:seed:v1", "collection"),
+    )
+    return ControlledWorkerQueueClaimLeaseAcknowledgementCollectionV1.model_validate(
+        {**raw, "collection_fingerprint": collection_fingerprint(seed)}
+    )
+
+
 def parse_create_json(
     data: str | bytes,
 ) -> ControlledWorkerQueueClaimLeaseAcknowledgementCreateV1:
@@ -983,7 +1745,9 @@ def parse_create_json(
     except ValueError as error:
         raise StrictContractError("create request must be strict json") from error
     try:
-        return ControlledWorkerQueueClaimLeaseAcknowledgementCreateV1.model_validate(raw)
+        return ControlledWorkerQueueClaimLeaseAcknowledgementCreateV1.model_validate(
+            raw
+        )
     except ValueError as error:
         raise StrictContractError("create request failed closed validation") from error
 

@@ -110,27 +110,21 @@ def test_v052_contract_advances_only_queue_receipt_and_blocks_later_authority() 
         assert fixed_false_marker in contract
 
 
-def test_v052_p1_does_not_add_routes_services_stores_or_effect_consumers() -> None:
+def test_v052_p2_adds_only_local_service_store_without_effect_consumers() -> None:
     assert not ROOT.joinpath("compose.execution-smoke.override.yaml").exists()
     assert not ROOT.joinpath(
         "services/atlas-core/app/routes/"
         "controlled_worker_queue_claim_lease_acknowledgement.py"
     ).exists()
-    assert not ROOT.joinpath(
+    assert ROOT.joinpath(
         "services/atlas-core/app/controlled_worker_queue_claim_lease_acknowledgement/"
         "service.py"
     ).exists()
-    assert not ROOT.joinpath(
+    assert ROOT.joinpath(
         "services/atlas-core/app/controlled_worker_queue_claim_lease_acknowledgement/"
         "store.py"
     ).exists()
 
-    tree = ast.parse(
-        _read(
-            "services/atlas-core/app/"
-            "controlled_worker_queue_claim_lease_acknowledgement/contract.py"
-        )
-    )
     forbidden_import_markers = {
         "agent",
         "atlas_execution_worker",
@@ -151,14 +145,32 @@ def test_v052_p1_does_not_add_routes_services_stores_or_effect_consumers() -> No
         "workflow",
         "worker_runtime",
     }
-    imports = {
-        alias.name if isinstance(node, ast.Import) else node.module or ""
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Import | ast.ImportFrom)
-        for alias in node.names
-    }
-    assert not [
-        name
-        for name in imports
-        if any(marker in name for marker in forbidden_import_markers)
-    ]
+    for relative in (
+        (
+            "services/atlas-core/app/"
+            "controlled_worker_queue_claim_lease_acknowledgement/contract.py"
+        ),
+        (
+            "services/atlas-core/app/"
+            "controlled_worker_queue_claim_lease_acknowledgement/service.py"
+        ),
+        (
+            "services/atlas-core/app/"
+            "controlled_worker_queue_claim_lease_acknowledgement/store.py"
+        ),
+    ):
+        tree = ast.parse(_read(relative))
+        imports = {
+            alias.name if isinstance(node, ast.Import) else node.module or ""
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import | ast.ImportFrom)
+            for alias in node.names
+        }
+        forbidden = [
+            name
+            for name in imports
+            if any(marker in name for marker in forbidden_import_markers)
+        ]
+        if relative.endswith("/store.py"):
+            forbidden = [name for name in forbidden if name != "sqlite3"]
+        assert not forbidden
