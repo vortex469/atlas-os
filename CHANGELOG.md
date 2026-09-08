@@ -6,6 +6,21 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.55 P5 - Runtime Plan Evidence Closure
+
+- Added durable v0.54-to-v0.55 recursive lineage, strict false authority,
+  default-off creation, restart/no-replay, exact production consumer and
+  normative inventory regression locks over committed P4 baseline `093ee0e2`.
+- Finalized the architecture contract, roadmap and Core evidence README for
+  the implemented bounded journal, guarded API and nested GET-only UI.
+  Only `worker_activation_runtime_plan_recorded` advances; all 67 downstream
+  authority/material fields remain false and all seven blockers remain.
+  Mission Control is non-authoritative; Agent and execution-worker consumers
+  remain zero. No runtime, worker or execution start authority is added.
+- [Release evidence](docs/RELEASE_CHECKLIST.md) records actual validation and
+  remaining gates. No production behavior, compose override, push, tag,
+  publication or deployment change.
+
 #### v0.54 P5 - Runtime Admission Evidence Closure
 
 - Added durable v0.53-to-v0.54 lineage, strict false authority, default-off,

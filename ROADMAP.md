@@ -11,7 +11,7 @@ prerequisite/status and complete v0.52-v0.20 lineage. The
 retains all seven blockers. Historical external validation limitations remain
 recorded; repository release identity does not imply production enablement.
 
-## Frozen v0.55 P0 - Worker Activation Runtime Plan evidence
+## Implemented v0.55 P0-P5 evidence boundary - release gates recorded
 
 The [normative v0.55 contract](docs/architecture/worker-activation-runtime-plan-v1.md)
 selects exactly one advance: `worker_activation_runtime_plan_recorded`, a
@@ -26,9 +26,12 @@ lineage; P2 supplies default-off durable evidence with permanent no-replay;
 P3 adds guarded evidence create/list/get without production construction;
 P4 adds nested GET-only Mission Control evidence; P5 proves failure, ownership,
 concurrency, corruption and historical release isolation with zero Agent/worker
-consumers. P1-P5 are pending. Exact IDs, fingerprints, expiry, ownership, recursive
-lineage, limits and phase gates are normative in the contract; actual P0 evidence
-is in the [release checklist](docs/RELEASE_CHECKLIST.md).
+consumers. P1-P4 are committed in baseline `093ee0e2`, including P4 lifecycle
+fix `a36a96c0`. P5 adds durable v0.54-to-v0.55 closure, exact consumer locks and
+final normative documentation. Exact IDs, fingerprints, expiry, ownership,
+recursive lineage, limits and phase gates are normative in the contract; actual
+validation and remaining environment/release gates are in the
+[release checklist](docs/RELEASE_CHECKLIST.md).
 
 Runtime definition/activation, store/runtime/queue contact, queue effects,
 worker-start admission and its construction, worker start/invocation, Agent

@@ -3,6 +3,110 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.55 P5 closure evidence (2026-09-08)
+
+Repository implementation and documentation are prepared; release closure is
+**not complete** until the commit and environment gates below are resolved.
+Baseline `093ee0e2` merges P4; `git merge-base --is-ancestor a36a96c0 HEAD`
+passed for its committed reader lifecycle fix. P4 integration `0e38706d` and
+P3 `6876f01a`, P2 `708b880c`, P1 `2a954613`, P0 `2a1e61e2` are in that ancestry.
+
+Only `worker_activation_runtime_plan_recorded` advances. The normative contract,
+roadmap and evidence README now describe the implemented Core-local journal,
+owned reader, guarded API and nested GET-only Mission Control view. All 67
+released authority/material fields remain false, all seven blockers remain,
+and there is no production construction or enabling setting. Runtime contact,
+worker/Agent invocation, execution start, installation, deployment, rollback,
+publication, retry/resend and unrelated effects remain unauthorized.
+
+The new `worker_activation_runtime_plan/test_release_closure.py` proves:
+
+- Durable v0.54 admission creation and reopened owner-scoped read, exact four
+  IDs, fingerprints, ownership, expiry and byte-exact recursive record/status
+  embedding, with the predecessor database unchanged.
+- Default-off refusal without reservation; strict false authority on record,
+  status and result; restart/expiry exact duplicates without prerequisite reads
+  and permanent rejection of another key for the same admission subject.
+- Exact Core/API/UI production consumers, zero Agent/execution-worker consumers,
+  and equality of normative false-field/blocker inventories with Core models.
+
+P1/P2 regressions additionally cover lowered-only quotas, incomplete reservation
+capacity, independent-process races, both locked prerequisite revalidations,
+partial writes, response/audit loss, canonical hash/schema/index corruption and
+closed restart reads/writes. P3 tests cover authenticated owner/operator scope,
+Origin/CSRF, strict bounded inputs and output reparsing. P4 structural and UI
+tests cover read-only presentation and stale scope response isolation.
+
+Historical v0.54 closure initially found exactly three approved P4 surfaces:
+`src/api/workerActivationRuntimePlan.ts`,
+`src/types/workerActivationRuntimePlan.ts`, and
+`src/features/installation/WorkerActivationRuntimePlan.tsx` in Mission Control.
+Only those three explicit paths were added to its consumer allowlist. Scanner
+logic, fingerprint-only AST restrictions and all other historical guarantees
+are unchanged; no wildcard or future-facing exclusion was introduced.
+
+Validation uses the selected interpreter in this managed worktree with
+`PYTHONPATH=services/atlas-core` (Agent/worker checks use their respective service
+roots). Observed results:
+
+- Focused tests passed: new v0.55 closure, **3 passed, 330 warnings in 12.02s**.
+  The final rerun includes the explicit 67-field count and canonical plan hash.
+- Complete v0.55/v0.54 contract, service/store, release-closure and Python
+  Mission Control isolation directories: **280 passed, 356 warnings in
+  298.43s**, including independent-process races and corruption closure.
+- v0.55 and v0.54 route/security suites: **78 passed, 489 warnings in
+  167.84s** using the committed thread-free `ASGITestClient`.
+- Historical Core `test_release_closure.py` and `test_mission_control_isolation.py`
+  files: **87 passed, 360 warnings in 65.01s**, after the three-path correction.
+- `app/routes/test_installation_release_isolation.py`: **66 passed, 309 warnings
+  in 58.80s**, including historical Home Assistant non-installable golden checks.
+- Agent delivery-preflight, v0.36 and v0.37 isolation tests: **6 passed in 0.06s**.
+  Exact v0.55 scans independently prove zero production Agent/worker consumers.
+- Execution-worker config, healthcheck and durable-ledger tests excluding the
+  separately diagnosed threaded API test: **24 passed, 1 deselected, 1 warning
+  in 0.52s**. Correct worker imports require
+  `PYTHONPATH=services/atlas-agent:services/atlas-execution-worker`; initial
+  collection attempts without the Agent package failed and were corrected.
+- `PATH=/opt/atlas/.venv/bin:$PATH scripts/rc1-python-ruff-gate services/atlas-core`:
+  **passed**, using the repository baseline `0216b7bf`. Unrestricted
+  `python -m ruff check services/atlas-core/app` reports **84 pre-existing
+  findings**; they are not waived or relabeled as a full Ruff pass.
+- Normative contract and README local links resolve inside this worktree.
+  `git diff --check` passed. The smoke compose override has no diff.
+- Hostile review passed: all seven changed paths are tests or documentation;
+  the historical allowlist names only the three inspected GET-only P4 evidence
+  surfaces. Review checked immutable recursive lineage, strict 67-field false
+  authority, permanent replay denial, scanner completeness, normative links,
+  unchanged production files and explicit separation of passing targeted gates
+  from blocked UI/full-suite/commit gates. No authority ceiling was widened.
+
+Environment and remaining gates:
+
+- `npm ci --prefix services/mission-control --cache .npm-cache` failed after
+  registry tarball DNS errors (`EAI_AGAIN`), ending with npm's “Exit handler never
+  called” error. Node 22.23.1 and npm 10.9.8 are available. `npm test`,
+  `npm run build`, and `npm run lint` were attempted: Vitest/ESLint are missing,
+  and the build lacks Vite/Node type definitions and the pinned TypeScript
+  compiler. **Environment error: Mission Control dependencies could not be
+  installed because registry network access failed.** No UI gate is claimed.
+- Full Core and execution-worker pytest were attempted and interrupted after
+  stalled progress. These runs did not pass; targeted results are separate.
+  The worker's `test_durable_api_reuses_disabled_result_after_restart` was
+  reproduced alone with a 45-second faulthandler trace and a 75-second timeout:
+  Starlette TestClient is blocked in AnyIO's cross-thread portal on the first
+  POST. This is an unresolved TestClient environment gate, not a passed test.
+  No test transport or production behavior was changed to bypass it. The first
+  combined focused run was interrupted and replaced by separate contract/store,
+  API and historical runs to make progress and failures observable.
+- The required local commit is blocked: `git add` failed to create the linked
+  worktree's `index.lock` because Git metadata is read-only. Source files are
+  writable; Git staging/commit is not. No commit is claimed. Commit the reviewed
+  changes once the managed worktree's Git metadata is writable.
+- No Docker smoke or external runtime validation was performed. Historical
+  Docker socket/ownership limitations are not reclassified as passes. The
+  execution smoke compose override is unchanged; no push, tag, release,
+  publication or deployment was performed.
+
 ## Atlas v0.55 P4 reader lifecycle follow-up (2026-09-08)
 
 The task baseline `0e38706d` already contains the P4 integration and has committed

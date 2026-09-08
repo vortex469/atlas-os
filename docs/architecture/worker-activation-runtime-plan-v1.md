@@ -1,8 +1,10 @@
 # Worker Activation Runtime Plan v1 contract
 
-Status: **Atlas v0.55 P0 frozen; P1 implemented; P2-P5 pending**. This contract
-plans one boundary only. P0 changes documentation; it creates no runtime, model, service,
-API, UI, permission, setting or startup behavior.
+Status: **Atlas v0.55 P0 frozen; P1-P4 implemented; P5 closure regressions and
+normative documentation implemented**. Validation and release gates, including
+environment limitations, are recorded in the [release checklist](../RELEASE_CHECKLIST.md).
+This contract defines one evidence boundary only; it authorizes no production
+enablement or runtime effect.
 
 ## Decision derived from the released repository
 
@@ -52,7 +54,7 @@ The sole direct prerequisite is `WorkerActivationRuntimeAdmissionV1`
 injected owner-scoped durable Core reader; never accept caller-supplied nested
 evidence, a latest-candidate selection or a worker/queue lookup.
 
-The future create request pins UUID5 `runtime_admission_id`, exact `valid_until`,
+The create request pins UUID5 `runtime_admission_id`, exact `valid_until`,
 `runtime_admission_record_fingerprint`, predecessor `status_fingerprint`, and
 closed scope `worker_activation_runtime_plan_only`. Authenticated `operator_id`
 and candidate UUID4 `candidate_record_id` must match both predecessor models.
@@ -120,7 +122,7 @@ Home Assistant remains blocked without installation artifacts.
 The new schema is `worker-activation-runtime-plan-v1`, with distinct UUID5
 `runtime_plan_id` and `runtime_plan_record_fingerprint`. The permanent v0.55
 subject binds exactly owner, candidate and v0.54 `runtime_admission_id`;
-expiry/status/request/key changes cannot create another subject. P1 must freeze
+expiry/status/request/key changes cannot create another subject. P1 freezes
 separate versioned plan ID, subject, request, record, evaluation, status,
 collection, idempotency, reservation and audit domains with deterministic vectors.
 Predecessor subject/key fingerprints remain evidence, never successor keys.
@@ -136,7 +138,7 @@ unresolved-interface inventory. These facts are literals or exact inherited
 references. Beyond immutable inherited evidence, no new script, executable
 graph, scheduler, plugin/adapter selection, endpoint, filesystem path, command,
 credential, token, free-form configuration, payload or operational instruction
-is representable. P1 must reject extra fields.
+is representable. P1 rejects extra fields.
 The plan is never consumable as a `WorkerExecutionRequest` or worker-start input.
 
 ## P1 immutable model implementation
@@ -273,7 +275,7 @@ can confer worker-start admission or execution authorization.
 
 ## Persistence, replay, ownership, concurrency and corruption
 
-P2 may provide only an explicitly constructed default-off Core-local append-only
+P2 provides only an explicitly constructed default-off Core-local append-only
 SQLite plan journal and owned durable v0.54 reader. No production construction,
 network, broker, worker database, runtime probe or queue adapter. Do not mutate
 predecessor stores or consume/release their reservations. P1 remains pure.
@@ -311,11 +313,60 @@ fingerprints and non-retryable errors. No raw idempotency key, secret, payload,
 selector, exception or environment dump in storage/logs/UI. Foreign owner or
 candidate lookup is indistinguishable from missing evidence.
 
+## Implemented API and presentation boundary
+
+The [P3 routes](../../services/atlas-core/app/routes/worker_activation_runtime_plan.py)
+register exactly POST/GET collection and GET item under `/api/v1` at the paths
+in the phase table. They use only an explicitly injected service; startup does
+not construct it, and creation defaults off. Authentication, dedicated read or
+evaluate permission, owner/candidate scoping and POST Origin/CSRF validation are
+mandatory. Closed JSON requests reject duplicate keys and exceedance of 16 KiB
+or nesting 16. Responses are reparsed and bound to the authenticated scope,
+exact item/request and pinned predecessor fingerprints. Missing service is 503,
+disabled creation/replay conflict 409, foreign/missing evidence 404, and
+throttling 429. Errors remain bounded, redacted and non-retryable.
+
+The [P4 reader](../../services/mission-control/src/api/workerActivationRuntimePlan.ts)
+and [nested view](../../services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx)
+perform credentialed GETs only beneath the exact v0.54 admission. They validate
+closed authority, schemas, immutable predecessor equality and owner/candidate/
+admission linkage. Core retains fingerprint and current-time eligibility
+adjudication. Scope changes clear evidence and invalidate late responses,
+including owner, admission, lifecycle and collection changes. Selection remains
+bound to Core's returned collection. Loading, unavailable, missing and expired
+states confer no action authority. IDs, fingerprints and times are secondary
+inspection details. There is no POST control, polling or browser persistence.
+Mission Control remains non-authoritative.
+
+## P5 release closure
+
+The [closure regressions](../../services/atlas-core/app/worker_activation_runtime_plan/test_release_closure.py)
+create durable v0.54 admission evidence, reopen its owner-scoped reader, and
+prove byte-exact recursive record/status preservation in v0.55. They lock all
+four identities, request fingerprints, ownership and expiry; preserve the
+predecessor database bytes; reject false-authority coercion; and prove restart
+expiry cannot release a permanent subject or reread predecessors for duplicates.
+The exact consumer inventory permits only four Core evidence modules, the
+route, permission registry, API router and four P4 UI surfaces. Agent and
+execution-worker consumers remain zero. The normative false-field and blocker
+inventories are compared directly to the immutable Core contract.
+
+These locks complement the P1 contract, P2 service/store, P3 API and P4 UI tests:
+quota exhaustion, independent-process contention, both locked revalidation
+boundaries, partial writes, response loss, restart, corruption closure,
+authenticated scoping and hostile UI fixtures remain required. Historical
+release-isolation and Home Assistant golden checks retain their own semantics;
+only exact approved evidence surfaces may enter old allowlists. No production
+behavior or execution-smoke override is changed by P5. Observed validation,
+dependency ancestry and any remaining gates are recorded in the release checklist;
+repository evidence is not a published release or deployment claim.
+
 ## P1-P5 responsibilities and exit gates
 
 Implement P1 -> P2 -> P3 -> P4 -> P5 only within this ceiling; all were pending at
-P0. P1 now implements only the pure contract described above. Neither future
-implementation nor closure authorizes production enablement.
+P0. P1-P4 now implement the contract, journal, guarded API and nested evidence
+reader. P5 locks their release boundary with the closure regressions above.
+Neither implementation nor closure authorizes production enablement.
 
 | Phase | Responsibility and required evidence |
 | --- | --- |

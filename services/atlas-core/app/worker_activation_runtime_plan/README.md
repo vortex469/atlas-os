@@ -1,4 +1,4 @@
-# v0.55 Core evidence journal and guarded API (P2/P3)
+# v0.55 Core runtime plan evidence (P1-P5)
 
 The service is explicitly constructed and creation is default-off. Its only I/O
 is a separate Core-local SQLite plan journal and an injected owner-scoped v0.54
@@ -32,7 +32,11 @@ opaque correlation fingerprints.
 
 The P1 deterministic projection and all seven inherited blockers remain intact.
 Runtime, queue, worker-store, worker-start, Agent and execution authority remain
-false. P4-P5 remain separate work.
+false. P4 supplies nested GET-only Mission Control evidence; P5 locks durable
+lineage, restart no-replay, exact consumers and normative authority inventories.
+See the [normative contract](../../../../docs/architecture/worker-activation-runtime-plan-v1.md)
+and [release checklist](../../../../docs/RELEASE_CHECKLIST.md) for final semantics
+and observed validation, including environment limitations.
 
 ## P2 validation (2026-09-08)
 
