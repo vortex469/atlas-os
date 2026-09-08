@@ -438,6 +438,9 @@ def test_no_io_or_production_consumers():
                 consumers.add(source.relative_to(root).as_posix())
     # P3 registers guarded evidence only; P4 adds the exact nested GET-only UI.
     assert consumers == {
+        "services/mission-control/src/api/workerActivationRuntimePlan.ts",
+        "services/mission-control/src/types/workerActivationRuntimePlan.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx",
         # v0.55 P1/P2: exact reference-only contract and local evidence modules.
         "services/atlas-core/app/worker_activation_runtime_plan/contract.py",
         "services/atlas-core/app/worker_activation_runtime_plan/store.py",

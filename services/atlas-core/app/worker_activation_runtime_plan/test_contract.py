@@ -441,6 +441,10 @@ def test_no_io_or_production_consumers():
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
     assert consumers == {
+        "services/mission-control/src/api/workerActivationRuntimePlan.ts",
+        "services/mission-control/src/types/workerActivationRuntimePlan.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimeAdmission.tsx",
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",
         "services/atlas-core/app/routes/worker_activation_runtime_plan.py",

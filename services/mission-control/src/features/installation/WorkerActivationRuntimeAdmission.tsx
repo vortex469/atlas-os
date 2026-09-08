@@ -1,3 +1,4 @@
+import { WorkerActivationRuntimePlan } from "./WorkerActivationRuntimePlan";
 import { useEffect, useState } from "react";
 import { getWorkerActivationRuntimeAdmission } from "../../api/workerActivationRuntimeAdmission";
 import type { WorkerActivationRuntimePrerequisite } from "../../types/workerActivationRuntimePrerequisite";
@@ -34,6 +35,7 @@ function AdmissionReader({ prerequisite }: { prerequisite: WorkerActivationRunti
                 <ol>{state.blockers.map((code) => <li key={code}><code>{code}</code></li>)}</ol>
                 <dl aria-label="v0.54 fixed-false authority">{Object.entries(state.authority).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{String(value)}</dd></div>)}</dl>
             </details>
+            <WorkerActivationRuntimePlan admission={state} />
         </>}
     </section>;
 }

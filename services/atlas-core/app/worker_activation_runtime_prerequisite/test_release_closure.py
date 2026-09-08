@@ -109,6 +109,7 @@ def test_exact_v053_production_consumers():
         "WORKER_ACTIVATION_RUNTIME_PREREQUISITE",
     )
     expected = {
+        "services/mission-control/src/api/workerActivationRuntimePlan.ts",
         # v0.54 P4 embeds exact prerequisite evidence in the nested GET-only view.
         "services/mission-control/src/api/workerActivationRuntimeAdmission.ts",
         "services/mission-control/src/types/workerActivationRuntimeAdmission.ts",

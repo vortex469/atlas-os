@@ -29,7 +29,7 @@ describe("v0.54 runtime admission presentation", () => {
         responses({ ...admissionResult, status: { ...admissionResult.status, lifecycle: "expired", evaluated_at: admissionResult.status.valid_until } });
         render(<WorkerActivationRuntimeAdmission prerequisite={prerequisite} />);
         expect(await screen.findByText(/admission evidence has expired/)).toBeVisible();
-        expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
+        expect(screen.getByText(/Runtime prerequisites remain incomplete. Worker start and execution remain blocked/)).toBeVisible();
     });
     it.each([401, 403, 404, 409, 503])("redacts failure %s without retry controls", async (status) => {
         vi.mocked(atlas.get).mockRejectedValue({ response: { status, data: { message: "secret endpoint" } } });

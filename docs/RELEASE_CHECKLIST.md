@@ -3,6 +3,80 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.55 P4 reader lifecycle follow-up (2026-09-08)
+
+The task baseline `0e38706d` already contains the P4 integration and has committed
+P3 `6876f01a` as an ancestor. This follow-up binds each keyed runtime-plan reader
+to its initial admission scope so equivalent parent renders do not cause extra
+background reads while displaying an earlier status. Regression tests cover
+equivalent renders and late failures after the replacement scope has loaded.
+Changed scopes still clear evidence immediately and ignore late results.
+
+- Focused tests passed: v0.55 API, component and structural suites, **315 tests**.
+- Full `npm test`: **149 files, 1,435 tests passed**.
+- Selected-interpreter pytest: v0.53/v0.54/v0.55 Mission Control isolation and
+  historical installation release isolation, **72 passed**.
+- `npm run build`, `npm run lint`, and `git diff --check` passed.
+- Hostile review passed: reviewed keyed scope replacement, equivalent renders,
+  stale success/failure handling, strict false authority and the GET-only boundary.
+  No production authority was added client-side. Core remains authoritative;
+  advanced evidence remains collapsed, with no new controls or navigation.
+  No isolation allowlist changes were needed. Smoke compose is unchanged.
+
+Known pre-existing warnings: Vite's >500 KiB bundle warning, the
+`WorkflowShellPage.tsx` hook dependency warning, and 309 Pydantic warnings.
+The existing dirty `.task-evidence/v055-p4-commit` nested repository is excluded
+from this follow-up. No push, tag, release, publication or deployment occurred.
+
+## Atlas v0.55 P4 Mission Control evidence integration (2026-09-08)
+
+P3 commit `6876f01a` is the task baseline and an ancestor of this integration
+(`git merge-base --is-ancestor 6876f01a HEAD` passed). The existing v0.54
+admission view now nests credentialed Core collection/item GETs for v0.55 plans.
+It displays “Runtime plan is evidence; runtime prerequisites remain incomplete.”
+IDs, fingerprints, timestamps, duplicate state, reference-only design, complete
+admission lineage, reason codes and fixed-false authority stay collapsed.
+Loading, missing, unavailable and Core-reported expiry remain distinct.
+
+The reader checks closed envelopes/design, all 67 false fields, exact immutable
+parent and list/item equality, owner/candidate/admission IDs, fingerprint metadata,
+Core timestamp consistency and the seven blockers. It does not calculate hashes
+or current-time eligibility. Scope changes unmount the previous reader and ignore
+late responses. No production authority, creation/start/action control, polling,
+persistence, navigation, Agent invocation or execution bridge was added.
+`compose.execution-smoke.override.yaml` was not modified.
+
+Validation from the managed worktree:
+
+- Focused tests passed: the targeted v0.55 API/component/structural and v0.54
+  component run passed **316 tests**. Additional marker and scope-race cases then
+  passed in the full final `npm test`: **149 files, 1,433 tests** (31.02 seconds).
+- `npm run build`, `npm run lint` and `git diff --check` passed.
+- Selected-interpreter pytest with `PYTHONPATH=services/atlas-core` exercised
+  v0.53/v0.54/v0.55 Mission Control isolation, v0.54/v0.55 exact consumer checks,
+  v0.53 release closure and historical installation release isolation:
+  **75 passed**, with one missing exact route-reader allowlist entry. After adding
+  only `api/workerActivationRuntimePlan.ts`, the failed test passed on its focused
+  rerun (**1 passed**). No scanner or authority assertion was weakened.
+- The earlier v0.54/v0.55 contract and UI-isolation run passed 164 tests; its sole
+  consumer-scan failure was generated Vitest cache JSON. Moving that cache out
+  of the scanned service trees allowed both consumer checks to pass above.
+- Hostile review passed: checked response bounds and unknown fields, strict false
+  authority, immutable lineage and status consistency, scope races, error
+  redaction, exact consumer additions, absence of effects and unchanged smoke
+  compose. The UI fixture removes ten duplicated non-status v0.40 fields from
+  its historical status object; production validation and the 192 KiB ceiling
+  remain unchanged. UI fingerprints remain opaque fixtures, not hash validation.
+
+Known pre-existing warnings, separate from validation: Vite's >500 KiB bundle
+warning and inherited Pydantic schema-shadowing/serializer warnings (309 in the
+isolation run, 306 in the contract run). Final ESLint emitted no warnings.
+No production enablement, push, tag, release, publication or deployment occurred.
+The managed worktree's Git metadata is read-only (staging cannot create the index
+lock). A task-owned commit is therefore created with an isolated Git directory
+inside this worktree, preserving P3 ancestry, and exported as a commit bundle.
+The managed branch itself cannot be advanced in this environment.
+
 ## Atlas v0.55 P1 pure contract implementation (2026-09-08)
 
 Implemented the [closed runtime-plan contract](architecture/worker-activation-runtime-plan-v1.md#p1-immutable-model-implementation)
