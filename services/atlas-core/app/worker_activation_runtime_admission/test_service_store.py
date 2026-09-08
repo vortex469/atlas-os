@@ -427,6 +427,8 @@ def test_no_production_or_effect_consumers():
     }
     # P3 adds only the guarded evidence route and dedicated registration.
     assert consumers == {
+        # v0.55 P1: pure reference-only successor, with no effect consumers.
+        "worker_activation_runtime_plan/contract.py",
         "routes/worker_activation_runtime_admission.py",
         "api/v1/router.py",
         "operator_auth/models.py",

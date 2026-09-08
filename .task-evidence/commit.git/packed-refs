@@ -1,0 +1,305 @@
+# pack-refs with: peeled fully-peeled sorted 
+72242dee43d604c20eb90c859af02daa5f293cf5 refs/heads/agent/5080-v014-p1c-validation
+4d2526e1b022c5c36eaced65bf5b71703da5d2d7 refs/heads/agent/5080-v015-p0
+0595c33135baeb946e0697fb2437191033c22eee refs/heads/agent/configurable-ingress
+0b1e2f368f4ea3948b690dc4bfcb8803a106ca67 refs/heads/agent/data-backup-recovery
+f32536de3344eb1943a6ea57a3c42faf82ad2b03 refs/heads/agent/record-v1-release
+1ecc874ebd4e15b08cfd85a28f08d5a391f5c30d refs/heads/agent/rest-server-backups
+2d5994cd31f9157f796fe92753fa05188c0d205a refs/heads/agent/scheduled-data-backups
+aca6fa7f832c3be5d65a930c6fe70389305a0396 refs/heads/backup/local-main-before-v036-sync
+ba9610bad19c9956865113cb2ab1fc0737ce66f2 refs/heads/backup/v014-p0-before-squash
+6dbf89706c2f4139023b6c91ccf550d06bf8f35c refs/heads/bench/deepseek-harness
+286521bbcae0d870c11c7c42a0b150d02b1d46a2 refs/heads/bench/opencode-v013-p2
+4fe0c232a808742bfea28ce1684e3bbdaa991e41 refs/heads/bench/opencode-v013-p3
+7d77bf7c963de7ee97d26ee43920839a3d16e913 refs/heads/bench/opencode-v013-p4
+1df238c2f714c2f6311e5d41b16b6291bce00628 refs/heads/bench/opencode-v013-release-evaluation
+6dbf89706c2f4139023b6c91ccf550d06bf8f35c refs/heads/bench/v013-p5-release-readiness
+4e885225b43c95b0f4180e323ae3f396529c00ab refs/heads/bench/v014-p0-deployment-binding
+c650638f36014c0a4a881b2dc24b3e52c4e6d400 refs/heads/bench/v014-p1a-image-grounding
+f31088dfa66a93e4fcd1e77ad232dc72ef90bd5d refs/heads/bench/v014-p1b-evidence-loader
+4d2526e1b022c5c36eaced65bf5b71703da5d2d7 refs/heads/bench/v014-p1c-compose-observation
+c98f2c07b5500294b955f78ea73ccbacd9ae03d9 refs/heads/feature/ace-situation-report
+ac9e0a6b541d75e87e6b60e67819857bd719f70c refs/heads/feature/action-history
+5390533c092b4105897602c22eb6d60b76c35e5b refs/heads/feature/ai-control-service
+560e2a736bba07e96b9ce67b443c6c6967e99657 refs/heads/feature/atlas-agent
+ae7e3a70d41be5872f16fb641bcc33407dd0e8b4 refs/heads/feature/atlas-v0.10
+42883568335490ae32f3baf345e1e429fcc864f0 refs/heads/feature/atlas-v0.7
+05e0402fdce773a762f9ee81fa9b666a9797cefe refs/heads/feature/atlas-v0.8
+c39a7b8ecd957425db863e67e90b2799232b1887 refs/heads/feature/atlas-v0.9
+6940a7cfafe9664b128ba9a29f1a8342c15a47d0 refs/heads/feature/dashboard-api
+b26365e786d687b7db6044bf76d976180ef9fc79 refs/heads/feature/event-bus
+dfe761118fb604be3507a930a351ac035e243053 refs/heads/feature/infrastructure-relationships
+78ed70804f0c4e33947f48b1c6c9cf7ed56ef145 refs/heads/feature/live-service-health
+490137aaae8889c391c76ad589c3aa1fb1738145 refs/heads/feature/ollama-model-lifecycle
+543a26ad7f06d19af021f97c3cf90614072f7535 refs/heads/feature/ollama-provider
+1312e9c3ea27bd753accfde4e1bda42b530b5a08 refs/heads/feature/ollama-runtime-status
+efd881cfe38c34e36a556b814445832867cbbaa8 refs/heads/fix/docker-one-shot-health
+6eff92ceaf1fb38c7515cf8896482f99bcaba179 refs/heads/group/101bdf8a/0-mc-2-0-dashboard-information-a
+b78ca940ca560d9bc1ba5505c66ddfe365638ba3 refs/heads/group/101bdf8a/1-mc-2-0-unified-system-health-s
+b78ca940ca560d9bc1ba5505c66ddfe365638ba3 refs/heads/group/101bdf8a/2-mc-2-0-worker-and-execution-ov
+b78ca940ca560d9bc1ba5505c66ddfe365638ba3 refs/heads/group/101bdf8a/3-mc-2-0-agent-and-provider-over
+b78ca940ca560d9bc1ba5505c66ddfe365638ba3 refs/heads/group/101bdf8a/4-mc-2-0-local-ai-runtime-overvi
+b78ca940ca560d9bc1ba5505c66ddfe365638ba3 refs/heads/group/101bdf8a/5-mc-2-0-operator-attention-and-
+b8dd36e8308b7bbd54e00af96fa4aa3abcc48747 refs/heads/group/14e53333/0-v0-54-p0-inspect-the-released-
+fd3295e08045c7b2e7fa18f2f10635fc9b5a857e refs/heads/group/14e53333/1-v0-54-p1-implement-the-closed-
+8aaa89ef10230ae9a011a60f068ccab4589212d4 refs/heads/group/14e53333/2-v0-54-p2-implement-the-bounded
+d4b27f9af1a40aa44e9d79e8b9f13f7c4cd9e7bf refs/heads/group/14e53333/3-v0-54-p3-add-the-minimum-guard
+7a3ec1f3f7a3df6f6eee0b5fda9de360839e821f refs/heads/group/14e53333/4-v0-54-p4-integrate-the-complet
+1ff51e0fe8ca203d7df02945d5043366e4598c36 refs/heads/group/de018c12/0-03-v0-53-p2-implement-the-boun
+7b5831c1a298a0d2ae81682c85455a378397b5d5 refs/heads/group/de018c12/1-04-v0-53-p3-add-the-minimum-gu
+b78ca940ca560d9bc1ba5505c66ddfe365638ba3 refs/heads/group/de018c12/2-05-v0-53-p4-integrate-worker-a
+dea5c54ecda42efd7bdedaeeb0be6b624f7c81a5 refs/heads/group/de018c12/3-06-v0-53-p5-complete-v0-53-aut
+2a1e61e2ec3d513fb33843b0dd69a257d350a622 refs/heads/main
+e5c1aad572bbfaaa108248ff3127f5359a3cb263 refs/heads/maintenance/node24-actions
+7d77bf7c963de7ee97d26ee43920839a3d16e913 refs/heads/opencode-5080
+77b5b6dba5a83748be5721e95eaf054d32198174 refs/heads/task/01-v0-40-p0-define-worker-intake-admission-boundary
+e7774fe7931354b18eaf68b608ba2d632aab6806 refs/heads/task/01-v0-40-p5-complete-release-validation-for-worker-intake-ad
+b045e9daab803164173c69f151ddd176bc79be50 refs/heads/task/01-v0-41-p0-freeze-live-enqueue-admission-contract-and-threa
+fb03e6028810599cca31d89c328ce89f290ea846 refs/heads/task/01-v0-42-p0-define-the-one-shot-live-enqueue-boundary
+b0546e747f44f0158cd53bea814656b0a2920989 refs/heads/task/01-v0-42-p0-freeze-the-one-shot-live-enqueue-boundary-contra
+ff6c29e4aeb8889e76eced96cf2c02ebdb4d3e71 refs/heads/task/01-v0-44-p0-freeze-the-controlled-dequeue-admission-boundary
+f223756dd8834666d33e074044b21a03447e9d58 refs/heads/task/01-v0-45-p0-freeze-the-repository-supported-one-shot-control
+f77dd2a788596ff5462a4e1783eadbfe42684bc0 refs/heads/task/01-v0-51-p0-inspect-the-completed-merged-v0-50-baseline-and-
+74fdf25ff1950f0cc3fa1277e2b7238b8107ca84 refs/heads/task/01-v0-53-p0-determine-and-freeze-the-repository-supported-v0
+2a1e61e2ec3d513fb33843b0dd69a257d350a622 refs/heads/task/01-v0-55-p0-determine-and-freeze-the-repository-supported-v0
+7c354f9521214f15ea2a103dd40e5bd494ad9b6b refs/heads/task/02-v0-40-p1-implement-worker-intake-admission-models-and-det
+1986346c771ee05c1619e4bcc6f3be44becd940a refs/heads/task/02-v0-41-p1-add-closed-core-models-and-pure-fail-closed-eval
+f96c093d1a6b163a90b457ea28ac9fae2673a8f9 refs/heads/task/02-v0-42-p1-implement-closed-one-shot-live-enqueue-models-an
+c0c2c3a4119ac10e41113d02e8a3eb66de82d8ce refs/heads/task/02-v0-44-p1-implement-closed-controlled-dequeue-admission-mo
+d5e69ee391c530b91ff72e9db8a2ea408941e271 refs/heads/task/02-v0-45-p1-implement-closed-immutable-one-shot-controlled-d
+8824b4884127605bd377e223ad1c32506445418c refs/heads/task/02-v0-51-p1-implement-the-closed-immutable-v0-51-core-contra
+84abd54f908bef73b5240f96d42d30d8cb170641 refs/heads/task/02-v0-52-p1-implement-the-closed-immutable-controlled-worker
+53bbd57987ac180c7687c27849bb564490ffd7a8 refs/heads/task/02-v0-53-p1-implement-the-closed-immutable-worker-activation
+2a1e61e2ec3d513fb33843b0dd69a257d350a622 refs/heads/task/02-v0-55-p1-implement-the-closed-immutable-v0-55-core-contra
+658d95f6fa4512cb9f0dc3a105c6c7de7563e09a refs/heads/task/03-v0-40-p2-implement-durable-evidence-only-worker-intake-ad
+60b6986a86560b00217a256c6b51d7710970066b refs/heads/task/03-v0-41-p2-add-explicit-append-only-core-evidence-service-a
+0bba7d17b6596d67f9e21eb631754e5543ba6576 refs/heads/task/03-v0-42-p2-implement-durable-single-use-enqueue-reservation
+22bb94397cafffe99568c3bbac57e014b14cdfc9 refs/heads/task/03-v0-44-p2-implement-bounded-append-only-controlled-dequeue
+248c5db59fa526fa80fa1d6578b405893d43eff0 refs/heads/task/03-v0-45-p2-implement-bounded-durable-single-use-dequeue-res
+c7fe54e4dc3fb88330f8654ce50e5f0ed05dd416 refs/heads/task/03-v0-51-p2-implement-the-bounded-durable-append-only-v0-51-
+304113fd263d91c346f9f14bc35ae79347302d4a refs/heads/task/03-v0-52-p2-implement-the-bounded-durable-append-only-contro
+9a1db2e0ffe489942a0bdc1424d9e7d840eaddb3 refs/heads/task/04-v0-40-p3-implement-guarded-worker-intake-admission-get-in
+8791eeba6906e5fb74933a2b36b6dc757e574a69 refs/heads/task/04-v0-41-p3-add-guarded-candidate-scoped-core-api
+dcb638e5e9c466774da3426cd82b10a62823ad37 refs/heads/task/04-v0-42-p3-implement-the-guarded-default-off-one-shot-live-
+ddb7e6e30ac5199eb5cfa1b04d167495ca1fb441 refs/heads/task/04-v0-44-p3-add-the-guarded-default-off-core-controlled-dequ
+de0b56cd80c98912373f65e46caf842562db35d9 refs/heads/task/04-v0-45-p3-implement-the-guarded-default-off-one-shot-contr
+6e8fed7120aa7e9553f5a0e48ebeb8b70279b790 refs/heads/task/04-v0-51-p3-add-the-minimum-guarded-default-off-atlas-core-a
+4b99f52955689a7410d2afa5f6bc264fd56d9b00 refs/heads/task/04-v0-52-p3-add-the-minimum-guarded-default-off-atlas-core-a
+d19faf53f23087cf1d1ed5d54ca08a691c3f2c04 refs/heads/task/05-v0-40-p4-integrate-worker-intake-admission-into-mission-c
+05f495b48dafc505a55c45f5eccdd1fb8da33cba refs/heads/task/05-v0-41-p4-add-nested-mission-control-evidence-presentation
+0339ef8ed924618c292b91364ad5b25981c6aece refs/heads/task/05-v0-42-p4-integrate-one-shot-live-enqueue-into-the-existin
+c4ebc5d938c5eb54cb98ed614448317a9af6a894 refs/heads/task/05-v0-44-p4-integrate-controlled-dequeue-admission-evidence-
+c573265a3c3e8afd9d139db68d845d73f6c4ed87 refs/heads/task/05-v0-45-p4-integrate-one-shot-controlled-dequeue-into-the-e
+99bad31fe708541cbeb9960b7ccfedaa84d4af4e refs/heads/task/05-v0-51-p4-integrate-the-completed-v0-51-state-into-the-exi
+10f0cd86fc6d31db4fc6076ffabd97d93985b4d2 refs/heads/task/05-v0-52-p4-integrate-v0-52-controlled-worker-queue-claim-le
+fe781fbd65092aef65b4215029e74539fa83a94a refs/heads/task/05r-v0-53-p4-recovery-integrate-worker-activation-runtime-pr
+a2008627736eb9e494efdf3215c8de02e751adf2 refs/heads/task/06-v0-41-p5-authority-isolation-regression-and-release-closu
+0e02825192f9c325ab3cd18292de2b7d19e2cd34 refs/heads/task/06-v0-42-p5-complete-one-shot-live-enqueue-authority-isolati
+1b193ee62abf40c01eae289018f54a1567430692 refs/heads/task/06-v0-44-p5-complete-controlled-dequeue-admission-authority-
+48910b97dc23ae44c9159b994befa0fb46938189 refs/heads/task/06-v0-45-p5-complete-v0-45-authority-isolation-regression-va
+8d1ece090b14e6fc2d06332b14b03559b252555d refs/heads/task/06-v0-51-p5-complete-v0-51-authority-isolation-and-release-c
+f6e9de8e57685967541369073e45f42e804989c8 refs/heads/task/06-v0-52-p5-complete-v0-52-authority-isolation-release-closu
+6dbcd7588a5e4485b33da67edbacfd6661b73542 refs/heads/task/07-v0-43-p0-freeze-the-queue-observation-and-enqueue-receipt
+88720306dd13d423aba3bcbfc17fc23d08930a10 refs/heads/task/07-v0-46-p0-inspect-the-completed-merged-v0-45-baseline-and-
+d3f26cf3fc2918c5eaacdda097f43ca45c487e33 refs/heads/task/08-v0-43-p1-implement-closed-queue-observation-and-enqueue-r
+3dc728517a2b7d920c255564265a6bef9be41074 refs/heads/task/08-v0-46-p1-implement-closed-immutable-v0-46-models-and-pure
+607d693a47b83f72db529cdfe108e3be4073f6b4 refs/heads/task/09-v0-43-p2-implement-bounded-append-only-queue-observation-
+08d847410ddcbd5a8f9d63cca609e9522f964f0b refs/heads/task/09-v0-46-p2-implement-bounded-append-only-v0-46-evidence-sto
+96f72035aca6fc0f3faa99ed61c3c4a2e70ba6a3 refs/heads/task/1-audit-existing-mission-control-architecture-and-create-the
+2df0f61c68c7767925cf2961530672570b5711d8 refs/heads/task/10-v0-43-p3-add-the-guarded-default-off-core-queue-observati
+b431c02911b408f7a69e700c381c0e1361fe3922 refs/heads/task/10-v0-46-p3-add-the-minimum-guarded-default-off-core-api-for
+8982752600643b5a4342612658cb650645b1422f refs/heads/task/11-v0-43-p4-integrate-queue-observation-and-enqueue-receipt-
+20c43021ecf9e9116166995e8fb0c3388ae501a5 refs/heads/task/11-v0-46-p4-nest-v0-46-evidence-into-the-existing-mission-co
+acc561a7a3bf2134142ad4e4b0f269d9295eeb3f refs/heads/task/12-v0-43-p5-complete-queue-observation-and-enqueue-receipt-a
+4eee8aff5560702be257f1b5e888752b616b4947 refs/heads/task/12-v0-46-p5-complete-v0-46-release-isolation-and-regression-
+1f10931b7231e362e1ca7aa89a5af3d6e671509c refs/heads/task/13-v0-47-p0-inspect-the-completed-merged-v0-46-baseline-and-
+278935424983c033a1e9a6ffe721e7ab1be295cc refs/heads/task/14-v0-47-p1-implement-closed-immutable-v0-47-contract-models
+f57a8e846976b48c2a01ccd53c75cc7f54b88eec refs/heads/task/15-v0-47-p2-implement-bounded-durable-v0-47-store-with-exact
+be74f72ca2e59a6b778565f02c4a05e79fdfe2b1 refs/heads/task/16-v0-47-p3-add-the-minimum-guarded-default-off-core-api-and
+0fa60f15608d836a220b28d9a0d6ce9340dd5dfd refs/heads/task/17-v0-47-p4-integrate-v0-47-into-the-existing-mission-contro
+32cfe0779958e803f7277e8677e22c2fcb313aae refs/heads/task/18-v0-47-p5-complete-v0-47-authority-isolation-and-release-c
+ff486652a628f84f3a1bb6c5c45c9837a036675e refs/heads/task/19-v0-48-p0-inspect-the-completed-merged-v0-47-baseline-and-
+ba91a7f0f62217eafea4a976c1039b20b0d78c95 refs/heads/task/2-add-mission-control-2-0-browser-regression-harness-and-bas
+8b8e3c83635e20c44234134f0648913870102768 refs/heads/task/20-v0-48-p1-implement-closed-immutable-v0-48-models-and-pure
+120bb4a5d8b9256d38209473cc6f4eeefe796b8b refs/heads/task/21-v0-48-p2-implement-bounded-durable-v0-48-evidence-store-w
+b884535425df6167e6d3f22420e84d8f91b21c61 refs/heads/task/22-v0-48-p3-add-the-guarded-default-off-v0-48-core-api-and-o
+de3c2f22953d7d16b23632f716ebab8a60877733 refs/heads/task/23-v0-48-p4-integrate-v0-48-state-into-the-existing-mission-
+755c37d3405785f26613cee8b02f197e4f459dce refs/heads/task/24-v0-48-p5-complete-v0-48-authority-isolation-and-release-c
+70cb23966d71af27834ef08f49291e12f88f9095 refs/heads/task/25-v0-49-p0-inspect-the-completed-merged-v0-48-baseline-and-
+351bec19446d05d1628815c4b406b7f03193ad5a refs/heads/task/26-v0-49-p1-implement-closed-immutable-v0-49-models-and-pure
+5efd0e4b7e54a73d599fe02ec3fe8de7cfe9219b refs/heads/task/27-v0-49-p2-implement-bounded-durable-v0-49-evidence-store-w
+9a4cb2ccc0ad11484bc5ab694535d1cee1529de0 refs/heads/task/28-v0-49-p3-add-the-guarded-default-off-core-api-and-only-th
+7881dac72a102814d2a8f51dc7d1de7e37e571db refs/heads/task/29-v0-49-p4-integrate-v0-49-into-the-existing-mission-contro
+1563382715aecc55488cc23fa51c4ff599746aec refs/heads/task/3-define-and-implement-the-mission-control-2-0-design-tokens
+ad87db19e3e79495101b9fab96f7d6a0c6fed618 refs/heads/task/30-v0-49-p5-complete-v0-49-authority-isolation-and-release-c
+72d8ea1279e9deee84b09348372249113c4a8bbf refs/heads/task/31-v0-50-p0-inspect-the-completed-merged-v0-49-baseline-and-
+c70fe91ce94f462804b80faed6f9a9dcaa9b73c4 refs/heads/task/32-v0-50-p1-implement-closed-immutable-v0-50-models-and-pure
+1ae70c902e5e85d130c6078c730c0a22f5e401b3 refs/heads/task/33-v0-50-p2-implement-bounded-durable-v0-50-store-with-exact
+ac9870bb2a1e5b1666829b98a3f64f84c5394a56 refs/heads/task/34-v0-50-p3-add-the-guarded-default-off-v0-50-core-api-and-o
+79c4905d93a3008bd6b7db3fe817735b07fd6abd refs/heads/task/35-v0-50-p4-integrate-v0-50-state-into-the-existing-mission-
+7f1d352fd559297a93f5f56878393aac16f48fc8 refs/heads/task/36-v0-50-p5-complete-v0-50-authority-isolation-regression-va
+efec87292da9bf6c891c3f09e0ebc47916f6aa14 refs/heads/task/4-build-the-mission-control-2-0-responsive-application-shell
+c6ec39165ee8556a0f13289fccbed0f29e766f0d refs/heads/task/atlas-maintenance-fix-atlas-core-quality-gates-timeout-for-t
+abb3446de9f6c4b384cc4449555a2387ea49cca5 refs/heads/task/atlas-maintenance-fix-atlas-core-ruff-import-ordering-from-q
+7c08eff9661466ecef7ec0e5a29f656208fe354e refs/heads/task/atlas-maintenance-fix-v0-54-mission-control-immutable-author
+ddec6f16dc2fef0632bd398cfc2d6f4a06ccaf87 refs/heads/task/atlas-maintenance-increase-atlas-core-quality-gates-timeout-
+3856a1ced30789d5ec0ad07a4f01b2ab9c75ad6b refs/heads/task/atlas-maintenance-scope-legacy-isolation-expectations-around
+94be117fed566a46bdd26e05bb940bb16ba29e9d refs/heads/task/atlas-maintenance-scope-legacy-release-isolation-tests-aroun
+57b666e3886b5fd3ec63e461edee834c5720a19b refs/heads/task/atlas-maintenance-scope-legacy-v0-20-release-isolation-expec
+42ac0a02f8beeb3a467dc692de3f5dde5504c1a3 refs/heads/task/atlas-maintenance-scope-v0-28-dormant-delivery-structural-te
+b66f602f0078892a9a77d6bba1d82ac19a4c1240 refs/heads/task/atlas-maintenance-scope-v0-36-execution-admission-consumer-i
+1b1b08e74b8bc88d6647f3fc15f46e84ea8af659 refs/heads/task/atlas-maintenance-scope-v0-36-execution-admission-isolation-
+0385516763d9cc61ee4dc395686521dc98d75168 refs/heads/task/atlas-maintenance-update-readme-to-current-v0-49-repository-
+6bfdd27b40f8334abb354df56eaaa603fcc28af3 refs/heads/task/task-01-v0-52-p0-determine-the-repository-supported-v0-52-sc
+00fe5166c0acac979d12ceee9bb3ab2527d56079 refs/heads/task/v0-53-p5-recovery-complete-v0-53-authority-isolation-regress
+54bb37a2660213bb500d42d8789bd243d911f77b refs/heads/task/v0-54-p4-integrate-the-completed-v0-54-state-into-the-existi
+713ff4857c0c82c0b9eefcd48adc1ec144e3798e refs/heads/v015-planning
+3af52f9e6e551ad3cfded4c7429ad5194caab077 refs/heads/v016-planning
+ec818046eee08b8e50e77276eff918a421eb7a0c refs/heads/v017-prospective-destination
+f12a89c703b78fb783ab804197dcb9eb76c3b56b refs/heads/v018-installation-capability
+c66af4acebf05b93058ac0d99527f40e1251456b refs/heads/v019-installation-candidate-admission
+6dc6016b48f1e0bf8c44b3873a14ebcfb34cf8e5 refs/heads/v020-installation-candidate-lifecycle
+4cbe45d1ff119096c7a9cfe6f486c2778d285f59 refs/heads/v021-installation-approval-intent
+fecd8a1c6815b4113d6f7e9a0141c92c4d0ded82 refs/heads/v022-agent-install-container-contract
+10c7b0a242dda0304ddb63e2f4d46b489088c9f4 refs/heads/v023-installation-execution-request
+0a8b364b31d7686f4cf2ebe682b7b08b8c5b4ac3 refs/heads/v024-installation-dispatch-handoff
+9f64187bf4e78f02c49d8cde44f9637b2409baf0 refs/heads/v025-agent-intake-simulation
+959785b6300df9671f891f1df300df49c9fd2d72 refs/heads/v026-simulated-handoff-delivery
+432e0cf0e5c09d2754929e3a60f76e7e1337b56f refs/heads/v027-real-agent-intake-boundary
+63f837c1a154e6cb91a56a76e78b65e01cdca306 refs/heads/v028-dormant-core-agent-delivery-wiring
+a830ebcdeacd99d025a254a96c39cf94cc4c143a refs/heads/v029-delivery-activation-preflight
+4ba7e18babff6ba62a6a5993e2260017315d4777 refs/heads/v030-delivery-enablement-boundary
+ff799dd8bb2142b6be5327114fd5400990ffc587 refs/heads/v031-live-delivery-send-boundary
+6bf2bce80ee0772790c77d2dd79d4d2510518c5b refs/heads/v032-agent-live-intake-admission
+fe5da1a8efe9b08960b9f8c73bd7142f8b580857 refs/heads/v033-inert-delivery-receipt
+f9db299bdc1735236c7d3e9ba8ed7091ce570a5d refs/heads/v034-installation-readiness-review
+6d0f4c59ed993c7fce93ea6e285398dab2443512 refs/heads/v035-execution-permission-grant
+6faf9638ee7b86145d69f6d791c3d16502510ce7 refs/heads/v036-installation-execution-admission
+6c72469efc1fcd52950470275bd66498011321da refs/heads/v037-runner-binding-plan
+570bb7c1ef103dfce1c377baf8b7be9f4ec509ff refs/heads/v038-worker-admission-stub
+908c24527ec5d458a13bdcb1b35c866930c05a89 refs/heads/v039-worker-queue-reservation
+fc2bd1edeab334837516243e7cc12b9d1dc58009 refs/heads/v039-worker-queue-reservation-clean
+908c24527ec5d458a13bdcb1b35c866930c05a89 refs/heads/v039-worker-queue-reservation-mixed
+1c8798472ce46b2aa1fc822c1613a720c62113c4 refs/tags/atlas-v0.10-rc1
+^95d98a4d5e0e9767dd6cb5df06c7ffdb693bf162
+a10b657f463266ee1380aae9a3bf57c10d4b082b refs/tags/atlas-v0.10.0
+^b19ded149f65dfb4043a1b80833e5ff64d83e55d
+c5c5eaa1df908bde5f4bd22210e097095d002356 refs/tags/atlas-v0.11.0
+^f8b2c8a202ca1c7316361e0c6b0ba72ee83eb9e2
+e2913d33ca58dcc923690cd1ea0e92929f042bb0 refs/tags/atlas-v0.12.0
+^c8d06a592914865ad8b7575b008bd3d7010d9d98
+6131d748e7325d54761a37b4d647cc5b48f54b9b refs/tags/atlas-v0.13.0
+^6dbf89706c2f4139023b6c91ccf550d06bf8f35c
+d918044ba382695c81194fdf54ba1094ebbe0952 refs/tags/atlas-v0.14-rc1
+^4abace14e3c5fe6d1a2e9b0835ed9720479d5553
+bc6b861d1864c8d34f335eccf68749acee83ea59 refs/tags/atlas-v0.14-rc2
+^4d2526e1b022c5c36eaced65bf5b71703da5d2d7
+5212f8dab6ac792a383f1a8d252aaf27146512e3 refs/tags/atlas-v0.14.0
+^4d2526e1b022c5c36eaced65bf5b71703da5d2d7
+4d9d5a8d03a0c3f0c93e539ba2df9b540eb3e610 refs/tags/atlas-v0.15.0
+^850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab
+4c69ff0e3ca3ce3083808052f55cb2b79e1f674e refs/tags/atlas-v0.16.0
+^538a70cd34ce758bda40c5a200acdbdc837694a5
+38c8246628f7724709f8d4dbd8d90fcf0150f486 refs/tags/atlas-v0.17.0
+^5e000efd13584566773362bb86749a0666e1d1fb
+30520161b941a306ffb298fadfa5cd81389318b4 refs/tags/atlas-v0.18.0
+^f12a89c703b78fb783ab804197dcb9eb76c3b56b
+ce712ee4a3301c8956aa1fcc04cd155effef56b8 refs/tags/atlas-v0.19.0
+^c23f4c405b4c7261c59a6cff36bee145527c1b51
+e44fb7473ca7a8384b212652138a07ff1586b4c5 refs/tags/atlas-v0.20.0
+^929ebc01345a9545b189d0f6a2a6de71548ef0e4
+3b5e7f1901e55ccf5d5944a6095848b0432e3f5f refs/tags/atlas-v0.21.0
+^1ca708198bb0098a64ed442dd50c4ad9171d69e5
+ed69226e87f53f31249dbbab79ec3bcfc72c1864 refs/tags/atlas-v0.22.0
+^3ecf91dc4b501d6ac3bbfbc4ab99bd8dba283169
+225e40ba1c745d488db9c6fe03c8685a6e2885b3 refs/tags/atlas-v0.23.0
+^2e69785049ce863d36e1007bf67ae8da69ca1f86
+f439bcdeaca8e46d6d1971d8eb9375b6ebe5ddcf refs/tags/atlas-v0.24.0
+^a15ab39ee53a2af2fae8711d1a74ab508b378dc6
+4f0384db209c01bc9d22d1c6b661e5bc0cd67125 refs/tags/atlas-v0.25.0
+^d4d7424b86af1510f200d92f628cf80b779638f9
+a8cdbb345da13b042e956e6c1de7961b43fd6bbc refs/tags/atlas-v0.26.0
+^4d51aee9a50294814459990c3d366db74f0479be
+d3bf4c2294bebd2de6fcbf9ac0c326f4ffb2acbd refs/tags/atlas-v0.27.0
+^d0a36dd41eeec7a04acf500a3c21cfd98b882d4e
+2dc867a20fcb02b6f3f676f941717279604dcfa4 refs/tags/atlas-v0.28.0
+^c95d580b3cdc9d4cb52d2cfe3e7b764506c2ae9c
+3394cdd7f042121cab0af999ccdd675def1e047e refs/tags/atlas-v0.29.0
+^8eae3f4238da0eba2322b2297a97ec6aa77715bf
+00a46f94c5b63b1754b4d9be203d5f888c10ea66 refs/tags/atlas-v0.30.0
+^9fe2f9e9b8d3e7332abaa013fb5893beb916f290
+450141c184702df2c644dcb863842f1b1a6fbd99 refs/tags/atlas-v0.31.0
+^01e6fc40378f4f38f2559691768fc8880e69a96b
+ef4f7c6561cec5f21cb6de19410e63ae75af531e refs/tags/atlas-v0.32.0
+^74264b1f8f9e20f72e8c02c262dcfa97252e2ed5
+770b5e8d3d9ca06ddc9a17dfbde3050926ea95dd refs/tags/atlas-v0.33.0
+^4bc30527b1c5a99eb090a43619494bb557791a50
+d2ca882ec6a2ba51bfaa9c6e167dd1146855f47c refs/tags/atlas-v0.34.0
+^fb3d9014574b5aa85a1024d77fe7b29bf35e1b88
+e977130aafd603e29b93338d433a46f95d3f3e75 refs/tags/atlas-v0.35.0
+^5c56940e21db9e80a9470d2db434415d02dff9ac
+c76754e9603ad05bfb1eb8aca41be55e97d1f0b4 refs/tags/atlas-v0.36.0
+^d02e04126fd4a897c9faaab0f68b49d84f218044
+36b88e5ac593f420d8012633c4dfc3a7b4a580e1 refs/tags/atlas-v0.37.0
+^eee726fe68da80ca2e4ecab9478494881836e648
+06314932a43230af7e784fd668d5a1aa98229410 refs/tags/atlas-v0.38.0
+^1c1229fa9ad38722c85da3fbe3d7574d3ffe72b7
+41823a709252dbdf8545575cb915e1f63b353a61 refs/tags/atlas-v0.39.0
+^474cd83e6e8edbcaa2694dcb62aa8ee93c52e684
+b79c29fdf1fb64024ad7d5c1513083fab281c3fe refs/tags/atlas-v0.5
+^30003922cc515aa532694e91bea9038bd91ee8ee
+b753f8076e22a4134107fc0682531006fe2ac0d4 refs/tags/atlas-v0.51.0
+^8d1ece090b14e6fc2d06332b14b03559b252555d
+db795470ceb61fbbc36a247ebb5d8a06e7196375 refs/tags/atlas-v0.53.0
+^b55f6520527fe37a729c6f72c183f1a3c8d26d50
+262e8e2c383510c9486450b8e7fb200e84fafce3 refs/tags/atlas-v0.54.0
+^ddec6f16dc2fef0632bd398cfc2d6f4a06ccaf87
+cf943e1bdc42b0c499d557d15ad13a52a6fae549 refs/tags/atlas-v0.6
+^b976fece3778ceb1416f7425f433e5091169d70f
+93701c512644656ea1f99f9101c4977d3f01d82b refs/tags/atlas-v0.6-rc1
+^21bd3bbfd6aff14072826b8f0ed2ade50c2e7ae3
+1e747167656d3c95319768eada9b786fafe3da79 refs/tags/atlas-v0.6-rc1.1
+^6a9feb9861fc62a25e8f271cd51b287c53258852
+db766e8f1077354ef4af12a56b9982356ae1bab9 refs/tags/atlas-v0.6-rc1.2
+^c7b3622cfe9c0f65ad89bb94dfde54c317d74256
+6c46a11e8393cb648f8ef6c693c4528d7c6be3b1 refs/tags/atlas-v0.6-rc1.3
+^99dfeafab6d202d7e1fbcc9534a3b757e977b4c2
+9af68956fe2ddfaf9a70d3cbe890a69dac357eba refs/tags/atlas-v0.6-rc1.5
+^50db73e7a315e6b954a3595f5c41b16fc23a415b
+4b5e515e1912412136dd17fcf4c980b8ffe36e31 refs/tags/atlas-v0.6-rc1.6
+^f1cfe7a166022c971d47a3872d6dd55b9033a864
+c23f74bb0d1f216ac93562a083d26967aaa21dc8 refs/tags/atlas-v0.6-rc1.7
+^75cac3eff7026b84b8f2fa232f2c80ba0c612498
+6aa1797cd741cacb190da7d90fea7af6f3546b17 refs/tags/atlas-v0.6-rc1.8
+^c7a4221b3c15edd583a53ba315c7be37292da161
+7f2fc7ece2c398aa4c7665bc71887963ae3b40e5 refs/tags/atlas-v0.6-rc1.9
+^6d85df5b112b4bde28ec31fc60cce88560c9dbfc
+39d6828754444ae954bd3a6b08a04b4121d1a0fb refs/tags/atlas-v0.6.0
+^03c1e03099b0f638dc674235312a3b3e70768c2f
+17dae3ae07a23b2bf2537f04dc35c4d1ab2ca116 refs/tags/atlas-v0.7-rc1
+^5b1321091af0fc191844cdf71e9e0d919e4ea415
+e28818b028d32f581b584b4f67736cd70006941e refs/tags/atlas-v0.7.0
+^8dbc43de73dda300b50c121f19324cb5174df2a9
+faecf710efacc503ec436932a4e3d5dc0c00d836 refs/tags/atlas-v0.8-rc1
+^cf09dfe1eebbd138d37ba7144d91b893f70732fa
+44daf73d5cf8b6f1131730cd20ecfa3d433f86ef refs/tags/atlas-v0.8.0
+^f83cd90982d4682ce49e60308e93dc9840984211
+5ea956e3439f0b5d2fdf088962144d9b37925964 refs/tags/atlas-v0.9-rc1
+^bc549ff6ab57d366205c1b9eb0c36fc2f7a61ba3
+320c1c3821cdf1363218be1a6cf52d1f24ba86c0 refs/tags/atlas-v0.9.0
+^7a5beac58e1677cd97b9bcc2f160dc30573582aa
+91e06139edaa007ffdc622586d6ce839a2fcdea1 refs/tags/foundry-0.4.0
+^2e2cae7037d324b6cec42788ff53f5bb95ddbc47
+78ed70804f0c4e33947f48b1c6c9cf7ed56ef145 refs/tags/sprint3-live-health
+f451a9fddaac14604f28b6b302a83f643dd69412 refs/tags/v0.2.0
+5bfec4ec9ee0e8a057bd3636b83be1f6206c0991 refs/tags/v0.2.0-alpha1
+^f54baf0dd1daeb56c74060ec4ca496634f76213f
+35f162e55732658a783ac6b0ec87627bab02e5a9 refs/tags/v0.3.0-alpha1
+^95bfd20dccba3cfbd6449596ecee466832162e48
+4c7e9a2e669941d50ee8800765425d96ba57f4e7 refs/tags/v0.3.0-alpha2
+0fbe2a8e4cc5be5936c384cb35e43e4ca48471a5 refs/tags/v0.7.0-foundry
+^5da38cdeb321418b48984b4545e5f3fbcc894029
+5ac938c061dd63be025498d3e972147624c7453e refs/tags/v1.0.0
+^b32b21d3c63cfe53ab1abd7012307ea8956dd6a2
+6452bba8caea827a1129279dab4cfcad37276172 refs/tags/v1.0.0-rc1
+^8212022041e83fb82d5eb0b0db4e952ddd73de67

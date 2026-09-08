@@ -1,7 +1,7 @@
 # Worker Activation Runtime Plan v1 contract
 
-Status: **Atlas v0.55 P0 frozen; P1-P5 pending**. This contract plans one
-boundary only. P0 changes documentation; it creates no runtime, model, service,
+Status: **Atlas v0.55 P0 frozen; P1 implemented; P2-P5 pending**. This contract
+plans one boundary only. P0 changes documentation; it creates no runtime, model, service,
 API, UI, permission, setting or startup behavior.
 
 ## Decision derived from the released repository
@@ -138,6 +138,38 @@ graph, scheduler, plugin/adapter selection, endpoint, filesystem path, command,
 credential, token, free-form configuration, payload or operational instruction
 is representable. P1 must reject extra fields.
 The plan is never consumable as a `WorkerExecutionRequest` or worker-start input.
+
+## P1 immutable model implementation
+
+The [pure Core module](../../services/atlas-core/app/worker_activation_runtime_plan/contract.py)
+implements closed create, authority context, injected validation input, evaluation,
+design, record, status, result, collection, reservation, audit and redacted error
+models. The evaluator receives trusted Core facts; it does not obtain evidence,
+read a clock or reserve anything. Both previously-reserved flags must explicitly
+be false. Durable ownership and replay checks remain P2 responsibilities.
+
+`WorkerActivationRuntimePlanDesignV1` fixes `profile` to
+`core_owned_reference_only_runtime_plan_v1`, `evidence_owner` to `atlas_core`,
+`admission_reader` to `core_owned_runtime_admission_reader`, `plan_journal` to
+`separate_core_owned_plan_journal`, and `presentation` to `read_only`.
+`inherited_references=exact_embedded_admission_pair` identifies the complete
+immutable source of worker/queue references; there are no additional selectors
+or duplicated, independently editable references. Both contact interfaces remain
+`undefined`; `unresolved_interfaces` equals the seven ordered blockers.
+
+The evaluation uses `plan_state=recorded|blocked`, recognizes exactly one or zero
+v0.54 admissions, and preserves the historical admission marker's evidence-only
+meaning. Record and status preserve all four distinct IDs: `runtime_plan_id`,
+`runtime_admission_id`, `prerequisite_id` and `admission_id`. Record expiry equals
+the exact predecessor expiry. Status derivation never renews historical evidence.
+
+The hash domains are `atlas:worker-activation-runtime-plan-{kind}:v1`, where
+`kind` is `subject`, `request`, `record`, `evaluation`, `status`, `collection`,
+`idempotency-key`, `reservation` or `audit`. UUID5 uses the distinct domain
+`atlas:worker-activation-runtime-plan-id:v1`. The committed
+[deterministic vectors](../../services/atlas-core/app/worker_activation_runtime_plan/fingerprint_vectors.json)
+freeze all these domains plus an owner/candidate/admission subject and plan ID.
+These are test vectors, never production prerequisite identities.
 
 ## Authority ceiling
 
@@ -281,8 +313,9 @@ candidate lookup is indistinguishable from missing evidence.
 
 ## P1-P5 responsibilities and exit gates
 
-Implement P1 -> P2 -> P3 -> P4 -> P5 only within this ceiling; all are pending at
-P0. Neither future implementation nor closure authorizes production enablement.
+Implement P1 -> P2 -> P3 -> P4 -> P5 only within this ceiling; all were pending at
+P0. P1 now implements only the pure contract described above. Neither future
+implementation nor closure authorizes production enablement.
 
 | Phase | Responsibility and required evidence |
 | --- | --- |

@@ -3,6 +3,70 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.55 P1 pure contract implementation (2026-09-08)
+
+Implemented the [closed runtime-plan contract](architecture/worker-activation-runtime-plan-v1.md#p1-immutable-model-implementation)
+with immutable request/authority/evidence/result envelopes, a fixed reference-only
+design, deterministic hashes and UUID5, and a pure fail-closed evaluator. Committed
+P0 `2a1e61e2ec3d513fb33843b0dd69a257d350a622` is the implementation baseline and
+was verified as an ancestor. P2-P5 remain pending.
+
+Focused tests passed:
+
+- v0.55 contract/evaluator plus the full v0.54 contract, service/store, release
+  closure, Mission Control isolation and guarded API selection: **253 passed,
+  421 warnings in 222.92 seconds** (82 v0.55 and 171 v0.54 tests).
+- Historical installation release/import isolation and v0.52 scope: **77 passed,
+  298 warnings in 57.21 seconds**.
+- v0.53 durable release closure: **2 passed, 285 warnings in 5.16 seconds**.
+- Final non-text JSON rejection and exact zero-consumer scanner changes were
+  separately rechecked: **one test passed for each**.
+- Atlas Core baseline-aware Ruff: **547 Python files passed**, using the exact
+  tracked/untracked changed-file selection from `scripts/rc1-python-ruff-gate`
+  and the selected interpreter's `-m ruff check`. New package format check passed.
+  An additional unfiltered Core scan reported **84 existing findings** outside
+  this change; this does not claim the unfiltered historical tree is lint-clean.
+- Architecture links, ordered blockers, exact 67-field false inventory, P0
+  ancestry, and `git diff --check`: **passed**.
+
+An initial successor test compared Pydantic field-object identity instead of
+annotation/default values; the corrected exact inventory test passes. The first
+v0.54 run found the new pure contract absent from consumer allowlists. Only that
+exact file was added to three lists; all scanner logic and historical
+fingerprint-only import restrictions remain unchanged. The final selection above
+passes. Historical release evidence below is preserved.
+
+Hostile review passed: reviewed the complete implementation and test diff for
+copy/construct bypass, duplicate keys, malformed input and recursive lineage,
+owner/candidate mismatch, forged hashes/IDs, future/stale/expired evidence,
+clock rollback, altered authority, expiry renewal, unsupported capability,
+replay facts, redaction and model bounds. The review added non-text parser
+rejection and tightened the new consumer scanner to exclude only the contract
+file, not future package modules. The exact predecessor pair remains byte-equal;
+all seven blockers and 67 false authority/material values remain fixed. There
+is no production plan consumer, persistence, API/permission registration, UI,
+Agent invocation, worker contact or execution effect. The protected compose
+file is unchanged. No push, tag, release, publication or deployment occurred.
+
+Commit storage limitation: normal staging was rejected because the managed
+worktree's shared Git metadata is read-only (`index.lock` creation failed).
+A standalone bare Git copy at `.task-evidence/commit.git`, entirely inside the
+workspace, preserves the baseline ancestry and stores the real P1 commit using
+the managed worktree as its working tree. The managed worktree HEAD remains at
+P0; its implementation diff is retained. Inspect the task-owned commit with
+`git --git-dir=.task-evidence/commit.git show HEAD`.
+
+Main focused reproduction from the managed worktree:
+
+```sh
+mkdir -p .task-evidence
+PYTHONPATH=services/atlas-core /opt/atlas/.venv/bin/python -m pytest -q \
+  --disable-warnings --basetemp=.task-evidence/final \
+  services/atlas-core/app/worker_activation_runtime_plan \
+  services/atlas-core/app/worker_activation_runtime_admission \
+  services/atlas-core/app/routes/test_worker_activation_runtime_admission.py
+```
+
 ## Atlas v0.55 P0 authority-boundary freeze (2026-09-08)
 
 The [normative v0.55 contract](architecture/worker-activation-runtime-plan-v1.md)

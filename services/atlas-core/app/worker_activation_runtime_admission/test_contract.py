@@ -438,6 +438,8 @@ def test_no_io_or_production_consumers():
                 consumers.add(source.relative_to(root).as_posix())
     # P3 registers guarded evidence only; P4 adds the exact nested GET-only UI.
     assert consumers == {
+        # v0.55 P1: pure reference-only successor, with no effect consumers.
+        "services/atlas-core/app/worker_activation_runtime_plan/contract.py",
         "services/atlas-core/app/routes/worker_activation_runtime_admission.py",
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",

@@ -136,6 +136,8 @@ def test_durable_v053_lineage_authority_and_restart_no_replay(tmp_path, request)
 
 def test_exact_v054_production_consumers():
     expected = {
+        # v0.55 P1: pure reference-only successor, with no effect consumers.
+        "services/atlas-core/app/worker_activation_runtime_plan/contract.py",
         "services/atlas-core/app/worker_activation_runtime_admission/contract.py",
         "services/atlas-core/app/worker_activation_runtime_admission/readers.py",
         "services/atlas-core/app/worker_activation_runtime_admission/service.py",
