@@ -3,6 +3,140 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.55 P0 authority-boundary freeze (2026-09-08)
+
+The [normative v0.55 contract](architecture/worker-activation-runtime-plan-v1.md)
+freezes exactly **Worker Activation Runtime Plan evidence**. Only
+`worker_activation_runtime_plan_recorded` may advance in P1-P5: a closed,
+deterministic, Core-owned reference-only design projection over exactly one
+active same-owner v0.54 admission/status pair. All seven blockers and 67 false
+authority/material fields remain unchanged. No runtime definition, contact,
+worker-start admission/build/start, Agent invocation, execution authorization/
+start, installation, deployment, rollback, publication, retry/resend or unrelated
+effect is authorized. P0 implements documentation only; P1-P5 remain pending.
+
+Release baseline verification:
+
+- `git rev-parse atlas-v0.54.0^{}` equals starting HEAD
+  `ddec6f16dc2fef0632bd398cfc2d6f4a06ccaf87`.
+- Annotated tag object: `262e8e2c383510c9486450b8e7fb200e84fafce3`.
+- Released ancestry contains P5 `54bb37a`, immutable-authority UI fixture fix
+  `7c08eff` and quality-gate timeout maintenance at `ddec6f1`. This establishes
+  that the historical P5 commit is now in the released repository; it does not
+  rewrite or waive the historical external test limitations recorded below.
+- Inspected the actual released admission contract/evaluator, reader, service,
+  journal, guarded API, Mission Control reader, closure/isolation tests and
+  independent Agent/packaged-worker contracts. No installation runtime/contact
+  primitive supports an effectful successor. Future design consideration is
+  explicitly supported by the v0.54 normative contract.
+
+The v0.55 contract pins `runtime_admission_id`,
+`runtime_admission_record_fingerprint`, exact status fingerprint and expiry,
+authenticated owner/candidate, inherited `prerequisite_id`/`admission_id`, complete
+recursive v0.53-v0.20 records/statuses and versioned canonical hashes. These are
+per-record prerequisite identities; this P0 has no production evidence instance
+and does not invent sample UUIDs or digest values as release prerequisites.
+
+| Phase | Planned exit gate (all pending) |
+| --- | --- |
+| P1 | Pure closed plan/evaluator, deterministic domains/IDs, exact lineage and strict authority. |
+| P2 | Default-off owned durable evidence, bounded append-only journal, permanent replay denial, locked revalidation, concurrency and corruption closure. |
+| P3 | Guarded evidence-only create/list/get, owner/permission/CSRF/input/response checks, no production construction or enablement. |
+| P4 | Exact-admission nested GET-only UI, hostile-response/scope-race coverage, test/build/lint. |
+| P5 | Durable lineage and no-replay proof, exact consumers, zero Agent/worker consumers, historical isolation/golden and release gates. |
+
+Focused tests passed:
+
+- Released v0.54 contract/service/store/API/closure/UI structural selection,
+  v0.53 durable closure and historical installation release/import isolation:
+  **248 passed, 412 warnings in 213.54 seconds**. Covers exact recursive lineage,
+  default-off, permanent reservations, expiry/restart, concurrency, corruption,
+  guarded scope, strict authority, Home Assistant blocking and consumer isolation.
+- Documentation/architecture consistency: **passed** for every released v0.54
+  record/status field, all 67 false fields, seven ordered blockers, marker
+  agreement, contract links and P1-P5 responsibilities (reproduction below).
+- Atlas Core Ruff: **passed**, using the repository RC1 gate below.
+- `git diff --check` and staged whitespace check: **passed**.
+
+The initial pytest attempt had 248 setup errors because the chosen worktree-local
+basetemp parent did not exist. Creating `.task-evidence` resolved that invocation
+error; the same complete selection then passed. No test or production change,
+warning suppression, runtime probe or dependency installation was used.
+
+Hostile review passed: reviewed the complete documentation diff for accidental
+runtime-definition/start authority, executable plan material, lineage substitution,
+expiry renewal, replay bypass, cross-owner access, concurrency/corruption gaps and
+historical isolation weakening. The closed projection keeps every effect false;
+its only new marker records evidence. Verified exactly three documentation paths
+changed; all production code, API/UI implementations, settings, scripts, workflows,
+tests, consumer allowlists and `compose.execution-smoke.override.yaml` match the
+released baseline. Historical checklist sections are byte-identical. No production
+plan consumer exists. Local P0 commit scope is this checklist, ROADMAP and the
+new normative contract; P1-P5 implementation remains pending.
+
+Focused reproduction from this managed worktree (all temporary evidence stays
+inside it; the selected interpreter is used only as an executable):
+
+```sh
+mkdir -p .task-evidence
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/atlas-core \
+  /opt/atlas/.venv/bin/python -m pytest -q \
+  --basetemp=.task-evidence/v055-pytest \
+  services/atlas-core/app/worker_activation_runtime_admission \
+  services/atlas-core/app/routes/test_worker_activation_runtime_admission.py \
+  services/atlas-core/app/worker_activation_runtime_prerequisite/test_release_closure.py \
+  services/atlas-core/app/routes/test_installation_release_isolation.py \
+  services/atlas-core/app/installation_plan/test_isolation.py
+PATH=/opt/atlas/.venv/bin:$PATH scripts/rc1-python-ruff-gate services/atlas-core
+git diff --check
+```
+
+Documentation/architecture consistency reproduction:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/atlas-core /opt/atlas/.venv/bin/python - <<'PYDOC'
+from pathlib import Path
+import re
+from typing import Literal, get_args, get_origin
+from app.worker_activation_runtime_admission import contract as c
+
+root = Path.cwd()
+plan = root / 'docs/architecture/worker-activation-runtime-plan-v1.md'
+source = plan.read_text()
+false_fields = {
+    name for name, field in c.ClosedAuthorityV1.model_fields.items()
+    if (get_origin(field.annotation) is Literal
+        and get_args(field.annotation)[0] is False)
+    or name.endswith('_material_present')
+}
+inventory = source.split('The following released authority/material fields', 1)[1]
+inventory = inventory.split('```text\n', 1)[1].split('```', 1)[0].splitlines()
+assert len(inventory) == len(false_fields) == 67
+assert set(inventory) == false_fields
+blockers = source.split('Success retains exactly these seven ordered blockers:', 1)[1]
+blockers = blockers.split('```text\n', 1)[1].split('```', 1)[0].splitlines()
+assert tuple(blockers) == c.SUCCESS_BLOCKERS
+for model in (c.WorkerActivationRuntimeAdmissionV1,
+              c.WorkerActivationRuntimeAdmissionStatusV1):
+    assert model.model_fields['schema'].default in source
+    assert all(name in source for name in model.model_fields)
+marker = 'worker_activation_runtime_plan_recorded'
+for doc in (plan, root / 'ROADMAP.md', root / 'docs/RELEASE_CHECKLIST.md'):
+    assert marker in doc.read_text()
+for target in re.findall(r'\[[^\]]+\]\(([^)]+)\)', source):
+    path = (plan.parent / target.split('#')[0]).resolve()
+    assert path.is_relative_to(root) and path.is_file(), target
+assert all(f'| P{phase} |' in source for phase in range(1, 6))
+print('v0.55 architecture consistency passed: fields, 67 false values, seven blockers, links and phases')
+PYDOC
+```
+
+P0 requires a local documentation commit after tests and hostile review. No push,
+tag, release, publication or deployment. No runtime probe or Agent/worker
+invocation. `compose.execution-smoke.override.yaml` must remain unchanged.
+Historical UI/full-suite/production limitations are preserved, not claimed as
+passes by this planning task.
+
 ## Atlas v0.54 P5 release-closure validation (2026-09-07)
 
 Baseline HEAD `7a3ec1f` is the committed P4 integration; P3 merge `04a66a4`

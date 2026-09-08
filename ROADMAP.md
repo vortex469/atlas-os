@@ -1,36 +1,41 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - released v0.53 runtime prerequisite evidence
+## 1. Current baseline - released v0.54 runtime admission evidence
 
-The inspected released baseline is `atlas-v0.53.0` at
-`b55f6520527fe37a729c6f72c183f1a3c8d26d50` (`b55f652`). V0.53 P0-P5 is
-complete in the released repository. Historical validation limitations below
-remain recorded; release identity does not imply production enablement.
+The inspected released baseline is `atlas-v0.54.0`, peeled to
+`ddec6f16dc2fef0632bd398cfc2d6f4a06ccaf87`. V0.54 P0-P5 and subsequent
+fixture/quality-gate maintenance are in the released ancestry. Its sole new
+marker is `worker_activation_runtime_admission_recorded`, over the exact v0.53
+prerequisite/status and complete v0.52-v0.20 lineage. The
+[v0.54 contract](docs/architecture/worker-activation-runtime-admission-v1.md)
+retains all seven blockers. Historical external validation limitations remain
+recorded; repository release identity does not imply production enablement.
 
-## Implemented v0.54 evidence boundary - Worker Activation Runtime Admission evidence
+## Frozen v0.55 P0 - Worker Activation Runtime Plan evidence
 
-The [normative v0.54 contract](docs/architecture/worker-activation-runtime-admission-v1.md)
-freezes exactly one advance: `worker_activation_runtime_admission_recorded`,
-Core-local evidence over one exact active same-owner v0.53 prerequisite/status
-pair and its complete v0.52-v0.20 lineage. Runtime/contact/start primitives are
-absent from the released lineage, so admission records acceptance for future
-runtime design consideration only. All seven blockers remain unchanged.
+The [normative v0.55 contract](docs/architecture/worker-activation-runtime-plan-v1.md)
+selects exactly one advance: `worker_activation_runtime_plan_recorded`, a
+Core-owned deterministic reference-only design projection over one exact active
+same-owner v0.54 admission/status pair. V0.54 permits future runtime design
+consideration but supplies no runtime/contact/start primitive. The plan records
+ownership and unresolved interfaces; it defines no executable configuration and
+removes no blocker. All 67 released authority/material fields stay false.
 
-P0 is documentation only. P1 implements immutable models/pure evaluation;
-P2 implements default-off bounded durable evidence and permanent no-replay; P3 adds
-guarded evidence create/list/get without production construction; P4 adds nested
-GET-only Mission Control presentation; P5 proves failure, ownership, lineage,
-concurrency, corruption and historical isolation, with zero Agent/execution-worker
-consumers. P1-P4 are committed; P5 adds release-closure regressions and normative
-documentation over committed P4 `7a3ec1f`. Release sign-off remains open for the
-required local commit and environment-blocked validation gates. Exact requirements and
-gates are in the contract and [release checklist](docs/RELEASE_CHECKLIST.md).
+P0 is documentation only. P1 freezes pure models/evaluation and deterministic
+lineage; P2 supplies default-off durable evidence with permanent no-replay;
+P3 adds guarded evidence create/list/get without production construction;
+P4 adds nested GET-only Mission Control evidence; P5 proves failure, ownership,
+concurrency, corruption and historical release isolation with zero Agent/worker
+consumers. P1-P5 are pending. Exact IDs, fingerprints, expiry, ownership, recursive
+lineage, limits and phase gates are normative in the contract; actual P0 evidence
+is in the [release checklist](docs/RELEASE_CHECKLIST.md).
 
-Queue effects, runtime activation, store/runtime contact, worker-start admission
-and its construction, worker start/invocation, Agent invocation, execution
-authorization/start, installation, deployment, rollback, publication, retry/resend
-and unrelated effects stay fixed false/default-off. The API exposes evidence only.
-No runtime behavior or `compose.execution-smoke.override.yaml` change; no push, tag, release or deploy.
+Runtime definition/activation, store/runtime/queue contact, queue effects,
+worker-start admission and its construction, worker start/invocation, Agent
+invocation, execution authorization/start, installation, deployment, rollback,
+publication, retry/resend and unrelated effects stay fixed false/default-off.
+No production behavior, enabling configuration or execution-smoke override change;
+no push, tag, release, publication or deployment is authorized.
 
 ### Historical baseline context
 
