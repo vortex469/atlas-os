@@ -8,14 +8,17 @@ export function WorkerActivationRuntimePlan({ admission }: { admission: WorkerAc
 }
 
 function PlanReader({ admission }: { admission: WorkerActivationRuntimeAdmission }) {
+    // The keyed reader owns one evidence scope. Equivalent parent renders must
+    // not trigger background reads while the previous Core status stays visible.
+    const [scope] = useState(admission);
     const [state, setState] = useState<Evidence | "loading" | "missing" | "unavailable">("loading");
     useEffect(() => {
         let current = true;
-        getWorkerActivationRuntimePlan(admission)
+        getWorkerActivationRuntimePlan(scope)
             .then((value) => { if (current) setState(value ?? "missing"); })
             .catch(() => { if (current) setState("unavailable"); });
         return () => { current = false; };
-    }, [admission]);
+    }, [scope]);
     return <section aria-label="Worker runtime plan state" className="mt-3 rounded border border-slate-800 p-3 text-sm">
         <h6 className="font-semibold">Worker runtime plan evidence</h6>
         <p>Runtime plan is evidence; runtime prerequisites remain incomplete. Worker start and execution remain blocked.</p>

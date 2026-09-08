@@ -29,6 +29,27 @@ describe("v0.55 runtime plan presentation", () => {
         expect(await screen.findByText(/plan evidence has expired/)).toBeVisible();
         expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
     });
+    it("does not reread evidence on equivalent parent renders", async () => {
+        responses();
+        const { rerender } = render(<WorkerActivationRuntimePlan admission={admission} />);
+        await screen.findByText(/Core recorded a reference-only runtime plan/);
+        rerender(<WorkerActivationRuntimePlan admission={structuredClone(admission)} />);
+        await act(async () => { await Promise.resolve(); });
+        expect(atlas.get).toHaveBeenCalledTimes(2);
+        expect(screen.getByText(/Core recorded a reference-only runtime plan/)).toBeVisible();
+    });
+    it("ignores an old scope failure after the new scope has loaded", async () => {
+        let reject!: (reason: Error) => void;
+        vi.mocked(atlas.get).mockReturnValueOnce(new Promise((_resolve, fail) => { reject = fail; }));
+        const { rerender } = render(<WorkerActivationRuntimePlan admission={{ ...admission, operatorId: "previous-owner" }} />);
+        responses();
+        rerender(<WorkerActivationRuntimePlan admission={admission} />);
+        expect(screen.getByRole("status")).toHaveTextContent("Loading");
+        await screen.findByText(/Core recorded a reference-only runtime plan/);
+        await act(async () => reject(new Error("old private failure")));
+        expect(screen.getByText(/Core recorded a reference-only runtime plan/)).toBeVisible();
+        expect(screen.queryByText(/unavailable|old private failure/)).not.toBeInTheDocument();
+    });
     it.each([401, 403, 404, 409, 503])("redacts failure %s without retry controls", async (status) => {
         vi.mocked(atlas.get).mockRejectedValue({ response: { status, data: { message: "secret endpoint" } } });
         render(<WorkerActivationRuntimePlan admission={admission} />);

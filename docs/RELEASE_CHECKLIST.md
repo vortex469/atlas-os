@@ -3,6 +3,31 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.55 P4 reader lifecycle follow-up (2026-09-08)
+
+The task baseline `0e38706d` already contains the P4 integration and has committed
+P3 `6876f01a` as an ancestor. This follow-up binds each keyed runtime-plan reader
+to its initial admission scope so equivalent parent renders do not cause extra
+background reads while displaying an earlier status. Regression tests cover
+equivalent renders and late failures after the replacement scope has loaded.
+Changed scopes still clear evidence immediately and ignore late results.
+
+- Focused tests passed: v0.55 API, component and structural suites, **315 tests**.
+- Full `npm test`: **149 files, 1,435 tests passed**.
+- Selected-interpreter pytest: v0.53/v0.54/v0.55 Mission Control isolation and
+  historical installation release isolation, **72 passed**.
+- `npm run build`, `npm run lint`, and `git diff --check` passed.
+- Hostile review passed: reviewed keyed scope replacement, equivalent renders,
+  stale success/failure handling, strict false authority and the GET-only boundary.
+  No production authority was added client-side. Core remains authoritative;
+  advanced evidence remains collapsed, with no new controls or navigation.
+  No isolation allowlist changes were needed. Smoke compose is unchanged.
+
+Known pre-existing warnings: Vite's >500 KiB bundle warning, the
+`WorkflowShellPage.tsx` hook dependency warning, and 309 Pydantic warnings.
+The existing dirty `.task-evidence/v055-p4-commit` nested repository is excluded
+from this follow-up. No push, tag, release, publication or deployment occurred.
+
 ## Atlas v0.55 P4 Mission Control evidence integration (2026-09-08)
 
 P3 commit `6876f01a` is the task baseline and an ancestor of this integration
