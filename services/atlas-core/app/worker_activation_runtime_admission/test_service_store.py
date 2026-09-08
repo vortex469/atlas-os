@@ -433,6 +433,7 @@ def test_no_production_or_effect_consumers():
         "worker_activation_runtime_plan/service.py",
         "worker_activation_runtime_plan/readers.py",
         "routes/worker_activation_runtime_admission.py",
+        "routes/worker_activation_runtime_plan.py",
         "api/v1/router.py",
         "operator_auth/models.py",
     }

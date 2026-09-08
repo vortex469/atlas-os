@@ -1,9 +1,9 @@
-# v0.55 Core evidence journal (P2)
+# v0.55 Core evidence journal and guarded API (P2/P3)
 
 The service is explicitly constructed and creation is default-off. Its only I/O
 is a separate Core-local SQLite plan journal and an injected owner-scoped v0.54
-admission reader. No production constructor, route, setting, worker or Agent
-consumer is registered here.
+admission reader. Production startup does not construct or enable this service.
+The guarded P3 API accesses only an explicitly injected service.
 
 `WorkerActivationRuntimePlanPrerequisiteStoreReader` accepts a durable v0.54
 store and trusted whole-second UTC clock. It reads the exact owned admission ID,
@@ -32,7 +32,7 @@ opaque correlation fingerprints.
 
 The P1 deterministic projection and all seven inherited blockers remain intact.
 Runtime, queue, worker-store, worker-start, Agent and execution authority remain
-false. P3-P5 remain separate work.
+false. P4-P5 remain separate work.
 
 ## P2 validation (2026-09-08)
 
@@ -52,3 +52,53 @@ with `PYTHONPATH=services/atlas-core`, focused pytest validation passed:
 
 Existing Pydantic schema-shadow/deprecation warnings remain. No runtime or
 external deployment validation was performed or implied.
+
+## P3 guarded API
+
+The versioned Core router registers exactly POST/GET collection
+`/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plans`
+and GET item `/{runtime_plan_id}`. The dedicated permissions are
+`installation.execution.worker_activation_runtime_plan.evaluate` and
+`installation.execution.worker_activation_runtime_plan.read`.
+
+Creation requires an authenticated operator, trusted Origin, CSRF token and one
+16–128 visible ASCII character Idempotency-Key. JSON is closed, duplicate-key
+rejecting, limited to 16 KiB and nesting 16. The service revalidates the exact
+owned v0.54 lineage under both write locks. Routes reparse all service outputs,
+including errors and constructed/copied models, and bind owner, candidate,
+item identity, predecessor fingerprints, expiry and idempotency fingerprint.
+Collections retain the P1 limits of 16 items and 192 KiB per model.
+
+Missing service returns 503; disabled creation and replay conflicts return 409;
+foreign/missing items return indistinguishable 404 errors; throttling returns
+429. Errors are bounded, redacted and non-retryable. Exact duplicates preserve
+historical evidence and return current status without rereading predecessors.
+No production service construction, enabling setting or runtime primitive is
+introduced. All downstream effect authority remains false.
+
+## P3 validation (2026-09-08)
+
+P2 commit `708b880c91a64d3c56e345b74c6d543ddb37f1b1` is the task baseline;
+`git merge-base --is-ancestor` confirmed the dependency. Tests ran from the task
+worktree with the selected interpreter and `PYTHONPATH=services/atlas-core`.
+
+- Focused tests passed: all 40 v0.55 route/security tests (38 initial tests plus
+  two oversized-envelope regressions). The OpenAPI/startup checks also passed
+  again after the final router registration placement.
+- v0.55 P1/P2, v0.54 contract/service/store/closure/UI-isolation/API, and historical
+  installation release-isolation regressions: 376 passed in the combined run.
+  Its three consumer checks had loaded their old allowlists before the P3 edits;
+  all three passed in a fresh run with the exact new route explicitly named.
+- Supplemental operator-auth and v0.53 non-durable closure checks: 23 passed,
+  one durable test deselected. The legacy threaded TestClient stalled and was
+  interrupted; rerunning with the existing thread-free ASGITestClient injected
+  in memory passed. No repository test transport was changed.
+- Atlas Core baseline-aware Ruff (baseline `0216b7bf`) and `git diff --check`
+  passed. The unrestricted scan retains the 84 pre-existing findings noted in P2.
+- Hostile review passed: exact methods, auth/scope checks, request and response
+  bounds, immutable lineage, redacted failures and permanent no-replay remain
+  enforced. Consumer scanners retain exact allowlists and unchanged detection;
+  there is no production construction or Agent/execution-worker consumer.
+
+The smoke compose override is unchanged. No runtime/effect authority, push, tag,
+release, publication or deployment was introduced or performed.

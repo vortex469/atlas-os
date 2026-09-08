@@ -566,6 +566,12 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-admissions/{runtime_admission_id}": {
             "get",
         },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plans": {
+            "get", "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plans/{runtime_plan_id}": {
+            "get",
+        },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-prerequisites": {
             "get", "post",
         },
