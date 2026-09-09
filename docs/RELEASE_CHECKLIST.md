@@ -3,6 +3,171 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.56 P0 authority-boundary freeze (2026-09-09)
+
+The [normative v0.56 contract](architecture/worker-activation-runtime-plan-review-v1.md)
+selects exactly **Worker Activation Runtime Plan Review evidence**. Only
+`worker_activation_runtime_plan_review_recorded` may newly advance in P1-P5:
+a deterministic Core-owned consistency review of one exact active same-owner
+v0.55 plan/status, its fixed design, complete lineage and unchanged unresolved
+interfaces. This is a new architectural decision supported by released evidence
+validation, not a claim that v0.55 already implements or authorizes review.
+Review is never design approval, readiness, operator approval or start admission.
+All seven ordered blockers and 67 false authority/material fields remain.
+
+Released baseline verified locally:
+
+- Starting HEAD and `git rev-parse atlas-v0.55.0^{}` both equal
+  `8ddd3672a3ffa5bb81b06ffb51290733cd355c5f`.
+- `git rev-parse atlas-v0.55.0` yields annotated tag object
+  `cfe06e593a75aae5aafdc75f7f174d25a11a3410`.
+- Ancestry checks passed for P0 `2a1e61e2`, P1 `2a954613`, P2 `708b880c`,
+  P3 `6876f01a`, P4 `0e38706d`, lifecycle fix `a36a96c0`, merge `093ee0e2`,
+  P5 `979cc49e` and fingerprint-isolation test maintenance
+  `b3920e620b4084c792688203f7afcd2c28ba3c6b`.
+- Inspected normative v0.55 design/authority/lineage, actual Core models,
+  owned reader/service/store, guarded routes, Mission Control reader and
+  closure/isolation checks, plus independent Agent and packaged-worker contracts.
+  Neither undefined contact interface nor missing start primitives can be filled
+  by packaging, health, roadmap order or review success.
+
+The request pins exact `runtime_plan_id`, `runtime_plan_record_fingerprint`,
+predecessor `status_fingerprint`, expiry and authenticated owner/candidate. The
+complete immutable v0.55 pair preserves v0.54 admission, v0.53 prerequisite,
+v0.52 receipt and all v0.51-v0.20 evidence recursively, without regenerated IDs,
+hashes, normalized values, wider limits or renewed eligibility. No production
+instance IDs/digests are invented. New domains and a permanent owner/candidate/
+plan subject are frozen separately from predecessor fingerprints.
+
+| Phase | Planned responsibility and exit evidence (all pending) |
+| --- | --- |
+| P1 | Pure closed review/evaluator, fixed consistency findings, deterministic vectors, exact lineage and strict authority/refusal tests. |
+| P2 | Owned durable v0.55 reader, separate default-off bounded journal, permanent subjects, two-lock revalidation, concurrency/corruption/restart no-replay proof. |
+| P3 | Guarded evidence create/list/get, ownership/permission/CSRF/bounds and response validation, no production construction or enablement. |
+| P4 | Exact-plan nested GET-only UI, hostile fixtures and scope-race tests, UI test/build/lint. |
+| P5 | Durable v0.55-to-v0.56 closure, exact consumers and zero Agent/worker consumers, historical isolation/Home Assistant golden checks and release gates. |
+
+P0 changes only the new architecture contract, ROADMAP and this checklist.
+Runtime definition/activation, contact, queue effects, worker-start admission/build/
+start, Agent invocation, execution authorization/start, installation, deployment,
+rollback, publication and retry/resend remain blocked. No production code,
+settings, tests, consumer allowlists or execution-smoke override change. No push,
+tag, release, publish, deploy or runtime probe is authorized. Historical validation
+limitations below are preserved verbatim and are not claimed as new passes.
+
+Focused tests passed:
+
+- Released v0.55 contract, durable closure, UI structural isolation, historical
+  installation release isolation and installation-plan isolation: **162 passed,
+  333 warnings in 134.74s**. Includes complete predecessor lineage, unchanged
+  database, default-off/strict authority, restart no-replay, exact consumers,
+  zero Agent/worker consumers and historical Home Assistant blocking checks.
+- Historical execution-admission fingerprint/import/consumer scanner selection:
+  **5 passed, 7 deselected, 75 warnings in 0.80s**. No scanner or allowlist changed.
+- Documentation consistency: **passed** for exact v0.55 record/status fields and
+  domains, normative inheritance of all 67 false fields, seven ordered blockers,
+  local links/anchors, marker/phase agreement and byte-identical historical
+  checklist. The initial check matched its own embedded heading string; anchoring
+  to a real heading line corrected the validation harness, then it passed.
+- `git diff --check`: **passed**. No v0.56 review consumer occurs in `services`,
+  `scripts` or `.github`. This planning task does not implement P1-P5 or rerun
+  UI build/lint, the full repository suite or external production gates.
+
+Hostile review passed: reviewed the full three-document diff for unsupported
+runtime-definition/start authority, review-as-approval ambiguity, executable
+material, lineage substitution, freshness renewal, replay bypass, cross-owner
+access, corruption/concurrency gaps and historical scanner weakening. The only
+advance is a future consistency-review evidence marker. All effect authority
+remains false, both contact interfaces undefined and seven blockers unchanged.
+Exact baseline lineage and immutable historical checklist were verified. Only
+ROADMAP, this checklist and the new contract are intended for the local P0 commit;
+production files, tests, settings, allowlists and
+`compose.execution-smoke.override.yaml` remain identical to the released baseline.
+No push, tag, release, publish or deploy was performed.
+
+Commit blocker: `git add ROADMAP.md docs/RELEASE_CHECKLIST.md
+ docs/architecture/worker-activation-runtime-plan-review-v1.md` failed because
+Git could not create `index.lock` in the worktree's shared Git metadata:
+`Read-only file system`. The three documentation changes remain unstaged;
+no task-owned commit exists. Staged whitespace validation had an empty index
+and is not counted as a gate. The required local commit remains outstanding,
+so P0 delivery is incomplete despite passing focused tests and hostile review.
+This environment does not permit a permission escalation. No external metadata
+was modified and no alternative checkout was used to substitute for the task
+worktree commit.
+
+Focused reproduction from this managed worktree (selected interpreter used only
+as executable; temporary evidence stays inside the worktree):
+
+```sh
+mkdir -p .task-evidence
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/atlas-core \
+  /opt/atlas/.venv/bin/python -m pytest -q \
+  --basetemp=.task-evidence/v056-p0-pytest \
+  services/atlas-core/app/worker_activation_runtime_plan/test_contract.py \
+  services/atlas-core/app/worker_activation_runtime_plan/test_release_closure.py \
+  services/atlas-core/app/worker_activation_runtime_plan/test_mission_control_isolation.py \
+  services/atlas-core/app/routes/test_installation_release_isolation.py \
+  services/atlas-core/app/installation_plan/test_isolation.py
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/atlas-core \
+  /opt/atlas/.venv/bin/python -m pytest -q \
+  --basetemp=.task-evidence/v056-p0-scanner \
+  services/atlas-core/app/installation_execution_admission/test_service_store.py \
+  -k 'effect_dependencies_or_production_consumers or runtime_plan_contract_rejects_additional_admission_imports or service_store_consumer_scanner_rejects_unapproved_effect_consumer'
+git diff --check
+```
+
+Documentation consistency reproduction:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/atlas-core /opt/atlas/.venv/bin/python - <<'PYDOC'
+from pathlib import Path
+import re
+import subprocess
+from typing import Literal, get_args, get_origin
+from app.worker_activation_runtime_plan import contract as c
+
+root = Path.cwd()
+path = root / 'docs/architecture/worker-activation-runtime-plan-review-v1.md'
+source = path.read_text()
+old = (root / 'docs/architecture/worker-activation-runtime-plan-v1.md').read_text()
+false_fields = {
+    name for name, field in c.ClosedAuthorityV1.model_fields.items()
+    if (get_origin(field.annotation) is Literal
+        and get_args(field.annotation)[0] is False)
+    or name.endswith('_material_present')
+}
+inventory = old.split('The following released authority/material fields', 1)[1]
+inventory = inventory.split('```text\n', 1)[1].split('```', 1)[0].splitlines()
+assert len(false_fields) == len(inventory) == 67
+assert false_fields == set(inventory)
+assert 'worker-activation-runtime-plan-v1.md#authority-ceiling' in source
+blockers = source.split('Success retains exactly these seven ordered blockers:', 1)[1]
+blockers = blockers.split('```text\n', 1)[1].split('```', 1)[0].splitlines()
+assert tuple(blockers) == c.SUCCESS_BLOCKERS
+for model in (c.WorkerActivationRuntimePlanV1, c.WorkerActivationRuntimePlanStatusV1):
+    assert model.model_fields['schema'].default in source
+    assert all(name in source for name in model.model_fields if name not in c.ClosedAuthorityV1.model_fields)
+for domain in ('atlas:worker-activation-runtime-plan-{kind}:v1', 'atlas:worker-activation-runtime-plan-id:v1'):
+    assert domain in source
+for target in re.findall(r'\[[^\]]+\]\(([^)]+)\)', source):
+    resolved = (path.parent / target.split('#')[0]).resolve()
+    assert resolved.is_relative_to(root) and resolved.is_file(), target
+    if '#' in target:
+        headings = re.findall(r'^#+ (.+)$', resolved.read_text(), re.M)
+        anchors = {re.sub(r'[^\w\- ]', '', h.lower()).replace(' ', '-') for h in headings}
+        assert target.split('#')[1] in anchors, target
+for doc in (path, root / 'ROADMAP.md', root / 'docs/RELEASE_CHECKLIST.md'):
+    content = doc.read_text()
+    assert 'worker_activation_runtime_plan_review_recorded' in content
+    assert all(f'| P{phase} |' in content for phase in range(1, 6))
+baseline = subprocess.check_output(['git', 'show', '8ddd3672a3ffa5bb81b06ffb51290733cd355c5f:docs/RELEASE_CHECKLIST.md'], text=True)
+current = (root / 'docs/RELEASE_CHECKLIST.md').read_text()
+assert current[current.index('\n## Atlas v0.55 P5 closure evidence'):] == baseline[baseline.index('\n## Atlas v0.55 P5 closure evidence'):]
+print('Documentation consistency passed: exact fields/domains, 67 inherited false fields, seven ordered blockers, local links/anchors, marker, phases and unchanged historical checklist.')
+PYDOC
+```
+
 ## Atlas v0.55 P5 closure evidence (2026-09-08)
 
 Repository implementation and documentation are prepared; release closure is

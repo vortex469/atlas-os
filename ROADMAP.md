@@ -1,44 +1,51 @@
 # Atlas OS Roadmap
 
-## 1. Current baseline - released v0.54 runtime admission evidence
+## 1. Current baseline - released v0.55 runtime plan evidence
 
-The inspected released baseline is `atlas-v0.54.0`, peeled to
-`ddec6f16dc2fef0632bd398cfc2d6f4a06ccaf87`. V0.54 P0-P5 and subsequent
-fixture/quality-gate maintenance are in the released ancestry. Its sole new
-marker is `worker_activation_runtime_admission_recorded`, over the exact v0.53
-prerequisite/status and complete v0.52-v0.20 lineage. The
-[v0.54 contract](docs/architecture/worker-activation-runtime-admission-v1.md)
-retains all seven blockers. Historical external validation limitations remain
-recorded; repository release identity does not imply production enablement.
+The inspected released baseline is `atlas-v0.55.0`, annotated tag object
+`cfe06e593a75aae5aafdc75f7f174d25a11a3410`, peeled to
+`8ddd3672a3ffa5bb81b06ffb51290733cd355c5f`. It contains v0.55 P0-P5,
+P4 lifecycle fix `a36a96c0` and historical execution-admission fingerprint
+isolation maintenance `b3920e62`. The [v0.55 contract](docs/architecture/worker-activation-runtime-plan-v1.md)
+adds only `worker_activation_runtime_plan_recorded`, a deterministic reference-only
+plan over one exact v0.54 admission/status with complete v0.53-v0.20 lineage.
+Both contact interfaces stay undefined; all seven blockers and 67 false
+authority/material fields remain. Repository release identity does not imply
+production enablement or waive historical external validation limitations.
 
-## Implemented v0.55 P0-P5 evidence boundary - release gates recorded
+## Frozen v0.56 P0 - Worker Activation Runtime Plan Review evidence
 
-The [normative v0.55 contract](docs/architecture/worker-activation-runtime-plan-v1.md)
-selects exactly one advance: `worker_activation_runtime_plan_recorded`, a
-Core-owned deterministic reference-only design projection over one exact active
-same-owner v0.54 admission/status pair. V0.54 permits future runtime design
-consideration but supplies no runtime/contact/start primitive. The plan records
-ownership and unresolved interfaces; it defines no executable configuration and
-removes no blocker. All 67 released authority/material fields stay false.
+The [normative v0.56 contract](docs/architecture/worker-activation-runtime-plan-review-v1.md)
+selects exactly one narrow advance: `worker_activation_runtime_plan_review_recorded`.
+It records Core-owned deterministic consistency review of one exact active
+same-owner v0.55 plan/status pair: exact lineage, fixed design consistency and
+unchanged unresolved interfaces. The repository supports evidence validation;
+it supplies no installation runtime/contact/start primitive. Review success
+is not design approval, readiness, operator approval or start admission and
+removes no blocker. This is a new P0 decision, not authority inherited implicitly
+from the v0.55 plan or roadmap ordering.
 
-P0 is documentation only. P1 freezes pure models/evaluation and deterministic
-lineage; P2 supplies default-off durable evidence with permanent no-replay;
-P3 adds guarded evidence create/list/get without production construction;
-P4 adds nested GET-only Mission Control evidence; P5 proves failure, ownership,
-concurrency, corruption and historical release isolation with zero Agent/worker
-consumers. P1-P4 are committed in baseline `093ee0e2`, including P4 lifecycle
-fix `a36a96c0`. P5 adds durable v0.54-to-v0.55 closure, exact consumer locks and
-final normative documentation. Exact IDs, fingerprints, expiry, ownership,
-recursive lineage, limits and phase gates are normative in the contract; actual
-validation and remaining environment/release gates are in the
-[release checklist](docs/RELEASE_CHECKLIST.md).
+P0 is documentation only; **P1-P5 remain pending**:
 
-Runtime definition/activation, store/runtime/queue contact, queue effects,
-worker-start admission and its construction, worker start/invocation, Agent
-invocation, execution authorization/start, installation, deployment, rollback,
-publication, retry/resend and unrelated effects stay fixed false/default-off.
-No production behavior, enabling configuration or execution-smoke override change;
-no push, tag, release, publication or deployment is authorized.
+| Phase | Responsibility |
+| --- | --- |
+| P1 | Pure closed review models/evaluator, deterministic findings and IDs/hashes, exact recursive v0.55 lineage and strict false authority. |
+| P2 | Default-off owned durable v0.55 reader and separate bounded review journal, permanent no-replay, two-lock revalidation, concurrency/corruption closure; no production construction. |
+| P3 | Guarded evidence create/list/get with exact ownership, permissions, CSRF, input and response validation; no enablement or action endpoint. |
+| P4 | Exact-plan nested GET-only Mission Control review, hostile-response and scope-race coverage, UI test/build/lint. |
+| P5 | Durable lineage/restart proof, exact consumers and zero Agent/worker consumers, historical release/isolation/Home Assistant golden checks and documented release gates. |
+
+Exact IDs, pinned fingerprints/expiry, complete immutable predecessor pair,
+findings, limits and phase exit gates are normative in the contract. Observed
+validation is in the [release checklist](docs/RELEASE_CHECKLIST.md).
+Runtime definition/activation, store/runtime/queue contact and queue effects,
+worker-start admission/build/start/invocation, Agent invocation, execution
+authorization/start, installation, deployment, rollback, publication, retry/resend
+and unrelated effects remain blocked/default-off. The sole future marker records
+review evidence; all 67 false fields and seven ordered blockers stay unchanged.
+No production behavior, enabling configuration, consumer allowlist or
+`compose.execution-smoke.override.yaml` change. No push, tag, release, publish or
+deploy. Future authority requires a separately justified normative contract.
 
 ### Historical baseline context
 
