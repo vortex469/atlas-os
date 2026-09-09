@@ -11,3 +11,4 @@ data/*
 !data/.gitkeep
 secrets/
 deploy/rest-server/server.env
+.task-evidence/
