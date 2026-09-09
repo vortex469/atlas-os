@@ -470,6 +470,12 @@ def test_no_io_or_production_consumers():
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
     assert consumers == {
+        # v0.56 P4: nested GET-only review reader, model, hook, view and parent.
+        "services/mission-control/src/api/workerActivationRuntimePlanReview.ts",
+        "services/mission-control/src/types/workerActivationRuntimePlanReview.ts",
+        "services/mission-control/src/hooks/useWorkerActivationRuntimePlanReview.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimePlanReview.tsx",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx",
         "services/atlas-core/app/routes/worker_activation_runtime_plan_review.py",
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",

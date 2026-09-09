@@ -13,7 +13,7 @@ Both contact interfaces stay undefined; all seven blockers and 67 false
 authority/material fields remain. Repository release identity does not imply
 production enablement or waive historical external validation limitations.
 
-## Frozen v0.56 P0 - Worker Activation Runtime Plan Review evidence
+## Implemented v0.56 P0-P5 - Worker Activation Runtime Plan Review evidence
 
 The [normative v0.56 contract](docs/architecture/worker-activation-runtime-plan-review-v1.md)
 selects exactly one narrow advance: `worker_activation_runtime_plan_review_recorded`.
@@ -22,10 +22,14 @@ same-owner v0.55 plan/status pair: exact lineage, fixed design consistency and
 unchanged unresolved interfaces. The repository supports evidence validation;
 it supplies no installation runtime/contact/start primitive. Review success
 is not design approval, readiness, operator approval or start admission and
-removes no blocker. This is a new P0 decision, not authority inherited implicitly
+removes no blocker. P0 explicitly froze this evidence boundary; no runtime
+authority is inherited
 from the v0.55 plan or roadmap ordering.
 
-P0 froze the contract. **P1-P4 are implemented; P5 remains pending**.
+P0 froze the contract. **P1-P5 are implemented locally; no release is published**.
+P5 locks durable v0.55 lineage, restart/no-replay, exact consumers and the
+unchanged normative authority ceiling; current validation is recorded in the
+release checklist.
 P4 adds exact-plan nested GET-only review evidence with collapsed technical details
 and no action controls. See the [Core evidence](services/atlas-core/app/worker_activation_runtime_plan_review/README.md).
 
@@ -45,7 +49,7 @@ worker-start admission/build/start/invocation, Agent invocation, execution
 authorization/start, installation, deployment, rollback, publication, retry/resend
 and unrelated effects remain blocked/default-off. The sole new marker records
 review evidence; all 67 false fields and seven ordered blockers stay unchanged.
-P1 adds only the pure Core contract and exact test consumer entries; no
+P1-P5 add only Core review evidence, guarded API, GET-only UI and closure tests; no
 production wiring, enabling configuration or `compose.execution-smoke.override.yaml`
 change. No push, tag, release, publish or deploy. Future authority requires a
 separately justified normative contract.

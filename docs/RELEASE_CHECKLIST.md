@@ -3,6 +3,120 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.56 P5 repository closure (2026-09-09)
+
+Consumed integrated P0 `6ad1b098`, P1 `7c2a55f2`, P2 `0f1a72f0` / merge
+`73a222d5`, P3 `21e9fc78`, and P4 HEAD
+`504bd7c2792d17349b6a32af98d1611fb6336615`. All ancestor checks passed.
+The exact released v0.55 annotated tag object remains
+`cfe06e593a75aae5aafdc75f7f174d25a11a3410`, peeled to
+`8ddd3672a3ffa5bb81b06ffb51290733cd355c5f`, also an ancestor of this HEAD.
+Historical evidence below is preserved verbatim; current results do not rewrite
+past environment limitations or imply external release validation.
+
+The new `worker_activation_runtime_plan_review/test_release_closure.py` combines
+reopened durable v0.55 evidence with explicitly enabled v0.56 creation. It proves
+byte-exact complete predecessor record/status embedding, exact IDs, fingerprints,
+owner/candidate and expiry, unchanged predecessor database bytes, default-off
+refusal with no reservation, strict false authority on record/status/result,
+restart/expiry exact duplicate history without prerequisite reads, and permanent
+same-subject rejection under another key. It locks the 67-field normative false
+inventory and seven ordered blockers. Exact production consumers are four Core
+review modules, guarded route/router/permission registry, and five nested GET-only
+UI files. Agent, worker, configuration, deployment and script scans add none;
+this includes extensionless scripts, root compose files and `.env.example`.
+
+P2 tests remain the bounded persistence, independent-process contention, both
+locked revalidations, incomplete reservation, partial-write/audit/response loss,
+corruption, ownership and restart gate. P3 validates bounded strict JSON,
+authentication/permissions/Origin/CSRF, exact response binding and corrupt readback.
+P4 covers hostile evidence, scope races, no polling/persistence/action controls,
+and Core-owned eligibility. Mission Control remains non-authoritative.
+
+Only `worker_activation_runtime_plan_review_recorded` advances. No unauthorized
+runtime/contact/start, Agent/worker invocation, execution, installation, deployment,
+rollback, publication, retry or resend authority is introduced. Closure changes
+only tests and documentation. The normative architecture, roadmap, changelog and
+Core README now describe the completed local evidence boundary.
+
+Two exact integration inventory corrections were required:
+
+- The v0.56 pure-contract scanner now names only P4's
+  `src/api/workerActivationRuntimePlanReview.ts`,
+  `src/types/workerActivationRuntimePlanReview.ts`,
+  `src/hooks/useWorkerActivationRuntimePlanReview.ts`,
+  `src/features/installation/WorkerActivationRuntimePlanReview.tsx`, and
+  `src/features/installation/WorkerActivationRuntimePlan.tsx` under Mission Control.
+  These are the GET-only reader, model, hook, view and containing plan.
+- The historical v0.20 OpenAPI inventory names only P3's
+  `/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plan-reviews`
+  with POST/GET and its `/{runtime_plan_review_id}` item with GET. These guarded
+  owner-scoped evidence routes supply no action endpoint. No scanner logic,
+  fingerprint-only AST rule, wildcard or future exclusion changed.
+
+Validation was run from this managed worktree with the selected interpreter,
+`PYTHONPATH=services/atlas-core`, and worktree-local pytest base directories.
+Logs are local `.task-evidence/v056-p5-*.log` artifacts.
+
+- Focused tests passed: final standalone closure **3 passed, 340 warnings in
+  28.35s**. The initial inventory assertion counted the three required evidence
+  fields as well as false fields; corrected it to select only the 67 false fields.
+- Full `worker_activation_runtime_plan_review` directory plus
+  `routes/test_worker_activation_runtime_plan_review.py`: **210 passed, 433
+  warnings in 813.25s**. This run loaded the initial inventory assertion before
+  its correction and reported that one failure (211 total). The final standalone
+  closure and 69-test rerun above/below both pass the corrected assertion. All
+  P1 contract, P2 service/store and P3 API/security cases passed; no unresolved
+  regression remains. This is not presented as a single clean 211-test run.
+- Final expanded production-consumer scan: **1 passed, 2 deselected, 316 warnings
+  in 1.51s**; includes root deployment configuration and extensionless scripts.
+- Historical Core release-closure, Mission Control/isolation files (23 files),
+  installation release isolation, installation-execution-admission service/store,
+  and v0.55 contract: **260 passed**, with the two now-corrected inventory failures
+  in the initial 262-test run (223.60s). Final complete new closure plus historical
+  installation release-isolation rerun: **69 passed, 343 warnings in 87.34s**.
+  Includes Home Assistant blocked/non-installable golden cases and hostile
+  fingerprint-only scanner checks; no historical scanner was weakened.
+- Full Mission Control: `npm test --prefix services/mission-control --
+  --maxWorkers=2 --cache=false`: **1,676 passed in 152 files**, 96.68s.
+  Dependencies were restored from the existing local npm cache, offline.
+- `npm run build --prefix services/mission-control`: **passed**, existing chunk
+  size warning. `npm run lint --prefix services/mission-control`: **passed**,
+  zero errors and the existing `WorkflowShellPage.tsx` dependency warning.
+- Core Ruff: `PATH=<selected-interpreter-directory>:$PATH
+  scripts/rc1-python-ruff-gate services/atlas-core`: **passed**, baseline
+  `0216b7bfe7f3b160a762269802aa34244ae70a72`. This is the repository changed-file
+  gate, not a claim of unrestricted whole-Core lint cleanliness.
+- Agent delivery-preflight, v0.36 and v0.37 isolation: **6 passed in 0.06s**,
+  `PYTHONPATH=services/atlas-agent`.
+- Worker config, healthcheck and durable ledger with `-k 'not api'`: **24 passed,
+  1 deselected, 1 warning in 0.53s**,
+  `PYTHONPATH=services/atlas-agent:services/atlas-execution-worker`. The historical
+  threaded API limitation remains; that separate test is not claimed passed.
+- Normative/README local links, exact baseline/P0-P4 ancestry and protected
+  `compose.execution-smoke.override.yaml` unchanged checks: **passed**.
+
+Hostile review passed: reviewed the final eight-file diff after validation for
+regressions, edge cases, unauthorized authority and missing tests. Durable lineage
+and restart tests use the real Core journal/reader; malformed false values fail
+strict parsing. The new scanner includes operational configuration and exact
+Core/API/UI consumers. Historical changes are only the two narrowly justified
+P3 route entries; no rules or exclusions are weakened. Existing P2/P3/P4 suites
+cover the bounds, corruption, owner/response/scope and non-authority cases not
+duplicated in P5. All edits are tests or documentation. Historical checklist
+sections remain byte-identical, normative links resolve, Core Ruff and both
+worktree/staged `git diff --check` pass. No production behavior or protected
+compose file changed. No unresolved test failure remains after focused reruns.
+
+Commit handling: the managed Git index rejected staging as read-only. As with
+P1-P4, the real task-owned commit is created in `.task-evidence/v056-p5.git` on
+`task/v056-p5`, parented to integrated P4 HEAD, and exported as
+`.task-evidence/v056-p5.bundle`. After verification, the temporary Git object
+store is removed to avoid duplicating repository history; the bundle retains the
+real task commit. This preserves a reviewable commit without advancing the managed
+branch. No push, tag, release, publication or deployment.
+External runtime/production validation is outside this evidence-only task.
+
 ## Atlas v0.56 P4 nested Mission Control review (2026-09-09)
 
 Consumed repository-integrated P3 at `21e9fc78`. Mission Control now reads the

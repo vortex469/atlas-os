@@ -1,4 +1,4 @@
-# v0.56 P1/P2/P3 Core runtime plan review evidence
+# v0.56 P1-P5 Core runtime plan review evidence
 
 `contract.py` implements the [frozen P0 contract](../../../../docs/architecture/worker-activation-runtime-plan-review-v1.md)
 as pure immutable models and deterministic validation. The sole new true marker
@@ -67,3 +67,9 @@ historical `FingerprintV1`-only AST restriction is unchanged.
 Validation commands run from the repository root with the selected interpreter
 and `PYTHONPATH=services/atlas-core`. Test evidence and review outcomes are recorded
 in the [release checklist](../../../../docs/RELEASE_CHECKLIST.md).
+
+P5 `test_release_closure.py` combines durable exact v0.55 lineage and unchanged
+predecessor bytes with restart/expiry no-replay and strict false authority. It
+locks the exact Core/API/UI consumers, zero Agent/worker/configuration/deployment/
+script consumers, and normative authority/blocker inventories. These checks do
+not construct a production service or grant any runtime or operational authority.

@@ -1,6 +1,6 @@
 # Worker Activation Runtime Plan Review v1 contract
 
-Status: **Atlas v0.56 P0 frozen; P1 pure Core contract, P2 durable evidence and P3 guarded API and P4 nested Mission Control review implemented; P5 pending**.
+Status: **Atlas v0.56 P0-P5 implemented locally: frozen contract, durable Core evidence, guarded API, nested GET-only Mission Control review and release-closure regressions. No release publication or production enablement is claimed**.
 This normative contract does not imply production enablement. Observed validation
 is recorded in the [release checklist](../RELEASE_CHECKLIST.md).
 
@@ -8,7 +8,8 @@ is recorded in the [release checklist](../RELEASE_CHECKLIST.md).
 
 Exactly one boundary is selected: **Worker Activation Runtime Plan Review
 evidence**. Only `worker_activation_runtime_plan_review_recorded` may newly
-become true in later P1-P5 implementation. It records a deterministic Core-owned
+become true in the implemented P1-P5 evidence boundary. It records a deterministic
+Core-owned
 consistency review of exactly one active same-owner v0.55 plan/status pair:
 its fixed design matches its immutable admission evidence, its lineage validates,
 and its unresolved-interface inventory is complete and unchanged. Review success
@@ -18,7 +19,7 @@ Refusal recognizes zero plans and leaves the new marker false; success recognize
 exactly one. Historical true evidence markers retain their original meanings.
 
 The inspected released baseline is `atlas-v0.55.0`, annotated tag object
-`cfe06e593a75aae5aafdc75f7f174d25a11a3410`, peeling to exact starting HEAD
+`cfe06e593a75aae5aafdc75f7f174d25a11a3410`, peeling to exact P0 starting HEAD
 `8ddd3672a3ffa5bb81b06ffb51290733cd355c5f`. It includes P0 `2a1e61e2`, P1
 `2a954613`, P2 `708b880c`, P3 `6876f01a`, P4 `0e38706d`, lifecycle correction
 `a36a96c0`, P4 merge `093ee0e2`, P5 `979cc49e`, and historical fingerprint
@@ -30,7 +31,7 @@ lineage, not deployment or completion of historical external validation gates.
 | --- | --- |
 | [v0.55 normative contract](worker-activation-runtime-plan-v1.md) | The plan is a closed reference-only design projection with undefined contacts and seven blockers; it expressly pre-authorizes no later boundary. |
 | [Pure models/evaluator](../../services/atlas-core/app/worker_activation_runtime_plan/contract.py) | Exact design literals, complete embedded admission pair, versioned hashes and paired status permit a deterministic consistency review without new runtime facts. |
-| [Owned reader](../../services/atlas-core/app/worker_activation_runtime_plan/readers.py), [service](../../services/atlas-core/app/worker_activation_runtime_plan/service.py), [store](../../services/atlas-core/app/worker_activation_runtime_plan/store.py) | Core-local evidence, default-off construction and permanent subjects support isolated review evidence; this reader reads v0.54 admissions, not workers. A new owned v0.55 reader is a P2 responsibility. |
+| [Owned reader](../../services/atlas-core/app/worker_activation_runtime_plan/readers.py), [service](../../services/atlas-core/app/worker_activation_runtime_plan/service.py), [store](../../services/atlas-core/app/worker_activation_runtime_plan/store.py) | Core-local evidence, default-off construction and permanent subjects support isolated review evidence; this reader reads v0.54 admissions, not workers. P2 implements the separate [owned v0.55 reader](../../services/atlas-core/app/worker_activation_runtime_plan_review/readers.py). |
 | [Routes](../../services/atlas-core/app/routes/worker_activation_runtime_plan.py), [UI reader](../../services/mission-control/src/api/workerActivationRuntimePlan.ts) | Guarded evidence access and nested GET-only presentation do not supply runtime interfaces. |
 | [Release closure](../../services/atlas-core/app/worker_activation_runtime_plan/test_release_closure.py), [UI isolation](../../services/atlas-core/app/worker_activation_runtime_plan/test_mission_control_isolation.py) | Durable byte-exact lineage, strict authority, restart no-replay and exact consumers must survive the successor. |
 | [Agent architecture](../../services/atlas-agent/ARCHITECTURE.md), [packaged worker contract](../../services/atlas-execution-worker/README.md) | Independent approvals, authentication, intent registries and execution ledgers cannot be borrowed as installation authority. Packaging and health are not runtime evidence. |
@@ -158,8 +159,11 @@ worker-store or runtime contact. Review is never a `WorkerExecutionRequest`.
 ## P1-P5 responsibilities and exit gates
 
 P1 implements the pure evidence contract and P2 implements isolated durable
-evidence persistence; P3 adds the guarded default-off API; P4 presents nested GET-only review evidence. P5 remains pending. Implement only
-this evidence ceiling, in order.
+evidence persistence; P3 adds the guarded default-off API; P4 presents nested
+GET-only review evidence. P5 locks durable lineage, permanent no-replay, exact
+consumers and this unchanged
+authority ceiling. The [release checklist](../RELEASE_CHECKLIST.md) records
+observed validation and external limitations. No phase supplies runtime authority.
 
 | Phase | Responsibility and required evidence |
 | --- | --- |
@@ -208,3 +212,25 @@ No production code, tests, settings, consumer allowlists or
 `compose.execution-smoke.override.yaml` changes. No push, tag, release, publish,
 deploy, runtime probe or Agent/worker invocation. Historical UI/full-suite/external
 limitations remain recorded; this P0 does not claim those gates passed.
+
+## P5 repository closure
+
+The release-closure regression reopens the durable v0.55 journal through the
+owned reader, creates default-off/explicitly enabled v0.56 evidence, and compares
+both complete embedded predecessor models byte-for-byte. It pins all lineage IDs,
+record/status fingerprints, owner, candidate and inherited expiry. Reopening the
+review journal at expiry returns exactly the original record without reading the
+predecessor; a different key cannot reuse the permanently reserved plan subject.
+The predecessor database remains byte-identical. Strict false-value mutation
+checks and the normative inventory lock preserve all 67 false fields and seven
+ordered blockers.
+
+The exact consumer regression names only the four Core evidence modules,
+guarded route, router, permission registry and five nested GET-only UI surfaces.
+Agent/execution-worker, configuration, deployment and script scans admit no review
+consumer. Historical scanners retain their rules; additions require exact paths
+and narrow justification. Existing P2/P3/P4 regressions remain required for bounded
+persistence, both locked revalidations, corruption closure, ownership, API response
+reparsing and non-authoritative UI scope isolation. Closure is local repository
+evidence, not external validation, installation readiness or permission to execute,
+install, deploy, roll back, publish, retry or resend.

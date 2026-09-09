@@ -566,6 +566,13 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-admissions/{runtime_admission_id}": {
             "get",
         },
+        # v0.56 P3: bounded owner-scoped review evidence, no action endpoint.
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plan-reviews": {
+            "get", "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plan-reviews/{runtime_plan_review_id}": {
+            "get",
+        },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plans": {
             "get", "post",
         },

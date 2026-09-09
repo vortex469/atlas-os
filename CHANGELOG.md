@@ -6,6 +6,21 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.56 P5 - Runtime Plan Review Evidence Closure
+
+- Closed integrated P0-P4 review evidence with durable byte-exact v0.55 lineage,
+  default-off refusal, strict false authority, restart/expiry no-replay, exact
+  Core/API/UI consumers and zero Agent/execution-worker consumer regressions.
+- Finalized the normative architecture, roadmap and release evidence. The only
+  new marker is `worker_activation_runtime_plan_review_recorded`; all 67 false
+  authority/material fields and seven blockers remain. Mission Control supplies
+  only nested GET evidence; no runtime, execution, install, deploy, rollback,
+  publication, retry or resend authority is added.
+- Corrected the v0.56 contract scanner to name exactly the five integrated P4
+  UI surfaces and the historical OpenAPI inventory to name the two guarded P3
+  review paths. Historical isolation scanner rules remain unchanged.
+- This is local repository closure; no tag, release, publication or deployment.
+
 #### v0.55 P5 - Runtime Plan Evidence Closure
 
 - Added durable v0.54-to-v0.55 recursive lineage, strict false authority,
