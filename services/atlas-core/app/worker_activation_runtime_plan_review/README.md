@@ -1,4 +1,4 @@
-# v0.56 P1 Core runtime plan review evidence
+# v0.56 P1/P2 Core runtime plan review evidence
 
 `contract.py` implements the [frozen P0 contract](../../../../docs/architecture/worker-activation-runtime-plan-review-v1.md)
 as pure immutable models and deterministic validation. The sole new true marker
@@ -26,12 +26,25 @@ owner, candidate and plan ID, independent of expiry, status and idempotency key.
 The nine hash domains and distinct UUID5 ID domain have frozen independent test
 vectors in `fingerprint_vectors.json`.
 
-There is no service, reader, persistence, API, setting, UI, Agent or execution
-integration in this package. Replay checks consume trusted injected facts;
-durable reservation, atomicity and owned reads remain P2 responsibilities.
-Historical isolation tests allow precisely this contract as a v0.55 consumer and
-retain the exact `FingerprintV1`-only historical import check, including hostile
-extra-import tests for the new file.
+`service.py`, `store.py` and `readers.py` implement explicitly constructed,
+default-off Core evidence persistence. The owner-scoped reader returns the complete
+durable v0.55 plan and stable status without modifying its journal. Both SQLite
+write transactions re-read exact lineage and trusted time. FULL synchronous commit
+makes the owner-scoped key and permanent owner/candidate/plan subject durable before
+terminal record/audit append. A failed or interrupted append is never resumed.
+Exact duplicates return unchanged history and current status without reading the
+predecessor or renewing freshness, including after restart and expiry.
+
+The separate application-ID-56 journal retains at most 16 reservations per owner
+and 256 globally, including incomplete reservations; limits can only decrease.
+Models are limited to 192 KiB and main database pages to 256 MiB. There is no
+retention eviction. Each connection checks schema/indexes, integrity, bounds,
+canonical models, hashes and row linkage; corruption closes reads and writes.
+Errors contain closed codes and hashed correlation only. No raw keys are stored.
+
+There is no production construction, API, setting, UI, Agent or execution
+integration. Exact historical consumer allowlists include only the new local
+evidence modules; the historical `FingerprintV1`-only AST restriction is unchanged.
 
 Validation commands run from the repository root with the selected interpreter
 and `PYTHONPATH=services/atlas-core`. Test evidence and review outcomes are recorded

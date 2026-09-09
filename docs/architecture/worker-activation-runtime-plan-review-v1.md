@@ -1,6 +1,6 @@
 # Worker Activation Runtime Plan Review v1 contract
 
-Status: **Atlas v0.56 P0 frozen; P1 pure Core contract implemented; P2-P5 pending**.
+Status: **Atlas v0.56 P0 frozen; P1 pure Core contract and P2 durable evidence implemented; P3-P5 pending**.
 This normative contract does not imply production enablement. Observed validation
 is recorded in the [release checklist](../RELEASE_CHECKLIST.md).
 
@@ -157,7 +157,8 @@ worker-store or runtime contact. Review is never a `WorkerExecutionRequest`.
 
 ## P1-P5 responsibilities and exit gates
 
-P1 implements the pure evidence contract; P2-P5 remain pending. Implement only
+P1 implements the pure evidence contract and P2 implements isolated durable
+evidence persistence; P3-P5 remain pending. Implement only
 this evidence ceiling, in order.
 
 | Phase | Responsibility and required evidence |

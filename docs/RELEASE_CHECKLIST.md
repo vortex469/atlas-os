@@ -3,6 +3,56 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.56 P2 durable Core plan review evidence (2026-09-09)
+
+Implemented the isolated, explicitly constructed default-off review service,
+owner-scoped durable v0.55 reader and separate application-ID-56 SQLite journal.
+P1 models remain unchanged. Owner/key and permanent owner/candidate/plan subjects
+are reserved under FULL synchronous write serialization before terminal append.
+Both write locks re-read exact lineage and trusted time. Restart, expiry and
+response/audit loss cannot renew or resume a reservation. Exact duplicates return
+unchanged history with current status without predecessor reads. Quotas only
+lower; incomplete reservations count, with no eviction. Every connection validates
+schema/indexes, canonical bounded models, hashes, ownership and row linkage.
+
+Focused tests passed:
+
+- Final v0.56 `test_service_store.py`: **69 passed, 316 warnings in 338.35s**.
+  Includes durable predecessor record/status byte equality after restart, both-lock
+  drift/ownership/design/status/authority attacks, quotas, duplicate JSON keys,
+  index/schema corruption, uncertain commits, partial writes, response/audit loss,
+  clock rollback, thread and independent-process contention, and permanent replay
+  denial. The initial 60-case run had one overly narrow competing-key assertion:
+  a bounded SQLite timeout returned `unavailable`. The regression now permits
+  that closed refusal and requires subsequent permanent conflict without lineage
+  reads or another append; the full final suite passed.
+- V0.56 and v0.55 contract suites, exact v0.55 service/store and release consumer
+  checks, and historical installation-execution-admission service/store suite:
+  **198 passed, 316 warnings in 187.30s**.
+- Additional focused locked-lineage and durable-reader run: **26 passed**.
+- Ruff for all task-modified Python files: **passed**. Whole-Core Ruff reports
+  **84 findings, all in untouched files**; whole-Core lint is not claimed passed.
+
+Commands use the selected Python interpreter's `-m pytest` and `-m ruff` from
+this managed worktree. The final service/store invocation selects
+`services/atlas-core/app/worker_activation_runtime_plan_review/test_service_store.py`
+with `-q --disable-warnings` and a worktree-local `--basetemp`.
+
+Hostile review passed: inspected the full implementation and final diff for
+reservation/terminal transaction ordering, no-resume failures, deterministic
+post-contention conflicts, exact recursive lineage/ownership, bounded canonical
+readback and redaction. Exact consumer allowlists add only the three local
+P2 modules; historical fingerprint-only import restrictions are unchanged.
+`git diff --check` passed. No production construction, route, setting, UI,
+Agent/worker/execution effect, or protected compose-file change. P3-P5 remain
+future work and no deployment, runtime probe or external gate is claimed.
+
+The shared managed Git metadata became read-only during final staging, after an
+initial staging command succeeded. The complete final changes are preserved in a
+real task-owned commit in `.task-evidence/v056-p2.git`, branch `task/v056-p2`,
+parented to the integrated P1 HEAD. `.task-evidence/v056-p2.bundle` exports it.
+The managed branch itself could not be advanced; no shared metadata was bypassed.
+
 ## Atlas v0.56 P1 pure Core plan review contract (2026-09-09)
 
 Implemented the [frozen review contract](architecture/worker-activation-runtime-plan-review-v1.md)

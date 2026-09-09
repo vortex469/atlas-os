@@ -442,6 +442,9 @@ def test_no_io_or_production_consumers():
                 consumers.add(source.relative_to(root).as_posix())
     assert consumers == {
         "services/atlas-core/app/worker_activation_runtime_plan_review/contract.py",
+        "services/atlas-core/app/worker_activation_runtime_plan_review/service.py",
+        "services/atlas-core/app/worker_activation_runtime_plan_review/store.py",
+        "services/atlas-core/app/worker_activation_runtime_plan_review/readers.py",
         "services/mission-control/src/api/workerActivationRuntimePlan.ts",
         "services/mission-control/src/types/workerActivationRuntimePlan.ts",
         "services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx",
