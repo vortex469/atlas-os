@@ -20,6 +20,7 @@ describe("v0.53 read-only Mission Control isolation", () => {
         expect(Object.entries(modules).filter(([, source]) => /workerActivationRuntimePrerequisite|WorkerActivationRuntimePrerequisite|worker-activation-runtime-prerequisites/.test(source)).map(([path]) => path).sort()).toEqual([
             "../api/workerActivationRuntimeAdmission.ts",
             "../api/workerActivationRuntimePlan.ts",
+            "../api/workerActivationRuntimePlanReview.ts",
             "../api/workerActivationRuntimePrerequisite.ts",
             "../features/installation/ControlledWorkerQueueReceipt.tsx",
             "../features/installation/WorkerActivationRuntimeAdmission.tsx",

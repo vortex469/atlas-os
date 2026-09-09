@@ -672,6 +672,8 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/workerActivationRuntimeAdmission.ts"),
         # v0.55 P4: exact nested guarded GET-only runtime plan evidence.
         Path("api/workerActivationRuntimePlan.ts"),
+        # v0.56: exact nested GET-only review evidence.
+        Path("api/workerActivationRuntimePlanReview.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 

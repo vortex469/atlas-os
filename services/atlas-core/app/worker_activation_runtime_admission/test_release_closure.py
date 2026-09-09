@@ -151,6 +151,8 @@ def test_exact_v054_production_consumers():
         "services/atlas-core/app/operator_auth/models.py",
         # v0.55 P4: exact GET-only reader, inherited types and nested evidence view.
         "services/mission-control/src/api/workerActivationRuntimePlan.ts",
+        # v0.56: exact nested GET-only review evidence consumers.
+        "services/mission-control/src/api/workerActivationRuntimePlanReview.ts",
         "services/mission-control/src/types/workerActivationRuntimePlan.ts",
         "services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx",
         "services/mission-control/src/api/workerActivationRuntimeAdmission.ts",

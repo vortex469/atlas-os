@@ -446,6 +446,11 @@ def test_no_io_or_production_consumers():
         "services/atlas-core/app/worker_activation_runtime_plan_review/store.py",
         "services/atlas-core/app/worker_activation_runtime_plan_review/readers.py",
         "services/mission-control/src/api/workerActivationRuntimePlan.ts",
+        # v0.56: exact nested GET-only review evidence consumers.
+        "services/mission-control/src/api/workerActivationRuntimePlanReview.ts",
+        "services/mission-control/src/types/workerActivationRuntimePlanReview.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimePlanReview.tsx",
+        "services/mission-control/src/hooks/useWorkerActivationRuntimePlanReview.ts",
         "services/mission-control/src/types/workerActivationRuntimePlan.ts",
         "services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx",
         "services/mission-control/src/features/installation/WorkerActivationRuntimeAdmission.tsx",

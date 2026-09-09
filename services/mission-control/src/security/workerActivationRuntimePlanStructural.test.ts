@@ -19,9 +19,13 @@ describe("v0.55 read-only Mission Control isolation", () => {
         expect(router + navigation).not.toMatch(/WorkerActivationRuntimePlan|worker-activation-runtime-plans/);
         expect(Object.entries(modules).filter(([, source]) => /workerActivationRuntimePlan|WorkerActivationRuntimePlan|worker-activation-runtime-plans/.test(source)).map(([path]) => path).sort()).toEqual([
             "../api/workerActivationRuntimePlan.ts",
+            "../api/workerActivationRuntimePlanReview.ts",
             "../features/installation/WorkerActivationRuntimeAdmission.tsx",
             "../features/installation/WorkerActivationRuntimePlan.tsx",
+            "../features/installation/WorkerActivationRuntimePlanReview.tsx",
+            "../hooks/useWorkerActivationRuntimePlanReview.ts",
             "../types/workerActivationRuntimePlan.ts",
+            "../types/workerActivationRuntimePlanReview.ts",
         ]);
     });
 });

@@ -56,8 +56,12 @@ The API accesses only the explicitly injected
 `app.state.worker_activation_runtime_plan_review_service`. Missing service returns
 503; disabled creation and conflicting replay return 409. Foreign/missing evidence
 returns 404 and mutation throttling 429. There is no production construction,
-enabling setting, UI, Agent or execution integration. Exact historical consumer
-allowlists add only the guarded route, router and permission registry; the
+enabling setting, Agent or execution integration. P4 adds only nested GET-only
+Mission Control review beneath the exact v0.55 plan. It validates closed evidence,
+shows Core lifecycle, and collapses lineage, findings, IDs and reason codes;
+it supplies no creation or action control. Exact historical consumer
+allowlists name the guarded route, router, permission registry and exact
+evidence-only UI consumers; the
 historical `FingerprintV1`-only AST restriction is unchanged.
 
 Validation commands run from the repository root with the selected interpreter

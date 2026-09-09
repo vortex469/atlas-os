@@ -3,6 +3,54 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.56 P4 nested Mission Control review (2026-09-09)
+
+Consumed repository-integrated P3 at `21e9fc78`. Mission Control now reads the
+owned review collection and exact item beneath the immutable v0.55 plan. The
+reader checks closed schemas, owner/candidate and all five IDs, fingerprint
+metadata, exact predecessor/list/item evidence, lifecycle, fixed profile/findings,
+seven blockers and the inherited false authority ceiling. Core retains canonical
+hash and current-time eligibility authority. The keyed reader clears changed
+scopes and ignores late success/failure; no polling or browser persistence occurs.
+
+Operators see loading, missing, unavailable, active or expired Core evidence and
+“Plan review is evidence; runtime prerequisites remain incomplete.” IDs,
+fingerprints, findings, lineage and reason codes remain in collapsed details.
+No review creation, navigation, worker/Agent/execution or operational controls
+were added. `compose.execution-smoke.override.yaml` is unchanged.
+
+Validation from this managed worktree:
+
+- Focused tests passed: 558 tests in 7 files, including the review API, component,
+  scope races, full false-authority matrix, real parent integration and structural
+  v0.53/v0.55/v0.56 isolation. Command: `npm test --prefix services/mission-control
+  -- --maxWorkers=2 workerActivationRuntimePlanReview WorkerActivationRuntimePlanReview
+  WorkerActivationRuntimePlan.test workerActivationRuntimePlanStructural
+  workerActivationRuntimePrerequisiteStructural`.
+- Full `npm test --prefix services/mission-control -- --maxWorkers=2`: **1,676
+  passed in 152 files**. The initial run identified the exact v0.53 consumer list;
+  it was updated to name only the new GET-only reader.
+- `npm run build --prefix services/mission-control`: **passed**, with a bundle
+  chunk-size warning. `npm run lint --prefix services/mission-control`: **passed**,
+  zero errors and one existing `WorkflowShellPage.tsx` hook-dependency warning.
+- Selected-interpreter pytest with `PYTHONPATH=services/atlas-core`, the v0.53
+  release closure, v0.54/v0.55 contract and release closure, v0.55 Mission Control
+  isolation and historical installation release isolation files, filtered by
+  `consumer or mission_control or ui_`: **21 passed**, 216 deselected. An initial
+  scanner run found generated Vitest cache; moved that cache outside the source
+  scan and reran without weakening scanner rules.
+- Hostile review passed: exact evidence and scope binding, fail-closed malformed
+  responses, fixed authority, immutable historical status versus current Core
+  status, collapsed technical output, forbidden controls and exact consumer
+  changes reviewed. `git diff --check` passed. No production Core, Agent or worker
+  behavior changed.
+
+The managed Git index is read-only. As in P1-P3, a real task-owned commit is
+created in `.task-evidence/v056-p4.git` on `task/v056-p4`, parented to the integrated
+P3 HEAD; `.task-evidence/v056-p4.bundle` exports it. The managed branch itself
+cannot be advanced here. P5 release closure and production enablement are not
+claimed by P4.
+
 ## Atlas v0.56 P3 guarded Core plan review API (2026-09-09)
 
 Implemented exactly collection POST/GET and item GET for owner-scoped review

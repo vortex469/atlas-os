@@ -5,6 +5,7 @@ import { planCollection, planResult, admission } from "../../test/workerActivati
 import { WorkerActivationRuntimePlan } from "./WorkerActivationRuntimePlan";
 import { WorkerActivationRuntimeAdmission } from "./WorkerActivationRuntimeAdmission";
 import { admissionCollection, admissionResult, prerequisite } from "../../test/workerActivationRuntimePlan";
+vi.mock("./WorkerActivationRuntimePlanReview", () => ({ WorkerActivationRuntimePlanReview: () => null }));
 vi.mock("../../api/atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(result: unknown = planResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: planCollection }).mockResolvedValueOnce({ data: result });

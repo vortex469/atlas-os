@@ -158,6 +158,11 @@ def test_exact_v055_production_consumers():
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",
         "services/mission-control/src/api/workerActivationRuntimePlan.ts",
+        # v0.56: exact nested GET-only review evidence consumers.
+        "services/mission-control/src/api/workerActivationRuntimePlanReview.ts",
+        "services/mission-control/src/types/workerActivationRuntimePlanReview.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimePlanReview.tsx",
+        "services/mission-control/src/hooks/useWorkerActivationRuntimePlanReview.ts",
         "services/mission-control/src/types/workerActivationRuntimePlan.ts",
         "services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx",
         "services/mission-control/src/features/installation/WorkerActivationRuntimeAdmission.tsx",

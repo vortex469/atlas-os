@@ -25,8 +25,9 @@ is not design approval, readiness, operator approval or start admission and
 removes no blocker. This is a new P0 decision, not authority inherited implicitly
 from the v0.55 plan or roadmap ordering.
 
-P0 froze the contract. **P1 pure Core models/evaluator are implemented; P2-P5
-remain pending**. See the [P1 evidence](services/atlas-core/app/worker_activation_runtime_plan_review/README.md).
+P0 froze the contract. **P1-P4 are implemented; P5 remains pending**.
+P4 adds exact-plan nested GET-only review evidence with collapsed technical details
+and no action controls. See the [Core evidence](services/atlas-core/app/worker_activation_runtime_plan_review/README.md).
 
 | Phase | Responsibility |
 | --- | --- |

@@ -1,3 +1,4 @@
+import { WorkerActivationRuntimePlanReview } from "./WorkerActivationRuntimePlanReview";
 import { useEffect, useState } from "react";
 import { getWorkerActivationRuntimePlan } from "../../api/workerActivationRuntimePlan";
 import type { WorkerActivationRuntimeAdmission } from "../../types/workerActivationRuntimeAdmission";
@@ -38,6 +39,7 @@ function PlanReader({ admission }: { admission: WorkerActivationRuntimeAdmission
                 <ol>{state.blockers.map((code) => <li key={code}><code>{code}</code></li>)}</ol>
                 <dl aria-label="v0.55 fixed-false authority">{Object.entries(state.authority).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{String(value)}</dd></div>)}</dl>
             </details>
+            <WorkerActivationRuntimePlanReview plan={state} />
         </>}
     </section>;
 }
