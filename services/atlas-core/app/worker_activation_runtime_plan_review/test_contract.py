@@ -470,6 +470,9 @@ def test_no_io_or_production_consumers():
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
     assert consumers == {
+        "services/atlas-core/app/routes/worker_activation_runtime_plan_review.py",
+        "services/atlas-core/app/api/v1/router.py",
+        "services/atlas-core/app/operator_auth/models.py",
         "services/atlas-core/app/worker_activation_runtime_plan_review/service.py",
         "services/atlas-core/app/worker_activation_runtime_plan_review/store.py",
         "services/atlas-core/app/worker_activation_runtime_plan_review/readers.py",

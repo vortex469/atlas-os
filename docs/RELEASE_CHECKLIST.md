@@ -3,6 +3,58 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.56 P3 guarded Core plan review API (2026-09-09)
+
+Implemented exactly collection POST/GET and item GET for owner-scoped review
+evidence under the P0 path. The route consumes only the injected P2 review
+service and P1 contract validators. Dedicated evaluate/read permissions, trusted
+Origin/CSRF, unambiguous visible-ASCII idempotency keys, bounded strict JSON,
+exact request/predecessor/item/owner binding, bounded reparsed responses and
+closed non-retryable errors preserve the evidence ceiling. No startup service
+construction or enabling setting was added. P4/P5 remain pending.
+
+Focused tests passed (selected interpreter, `PYTHONPATH=services/atlas-core`):
+
+- `routes/test_worker_activation_runtime_plan_review.py`: **40 passed**, 409
+  warnings in 305.28s. Covers authentication/permissions/CSRF/throttling,
+  methods/OpenAPI, ownership, malformed/ambiguous/chunked/oversized input,
+  strict authority, hostile copied service outputs, exact request/key binding,
+  durable predecessor byte equality, restart/expiry no-replay and corrupt reads.
+- Final strengthened success/lineage, request bounds, OpenAPI and startup subset:
+  **5 passed**, 35 deselected, 348 warnings in 85.87s. Success compares both
+  embedded v0.55 models exactly and all three fixed findings.
+- V0.55/v0.56 contract, service/store, release and historical installation
+  consumer selection (`-k 'consumer or fingerprint_only'`): **7 passed**,
+  321 deselected, 316 warnings in 3.44s.
+- Operator-auth non-HTTP selection (`-k 'not end_to_end and not login and not
+  probe'`): **14 passed**, 8 deselected, 1 warning in 1.34s.
+- Historical installation-execution-admission service/store and v0.55 Mission
+  Control isolation suites: **17 passed**, 306 warnings in 3.23s. Includes Home
+  Assistant refusal and hostile fingerprint-only/consumer scanner checks.
+- Ruff for every modified Python file and `git diff --check`: **passed**.
+
+The broader operator-auth run stopped producing output after twelve tests and
+was interrupted. Its HTTP cases are not claimed passed. The new route's full
+ASGI API/security suite passed; the separate non-HTTP auth and historical runs
+above completed. No whole-Core/UI suite, runtime probe or external release gate
+is claimed. Worktree-local final test databases were removed after validation.
+
+Hostile review passed: inspected the complete staged diff and route against the
+released API pattern and P0/P1/P2 contract. Checked response reparsing including
+constructed/copied models, recursive owner/hash/status linkage, exact predecessor
+and key pins, body/collection byte bounds, redacted dependency failures, durable
+no-replay and default-off construction. Historical allowlists add exact API
+surfaces only, without weakening scanners or fingerprint-only AST restrictions.
+Agent and execution-worker retain zero review consumers. No worker/runtime
+contact, action endpoint, UI, deployment, publication or protected
+`compose.execution-smoke.override.yaml` change was introduced.
+
+Final shared-Git staging failed with a read-only index lock after initial staging
+had succeeded. The full final implementation is preserved in the real task-owned
+commit on `task/v056-p3` in `.task-evidence/v056-p3.git`, parented to the integrated
+P2 HEAD; `.task-evidence/v056-p3.bundle` exports it. The managed branch could not
+be advanced. No permission bypass or external publication was attempted.
+
 ## Atlas v0.56 P2 durable Core plan review evidence (2026-09-09)
 
 Implemented the isolated, explicitly constructed default-off review service,

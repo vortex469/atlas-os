@@ -1,4 +1,4 @@
-# v0.56 P1/P2 Core runtime plan review evidence
+# v0.56 P1/P2/P3 Core runtime plan review evidence
 
 `contract.py` implements the [frozen P0 contract](../../../../docs/architecture/worker-activation-runtime-plan-review-v1.md)
 as pure immutable models and deterministic validation. The sole new true marker
@@ -42,9 +42,23 @@ retention eviction. Each connection checks schema/indexes, integrity, bounds,
 canonical models, hashes and row linkage; corruption closes reads and writes.
 Errors contain closed codes and hashed correlation only. No raw keys are stored.
 
-There is no production construction, API, setting, UI, Agent or execution
-integration. Exact historical consumer allowlists include only the new local
-evidence modules; the historical `FingerprintV1`-only AST restriction is unchanged.
+P3 exposes authenticated collection POST/GET and item GET under
+`/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plan-reviews`.
+Dedicated `.evaluate` and `.read` permissions use the
+`installation.execution.worker_activation_runtime_plan_review` namespace.
+POST requires a trusted Origin, CSRF token and one 16-128 visible-ASCII
+Idempotency-Key. Strict duplicate-free JSON is limited to 16 KiB and nesting 16.
+Every response is reparsed through P1, bounded to 192 KiB (collections at most
+16), and bound to the authenticated owner, candidate and requested item or exact
+predecessor/key/expiry pins. Errors are closed, redacted and non-retryable.
+
+The API accesses only the explicitly injected
+`app.state.worker_activation_runtime_plan_review_service`. Missing service returns
+503; disabled creation and conflicting replay return 409. Foreign/missing evidence
+returns 404 and mutation throttling 429. There is no production construction,
+enabling setting, UI, Agent or execution integration. Exact historical consumer
+allowlists add only the guarded route, router and permission registry; the
+historical `FingerprintV1`-only AST restriction is unchanged.
 
 Validation commands run from the repository root with the selected interpreter
 and `PYTHONPATH=services/atlas-core`. Test evidence and review outcomes are recorded

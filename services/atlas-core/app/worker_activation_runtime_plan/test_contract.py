@@ -452,6 +452,7 @@ def test_no_io_or_production_consumers():
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",
         "services/atlas-core/app/routes/worker_activation_runtime_plan.py",
+        "services/atlas-core/app/routes/worker_activation_runtime_plan_review.py",
         "services/atlas-core/app/worker_activation_runtime_plan/service.py",
         "services/atlas-core/app/worker_activation_runtime_plan/store.py",
         "services/atlas-core/app/worker_activation_runtime_plan/readers.py",

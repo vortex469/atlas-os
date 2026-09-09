@@ -437,6 +437,7 @@ def test_no_production_or_effect_consumers():
         "worker_activation_runtime_plan_review/readers.py",
         "api/v1/router.py", "operator_auth/models.py",
         "routes/worker_activation_runtime_plan.py",
+        "routes/worker_activation_runtime_plan_review.py",
     }
     for name in ("service.py", "store.py", "readers.py"):
         tree = ast.parse((package / name).read_text())
