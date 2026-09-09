@@ -8,32 +8,33 @@ from typing import Literal, get_args, get_origin
 import pytest
 from pydantic import ValidationError
 
-from app.worker_activation_runtime_admission import contract as v054
-from app.worker_activation_runtime_admission.test_contract import (
-    facts as admission_facts,  # noqa: F401
-)
-from app.worker_activation_runtime_admission.test_contract import (
+from app.worker_activation_runtime_plan import contract as v055
+from app.worker_activation_runtime_plan.test_contract import (
+    admission_facts,  # noqa: F401
     prior_facts,  # noqa: F401
 )
-from app.worker_activation_runtime_plan import contract as c
+from app.worker_activation_runtime_plan.test_contract import (
+    facts as plan_facts,  # noqa: F401
+)
+from app.worker_activation_runtime_plan_review import contract as c
 
-RECEIPT = "worker_activation_runtime_admission"
+RECEIPT = "worker_activation_runtime_plan"
 STATUS = RECEIPT + "_status"
 
 
 @pytest.fixture(scope="module")
 def facts(request):
-    predecessor = request.getfixturevalue("admission_facts")
-    prior = v054.build_runtime_admission(
-        predecessor, idempotency_key="v054-prerequisite-key"
+    predecessor = request.getfixturevalue("plan_facts")
+    prior = v055.build_runtime_plan(
+        predecessor, idempotency_key="v056-prerequisite-key"
     )
-    status = v054.derive_status(prior, evaluated_at=prior.recorded_at)
-    return c.WorkerActivationRuntimePlanValidationInputV1(
+    status = v055.derive_status(prior, evaluated_at=prior.recorded_at)
+    return c.WorkerActivationRuntimePlanReviewValidationInputV1(
         subject_previously_reserved=False,
         idempotency_key_previously_reserved=False,
         operator_id=prior.operator_id,
         candidate_record_id=prior.candidate_record_id,
-        authority=c.WorkerActivationRuntimePlanAuthorityContextV1(
+        authority=c.WorkerActivationRuntimePlanReviewAuthorityContextV1(
             authenticated_operator_id=prior.operator_id,
             permission=c.PERMISSION,
             permission_verified=True,
@@ -45,9 +46,9 @@ def facts(request):
 
 
 def refused(raw):
-    result = c.evaluate_worker_activation_runtime_plan(raw)
-    assert not result.worker_activation_runtime_plan_recorded
-    assert result.recognized_v054_admission_count == 0
+    result = c.evaluate_worker_activation_runtime_plan_review(raw)
+    assert not result.worker_activation_runtime_plan_review_recorded
+    assert result.recognized_v055_plan_count == 0
     assert result.earliest_expiry is None
     assert result.operator_id == "blocked-evaluation"
     assert result.evaluation_fingerprint == c.evaluation_fingerprint(result)
@@ -57,14 +58,16 @@ def refused(raw):
 def test_success_is_deterministic_immutable_and_preserves_complete_lineage(facts):
     raw = facts.model_dump(mode="python")
     before = copy.deepcopy(raw)
-    first = c.evaluate_worker_activation_runtime_plan(raw)
-    assert first == c.evaluate_worker_activation_runtime_plan(facts)
+    first = c.evaluate_worker_activation_runtime_plan_review(raw)
+    assert first == c.evaluate_worker_activation_runtime_plan_review(facts)
     assert raw == before
-    assert first.worker_activation_runtime_plan_recorded is True
-    assert first.recognized_v054_admission_count == 1
-    assert first.blockers == v054.SUCCESS_BLOCKERS
-    record = c.build_runtime_plan(facts, idempotency_key="v055-idempotency-key")
-    assert record == c.build_runtime_plan(facts, idempotency_key="v055-idempotency-key")
+    assert first.worker_activation_runtime_plan_review_recorded is True
+    assert first.recognized_v055_plan_count == 1
+    assert first.blockers == v055.SUCCESS_BLOCKERS
+    record = c.build_runtime_plan_review(facts, idempotency_key="v056-idempotency-key")
+    assert record == c.build_runtime_plan_review(
+        facts, idempotency_key="v056-idempotency-key"
+    )
     assert (
         getattr(record, RECEIPT).model_dump_json()
         == getattr(facts, RECEIPT).model_dump_json()
@@ -79,17 +82,19 @@ def test_success_is_deterministic_immutable_and_preserves_complete_lineage(facts
         with pytest.raises(ValidationError):
             model.operator_id = "foreign"
     assert (
-        c.WorkerActivationRuntimePlanV1.model_validate_json(record.model_dump_json())
+        c.WorkerActivationRuntimePlanReviewV1.model_validate_json(
+            record.model_dump_json()
+        )
         == record
     )
     status = c.derive_status(record, evaluated_at=record.recorded_at)
-    result = c.WorkerActivationRuntimePlanResultV1(record=record, status=status)
+    result = c.WorkerActivationRuntimePlanReviewResultV1(record=record, status=status)
     assert result.record == record
     expired = c.derive_status(record, evaluated_at=record.valid_until)
     assert expired.lifecycle == "expired"
-    assert expired.worker_activation_runtime_plan_recorded
+    assert expired.worker_activation_runtime_plan_review_recorded
     assert (
-        c.WorkerActivationRuntimePlanResultV1(
+        c.WorkerActivationRuntimePlanReviewResultV1(
             record=record, status=expired, exact_duplicate=True
         ).status
         == expired
@@ -118,7 +123,7 @@ def test_missing_or_invalid_envelope_is_redacted(raw):
         ("authority", "request_received_at", "2026-08-27T12:00:43Z"),
         ("authority", "request_received_at", "2026-08-27T12:01:30Z"),
         ("authority", "request_received_at", "not-a-clock-secret-do-not-echo"),
-        ("create", "runtime_admission_id", "00000000-0000-5000-8000-000000000000"),
+        ("create", "runtime_plan_id", "00000000-0000-5000-8000-000000000000"),
         ("create", "valid_until", "2099-01-01T00:00:00Z"),
         ("create", "adapter", "secret-do-not-echo"),
         ("create", "worker_identity", "secret-do-not-echo"),
@@ -142,7 +147,7 @@ def test_false_authority_cannot_be_coerced(facts, section, value):
 
 
 def test_every_inherited_false_authority_is_retained_and_strict(facts):
-    for field, definition in v054.ClosedAuthorityV1.model_fields.items():
+    for field, definition in v055.ClosedAuthorityV1.model_fields.items():
         if (
             get_origin(definition.annotation) is Literal
             and get_args(definition.annotation)[0] is False
@@ -168,9 +173,9 @@ def test_every_inherited_false_authority_is_retained_and_strict(facts):
 @pytest.mark.parametrize(
     "section,field",
     [
-        ("create", "runtime_admission_record_fingerprint"),
+        ("create", "runtime_plan_record_fingerprint"),
         ("create", "status_fingerprint"),
-        (RECEIPT, "runtime_admission_record_fingerprint"),
+        (RECEIPT, "runtime_plan_record_fingerprint"),
         (RECEIPT, "subject_fingerprint"),
         (STATUS, "status_fingerprint"),
     ],
@@ -197,9 +202,9 @@ def test_forged_model_instances_and_nested_lineage_are_reparsed(facts):
         forged = receipt.model_copy(update=changes)
         refused(facts.model_copy(update={RECEIPT: forged}))
         with pytest.raises(ValidationError):
-            c.build_runtime_plan(
+            c.build_runtime_plan_review(
                 facts.model_copy(update={RECEIPT: forged}),
-                idempotency_key="v055-idempotency-key",
+                idempotency_key="v056-idempotency-key",
             )
     raw = facts.model_dump(mode="python")
     # Walk the actual embedded chain and attack every inherited model independently.
@@ -223,9 +228,9 @@ def test_forged_model_instances_and_nested_lineage_are_reparsed(facts):
         refused(hostile)
     # Deep marker coercion cannot disappear through JSON serialization.
     hostile = copy.deepcopy(raw)
-    nested = hostile[RECEIPT]["worker_activation_runtime_prerequisite"][
-        "controlled_worker_queue_claim_lease_acknowledgement"
-    ]
+    nested = hostile[RECEIPT]["worker_activation_runtime_admission"][
+        "worker_activation_runtime_prerequisite"
+    ]["controlled_worker_queue_claim_lease_acknowledgement"]
     nested["worker_start_allowed"] = 0
     refused(hostile)
     nested["worker_start_allowed"] = False
@@ -243,13 +248,13 @@ def test_recomputed_outer_fingerprints_do_not_authorize_corrupt_facts(facts):
     ):
         raw = facts.model_dump(mode="python")
         raw[RECEIPT][field] = value
-        fp = v054.runtime_admission_record_fingerprint(raw[RECEIPT]).model_dump(
+        fp = v055.runtime_plan_record_fingerprint(raw[RECEIPT]).model_dump(
             mode="python"
         )
-        raw[RECEIPT]["runtime_admission_record_fingerprint"] = fp
-        raw["create"]["runtime_admission_record_fingerprint"] = fp
-        raw[STATUS]["runtime_admission_record_fingerprint"] = fp
-        sfp = v054.status_fingerprint(raw[STATUS]).model_dump(mode="python")
+        raw[RECEIPT]["runtime_plan_record_fingerprint"] = fp
+        raw["create"]["runtime_plan_record_fingerprint"] = fp
+        raw[STATUS]["runtime_plan_record_fingerprint"] = fp
+        sfp = v055.status_fingerprint(raw[STATUS]).model_dump(mode="python")
         raw[STATUS]["status_fingerprint"] = sfp
         raw["create"]["status_fingerprint"] = sfp
         refused(raw)
@@ -270,7 +275,7 @@ def test_stable_status_does_not_renew_expiry_and_status_drift_is_rejected(facts)
     ):
         raw = facts.model_dump(mode="python")
         raw[STATUS].update(changes)
-        fp = v054.status_fingerprint(raw[STATUS]).model_dump(mode="python")
+        fp = v055.status_fingerprint(raw[STATUS]).model_dump(mode="python")
         raw[STATUS]["status_fingerprint"] = fp
         raw["create"]["status_fingerprint"] = fp
         refused(raw)
@@ -287,8 +292,8 @@ def test_request_is_closed_bounded_and_strict_json(facts):
         b"\xff",
         "{" + " " * c.MAX_CREATE_BYTES + "}",
         text.replace(
-            '"runtime_admission_id":',
-            '"runtime_admission_id":"bad","runtime_admission_id":',
+            '"runtime_plan_id":',
+            '"runtime_plan_id":"bad","runtime_plan_id":',
         ),
         text.replace("-create-v1", "-create-v1-e\u0301"),
         '{"secret":' + "[" * 1000 + "0" + "]" * 1000 + "}",
@@ -300,8 +305,30 @@ def test_request_is_closed_bounded_and_strict_json(facts):
     refused(raw)
 
 
+def test_direct_create_json_validation_enforces_wire_bounds_and_utf8(facts):
+    text = facts.create.model_dump_json()
+    model = c.WorkerActivationRuntimePlanReviewCreateV1
+    for valid in (text, text.encode("utf-8"), bytearray(text, "utf-8")):
+        assert model.model_validate_json(valid) == facts.create
+    # Whitespace counts even when the decoded model is small and otherwise valid.
+    for invalid in (
+        text + " " * c.MAX_CREATE_BYTES,
+        text.encode("utf-16"),
+        text.encode("utf-32"),
+    ):
+        with pytest.raises(ValueError):
+            model.model_validate_json(invalid)
+
+
+def test_json_wire_limit_counts_utf8_bytes(monkeypatch):
+    text = '{"operator_id":"é"}'
+    monkeypatch.setattr(c.ContractModel, "_json_byte_limit", len(text))
+    with pytest.raises(ValueError, match="contract envelope exceeds bound"):
+        c.WorkerActivationRuntimePlanReviewCollectionV1.model_validate_json(text)
+
+
 def test_versioned_domains_and_permanent_subject(facts):
-    record = c.build_runtime_plan(facts, idempotency_key="v055-idempotency-key")
+    record = c.build_runtime_plan_review(facts, idempotency_key="v056-idempotency-key")
     assert (
         len(
             {
@@ -318,12 +345,14 @@ def test_versioned_domains_and_permanent_subject(facts):
         )
         == 6
     )
-    other_key = c.build_runtime_plan(facts, idempotency_key="another-idempotency-key")
+    other_key = c.build_runtime_plan_review(
+        facts, idempotency_key="another-idempotency-key"
+    )
     assert other_key.subject_fingerprint == record.subject_fingerprint
-    assert other_key.runtime_plan_id == record.runtime_plan_id
+    assert other_key.runtime_plan_review_id == record.runtime_plan_review_id
     assert (
-        other_key.runtime_plan_record_fingerprint
-        != record.runtime_plan_record_fingerprint
+        other_key.runtime_plan_review_record_fingerprint
+        != record.runtime_plan_review_record_fingerprint
     )
     changed = facts.create.model_copy(update={"valid_until": "2099-01-01T00:00:00Z"})
     kwargs = {
@@ -334,38 +363,38 @@ def test_versioned_domains_and_permanent_subject(facts):
         **kwargs, create=facts.create
     )
     assert (
-        c.subject_fingerprint(
-            **kwargs, runtime_admission_id=facts.create.runtime_admission_id
-        )
+        c.subject_fingerprint(**kwargs, runtime_plan_id=facts.create.runtime_plan_id)
         == record.subject_fingerprint
     )
 
 
 def test_rehashed_evaluation_and_evidence_cannot_change_authority_or_shape(facts):
-    evaluation = c.evaluate_worker_activation_runtime_plan(facts)
+    evaluation = c.evaluate_worker_activation_runtime_plan_review(facts)
     for changes in (
-        {"recognized_v054_admission_count": 2},
+        {"recognized_v055_plan_count": 2},
         {"blockers": ()},
         {"worker_start_allowed": True},
-        {"worker_activation_runtime_plan_recorded": False},
+        {"worker_activation_runtime_plan_review_recorded": False},
         {"earliest_expiry": "2099-01-01T00:00:00Z"},
     ):
         raw = evaluation.model_dump(mode="python")
         raw.update(changes)
         raw["evaluation_fingerprint"] = c.evaluation_fingerprint(raw)
         with pytest.raises(ValidationError):
-            c.WorkerActivationRuntimePlanEvaluationV1.model_validate(raw)
-    record = c.build_runtime_plan(facts, idempotency_key="v055-idempotency-key")
+            c.WorkerActivationRuntimePlanReviewEvaluationV1.model_validate(raw)
+    record = c.build_runtime_plan_review(facts, idempotency_key="v056-idempotency-key")
     for changes in (
         {"valid_until": "2099-01-01T00:00:00Z"},
         {"blockers": ()},
-        {"runtime_admission_id": "00000000-0000-5000-8000-000000000000"},
+        {"runtime_plan_id": "00000000-0000-5000-8000-000000000000"},
     ):
         raw = record.model_dump(mode="python")
         raw.update(changes)
-        raw["runtime_plan_record_fingerprint"] = c.runtime_plan_record_fingerprint(raw)
+        raw["runtime_plan_review_record_fingerprint"] = (
+            c.runtime_plan_review_record_fingerprint(raw)
+        )
         with pytest.raises(ValidationError):
-            c.WorkerActivationRuntimePlanV1.model_validate(raw)
+            c.WorkerActivationRuntimePlanReviewV1.model_validate(raw)
 
 
 def test_no_io_or_production_consumers():
@@ -379,7 +408,7 @@ def test_no_io_or_production_consumers():
         "datetime",
         "typing",
         "pydantic",
-        "app.worker_activation_runtime_admission",
+        "app.worker_activation_runtime_plan",
         "app.execution_permission_grant.contract",
         "app.installation_execution_admission.contract",
         "app.installation_plan.contract",
@@ -419,11 +448,11 @@ def test_no_io_or_production_consumers():
     root = path.parents[4]
     consumers = set()
     markers = (
-        "worker_activation_runtime_plan",
-        "worker-activation-runtime-plan",
-        "WorkerActivationRuntimePlan",
-        "workerActivationRuntimePlan",
-        "WORKER_ACTIVATION_RUNTIME_PLAN",
+        "worker_activation_runtime_plan_review",
+        "worker-activation-runtime-plan-review",
+        "WorkerActivationRuntimePlanReview",
+        "workerActivationRuntimePlanReview",
+        "WORKER_ACTIVATION_RUNTIME_PLAN_REVIEW",
     )
     for service in (
         "atlas-core",
@@ -440,26 +469,14 @@ def test_no_io_or_production_consumers():
                 continue
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
-    assert consumers == {
-        "services/atlas-core/app/worker_activation_runtime_plan_review/contract.py",
-        "services/mission-control/src/api/workerActivationRuntimePlan.ts",
-        "services/mission-control/src/types/workerActivationRuntimePlan.ts",
-        "services/mission-control/src/features/installation/WorkerActivationRuntimePlan.tsx",
-        "services/mission-control/src/features/installation/WorkerActivationRuntimeAdmission.tsx",
-        "services/atlas-core/app/api/v1/router.py",
-        "services/atlas-core/app/operator_auth/models.py",
-        "services/atlas-core/app/routes/worker_activation_runtime_plan.py",
-        "services/atlas-core/app/worker_activation_runtime_plan/service.py",
-        "services/atlas-core/app/worker_activation_runtime_plan/store.py",
-        "services/atlas-core/app/worker_activation_runtime_plan/readers.py",
-    }
+    assert consumers == set()
 
 
 def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
-    record = c.build_runtime_plan(facts, idempotency_key="v055-idempotency-key")
+    record = c.build_runtime_plan_review(facts, idempotency_key="v056-idempotency-key")
     status = c.derive_status(record, evaluated_at=record.recorded_at)
     collection = c._signed(
-        c.WorkerActivationRuntimePlanCollectionV1,
+        c.WorkerActivationRuntimePlanReviewCollectionV1,
         {
             "operator_id": record.operator_id,
             "candidate_record_id": record.candidate_record_id,
@@ -470,11 +487,11 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
         c.collection_fingerprint,
     )
     reservation = c._signed(
-        c.WorkerActivationRuntimePlanSubjectReservationV1,
+        c.WorkerActivationRuntimePlanReviewSubjectReservationV1,
         {
             "operator_id": record.operator_id,
             "candidate_record_id": record.candidate_record_id,
-            "runtime_admission_id": record.runtime_admission_id,
+            "runtime_plan_id": record.runtime_plan_id,
             "reserved_at": record.recorded_at,
             "subject_fingerprint": record.subject_fingerprint,
             "idempotency_key_fingerprint": record.idempotency_key_fingerprint,
@@ -488,7 +505,7 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
         c.reservation_fingerprint,
     )
     audit = c._signed(
-        c.WorkerActivationRuntimePlanAuditEvidenceV1,
+        c.WorkerActivationRuntimePlanReviewAuditEvidenceV1,
         {
             "operator_id": record.operator_id,
             "candidate_record_id": record.candidate_record_id,
@@ -496,14 +513,14 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
             "outcome": "recorded",
             "subject_fingerprint": record.subject_fingerprint,
             "correlation_fingerprint": c.fingerprint("correlation", "test"),
-            "runtime_plan_record_fingerprint": record.runtime_plan_record_fingerprint,
-            "worker_activation_runtime_admission_recorded": True,
+            "runtime_plan_review_record_fingerprint": record.runtime_plan_review_record_fingerprint,
             "worker_activation_runtime_plan_recorded": True,
+            "worker_activation_runtime_plan_review_recorded": True,
         },
         "audit_fingerprint",
         c.audit_fingerprint,
     )
-    error = c.WorkerActivationRuntimePlanRedactedErrorV1(
+    error = c.WorkerActivationRuntimePlanReviewRedactedErrorV1(
         error_code="invalid_request",
         correlation_fingerprint=c.fingerprint("correlation", "test"),
     )
@@ -514,8 +531,8 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
         reservation,
         audit,
         error,
-        c.WorkerActivationRuntimePlanResultV1(record=record, status=status),
-        c.evaluate_worker_activation_runtime_plan(facts),
+        c.WorkerActivationRuntimePlanReviewResultV1(record=record, status=status),
+        c.evaluate_worker_activation_runtime_plan_review(facts),
         facts.create,
         facts.authority,
     )
@@ -571,18 +588,18 @@ def test_stable_status_cannot_extend_earliest_inherited_expiry(facts):
     assert receipt.valid_until == "2026-08-27T12:00:45Z"
     raw = facts.model_dump(mode="python")
     assert (
-        c.evaluate_worker_activation_runtime_plan(raw).recognized_v054_admission_count
+        c.evaluate_worker_activation_runtime_plan_review(raw).recognized_v055_plan_count
         == 1
     )
     raw["authority"]["request_received_at"] = receipt.valid_until
     refused(raw)
-    current = v054.derive_status(receipt, evaluated_at=receipt.valid_until)
+    current = v055.derive_status(receipt, evaluated_at=receipt.valid_until)
     raw[STATUS] = current.model_dump(mode="python")
     raw["create"]["status_fingerprint"] = current.status_fingerprint
     refused(raw)
     with pytest.raises(ValidationError):
-        c.WorkerActivationRuntimePlanValidationInputV1.model_validate(raw)
-    stable = c.build_runtime_plan(facts, idempotency_key="v055-idempotency-key")
+        c.WorkerActivationRuntimePlanReviewValidationInputV1.model_validate(raw)
+    stable = c.build_runtime_plan_review(facts, idempotency_key="v056-idempotency-key")
     assert stable.valid_until == receipt.valid_until
     assert (
         c.derive_status(stable, evaluated_at=receipt.valid_until).lifecycle == "expired"
@@ -608,7 +625,7 @@ def test_serialized_bound_includes_expanded_defaults(facts, monkeypatch):
     assert size_without_defaults < len(c.canonical_json(facts.create))
     monkeypatch.setattr(c, "MAX_MODEL_BYTES", size_without_defaults + 1)
     with pytest.raises(ValidationError, match="contract envelope exceeds bound"):
-        c.WorkerActivationRuntimePlanCreateV1.model_validate(minimal)
+        c.WorkerActivationRuntimePlanReviewCreateV1.model_validate(minimal)
 
 
 @pytest.mark.parametrize(
@@ -627,8 +644,8 @@ def test_replayed_or_unknown_reservation_facts_fail_closed(facts, field, value):
         raw[field] = value
     refused(raw)
     with pytest.raises(ValidationError):
-        c.build_runtime_plan(
-            type(facts).model_construct(**raw), idempotency_key="v055-hostile-replay"
+        c.build_runtime_plan_review(
+            type(facts).model_construct(**raw), idempotency_key="v056-hostile-replay"
         )
 
 
@@ -657,37 +674,44 @@ def test_frozen_versioned_hash_and_uuid_vectors():
         assert (
             actual.value
             == hashlib.sha256(
-                f"atlas:worker-activation-runtime-plan-{domain}:v1".encode() + b"\0{}"
+                f"atlas:worker-activation-runtime-plan-review-{domain}:v1".encode()
+                + b"\0{}"
             ).hexdigest()
         )
     subject = c.subject_fingerprint(
         operator_id="operator-a",
         candidate_record_id="00000000-0000-4000-8000-000000000000",
-        runtime_admission_id="00000000-0000-5000-8000-000000000000",
+        runtime_plan_id="00000000-0000-5000-8000-000000000000",
     )
     assert subject.value == vectors["subject_vector"]
-    assert c.derived_runtime_plan_id(subject) == vectors["runtime_plan_id"]
+    assert (
+        c.derived_runtime_plan_review_id(subject) == vectors["runtime_plan_review_id"]
+    )
 
 
 def test_distinct_identities_and_canonical_recursive_evidence(facts):
-    record = c.build_runtime_plan(facts, idempotency_key="v055-exact-lineage")
+    record = c.build_runtime_plan_review(facts, idempotency_key="v056-exact-lineage")
     prior = getattr(facts, RECEIPT)
-    assert record.runtime_admission_id == prior.runtime_admission_id
+    assert record.runtime_plan_id == prior.runtime_plan_id
     assert record.admission_id == prior.admission_id
     assert (
-        len({record.runtime_plan_id, record.runtime_admission_id, record.admission_id})
+        len(
+            {record.runtime_plan_review_id, record.runtime_plan_id, record.admission_id}
+        )
         == 3
     )
     assert c.canonical_json(getattr(record, RECEIPT)) == c.canonical_json(prior)
     assert c.canonical_json(getattr(record, STATUS)) == c.canonical_json(
         getattr(facts, STATUS)
     )
-    for field in ("runtime_plan_id", "runtime_admission_id", "admission_id"):
+    for field in ("runtime_plan_review_id", "runtime_plan_id", "admission_id"):
         raw = record.model_dump(mode="python")
         raw[field] = "00000000-0000-5000-8000-000000000000"
-        raw["runtime_plan_record_fingerprint"] = c.runtime_plan_record_fingerprint(raw)
+        raw["runtime_plan_review_record_fingerprint"] = (
+            c.runtime_plan_review_record_fingerprint(raw)
+        )
         with pytest.raises(ValidationError):
-            c.WorkerActivationRuntimePlanV1.model_validate(raw)
+            c.WorkerActivationRuntimePlanReviewV1.model_validate(raw)
 
 
 def test_recursive_hash_and_owner_corruption(facts):
@@ -735,67 +759,30 @@ def test_missing_verification_and_forged_top_level_models_fail_closed(facts):
         forged = facts.model_copy(update=changes)
         refused(forged)
         with pytest.raises(ValidationError):
-            c.build_runtime_plan(forged, idempotency_key="v055-forged-input")
+            c.build_runtime_plan_review(forged, idempotency_key="v056-forged-input")
 
 
 def test_rehashed_status_identity_is_derived_from_exact_subject(facts):
-    record = c.build_runtime_plan(facts, idempotency_key="v055-status-identity-key")
+    record = c.build_runtime_plan_review(
+        facts, idempotency_key="v056-status-identity-key"
+    )
     status = c.derive_status(record, evaluated_at=record.recorded_at)
     raw = status.model_dump(mode="python")
-    raw["runtime_plan_id"] = record.runtime_admission_id
+    raw["runtime_plan_review_id"] = record.runtime_plan_id
     raw["status_fingerprint"] = c.status_fingerprint(raw)
     with pytest.raises(ValidationError):
-        c.WorkerActivationRuntimePlanStatusV1.model_validate(raw)
-
-
-def test_fixed_design_is_closed_and_cannot_resolve_interfaces(facts):
-    record = c.build_runtime_plan(facts, idempotency_key="v055-fixed-design")
-    design = record.design
-    assert design.profile == "core_owned_reference_only_runtime_plan_v1"
-    assert design.evidence_owner == "atlas_core"
-    assert design.worker_store_contact_interface == "undefined"
-    assert design.worker_runtime_contact_interface == "undefined"
-    assert design.unresolved_interfaces == v054.SUCCESS_BLOCKERS
-    for field, value in (
-        ("profile", "executable_runtime"),
-        ("evidence_owner", "atlas_agent"),
-        ("admission_reader", "worker_database"),
-        ("plan_journal", "queue"),
-        ("presentation", "actionable"),
-        ("inherited_references", "latest_candidate"),
-        ("worker_store_contact_interface", "defined"),
-        ("worker_runtime_contact_interface", "defined"),
-        ("unresolved_interfaces", ()),
-        ("command", "secret"),
-        ("endpoint", "secret"),
-        ("configuration", {}),
-        ("worker_start_allowed", True),
-    ):
-        raw = record.model_dump(mode="python")
-        raw["design"][field] = value
-        raw["runtime_plan_record_fingerprint"] = c.runtime_plan_record_fingerprint(raw)
-        with pytest.raises(ValidationError):
-            c.WorkerActivationRuntimePlanV1.model_validate(raw)
-    with pytest.raises(ValidationError):
-        design.evidence_owner = "atlas_agent"
-    with pytest.raises(ValueError):
-        c.WorkerActivationRuntimePlanDesignV1.model_validate_json(
-            '{"profile":"bad","profile":"core_owned_reference_only_runtime_plan_v1"}'
-        )
-    raw = facts.model_dump(mode="python")
-    raw["create"]["design"] = design.model_dump(mode="python")
-    refused(raw)
+        c.WorkerActivationRuntimePlanReviewStatusV1.model_validate(raw)
 
 
 def test_plan_pins_all_four_ids_and_exact_expiry(facts):
-    record = c.build_runtime_plan(facts, idempotency_key="v055-pinned-identity")
+    record = c.build_runtime_plan_review(facts, idempotency_key="v056-pinned-identity")
     prior = getattr(facts, RECEIPT)
     assert record.prerequisite_id == prior.prerequisite_id
     assert (
         len(
             {
+                record.runtime_plan_review_id,
                 record.runtime_plan_id,
-                record.runtime_admission_id,
                 record.prerequisite_id,
                 record.admission_id,
             }
@@ -807,7 +794,7 @@ def test_plan_pins_all_four_ids_and_exact_expiry(facts):
     # Correct outer hashes cannot authorize altered expiry or inherited identity.
     from datetime import timedelta
 
-    later = c.v054.v053.v052._instant(record.valid_until) + timedelta(seconds=1)
+    later = c.v055.v054.v053.v052._instant(record.valid_until) + timedelta(seconds=1)
     for field, value in (
         ("valid_until", record.recorded_at),
         ("valid_until", later.strftime("%Y-%m-%dT%H:%M:%SZ")),
@@ -815,9 +802,11 @@ def test_plan_pins_all_four_ids_and_exact_expiry(facts):
     ):
         raw = record.model_dump(mode="python")
         raw[field] = value
-        raw["runtime_plan_record_fingerprint"] = c.runtime_plan_record_fingerprint(raw)
+        raw["runtime_plan_review_record_fingerprint"] = (
+            c.runtime_plan_review_record_fingerprint(raw)
+        )
         with pytest.raises(ValidationError):
-            c.WorkerActivationRuntimePlanV1.model_validate(raw)
+            c.WorkerActivationRuntimePlanReviewV1.model_validate(raw)
 
 
 def test_normative_false_inventory_is_exact():
@@ -836,10 +825,132 @@ def test_normative_false_inventory_is_exact():
         for name, field in c.ClosedAuthorityV1.model_fields.items()
     } == {
         name: (field.annotation, field.default)
-        for name, field in v054.ClosedAuthorityV1.model_fields.items()
+        for name, field in v055.ClosedAuthorityV1.model_fields.items()
     }
     for name in inventory:
         assert c.ClosedAuthorityV1().model_dump()[name] is False
         for value in (True, 0, 1, "false", None):
             with pytest.raises(ValidationError):
                 c.ClosedAuthorityV1.model_validate({name: value})
+
+
+def test_review_findings_are_exact_and_never_caller_claims(facts):
+    evaluation = c.evaluate_worker_activation_runtime_plan_review(facts)
+    record = c.build_runtime_plan_review(facts, idempotency_key="v056-findings-key")
+    status = c.derive_status(record, evaluated_at=record.recorded_at)
+    expected = (
+        "exact_plan_lineage",
+        "fixed_design_consistent",
+        "unresolved_interfaces_preserved",
+    )
+    assert c.SUCCESS_FINDINGS == expected
+    assert refused({}).findings == ()
+    for model, field, sign in (
+        (evaluation, "evaluation_fingerprint", c.evaluation_fingerprint),
+        (
+            record,
+            "runtime_plan_review_record_fingerprint",
+            c.runtime_plan_review_record_fingerprint,
+        ),
+        (status, "status_fingerprint", c.status_fingerprint),
+    ):
+        assert model.profile == "core_owned_reference_only_runtime_plan_review_v1"
+        assert model.findings == expected
+        for changes in (
+            {"findings": ()},
+            {"findings": tuple(reversed(expected))},
+            {"findings": expected + (expected[0],)},
+            {"findings": ("runtime_ready",)},
+            {"profile": "design_approved"},
+        ):
+            raw = model.model_dump(mode="python")
+            raw.update(changes)
+            raw[field] = sign(raw)
+            with pytest.raises(ValidationError):
+                type(model).model_validate(raw)
+    for field, value in (
+        ("findings", expected),
+        ("profile", c.PROFILE),
+        ("design", {}),
+    ):
+        raw = facts.model_dump(mode="python")
+        raw["create"][field] = value
+        refused(raw)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("profile", "executable_runtime"),
+        ("evidence_owner", "atlas_agent"),
+        ("admission_reader", "worker_database"),
+        ("plan_journal", "queue"),
+        ("presentation", "actionable"),
+        ("inherited_references", "latest_candidate"),
+        ("worker_store_contact_interface", "defined"),
+        ("worker_runtime_contact_interface", "defined"),
+        ("unresolved_interfaces", ()),
+        ("command", "secret"),
+        ("endpoint", "secret"),
+        ("configuration", {}),
+        ("worker_start_allowed", True),
+    ],
+)
+def test_review_rejects_rehashed_or_constructed_design_drift(facts, field, value):
+    raw = facts.model_dump(mode="python")
+    raw[RECEIPT]["design"][field] = value
+    fp = v055.runtime_plan_record_fingerprint(raw[RECEIPT])
+    raw[RECEIPT]["runtime_plan_record_fingerprint"] = fp
+    raw["create"]["runtime_plan_record_fingerprint"] = fp
+    raw[STATUS]["runtime_plan_record_fingerprint"] = fp
+    sfp = v055.status_fingerprint(raw[STATUS])
+    raw[STATUS]["status_fingerprint"] = sfp
+    raw["create"]["status_fingerprint"] = sfp
+    refused(raw)
+    prior = getattr(facts, RECEIPT)
+    design = v055.WorkerActivationRuntimePlanDesignV1.model_construct(**{field: value})
+    # model_construct discards unknown kwargs; explicitly inject those extras so
+    # the evaluator actually receives the hostile field we intend to test.
+    design.__dict__[field] = value
+    forged = prior.model_copy(update={"design": design})
+    refused(facts.model_copy(update={RECEIPT: forged}))
+
+
+def test_all_five_ids_and_recursive_bytes_remain_exact(facts):
+    record = c.build_runtime_plan_review(facts, idempotency_key="v056-five-ids-key")
+    prior = getattr(facts, RECEIPT)
+    fields = (
+        "runtime_plan_id",
+        "runtime_admission_id",
+        "prerequisite_id",
+        "admission_id",
+    )
+    assert (
+        len({record.runtime_plan_review_id, *(getattr(record, f) for f in fields)}) == 5
+    )
+    assert all(getattr(record, f) == getattr(prior, f) for f in fields)
+    assert (
+        record.worker_activation_runtime_plan.model_dump_json()
+        == prior.model_dump_json()
+    )
+    assert (
+        record.worker_activation_runtime_plan_status.model_dump_json()
+        == getattr(facts, STATUS).model_dump_json()
+    )
+    raw = record.model_dump(mode="python")
+    raw["runtime_admission_id"] = record.admission_id
+    raw["runtime_plan_review_record_fingerprint"] = (
+        c.runtime_plan_review_record_fingerprint(raw)
+    )
+    with pytest.raises(ValidationError):
+        type(record).model_validate(raw)
+
+
+def test_predecessor_status_is_exact_even_when_independently_valid(facts):
+    # Status validators cannot know the record's inherited IDs. Pair equality must.
+    raw = facts.model_dump(mode="python")
+    raw[STATUS]["prerequisite_id"] = raw[STATUS]["admission_id"]
+    raw[STATUS]["status_fingerprint"] = v055.status_fingerprint(raw[STATUS])
+    v055.WorkerActivationRuntimePlanStatusV1.model_validate(raw[STATUS])
+    raw["create"]["status_fingerprint"] = raw[STATUS]["status_fingerprint"]
+    refused(raw)

@@ -431,6 +431,7 @@ def test_no_production_or_effect_consumers():
         and "worker_activation_runtime_plan" in path.read_text()
     }
     assert consumers == {
+        "worker_activation_runtime_plan_review/contract.py",
         "api/v1/router.py", "operator_auth/models.py",
         "routes/worker_activation_runtime_plan.py",
     }

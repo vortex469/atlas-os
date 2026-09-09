@@ -338,8 +338,10 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "worker_binding_activation_evidence/contract.py",
         "controlled_worker_queue_claim_admission/contract.py",
     }
-    # v0.50-v0.55 inherit only the closed fingerprint type, never a service.
+    # v0.50-v0.56 inherit only the closed fingerprint type, never a service.
     fingerprint_contracts = {
+        # v0.56 P1: pure review; exact FingerprintV1-only AST restriction.
+        "worker_activation_runtime_plan_review/contract.py",
         "controlled_worker_queue_claim_lease_acknowledgement_prerequisite/contract.py",
         "controlled_worker_queue_claim_lease_acknowledgement_admission/contract.py",
         "controlled_worker_queue_claim_lease_acknowledgement/contract.py",
@@ -388,12 +390,14 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "import app.installation_execution_admission.service\n",
     ],
 )
+@pytest.mark.parametrize(
+    "package",
+    ["worker_activation_runtime_plan", "worker_activation_runtime_plan_review"],
+)
 def test_runtime_plan_contract_rejects_additional_admission_imports(
-    monkeypatch: pytest.MonkeyPatch, extra_import: str,
+    monkeypatch: pytest.MonkeyPatch, extra_import: str, package: str,
 ) -> None:
-    contract_path = (
-        Path(service.__file__).parents[1] / "worker_activation_runtime_plan/contract.py"
-    )
+    contract_path = Path(service.__file__).parents[1] / package / "contract.py"
     read_text = Path.read_text
 
     def mutated_read_text(path, *args, **kwargs):

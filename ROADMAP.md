@@ -25,7 +25,8 @@ is not design approval, readiness, operator approval or start admission and
 removes no blocker. This is a new P0 decision, not authority inherited implicitly
 from the v0.55 plan or roadmap ordering.
 
-P0 is documentation only; **P1-P5 remain pending**:
+P0 froze the contract. **P1 pure Core models/evaluator are implemented; P2-P5
+remain pending**. See the [P1 evidence](services/atlas-core/app/worker_activation_runtime_plan_review/README.md).
 
 | Phase | Responsibility |
 | --- | --- |
@@ -41,11 +42,12 @@ validation is in the [release checklist](docs/RELEASE_CHECKLIST.md).
 Runtime definition/activation, store/runtime/queue contact and queue effects,
 worker-start admission/build/start/invocation, Agent invocation, execution
 authorization/start, installation, deployment, rollback, publication, retry/resend
-and unrelated effects remain blocked/default-off. The sole future marker records
+and unrelated effects remain blocked/default-off. The sole new marker records
 review evidence; all 67 false fields and seven ordered blockers stay unchanged.
-No production behavior, enabling configuration, consumer allowlist or
-`compose.execution-smoke.override.yaml` change. No push, tag, release, publish or
-deploy. Future authority requires a separately justified normative contract.
+P1 adds only the pure Core contract and exact test consumer entries; no
+production wiring, enabling configuration or `compose.execution-smoke.override.yaml`
+change. No push, tag, release, publish or deploy. Future authority requires a
+separately justified normative contract.
 
 ### Historical baseline context
 

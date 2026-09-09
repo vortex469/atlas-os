@@ -145,6 +145,7 @@ def test_durable_v054_lineage_authority_and_restart_no_replay(tmp_path, request)
 
 def test_exact_v055_production_consumers():
     expected = {
+        "services/atlas-core/app/worker_activation_runtime_plan_review/contract.py",
         "services/atlas-core/app/worker_activation_runtime_plan/contract.py",
         "services/atlas-core/app/worker_activation_runtime_plan/store.py",
         "services/atlas-core/app/worker_activation_runtime_plan/service.py",

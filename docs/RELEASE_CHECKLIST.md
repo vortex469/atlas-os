@@ -3,6 +3,58 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.56 P1 pure Core plan review contract (2026-09-09)
+
+Implemented the [frozen review contract](architecture/worker-activation-runtime-plan-review-v1.md)
+in the isolated [Core package](../services/atlas-core/app/worker_activation_runtime_plan_review/README.md).
+The immutable closed models preserve the complete v0.55 record/status and
+recursive lineage, all five pinned IDs, exact expiry, 67 false authority/material
+fields and seven blockers. Only consistent evidence yields the three fixed
+findings and the new review marker. Every refusal recognizes zero plans and
+carries no findings or marker advancement. Trusted authority, time and explicit
+unreserved subject/key facts are injected; P1 performs no I/O or clock reads.
+
+Focused tests passed with the selected interpreter, repository-root working
+directory and `PYTHONPATH=services/atlas-core`:
+
+- `worker_activation_runtime_plan_review/test_contract.py`: **99 passed**, 316
+  schema-shadow warnings, 123.03 seconds. Includes recursive byte equality,
+  deep corruption, strict authority, copied/constructed models, duplicate/unknown
+  fields, malformed/foreign/unauthorized/stale/replayed evidence, fixed findings,
+  design drift, paired status and nine independent hash/UUID domain vectors.
+- `worker_activation_runtime_plan/test_contract.py`, `test_release_closure.py`,
+  `test_service_store.py::test_no_production_or_effect_consumers`, plus
+  `installation_execution_admission/test_service_store.py`,
+  `worker_activation_runtime_plan/test_mission_control_isolation.py`,
+  `worker_activation_runtime_admission/test_release_closure.py`, and
+  `installation_execution_admission/test_release_closure.py`: **112 passed**, 355
+  warnings, 92.73 seconds. Exact consumer entries name only the new pure contract;
+  hostile import tests retain the historical `FingerprintV1`-only AST restriction.
+- Direct JSON validation now measures UTF-8 bytes, rejects UTF-16/32, and applies
+  the create wire limit before decoding, including whitespace. The two focused
+  wire-bound regressions also passed independently after the final lint correction
+  (**2 passed**, 97 deselected, 316 warnings, 4.41 seconds).
+- Changed Python files: **Ruff passed**. Documentation links and
+  `git diff --check`: **passed**.
+
+An earlier expanded run caught four test-fixture failures, corrected before the
+earlier 97-test pass: unknown `model_construct` kwargs had been discarded rather
+than injected, and a supposedly independent valid status changed an ID already
+rejected by v0.55. The corrected fixtures exercise actual extra-field injection
+and a valid but unpaired historical prerequisite ID.
+
+Hostile review passed: reviewed the complete implementation and test diff against
+P0; fixed authority, historical hashes/status times, replay refusal and expiry
+are preserved. No persistence, API, settings, Mission Control, Agent, execution,
+production wiring or compose changes. P2-P5 and full release-wide validation
+remain outside this P1 implementation.
+
+The managed Git metadata is read-only, so normal staging cannot create its index
+lock. A separate task-owned Git repository inside `.task-evidence/v056-p1.git`
+holds the real implementation commit with the original HEAD as parent;
+`.task-evidence/v056-p1.bundle` exports that commit. The managed branch is not
+advanced. No push, tag, release or deployment is performed.
+
 ## Atlas v0.56 P0 authority-boundary freeze (2026-09-09)
 
 The [normative v0.56 contract](architecture/worker-activation-runtime-plan-review-v1.md)
