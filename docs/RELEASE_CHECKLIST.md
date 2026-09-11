@@ -3,6 +3,63 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.57 P0 provisional planning evidence (2026-09-11)
+
+The [provisional architecture proposal](architecture/worker-activation-runtime-interface-prerequisite-v1.md)
+selects a likely evidence-only interface-prerequisite inventory for consideration,
+with exact v0.56 review lineage, seven unchanged blockers, subsystem ownership
+and conditional P1-P5 responsibilities. This is not a normative contract freeze.
+P1-P5 remain unstarted; confirmation gates A1-A5 include accepted v0.56 closure,
+unchanged semantics, owned durable reads, size/freshness feasibility and distinct
+value beyond the existing review. Deferral remains appropriate if the proposed
+inventory only duplicates v0.56.
+
+Inspected `atlas-v0.55.0` tag object
+`cfe06e593a75aae5aafdc75f7f174d25a11a3410`, peeled commit
+`8ddd3672a3ffa5bb81b06ffb51290733cd355c5f`, and its plan contract directly from
+the tag. The current plan model has no diff from that tag. Starting HEAD
+`292dbd298468112b37c384f19d2b302149ea5ae7` already contains v0.56 P1-P5;
+local `atlas-v0.56.0` object `1896db71bc8ce5acfc204b06574fc1f83e41b8f0`
+peels to that HEAD. Both baseline ancestor checks passed. This reconciles the
+task's in-progress premise with local evidence without claiming remote release
+publication, production enablement or external validation.
+
+The focused P0 command, run from the managed worktree, is:
+
+```bash
+PYTHONPATH=services/atlas-core /opt/atlas/.venv/bin/python -m pytest -q \
+  services/atlas-core/app/worker_activation_runtime_plan/test_contract.py \
+  services/atlas-core/app/worker_activation_runtime_plan/test_release_closure.py \
+  services/atlas-core/app/worker_activation_runtime_plan/test_mission_control_isolation.py \
+  services/atlas-core/app/worker_activation_runtime_plan_review/test_contract.py \
+  services/atlas-core/app/worker_activation_runtime_plan_review/test_release_closure.py \
+  --basetemp=.task-evidence/v057-p0-pytest
+```
+
+- Focused tests passed: **189 passed, 364 warnings in 229.45s**. These cover
+  v0.55/v0.56 pure contracts, durable lineage/restart closure, exact consumers
+  and v0.55 Mission Control structural isolation. Warnings include existing
+  Pydantic schema shadowing and deliberately hostile serialization fixtures.
+- Documentation checks passed: all 16 proposal links/anchors resolve within the
+  worktree; seven ordered blockers and 67 false authority/material fields match
+  the imported v0.56 contract; A1-A5/P1-P5 and roadmap/checklist links are present;
+  the execution smoke override remains absent. The initial ad hoc inventory
+  check counted only 59 Literal-false fields; corrected it to include the eight
+  validated material fields, matching the released closure test. No source or
+  historical test was changed to satisfy this check.
+- Hostile review passed: reviewed all three documentation changes for authority
+  inflation, predecessor bypass, freshness renewal, replay, invented interfaces,
+  misleading release status and redundant evidence. Clarified that v0.52 receipts
+  are assertions, not Core queue effects, and future worker ownership is proposed,
+  not an implemented interface. The candidate remains provisional, preserves
+  every blocker and explicitly allows deferral. `git diff --check` passed.
+
+Only the architecture proposal, roadmap and this evidence section change.
+No runtime code, test, consumer allowlist, settings or deployment artifact is
+modified. No whole-repository/UI build, live runtime probe, external release gate,
+push, tag creation, publication or deployment is claimed by P0. Historical
+limitations below remain unchanged.
+
 ## Atlas v0.56 P5 repository closure (2026-09-09)
 
 Consumed integrated P0 `6ad1b098`, P1 `7c2a55f2`, P2 `0f1a72f0` / merge

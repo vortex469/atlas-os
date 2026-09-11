@@ -54,6 +54,24 @@ production wiring, enabling configuration or `compose.execution-smoke.override.y
 change. No push, tag, release, publish or deploy. Future authority requires a
 separately justified normative contract.
 
+## Provisional v0.57 P0 - Runtime Interface Prerequisite evidence
+
+The [v0.57 proposal](docs/architecture/worker-activation-runtime-interface-prerequisite-v1.md)
+identifies the likely next narrow boundary: a Core-owned, exact-review inventory
+mapping unresolved runtime interface prerequisites to owners and proof obligations.
+It is planning evidence only, not a normative freeze or implementation. The
+requested v0.55 baseline and current local v0.56 integration/tag were inspected;
+local tag identity does not establish publication or production readiness.
+
+Before P1, confirm accepted v0.56 closure, unchanged review semantics and authority,
+owned durable predecessor behavior, bounded complete lineage and the incremental
+value of persisting this inventory. If it only duplicates v0.56, defer implementation.
+P1-P5 remain unstarted: closed Core models, default-off durable evidence, guarded
+API, nested GET-only Mission Control and release-isolation proof respectively.
+The proposal specifies their conditional responsibilities and exit gates.
+All seven blockers and 67 false authority/material fields remain; no runtime,
+contact, start, Agent invocation, execution or other downstream effect is selected.
+
 ### Historical baseline context
 
 Atlas v0.51 P0-P5 closes the Controlled Worker Queue Claim/Lease/
