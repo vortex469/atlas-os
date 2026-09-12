@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import copy
+from datetime import timedelta
 from pathlib import Path
 from typing import Literal, get_args, get_origin
 
@@ -1021,6 +1022,30 @@ def test_predecessor_status_is_exact_even_when_independently_valid(facts):
     v056.WorkerActivationRuntimePlanReviewStatusV1.model_validate(raw[STATUS])
     raw["create"]["status_fingerprint"] = raw[STATUS]["status_fingerprint"]
     refused(raw)
+
+
+def test_current_status_cannot_replace_the_stable_predecessor_pin(facts):
+    receipt = getattr(facts, RECEIPT)
+    now = (
+        v056.v055.v054.v053.v052._instant(receipt.recorded_at)
+        + timedelta(seconds=1)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    current = v056.derive_status(receipt, evaluated_at=now)
+    assert current.status_fingerprint != getattr(facts, STATUS).status_fingerprint
+
+    raw = facts.model_dump(mode="python")
+    # The original exact stable pair is eligible. Substituting an independently
+    # valid item-GET projection must fail the binding, before time eligibility.
+    assert c.evaluate_worker_activation_runtime_interface_prerequisite(
+        raw
+    ).worker_activation_runtime_interface_prerequisite_recorded
+    raw[STATUS] = current.model_dump(mode="python")
+    raw["create"]["status_fingerprint"] = current.status_fingerprint
+    assert refused(raw).blockers == ("linkage_mismatch",)
+    with pytest.raises(ValidationError):
+        c.build_runtime_interface_prerequisite(
+            type(facts).model_construct(**raw), idempotency_key="v058-stable-pin"
+        )
 
 
 def test_fixed_inventory_matches_normative_mapping_and_is_deeply_immutable(facts):

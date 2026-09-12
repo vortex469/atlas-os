@@ -271,6 +271,9 @@ def _validate_pair(
         or status.runtime_plan_review_id != record.runtime_plan_review_id
         or create.valid_until != record.valid_until
         or status.valid_until != record.valid_until
+        # The frozen reader pins status at recording time. A later item-GET
+        # projection is not interchangeable, even with a recomputed create pin.
+        or status.evaluated_at != record.recorded_at
     ):
         raise _Refusal("linkage_mismatch")
     if (
