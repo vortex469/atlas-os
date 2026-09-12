@@ -566,6 +566,13 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-admissions/{runtime_admission_id}": {
             "get",
         },
+        # v0.57 P3: exact guarded inventory evidence routes, no action endpoint.
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites": {
+            "get", "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites/{runtime_interface_prerequisite_id}": {
+            "get",
+        },
         # v0.56 P3: bounded owner-scoped review evidence, no action endpoint.
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plan-reviews": {
             "get", "post",
@@ -679,6 +686,8 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/workerActivationRuntimeAdmission.ts"),
         # v0.55 P4: exact nested guarded GET-only runtime plan evidence.
         Path("api/workerActivationRuntimePlan.ts"),
+        # v0.57 P4: exact nested GET-only interface inventory reader.
+        Path("api/workerActivationRuntimeInterfacePrerequisite.ts"),
         # v0.56: exact nested GET-only review evidence.
         Path("api/workerActivationRuntimePlanReview.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),

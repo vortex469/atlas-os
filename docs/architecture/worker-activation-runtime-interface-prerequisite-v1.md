@@ -3,7 +3,8 @@
 Status: **v0.57 P1 pure Core contract, P2 isolated durable service/store and P3
 guarded API implemented against the synchronized v0.56 boundary. P4 UI source
 and regressions are integrated; required UI validation is environment-blocked.
-P5 remains unimplemented; no runtime or downstream authority.**
+P5 closure regressions are implemented, but release closure remains open until
+all required UI gates pass. No runtime or downstream authority.**
 
 P1 adds the [closed contract and evaluator](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py),
 [independent fingerprint vectors](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/fingerprint_vectors.json)
@@ -12,7 +13,7 @@ and hostile regressions. P2 adds isolated durable evidence persistence. P3 adds 
 and [API/security regressions](../../services/atlas-core/app/routes/test_worker_activation_runtime_interface_prerequisite.py).
 The Sync inspection and phase requirements below
 remain the boundary specification; historical documentation-only statements describe
-the Sync change, not the P1/P2/P3 implementation.
+the Sync change, not the integrated P1-P5 source changes.
 
 ## Inspection and decision
 
@@ -20,9 +21,8 @@ Exactly one v0.57 boundary is selected: **Worker Activation Runtime Interface
 Prerequisite evidence**. Core records a closed, deterministic blocker-to-owner/proof
 inventory for exactly one active same-owner v0.56 review/status pair. The sole new
 success marker is `worker_activation_runtime_interface_prerequisite_recorded`.
-It means inventory recorded, never prerequisites satisfied. This is a normative
-selection for future implementation, not a claim that a v0.57 model, route,
-permission, reader, journal or marker is implemented by this synchronization.
+It means inventory recorded, never prerequisites satisfied. P1-P4 implement this
+selection; the earlier synchronization itself changed documentation only.
 
 The synchronization baseline is commit
 `1371cd369c2dc416eae7b9d4bdac504700888935`. Its first-parent integration contains
@@ -278,28 +278,29 @@ to `compose.execution-smoke.override.yaml` belongs to this boundary.
 | A1: predecessor identity/closure | Resolved for repository scope: integrated P0-P3 and subsequent P4/P5 are present at the exact baseline above. Historical external gates remain external; no remote acceptance is inferred from a local tag. |
 | A2: semantic ceiling | Resolved: exact schemas, five IDs, three findings, seven blockers and 67 false fields match the integrated Core contract and guarded API. |
 | A3: owned durable predecessor | Resolved as a design constraint: durable review get exists, but the existing prerequisite reader consumes v0.55. P2 now implements the separate owner-scoped v0.56 reader and stable-status binding specified above. Permanent reservation and both-lock validation are inherited unchanged. |
-| A4: bounds/freshness | Frozen fail-closed requirement, not a claim of measured v0.57 capacity: complete expanded record/result/collection must fit 192 KiB and the inherited 30-second window. P1/P2 must prove representative and overflow cases before closure; overflow/expiry refuses, never truncates or renews. |
+| A4: bounds/freshness | Frozen fail-closed requirement, not a claim of measured v0.57 capacity: complete expanded record/result/collection must fit 192 KiB and the inherited 30-second window. P1/P2 tests cover representative and overflow cases; overflow/expiry refuses, never truncates or renews. |
 | A5: distinct boundary | Resolved by this selection: a fixed explicit owner/proof inventory pinned to review adds information absent from v0.56 findings. No runtime prerequisite is satisfied and no interface is defined. |
 
-P0 selection is complete. Implementation acceptance remains gated by the tests
-below; this documentation synchronization implements none of P1-P5.
+P0 selection and Sync are complete. P1-P5 source is integrated or added locally;
+release acceptance remains gated by all tests below, including the blocked UI gates.
 
 ## P1-P5 responsibilities and exit evidence
 
 | Phase | Responsibility under this frozen boundary |
 | --- | --- |
-| P1 | Pure immutable closed Core inventory models/evaluator, injected exact v0.56 pair and deterministic fixed mapping. Lock vectors for the frozen domains/UUID derivation and strict authority. Test recursive lineage, extras/duplicate keys, copied/constructed models, wrong owner/subject/hash, stale/future/expired evidence, refusal without marker advancement and size bounds. No I/O or runtime imports. |
+| P1 (implemented) | Pure immutable closed Core inventory models/evaluator, injected exact v0.56 pair and deterministic fixed mapping. Lock vectors for the frozen domains/UUID derivation and strict authority. Test recursive lineage, extras/duplicate keys, copied/constructed models, wrong owner/subject/hash, stale/future/expired evidence, refusal without marker advancement and size bounds. No I/O or runtime imports. |
 | P2 (implemented) | Explicitly constructed default-off service, owner-scoped durable review reader and separate bounded append-only journal. Atomically reserve owner/key and permanent subject before append; revalidate predecessor/time under both write locks. Exact duplicates return history without predecessor reads or renewal. Post-reservation ambiguity is terminal, with no retry/repair/replacement/eviction. Test multiprocess contention, restart/expiry, incomplete reservations, partial writes/audit/response loss, corruption and unchanged predecessor bytes. Retain ceilings of 16 reservations per owner, 256 global, 192 KiB per model, one terminal audit per reservation and 256 MiB main database pages (not a filesystem quota); limits may only decrease. |
 | P3 (implemented) | Minimum guarded candidate/owner-scoped evidence POST/list GET/item GET, using the exact frozen routes/permissions. Dedicated evaluate/read permissions, trusted Origin/CSRF, strict bounded JSON and idempotency, redacted failures and response reparsing/binding. Missing service and disabled creation fail closed. Test authentication, foreign/missing equivalence, hostile responses and exact OpenAPI surface. No production construction or enabling setting. |
-| P4 | Nested GET-only Mission Control evidence under the exact v0.56 review. Validate closed response, immutable predecessor, owner/IDs, blockers, inventory and authority; Core owns hashes/time eligibility. Distinguish loading/missing/unavailable/expired, reset on scope change and ignore late responses. Explain that prerequisites remain incomplete; collapse technical details. No create/start action, polling, browser persistence, standalone route or navigation. Run hostile fixtures, scope-race tests, build and lint. |
-| P5 | Prove durable v0.56-to-v0.57 byte-exact lineage, permanent no-replay, strict authority, default-off construction and exact Core/API/UI consumers with zero Agent/worker consumers. Run P1-P4 and historical closure/isolation/Home Assistant gates, documentation consistency and hostile diff review. Record actual results and remaining external gates; no publication, deployment or runtime enablement. |
+| P4 (source integrated; UI gates open) | Nested GET-only Mission Control evidence under the exact v0.56 review. Validate closed response, immutable predecessor, owner/IDs, blockers, inventory and authority; Core owns hashes/time eligibility. Distinguish loading/missing/unavailable/expired, reset on scope change and ignore late responses. Explain that prerequisites remain incomplete; collapse technical details. No create/start action, polling, browser persistence, standalone route or navigation. Run hostile fixtures, scope-race tests, build and lint. |
+| P5 (regressions added; closure open) | Prove durable v0.56-to-v0.57 byte-exact lineage, permanent no-replay, strict authority, default-off construction and exact Core/API/UI consumers with zero Agent/worker consumers. Run P1-P4 and historical closure/isolation/Home Assistant gates, documentation consistency and hostile diff review. Record actual results and remaining external gates; no publication, deployment or runtime enablement. |
 
 Historical isolation allowlists must remain exact and justified if later phases
 add evidence consumers. No wildcard exclusions, relaxed fingerprint-only import
 checks or pre-authorized future consumers. This P0 changes no allowlist or test.
 
-## Sync validation scope
+## Historical Sync validation scope
 
+The following describes the completed documentation-only Sync task.
 Only this contract, the roadmap and release-planning evidence change. Check local
 tag identities/ancestry, predecessor contract and authority inventories, relative
 links, documentation-only diff and whitespace. Run focused v0.56 contract,
@@ -327,8 +328,9 @@ writes are atomic, failure audits are best effort, and all public errors remain
 redacted and non-retryable. The
 [persistence regressions](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/test_service_store.py)
 exercise these guarantees with real predecessor storage and process contention.
-No route, production composition, Agent/worker consumer or downstream authority
-is added. Actual test results are recorded in the release checklist.
+P2 adds no route; P3 separately adds the guarded evidence route. No production
+composition, Agent/worker consumer or downstream authority is added. Actual test
+results are recorded in the release checklist.
 
 
 ## P4 Mission Control integration and validation limits
@@ -371,3 +373,30 @@ TypeScript stripping and a mocked transport. The initial Core contract run had
 88 passes and one stale consumer allowlist failure; that allowlist was corrected
 and its focused rerun passed. These checks do not replace the blocked Vitest,
 TypeScript/Vite build, ESLint or UI rendering gates.
+
+
+## P5 repository closure gate
+
+The [closure regressions](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/test_release_closure.py)
+create v0.57 inventory from a reopened durable v0.56 journal. They bind all five
+predecessor IDs, exact recursive record/status bytes, fingerprints, owner/candidate
+and expiry; prove default-off refusal without reservation and strict false
+record/status/result authority; then reopen the successor at expiry to prove
+unchanged duplicate history and permanent subject reservation without predecessor
+reads. The predecessor database must remain byte-identical.
+
+An exact twelve-file production consumer inventory includes four Core modules,
+route/router/permissions and five UI surfaces. It scans Core, Agent, execution
+worker, Mission Control, configuration, deployment, scripts (including extensionless
+scripts), root compose files and the example environment. No future consumer is
+pre-authorized. The normative regression binds the exact seven blocker/owner/proof
+rows and inherited 67-field false inventory to Core.
+
+P2/P3 and historical release/isolation suites remain required for persistence,
+corruption, ownership, incomplete reservations, both locked validations, response
+binding and Home Assistant's blocked/non-installable behavior. P4 hostile fixtures,
+scope-race and structural tests remain required to prove browser non-authority.
+The [current checklist](../RELEASE_CHECKLIST.md) records actual results; historical
+P4 limitations above are retained. P5 cannot close v0.57 while UI validation is
+blocked. No production construction, enabling setting, protected compose change,
+publication, deployment or downstream authority belongs to closure.

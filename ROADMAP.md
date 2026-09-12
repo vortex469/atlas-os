@@ -54,30 +54,33 @@ production wiring, enabling configuration or `compose.execution-smoke.override.y
 change. No push, tag, release, publish or deploy. Future authority requires a
 separately justified normative contract.
 
-## Implemented v0.57 P1 - Runtime Interface Prerequisite evidence
+## v0.57 P1-P4 integrated; P5 closure regressions added, release gate open
 
 The [normative v0.57 contract](docs/architecture/worker-activation-runtime-interface-prerequisite-v1.md)
-selects exactly one boundary: a Core-owned, exact-review inventory mapping seven
-unresolved runtime interface blockers to fixed owners and required proofs.
+selects a Core-owned inventory mapping seven unresolved interface blockers to
+fixed owners and required proofs, pinned to one exact same-owner v0.56 review.
 The sole new marker is `worker_activation_runtime_interface_prerequisite_recorded`;
-it records inventory, never prerequisite satisfaction or runtime authority.
+inventory does not satisfy prerequisites or grant runtime authority.
 
-Synchronization against integrated v0.56 P0-P3 (with P4/P5 also present) confirms
-schemas, five lineage IDs, versioned fingerprints, ownership, stable versus
-current-time status, guarded API and all 67 fixed-false authority/material fields.
-The contract freezes successor schemas, identity domains, inventory literals and
-candidate-scoped evidence routes/permissions. The existing prerequisite reader
-reads v0.55; an owned v0.56 review reader is still future implementation work.
+Integrated v0.56 P0-P5 and v0.57 Sync/P1-P4 provide closed immutable models,
+an owner-scoped durable v0.56 reader, a separate default-off append-only journal,
+guarded evidence POST/list GET/item GET, and nested GET-only Mission Control.
+The reader preserves the complete review and stable recorded-at status while
+Core independently checks current eligibility. All five predecessor IDs, 67 false
+fields, seven blockers and inherited expiry remain unchanged.
 
-**P1 implements closed immutable Core models and pure fail-closed evaluation.**
-It pins the exact v0.56 pair, preserves five predecessor IDs and all 67 false
-authority fields, and locks deterministic inventory and fingerprint vectors.
-P2-P5 remain unimplemented; their exit gates require default-off durable evidence,
-guarded API, nested GET-only Mission Control and isolation/closure proof. Complete lineage
-must fit inherited size/freshness bounds or fail closed. No runtime, contact,
-start, Agent invocation, execution or downstream effect is selected. Repository
-integration and local tags imply no publication or production readiness.
-Current validation is recorded in the [release checklist](docs/RELEASE_CHECKLIST.md).
+P5 adds durable lineage/restart/no-replay, exact Core/API/UI consumer and normative
+inventory regressions. Persistence, corruption, ownership, bounds and API/UI
+isolation remain required regression gates. Agent and execution-worker consumers
+must remain zero; runtime/contact/start, execution, installation, deployment,
+rollback, publication, retry and resend authority remain blocked.
+
+**Repository release closure remains open:** UI dependencies cannot be installed
+because registry DNS returns `EAI_AGAIN`; required Vitest, TypeScript/Vite build
+and ESLint gates have not passed. Source integration and Core validation do not
+replace those gates. Current evidence and exact integrated commit identities are
+in the [release checklist](docs/RELEASE_CHECKLIST.md). No release tag, publication,
+deployment, production wiring or enablement is claimed.
 
 ### Historical baseline context
 

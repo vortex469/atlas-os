@@ -1,5 +1,139 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.57 P5 regression evidence — release closure open (2026-09-12)
+
+**Do not close v0.57 yet.** Sync/P1-P4 source is integrated and P5 adds closure
+regressions, but required Mission Control tests, build and lint remain blocked by
+unavailable dependencies. Core evidence and source review cannot replace those
+gates. No tag, release, publication, deployment or production enablement is claimed.
+
+Integration ancestry was checked against HEAD
+`8975916382ef5a8fbfe632be64925b864d746c53`. Required v0.56 P0 `cb0ff6c7`,
+P1 `01328ff3`, P2 `9d6f5a0c`, P3 `8426e4c8`, P4 `7430fef4`, P5 `6f18b957`
+and v0.57 Sync `0ea05947`, P1 `f4c1632f`, P2 `8d160eec`, P3 `78702530`,
+P4 `89759163` are all ancestors. Local `atlas-v0.56.0` tag object
+`1896db71bc8ce5acfc204b06574fc1f83e41b8f0` still peels to
+`292dbd298468112b37c384f19d2b302149ea5ae7`. These are repository identities;
+historical task hashes and validation limitations below remain unchanged.
+
+The new `worker_activation_runtime_interface_prerequisite/test_release_closure.py`
+uses a real reopened v0.56 journal and owner-scoped reader. It verifies byte-exact
+recursive review/status embedding, all five predecessor IDs, fingerprints,
+owner/candidate and expiry, unchanged predecessor database bytes, default-off
+refusal without reservation, strict 67-field false authority, restart at expiry,
+duplicate history without prerequisite reads and permanent same-subject no-replay.
+The normative regression binds all seven ordered blocker/owner/proof rows to Core.
+The exact twelve production consumers comprise four Core modules, route/router/
+permissions and five nested GET-only UI surfaces. Scans include Agent, execution
+worker, config, deploy, scripts, root compose and example environment files.
+Unauthorized Agent/worker consumers remain zero; Mission Control grants no authority.
+
+Existing P2 coverage supplies two-lock validation, ownership, corruption on every
+connection, restart, independent process contention, incomplete reservations,
+partial-write/audit/response loss and lowered bounds. P3 covers strict guarded
+requests, owner/item/create response binding and redaction. P4's hostile fixtures,
+Core-generated recursive golden, scope-race and structural tests remain required.
+Only inventory recording advances: runtime definition/contact, worker-start
+admission/start, Agent invocation, execution, installation, deployment, rollback,
+publication, retry and resend remain blocked. Home Assistant stays non-installable.
+
+Two historical inventory corrections are exact and limited to already integrated
+P3/P4 evidence consumers in `routes/test_installation_release_isolation.py`:
+
+- Add `/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites`
+  with GET/POST and its `/{runtime_interface_prerequisite_id}` item with GET.
+- Add only `api/workerActivationRuntimeInterfacePrerequisite.ts` to the existing
+  Mission Control reader inventory. It contains two credentialed GETs.
+
+No scanner rule, wildcard exclusion or fingerprint-only AST restriction changed.
+The P4 v0.45 parser correction predates this task: it removes invalid cross-domain
+fingerprint equality while retaining same-domain bounded-receipt linkage and
+owner/candidate/limits checks. Its signed complete recursive golden is reparsed by
+Core. Its UI regressions still need the blocked UI gates; this task does not widen
+that historical correction.
+
+Validation uses the selected interpreter's `-m pytest` from this worktree with
+`PYTHONPATH=services/atlas-core` and worktree-local `--basetemp` paths. Exact logs
+are local `.task-evidence/v057-*.log` artifacts.
+
+- Focused tests passed: final new closure plus complete historical installation
+  release-isolation file: **69 passed, 353 warnings in 139.92s**.
+- Historical closure and Mission Control isolation files, installation release
+  isolation, installation-execution-admission service/store and v0.55 contract:
+  **248 passed, 2 failed, 382 warnings in 192.34s** initially. Both failures were
+  the exact stale inventories corrected above; the final 69-test run passes both.
+  Home Assistant blocked/non-installable checks are included. No historical
+  scanner rule was weakened.
+- Full v0.56 `worker_activation_runtime_plan_review` package and
+  `routes/test_worker_activation_runtime_plan_review.py`: **211 passed,
+  443 warnings in 812.33s** (`v057-predecessor.log`). This independently verifies
+  the integrated predecessor contract, durable closure, ownership/corruption and
+  guarded API with the current exact consumer inventories.
+- V0.57 package/API: all **207 cases completed** in the combined run's ordered
+  first segment: **206 passed**, with only the pre-fix table-header assertion
+  failing. All **91 P1 contract, 72 P2 persistence and 41 P3 API cases passed**.
+  The process had loaded the old P5 assertion before its correction; the final
+  69-test run passes the corrected closure. After this segment, the combined run
+  was deliberately interrupted (exit 130) during duplicate v0.56 coverage because
+  the independent full v0.56 run had already passed. This is **not** represented
+  as a clean 207-test pytest invocation or a completed combined run. The collected
+  node order is retained in `v057-collected.log`, outcomes in `v057-core.log`.
+- Final consumer/normative rerun after the combined run: **2 passed,
+  1 deselected, 326 warnings in 1.63s** (`v057-final-static.log`).
+- Initial standalone closure: 2 passed and 1 failed because the new normative
+  assertion included the table header. The final assertion reads only inventory
+  data rows; the final 69-test run above passes all three closure regressions.
+- Core Ruff changed-file gate: **passed**, using
+  `PATH=<selected-interpreter-directory>:$PATH scripts/rc1-python-ruff-gate services/atlas-core`.
+- Agent delivery-preflight/v0.36/v0.37 isolation: **6 passed in 0.06s**, with
+  `PYTHONPATH=services/atlas-agent`.
+- Worker config, healthcheck and durable ledger with `-k 'not api'`:
+  **24 passed, 1 deselected, 1 warning in 0.50s**, with
+  `PYTHONPATH=services/atlas-agent:services/atlas-execution-worker`. The separate
+  threaded API test is not claimed passed.
+- Direct Node 22 parser check: **signed complete recursive golden accepted;
+  1,340 hostile authority mutations rejected** across collection, listed record,
+  item record, result and status. This used actual source with TypeScript stripping
+  and mocked transport; no rendering, dependency or build validation is implied.
+- Required phase ancestry, v0.56 tag identity, changed normative/README local links
+  and protected compose unchanged checks: **passed**.
+
+Environment error: `npm ci --prefix services/mission-control --cache
+"$PWD/.task-evidence/npm-cache" --no-audit --no-fund` encountered registry DNS
+`EAI_AGAIN` and exited 1. Node 22.23.1/npm 10.9.8 are present. Full
+`npm test --prefix services/mission-control -- --maxWorkers=2 --cache=false`
+cannot find Vitest. `npm run build --prefix services/mission-control` cannot
+resolve `vite/client` or Node types and encounters an incompatible fallback
+TypeScript (`erasableSyntaxOnly` unknown). `npm run lint --prefix
+services/mission-control` cannot find ESLint. These gates have **not passed**.
+Restore dependencies and run focused v0.56/v0.57 API/UI/security tests, the full UI
+suite, build and lint before closure. No UI rendering/build success is inferred
+from Core golden validation or source inspection.
+
+Hostile review passed: reviewed the final seven-file test/documentation diff
+against the integrated P4 parent after focused validation. The durable regression
+uses real reopened predecessor/successor journals, preserves exact recursive
+lineage and expiry, and rejects coerced authority. Default-off refusal and expired
+no-replay are explicit; existing P2/P3 tests cover corruption, ownership, bounds,
+uncertainty and response binding. The consumer scan names only twelve known
+production files and includes operational/deployment surfaces. Historical edits
+are only the two route entries and one direct GET-only reader above; no scanner
+logic, authority ceiling or production behavior changes. All historical checklist
+sections remain byte-identical. Local documentation links and whitespace checks
+pass. Missing UI validation remains explicit; this scoped diff review does not
+close the UI or release gates.
+
+Commit handling: the managed Git index refused staging/commit as read-only.
+Following the historical phase workflow, a real task commit is created in the
+worktree-local `.task-evidence/v057-p5.git`, on `task/v057-p5`, parented to
+integrated P4 HEAD. `.task-evidence/v057-p5.bundle` exports that commit with P4 as
+its prerequisite; bundle verification checks it against this checkout. The
+managed branch is not advanced. No protected Git metadata is modified.
+
+Remaining work is integration of that local commit, dependency restoration and
+the required focused/full UI tests, build and lint, followed by review of any
+resulting fixes and evidence updates before marking v0.57 closed.
+
 ## Atlas v0.57 P3 guarded Core API evidence (2026-09-12)
 
 Implemented only candidate-scoped POST/list GET and item GET for runtime interface

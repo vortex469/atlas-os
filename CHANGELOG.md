@@ -6,6 +6,18 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.57 P5 - Interface Prerequisite Closure Regressions (closure open)
+
+- Added durable v0.56 lineage, default-off, strict authority, restart/expiry
+  no-replay, exact Core/API/UI consumers and normative inventory regression locks.
+- Reconciled roadmap and normative documentation with integrated Sync/P1-P4.
+  The inventory leaves all seven blockers and 67 false authority fields unchanged;
+  Mission Control remains GET-only and Agent/worker consumers remain zero.
+- Release closure remains open: registry DNS failure prevents dependency
+  installation and required UI test/build/lint validation. Current Core and
+  historical regression evidence is recorded in the release checklist.
+  No publication, deployment, production wiring or runtime enablement.
+
 #### v0.56 P5 - Runtime Plan Review Evidence Closure
 
 - Closed integrated P0-P4 review evidence with durable byte-exact v0.55 lineage,

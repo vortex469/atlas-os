@@ -1,4 +1,4 @@
-# v0.57 P1-P3 Core runtime interface prerequisite evidence
+# v0.57 P1-P5 Core runtime interface prerequisite evidence
 
 `contract.py` defines the closed immutable inventory contract. `readers.py`,
 `service.py` and `store.py` add explicitly constructed, default-off evidence
@@ -40,7 +40,12 @@ cover durable predecessor byte equality, two-lock checks, independent process an
 instance contention, restart, expiry, quotas, corruption, partial writes and
 reservation/audit/response loss. P4 now includes nested GET-only Mission Control
 source and regressions; its required UI validation is blocked by dependency
-installation (registry DNS failure). P5 release closure remains separate work; this package confers no Agent, worker, runtime or execution authority.
+installation (registry DNS failure). P5 `test_release_closure.py` adds reopened
+durable v0.56 lineage, strict authority,
+restart/expiry no-replay, exact production consumers and normative inventory locks.
+Release closure remains open until the UI gates pass; this package confers no
+Agent, worker, runtime or execution authority. See the
+[release evidence](../../../../docs/RELEASE_CHECKLIST.md).
 
 P3 exposes only POST/list GET and item GET beneath
 `/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites`.
