@@ -54,23 +54,28 @@ production wiring, enabling configuration or `compose.execution-smoke.override.y
 change. No push, tag, release, publish or deploy. Future authority requires a
 separately justified normative contract.
 
-## Provisional v0.57 P0 - Runtime Interface Prerequisite evidence
+## Frozen v0.57 Sync - Runtime Interface Prerequisite evidence
 
-The [v0.57 proposal](docs/architecture/worker-activation-runtime-interface-prerequisite-v1.md)
-identifies the likely next narrow boundary: a Core-owned, exact-review inventory
-mapping unresolved runtime interface prerequisites to owners and proof obligations.
-It is planning evidence only, not a normative freeze or implementation. The
-requested v0.55 baseline and current local v0.56 integration/tag were inspected;
-local tag identity does not establish publication or production readiness.
+The [normative v0.57 contract](docs/architecture/worker-activation-runtime-interface-prerequisite-v1.md)
+selects exactly one boundary: a Core-owned, exact-review inventory mapping seven
+unresolved runtime interface blockers to fixed owners and required proofs.
+The sole new marker is `worker_activation_runtime_interface_prerequisite_recorded`;
+it records inventory, never prerequisite satisfaction or runtime authority.
 
-Before P1, confirm accepted v0.56 closure, unchanged review semantics and authority,
-owned durable predecessor behavior, bounded complete lineage and the incremental
-value of persisting this inventory. If it only duplicates v0.56, defer implementation.
-P1-P5 remain unstarted: closed Core models, default-off durable evidence, guarded
-API, nested GET-only Mission Control and release-isolation proof respectively.
-The proposal specifies their conditional responsibilities and exit gates.
-All seven blockers and 67 false authority/material fields remain; no runtime,
-contact, start, Agent invocation, execution or other downstream effect is selected.
+Synchronization against integrated v0.56 P0-P3 (with P4/P5 also present) confirms
+schemas, five lineage IDs, versioned fingerprints, ownership, stable versus
+current-time status, guarded API and all 67 fixed-false authority/material fields.
+The contract freezes successor schemas, identity domains, inventory literals and
+candidate-scoped evidence routes/permissions. The existing prerequisite reader
+reads v0.55; an owned v0.56 review reader is still future implementation work.
+
+**This is a documentation freeze; v0.57 P1-P5 remain unimplemented.** Their exit
+gates require strict Core models, default-off durable evidence, guarded API,
+nested GET-only Mission Control and isolation/closure proof. Complete lineage
+must fit inherited size/freshness bounds or fail closed. No runtime, contact,
+start, Agent invocation, execution or downstream effect is selected. Repository
+integration and local tags imply no publication or production readiness.
+Current validation is recorded in the [release checklist](docs/RELEASE_CHECKLIST.md).
 
 ### Historical baseline context
 

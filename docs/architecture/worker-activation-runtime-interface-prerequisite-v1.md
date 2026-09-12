@@ -1,63 +1,59 @@
-# Provisional v0.57 Worker Activation Runtime Interface Prerequisite evidence
+# Worker Activation Runtime Interface Prerequisite v1 contract
 
-Status: **P0 planning evidence only; candidate boundary, not a normative freeze.
-P1-P5 are unstarted and depend on the v0.56 confirmation gate below.**
+Status: **v0.57 Sync normative boundary freeze, reconciled with repository-integrated
+v0.56 P0-P3 Core/API output. Documentation only; v0.57 P1-P5 remain unimplemented.**
 
 ## Inspection and decision
 
-The requested baseline `atlas-v0.55.0` has annotated tag object
-`cfe06e593a75aae5aafdc75f7f174d25a11a3410`, peeling to
-`8ddd3672a3ffa5bb81b06ffb51290733cd355c5f`. Its contract was inspected directly
-from that tag. The task checkout begins at
-`292dbd298468112b37c384f19d2b302149ea5ae7`, a descendant of that baseline.
-It already includes local v0.56 P1-P5 integration, including P5 `6f18b957`.
-Local annotated tag `atlas-v0.56.0` has object
-`1896db71bc8ce5acfc204b06574fc1f83e41b8f0` and peels to that starting HEAD.
-This is newer evidence than the task's “while v0.56 progresses” premise; it
-does not establish remote publication, deployment or completion of external gates.
-The historical [release evidence](../RELEASE_CHECKLIST.md) remains authoritative
-for what was actually validated. This proposal does not rewrite its limitations.
+Exactly one v0.57 boundary is selected: **Worker Activation Runtime Interface
+Prerequisite evidence**. Core records a closed, deterministic blocker-to-owner/proof
+inventory for exactly one active same-owner v0.56 review/status pair. The sole new
+success marker is `worker_activation_runtime_interface_prerequisite_recorded`.
+It means inventory recorded, never prerequisites satisfied. This is a normative
+selection for future implementation, not a claim that a v0.57 model, route,
+permission, reader, journal or marker is implemented by this synchronization.
 
-The likely next narrow boundary is **Worker Activation Runtime Interface
-Prerequisite evidence**: Core could record, for exactly one reviewed plan, a
-closed inventory of the contracts that must be supplied before any runtime
-interface definition can be considered. This is an architectural inference,
-not a successor selected or authorized by v0.55/v0.56. A tentative marker is
-`worker_activation_runtime_interface_prerequisite_recorded`; it means inventory
-recorded, never prerequisites satisfied. No v0.57 model or marker exists as a
-result of P0.
+The synchronization baseline is commit
+`1371cd369c2dc416eae7b9d4bdac504700888935`. Its first-parent integration contains
+v0.56 P0 `cb0ff6c7`, P1 `01328ff3`, P2 `9d6f5a0c`, P3 `8426e4c8`, P4
+`7430fef4` and P5 `6f18b957`. These are repository integration identities;
+historical phase-task hashes in the [release checklist](../RELEASE_CHECKLIST.md)
+are retained as historical evidence, not substituted for these commits.
+Local `atlas-v0.56.0` tag object `1896db71bc8ce5acfc204b06574fc1f83e41b8f0`
+peels to `292dbd298468112b37c384f19d2b302149ea5ae7`, an ancestor of this baseline,
+not the current HEAD. The provisional document entered at `c850bdc5`.
+The v0.55 tag object `cfe06e593a75aae5aafdc75f7f174d25a11a3410` still peels to
+`8ddd3672a3ffa5bb81b06ffb51290733cd355c5f`. Local ancestry establishes repository
+support only; external release, publication, deployment and historical validation
+limitations are unchanged.
 
-The proposed incremental information is a fixed mapping of unresolved blockers
-to owning subsystems and required proof obligations, pinned to the exact review.
-It adds no operational observation. P0 supplies that mapping below; a later
-normative decision must establish whether persisting it has value beyond the
-v0.56 review's existing inventory. If it does not, retain documentation only and
-defer implementation rather than creating another indistinguishable evidence stage.
+The incremental evidence is an immutable explicit mapping of each unresolved
+blocker to a responsibility and proof obligation, pinned to the reviewed plan.
+V0.56 supplies fixed consistency findings and blockers, but no such closed mapping.
+V0.57 records that mapping without repeating review as a new approval or adding
+operational observations. This task selects this narrow advance; release ordering
+alone did not authorize it. Runtime definition, contact adapters and worker-start
+admission need facts and authority absent from this chain and are excluded.
 
-| Inspected repository evidence | Implication for v0.57 |
+| Integrated source inspected | Confirmed constraint |
 | --- | --- |
-| [v0.55 plan contract](worker-activation-runtime-plan-v1.md) and [pure model](../../services/atlas-core/app/worker_activation_runtime_plan/contract.py) | The reference-only design names both contact interfaces `undefined`; its seven blockers are not a runtime protocol. |
-| [v0.56 review contract](worker-activation-runtime-plan-review-v1.md) and [evaluator](../../services/atlas-core/app/worker_activation_runtime_plan_review/contract.py) | Only exact lineage, fixed design consistency and preserved unresolved interfaces are reviewed. Success is neither approval nor readiness. |
-| [Owned reader](../../services/atlas-core/app/worker_activation_runtime_plan_review/readers.py), [service](../../services/atlas-core/app/worker_activation_runtime_plan_review/service.py), [store](../../services/atlas-core/app/worker_activation_runtime_plan_review/store.py) | The available primitive is default-off durable Core evidence. The existing reader reads v0.55 plans; a v0.57 reader of v0.56 reviews would be new work. |
-| [Core route](../../services/atlas-core/app/routes/worker_activation_runtime_plan_review.py) and [Mission Control reader](../../services/mission-control/src/api/workerActivationRuntimePlanReview.ts) | Guarded evidence access and GET-only presentation supply no worker client or runtime composition. |
-| [v0.56 closure](../../services/atlas-core/app/worker_activation_runtime_plan_review/test_release_closure.py) | Exact durable lineage, unchanged authority, permanent no-replay and exact consumer isolation constrain any successor. |
-| [Agent architecture](../../services/atlas-agent/ARCHITECTURE.md) and [worker contract](../../services/atlas-execution-worker/README.md) | Repository execution has separate intent, approval, authentication and ledger boundaries. Packaging, health and repository execution cannot stand in for installation runtime authority. |
+| [v0.55 plan contract](worker-activation-runtime-plan-v1.md) and [model](../../services/atlas-core/app/worker_activation_runtime_plan/contract.py) | Reference-only design, both contact interfaces `undefined`, seven unresolved blockers. |
+| [v0.56 contract](worker-activation-runtime-plan-review-v1.md) and [model/evaluator](../../services/atlas-core/app/worker_activation_runtime_plan_review/contract.py) | Closed review/status, three ordered findings, exact recursive lineage and inherited 67 false fields. |
+| [Reader](../../services/atlas-core/app/worker_activation_runtime_plan_review/readers.py), [service](../../services/atlas-core/app/worker_activation_runtime_plan_review/service.py), [store](../../services/atlas-core/app/worker_activation_runtime_plan_review/store.py) | Default-off durable evidence, owner-scoped v0.55 reads, two locked revalidations and permanent reservation. The existing prerequisite reader does not read v0.56 reviews. |
+| [Route](../../services/atlas-core/app/routes/worker_activation_runtime_plan_review.py) and [API tests](../../services/atlas-core/app/routes/test_worker_activation_runtime_plan_review.py) | Guarded evidence POST/list GET/item GET, exact response binding, no runtime composition. |
+| [Closure tests](../../services/atlas-core/app/worker_activation_runtime_plan_review/test_release_closure.py) and [Mission Control reader](../../services/mission-control/src/api/workerActivationRuntimePlanReview.ts) | Immutable lineage, no-replay and exact isolated consumers; UI is GET-only. |
+| [Agent architecture](../../services/atlas-agent/ARCHITECTURE.md) and [worker contract](../../services/atlas-execution-worker/README.md) | Independent intent, authentication, approval and execution ledger boundaries supply no installation runtime authority. |
 
-An additional review alone repeats v0.56. Plan approval or worker-start admission
-would imply a decision for which the chain supplies neither an installation
-runtime nor contact/start contracts. Implementing a store/runtime adapter would
-introduce identity, authentication, side effects and recovery semantics absent
-from these evidence models. None is justified merely by release ordering.
+## Exact integrated v0.56 predecessor requirements
 
-## Exact predecessor requirements (subject to v0.56 confirmation)
-
-The proposed sole direct predecessor is one active same-owner
+The sole direct predecessor is one active same-owner
 `WorkerActivationRuntimePlanReviewV1` / `WorkerActivationRuntimePlanReviewStatusV1`
 pair, with schemas `worker-activation-runtime-plan-review-v1` and
-`worker-activation-runtime-plan-review-status-v1`. A future request would pin
+`worker-activation-runtime-plan-review-status-v1`. The future create request must pin
 `runtime_plan_review_id`, `runtime_plan_review_record_fingerprint`, paired
 `status_fingerprint` and exact `valid_until`. Owner comes from authentication;
-candidate scope must match both models. No caller-provided nested evidence,
+`candidate_record_id` (canonical UUID4) and authenticated `operator_id` must match
+both models. No caller-provided nested evidence,
 latest-record fallback, alternate plan, queue lookup or worker lookup is allowed.
 
 Preserve the complete immutable review/status and embedded v0.55 plan/status:
@@ -80,13 +76,117 @@ check eligibility using trusted whole-second UTC Core time: reject future,
 stale (over 30 seconds), expired (`now >= valid_until`), foreign, missing,
 ambiguous, corrupt, altered-authority or mismatched evidence. Preserve historical
 nested validation times; no normalization, lineage truncation or freshness renewal.
-Proposed successor expiry equals the pinned predecessor expiry and remains
+Successor expiry equals the pinned predecessor expiry and remains
 within every inherited limit. An expired historical review is evidence only.
 
-If frozen later, use separate versioned successor hash/UUID domains and a
-permanent subject binding owner, candidate and exact review ID. Expiry, new keys
-or changed request content cannot create a replacement subject. Exact wire names,
-domains, vectors and inventory literals require a normative freeze before P1.
+The v0.56 record and status share five canonical UUID5 identities:
+`runtime_plan_review_id`, `runtime_plan_id`, `runtime_admission_id`,
+`prerequisite_id` (v0.53), and `admission_id` (v0.51/v0.52). Preserve all five;
+none is interchangeable with candidate UUID4 or the new successor ID.
+The review also preserves `profile=core_owned_reference_only_runtime_plan_review_v1`
+and ordered findings `exact_plan_lineage`, `fixed_design_consistent`,
+`unresolved_interfaces_preserved`. Status adds `evaluated_at` and can be expired;
+the immutable record retains `lifecycle=active`. An expired status retains the
+recorded marker and blockers; that marker alone cannot establish current eligibility.
+
+V0.56 subject binds exactly `operator_id`, `candidate_record_id`, `runtime_plan_id`.
+Its domains are `atlas:worker-activation-runtime-plan-review-{kind}:v1`, where
+kind is `subject`, `request`, `record`, `evaluation`, `status`, `collection`,
+`idempotency-key`, `reservation`, `audit` (and `correlation` for redaction).
+Use v0.56 `subject_fingerprint`, `derived_runtime_plan_review_id`,
+`runtime_plan_review_record_fingerprint`, `status_fingerprint` and `derive_status`;
+all recursive predecessors retain their own validators and domains.
+Fingerprints retain `algorithm=sha256`, `canonicalization=atlas-jcs-nfc-v1` and
+lowercase digest `value`. The ID domain is
+`atlas:worker-activation-runtime-plan-review-id:v1`; the shared UUID5 helper hashes
+that domain with the complete subject fingerprint before namespace derivation.
+The [frozen vectors](../../services/atlas-core/app/worker_activation_runtime_plan_review/fingerprint_vectors.json)
+are authoritative test identities, never production record identities.
+
+The existing P2 reader derives v0.55 status at the plan's `recorded_at`. P3 item
+GET instead returns the v0.56 record plus status evaluated at trusted current time;
+list GET returns records without paired statuses. Neither is an existing durable
+v0.56 prerequisite reader. Future P2 must add an injected owner-scoped review
+reader, derive stable v0.56 status at review `recorded_at`, and separately check
+current eligibility. Pin that stable status fingerprint in create; do not assume
+an arbitrary item-GET status fingerprint equals it. Do not rewrite historical
+embedded v0.55 status or renew expiry. Duplicate successor requests return history
+without predecessor reads; fresh creation revalidates under both journal write locks.
+
+## Frozen v0.57 contract and API scope (not implemented)
+
+The schema prefix is `worker-activation-runtime-interface-prerequisite`.
+The record schema is that prefix plus `-v1`; companion schemas append
+`-create-v1`, `-authority-context-v1`, `-evaluation-v1`, `-status-v1`,
+`-result-v1`, `-collection-v1`, `-reservation-v1`, `-audit-v1`, `-error-v1`.
+Models use `WorkerActivationRuntimeInterfacePrerequisite` plus the corresponding
+v0.56 model suffix (`V1`, `CreateV1`, `AuthorityContextV1`, `EvaluationV1`,
+`StatusV1`, `ResultV1`, `CollectionV1`, `SubjectReservationV1`,
+`AuditEvidenceV1`, `RedactedErrorV1`). All envelopes are closed, immutable,
+strictly reparsed and inherit the unchanged authority ceiling below.
+
+Create pins only `runtime_plan_review_id`, `runtime_plan_review_record_fingerprint`,
+predecessor `status_fingerprint`, exact `valid_until` and
+`requested_scope=worker_activation_runtime_interface_prerequisite_only`, plus
+schema/authority constants. Owner comes from authentication and candidate from
+the route; inventory and nested evidence are never caller-supplied.
+Record embeds complete `worker_activation_runtime_plan_review` and
+`worker_activation_runtime_plan_review_status`, retains the five predecessor IDs,
+and adds UUID5 `runtime_interface_prerequisite_id`,
+`runtime_interface_prerequisite_record_fingerprint`, successor `subject_fingerprint`
+and `idempotency_key_fingerprint`. It retains owner, candidate, recording/expiry,
+active lifecycle, seven blockers and historical true evidence markers.
+Record carries the exact fixed `inventory` below and the new true marker; its
+`eligibility` equals that marker.
+Profile is `core_owned_reference_only_runtime_interface_prerequisite_v1`.
+Success evaluation recognizes exactly one review (`recognized_v056_review_count=1`),
+records the fixed `inventory` below and sets eligibility to the new marker.
+Refusal recognizes zero, leaves the marker false and emits no partial inventory.
+Status binds the exact record fingerprint and IDs, adds `evaluated_at` and its own
+`status_fingerprint`, derives active/expired without changing recorded evidence,
+and must equal canonical derivation at its recorded evaluation time. Status
+preserves the fixed profile, inventory, blockers and recorded marker even at expiry.
+Result is the exact record/status pair plus `exact_duplicate`; collection is an
+owner/candidate-bound tuple of unique records with count and collection fingerprint.
+
+Permanent successor subject binds exactly `operator_id`, `candidate_record_id`,
+`runtime_plan_review_id`. Expiry, status, content or key changes cannot replace it.
+Successor hash domains are
+`atlas:worker-activation-runtime-interface-prerequisite-{kind}:v1` for the same
+kinds listed above; UUID domain is
+`atlas:worker-activation-runtime-interface-prerequisite-id:v1`. Apply the existing
+canonical hash algorithm (domain UTF-8, NUL, canonical JSON) and UUID5 helper with
+namespace `7bdf38b6-89a9-5d12-a0c1-33db5f733183` to the complete successor subject
+fingerprint. Model hashes omit only their own fingerprint field; request binds
+owner/candidate/create, and key hash binds owner/visible ASCII key as in v0.56.
+P1 must lock independently calculated vectors before accepting implementation;
+no successor digest or UUID is claimed to exist in the integrated repository.
+
+For comparison, the **implemented v0.56** API base is
+`/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plan-reviews`:
+POST returns `WorkerActivationRuntimePlanReviewResultV1` (201, including exact
+duplicates), list GET returns `WorkerActivationRuntimePlanReviewCollectionV1`,
+and item GET `/{runtime_plan_review_id}` returns the result pair.
+Its create schema is `worker-activation-runtime-plan-review-create-v1`, pinning
+v0.55 plan ID/record fingerprint/status fingerprint/expiry and
+`requested_scope=worker_activation_runtime_plan_review_only`.
+Permissions are `installation.execution.worker_activation_runtime_plan_review.evaluate`
+and `.read`. Missing service is 503; disabled creation is 409; foreign/missing is
+404. Authentication/permission/throttle errors are 401/403/429; malformed,
+oversized and wrong-content-type requests are 422/413/415. Errors are redacted,
+non-retryable; no queries or GET bodies are accepted. Responses are reparsed and
+bound to owner/candidate, item ID or exact create pins and key fingerprint.
+
+The **future v0.57** API has exactly POST/list GET at
+`/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites`
+and item GET `/{runtime_interface_prerequisite_id}`. Use the corresponding frozen
+successor create/result/collection/error schemas, 201 POST semantics and the same
+v0.56 guards/error mapping. Dedicated permissions are
+`installation.execution.worker_activation_runtime_interface_prerequisite.evaluate`
+and `.read`. POST requires trusted Origin/CSRF, one 16-128 visible ASCII
+Idempotency-Key and strict JSON bounded to 16 KiB/nesting 16. Collection maximum
+is 16 and every full response remains within 192 KiB. No alternate route, action,
+start endpoint, production construction or enabling setting is selected.
 
 ## Blocked authority and affected authoritative subsystems
 
@@ -102,23 +202,41 @@ agent_invocation_not_defined
 execution_start_boundary_not_defined
 ```
 
-The proposed closed inventory would map those blockers as follows. These are
+The closed inventory maps those blockers as follows. These are
 obligations for separate future decisions, not interfaces implemented by v0.57.
 Worker-side ownership entries are proposed responsibility boundaries requiring
 confirmation in those decisions, not claims of existing installation interfaces.
 
-| Blocker / authoritative subsystem | Required proof before a later boundary may remove it |
-| --- | --- |
-| Runtime definition / Core installation authority | Exact installation runtime identity, supported capability, composition ownership and fail-closed lifecycle contract. |
-| Store contact / worker-owned storage boundary | Authenticated owner/subject binding, bounded protocol, allowed operations and corruption/recovery semantics; a Core evidence SQLite journal is not this interface. |
-| Runtime contact / worker runtime boundary | Exact authenticated peer and request identity, bounded contact protocol, effect limits and ambiguous-outcome behavior. |
-| Worker-start admission / Core admission authority | Separately validated runtime/contact prerequisites and immutable admission decision tied to the exact subject; evidence review is not operator approval. |
-| Worker start / worker authority | One-shot start protocol, reservation-before-effect, durable no-replay and terminal uncertainty handling. |
-| Agent invocation / Agent authority | Independently accepted installation intent, authentication and exact approvals; no translation into the existing repository or operational registry. |
-| Execution start / execution authority | Exact execution request, capability/approval checks and durable execution ledger; no reuse of a review as `WorkerExecutionRequest`. |
+`inventory` is exactly seven entries in blocker order, each a closed triple
+`blocker`, `owner`, `required_proof` with the literal values below. No free text,
+optional entries, caller choices or satisfied/approved flag is allowed. These
+owner values name future responsibility, not deployed interface ownership.
 
-Core would own only inventory evaluation, persistence, hashes and eligibility.
-Mission Control would remain a non-authoritative nested read-only projection.
+| `blocker` | `owner` | `required_proof` |
+| --- | --- | --- |
+| `worker_activation_runtime_not_defined` | `core_installation_authority` | `installation_runtime_identity_capability_composition_lifecycle` |
+| `store_contact_not_defined` | `worker_storage_authority` | `authenticated_store_subject_protocol_operations_recovery` |
+| `runtime_contact_not_defined` | `worker_runtime_authority` | `authenticated_runtime_peer_request_effect_limits_uncertainty` |
+| `worker_start_admission_not_defined` | `core_admission_authority` | `validated_runtime_contact_prerequisites_exact_subject_admission` |
+| `worker_start_not_defined` | `worker_authority` | `one_shot_start_reservation_durability_no_replay_uncertainty` |
+| `agent_invocation_not_defined` | `agent_authority` | `installation_intent_authentication_exact_approvals` |
+| `execution_start_boundary_not_defined` | `execution_authority` | `exact_execution_request_capability_approval_durable_ledger` |
+
+The proof literals require, respectively: an exact installation runtime identity,
+supported capability, composition ownership and fail-closed lifecycle; an
+authenticated owner/subject-bound store protocol with bounded operations and
+corruption/recovery semantics; an authenticated runtime peer/request with bounded
+effects and ambiguous-outcome handling; independently validated runtime/contact
+prerequisites and an immutable admission for the exact subject; reservation before
+one-shot start with durable no-replay and terminal uncertainty; independently
+accepted installation intent, authentication and exact Agent approvals; and an
+exact execution request with capability/approval checks and durable ledger.
+A Core evidence SQLite journal does not satisfy store contact, review does not
+satisfy operator approval, and inventory cannot become `WorkerExecutionRequest`
+or an intent in the existing repository/operational registry.
+
+Core owns only inventory evaluation, persistence, hashes and eligibility.
+Mission Control remains a non-authoritative nested read-only projection.
 Agent, execution worker/relay, Provider Intent, operational dispatch, repository
 workflows, Discovery, installation artifacts and deployment configuration retain
 their existing authority and gain no consumer or implementation responsibility.
@@ -129,8 +247,11 @@ Inventory recorded != contact authorized != worker-start admitted != worker star
 Worker started != Agent invoked != execution authorized or started.
 
 Preserve `evidence_only=true`, `reference_only=true`, `payload_bytes=0`, all 67
-released false authority/material fields and the meanings of historical true
-evidence markers. No runtime activation, worker/store/runtime/queue contact,
+released false authority/material fields from the normative
+[v0.55 authority inventory](worker-activation-runtime-plan-v1.md#authority-ceiling)
+and the meanings of historical true evidence markers. Strict booleans/material
+values reject numeric and string coercion on every envelope and recursively
+embedded model. No runtime activation, worker/store/runtime/queue contact,
 queue claim/lease/ack/consume/requeue, payload/command/credential/endpoint input,
 worker-start admission/build, start/invocation, Agent invocation, execution-start
 admission/build, execution authorization/start, process/shell execution,
@@ -139,27 +260,26 @@ deployment, rollback, publication/tag push/release, retry/resend, repair or repl
 bypass is authorized. No adapter, production wiring, enabling setting or change
 to `compose.execution-smoke.override.yaml` belongs to this boundary.
 
-## Assumptions requiring v0.56 confirmation before a normative freeze
+## Provisional assumptions reconciled
 
-| Gate | Current evidence and required confirmation |
+| Former gate | Sync disposition |
 | --- | --- |
-| A1: predecessor identity and closure | Local v0.56 tag and integrated P1-P5 exist. Confirm the accepted final v0.56 commit, its contract and actual validation results; reconcile any later changes. Local tags alone prove no external release gate. |
-| A2: unchanged semantic ceiling | Inspected review retains three fixed findings, seven blockers, 67 false fields and no approval/readiness meaning. Confirm these against accepted v0.56 models, API/UI and closure tests. Any drift requires re-analysis, not silent promotion. |
-| A3: exact owned durable predecessor | Review persistence exists. Confirm stable owned read/status semantics, both-lock revalidation, byte-exact lineage, expiry and permanent no-replay before designing the new reader. No predecessor journal mutation or consumption. |
-| A4: bounded successor is feasible | Verify complete recursive embedding plus the proposed inventory fits the inherited 192 KiB bound and the inherited freshness window. Refuse overflow/expiry; never widen limits, truncate lineage or renew evidence to make the stage fit. |
-| A5: distinct useful boundary | Confirm that a durable blocker-to-owner/proof inventory is needed beyond v0.56's existing review. If redundant, leave this as planning evidence and defer P1-P5. No operational primitive may be substituted without a new authority decision. |
+| A1: predecessor identity/closure | Resolved for repository scope: integrated P0-P3 and subsequent P4/P5 are present at the exact baseline above. Historical external gates remain external; no remote acceptance is inferred from a local tag. |
+| A2: semantic ceiling | Resolved: exact schemas, five IDs, three findings, seven blockers and 67 false fields match the integrated Core contract and guarded API. |
+| A3: owned durable predecessor | Resolved as a design constraint: durable review get exists, but the existing prerequisite reader consumes v0.55. The new reader and stable-status binding specified above are P2 work, not an available primitive. Permanent reservation and both-lock validation are inherited unchanged. |
+| A4: bounds/freshness | Frozen fail-closed requirement, not a claim of measured v0.57 capacity: complete expanded record/result/collection must fit 192 KiB and the inherited 30-second window. P1/P2 must prove representative and overflow cases before closure; overflow/expiry refuses, never truncates or renews. |
+| A5: distinct boundary | Resolved by this selection: a fixed explicit owner/proof inventory pinned to review adds information absent from v0.56 findings. No runtime prerequisite is satisfied and no interface is defined. |
 
-Resolving these gates requires a recorded normative selection with exact schemas,
-closed inventory, domains, API scope and acceptance tests. This provisional P0
-does not authorize P1 automatically, even though local v0.56 code is present.
+P0 selection is complete. Implementation acceptance remains gated by the tests
+below; this documentation synchronization implements none of P1-P5.
 
-## Conditional P1-P5 responsibilities and exit evidence
+## P1-P5 responsibilities and exit evidence
 
-| Phase | Responsibility after confirmation and normative selection |
+| Phase | Responsibility under this frozen boundary |
 | --- | --- |
-| P1 | Pure immutable closed Core inventory models/evaluator, injected exact v0.56 pair and deterministic fixed mapping. Freeze separate domains/UUID vectors and strict authority. Test recursive lineage, extras/duplicate keys, copied/constructed models, wrong owner/subject/hash, stale/future/expired evidence, refusal without marker advancement and size bounds. No I/O or runtime imports. |
+| P1 | Pure immutable closed Core inventory models/evaluator, injected exact v0.56 pair and deterministic fixed mapping. Lock vectors for the frozen domains/UUID derivation and strict authority. Test recursive lineage, extras/duplicate keys, copied/constructed models, wrong owner/subject/hash, stale/future/expired evidence, refusal without marker advancement and size bounds. No I/O or runtime imports. |
 | P2 | Explicitly constructed default-off service, owner-scoped durable review reader and separate bounded append-only journal. Atomically reserve owner/key and permanent subject before append; revalidate predecessor/time under both write locks. Exact duplicates return history without predecessor reads or renewal. Post-reservation ambiguity is terminal, with no retry/repair/replacement/eviction. Test multiprocess contention, restart/expiry, incomplete reservations, partial writes/audit/response loss, corruption and unchanged predecessor bytes. Retain ceilings of 16 reservations per owner, 256 global, 192 KiB per model, one terminal audit per reservation and 256 MiB main database pages (not a filesystem quota); limits may only decrease. |
-| P3 | Minimum guarded candidate/owner-scoped evidence POST/list GET/item GET, only after exact route/permission freeze. Dedicated evaluate/read permissions, trusted Origin/CSRF, strict bounded JSON and idempotency, redacted failures and response reparsing/binding. Missing service and disabled creation fail closed. Test authentication, foreign/missing equivalence, hostile responses and exact OpenAPI surface. No production construction or enabling setting. |
+| P3 | Minimum guarded candidate/owner-scoped evidence POST/list GET/item GET, using the exact frozen routes/permissions. Dedicated evaluate/read permissions, trusted Origin/CSRF, strict bounded JSON and idempotency, redacted failures and response reparsing/binding. Missing service and disabled creation fail closed. Test authentication, foreign/missing equivalence, hostile responses and exact OpenAPI surface. No production construction or enabling setting. |
 | P4 | Nested GET-only Mission Control evidence under the exact v0.56 review. Validate closed response, immutable predecessor, owner/IDs, blockers, inventory and authority; Core owns hashes/time eligibility. Distinguish loading/missing/unavailable/expired, reset on scope change and ignore late responses. Explain that prerequisites remain incomplete; collapse technical details. No create/start action, polling, browser persistence, standalone route or navigation. Run hostile fixtures, scope-race tests, build and lint. |
 | P5 | Prove durable v0.56-to-v0.57 byte-exact lineage, permanent no-replay, strict authority, default-off construction and exact Core/API/UI consumers with zero Agent/worker consumers. Run P1-P4 and historical closure/isolation/Home Assistant gates, documentation consistency and hostile diff review. Record actual results and remaining external gates; no publication, deployment or runtime enablement. |
 
@@ -167,13 +287,13 @@ Historical isolation allowlists must remain exact and justified if later phases
 add evidence consumers. No wildcard exclusions, relaxed fingerprint-only import
 checks or pre-authorized future consumers. This P0 changes no allowlist or test.
 
-## P0 validation scope
+## Sync validation scope
 
-Only this proposal, the roadmap and release-planning evidence change. Check local
+Only this contract, the roadmap and release-planning evidence change. Check local
 tag identities/ancestry, predecessor contract and authority inventories, relative
-links, documentation-only diff and whitespace. Run focused v0.55/v0.56 contract,
-durable closure and v0.55 Mission Control structural isolation regressions, then
+links, documentation-only diff and whitespace. Run focused v0.56 contract,
+durable service/store, closure and guarded API regressions, then
 review the complete diff adversarially and create a real local documentation
 commit. Results belong in the [release checklist](../RELEASE_CHECKLIST.md).
-These tests validate planning assumptions against the checkout; they prove no
-v0.57 implementation or external release/production readiness.
+These tests validate the synchronized prerequisite claims against the checkout;
+they prove no v0.57 implementation or external release/production readiness.

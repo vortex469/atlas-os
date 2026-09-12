@@ -3,6 +3,63 @@
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
+## Atlas v0.57 Sync contract reconciliation (2026-09-12)
+
+The [v0.57 contract](architecture/worker-activation-runtime-interface-prerequisite-v1.md)
+now freezes exactly one Core-owned interface-prerequisite inventory boundary.
+This supersedes the provisional selection below, preserving its historical test
+results. No v0.57 implementation or external release gate is claimed.
+
+Inspected baseline `1371cd369c2dc416eae7b9d4bdac504700888935` contains first-parent
+v0.56 P0 `cb0ff6c7`, P1 `01328ff3`, P2 `9d6f5a0c`, P3 `8426e4c8`, P4
+`7430fef4`, P5 `6f18b957`. Local v0.56 tag peels to `292dbd29`, an ancestor,
+not current HEAD. The contract distinguishes these integration hashes from
+historical phase-task hashes. Integrated source confirms the exact review/status
+schemas, five lineage IDs, hash/UUID domains, fixed findings/blockers, authority,
+owner-scoped persistence, replay behavior and guarded API response shapes.
+
+Corrections include stable predecessor status versus current-time item GET;
+list GET supplies no status pair; the existing prerequisite reader reads v0.55,
+so a v0.56 reader remains P2 work. Successor schemas, ID/hash domains, fixed
+owner/proof literals and three evidence API operations are now selected.
+The 192 KiB/30-second ceilings remain fail-closed future acceptance requirements,
+not measured successor feasibility. P1-P5 remain unimplemented.
+
+Validation command from the managed worktree:
+
+```bash
+PYTHONPATH=services/atlas-core /opt/atlas/.venv/bin/python -m pytest -q \
+  services/atlas-core/app/worker_activation_runtime_plan_review/test_contract.py \
+  services/atlas-core/app/worker_activation_runtime_plan_review/test_release_closure.py \
+  services/atlas-core/app/routes/test_worker_activation_runtime_plan_review.py \
+  services/atlas-core/app/worker_activation_runtime_plan_review/test_service_store.py \
+  --basetemp=.task-evidence/v057-sync-pytest
+```
+
+- Focused tests passed: **211 passed, 433 warnings in 813.91s (13m 33s)**.
+  The four suites cover pure schemas/hash/UUID vectors, strict authority and
+  recursive lineage, durable owner-scoped readback, both locked revalidations,
+  corruption/concurrency/permanent no-replay, exact API guards/responses and
+  isolated consumers. Warnings include Pydantic schema shadowing, hostile fixture
+  serialization and deprecated per-request test cookies.
+- Documentation checks passed: 21 contract/roadmap links and anchors resolve;
+  seven ordered inventory blockers, all 67 false fields, schemas, five IDs,
+  findings and limits agree with imported v0.56 models. Integration ancestry and
+  both tag identities match. The v0.56 Core review package and route have no diff
+  from the local v0.56 tag. Exactly the three planned Markdown files changed.
+- Hostile review passed: reviewed the final diff after focused tests for authority
+  inflation, invented existing interfaces, ownership/ID substitution, status
+  fingerprint drift, expiry renewal, replay and misleading completion claims.
+  Stable-status binding and current-time eligibility remain separate; inventory
+  cannot satisfy any blocker. Future vectors, capacity/overflow tests and P1-P5
+  implementation gates remain explicit. Historical evidence is preserved and
+  `git diff --check` passed. No new runtime test is needed for this documentation
+  change; the required successor tests remain phase acceptance work.
+
+Scope is documentation only: this checklist, the contract and roadmap.
+Historical external limitations remain unchanged; no whole-repository/UI build,
+publication or deployment claim.
+
 ## Atlas v0.57 P0 provisional planning evidence (2026-09-11)
 
 The [provisional architecture proposal](architecture/worker-activation-runtime-interface-prerequisite-v1.md)
