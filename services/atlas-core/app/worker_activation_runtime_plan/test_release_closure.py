@@ -166,6 +166,10 @@ def test_exact_v055_production_consumers():
         "services/mission-control/src/api/workerActivationRuntimePlan.ts",
         # v0.56: exact nested GET-only review evidence consumers.
         "services/mission-control/src/api/workerActivationRuntimePlanReview.ts",
+        "services/mission-control/src/api/workerActivationRuntimeInterfacePrerequisite.ts",
+        "services/mission-control/src/types/workerActivationRuntimeInterfacePrerequisite.ts",
+        "services/mission-control/src/hooks/useWorkerActivationRuntimeInterfacePrerequisite.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimeInterfacePrerequisite.tsx",
         "services/mission-control/src/types/workerActivationRuntimePlanReview.ts",
         "services/mission-control/src/features/installation/WorkerActivationRuntimePlanReview.tsx",
         "services/mission-control/src/hooks/useWorkerActivationRuntimePlanReview.ts",

@@ -56,3 +56,18 @@ describe("one-shot controlled dequeue API", () => {
         expect(() => parseOneShotControlledDequeueCollection({ ...oneShotControlledDequeueCollectionFixture, items: Array.from({ length: 17 }, () => oneShotControlledDequeueCollectionFixture.items[0]), count: 17 })).toThrow();
     });
 });
+
+
+it("accepts distinct Core dequeue domains but rejects mismatched bounded receipt identities", () => {
+    const record = structuredClone(oneShotControlledDequeueResultFixture.record!);
+    record.queue_identity_fingerprint = { ...record.queue_identity_fingerprint, value: "b".repeat(64) };
+    record.item_identity_fingerprint = { ...record.item_identity_fingerprint, value: "c".repeat(64) };
+    record.bounded_receipt.queue_identity_fingerprint = record.queue_identity_fingerprint;
+    record.bounded_receipt.item_identity_fingerprint = record.item_identity_fingerprint;
+    expect(parseOneShotControlledDequeueResult({ ...oneShotControlledDequeueResultFixture, record }).record).toEqual(record);
+    for (const field of ["queue_identity_fingerprint", "item_identity_fingerprint"] as const) {
+        const mismatched = structuredClone(record);
+        mismatched.bounded_receipt[field] = { ...mismatched.bounded_receipt[field], value: "d".repeat(64) };
+        expect(() => parseOneShotControlledDequeueResult({ ...oneShotControlledDequeueResultFixture, record: mismatched })).toThrow();
+    }
+});

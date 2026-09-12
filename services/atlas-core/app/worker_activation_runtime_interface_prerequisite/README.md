@@ -38,8 +38,9 @@ Run tests from the repository root with the selected Python interpreter,
 `PYTHONPATH=services/atlas-core`, and `-m pytest` on this package. Persistence tests
 cover durable predecessor byte equality, two-lock checks, independent process and
 instance contention, restart, expiry, quotas, corruption, partial writes and
-reservation/audit/response loss. P4-P5 UI and release closure remain separate
-work; this package confers no Agent, worker, runtime or execution authority.
+reservation/audit/response loss. P4 now includes nested GET-only Mission Control
+source and regressions; its required UI validation is blocked by dependency
+installation (registry DNS failure). P5 release closure remains separate work; this package confers no Agent, worker, runtime or execution authority.
 
 P3 exposes only POST/list GET and item GET beneath
 `/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites`.

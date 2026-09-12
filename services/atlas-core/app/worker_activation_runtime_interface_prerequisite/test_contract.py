@@ -490,6 +490,11 @@ def test_no_io_or_production_consumers():
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
     assert consumers == {
+        "services/mission-control/src/api/workerActivationRuntimeInterfacePrerequisite.ts",
+        "services/mission-control/src/types/workerActivationRuntimeInterfacePrerequisite.ts",
+        "services/mission-control/src/hooks/useWorkerActivationRuntimeInterfacePrerequisite.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimeInterfacePrerequisite.tsx",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimePlanReview.tsx",
         "services/atlas-core/app/api/v1/router.py",
         "services/atlas-core/app/operator_auth/models.py",
         "services/atlas-core/app/routes/worker_activation_runtime_interface_prerequisite.py",
@@ -1131,3 +1136,36 @@ def test_predecessor_findings_and_constructed_inventory_cannot_be_forged(facts):
     forged = record.model_copy(update={"inventory": (bad, *c.SUCCESS_INVENTORY[1:])})
     with pytest.raises(ValidationError):
         type(record).model_validate(forged)
+
+
+def test_mission_control_inventory_matches_authoritative_core():
+    import json
+
+    root = Path(__file__).resolve().parents[4]
+    source = (
+        root
+        / "services/mission-control/src/api/workerActivationRuntimeInterfacePrerequisite.ts"
+    ).read_text()
+    inventory = json.loads(source.split("const INVENTORY = ", 1)[1].split(";", 1)[0])
+    assert inventory == [entry.model_dump(mode="json") for entry in c.SUCCESS_INVENTORY]
+
+
+def test_mission_control_golden_is_complete_authoritative_core_evidence():
+    import json
+
+    root = Path(__file__).resolve().parents[4]
+    # Generated with build_runtime_interface_prerequisite, derive_status and the
+    # signed collection builder. Keep real recursive fingerprints in UI tests.
+    golden = json.loads(
+        (
+            root
+            / "services/mission-control/src/test/workerActivationRuntimeInterfacePrerequisite.core.json"
+        ).read_text()
+    )
+    result = c.WorkerActivationRuntimeInterfacePrerequisiteResultV1.model_validate(
+        golden["result"]
+    )
+    collection = c.WorkerActivationRuntimeInterfacePrerequisiteCollectionV1.model_validate(
+        {**golden["collection"], "items": [golden["result"]["record"]]}
+    )
+    assert collection.items == (result.record,)

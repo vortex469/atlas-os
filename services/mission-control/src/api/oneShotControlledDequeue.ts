@@ -58,7 +58,10 @@ function validateRecord(value: unknown): OneShotControlledDequeueV1 {
     const admission = admissionResult.record;
     const status = admissionResult.status;
     const record = value as OneShotControlledDequeueV1;
-    if (!admission || !status || record.operator_id !== admission.operator_id || record.operator_id !== status.operator_id || record.candidate_record_id !== admission.candidate_record_id || record.candidate_record_id !== status.candidate_record_id || status.admission_id !== admission.admission_id || record.valid_until > admission.valid_until || record.inherited_limits.limits_fingerprint.value !== admission.inherited_limits.limits_fingerprint.value || record.queue_identity_fingerprint.value !== admission.queue_identity_fingerprint.value || record.item_identity_fingerprint.value !== admission.item_identity_fingerprint.value) throw new Error("Invalid one-shot controlled dequeue response.");
+    // Core derives dequeue identity fingerprints in distinct v0.45 domains.
+    // They cannot equal the v0.44 admission fingerprints. The bounded receipt
+    // above must still match the dequeue identities; Core verifies their hashes.
+    if (!admission || !status || record.operator_id !== admission.operator_id || record.operator_id !== status.operator_id || record.candidate_record_id !== admission.candidate_record_id || record.candidate_record_id !== status.candidate_record_id || status.admission_id !== admission.admission_id || record.valid_until > admission.valid_until || record.inherited_limits.limits_fingerprint.value !== admission.inherited_limits.limits_fingerprint.value) throw new Error("Invalid one-shot controlled dequeue response.");
     return record;
 }
 

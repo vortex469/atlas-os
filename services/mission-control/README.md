@@ -38,3 +38,13 @@ npm test
 npm run lint
 npm run build
 ```
+
+
+The v0.57 interface prerequisite inventory is displayed beneath the exact v0.56
+runtime plan review. It reads Core collection/item evidence with credentials,
+preserves immutable review lineage, and displays Core-reported expiry. All
+runtime prerequisites remain incomplete. Advanced evidence stays collapsed;
+there are no create/start controls, polling, browser persistence or new routes.
+
+P4 UI test/build/lint validation is pending: this worktree could not install npm
+dependencies because registry DNS returned `EAI_AGAIN`.

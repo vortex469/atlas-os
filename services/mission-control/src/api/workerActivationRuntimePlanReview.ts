@@ -108,7 +108,7 @@ export async function getWorkerActivationRuntimePlanReview(prerequisite: WorkerA
     return { ...parsed, fingerprints: { ...parsed.fingerprints, collection: fp(collection.collection_fingerprint) } };
 }
 
-function parseWorkerActivationRuntimePlanReview(value: unknown, candidateId: string, operatorId: string): WorkerActivationRuntimePlanReview {
+export function parseWorkerActivationRuntimePlanReview(value: unknown, candidateId: string, operatorId: string): WorkerActivationRuntimePlanReview {
     bounded(value);
     const result = object(value);
     closed(result, ["record", "status", "exact_duplicate", "worker_activation_runtime_plan_recorded", MARKER]);

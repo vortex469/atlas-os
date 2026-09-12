@@ -1,8 +1,9 @@
 # Worker Activation Runtime Interface Prerequisite v1 contract
 
 Status: **v0.57 P1 pure Core contract, P2 isolated durable service/store and P3
-guarded API implemented against the synchronized v0.56 boundary. P4-P5 remain
-unimplemented; no runtime or downstream authority.**
+guarded API implemented against the synchronized v0.56 boundary. P4 UI source
+and regressions are integrated; required UI validation is environment-blocked.
+P5 remains unimplemented; no runtime or downstream authority.**
 
 P1 adds the [closed contract and evaluator](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py),
 [independent fingerprint vectors](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/fingerprint_vectors.json)
@@ -328,3 +329,45 @@ redacted and non-retryable. The
 exercise these guarantees with real predecessor storage and process contention.
 No route, production composition, Agent/worker consumer or downstream authority
 is added. Actual test results are recorded in the release checklist.
+
+
+## P4 Mission Control integration and validation limits
+
+The repository-integrated v0.56 P4 baseline (`7430fef4`, an ancestor of this
+worktree) supplies the existing nested plan review workflow. P4 adds a GET-only
+interface prerequisite section beneath that exact review. Core remains the
+source of lifecycle, eligibility and fingerprints. The browser validates closed
+bounded responses, all seven ordered blocker/owner/proof entries, 67 false
+fields, all three true historical evidence markers, immutable list/item and
+parent evidence, and stable review status at the review's recorded time.
+Historical expired evidence remains inspectable; expiry never grants authority.
+
+Loading, missing, unavailable and Core-reported expiry are distinct. Scope
+changes remount the reader and invalidate late success/failure responses.
+Technical inventory, recursive lineage, fingerprints and authority remain in
+collapsed details. No write controls, timers, persistence or navigation are added.
+Exact historical consumer allowlists admit only the new direct UI consumers.
+
+Validation limitation: `npm ci` failed with registry DNS `EAI_AGAIN`. The focused
+Vitest command and lint command cannot find their executables; the build cannot
+resolve project types and encounters an incompatible fallback TypeScript.
+These required gates have not passed. P4 release closure must rerun the focused
+API/UI/security regressions, full UI tests, build and lint after dependencies
+can be installed. No publication, deployment or enablement is claimed.
+
+
+The complete Core-generated golden exposed an inherited v0.45 browser check
+that incorrectly equated dequeue queue/item fingerprints with v0.44 admission
+fingerprints. Core uses distinct domains for these hashes. The parser now keeps
+same-domain bounded receipt linkage and exact owner/candidate/limits checks
+without imposing cross-domain hash equality. A signed complete recursive golden
+is stored in Mission Control test data and strictly revalidated by Core tests.
+
+Available checks passed: six exact Core consumer/isolation tests, two Core/UI
+inventory and golden contract tests, changed Python files' Ruff checks, and a
+direct Node reader harness with 1,904 hostile authority/inventory cases. The
+complete Core golden also passed through the actual browser parser using Node's
+TypeScript stripping and a mocked transport. The initial Core contract run had
+88 passes and one stale consumer allowlist failure; that allowlist was corrected
+and its focused rerun passed. These checks do not replace the blocked Vitest,
+TypeScript/Vite build, ESLint or UI rendering gates.

@@ -18,12 +18,16 @@ describe("v0.55 read-only Mission Control isolation", () => {
         expect(parent).toContain("<WorkerActivationRuntimePlan admission={state} />");
         expect(router + navigation).not.toMatch(/WorkerActivationRuntimePlan|worker-activation-runtime-plans/);
         expect(Object.entries(modules).filter(([, source]) => /workerActivationRuntimePlan|WorkerActivationRuntimePlan|worker-activation-runtime-plans/.test(source)).map(([path]) => path).sort()).toEqual([
+            "../api/workerActivationRuntimeInterfacePrerequisite.ts",
             "../api/workerActivationRuntimePlan.ts",
             "../api/workerActivationRuntimePlanReview.ts",
             "../features/installation/WorkerActivationRuntimeAdmission.tsx",
+            "../features/installation/WorkerActivationRuntimeInterfacePrerequisite.tsx",
             "../features/installation/WorkerActivationRuntimePlan.tsx",
             "../features/installation/WorkerActivationRuntimePlanReview.tsx",
+            "../hooks/useWorkerActivationRuntimeInterfacePrerequisite.ts",
             "../hooks/useWorkerActivationRuntimePlanReview.ts",
+            "../types/workerActivationRuntimeInterfacePrerequisite.ts",
             "../types/workerActivationRuntimePlan.ts",
             "../types/workerActivationRuntimePlanReview.ts",
         ]);

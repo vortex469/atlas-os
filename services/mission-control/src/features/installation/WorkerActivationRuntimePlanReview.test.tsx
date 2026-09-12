@@ -1,3 +1,4 @@
+vi.mock("./WorkerActivationRuntimeInterfacePrerequisite", () => ({ WorkerActivationRuntimeInterfacePrerequisite: () => null }));
 import { WorkerActivationRuntimePlan } from "./WorkerActivationRuntimePlan";
 import { planCollection, planResult, admission } from "../../test/workerActivationRuntimePlan";
 import { act, render, screen } from "@testing-library/react";

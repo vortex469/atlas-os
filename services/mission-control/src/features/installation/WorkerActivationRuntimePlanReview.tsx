@@ -1,3 +1,4 @@
+import { WorkerActivationRuntimeInterfacePrerequisite } from "./WorkerActivationRuntimeInterfacePrerequisite";
 import type { WorkerActivationRuntimePlan } from "../../types/workerActivationRuntimePlan";
 import { useWorkerActivationRuntimePlanReview } from "../../hooks/useWorkerActivationRuntimePlanReview";
 
@@ -26,6 +27,7 @@ function ReviewReader({ plan }: { plan: WorkerActivationRuntimePlan }) {
                 <ol>{state.blockers.map((code) => <li key={code}><code>{code}</code></li>)}</ol>
                 <dl aria-label="v0.56 fixed-false authority">{Object.entries(state.authority).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{String(value)}</dd></div>)}</dl>
             </details>
+            <WorkerActivationRuntimeInterfacePrerequisite review={state} />
         </>}
     </section>;
 }
