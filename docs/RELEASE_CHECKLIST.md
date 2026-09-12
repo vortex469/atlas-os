@@ -1,5 +1,33 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.58 Sync — retained Core/API boundary freeze (2026-09-12)
+
+The [normative v0.58 contract](architecture/v0.58-runtime-interface-admission-provisional.md)
+is reconciled against `9f15958e6ef4202eed04b0a184106e553b53c6e1`, including
+v0.58 P0 `451c34e2` and integrated v0.57 Sync/P1-P5 through `6a35f569`.
+Exactly one repository-supported boundary is frozen: the existing Core-owned
+interface-prerequisite inventory evidence, with exact schemas, six IDs,
+fingerprints, ownership, lineage, blockers, API surface and fixed-false authority.
+
+The provisional admission predicate repeats integrated v0.57 validation and has
+no established distinct consumer need. P0 A2 therefore defers admission P1-P5;
+no successor marker/domain/schema/API or runtime implementation is selected.
+This completes documentation synchronization, not an admission implementation or
+v0.57 release closure. Required v0.57 UI test/build/lint gates remain open.
+
+[Sync validation evidence](architecture/v0.58-sync-validation.md) records the
+focused predecessor tests, documentation checks, hostile review and commit
+disposition. Only v0.58 architecture/evidence, ROADMAP.md and this planning
+section change; all historical release evidence below is preserved.
+
+Focused tests passed: **135 passed, 444 warnings in 1350.17s**, covering the full
+v0.57 contract, closure and guarded API files. Hostile review passed: complete
+five-file documentation diff reviewed after tests, preserving authority, exact
+lineage, A2 deferral and outstanding release gates. Documentation checks passed
+for 23 local links/anchors, inventory/IDs/false fields, phase ancestry, historical
+evidence preservation and whitespace. The managed worktree accepts staging; the
+local commit is titled `docs: freeze v0.58 against integrated v0.57 Core/API boundary`.
+
 ## Atlas v0.57 P5 regression evidence — release closure open (2026-09-12)
 
 **Do not close v0.57 yet.** Sync/P1-P4 source is integrated and P5 adds closure

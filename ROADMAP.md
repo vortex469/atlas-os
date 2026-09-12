@@ -82,6 +82,26 @@ replace those gates. Current evidence and exact integrated commit identities are
 in the [release checklist](docs/RELEASE_CHECKLIST.md). No release tag, publication,
 deployment, production wiring or enablement is claimed.
 
+## v0.58 Sync — repository boundary frozen; admission P1-P5 deferred
+
+The [normative v0.58 contract](docs/architecture/v0.58-runtime-interface-admission-provisional.md)
+reconciles P0 with integrated v0.57 Core/API at `9f15958e`. Exactly one boundary
+is retained: Core-owned interface-prerequisite inventory evidence. Exact schemas,
+six IDs, fingerprints, ownership, recursive lineage, API surface, seven ordered
+blockers and all 67 fixed-false fields are frozen against the implementation.
+
+The provisional admission layer would repeat v0.57's closed inventory validation;
+no distinct predicate or consumer need was established. P0 gate A2 therefore
+requires **deferring admission P1-P5**. No v0.58 marker, schema, route, consumer,
+runtime implementation or authority is added. A separately justified normative
+decision is required to reopen implementation; release numbering supplies none.
+
+This documentation synchronization completes v0.58 / 02 after integrated / 01.
+It does not close v0.57's outstanding UI test/build/lint release gates, publish a
+release or enable production. Actual validation and the local commit disposition
+are recorded in [Sync evidence](docs/architecture/v0.58-sync-validation.md) and the
+[release checklist](docs/RELEASE_CHECKLIST.md).
+
 ### Historical baseline context
 
 Atlas v0.51 P0-P5 closes the Controlled Worker Queue Claim/Lease/
