@@ -470,6 +470,8 @@ def test_no_io_or_production_consumers():
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
     assert consumers == {
+        # v0.57: pure exact predecessor evidence binding only.
+        "services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py",
         # v0.56 P4: nested GET-only review reader, model, hook, view and parent.
         "services/mission-control/src/api/workerActivationRuntimePlanReview.ts",
         "services/mission-control/src/types/workerActivationRuntimePlanReview.ts",

@@ -54,7 +54,7 @@ production wiring, enabling configuration or `compose.execution-smoke.override.y
 change. No push, tag, release, publish or deploy. Future authority requires a
 separately justified normative contract.
 
-## Frozen v0.57 Sync - Runtime Interface Prerequisite evidence
+## Implemented v0.57 P1 - Runtime Interface Prerequisite evidence
 
 The [normative v0.57 contract](docs/architecture/worker-activation-runtime-interface-prerequisite-v1.md)
 selects exactly one boundary: a Core-owned, exact-review inventory mapping seven
@@ -69,9 +69,11 @@ The contract freezes successor schemas, identity domains, inventory literals and
 candidate-scoped evidence routes/permissions. The existing prerequisite reader
 reads v0.55; an owned v0.56 review reader is still future implementation work.
 
-**This is a documentation freeze; v0.57 P1-P5 remain unimplemented.** Their exit
-gates require strict Core models, default-off durable evidence, guarded API,
-nested GET-only Mission Control and isolation/closure proof. Complete lineage
+**P1 implements closed immutable Core models and pure fail-closed evaluation.**
+It pins the exact v0.56 pair, preserves five predecessor IDs and all 67 false
+authority fields, and locks deterministic inventory and fingerprint vectors.
+P2-P5 remain unimplemented; their exit gates require default-off durable evidence,
+guarded API, nested GET-only Mission Control and isolation/closure proof. Complete lineage
 must fit inherited size/freshness bounds or fail closed. No runtime, contact,
 start, Agent invocation, execution or downstream effect is selected. Repository
 integration and local tags imply no publication or production readiness.

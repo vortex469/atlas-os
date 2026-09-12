@@ -1,7 +1,13 @@
 # Worker Activation Runtime Interface Prerequisite v1 contract
 
-Status: **v0.57 Sync normative boundary freeze, reconciled with repository-integrated
-v0.56 P0-P3 Core/API output. Documentation only; v0.57 P1-P5 remain unimplemented.**
+Status: **v0.57 P1 pure Core contract implemented against the synchronized
+v0.56 boundary. P2-P5 remain unimplemented; no runtime or downstream authority.**
+
+P1 adds the [closed contract and evaluator](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py),
+[independent fingerprint vectors](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/fingerprint_vectors.json)
+and hostile regressions. The Sync inspection and future P2-P5 requirements below
+remain the boundary specification; historical documentation-only statements describe
+the Sync change, not the P1 implementation.
 
 ## Inspection and decision
 
@@ -113,7 +119,7 @@ an arbitrary item-GET status fingerprint equals it. Do not rewrite historical
 embedded v0.55 status or renew expiry. Duplicate successor requests return history
 without predecessor reads; fresh creation revalidates under both journal write locks.
 
-## Frozen v0.57 contract and API scope (not implemented)
+## Frozen v0.57 contract and API scope (Core P1 implemented; API remains future)
 
 The schema prefix is `worker-activation-runtime-interface-prerequisite`.
 The record schema is that prefix plus `-v1`; companion schemas append

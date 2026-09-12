@@ -1,5 +1,47 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.57 P1 pure Core inventory contract (2026-09-12)
+
+Implemented the synchronized closed immutable Core models and pure evaluator in
+`worker_activation_runtime_interface_prerequisite/contract.py`. The exact injected
+v0.56 review/status pair retains byte-exact recursive lineage, all five predecessor
+IDs, historical evaluation times and expiry. The new UUID5 subject binds only
+owner, candidate and review ID. Seven fixed blocker/owner/proof entries record
+inventory without satisfying prerequisites or advancing downstream authority.
+
+Focused tests passed:
+
+- From the managed worktree, using the selected interpreter with
+  `PYTHONPATH=services/atlas-core` and `-m pytest`,
+  `services/atlas-core/app/worker_activation_runtime_interface_prerequisite/test_contract.py -q --disable-warnings`:
+  **89 passed, 326 warnings in 323.99s**. Warnings concern inherited Pydantic
+  schema-field shadowing.
+- The independently calculated hash/UUID vector regression was rerun after adding
+  explicit standard-library UUID seed reconstruction and correlation-domain coverage:
+  **1 passed, 88 deselected**.
+- Exact v0.55/v0.56 contract, service/store and closure consumer scans:
+  **6 passed, 310 deselected**. Historical installation execution admission consumer
+  checks: **2 passed, 13 deselected**, retaining the FingerprintV1-only AST restriction.
+- New-package Ruff lint and format checks passed; `git diff --check` passed.
+
+Hostile review passed: checked exact schemas/domains, all six successor/lineage IDs,
+canonical predecessor status equality, unchanged 67 false authority fields,
+strict recursive model-copy/construct reparsing, duplicate JSON keys, caller-supplied
+inventory, cross-wired owner/proof entries, recomputed corrupt hashes, foreign and
+ambiguous evidence, missing reservation facts, future/stale/expired evidence,
+redacted refusals with no inventory or new marker, and full expanded record/result/
+collection bounds. Representative complete envelopes fit 192 KiB; overflow refuses.
+The real inherited fixture leaves one second of eligibility and does not renew it.
+
+Only the new pure Core contract is added to exact historical consumer allowlists.
+No historical production code changed. P2-P5 (durable reader/journal, service, API,
+UI and release closure) remain future work. No runtime, contact, start, Agent,
+worker, execution, deployment or publication authority is enabled.
+
+The managed worktree Git index is read-only. The task commit is preserved with
+its original HEAD parent in task-local metadata at `.task-evidence/v057-p1.git`
+on branch `v057-p1`; the managed branch itself could not be advanced.
+
 Historical sections preserve the evidence recorded for their release. An
 unchecked item is not implied to have passed.
 
