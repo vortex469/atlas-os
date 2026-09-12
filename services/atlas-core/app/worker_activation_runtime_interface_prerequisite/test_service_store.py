@@ -956,3 +956,100 @@ def test_lost_terminal_commit_acknowledgement_keeps_single_recorded_audit(
     duplicate = create(service, facts)
     assert duplicate.exact_duplicate
     assert counts(journal) == (1, 1, 0)
+
+
+def test_missing_live_journal_never_creates_replayable_empty_replacement(
+    tmp_path, facts
+):
+    service, journal, reader, _ = setup(tmp_path, facts)
+    first = create(service, facts)
+    assert isinstance(first, c.WorkerActivationRuntimeInterfacePrerequisiteResultV1)
+    retained = tmp_path / "retained.sqlite"
+    journal.database_path.rename(retained)
+    before = retained.read_bytes()
+    reader.hook = lambda _: pytest.fail("missing journal cannot read predecessor")
+
+    error(create(service, facts), "unavailable")
+    error(
+        service.get(
+            authenticated_operator_id=facts.operator_id,
+            permission_verified=True,
+            candidate_record_id=facts.candidate_record_id,
+            runtime_interface_prerequisite_id=first.record.runtime_interface_prerequisite_id,
+            correlation_id="private",
+        ),
+        "unavailable",
+    )
+    error(
+        service.list(
+            authenticated_operator_id=facts.operator_id,
+            permission_verified=True,
+            candidate_record_id=facts.candidate_record_id,
+            correlation_id="private",
+        ),
+        "unavailable",
+    )
+    assert not journal.database_path.exists()
+    assert retained.read_bytes() == before
+
+    # Restore the exact retained journal to simulate storage becoming available;
+    # the service itself performs no recovery or initialization.
+    retained.rename(journal.database_path)
+    service._store = type(journal)(journal.database_path)
+    duplicate = create(service, facts)
+    assert duplicate.exact_duplicate
+    assert duplicate.record == first.record
+    error(
+        create(service, facts, idempotency_key="different-v058-retained-key"),
+        "permanent_subject_reserved",
+    )
+    assert counts(journal) == (1, 1, 0)
+
+
+@pytest.mark.parametrize("redirect", ["cwd", "symlink"])
+def test_journal_path_binding_survives_redirection(tmp_path, monkeypatch, redirect):
+    original = tmp_path / "original"
+    other = tmp_path / "other"
+    original.mkdir()
+    other.mkdir()
+    monkeypatch.chdir(original)
+    if redirect == "symlink":
+        path = tmp_path / "journal-link"
+        path.symlink_to(original / "journal.sqlite")
+    else:
+        path = Path("journal.sqlite")
+    journal = WorkerActivationRuntimeInterfacePrerequisiteStore(path)
+    assert journal.database_path == original / "journal.sqlite"
+    before = journal.database_path.read_bytes()
+    if redirect == "symlink":
+        path.unlink()
+        path.symlink_to(other / "journal.sqlite")
+    else:
+        monkeypatch.chdir(other)
+    assert journal.list_owned(operator_id="owner", candidate_record_id="missing") == ()
+    assert journal.database_path.read_bytes() == before
+    assert not (other / "journal.sqlite").exists()
+
+
+@pytest.mark.parametrize("name", ["journal ?mode=memory#é.sqlite", ":memory:"])
+def test_sqlite_uri_metacharacters_remain_durable_literal_paths(tmp_path, name):
+    path = tmp_path / name
+    journal = WorkerActivationRuntimeInterfacePrerequisiteStore(path)
+    assert path.is_file()
+    assert counts(journal) == (0, 0, 0)
+    before = path.read_bytes()
+    restarted = type(journal)(path)
+    assert restarted.list_owned(operator_id="owner", candidate_record_id="missing") == ()
+    assert path.read_bytes() == before
+
+
+def test_path_resolution_failure_is_redacted(tmp_path):
+    path = tmp_path / "private-journal-loop"
+    path.symlink_to(path)
+    with pytest.raises(
+        WorkerActivationRuntimeInterfacePrerequisiteStoreError, match="^unavailable$"
+    ) as caught:
+        WorkerActivationRuntimeInterfacePrerequisiteStore(path)
+    assert caught.value.__suppress_context__
+    assert "private" not in str(caught.value)
+    assert path.is_symlink()

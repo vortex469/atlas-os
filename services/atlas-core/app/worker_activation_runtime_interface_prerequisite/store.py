@@ -82,7 +82,18 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
                 raise WorkerActivationRuntimeInterfacePrerequisiteStoreError(
                     "invalid_request"
                 )
-        self.database_path = Path(database_path)
+        # Bind relative paths and symlinks once. Later working-directory or
+        # symlink changes must not redirect permanent subject reservations.
+        try:
+            self.database_path = Path(database_path).resolve()
+        except (OSError, RuntimeError):
+            raise WorkerActivationRuntimeInterfacePrerequisiteStoreError(
+                "unavailable"
+            ) from None
+        except (TypeError, ValueError):
+            raise WorkerActivationRuntimeInterfacePrerequisiteStoreError(
+                "invalid_request"
+            ) from None
         self.max_records_per_operator = max_records_per_operator
         self.max_total_records = max_total_records
         self.max_model_bytes = max_model_bytes
@@ -115,8 +126,15 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
     def _connect(self) -> Iterator[sqlite3.Connection]:
         connection = None
         try:
+            # Only explicit construction may create a journal. Reopening a
+            # missing live journal must not leave an empty replacement that a
+            # later service restart could initialize and use to replay subjects.
+            mode = "rw" if self._initialized else "rwc"
             connection = sqlite3.connect(
-                self.database_path, timeout=5, isolation_level=None
+                f"{self.database_path.as_uri()}?mode={mode}",
+                uri=True,
+                timeout=5,
+                isolation_level=None,
             )
             connection.execute("PRAGMA foreign_keys=ON")
             connection.execute("PRAGMA synchronous=FULL")

@@ -34,6 +34,15 @@ and retained bounds. Corruption closes reads and writes. Errors expose only
 closed non-retryable codes and opaque correlation fingerprints; raw keys and
 exception details are never persisted or returned.
 
+V0.58 P2 retains this boundary under the synchronized A2 deferral. Construction
+binds the journal to its resolved absolute path. Subsequent connections require
+the existing database: a missing live journal returns `unavailable` without
+creating an empty replacement. Changing the working directory or retargeting the
+original symlink cannot redirect that store instance. SQLite URI characters in
+filenames are escaped and cannot select memory mode or override connection flags.
+This is not recovery from deletion: explicit construction can still initialize a
+new path, and operators must retain the durable journal across restarts.
+
 Run tests from the repository root with the selected Python interpreter,
 `PYTHONPATH=services/atlas-core`, and `-m pytest` on this package. Persistence tests
 cover durable predecessor byte equality, two-lock checks, independent process and
