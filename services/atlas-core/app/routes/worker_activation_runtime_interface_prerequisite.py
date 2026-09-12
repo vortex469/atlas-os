@@ -67,11 +67,18 @@ async def _body(
         )
     ):
         raise HTTPException(413)
+    # ASGI exposes decoded body bytes. A forwarded transfer header must not
+    # disagree with a length header or introduce an unsupported framing mode.
+    transfers = request.headers.getlist("transfer-encoding")
+    if transfers and (lengths or transfers != ["chunked"]):
+        raise HTTPException(422)
     raw = bytearray()
     async for chunk in request.stream():
         if len(raw) + len(chunk) > MAX_CREATE_BYTES:
             raise HTTPException(413)
         raw.extend(chunk)
+    if lengths and len(raw) != int(lengths[0]):
+        raise HTTPException(422)
     try:
         return parse_create_json(bytes(raw))
     except Exception as error:

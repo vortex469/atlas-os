@@ -974,6 +974,81 @@ def test_ambiguous_headers_fail_before_read_or_reservation(
     ) == (0, 0, 0)
 
 
+async def _chunks(*parts):
+    for part in parts:
+        yield part
+
+
+@pytest.mark.parametrize(
+    "framing", ["short", "long", "zero", "conflict", "duplicate", "unsupported"]
+)
+def test_inconsistent_body_framing_cannot_access_evidence(tmp_path, facts, framing):
+    from app.worker_activation_runtime_interface_prerequisite.test_service_store import (
+        counts,
+    )
+
+    client, session, _, create, reader, url, _ = _application(tmp_path, facts)
+    raw = create.model_dump_json().encode("utf-8")
+    headers = [*_headers(session).items(), ("Content-Type", "application/json")]
+    if framing in {"short", "long", "zero", "conflict"}:
+        length = {
+            "short": len(raw) - 1,
+            "long": len(raw) + 1,
+            "zero": 0,
+            "conflict": len(raw),
+        }[framing]
+        headers.append(("Content-Length", str(length)))
+    if framing == "conflict":
+        headers.append(("Transfer-Encoding", "chunked"))
+    elif framing == "duplicate":
+        headers.extend([("Transfer-Encoding", "chunked")] * 2)
+    elif framing == "unsupported":
+        headers.append(("Transfer-Encoding", "gzip"))
+    # An iterator exercises streaming without HTTPX synthesizing Content-Length.
+    response = client.post(
+        url, content=_chunks(raw), cookies=_cookies(session), headers=headers
+    )
+    assert response.status_code == 422
+    assert response.json()["error_code"] == "invalid_request"
+    assert response.json()["retryable"] is False
+    assert _headers(session)["Idempotency-Key"] not in response.text
+    assert reader.calls == 0
+    assert counts(
+        client._app.state.worker_activation_runtime_interface_prerequisite_service._store
+    ) == (0, 0, 0)
+
+
+def test_chunked_create_remains_bounded_and_supports_exact_duplicate(tmp_path, facts):
+    client, session, _, create, reader, url, _ = _application(tmp_path, facts)
+    raw = create.model_dump_json().encode("utf-8")
+    headers = {**_headers(session), "Content-Type": "application/json"}
+    made = client.post(
+        url,
+        content=_chunks(raw[:17], raw[17:]),
+        cookies=_cookies(session),
+        headers=headers,
+    )
+    assert made.status_code == 201
+    duplicate = client.post(
+        url,
+        json=create.model_dump(mode="json"),
+        cookies=_cookies(session),
+        headers=_headers(session),
+    )
+    assert duplicate.status_code == 201
+    assert duplicate.json()["exact_duplicate"] is True
+    assert duplicate.json()["record"] == made.json()["record"]
+    assert reader.calls == 2
+    oversized = client.post(
+        url,
+        content=_chunks(b" " * 16384, raw),
+        cookies=_cookies(session),
+        headers=headers,
+    )
+    assert oversized.status_code == 413
+    assert reader.calls == 2
+
+
 def test_api_durable_lineage_restart_expiry_and_corrupt_readback(
     tmp_path, facts, request
 ):
