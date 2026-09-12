@@ -467,8 +467,11 @@ def test_no_production_or_effect_consumers():
         and "worker_activation_runtime_plan_review" in path.read_text()
     }
     assert consumers == {
-        # v0.57: pure exact predecessor evidence binding only.
+        # v0.57: exact evidence binding and isolated durable service/store only.
         "worker_activation_runtime_interface_prerequisite/contract.py",
+        "worker_activation_runtime_interface_prerequisite/readers.py",
+        "worker_activation_runtime_interface_prerequisite/service.py",
+        "worker_activation_runtime_interface_prerequisite/store.py",
         "routes/worker_activation_runtime_plan_review.py",
         "api/v1/router.py",
         "operator_auth/models.py",

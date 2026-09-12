@@ -489,7 +489,11 @@ def test_no_io_or_production_consumers():
                 continue
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
-    assert consumers == set()
+    assert consumers == {
+        "services/atlas-core/app/worker_activation_runtime_interface_prerequisite/readers.py",
+        "services/atlas-core/app/worker_activation_runtime_interface_prerequisite/service.py",
+        "services/atlas-core/app/worker_activation_runtime_interface_prerequisite/store.py",
+    }
 
 
 def test_all_envelopes_close_authority_and_validate_fingerprints(facts):

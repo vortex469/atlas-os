@@ -1,13 +1,15 @@
 # Worker Activation Runtime Interface Prerequisite v1 contract
 
-Status: **v0.57 P1 pure Core contract implemented against the synchronized
-v0.56 boundary. P2-P5 remain unimplemented; no runtime or downstream authority.**
+Status: **v0.57 P1 pure Core contract and P2 isolated durable service/store implemented
+against the synchronized v0.56 boundary. P3-P5 remain unimplemented; no runtime
+or downstream authority.**
 
 P1 adds the [closed contract and evaluator](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py),
 [independent fingerprint vectors](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/fingerprint_vectors.json)
-and hostile regressions. The Sync inspection and future P2-P5 requirements below
+and hostile regressions. P2 adds isolated durable evidence persistence. The Sync
+inspection and phase requirements below
 remain the boundary specification; historical documentation-only statements describe
-the Sync change, not the P1 implementation.
+the Sync change, not the P1/P2 implementation.
 
 ## Inspection and decision
 
@@ -112,8 +114,8 @@ are authoritative test identities, never production record identities.
 The existing P2 reader derives v0.55 status at the plan's `recorded_at`. P3 item
 GET instead returns the v0.56 record plus status evaluated at trusted current time;
 list GET returns records without paired statuses. Neither is an existing durable
-v0.56 prerequisite reader. Future P2 must add an injected owner-scoped review
-reader, derive stable v0.56 status at review `recorded_at`, and separately check
+v0.56 prerequisite reader. P2 adds an injected owner-scoped review
+reader, derives stable v0.56 status at review `recorded_at`, and separately checks
 current eligibility. Pin that stable status fingerprint in create; do not assume
 an arbitrary item-GET status fingerprint equals it. Do not rewrite historical
 embedded v0.55 status or renew expiry. Duplicate successor requests return history
@@ -272,7 +274,7 @@ to `compose.execution-smoke.override.yaml` belongs to this boundary.
 | --- | --- |
 | A1: predecessor identity/closure | Resolved for repository scope: integrated P0-P3 and subsequent P4/P5 are present at the exact baseline above. Historical external gates remain external; no remote acceptance is inferred from a local tag. |
 | A2: semantic ceiling | Resolved: exact schemas, five IDs, three findings, seven blockers and 67 false fields match the integrated Core contract and guarded API. |
-| A3: owned durable predecessor | Resolved as a design constraint: durable review get exists, but the existing prerequisite reader consumes v0.55. The new reader and stable-status binding specified above are P2 work, not an available primitive. Permanent reservation and both-lock validation are inherited unchanged. |
+| A3: owned durable predecessor | Resolved as a design constraint: durable review get exists, but the existing prerequisite reader consumes v0.55. P2 now implements the separate owner-scoped v0.56 reader and stable-status binding specified above. Permanent reservation and both-lock validation are inherited unchanged. |
 | A4: bounds/freshness | Frozen fail-closed requirement, not a claim of measured v0.57 capacity: complete expanded record/result/collection must fit 192 KiB and the inherited 30-second window. P1/P2 must prove representative and overflow cases before closure; overflow/expiry refuses, never truncates or renews. |
 | A5: distinct boundary | Resolved by this selection: a fixed explicit owner/proof inventory pinned to review adds information absent from v0.56 findings. No runtime prerequisite is satisfied and no interface is defined. |
 
@@ -284,7 +286,7 @@ below; this documentation synchronization implements none of P1-P5.
 | Phase | Responsibility under this frozen boundary |
 | --- | --- |
 | P1 | Pure immutable closed Core inventory models/evaluator, injected exact v0.56 pair and deterministic fixed mapping. Lock vectors for the frozen domains/UUID derivation and strict authority. Test recursive lineage, extras/duplicate keys, copied/constructed models, wrong owner/subject/hash, stale/future/expired evidence, refusal without marker advancement and size bounds. No I/O or runtime imports. |
-| P2 | Explicitly constructed default-off service, owner-scoped durable review reader and separate bounded append-only journal. Atomically reserve owner/key and permanent subject before append; revalidate predecessor/time under both write locks. Exact duplicates return history without predecessor reads or renewal. Post-reservation ambiguity is terminal, with no retry/repair/replacement/eviction. Test multiprocess contention, restart/expiry, incomplete reservations, partial writes/audit/response loss, corruption and unchanged predecessor bytes. Retain ceilings of 16 reservations per owner, 256 global, 192 KiB per model, one terminal audit per reservation and 256 MiB main database pages (not a filesystem quota); limits may only decrease. |
+| P2 (implemented) | Explicitly constructed default-off service, owner-scoped durable review reader and separate bounded append-only journal. Atomically reserve owner/key and permanent subject before append; revalidate predecessor/time under both write locks. Exact duplicates return history without predecessor reads or renewal. Post-reservation ambiguity is terminal, with no retry/repair/replacement/eviction. Test multiprocess contention, restart/expiry, incomplete reservations, partial writes/audit/response loss, corruption and unchanged predecessor bytes. Retain ceilings of 16 reservations per owner, 256 global, 192 KiB per model, one terminal audit per reservation and 256 MiB main database pages (not a filesystem quota); limits may only decrease. |
 | P3 | Minimum guarded candidate/owner-scoped evidence POST/list GET/item GET, using the exact frozen routes/permissions. Dedicated evaluate/read permissions, trusted Origin/CSRF, strict bounded JSON and idempotency, redacted failures and response reparsing/binding. Missing service and disabled creation fail closed. Test authentication, foreign/missing equivalence, hostile responses and exact OpenAPI surface. No production construction or enabling setting. |
 | P4 | Nested GET-only Mission Control evidence under the exact v0.56 review. Validate closed response, immutable predecessor, owner/IDs, blockers, inventory and authority; Core owns hashes/time eligibility. Distinguish loading/missing/unavailable/expired, reset on scope change and ignore late responses. Explain that prerequisites remain incomplete; collapse technical details. No create/start action, polling, browser persistence, standalone route or navigation. Run hostile fixtures, scope-race tests, build and lint. |
 | P5 | Prove durable v0.56-to-v0.57 byte-exact lineage, permanent no-replay, strict authority, default-off construction and exact Core/API/UI consumers with zero Agent/worker consumers. Run P1-P4 and historical closure/isolation/Home Assistant gates, documentation consistency and hostile diff review. Record actual results and remaining external gates; no publication, deployment or runtime enablement. |
@@ -303,3 +305,24 @@ review the complete diff adversarially and create a real local documentation
 commit. Results belong in the [release checklist](../RELEASE_CHECKLIST.md).
 These tests validate the synchronized prerequisite claims against the checkout;
 they prove no v0.57 implementation or external release/production readiness.
+
+## P2 durable implementation
+
+The [service](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/service.py),
+[review reader](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/readers.py)
+and [journal](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/store.py)
+implement the P2 boundary above with a separate application-ID-57 database.
+Construction is explicit and creation defaults off. The reader preserves durable
+v0.56 bytes and stable recorded-at status. Both write locks validate lineage and
+trusted time; committed reservations permanently deny replay, including incomplete
+appends and expired history. Exact duplicates bypass predecessor reads.
+
+Retention refuses new reservations at the frozen ceilings without eviction.
+Schema, indexes, canonical evidence, ownership, hashes and bounds are checked on
+every connection. Corruption closes both reads and writes. Terminal record/audit
+writes are atomic, failure audits are best effort, and all public errors remain
+redacted and non-retryable. The
+[persistence regressions](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/test_service_store.py)
+exercise these guarantees with real predecessor storage and process contention.
+No route, production composition, Agent/worker consumer or downstream authority
+is added. Actual test results are recorded in the release checklist.

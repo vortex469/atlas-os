@@ -1,5 +1,58 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.57 P2 durable Core interface prerequisite evidence (2026-09-12)
+
+Implemented an explicitly constructed, default-off Core service, owner-scoped
+v0.56 review reader and separate application-ID-57 SQLite journal in
+`worker_activation_runtime_interface_prerequisite`. The reader preserves complete
+durable review bytes and derives stable status at review `recorded_at`, while
+checking current eligibility separately. Create rejects a status projected at a
+different time. Both journal write locks revalidate exact lineage and trusted time.
+
+FULL synchronous transactions commit the permanent owner/key and
+owner/candidate/review reservation before terminal record/audit append. Exact
+duplicates return immutable history and current status without predecessor reads.
+Incomplete reservations survive restart, expiry, append/audit failure and response
+loss; they never resume or release capacity. Retention limits only decrease from
+16 reservations per owner, 256 globally, 192 KiB per complete model and 256 MiB
+main database pages. There is no eviction or filesystem-quota claim.
+
+Focused tests passed:
+
+- Using the selected interpreter from the managed worktree, with
+  `PYTHONPATH=services/atlas-core` and `-m pytest`, the complete
+  `services/atlas-core/app/worker_activation_runtime_interface_prerequisite`
+  package: **160 passed, 326 warnings in 1405.43s**.
+- The additional lost-terminal-commit-acknowledgement regression:
+  **1 passed, 92 deselected, 327 warnings in 53.07s**. It proves a successful
+  evidence commit followed by an error retains one recorded audit, no failure
+  audit, and duplicate-only readback after restart.
+- Exact v0.55/v0.56/v0.57 consumer scans: **8 passed, 468 deselected**.
+  Historical installation execution admission consumer/import guards:
+  **9 passed, 12 deselected**. The FingerprintV1-only restriction is unchanged.
+- Ruff lint for all changed Python files, new-package format checks,
+  documentation link checks and `git diff --check` passed.
+
+Hostile review passed: reviewed the complete implementation diff after the focused
+suite passed. Checked atomic owner/key/subject uniqueness, both-lock ownership and
+time validation, stable status binding, clock rollback, permanent incomplete
+reservations, schema/index/model/hash corruption closure, lowered-only bounds,
+redaction and absence of raw keys, partial writes, lost commit acknowledgements,
+response loss, independent-process contention and a deterministic pause between
+reservation and append. Complete predecessor bytes, all seven blockers, fixed
+inventory and 67 false authority/material fields remain intact. No unresolved
+findings remain within P2 scope.
+
+Only exact new evidence files were added to historical consumer allowlists. No
+historical production code, API, UI, production composition, Agent or worker
+consumer was added or changed. P3-P5 remain separate work; no runtime, start,
+contact, execution, deployment or publication authority is enabled.
+
+The managed Git index rejected staging as read-only. The real task commit is
+preserved with parent `f4c1632f` in task-local metadata at
+`.task-evidence/v057-p2.git`, branch `v057-p2`, and exported as
+`.task-evidence/v057-p2.bundle`. The managed branch itself could not be advanced.
+
 ## Atlas v0.57 P1 pure Core inventory contract (2026-09-12)
 
 Implemented the synchronized closed immutable Core models and pure evaluator in
