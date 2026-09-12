@@ -10,8 +10,19 @@ vi.mock("./atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(collection: unknown = inventoryCollection, result: unknown = inventoryResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: collection }).mockResolvedValueOnce({ data: result });
 }
-describe("v0.57 guarded interface prerequisite reader", () => {
+describe("v0.58 retained guarded interface prerequisite reader", () => {
     beforeEach(() => vi.resetAllMocks());
+    it.each(["collection", "listedRecord", "result", "record", "status"] as const)("rejects synthesized successor authority in %s", async (section) => {
+        for (const value of [true, false]) {
+            vi.resetAllMocks();
+            const collection = structuredClone(inventoryCollection), result = structuredClone(inventoryResult);
+            const target = section === "collection" ? collection : section === "listedRecord" ? collection.items[0] : section === "result" ? result : result[section];
+            Object.assign(target, { worker_activation_runtime_interface_admitted: value });
+            responses(collection, result);
+            await expect(getWorkerActivationRuntimeInterfacePrerequisite(parentAdmission)).rejects.toThrow(/unavailable/);
+            expect(atlas.get).toHaveBeenCalledTimes(section === "collection" || section === "listedRecord" ? 1 : 2);
+        }
+    });
     it("lists owned evidence then reads the exact interface prerequisite status with credentials", async () => {
         responses();
         expect(await getWorkerActivationRuntimeInterfacePrerequisite(parentAdmission)).toMatchObject({ lifecycle: "active", runtimeInterfacePrerequisiteId: inventoryResult.record.runtime_interface_prerequisite_id });
