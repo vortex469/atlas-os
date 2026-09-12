@@ -1,5 +1,48 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.57 P3 guarded Core API evidence (2026-09-12)
+
+Implemented only candidate-scoped POST/list GET and item GET for runtime interface
+prerequisite evidence, with dedicated authenticated owner permissions. The adapter
+requires trusted Origin/CSRF, one bounded visible-ASCII idempotency key and strict
+16 KiB/depth-16 JSON. It reparses complete responses within the inherited 192 KiB
+bound, checks owner/candidate/item or exact create pins/key, and returns closed,
+non-retryable redacted errors. Missing service returns 503 and disabled creation
+returns 409. Production startup constructs no service and adds no enabling setting;
+all fixed-false downstream authority and seven blockers remain unchanged.
+
+Focused tests passed:
+
+- New `routes/test_worker_activation_runtime_interface_prerequisite.py`: all
+  **41 cases**, completed in three disjoint selections: guard/response checks
+  **31 passed, 10 deselected in 631.75s**; idempotency/ambiguous headers/durable
+  readback/foreign responses/size bounds **9 passed, 32 deselected in 281.82s**;
+  inventory removal **1 passed, 40 deselected in 27.72s**.
+- Exact v0.55/v0.56/v0.57 consumer scans: **9 passed, 470 deselected in 2.76s**.
+- Historical installation-admission consumer restrictions and closed permission
+  check: **3 passed, 13 deselected in 0.80s**. The FingerprintV1-only restriction
+  remains unchanged.
+- Selected repository Python interpreter, `-m pytest`, repository working directory,
+  `PYTHONPATH=services/atlas-core`, and `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` were used.
+  Warnings are inherited Pydantic schema-shadowing and client deprecation warnings.
+- Changed Python lint, new-route/test formatting, local architecture links and
+  `git diff --check` passed.
+
+An earlier diagnostic API process exited 139 with a traceback timer enabled;
+it is not counted as a passing gate. All 41 cases subsequently completed in the
+separate runs above without that timer; no root cause for the process exit is
+claimed. A supplementary legacy threaded TestClient auth selection stalled and
+was interrupted; no full legacy operator-auth-suite pass is claimed. The new
+thread-free API suite validates the required authentication/CSRF/permission guards.
+
+Hostile review passed: reviewed the staged implementation after the completed test
+runs for owner/candidate isolation, exact lineage and key binding, strict recursive
+response reparsing, permanent replay refusal, expired historical duplicates,
+request/collection/response bounds, redacted exceptions, unchanged authority,
+exact route/consumer allowlists and missing production construction. No remaining
+P3 defect was found. P4 UI and P5 release closure remain separate; no deployment,
+publication or runtime enablement is claimed.
+
 ## Atlas v0.57 P2 durable Core interface prerequisite evidence (2026-09-12)
 
 Implemented an explicitly constructed, default-off Core service, owner-scoped

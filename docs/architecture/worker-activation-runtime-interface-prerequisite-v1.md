@@ -1,15 +1,17 @@
 # Worker Activation Runtime Interface Prerequisite v1 contract
 
-Status: **v0.57 P1 pure Core contract and P2 isolated durable service/store implemented
-against the synchronized v0.56 boundary. P3-P5 remain unimplemented; no runtime
-or downstream authority.**
+Status: **v0.57 P1 pure Core contract, P2 isolated durable service/store and P3
+guarded API implemented against the synchronized v0.56 boundary. P4-P5 remain
+unimplemented; no runtime or downstream authority.**
 
 P1 adds the [closed contract and evaluator](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py),
 [independent fingerprint vectors](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/fingerprint_vectors.json)
-and hostile regressions. P2 adds isolated durable evidence persistence. The Sync
-inspection and phase requirements below
+and hostile regressions. P2 adds isolated durable evidence persistence. P3 adds the
+[guarded API](../../services/atlas-core/app/routes/worker_activation_runtime_interface_prerequisite.py)
+and [API/security regressions](../../services/atlas-core/app/routes/test_worker_activation_runtime_interface_prerequisite.py).
+The Sync inspection and phase requirements below
 remain the boundary specification; historical documentation-only statements describe
-the Sync change, not the P1/P2 implementation.
+the Sync change, not the P1/P2/P3 implementation.
 
 ## Inspection and decision
 
@@ -121,7 +123,7 @@ an arbitrary item-GET status fingerprint equals it. Do not rewrite historical
 embedded v0.55 status or renew expiry. Duplicate successor requests return history
 without predecessor reads; fresh creation revalidates under both journal write locks.
 
-## Frozen v0.57 contract and API scope (Core P1 implemented; API remains future)
+## Frozen v0.57 contract and API scope (Core P1-P3 implemented)
 
 The schema prefix is `worker-activation-runtime-interface-prerequisite`.
 The record schema is that prefix plus `-v1`; companion schemas append
@@ -185,7 +187,7 @@ oversized and wrong-content-type requests are 422/413/415. Errors are redacted,
 non-retryable; no queries or GET bodies are accepted. Responses are reparsed and
 bound to owner/candidate, item ID or exact create pins and key fingerprint.
 
-The **future v0.57** API has exactly POST/list GET at
+The **implemented v0.57** API has exactly POST/list GET at
 `/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites`
 and item GET `/{runtime_interface_prerequisite_id}`. Use the corresponding frozen
 successor create/result/collection/error schemas, 201 POST semantics and the same
@@ -287,7 +289,7 @@ below; this documentation synchronization implements none of P1-P5.
 | --- | --- |
 | P1 | Pure immutable closed Core inventory models/evaluator, injected exact v0.56 pair and deterministic fixed mapping. Lock vectors for the frozen domains/UUID derivation and strict authority. Test recursive lineage, extras/duplicate keys, copied/constructed models, wrong owner/subject/hash, stale/future/expired evidence, refusal without marker advancement and size bounds. No I/O or runtime imports. |
 | P2 (implemented) | Explicitly constructed default-off service, owner-scoped durable review reader and separate bounded append-only journal. Atomically reserve owner/key and permanent subject before append; revalidate predecessor/time under both write locks. Exact duplicates return history without predecessor reads or renewal. Post-reservation ambiguity is terminal, with no retry/repair/replacement/eviction. Test multiprocess contention, restart/expiry, incomplete reservations, partial writes/audit/response loss, corruption and unchanged predecessor bytes. Retain ceilings of 16 reservations per owner, 256 global, 192 KiB per model, one terminal audit per reservation and 256 MiB main database pages (not a filesystem quota); limits may only decrease. |
-| P3 | Minimum guarded candidate/owner-scoped evidence POST/list GET/item GET, using the exact frozen routes/permissions. Dedicated evaluate/read permissions, trusted Origin/CSRF, strict bounded JSON and idempotency, redacted failures and response reparsing/binding. Missing service and disabled creation fail closed. Test authentication, foreign/missing equivalence, hostile responses and exact OpenAPI surface. No production construction or enabling setting. |
+| P3 (implemented) | Minimum guarded candidate/owner-scoped evidence POST/list GET/item GET, using the exact frozen routes/permissions. Dedicated evaluate/read permissions, trusted Origin/CSRF, strict bounded JSON and idempotency, redacted failures and response reparsing/binding. Missing service and disabled creation fail closed. Test authentication, foreign/missing equivalence, hostile responses and exact OpenAPI surface. No production construction or enabling setting. |
 | P4 | Nested GET-only Mission Control evidence under the exact v0.56 review. Validate closed response, immutable predecessor, owner/IDs, blockers, inventory and authority; Core owns hashes/time eligibility. Distinguish loading/missing/unavailable/expired, reset on scope change and ignore late responses. Explain that prerequisites remain incomplete; collapse technical details. No create/start action, polling, browser persistence, standalone route or navigation. Run hostile fixtures, scope-race tests, build and lint. |
 | P5 | Prove durable v0.56-to-v0.57 byte-exact lineage, permanent no-replay, strict authority, default-off construction and exact Core/API/UI consumers with zero Agent/worker consumers. Run P1-P4 and historical closure/isolation/Home Assistant gates, documentation consistency and hostile diff review. Record actual results and remaining external gates; no publication, deployment or runtime enablement. |
 

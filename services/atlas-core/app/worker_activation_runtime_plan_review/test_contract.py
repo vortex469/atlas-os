@@ -470,7 +470,8 @@ def test_no_io_or_production_consumers():
             if any(marker in source.read_text() for marker in markers):
                 consumers.add(source.relative_to(root).as_posix())
     assert consumers == {
-        # v0.57: exact evidence binding and isolated durable service/store only.
+        # v0.57: exact evidence binding, isolated storage and guarded API.
+        "services/atlas-core/app/routes/worker_activation_runtime_interface_prerequisite.py",
         "services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py",
         "services/atlas-core/app/worker_activation_runtime_interface_prerequisite/readers.py",
         "services/atlas-core/app/worker_activation_runtime_interface_prerequisite/service.py",
