@@ -20,3 +20,22 @@ for (const width of [320, 768, 1440]) {
         expect(rejectedMutationRequests).toEqual([]);
     });
 }
+
+test('narrow overview preserves unknown evidence and distinct attention conditions', async ({ page, rejectedMutationRequests }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.route('**/health', route => route.fulfill({ json: {
+        atlas: null, services: { API: { provider_id: 'proxmox', status: 'offline', message: 'Endpoint offline' } },
+    } }));
+    await page.route('**/providers', route => route.fulfill({ json: [
+        { id: 'proxmox', name: 'Proxmox', health: { status: 'warning', message: 'Capacity limited' } },
+    ] }));
+    await page.goto('/');
+    const attention = page.getByRole('region', { name: 'Operator Attention' });
+    await expect(attention.getByText('Endpoint offline')).toBeVisible();
+    await expect(attention.getByText('Capacity limited')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Atlas overall state' }).getByText('Unknown', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await attention.getByRole('link', { name: 'API', exact: true }).click();
+    await expect(page).toHaveURL(/\/providers\/proxmox$/);
+    expect(rejectedMutationRequests).toEqual([]);
+});

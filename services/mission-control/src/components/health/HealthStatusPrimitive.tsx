@@ -94,7 +94,7 @@ export function HealthStatusBadge({
     lastUpdated,
     isStale,
 }: HealthStatusProps) {
-    const config = stateConfig[state] ?? stateConfig.unknown;
+    const config = isStale ? stateConfig.unknown : stateConfig[state] ?? stateConfig.unknown;
 
     return (
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -103,7 +103,8 @@ export function HealthStatusBadge({
                 data-mc-status={config.variant.replace("mc-status-", "")}
             >
                 <span className="mc-status-dot" aria-hidden="true" />
-                {title || config.label}
+                {isStale ? config.label : title || config.label}
+                {isStale && " · Stale evidence"}
             </span>
 
             {reason && (
@@ -166,7 +167,7 @@ export function HealthStatusCard({
                     <div className="mt-2">
                         <HealthStatusBadge
                             state={state}
-                            title={title ? undefined : undefined}
+                            title={undefined}
                             reason={reason}
                             lastUpdated={lastUpdated}
                             isStale={isStale}
