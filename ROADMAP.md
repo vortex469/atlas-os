@@ -82,7 +82,7 @@ replace those gates. Current evidence and exact integrated commit identities are
 in the [release checklist](docs/RELEASE_CHECKLIST.md). No release tag, publication,
 deployment, production wiring or enablement is claimed.
 
-## v0.58 Sync — repository boundary frozen; admission P1-P5 deferred
+## v0.58 P5 — retained boundary hardened; release closure open
 
 The [normative v0.58 contract](docs/architecture/v0.58-runtime-interface-admission-provisional.md)
 reconciles P0 with integrated v0.57 Core/API at `9f15958e`. Exactly one boundary
@@ -96,11 +96,23 @@ requires **deferring admission P1-P5**. No v0.58 marker, schema, route, consumer
 runtime implementation or authority is added. A separately justified normative
 decision is required to reopen implementation; release numbering supplies none.
 
-This documentation synchronization completes v0.58 / 02 after integrated / 01.
-It does not close v0.57's outstanding UI test/build/lint release gates, publish a
-release or enable production. Actual validation and the local commit disposition
-are recorded in [Sync evidence](docs/architecture/v0.58-sync-validation.md) and the
-[release checklist](docs/RELEASE_CHECKLIST.md).
+Sync and P1-P4 are integrated through `f3609db5`. P1 pins the stable predecessor
+status; P2 binds the durable journal path and refuses missing live storage without
+recreation; P3 rejects ambiguous request framing; P4 keeps technical evidence
+collapsed and rejects invented successor authority. These harden the retained
+v0.57 boundary and do not implement the deferred admission stage.
+
+P5 adds release regressions for zero deferred-admission production surfaces,
+exact synchronized inventory/bounds and Core rejection of invented successor
+fields in the shared UI golden. Existing closure locks retain the exact twelve
+production consumers; no historical exclusion or allowed path changes.
+
+**Release closure remains open.** P4's historical focused UI checks passed, but
+this P5 worktree cannot restore dependencies (`EAI_AGAIN`, offline `ENOTCACHED`),
+and required full Mission Control tests/build/lint cannot run successfully.
+The [P5 evidence](docs/architecture/v0.58-p5-validation.md) and
+[release checklist](docs/RELEASE_CHECKLIST.md) record validation and limitations.
+No release, deployment, production construction or execution authority is claimed.
 
 ### Historical baseline context
 

@@ -1,5 +1,45 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.58 P5 — retained boundary regressions; release closure open (2026-09-13)
+
+**Do not close v0.58.** Sync/P1-P4 are integrated at
+`f3609db51938b8df7343bcb0ca38d97f2d17f06e`. The selected boundary remains the
+Core-owned v0.57 interface-prerequisite inventory; admission P1-P5 are deferred
+under A2. The [normative contract](architecture/v0.58-runtime-interface-admission-provisional.md)
+now records all retained-boundary hardening. Historical phase evidence below is
+preserved; P4's focused UI success is not a current full-suite P5 result.
+
+- [x] Synchronize ROADMAP, changelog and normative v0.58 documentation with
+  integrated stable-status, journal-path, API-framing and UI hardening.
+- [x] Add release regressions for zero deferred-admission production consumers,
+  exact seven inventory rows and retained bounds; reject invented successor
+  authority in collection/listed-record/result/record/status, even when false.
+- [x] Preserve exact twelve v0.57 production consumers, zero Agent/worker
+  consumers, GET-only Mission Control and blocked downstream execution/effects.
+  No historical scanner, allowlist or exclusion changes.
+- [x] Full retained Core contract/closure/service/store/API: 221 passed. New P5
+  regressions: 12 passed. Historical closure, Mission Control isolation and
+  installation release isolation: 156 passed.
+- [x] Core RC1 changed-file Ruff gate: 576 files passed. The optional whole-tree
+  Ruff run reports 84 existing findings outside this diff; it is not claimed clean.
+- [x] Agent isolation: 6 passed. Worker config/health/ledger: 24 passed and
+  1 API test deselected on confirmation; the initial identical run had a SQLite
+  WAL initialization race (23 passed, 1 failed). Keep this flake visible.
+- [x] Verify all twelve selected v0.57/v0.58 phase commits are ancestors.
+- [x] Hostile review of the six-file diff, 28 local link targets, Ruff formatting
+  and staged/unstaged whitespace checks passed. Historical evidence is unchanged.
+- [ ] Full required Mission Control tests, build and lint in the P5 worktree.
+- [ ] Repository release closure. No tag, publication, deployment or enablement.
+
+Environment error: npm registry DNS returns `EAI_AGAIN`; offline installation
+fails `ENOTCACHED`. Vitest and ESLint are unavailable; build cannot resolve
+Vite/Node types and falls back to an incompatible TypeScript. All three required
+UI commands were attempted and failed. Restore the locked dependencies and run
+full UI tests/build/lint before closure. No dependency manifest or lockfile changed.
+
+See [P5 validation evidence](architecture/v0.58-p5-validation.md) for exact commands,
+Core persistence/API results, hostile review and local commit disposition.
+
 ## Atlas v0.58 Sync — retained Core/API boundary freeze (2026-09-12)
 
 The [normative v0.58 contract](architecture/v0.58-runtime-interface-admission-provisional.md)

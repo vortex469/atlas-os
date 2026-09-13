@@ -6,6 +6,21 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.58 P5 - Retained Interface Evidence Closure Regressions (closure open)
+
+- Synchronized the roadmap and normative contract with integrated Sync/P1-P4:
+  stable predecessor-status binding, durable journal path binding, guarded API
+  framing and nested non-authoritative Mission Control evidence.
+- Added release locks for zero deferred admission surfaces, exact inventory and
+  persistence bounds, and rejection of invented successor authority in all five
+  Core/UI golden envelopes, including false-valued fields.
+- Retained exact v0.57 lineage, twelve production consumers and blocked downstream
+  authority; no historical isolation exclusions or production consumers changed.
+- Required P5 UI gates remain blocked by unavailable dependencies. See
+  [P5 validation evidence](docs/architecture/v0.58-p5-validation.md) for observed
+  checks and limitations. Admission remains deferred under A2; no release or
+  runtime enablement is claimed.
+
 #### v0.57 P5 - Interface Prerequisite Closure Regressions (closure open)
 
 - Added durable v0.56 lineage, default-off, strict authority, restart/expiry
