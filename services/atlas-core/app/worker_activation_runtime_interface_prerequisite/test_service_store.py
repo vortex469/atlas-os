@@ -1162,3 +1162,82 @@ def test_v059_service_get_rejects_invalid_scope_before_store(
     }
     error(service.get(**{**arguments, field: value}), "invalid_request")
     assert counts(journal) == (0, 0, 0)
+
+
+@pytest.mark.parametrize("path", ["lookup", "append_duplicate", "append_created"])
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "none",
+        "owner",
+        "candidate",
+        "key",
+        "review",
+        "record_pin",
+        "status_pin",
+        "expiry",
+        "authority",
+    ],
+)
+def test_v059_create_independently_binds_store_readback(facts, path, damage):
+    record = c.build_runtime_interface_prerequisite(
+        facts, idempotency_key="v057-service-idempotency"
+    )
+    if damage == "authority":
+        record = record.model_copy(update={"evidence_only": False})
+
+    class ReadbackStore:
+        def resolve_idempotency(self, **kwargs):
+            return record if path == "lookup" else None
+
+        def append(self, **kwargs):
+            assert path != "lookup"
+            return record, path == "append_created"
+
+    reader = Reader(facts)
+    reader.hook = lambda _: pytest.fail("readback must not read predecessor")
+    service = WorkerActivationRuntimeInterfacePrerequisiteService(
+        prerequisite_reader=reader,
+        store=ReadbackStore(),
+        clock=Clock(facts),
+        enabled=True,
+    )
+    arguments = {
+        "authenticated_operator_id": facts.operator_id,
+        "permission_verified": True,
+        "candidate_record_id": facts.candidate_record_id,
+        "idempotency_key": "v057-service-idempotency",
+        "correlation_id": "private-readback",
+    }
+    changes = {}
+    if damage == "owner":
+        arguments["authenticated_operator_id"] = "foreign"
+    elif damage == "candidate":
+        arguments["candidate_record_id"] = "00000000-0000-4000-8000-000000000000"
+    elif damage == "key":
+        arguments["idempotency_key"] = "different-private-key"
+    elif damage == "review":
+        changes["runtime_plan_review_id"] = "00000000-0000-5000-8000-000000000000"
+    elif damage == "record_pin":
+        changes["runtime_plan_review_record_fingerprint"] = c.fingerprint(
+            "record", "foreign"
+        )
+    elif damage == "status_pin":
+        changes["status_fingerprint"] = c.fingerprint("status", "foreign")
+    elif damage == "expiry":
+        changes["valid_until"] = "2099-01-01T00:00:00Z"
+    request = c.WorkerActivationRuntimeInterfacePrerequisiteCreateV1.model_validate(
+        facts.create.model_copy(update=changes)
+    )
+    result = service.create(request, **arguments)
+    if damage == "none":
+        assert result.record == record
+        assert result.exact_duplicate is (path != "append_created")
+    elif damage == "authority":
+        error(
+            result,
+            "append_indeterminate" if path == "append_created" else "invalid_request",
+        )
+    else:
+        error(result, "fingerprint_mismatch")
+    assert reader.calls == 0

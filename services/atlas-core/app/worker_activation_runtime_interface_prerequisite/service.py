@@ -80,13 +80,38 @@ class WorkerActivationRuntimeInterfacePrerequisiteService:
             request = c.request_fingerprint(
                 operator_id=operator, candidate_record_id=candidate, create=create
             )
+
+            def checked_result(record, duplicate):
+                # Reparse even injected/copy-constructed store results, and bind
+                # both readback paths to this exact request without consulting
+                # the predecessor or renewing the retained evidence timestamp.
+                record = (
+                    c.WorkerActivationRuntimeInterfacePrerequisiteV1.model_validate(
+                        record
+                    )
+                )
+                if (
+                    record.operator_id != operator
+                    or record.candidate_record_id != candidate
+                    or record.idempotency_key_fingerprint != idem
+                    or c.build_create(
+                        receipt=record.worker_activation_runtime_plan_review,
+                        receipt_status=record.worker_activation_runtime_plan_review_status,
+                    )
+                    != create
+                ):
+                    raise WorkerActivationRuntimeInterfacePrerequisiteStoreError(
+                        "fingerprint_mismatch"
+                    )
+                return self._result(record, duplicate)
+
             existing = self._store.resolve_idempotency(
                 operator_id=operator,
                 idempotency_key_fingerprint=idem.value,
                 request_fingerprint=request.value,
             )
             if existing is not None:
-                return self._result(existing, True)
+                return checked_result(existing, True)
             received_at = server_now(self._clock)
             reservation = c._signed(
                 c.WorkerActivationRuntimeInterfacePrerequisiteSubjectReservationV1,
@@ -188,7 +213,7 @@ class WorkerActivationRuntimeInterfacePrerequisiteService:
                 correlation_fingerprint=self._correlation(correlation_id),
             )
             appended = created
-            return self._result(record, not created)
+            return checked_result(record, not created)
         except WorkerActivationRuntimeInterfacePrerequisiteStoreError as error:
             return self._failure(error.code, correlation_id)
         except Exception:  # noqa: BLE001 - dependency and persisted details stay redacted
