@@ -596,7 +596,13 @@ def test_all_envelopes_close_authority_and_validate_fingerprints(facts):
         (
             collection,
             "collection_fingerprint",
-            c.collection_fingerprint,
+            # Forge independently: the bounded model helper now rejects this
+            # oversized duplicate before hashing. Still test model validation
+            # against a correctly rehashed hostile envelope.
+            lambda raw: c.fingerprint(
+                "collection",
+                {k: v for k, v in raw.items() if k != "collection_fingerprint"},
+            ),
             {"items": (record, record), "count": 2},
         ),
         (
@@ -694,6 +700,41 @@ def test_v059_shared_graph_expansion_is_bounded_before_serialization(container):
     assert refused(forged) == first
     assert "do-not-echo" not in first.model_dump_json()
     assert first.blockers == ("invalid_request",)
+
+
+@pytest.mark.parametrize("large_key", [False, True])
+def test_v059_string_expansion_is_bounded_before_serialization(large_key):
+    visits = 0
+
+    class CountedDict(dict):
+        def items(self):
+            nonlocal visits
+            visits += 1
+            return super().items()
+
+    secret = "do-not-echo" * 1024
+    leaf = CountedDict({secret: None} if large_key else {"secret": secret})
+    graph = [leaf] * c.MAX_MODEL_BYTES
+    with pytest.raises(ValueError, match="contract envelope exceeds bound"):
+        c._plain(graph)
+    assert 0 < visits < 32
+    raw = {RECEIPT: graph, STATUS: {}}
+    result = refused(raw)
+    forged = c.WorkerActivationRuntimeInterfacePrerequisiteValidationInputV1.model_construct(
+        **raw
+    )
+    assert refused(forged) == result
+    assert result.blockers == ("invalid_request",)
+    assert secret not in result.model_dump_json()
+    assert graph[0] is graph[-1] is leaf
+
+
+@pytest.mark.parametrize("text", ["ascii", "é", "😀", "\"\\\n"])
+def test_v059_string_budget_preserves_valid_json_boundary(text, monkeypatch):
+    source = {text: [text, text]}
+    encoded = c.canonical_json(source)
+    monkeypatch.setattr(c, "MAX_MODEL_BYTES", len(encoded))
+    assert c.canonical_json(c._plain(source)) == encoded
 
 
 def test_v059_shared_valid_evidence_preserves_canonical_bytes(facts):

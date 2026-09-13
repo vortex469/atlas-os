@@ -55,21 +55,32 @@ def _plain(value: Any, depth: int = 0) -> Any:
     """Reparse even model_construct/model_copy objects, including injected extras."""
     # Bound expansion before allocating the complete plain tree. A small graph
     # with repeated references can otherwise expand exponentially before the
-    # serialized byte check runs. Every visited value needs at least one JSON
-    # byte, so this lower bound cannot reject an envelope within the frozen cap.
+    # serialized byte check runs. Charge string contents and object keys too:
+    # repeated large strings can exceed the byte cap with very few values.
+    # Character counts are lower bounds on UTF-8 JSON bytes, so this cannot
+    # reject an envelope within the frozen cap.
     remaining = MAX_MODEL_BYTES
 
-    def visit(item: Any, level: int) -> Any:
+    def charge(size: int) -> None:
         nonlocal remaining
-        remaining -= 1
+        remaining -= size
         if remaining < 0:
             raise ValueError("contract envelope exceeds bound")
+
+    def visit(item: Any, level: int) -> Any:
+        charge(1 + len(item) if isinstance(item, str) else 1)
         if level > 128:
             raise ValueError("contract nesting exceeds bound")
         if isinstance(item, BaseModel):
             item = {**item.__dict__, **(item.__pydantic_extra__ or {})}
         if isinstance(item, dict):
-            return {key: visit(child, level + 1) for key, child in item.items()}
+            result = {}
+            for key, child in item.items():
+                if not isinstance(key, str):
+                    raise TypeError("JSON object keys must be strings")
+                charge(len(key) + 1)
+                result[key] = visit(child, level + 1)
+            return result
         if isinstance(item, tuple | list):
             return type(item)(visit(child, level + 1) for child in item)
         return item
