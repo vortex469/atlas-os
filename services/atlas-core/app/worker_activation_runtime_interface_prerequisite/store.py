@@ -194,12 +194,27 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
                 ):
                     raise ValueError("bound")
                 columns = (
-                    ("record_json", "audit_json")
+                    ("subject", "record_json", "audit_json")
                     if table == "evidence"
                     else (
-                        "reservation_json" if table == "reservations" else "audit_json",
+                        (
+                            "subject",
+                            "operator_id",
+                            "candidate_record_id",
+                            "runtime_plan_review_id",
+                            "idem",
+                            "request",
+                            "reservation_json",
+                        )
+                        if table == "reservations"
+                        else ("subject", "audit_json")
                     )
                 )
+                # Check every selected cell inside SQLite before materializing
+                # rows in Python. Corrupt denormalized indexes can be much
+                # larger than their otherwise bounded JSON envelope (or BLOBs).
+                # Every valid index is contained in that envelope, so this
+                # ceiling does not reduce the accepted contract.
                 for column in columns:
                     if connection.execute(
                         f"SELECT 1 FROM {table} WHERE typeof({column}) != 'text' "

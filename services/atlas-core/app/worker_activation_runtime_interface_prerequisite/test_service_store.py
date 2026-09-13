@@ -1039,7 +1039,9 @@ def test_sqlite_uri_metacharacters_remain_durable_literal_paths(tmp_path, name):
     assert counts(journal) == (0, 0, 0)
     before = path.read_bytes()
     restarted = type(journal)(path)
-    assert restarted.list_owned(operator_id="owner", candidate_record_id="missing") == ()
+    assert (
+        restarted.list_owned(operator_id="owner", candidate_record_id="missing") == ()
+    )
     assert path.read_bytes() == before
 
 
@@ -1053,3 +1055,110 @@ def test_path_resolution_failure_is_redacted(tmp_path):
     assert caught.value.__suppress_context__
     assert "private" not in str(caught.value)
     assert path.is_symlink()
+
+
+@pytest.mark.parametrize(
+    "table,column",
+    [
+        ("reservations", "subject"),
+        ("reservations", "operator_id"),
+        ("reservations", "candidate_record_id"),
+        ("reservations", "runtime_plan_review_id"),
+        ("reservations", "idem"),
+        ("reservations", "request"),
+        ("evidence", "subject"),
+        ("failures", "subject"),
+    ],
+)
+@pytest.mark.parametrize("payload", ["oversized", "blob"])
+def test_v059_index_corruption_is_bounded_before_python_decode(
+    tmp_path, monkeypatch, table, column, payload
+):
+    journal = WorkerActivationRuntimeInterfacePrerequisiteStore(
+        tmp_path / "index.sqlite"
+    )
+    # Deliberately malformed rows isolate the SQL preflight: no recursive model
+    # decoding or Python materialization of an oversized index is permitted.
+    with sqlite3.connect(journal.database_path) as connection:
+        connection.execute(
+            "INSERT INTO reservations VALUES ('s','o','c','r','i','q','{}')"
+        )
+        if table == "evidence":
+            connection.execute("INSERT INTO evidence VALUES ('s','{}','{}')")
+        if table == "failures":
+            connection.execute("INSERT INTO failures VALUES ('s','{}')")
+        value = "x" * (c.MAX_MODEL_BYTES + 1) if payload == "oversized" else b"s"
+        connection.execute(f"UPDATE {table} SET {column}=?", (value,))
+
+    def no_decode(*args):
+        pytest.fail("corrupt indexes must be rejected before decoding any row")
+
+    monkeypatch.setattr(type(journal), "_decode", no_decode)
+    before = journal.database_path.read_bytes()
+    with pytest.raises(
+        WorkerActivationRuntimeInterfacePrerequisiteStoreError, match="^store_corrupt$"
+    ):
+        journal.list_owned(operator_id="o", candidate_record_id="c")
+    with pytest.raises(
+        WorkerActivationRuntimeInterfacePrerequisiteStoreError, match="^store_corrupt$"
+    ):
+        type(journal)(journal.database_path)
+    assert journal.database_path.read_bytes() == before
+
+
+@pytest.mark.parametrize("field", ["operator", "candidate", "id"])
+def test_v059_service_get_rechecks_exact_owned_store_result(tmp_path, facts, field):
+    service, journal, _, _ = setup(tmp_path, facts)
+    record = c.build_runtime_interface_prerequisite(
+        facts, idempotency_key="v059-owned-reader-key"
+    )
+
+    class WrongScopeStore:
+        def get(self, **kwargs):
+            return record
+
+    service._store = WrongScopeStore()
+    arguments = {
+        "authenticated_operator_id": facts.operator_id,
+        "permission_verified": True,
+        "candidate_record_id": facts.candidate_record_id,
+        "runtime_interface_prerequisite_id": record.runtime_interface_prerequisite_id,
+        "correlation_id": "private",
+    }
+    # Positive control: the injected read result must itself be fully valid.
+    assert service.get(**arguments).record == record
+    key, value = {
+        "operator": ("authenticated_operator_id", "foreign"),
+        "candidate": ("candidate_record_id", "00000000-0000-4000-8000-000000000000"),
+        "id": (
+            "runtime_interface_prerequisite_id",
+            "00000000-0000-5000-8000-000000000000",
+        ),
+    }[field]
+    error(service.get(**{**arguments, key: value}), "evidence_not_found")
+    assert counts(journal) == (0, 0, 0)
+
+
+@pytest.mark.parametrize(
+    "field", ["candidate_record_id", "runtime_interface_prerequisite_id"]
+)
+@pytest.mark.parametrize("value", [None, 1, "private-invalid-id"])
+def test_v059_service_get_rejects_invalid_scope_before_store(
+    tmp_path, facts, field, value
+):
+    service, journal, _, _ = setup(tmp_path, facts)
+
+    class NoReadStore:
+        def get(self, **kwargs):
+            pytest.fail("invalid scope must not access the journal")
+
+    service._store = NoReadStore()
+    arguments = {
+        "authenticated_operator_id": facts.operator_id,
+        "permission_verified": True,
+        "candidate_record_id": facts.candidate_record_id,
+        "runtime_interface_prerequisite_id": "00000000-0000-5000-8000-000000000000",
+        "correlation_id": "private",
+    }
+    error(service.get(**{**arguments, field: value}), "invalid_request")
+    assert counts(journal) == (0, 0, 0)

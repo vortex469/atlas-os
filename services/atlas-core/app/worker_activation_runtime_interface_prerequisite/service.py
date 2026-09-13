@@ -208,11 +208,28 @@ class WorkerActivationRuntimeInterfacePrerequisiteService:
     ):
         try:
             operator = self._authorize(authenticated_operator_id, permission_verified)
+            candidate = TypeAdapter(c.CanonicalUuid4).validate_python(
+                candidate_record_id, strict=True
+            )
+            prerequisite_id = TypeAdapter(c.CanonicalUuid5).validate_python(
+                runtime_interface_prerequisite_id, strict=True
+            )
             record = self._store.get(
                 operator_id=operator,
-                candidate_record_id=candidate_record_id,
-                runtime_interface_prerequisite_id=runtime_interface_prerequisite_id,
+                candidate_record_id=candidate,
+                runtime_interface_prerequisite_id=prerequisite_id,
             )
+            record = c.WorkerActivationRuntimeInterfacePrerequisiteV1.model_validate(
+                record
+            )
+            if (
+                record.operator_id != operator
+                or record.candidate_record_id != candidate
+                or record.runtime_interface_prerequisite_id != prerequisite_id
+            ):
+                raise WorkerActivationRuntimeInterfacePrerequisiteStoreError(
+                    "evidence_not_found"
+                )
             return self._result(record, False)
         except WorkerActivationRuntimeInterfacePrerequisiteStoreError as error:
             return self._failure(error.code, correlation_id)
