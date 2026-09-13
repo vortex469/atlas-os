@@ -142,6 +142,7 @@ def test_auth_csrf_success_readback_and_exact_no_replay(tmp_path: Path, facts) -
         url, json=payload, cookies=_cookies(session), headers=_headers(session)
     )
     assert made.status_code == 201
+    assert made.headers["cache-control"] == "no-store"
     body = made.json()
     assert body["worker_activation_runtime_interface_prerequisite_recorded"] is True
     assert body["record"]["candidate_record_id"] == prerequisite.candidate_record_id
@@ -166,12 +167,14 @@ def test_auth_csrf_success_readback_and_exact_no_replay(tmp_path: Path, facts) -
 
     listed = client.get(url, cookies=_cookies(session))
     assert listed.status_code == 200
+    assert listed.headers["cache-control"] == "no-store"
     assert listed.json()["items"] == [body["record"]]
     fetched = client.get(
         f"{url}/{body['record']['runtime_interface_prerequisite_id']}",
         cookies=_cookies(session),
     )
     assert fetched.status_code == 200
+    assert fetched.headers["cache-control"] == "no-store"
     assert fetched.json()["record"] == body["record"]
     foreign = sessions.create(
         OperatorCredential(
@@ -187,13 +190,59 @@ def test_auth_csrf_success_readback_and_exact_no_replay(tmp_path: Path, facts) -
         cookies=_cookies(foreign),
     )
     assert foreign_get.status_code == 404
+    assert foreign_get.headers["cache-control"] == "no-store"
     assert foreign_get.json()["error_code"] == "evidence_not_found"
     duplicate = client.post(
         url, json=payload, cookies=_cookies(session), headers=_headers(session)
     )
     assert duplicate.status_code == 201
+    assert duplicate.headers["cache-control"] == "no-store"
     assert duplicate.json()["record"] == body["record"]
     assert reader.calls == 2
+
+
+@pytest.mark.parametrize("target", ["create", "list", "get"])
+def test_owner_scoped_failures_are_not_cacheable(tmp_path, facts, monkeypatch, target):
+    client, session, _, create, reader, url, _ = _application(tmp_path, facts)
+    if target == "get":
+        url += "/a70ea6f4-18ba-57f3-867e-f5eae39bfb2d"
+    method = "POST" if target == "create" else "GET"
+    options = (
+        {"json": create.model_dump(mode="json"), "headers": _headers(session)}
+        if target == "create"
+        else {}
+    )
+    unauthenticated = client.request(method, url, **options)
+    assert unauthenticated.status_code == 401
+    assert unauthenticated.headers["cache-control"] == "no-store"
+    malformed = client.request(
+        method, url + "?unexpected=private-token", cookies=_cookies(session), **options
+    )
+    assert malformed.status_code == 422
+    assert malformed.headers["cache-control"] == "no-store"
+
+    service = client._app.state.worker_activation_runtime_interface_prerequisite_service
+    calls = []
+
+    def fail(*args, **kwargs):
+        calls.append(kwargs)
+        raise RuntimeError("private-token")
+
+    monkeypatch.setattr(service, target, fail)
+    failed = client.request(method, url, cookies=_cookies(session), **options)
+    assert failed.status_code == 503
+    assert failed.headers["cache-control"] == "no-store"
+    assert len(calls) == 1
+    del client._app.state.worker_activation_runtime_interface_prerequisite_service
+    unavailable = client.request(method, url, cookies=_cookies(session), **options)
+    assert unavailable.status_code == 503
+    assert unavailable.headers["cache-control"] == "no-store"
+    for response in (unauthenticated, malformed, failed, unavailable):
+        assert response.json()["retryable"] is False
+        assert "private-token" not in response.text
+        assert facts.operator_id not in response.text
+        assert len(response.content) < 16 * 1024
+    assert reader.calls == 0
 
 
 def test_dedicated_permissions_default_off_and_redaction(tmp_path: Path, facts) -> None:

@@ -147,6 +147,7 @@ def _correlation(value: str):
 def _json_error(error_code: str, status_code: int, correlation_id: str) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
+        headers={"Cache-Control": "no-store"},
         content=jsonable_encoder(
             WorkerActivationRuntimeInterfacePrerequisiteRedactedErrorV1(
                 error_code=error_code,
@@ -188,7 +189,11 @@ def _service_response(
         "unavailable": 503,
         "append_indeterminate": 503,
     }.get(code, 409)
-    return JSONResponse(status_code=status_code, content=jsonable_encoder(result))
+    return JSONResponse(
+        status_code=status_code,
+        headers={"Cache-Control": "no-store"},
+        content=jsonable_encoder(result),
+    )
 
 
 def _authentication_error(error: HTTPException, correlation_id: str) -> JSONResponse:
@@ -293,6 +298,7 @@ async def create_worker_activation_runtime_interface_prerequisite(
     if isinstance(result, WorkerActivationRuntimeInterfacePrerequisiteRedactedErrorV1):
         return _service_response(result)
     response.status_code = 201
+    response.headers["Cache-Control"] = "no-store"
     return result
 
 
@@ -304,6 +310,7 @@ async def create_worker_activation_runtime_interface_prerequisite(
 )
 async def list_worker_activation_runtime_interface_prerequisites(
     request: Request,
+    response: Response,
     candidate_record_id: Annotated[
         str, WithJsonSchema({"type": "string", "pattern": _UUID4})
     ],
@@ -346,6 +353,7 @@ async def list_worker_activation_runtime_interface_prerequisites(
         return _json_error("unavailable", 503, correlation_id)
     if isinstance(result, WorkerActivationRuntimeInterfacePrerequisiteRedactedErrorV1):
         return _service_response(result)
+    response.headers["Cache-Control"] = "no-store"
     return result
 
 
@@ -357,6 +365,7 @@ async def list_worker_activation_runtime_interface_prerequisites(
 )
 async def get_worker_activation_runtime_interface_prerequisite(
     request: Request,
+    response: Response,
     candidate_record_id: Annotated[
         str, WithJsonSchema({"type": "string", "pattern": _UUID4})
     ],
@@ -397,4 +406,5 @@ async def get_worker_activation_runtime_interface_prerequisite(
         return _json_error("unavailable", 503, correlation_id)
     if isinstance(result, WorkerActivationRuntimeInterfacePrerequisiteRedactedErrorV1):
         return _service_response(result)
+    response.headers["Cache-Control"] = "no-store"
     return result
