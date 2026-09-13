@@ -25,12 +25,11 @@ test("Mission Control application shell renders with primary navigation", async 
 test("Mission Control dashboard loads from controlled Core and Agent responses", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Baseline browser fixture: Atlas presentation data loaded.")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Workflow Inbox" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Operator Attention" })).toBeVisible();
     await expect(page.getByText("workflow-browser-baseline")).toBeVisible();
-    await expect(page.getByRole("link", { name: "View Execution Candidates" })).toHaveAttribute("href", "/execution-candidates");
-    await expect(page.getByRole("heading", { name: "Atlas Agent" })).toBeVisible();
-    await expect(page.getByText("Working tree clean")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Inspect executions →" })).toHaveAttribute("href", "/workflows");
+    await expect(page.getByRole("heading", { name: "Agent state" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recent Activity" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
     await expect(page.getByText("Proxmox").first()).toBeVisible();
 });
@@ -122,9 +121,9 @@ test.describe("Atlas Core unavailable", () => {
     test("renders the unavailable state safely", async ({ page }) => {
         await page.goto("/");
 
-        await expect(page.getByRole("alert").filter({ hasText: "Atlas Core unavailable" })).toBeVisible();
-        await expect(page.getByText("Mission Control could not retrieve the latest state from Atlas Core.")).toBeVisible();
-        await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+        await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Evidence unavailable.");
+        await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Unknown");
+        await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
         await expect(page.getByText("Release unavailable", { exact: true })).toBeVisible();
     });
 });
