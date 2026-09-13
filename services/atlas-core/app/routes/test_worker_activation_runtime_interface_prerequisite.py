@@ -979,6 +979,62 @@ async def _chunks(*parts):
         yield part
 
 
+@pytest.mark.parametrize("target", ["list", "get"])
+def test_read_framing_is_closed_before_service_access(
+    tmp_path, facts, monkeypatch, target
+):
+    client, session, _, _, reader, url, _ = _application(tmp_path, facts)
+    if target == "get":
+        url += "/a70ea6f4-18ba-57f3-867e-f5eae39bfb2d"
+    service = client._app.state.worker_activation_runtime_interface_prerequisite_service
+    original = getattr(service, target)
+    calls = []
+
+    def read(**kwargs):
+        calls.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(service, target, read)
+    invalid_headers = [
+        [("Content-Length", value)]
+        for value in ("1", "-1", "+0", " 0", "0, 0", "invalid", "0" * 11)
+    ] + [
+        [("Content-Length", "0"), ("Content-Length", "0")],
+        [("Transfer-Encoding", "chunked")],
+        [("Transfer-Encoding", "gzip")],
+        [("Transfer-Encoding", "chunked"), ("Transfer-Encoding", "chunked")],
+        [("Content-Length", "0"), ("Transfer-Encoding", "chunked")],
+    ]
+    # Authentication must still precede framing checks and evidence access.
+    assert client.get(url, headers=invalid_headers[0]).status_code == 401
+    for headers in invalid_headers:
+        response = client.get(url, headers=headers, cookies=_cookies(session))
+        assert response.status_code == 422
+        assert response.json()["error_code"] == "invalid_request"
+        assert response.json()["retryable"] is False
+        assert len(response.content) < 16 * 1024
+        assert facts.operator_id not in response.text
+    # A lying zero-length header must not hide actual decoded body bytes.
+    response = client.request(
+        "GET",
+        url,
+        content=b"private-token",
+        headers={"Content-Length": "0"},
+        cookies=_cookies(session),
+    )
+    assert response.status_code == 422
+    assert "private-token" not in response.text
+    assert calls == []
+    assert reader.calls == 0
+
+    for headers in ({}, {"Content-Length": "0"}):
+        response = client.get(url, headers=headers, cookies=_cookies(session))
+        assert response.status_code == (200 if target == "list" else 404)
+    assert len(calls) == 2
+    assert all(call["authenticated_operator_id"] == facts.operator_id for call in calls)
+    assert reader.calls == 0
+
+
 @pytest.mark.parametrize(
     "framing", ["short", "long", "zero", "conflict", "duplicate", "unsupported"]
 )

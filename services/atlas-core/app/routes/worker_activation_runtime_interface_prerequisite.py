@@ -86,6 +86,23 @@ async def _body(
 
 
 async def _has_body(request: Request) -> bool:
+    # Read endpoints have no body protocol. Reject ambiguous or nonempty
+    # framing even when an intermediary exposes an empty decoded stream.
+    lengths = request.headers.getlist("content-length")
+    if (
+        request.headers.getlist("transfer-encoding")
+        or len(lengths) > 1
+        or (
+            lengths
+            and (
+                not lengths[0].isascii()
+                or not lengths[0].isdecimal()
+                or len(lengths[0]) > 10
+                or int(lengths[0]) != 0
+            )
+        )
+    ):
+        return True
     async for chunk in request.stream():
         if chunk:
             return True
