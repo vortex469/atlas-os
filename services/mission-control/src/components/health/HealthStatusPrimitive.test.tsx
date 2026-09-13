@@ -219,3 +219,8 @@ describe('stale status authority', () => {
         expect(container.querySelector('[data-mc-status="success"]')).toBeNull();
     });
 });
+
+it('preserves authoritative update timing on full health cards', () => {
+    render(<HealthStatusCard state="healthy" lastUpdated={new Date(Date.now() - 120_000)} />);
+    expect(screen.getByText('2m ago')).toBeInTheDocument();
+});

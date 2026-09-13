@@ -39,3 +39,18 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     await expect(page).toHaveURL(/\/providers\/proxmox$/);
     expect(rejectedMutationRequests).toEqual([]);
 });
+
+test('mobile attention includes configured AI failure and follows its provider route', async ({ page, rejectedMutationRequests }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.route('**/ai/status', route => route.fulfill({ json: {
+        provider: { id: 'proxmox', name: 'Configured runtime' },
+        health: { status: 'offline', message: 'Runtime endpoint unavailable' },
+    } }));
+    await page.goto('/');
+    const attention = page.getByRole('region', { name: 'Operator Attention' });
+    await expect(attention.getByText('Runtime endpoint unavailable')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await attention.getByRole('link', { name: 'Configured runtime', exact: true }).click();
+    await expect(page).toHaveURL(/\/providers\/proxmox$/);
+    expect(rejectedMutationRequests).toEqual([]);
+});

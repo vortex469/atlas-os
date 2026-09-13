@@ -20,7 +20,7 @@ function Card({ title, children, evidence }: { title: string; children: ReactNod
     </section>;
 }
 function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unknown; stale?: boolean }) {
-    return <HealthStatusBadge state={stale ? "unknown" : status(value)} reason={safeText(reason)} />;
+    return <HealthStatusBadge state={status(value)} isStale={stale} reason={safeText(reason)} />;
 }
 
 function attentionPriority(value: unknown) {
@@ -46,7 +46,8 @@ export function Overview({ evidence }: { evidence: OverviewEvidence }) {
     const health = record(evidence.health?.data);
     const services = Object.entries(record(health.services)).sort((a, b) =>
         Number(status(record(a[1]).status) === "healthy") - Number(status(record(b[1]).status) === "healthy"));
-    const providers = rows(evidence.providers?.data);
+    const providers = rows(evidence.providers?.data).sort((a, b) =>
+        Number(status(record(a.health).status) === "healthy") - Number(status(record(b.health).status) === "healthy"));
     const workflows = rows(record(evidence.workflows?.data).items);
     const validWorkflows = workflows.filter(w => detailPath("/workflows", w.workflow_id) && WORKFLOW_STATES.some(state => state === w.workflow_state));
     const workflowKnown = Array.isArray(record(evidence.workflows?.data).items) && workflows.length === validWorkflows.length;
@@ -54,6 +55,10 @@ export function Overview({ evidence }: { evidence: OverviewEvidence }) {
     const runningModels = rows(record(ai.models).running).map(model => safeText(model.name ?? model.model)).filter(Boolean);
     const agent = record(evidence.agent?.data);
     const findings = rows(record(evidence.summary?.data).findings);
+    const findingsKnown = Array.isArray(record(evidence.summary?.data).findings) && findings.every(f =>
+        typeof f.severity === "string" && ["info", "warning", "critical", "blocked"].includes(f.severity));
+    const aiProvider = record(ai.provider);
+    const aiHealth = record(ai.health);
     // One row per authoritative source condition. Do not synthesize alerts from counts.
     const attention = [
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
@@ -62,8 +67,11 @@ export function Overview({ evidence }: { evidence: OverviewEvidence }) {
         ...providers.filter(p => ["degraded", "unavailable", "blocked"].includes(status(record(p.health).status))).map(p => ({
             key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: detailPath("/providers", p.id) ?? "/operations", stale: evidence.providers?.stale,
         })),
+        ...(["degraded", "unavailable", "blocked"].includes(status(aiHealth.status)) ? [{
+            key: detailPath("/providers", aiProvider.id) ? conditionKey(aiProvider.id, aiHealth.message) : conditionKey("ai/status", null, aiHealth.message), label: safeText(aiProvider.name) || "Configured AI provider", reason: safeText(aiHealth.message), state: aiHealth.status, to: detailPath("/providers", aiProvider.id) ?? "/operations", stale: evidence.ai?.stale,
+        }] : []),
         ...findings.filter(f => ["warning", "critical", "blocked"].includes(String(f.severity))).map(f => ({
-            key: attentionKey(f, providers, services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
+            key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
         })),
         ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => ({
             key: `workflow:${String(w.workflow_id)}`, label: safeText(w.workflow_id), reason: `${safeText(w.workflow_state)} · ${safeText(w.last_result_summary)}`, state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
@@ -76,7 +84,7 @@ export function Overview({ evidence }: { evidence: OverviewEvidence }) {
     }
     const uniqueAttention = [...deduplicated.values()]
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
-    const activity = rows(record(evidence.activity?.data).items).filter(event => typeof event.id === "string" && typeof event.action_label === "string").sort((a, b) => (timestamp(b.completed_at)?.getTime() ?? 0) - (timestamp(a.completed_at)?.getTime() ?? 0));
+    const activity = rows(record(evidence.activity?.data).items).filter(event => detailPath("/operations/actions", event.id) && typeof event.action_label === "string" && event.action_label.trim().length > 0).sort((a, b) => (timestamp(b.completed_at)?.getTime() ?? 0) - (timestamp(a.completed_at)?.getTime() ?? 0));
     return <>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="Atlas overall state" evidence={evidence.health}>
@@ -127,7 +135,9 @@ export function Overview({ evidence }: { evidence: OverviewEvidence }) {
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card title="Operator Attention" evidence={evidence.summary}>
-                <SourceNote evidence={evidence.workflows} /><SourceNote evidence={evidence.health} /><SourceNote evidence={evidence.providers} />
+                <SourceNote evidence={evidence.workflows} /><SourceNote evidence={evidence.health} /><SourceNote evidence={evidence.providers} /><SourceNote evidence={evidence.ai} />
+                {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
+                {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
                 {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
                 {uniqueAttention.slice(0, 5).map(item => <div key={item.key}><Link to={item.to}>{item.label || "Inspect condition"}</Link><ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />{item.stale && <p>Last-known condition; current state unknown.</p>}</div>)}
                 {uniqueAttention.length > 5 && <p>Showing 5 of {uniqueAttention.length} reported conditions. Open the detail views for more.</p>}

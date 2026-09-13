@@ -115,3 +115,54 @@ it('preserves the most urgent duplicate condition at equal freshness', () => {
     expect(attention.getAllByText('Pending recovery')).toHaveLength(1);
     expect(attention.getByText('Blocked')).toBeInTheDocument();
 });
+
+it('includes configured AI failures in attention without asserting local availability', () => {
+    show({ ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: 'offline', message: 'Endpoint unavailable' } } } });
+    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    expect(attention.getByText('Unavailable')).toBeInTheDocument();
+    expect(attention.getByRole('link', { name: 'Runtime' })).toHaveAttribute('href', '/providers/runtime');
+    expect(attention.getByText('Endpoint unavailable')).toBeInTheDocument();
+    expect(screen.getByText(/Local AI availability is unknown/)).toBeInTheDocument();
+});
+
+it('deduplicates configured AI and provider evidence and preserves freshness', () => {
+    show({
+        ai: { stale: true, data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: 'blocked', message: 'Endpoint unavailable' } } },
+        providers: { data: [{ id: 'runtime', name: 'Runtime', health: { status: 'offline', message: 'Endpoint unavailable' } }] },
+    });
+    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    expect(attention.getAllByText('Endpoint unavailable')).toHaveLength(1);
+    expect(attention.getByText('Unavailable')).toBeInTheDocument();
+    expect(attention.queryByText('Blocked')).not.toBeInTheDocument();
+});
+
+it('keeps stale AI conditions explicitly unknown', () => {
+    show({ ai: { stale: true, data: { health: { status: 'offline', message: 'Last connection failed' } } } });
+    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    expect(attention.getByText('Unknown · Stale evidence')).toBeInTheDocument();
+    expect(attention.getByText('Last-known condition; current state unknown.')).toBeInTheDocument();
+});
+
+it('surfaces incomplete attention evidence and rejects uninspectable activity', () => {
+    show({ summary: { data: { findings: [null] } }, workflows: { data: { items: [null] } }, activity: { data: { items: [{ id: '..', action_label: 'Restart', status: 'succeeded' }] } } });
+    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    expect(attention.getByText('Workflow attention evidence unknown or incomplete.')).toBeInTheDocument();
+    expect(attention.getByText('Operational findings unknown or incomplete.')).toBeInTheDocument();
+    expect(screen.getByText('Activity evidence malformed or incomplete.')).toBeInTheDocument();
+    expect(screen.queryByText('Informational · Restart')).not.toBeInTheDocument();
+});
+
+it('keeps a troubled provider visible ahead of routine healthy providers', () => {
+    show({ providers: { data: [...Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: `Healthy ${i}`, health: { status: 'healthy' } })), { id: 'offline', name: 'Offline provider', health: { status: 'offline', message: 'Connection failed' } }] } });
+    const card = within(screen.getByRole('region', { name: 'Providers' }));
+    expect(card.getByRole('link', { name: 'Inspect Offline provider →' })).toBeInTheDocument();
+    expect(card.getByText('Connection failed')).toBeInTheDocument();
+});
+
+it('deduplicates an AI condition also reported as an operational finding', () => {
+    show({
+        ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: 'offline', message: 'Connection failed' } } },
+        summary: { data: { findings: [{ id: 'f', source: 'runtime', title: 'Runtime offline', message: 'Connection failed', severity: 'critical' }] } },
+    });
+    expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Connection failed')).toHaveLength(1);
+});
