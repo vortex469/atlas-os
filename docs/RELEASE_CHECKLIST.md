@@ -5,6 +5,12 @@
 The [normative contract](architecture/v0.59-runtime-interface-boundary.md) freezes
 one retained Core-owned v0.57 prerequisite boundary through v0.58 P5. Baseline
 `607fbc48` integrates v0.59 P0 `5a7bf10c` and v0.58 P5 `913bbc86`.
+Reinspection at `7ad5d1e6` includes later P0 `21e3c79f`/`12abde0e` and
+supersedes their incorrect v0.58 absence claims. Retained P1 `5b872aee`,
+P2 `06add49d` and P3 `7bb94c2e` hardening is integrated without a successor
+schema or authority; those labels do not complete deferred definition-review
+phases. The normative freeze now records the bounded reparse/index validation,
+item-read scope checks and strict GET framing already present in Core/API.
 The presumed v0.58 definition does not exist; inventory correspondence is already
 validated. Definition-review P1-P5 are deferred, with no new implementation
 surface or authority. Historical P0 validation is preserved with a supersession

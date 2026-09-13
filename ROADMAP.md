@@ -117,13 +117,21 @@ No release, deployment, production construction or execution authority is claime
 ## v0.59 Sync — retained Core/API boundary frozen
 
 The [normative v0.59 contract](docs/architecture/v0.59-runtime-interface-boundary.md)
-reconciles P0 `5a7bf10c` with integrated v0.58 P5 `913bbc86` at `607fbc48`.
+reconciles P0 `5a7bf10c` with integrated v0.58 P5 `913bbc86` at `607fbc48`,
+rechecked at `7ad5d1e6` including later P0 revisions `21e3c79f`/`12abde0e`.
+Their v0.58 absence claims are superseded by the integrated repository evidence.
 Exactly one boundary remains: Core-owned v0.57 interface-prerequisite evidence,
 including v0.58 hardening. V0.58 supplied no runtime interface definition to
 review; fixed inventory correspondence is already validated. **Definition-review
 P1-P5 are deferred**, with no new schema, marker, ID/hash domain, reader, store,
 API, permission or consumer reserved. A distinct predicate and consumer need
 require a new normative decision before implementation.
+
+Retained-boundary P1 `5b872aee`, P2 `06add49d` and P3 `7bb94c2e` are
+integrated: bounded expanded-tree reparsing, journal index-cell/read-scope checks,
+and strict GET framing. These preserve the existing wire boundary and do not
+complete any deferred definition-review phase. Their historical validation is
+linked from the normative contract; this Sync adds no runtime implementation.
 
 The freeze preserves the exact six IDs, recursive lineage, stable predecessor
 status, ownership, fingerprints, seven blocker/owner/proof triples, all 67 false
