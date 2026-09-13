@@ -114,6 +114,26 @@ The [P5 evidence](docs/architecture/v0.58-p5-validation.md) and
 [release checklist](docs/RELEASE_CHECKLIST.md) record validation and limitations.
 No release, deployment, production construction or execution authority is claimed.
 
+## v0.59 Sync — retained Core/API boundary frozen
+
+The [normative v0.59 contract](docs/architecture/v0.59-runtime-interface-boundary.md)
+reconciles P0 `5a7bf10c` with integrated v0.58 P5 `913bbc86` at `607fbc48`.
+Exactly one boundary remains: Core-owned v0.57 interface-prerequisite evidence,
+including v0.58 hardening. V0.58 supplied no runtime interface definition to
+review; fixed inventory correspondence is already validated. **Definition-review
+P1-P5 are deferred**, with no new schema, marker, ID/hash domain, reader, store,
+API, permission or consumer reserved. A distinct predicate and consumer need
+require a new normative decision before implementation.
+
+The freeze preserves the exact six IDs, recursive lineage, stable predecessor
+status, ownership, fingerprints, seven blocker/owner/proof triples, all 67 false
+authority/material fields and existing API/GET-only UI. No downstream runtime,
+contact, worker start, Agent invocation or execution authority follows.
+**V0.57/v0.58 release closure remains open** pending required UI gates; source
+integration satisfies the Sync dependency without claiming release acceptance.
+See [Sync evidence](docs/architecture/v0.59-sync-validation.md) and the
+[release checklist](docs/RELEASE_CHECKLIST.md). This task changes planning only.
+
 ### Historical baseline context
 
 Atlas v0.51 P0-P5 closes the Controlled Worker Queue Claim/Lease/

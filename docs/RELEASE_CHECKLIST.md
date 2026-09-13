@@ -1,5 +1,29 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.59 Sync — repository planning freeze (2026-09-13)
+
+The [normative contract](architecture/v0.59-runtime-interface-boundary.md) freezes
+one retained Core-owned v0.57 prerequisite boundary through v0.58 P5. Baseline
+`607fbc48` integrates v0.59 P0 `5a7bf10c` and v0.58 P5 `913bbc86`.
+The presumed v0.58 definition does not exist; inventory correspondence is already
+validated. Definition-review P1-P5 are deferred, with no new implementation
+surface or authority. Historical P0 validation is preserved with a supersession
+notice; earlier release results below remain unchanged.
+
+- [x] Reconcile actual schemas, six IDs, hash/UUID domains, owned reader/status
+  semantics, full lineage, API, exact consumers, bounds and permanent no-replay.
+- [x] Retain seven blocker/owner/proof triples and 67 strict false fields; no
+  interface definition, contact, start, Agent or execution permission is added.
+- [x] Update normative v0.59 architecture and shared roadmap/release planning.
+- [ ] Predecessor release acceptance: required full Mission Control tests/build/
+  lint remain open per v0.58 P5. This documentation Sync does not waive them.
+- [ ] Reopen definition-review only after a separate justified normative decision;
+  restoring dependencies or tagging a release does not establish usefulness.
+
+[Sync validation evidence](architecture/v0.59-sync-validation.md) records current
+focused tests, documentation checks, hostile review and local commit disposition.
+No production runtime implementation, enablement, release or deployment is claimed.
+
 ## Atlas v0.58 P5 — retained boundary regressions; release closure open (2026-09-13)
 
 **Do not close v0.58.** Sync/P1-P4 are integrated at
