@@ -53,15 +53,28 @@ RefusalV1 = Literal[
 
 def _plain(value: Any, depth: int = 0) -> Any:
     """Reparse even model_construct/model_copy objects, including injected extras."""
-    if depth > 128:
-        raise ValueError("contract nesting exceeds bound")
-    if isinstance(value, BaseModel):
-        value = {**value.__dict__, **(value.__pydantic_extra__ or {})}
-    if isinstance(value, dict):
-        return {key: _plain(item, depth + 1) for key, item in value.items()}
-    if isinstance(value, tuple | list):
-        return type(value)(_plain(item, depth + 1) for item in value)
-    return value
+    # Bound expansion before allocating the complete plain tree. A small graph
+    # with repeated references can otherwise expand exponentially before the
+    # serialized byte check runs. Every visited value needs at least one JSON
+    # byte, so this lower bound cannot reject an envelope within the frozen cap.
+    remaining = MAX_MODEL_BYTES
+
+    def visit(item: Any, level: int) -> Any:
+        nonlocal remaining
+        remaining -= 1
+        if remaining < 0:
+            raise ValueError("contract envelope exceeds bound")
+        if level > 128:
+            raise ValueError("contract nesting exceeds bound")
+        if isinstance(item, BaseModel):
+            item = {**item.__dict__, **(item.__pydantic_extra__ or {})}
+        if isinstance(item, dict):
+            return {key: visit(child, level + 1) for key, child in item.items()}
+        if isinstance(item, tuple | list):
+            return type(item)(visit(child, level + 1) for child in item)
+        return item
+
+    return visit(value, depth)
 
 
 def _strict_literals(annotation: Any, value: Any) -> Any:

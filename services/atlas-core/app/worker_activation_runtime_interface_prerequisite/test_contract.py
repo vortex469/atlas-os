@@ -663,6 +663,69 @@ def test_cycles_and_malformed_owner_clock_fail_closed_without_exception(facts):
         refused(raw)
 
 
+@pytest.mark.parametrize("container", [dict, list, tuple])
+def test_v059_shared_graph_expansion_is_bounded_before_serialization(container):
+    # Only 33 source containers, but over four billion expanded values. The
+    # existing byte ceiling must apply before plain-tree allocation, including
+    # copied/constructed inputs. Iteration counts prove early termination.
+    visits = 0
+
+    class CountedDict(dict):
+        def items(self):
+            nonlocal visits
+            visits += 1
+            return super().items()
+
+    graph = CountedDict(secret="do-not-echo")
+    for _ in range(32):
+        graph = (
+            {"a": graph, "b": graph}
+            if container is dict
+            else container((graph, graph))
+        )
+    with pytest.raises(ValueError, match="contract envelope exceeds bound"):
+        c._plain(graph)
+    assert 0 < visits < c.MAX_MODEL_BYTES
+    raw = {RECEIPT: graph, STATUS: {}}
+    first = refused(raw)
+    forged = c.WorkerActivationRuntimeInterfacePrerequisiteValidationInputV1.model_construct(
+        **raw
+    )
+    assert refused(forged) == first
+    assert "do-not-echo" not in first.model_dump_json()
+    assert first.blockers == ("invalid_request",)
+
+
+def test_v059_shared_valid_evidence_preserves_canonical_bytes(facts):
+    # Repeated references themselves are legal; count their serialized expansion
+    # without deduplication or mutation. Fingerprints must retain their domains.
+    source = {"a": facts.create, "b": facts.create}
+    plain = c._plain(source)
+    assert c.canonical_json(plain) == c.canonical_json(source)
+    assert plain["a"] == plain["b"]
+    assert plain["a"] is not plain["b"]
+    assert source["a"] is source["b"] is facts.create
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_v059_deferred_definition_review_is_never_accepted_authority(facts, value):
+    marker = "worker_activation_runtime_interface_definition_review_recorded"
+    for section in (None, "create", "authority", RECEIPT, STATUS):
+        raw = facts.model_dump(mode="python")
+        (raw if section is None else raw[section])[marker] = value
+        assert refused(raw).blockers == ("invalid_request",)
+        with pytest.raises(ValidationError) as rejected:
+            c.build_runtime_interface_prerequisite(
+                # model_construct discards top-level extras on closed models;
+                # model_copy preserves them and exercises the reparse bypass.
+                facts.model_copy(update=raw), idempotency_key="v059-deferred-review"
+            )
+        assert any(
+            error["type"] == "extra_forbidden" and error["loc"][-1] == marker
+            for error in rejected.value.errors()
+        )
+
+
 def test_serialized_bound_includes_expanded_defaults(facts, monkeypatch):
     minimal = facts.create.model_dump(mode="python", exclude_defaults=True)
     size_without_defaults = len(c.canonical_json(minimal))
