@@ -4,7 +4,7 @@ for (const width of [320, 768, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto('/');
         const grid = page.getByTestId('overview-grid');
-        await expect(grid.getByRole('region')).toHaveCount(6);
+        await expect(grid.locator(':scope > section')).toHaveCount(6);
         await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);

@@ -5,6 +5,7 @@ import { getAgentInfo, listWorkflows } from "../../api/atlas-agent";
 const loaders = {
     health: () => atlas.get<unknown>("/health").then(r => r.data),
     summary: () => atlas.get<unknown>("/ace/summary").then(r => r.data),
+    policyHealth: () => atlas.get<unknown>("/policies/status").then(r => r.data),
     providers: () => atlas.get<unknown>("/providers").then(r => r.data),
     ai: () => atlas.get<unknown>("/ai/status").then(r => r.data),
     agent: () => getAgentInfo(),

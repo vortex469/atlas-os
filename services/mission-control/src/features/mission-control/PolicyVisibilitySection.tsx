@@ -1,13 +1,14 @@
+import { HealthEvidence } from "../../components/HealthEvidence";
+import { evidenceRecord, evidenceText, healthState } from "../../utils/healthPresentation";
 import { SectionHeader } from "../../components/SectionHeader";
 import type {
     AtlasPolicies,
-    PolicyReloadHealth,
     PolicySeverity,
 } from "../../types/policies";
 
 type PolicyVisibilitySectionProps = {
     policies: AtlasPolicies | null;
-    health: PolicyReloadHealth;
+    health: unknown;
 };
 
 type PolicyRow = {
@@ -198,81 +199,64 @@ export function PolicyVisibilitySection({
 }
 
 function PolicyReloadStatus({
-    health,
+    health: payload,
 }: {
-    health: PolicyReloadHealth;
+    health: unknown;
 }) {
-    const healthy = health.status === "healthy";
+    const health = evidenceRecord(payload);
+    const state = healthState(health.status);
+    const diagnostics = Array.isArray(health.diagnostics)
+        ? health.diagnostics.map(evidenceRecord) : [];
+    const duration = typeof health.duration_ms === "number" && Number.isFinite(health.duration_ms) && health.duration_ms >= 0
+        ? health.duration_ms.toFixed(2) : null;
 
     return (
         <div
             role="status"
-            className={`mb-4 rounded-lg border p-4 ${
-                healthy
-                    ? "border-emerald-500/20 bg-emerald-500/10"
-                    : "border-red-500/30 bg-red-500/10"
-            }`}
+            className="mc-panel mb-4 min-w-0 break-words p-4"
         >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <p
-                        className={`text-sm font-semibold ${
-                            healthy
-                                ? "text-emerald-300"
-                                : "text-red-300"
-                        }`}
-                    >
-                        {healthy
-                            ? "Policy reload healthy"
-                            : "Policy reload degraded"}
+                    <p className="text-sm font-semibold text-mc-text-primary">
+                        {`Policy reload ${state.toLowerCase()}`}
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
-                        Validated in {health.duration_ms.toFixed(2)} ms
+                        {duration === null ? "Validation duration unknown" : `Validated in ${duration} ms`}
                         {" · "}
-                        {health.source_exists
+                        {health.source_exists === true
                             ? "Policy file present"
-                            : "Safe defaults active"}
+                            : health.source_exists === false ? "Safe defaults active" : "Policy source unknown"}
                     </p>
                 </div>
 
-                <p className="text-xs text-slate-500">
-                    Checked{" "}
-                    {new Date(health.checked_at).toLocaleTimeString()}
-                </p>
+                <HealthEvidence status={health.status} reason={health.error} checkedAt={health.checked_at} />
             </div>
 
-            {health.error && (
-                <p className="mt-3 break-words font-mono text-xs text-red-200/80">
-                    {health.error}
-                </p>
-            )}
-
-            {health.diagnostics.length > 0 && (
+            {diagnostics.length > 0 && (
                 <ul className="mt-3 space-y-2">
-                    {health.diagnostics.map(
+                    {diagnostics.map(
                         (diagnostic, index) => (
                             <li
-                                key={`${diagnostic.path}-${diagnostic.error_type}-${index}`}
+                                key={index}
                                 className="rounded border border-red-500/20 bg-slate-950/30 p-3"
                             >
                                 <div className="flex flex-wrap items-center gap-2">
                                     <code className="text-xs font-semibold text-red-200">
-                                        {diagnostic.path}
+                                        {evidenceText(diagnostic.path) ?? "Unknown path"}
                                     </code>
                                     <span className="text-xs text-slate-500">
-                                        {diagnostic.error_type}
+                                        {evidenceText(diagnostic.error_type) ?? "Unknown diagnostic type"}
                                     </span>
-                                    {diagnostic.line !== null && (
+                                    {typeof diagnostic.line === "number" && Number.isInteger(diagnostic.line) && diagnostic.line > 0 && (
                                         <span className="text-xs text-slate-500">
                                             Line {diagnostic.line}
-                                            {diagnostic.column !==
-                                                null &&
+                                            {typeof diagnostic.column === "number" && Number.isInteger(diagnostic.column) && diagnostic.column > 0 &&
                                                 `, column ${diagnostic.column}`}
                                         </span>
                                     )}
                                 </div>
                                 <p className="mt-1 text-sm text-red-200/80">
-                                    {diagnostic.message}
+                                    {evidenceText(diagnostic.message) ?? "No diagnostic message provided."}
                                 </p>
                             </li>
                         ),
@@ -280,7 +264,7 @@ function PolicyReloadStatus({
                 </ul>
             )}
 
-            {!healthy && policiesUnavailableMessage}
+            {state === "Degraded" && policiesUnavailableMessage}
         </div>
     );
 }

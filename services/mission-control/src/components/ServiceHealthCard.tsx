@@ -1,5 +1,5 @@
 import type { ServiceHealth } from "../types/health";
-import { StatusBadge } from "./StatusBadge";
+import { HealthEvidence } from "./HealthEvidence";
 
 type ServiceHealthCardProps = {
     name: string;
@@ -35,7 +35,7 @@ export function ServiceHealthCard({
             className="mc-panel-interactive mc-focusable w-full p-5 text-left"
             aria-label={`View details for ${name}`}
         >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col items-start gap-4">
                 <div>
                     <h3 className="font-semibold text-mc-text-primary">
                         {name}
@@ -45,7 +45,7 @@ export function ServiceHealthCard({
                     </p>
                 </div>
 
-                <StatusBadge status={health.status} />
+                <HealthEvidence status={health.status} reason={health.message} />
             </div>
 
             <dl className="mc-divider mt-5 grid grid-cols-2 gap-4 border-t pt-4">
@@ -67,12 +67,6 @@ export function ServiceHealthCard({
                     </dd>
                 </div>
             </dl>
-
-            {health.message && (
-                <p className="mc-status-warning mt-4 rounded-mc-sm p-3 text-sm">
-                    {health.message}
-                </p>
-            )}
         </button>
     );
 }

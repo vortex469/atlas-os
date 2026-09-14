@@ -1,3 +1,4 @@
+import { healthState } from "../../utils/healthPresentation";
 import type { HealthState } from "./HealthStatusPrimitive";
 
 /**
@@ -7,37 +8,7 @@ import type { HealthState } from "./HealthStatusPrimitive";
 export function mapServiceStatusToHealthState(
     status: unknown,
 ): HealthState {
-    if (typeof status !== "string" || !status.trim()) {
-        return "unknown";
-    }
-
-    const normalized = status.trim().toLowerCase();
-
-    if (
-        normalized === "healthy" ||
-        normalized === "online" ||
-        normalized === "success"
-    ) {
-        return "healthy";
-    }
-    if (normalized === "degraded" || normalized === "warning") {
-        return "degraded";
-    }
-    if (normalized === "unavailable" || normalized === "offline") {
-        return "unavailable";
-    }
-    if (normalized === "blocked") {
-        return "blocked";
-    }
-    if (
-        normalized === "critical" ||
-        normalized === "error" ||
-        normalized === "failed"
-    ) {
-        return "degraded"; // Critical errors are presented as degraded state
-    }
-
-    return "unknown";
+    return healthState(status).toLowerCase() as HealthState;
 }
 
 /**

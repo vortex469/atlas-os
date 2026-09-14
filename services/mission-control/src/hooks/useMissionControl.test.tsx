@@ -204,6 +204,27 @@ describe("useMissionControl", () => {
         expect(get).toHaveBeenCalledTimes(7);
     });
 
+    it("normalizes malformed health API data before publishing dashboard state", async () => {
+        vi.spyOn(atlas, "get").mockImplementation(async (url) => {
+            const data: Record<string, unknown> = {
+                "/ace/summary": summary,
+                "/health": { atlas: {}, services: { broken: null } },
+                "/providers": [{ ...provider("docker", "Docker", "critical", "infrastructure"), health: null }],
+                "/policies": policies,
+                "/policies/status": policyHealth,
+                "/intelligence/telemetry/history": [],
+                "/intelligence/telemetry/history/retention": telemetryRetention,
+            };
+            return { data: data[url!] };
+        });
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+        expect(result.current.health?.atlas).toBe("unknown");
+        expect(result.current.health?.services.broken.status).toBe("unknown");
+        expect(result.current.providers[0].health.status).toBe("unknown");
+        expect(result.current.providers[0].health.http_status).toBeNull();
+    });
+
     it("preserves current data when a manual refresh fails", async () => {
         const get = vi
             .spyOn(atlas, "get")

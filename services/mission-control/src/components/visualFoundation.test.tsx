@@ -65,7 +65,7 @@ describe("Mission Control visual foundation", () => {
             }),
         ).toHaveClass("mc-panel-interactive", "mc-focusable");
         expect(screen.getByText("Policy cache is warm.")).toHaveClass(
-            "mc-status-warning",
+            "text-mc-text-secondary",
         );
     });
 });

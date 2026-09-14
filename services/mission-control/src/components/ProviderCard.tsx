@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import type { Provider } from "../types/provider";
-import { StatusBadge } from "./StatusBadge";
+import { HealthEvidence } from "./HealthEvidence";
 
 type ProviderCardProps = {
     provider: Provider;
@@ -19,7 +19,7 @@ export function ProviderCard({
             className="group block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
             <article className="h-full rounded-lg border border-slate-800 bg-slate-900 p-5 transition duration-200 group-hover:-translate-y-0.5 group-hover:border-slate-600 group-hover:shadow-lg group-hover:shadow-black/20">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col items-start gap-4">
                     <div className="min-w-0">
                         <h3 className="truncate font-semibold text-slate-100">
                             {provider.name}
@@ -32,7 +32,7 @@ export function ProviderCard({
                         </p>
                     </div>
 
-                    <StatusBadge status={provider.health.status} />
+                    <HealthEvidence status={provider.health.status} reason={provider.health.message} />
                 </div>
 
                 <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-800 pt-4">

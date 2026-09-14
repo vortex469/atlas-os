@@ -28,3 +28,19 @@ describe('overview loading isolation', () => {
         expect(listWorkflows).toHaveBeenCalledWith({ limit: 200, offset: 0 });
     });
 });
+
+it('isolates policy reload failure, retains its evidence and recovers independently', async () => {
+    vi.mocked(atlas.get).mockImplementation(async url => ({ data: url === '/policies/status' ? { status: 'degraded' } : { atlas: 'healthy' } }));
+    const { result } = renderHook(useOverviewEvidence);
+    await waitFor(() => expect(result.current.evidence.policyHealth?.data).toEqual({ status: 'degraded' }));
+    vi.mocked(atlas.get).mockImplementation(async url => {
+        if (url === '/policies/status') throw new Error('secret');
+        return { data: { atlas: 'healthy' } };
+    });
+    await act(() => result.current.refresh());
+    expect(result.current.evidence.policyHealth).toEqual({ data: { status: 'degraded' }, unavailable: true, stale: true });
+    expect(result.current.evidence.health).toEqual({ data: { atlas: 'healthy' } });
+    vi.mocked(atlas.get).mockResolvedValue({ data: { status: 'healthy' } });
+    await act(() => result.current.refresh());
+    expect(result.current.evidence.policyHealth).toEqual({ data: { status: 'healthy' } });
+});

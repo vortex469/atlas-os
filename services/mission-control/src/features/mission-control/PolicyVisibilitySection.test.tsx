@@ -61,6 +61,21 @@ const health = {
 };
 
 describe("PolicyVisibilitySection", () => {
+    it.each([null, [], {}, { status: {}, duration_ms: "1", diagnostics: [null, { path: {}, message: [] }] }])("renders malformed policy evidence without claiming success: %j", (payload) => {
+        render(<PolicyVisibilitySection policies={null} health={payload} />);
+        expect(screen.getByText("Policy reload unknown")).toBeInTheDocument();
+        expect(screen.getByText("Unknown")).toBeInTheDocument();
+        expect(screen.getByText(/Validation duration unknown/)).toBeInTheDocument();
+        expect(screen.getByText(/Policy source unknown/)).toBeInTheDocument();
+        expect(screen.queryByText(/Safe defaults active/)).not.toBeInTheDocument();
+    });
+
+    it.each(["healthy", "degraded", "unavailable", "blocked", "unknown"])("uses the shared health state for policy status %s", (status) => {
+        render(<PolicyVisibilitySection policies={null} health={{ ...health, status, error: "Source-reported reason" }} />);
+        expect(screen.getByText(`Policy reload ${status}`)).toBeInTheDocument();
+        expect(screen.getByText("Source-reported reason")).toBeInTheDocument();
+    });
+
     it("shows live provider expectations and severities", () => {
         render(
             <PolicyVisibilitySection

@@ -5,6 +5,7 @@ import {
     useState,
 } from "react";
 
+import { normalizeAtlasHealth, normalizeServiceHealth } from "../utils/healthPresentation";
 import { atlas } from "../api/atlas";
 import type {
     AceSummary,
@@ -121,9 +122,13 @@ export function useMissionControl(): MissionControlState {
                     .catch(() => null),
             ]);
 
+            const nextProviders = sortProviders(providersResponse.data.map((provider) => ({
+                ...provider, health: normalizeServiceHealth(provider.health),
+            })));
+
             setSummary(summaryResponse.data);
-            setHealth(healthResponse.data);
-            setProviders(sortProviders(providersResponse.data));
+            setHealth(normalizeAtlasHealth(healthResponse.data));
+            setProviders(nextProviders);
             if (policiesResponse !== null) {
                 setPolicies(policiesResponse.data);
             }

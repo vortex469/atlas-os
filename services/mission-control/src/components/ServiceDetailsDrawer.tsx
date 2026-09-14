@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import { ProviderActions } from "./ProviderActions";
-import { StatusBadge } from "./StatusBadge";
+import { HealthEvidence } from "./HealthEvidence";
 
 type ServiceDetailsDrawerProps = {
     name: string;
@@ -95,9 +95,9 @@ export function ServiceDetailsDrawer({
                     <div className="rounded-lg border border-slate-800 bg-slate-900 p-5">
                         <div className="flex items-center justify-between gap-4">
                             <span className="text-sm font-medium text-slate-400">
-                                Current status
+                                Reported status
                             </span>
-                            <StatusBadge status={health.status} />
+                            <HealthEvidence status={health.status} />
                         </div>
                     </div>
 

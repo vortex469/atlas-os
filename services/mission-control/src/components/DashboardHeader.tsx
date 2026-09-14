@@ -1,6 +1,6 @@
 import type { ServiceStatus } from "../types/health";
 import { RefreshIndicator } from "./RefreshIndicator";
-import { StatusBadge } from "./StatusBadge";
+import { HealthEvidence } from "./HealthEvidence";
 
 type DashboardHeaderProps = {
     lastUpdated: Date | null;
@@ -30,7 +30,7 @@ export function DashboardHeader({
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="text-left sm:text-right">
                         <p className="text-xs uppercase tracking-wider text-mc-text-muted">
-                            Last Updated
+                            Last dashboard retrieval
                         </p>
                         <p className="mt-1 text-sm text-mc-text-secondary">
                             {lastUpdated
@@ -39,12 +39,10 @@ export function DashboardHeader({
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <RefreshIndicator active={isRefreshing} />
 
-                        {atlasStatus && (
-                            <StatusBadge status={atlasStatus} />
-                        )}
+                        <HealthEvidence status={atlasStatus} />
 
                         <button
                             type="button"

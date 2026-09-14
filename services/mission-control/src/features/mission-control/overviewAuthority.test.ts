@@ -1,5 +1,6 @@
 import hook from './useOverviewEvidence.ts?raw';
 import view from './MissionControl.tsx?raw';
+import healthSummary from './SystemHealthSummary.tsx?raw';
 import { describe, expect, it } from 'vitest';
 
 describe('overview authority boundary', () => {
@@ -7,8 +8,16 @@ describe('overview authority boundary', () => {
         expect(hook).not.toMatch(/\.(post|put|patch|delete)\s*\(/);
         expect(hook).not.toMatch(/enqueue|dequeue|reservation|generate|chat|load-model/);
         const paths = [...hook.matchAll(/atlas\.get<unknown>\("([^"]+)"/g)].map(match => match[1]);
-        expect(paths).toEqual(['/health', '/ace/summary', '/providers', '/ai/status', '/ops/actions/page']);
+        expect(paths).toEqual(['/health', '/ace/summary', '/policies/status', '/providers', '/ai/status', '/ops/actions/page']);
         expect(view).not.toContain('JSON.stringify');
         expect(view).not.toMatch(/dangerouslySetInnerHTML|\.details\b|\.repository_root\b/);
     });
+});
+
+it('keeps unified health on overview evidence without resurrecting dashboard aggregation', () => {
+    expect(view).toContain('useOverviewEvidence()');
+    expect(view).not.toMatch(/useMissionControl|useWorkflowSummary|HealthCard|DashboardHeader/);
+    expect(healthSummary).not.toMatch(/atlas\.|fetch\(|useMissionControl|useOverviewEvidence\(|\.score\b|diagnostics|localStorage|sessionStorage/);
+    expect(healthSummary).toContain('safeText(source.reason)');
+    expect(healthSummary).toContain('source.evidence?.stale');
 });

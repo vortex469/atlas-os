@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { HealthStatusBadge } from "../../components/health/HealthStatusPrimitive";
+import { HealthEvidence } from "../../components/HealthEvidence";
+import { SystemHealthSummary } from "./SystemHealthSummary";
 import { WORKFLOW_STATES, workflowActionRequired } from "../../utils/workflowState";
 import { conditionKey, detailPath, record, rows, safeText, status, timestamp } from "./overviewEvidence";
 import { useOverviewEvidence } from "./useOverviewEvidence";
@@ -20,7 +21,7 @@ function Card({ title, children, evidence }: { title: string; children: ReactNod
     </section>;
 }
 function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unknown; stale?: boolean }) {
-    return <HealthStatusBadge state={status(value)} isStale={stale} reason={safeText(reason)} />;
+    return <HealthEvidence status={safeText(value)} stale={stale} reason={safeText(reason)} />;
 }
 
 function attentionPriority(value: unknown) {
@@ -88,9 +89,9 @@ export function Overview({ evidence }: { evidence: OverviewEvidence }) {
     return <>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="Atlas overall state" evidence={evidence.health}>
-                <ObservedStatus value={health.atlas} stale={evidence.health?.stale} />
+                <SystemHealthSummary evidence={evidence} />
                 <p>Atlas-reported state from Core health.</p>
-                <p>Evidence update time is not supplied.</p>
+                <p>Core aggregate update time is not supplied.</p>
                 <Link to="/operations">Open operations →</Link>
             </Card>
             <Card title="Core health" evidence={evidence.health}>

@@ -166,3 +166,29 @@ it('deduplicates an AI condition also reported as an operational finding', () =>
     });
     expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Connection failed')).toHaveLength(1);
 });
+
+it('integrates one health summary with independent source freshness and safe reasons', () => {
+    show({
+        health: { data: { atlas: 'healthy' } },
+        summary: { data: { status: 'healthy', summary: 'token=private-credential', findings: [] }, stale: true, unavailable: true },
+        policyHealth: { unavailable: true },
+    });
+    expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
+    expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
+    const core = within(screen.getByRole('article', { name: 'Atlas Core health aggregate' }));
+    expect(core.getByText('Healthy')).toBeInTheDocument();
+    const ace = within(screen.getByRole('article', { name: 'ACE assessment' }));
+    expect(ace.queryByText('Healthy', { exact: true })).not.toBeInTheDocument();
+    expect(ace.getByText('Unknown · Stale evidence')).toBeInTheDocument();
+    expect(ace.getByText('[Sensitive text withheld]')).toBeInTheDocument();
+    expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
+    const policy = within(screen.getByRole('article', { name: 'Policy reload' }));
+    expect(policy.getByText('Evidence unavailable.')).toBeInTheDocument();
+    expect(policy.getByText('Unknown')).toBeInTheDocument();
+});
+
+it('does not promote operational success or malformed summary evidence to health', () => {
+    show({ health: { data: { atlas: 'success' } }, summary: { data: { status: {}, summary: [] } }, policyHealth: { data: [] } });
+    expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'System health' })).getAllByText('Unknown')).toHaveLength(3);
+});

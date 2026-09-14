@@ -1,3 +1,4 @@
+import { healthState, normalizeServiceHealth } from "../../utils/healthPresentation";
 import { useState } from "react";
 import { SectionHeader } from "../../components/SectionHeader";
 import { ServiceDetailsDrawer } from "../../components/ServiceDetailsDrawer";
@@ -17,15 +18,7 @@ type SelectedService = {
     health: ServiceHealth;
 };
 
-const statusPriority: Record<string, number> = {
-    critical: 0,
-    offline: 1,
-    degraded: 2,
-    warning: 3,
-    unknown: 4,
-    healthy: 5,
-    online: 5,
-};
+const statusPriority = { Blocked: 0, Unavailable: 1, Degraded: 2, Unknown: 3, Healthy: 4 };
 
 export function ServiceHealthSection({
     services,
@@ -39,9 +32,9 @@ export function ServiceHealthSection({
     const entries = Object.entries(services).sort(
         ([nameA, healthA], [nameB, healthB]) => {
             const priorityA =
-                statusPriority[healthA.status.toLowerCase()] ?? 4;
+                statusPriority[healthState(healthA.status)];
             const priorityB =
-                statusPriority[healthB.status.toLowerCase()] ?? 4;
+                statusPriority[healthState(healthB.status)];
 
             if (priorityA !== priorityB) {
                 return priorityA - priorityB;
@@ -56,7 +49,7 @@ export function ServiceHealthSection({
     }
 
     const selectedHealth = selectedService
-        ? services[selectedService.name] ?? selectedService.health
+        ? services[selectedService.name] ?? normalizeServiceHealth({ message: "This service is absent from the latest health response." })
         : null;
 
     return (
@@ -64,7 +57,7 @@ export function ServiceHealthSection({
             <section>
                 <SectionHeader
                     title="Service Health"
-                    description="Live reachability, response status, and latency for Atlas infrastructure. Select a service for more details."
+                    description="Source-reported reachability, response status, and latency for Atlas infrastructure. Select a service for more details."
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

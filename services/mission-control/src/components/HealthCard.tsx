@@ -1,4 +1,4 @@
-import { StatusBadge } from "./StatusBadge";
+import { HealthEvidence } from "./HealthEvidence";
 
 type HealthCardProps = {
     score: number;
@@ -16,7 +16,7 @@ export function HealthCard({
             <div className="grid gap-8 md:grid-cols-[auto_1fr] md:items-center">
                 <div>
                     <p className="text-sm font-medium text-mc-text-muted">
-                        Overall Health
+                        ACE assessment
                     </p>
 
                     <div className="mt-3 flex items-end gap-4">
@@ -25,7 +25,7 @@ export function HealthCard({
                         </span>
 
                         <div className="pb-1">
-                            <StatusBadge status={status} />
+                            <HealthEvidence status={status} />
                         </div>
                     </div>
                 </div>

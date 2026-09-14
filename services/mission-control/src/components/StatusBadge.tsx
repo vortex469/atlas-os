@@ -21,6 +21,7 @@ const statusStyles: Record<string, StatusStyle> = {
     "in-progress": { variant: "mc-status-info" },
     unavailable: { variant: "mc-status-disabled" },
     disabled: { variant: "mc-status-disabled" },
+    blocked: { variant: "mc-status-error" },
     unknown: { variant: "mc-status-neutral" },
 };
 

@@ -131,6 +131,17 @@ describe("ServiceHealthSection", () => {
         expect(onRefresh).toHaveBeenCalledOnce();
     });
 
+    it("does not retain successful health or provider operations for a removed service", async () => {
+        const user = userEvent.setup();
+        const props = { providers, isRefreshing: false, onRefresh: vi.fn() };
+        const { rerender } = render(<ServiceHealthSection {...props} services={{ Containers: service("docker", 8) }} />);
+        await user.click(screen.getByRole("button", { name: "View details for Containers" }));
+        rerender(<ServiceHealthSection {...props} services={{ Other: service("podman", 10) }} />);
+        expect(screen.getByText("Unknown")).toBeInTheDocument();
+        expect(screen.getByText("This service is absent from the latest health response.")).toBeInTheDocument();
+        expect(screen.queryByText("Operations for Docker")).not.toBeInTheDocument();
+    });
+
     it("closes the details drawer with Escape and the backdrop", async () => {
         const user = userEvent.setup();
         render(

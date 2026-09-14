@@ -10,7 +10,7 @@ describe("mapServiceStatusToHealthState", () => {
     it("maps healthy states correctly", () => {
         expect(mapServiceStatusToHealthState("healthy")).toBe("healthy");
         expect(mapServiceStatusToHealthState("online")).toBe("healthy");
-        expect(mapServiceStatusToHealthState("success")).toBe("healthy");
+        expect(mapServiceStatusToHealthState("success")).toBe("unknown");
         expect(mapServiceStatusToHealthState("HEALTHY")).toBe("healthy");
     });
 
