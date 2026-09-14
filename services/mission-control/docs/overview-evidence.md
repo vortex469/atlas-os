@@ -10,7 +10,7 @@ summary grid, with no dashboard execution or inference controls.
 | Worker / execution | Agent listWorkflows, first 200 records | Counts describe only the returned workflow page. No worker liveness, queue depth, admission, or idle claim. |
 | Agent identity | Agent getAgentInfo | Information API is not an agent-health contract. |
 | Providers | GET /providers | Configuration and reported health are separate; no provider-specific coupling. |
-| Local AI / runtime | GET /ai/status | Configured AI provider health and reported running model labels. Locality, configured model selection, and the future dedicated runtime are unknown. |
+| Local AI / runtime | GET /ai/status | Configured AI provider health, installed/running model labels, runtime version and health latency. Failed inventories remain unknown; cached runtime observations are labeled last-known. Locality, configured model selection, and the future dedicated runtime are unknown. |
 | Attention | GET /ace/summary, service/provider health, GET /ai/status, workflows | Existing warning/critical/blocked findings, configured AI failures, and approval waits only. Exact source/message matches deduplicated; no fuzzy alert inference. |
 | Activity | GET /ops/actions/page, first 5 records | Historical action outcomes, authoritative completion times, existing audit-detail links. Old events are historical, not proof of current failure or health. |
 

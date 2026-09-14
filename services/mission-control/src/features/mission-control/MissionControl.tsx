@@ -9,6 +9,7 @@ import { useOverviewEvidence } from "./useOverviewEvidence";
 import type { Evidence, OverviewEvidence } from "./useOverviewEvidence";
 
 import { AgentOverviewContent, ProviderOverviewContent } from "./AgentProviderContent";
+import { LocalAiContent } from "./LocalAiContent";
 import { providerDetailPath } from "./agentProviderEvidence";
 import { WorkerExecutionSection } from "./WorkerExecutionSection";
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
@@ -58,7 +59,6 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const validWorkflows = workflows.filter(w => detailPath("/workflows", w.workflow_id) && WORKFLOW_STATES.some(state => state === w.workflow_state));
     const workflowKnown = isCompleteWorkflowEvidence(evidence.workflows?.data) && workflows.length === validWorkflows.length;
     const ai = record(evidence.ai?.data);
-    const runningModels = rows(record(ai.models).running).map(model => safeText(model.name ?? model.model)).filter(Boolean);
     const findings = rows(record(evidence.summary?.data).findings);
     const findingsKnown = Array.isArray(record(evidence.summary?.data).findings) && findings.every(f =>
         typeof f.severity === "string" && ["info", "warning", "critical", "blocked"].includes(f.severity));
@@ -109,14 +109,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <AgentOverviewContent evidence={evidence.agent} />
             </Card>
             <Card title="Local AI / Runtime" evidence={evidence.ai}>
-                <ObservedStatus value={null} reason="Local AI availability is unknown; locality is not reported." />
-                <p>Configured provider health</p>
-                <ObservedStatus value={record(ai.health).status} reason={record(ai.health).message} stale={evidence.ai?.stale} />
-                <p>Configured AI provider: {safeText(record(ai.provider).name) || "Unknown"}</p>
-                <p>Locality and dedicated Local AI Runtime capabilities are not exposed. This is configured AI provider health only.</p>
-                <p>Configured model identity: Unknown.</p>
-                {runningModels.length > 0 && !record(ai.errors).running_models && <p>Reported running models: {runningModels.slice(0, 3).join(", ")}</p>}
-                {providerDetailPath(record(ai.provider).id) && <Link to={providerDetailPath(record(ai.provider).id)!}>Inspect runtime provider →</Link>}
+                <LocalAiContent evidence={evidence.ai} />
             </Card>
             <Card title="Providers" evidence={evidence.providers}>
                 <ProviderOverviewContent evidence={evidence.providers} />

@@ -57,3 +57,23 @@ it('retains complete workflow evidence when pagination becomes malformed, then r
     expect(result.current.evidence.workflows?.stale).toBeUndefined();
     expect(result.current.evidence.workflows?.unavailable).toBeUndefined();
 });
+
+it.each([404, 501, 503, 500])('isolates AI observation HTTP %s, retains stale inventory, and recovers through shared refresh', async status => {
+    const ai = { provider: { id: 'runtime' }, health: { status: 'online' }, models: { running: [{ model: 'model-a' }] } };
+    vi.mocked(atlas.get).mockImplementation(async url => ({ data: url === '/ai/status' ? ai : { atlas: 'healthy' } }));
+    const { result } = renderHook(useOverviewEvidence);
+    await waitFor(() => expect(result.current.evidence.ai?.data).toEqual(ai));
+    vi.mocked(atlas.get).mockClear();
+    vi.mocked(atlas.get).mockImplementation(async url => {
+        if (url === '/ai/status') throw { response: { status }, message: 'private diagnostic' };
+        return { data: { atlas: 'healthy' } };
+    });
+    await act(() => result.current.refresh());
+    expect(vi.mocked(atlas.get).mock.calls.filter(([url]) => url === '/ai/status')).toHaveLength(1);
+    expect(result.current.evidence.ai).toEqual({ data: ai, unavailable: true, stale: true });
+    expect(result.current.evidence.health).toEqual({ data: { atlas: 'healthy' } });
+    expect(JSON.stringify(result.current.evidence)).not.toContain('private diagnostic');
+    vi.mocked(atlas.get).mockResolvedValue({ data: {} });
+    await act(() => result.current.refresh());
+    expect(result.current.evidence.ai).toEqual({ data: {} });
+});
