@@ -320,6 +320,13 @@ async def list_worker_activation_runtime_interface_prerequisites(
         return _json_error("invalid_request", 422, correlation_id)
     try:
         principal = _read_permission(request)
+    except HTTPException as error:
+        return _authentication_error(error, correlation_id)
+    except Exception:  # noqa: BLE001 - authentication failures remain redacted
+        return _json_error("unavailable", 503, correlation_id)
+    # Only the authentication dependency can report authentication failures.
+    # Evidence readback and transport failures must not impersonate that guard.
+    try:
         if await _has_body(request):
             return _json_error("invalid_request", 422, correlation_id)
         result = _service(request).list(
@@ -348,7 +355,7 @@ async def list_worker_activation_runtime_interface_prerequisites(
     except HTTPException as error:
         if error.status_code == 404:
             return _json_error("evidence_not_found", 404, correlation_id)
-        return _authentication_error(error, correlation_id)
+        return _json_error("unavailable", 503, correlation_id)
     except Exception:  # noqa: BLE001 - route failures remain redacted
         return _json_error("unavailable", 503, correlation_id)
     if isinstance(result, WorkerActivationRuntimeInterfacePrerequisiteRedactedErrorV1):
@@ -382,6 +389,11 @@ async def get_worker_activation_runtime_interface_prerequisite(
         return _json_error("invalid_request", 422, correlation_id)
     try:
         principal = _read_permission(request)
+    except HTTPException as error:
+        return _authentication_error(error, correlation_id)
+    except Exception:  # noqa: BLE001 - authentication failures remain redacted
+        return _json_error("unavailable", 503, correlation_id)
+    try:
         if await _has_body(request):
             return _json_error("invalid_request", 422, correlation_id)
         result = _service(request).get(
@@ -401,7 +413,7 @@ async def get_worker_activation_runtime_interface_prerequisite(
     except HTTPException as error:
         if error.status_code == 404:
             return _json_error("evidence_not_found", 404, correlation_id)
-        return _authentication_error(error, correlation_id)
+        return _json_error("unavailable", 503, correlation_id)
     except Exception:  # noqa: BLE001 - route failures remain redacted
         return _json_error("unavailable", 503, correlation_id)
     if isinstance(result, WorkerActivationRuntimeInterfacePrerequisiteRedactedErrorV1):

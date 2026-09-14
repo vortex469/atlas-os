@@ -1378,3 +1378,56 @@ def test_inventory_cannot_be_removed_from_service_response(
     assert response.json()["error_code"] == "unavailable"
     assert response.json()["retryable"] is False
     assert "inventory" not in response.text
+
+
+@pytest.mark.parametrize("target", ["list", "get"])
+@pytest.mark.parametrize("status_code", [200, 302, 401, 403, 404, 422, 429, 503])
+def test_v060_read_dependency_http_errors_cannot_impersonate_authentication(
+    tmp_path, facts, monkeypatch, target, status_code
+):
+    from fastapi import HTTPException
+
+    from app.worker_activation_runtime_interface_prerequisite.test_service_store import (
+        counts,
+    )
+
+    client, session, _, _, reader, url, _ = _application(tmp_path, facts)
+    if target == "get":
+        url += "/a70ea6f4-18ba-57f3-867e-f5eae39bfb2d"
+    service = client._app.state.worker_activation_runtime_interface_prerequisite_service
+    calls = []
+
+    def fail(**kwargs):
+        calls.append(kwargs)
+        raise HTTPException(
+            status_code,
+            "private-dependency-token",
+            headers={
+                "Location": "https://private.example/secret",
+                "Retry-After": "1",
+                "WWW-Authenticate": "private-dependency-token",
+            },
+        )
+
+    monkeypatch.setattr(service, target, fail)
+    # Authentication still wins before an injected dependency can run.
+    denied = client.get(url)
+    assert denied.status_code == 401
+    assert calls == []
+    response = client.get(url, cookies=_cookies(session))
+    assert response.status_code == (404 if status_code == 404 else 503)
+    assert response.json()["error_code"] == (
+        "evidence_not_found" if status_code == 404 else "unavailable"
+    )
+    assert response.json()["retryable"] is False
+    assert response.headers["cache-control"] == "no-store"
+    assert not {"location", "retry-after", "www-authenticate"} & set(response.headers)
+    assert "private-dependency-token" not in response.text
+    assert facts.operator_id not in response.text
+    assert len(response.content) < 16 * 1024
+    assert len(calls) == 1
+    assert calls[0]["authenticated_operator_id"] == facts.operator_id
+    assert calls[0]["candidate_record_id"] == facts.candidate_record_id
+    assert calls[0]["permission_verified"] is True
+    assert reader.calls == 0
+    assert counts(service._store) == (0, 0, 0)
