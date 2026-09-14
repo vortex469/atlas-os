@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { SystemHealthSummary } from "./SystemHealthSummary";
 import { WORKFLOW_STATES, workflowActionRequired } from "../../utils/workflowState";
-import { conditionKey, detailPath, record, rows, safeText, status, timestamp } from "./overviewEvidence";
+import { conditionKey, detailPath, record, rows, safeText, status } from "./overviewEvidence";
 import { useOverviewEvidence } from "./useOverviewEvidence";
 import type { Evidence, OverviewEvidence } from "./useOverviewEvidence";
 
 import { AgentOverviewContent, ProviderOverviewContent } from "./AgentProviderContent";
 import { LocalAiContent } from "./LocalAiContent";
 import { providerDetailPath } from "./agentProviderEvidence";
+import { RecentActivity } from "./RecentActivity";
 import { WorkerExecutionSection } from "./WorkerExecutionSection";
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
@@ -45,18 +45,13 @@ function attentionKey(finding: Record<string, unknown>, providers: Record<string
 }
 
 export function Overview({ evidence, loading = false }: { evidence: OverviewEvidence; loading?: boolean }) {
-    const [now, setNow] = useState(() => Date.now());
-    useEffect(() => {
-        const timer = window.setInterval(() => setNow(Date.now()), 30_000);
-        return () => window.clearInterval(timer);
-    }, []);
     const health = record(evidence.health?.data);
     const services = Object.entries(record(health.services)).sort((a, b) =>
         Number(status(record(a[1]).status) === "healthy") - Number(status(record(b[1]).status) === "healthy"));
     const providers = rows(evidence.providers?.data).sort((a, b) =>
         Number(status(record(a.health).status) === "healthy") - Number(status(record(b.health).status) === "healthy"));
     const workflows = rows(record(evidence.workflows?.data).items);
-    const validWorkflows = workflows.filter(w => detailPath("/workflows", w.workflow_id) && WORKFLOW_STATES.some(state => state === w.workflow_state));
+    const validWorkflows = workflows.filter(w => typeof w.workflow_id === "string" && w.workflow_id.trim().length > 0 && detailPath("/workflows", w.workflow_id) && WORKFLOW_STATES.some(state => state === w.workflow_state));
     const workflowKnown = isCompleteWorkflowEvidence(evidence.workflows?.data) && workflows.length === validWorkflows.length;
     const ai = record(evidence.ai?.data);
     const findings = rows(record(evidence.summary?.data).findings);
@@ -75,11 +70,11 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         ...(["degraded", "unavailable", "blocked"].includes(status(aiHealth.status)) ? [{
             key: detailPath("/providers", aiProvider.id) ? conditionKey(aiProvider.id, aiHealth.message) : conditionKey("ai/status", null, aiHealth.message), label: safeText(aiProvider.name) || "Configured AI provider", reason: safeText(aiHealth.message), state: aiHealth.status, to: providerDetailPath(aiProvider.id) ?? "/operations", stale: evidence.ai?.stale,
         }] : []),
-        ...findings.filter(f => ["warning", "critical", "blocked"].includes(String(f.severity))).map(f => ({
+        ...findings.filter(f => typeof f.severity === "string" && ["warning", "critical", "blocked"].includes(f.severity)).map(f => ({
             key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
         })),
         ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => ({
-            key: `workflow:${String(w.workflow_id)}`, label: safeText(w.workflow_id), reason: `${safeText(w.workflow_state)} · ${safeText(w.last_result_summary)}`, state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
+            actionRequired: workflowActionRequired(String(w.workflow_state)), key: `workflow:${String(w.workflow_id)}`, label: safeText(w.workflow_id), reason: `${safeText(w.workflow_state)} · ${safeText(w.last_result_summary)}`, state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
         })),
     ];
     const deduplicated = new Map<string, typeof attention[number]>();
@@ -89,7 +84,6 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     }
     const uniqueAttention = [...deduplicated.values()]
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
-    const activity = rows(record(evidence.activity?.data).items).filter(event => detailPath("/operations/actions", event.id) && typeof event.action_label === "string" && event.action_label.trim().length > 0).sort((a, b) => (timestamp(b.completed_at)?.getTime() ?? 0) - (timestamp(a.completed_at)?.getTime() ?? 0));
     return <>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="Atlas overall state" evidence={evidence.health}>
@@ -115,26 +109,25 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <ProviderOverviewContent evidence={evidence.providers} />
             </Card>
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div aria-label="Attention and activity" className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
             <Card title="Operator Attention" evidence={evidence.summary}>
+                <p>Reported workflow and operational conditions. Overview counts describe these same conditions.</p>
                 <SourceNote evidence={evidence.workflows} /><SourceNote evidence={evidence.health} /><SourceNote evidence={evidence.providers} /><SourceNote evidence={evidence.ai} />
                 {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
                 {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
                 {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
-                {uniqueAttention.slice(0, 5).map(item => <div key={item.key}><Link to={item.to}>{item.label || "Inspect condition"}</Link><ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />{item.stale && <p>Last-known condition; current state unknown.</p>}</div>)}
+                <ul className="space-y-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
+                    <Link to={item.to}>{item.label || "Inspect condition"}</Link>
+                    {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
+                    <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />
+                    {item.stale && <p>Last-known condition; current state unknown.</p>}
+                </li>)}</ul>
                 {uniqueAttention.length > 5 && <p>Showing 5 of {uniqueAttention.length} reported conditions. Open the detail views for more.</p>}
                 <Link to="/operations">Review operational conditions →</Link>
                 <Link to="/workflows">Review workflow attention →</Link>
             </Card>
             <Card title="Recent Activity" evidence={evidence.activity}>
-                <p>Recent provider action outcomes. Historical results do not establish current subsystem health.</p>
-                {activity.length === 0 && <p>{Array.isArray(record(evidence.activity?.data).items) ? (rows(record(evidence.activity?.data).items).length === 0 ? "No recent actions recorded." : "Activity evidence malformed or incomplete.") : "Activity evidence unknown."}</p>}
-                {activity.length > 0 && activity.length < rows(record(evidence.activity?.data).items).length && <p>Some activity records are malformed or incomplete.</p>}
-                {activity.slice(0, 5).map((event, index) => {
-                    const date = timestamp(event.completed_at);
-                    return <div key={index}><p>{event.status === "failed" ? "Error" : event.status === "succeeded" ? "Informational" : "Unknown outcome"} · {safeText(event.action_label)}</p><p>{safeText(event.message)}</p>{detailPath("/operations/actions", event.id) && <Link to={detailPath("/operations/actions", event.id)!}>Inspect action →</Link>}{date ? <time dateTime={date.toISOString()}>{date.toISOString()}</time> : <p>Completion time unknown.</p>}<p>{date && now - date.getTime() > 300_000 ? "Historical evidence (older than 5 minutes)." : "Action history does not establish current health."}</p></div>;
-                })}
-                <Link to="/operations/history">Open operational history →</Link>
+                <RecentActivity evidence={evidence.activity} />
             </Card>
         </div>
     </>;
