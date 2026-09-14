@@ -114,6 +114,21 @@ The [P5 evidence](docs/architecture/v0.58-p5-validation.md) and
 [release checklist](docs/RELEASE_CHECKLIST.md) record validation and limitations.
 No release, deployment, production construction or execution authority is claimed.
 
+## v0.59 P5 — retained authority isolation; release closure open
+
+Retained P1-P4 and synchronization are integrated at `81913c6d`, including
+expanded-value bounds, durable readback ownership, GET no-store responses and
+strict nested Mission Control evidence. P5 adds synchronized inventory and
+recursive successor-rejection regressions, including workflow consumer isolation.
+The exact twelve Core/API/UI consumers, six IDs, immutable v0.56 lineage,
+permanent reservations, seven unresolved proofs and 67 false fields remain.
+
+**Do not close v0.59:** integrated v0.58 P5 records open predecessor release
+gates. Current dependency restoration and full Mission Control test/build/lint
+attempts also fail. Definition-review remains deferred; no downstream authority
+is authorized. See [P5 evidence](docs/architecture/v0.59-p5-validation.md) for
+current checks, exact ancestry and limitations. Historical evidence is preserved.
+
 ## v0.59 Sync — retained Core/API boundary frozen
 
 The [normative v0.59 contract](docs/architecture/v0.59-runtime-interface-boundary.md)

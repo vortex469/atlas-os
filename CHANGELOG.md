@@ -6,6 +6,17 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.59 P5 - Retained Authority Isolation Regressions (closure open)
+
+- Lock the synchronized inventory and reject unselected admission and definition
+  review authority recursively in shared Core/UI evidence, even when false.
+- Extend closure evidence to workflow isolation while preserving exact consumers,
+  durable lineage, ownership and blocked runtime/Agent/execution authority.
+- Record integrated retained P1-P4 and current validation without altering
+  historical evidence or isolation allowances. Predecessor and v0.59 release
+  closure remain open because required full UI gates cannot run successfully.
+  See [P5 evidence](docs/architecture/v0.59-p5-validation.md).
+
 #### v0.58 P5 - Retained Interface Evidence Closure Regressions (closure open)
 
 - Synchronized the roadmap and normative contract with integrated Sync/P1-P4:

@@ -1,5 +1,24 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.59 P5 — retained closure gates (2026-09-14)
+
+- [x] Verify integrated v0.58 P5 and retained v0.59 Sync/P1-P4 ancestry at
+  `81913c6dbf1d89c3ff1a65e595dbe8507d75d476`.
+- [x] Add exact normative inventory and recursive Core/shared-UI-golden
+  rejection of both unselected successors, including false markers.
+- [x] Lock zero successor production surfaces and zero workflow consumers;
+  preserve the historical exact twelve Core/API/UI consumer allowance.
+- [x] Retain complete predecessor lineage, persistence/replay/corruption/ownership
+  checks, default-off Core and blocked downstream authority.
+- [ ] Full Mission Control tests/build/lint: dependency restoration fails;
+  Vitest/ESLint and locked build dependencies are unavailable.
+- [ ] Repository-integrated v0.58 release closure, then v0.59 release closure.
+  Historical focused P4 success cannot replace the full release gates.
+
+[P5 validation evidence](architecture/v0.59-p5-validation.md) records the current
+commands and results. No historical isolation test or exception was modified.
+No release, runtime enablement, successor admission or proof discharge is claimed.
+
 ## Atlas v0.59 Sync — repository planning freeze (2026-09-13)
 
 The [normative contract](architecture/v0.59-runtime-interface-boundary.md) freezes
