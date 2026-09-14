@@ -11,7 +11,7 @@ summary grid, with no dashboard execution or inference controls.
 | Agent identity | Agent getAgentInfo | Information API is not an agent-health contract. |
 | Providers | GET /providers | Configuration and reported health are separate; no provider-specific coupling. |
 | Local AI / runtime | GET /ai/status | Configured AI provider health and reported running model labels. Locality, configured model selection, and the future dedicated runtime are unknown. |
-| Attention | GET /ace/summary, service/provider health, workflows | Existing warning/critical/blocked findings and approval waits only. Exact source/message matches deduplicated; no fuzzy alert inference. |
+| Attention | GET /ace/summary, service/provider health, GET /ai/status, workflows | Existing warning/critical/blocked findings, configured AI failures, and approval waits only. Exact source/message matches deduplicated; no fuzzy alert inference. |
 | Activity | GET /ops/actions/page, first 5 records | Historical action outcomes, authoritative completion times, existing audit-detail links. Old events are historical, not proof of current failure or health. |
 
 Each source loads independently and refreshes every 30 seconds. Failed refreshes
@@ -20,6 +20,15 @@ Missing, unrecognized, and malformed states remain unknown. Receipt time is neve
 presented as an authoritative update timestamp. Historical activity older than
 five minutes is labeled as such; the threshold is a display convention, not an
 Atlas health or expiry decision.
+
+Configured AI failures participate in attention without establishing locality or
+dedicated runtime availability. Matching provider, AI, and finding conditions
+share one row; current observations take precedence over stale duplicates.
+Incomplete workflow/finding lists are explicitly identified in attention.
+Providers with non-healthy or unknown evidence appear before routine healthy
+providers so the compact list does not hide them. Activity records require a
+usable audit identifier and nonblank action label; rejected records remain
+visible as an incomplete-evidence notice rather than an empty history claim.
 
 Only allowlisted identity, status, and reason fields render. Arbitrary details,
 configuration, headers, endpoints, and raw exception payloads do not render.

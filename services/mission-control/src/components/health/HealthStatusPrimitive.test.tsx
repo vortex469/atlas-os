@@ -131,7 +131,7 @@ describe("HealthStatusBadge", () => {
                 isStale={true}
             />,
         );
-        expect(screen.getByText(/(stale)/)).toBeInTheDocument();
+        expect(screen.getByText(/ago \(stale\)/)).toBeInTheDocument();
     });
 });
 
@@ -211,3 +211,16 @@ describe("HealthStatusCard", () => {
 });
 
 import { isEvidenceStale, mapServiceStatusToHealthState } from "./healthPresentation";
+
+describe('stale status authority', () => {
+    it.each(['healthy', 'degraded', 'unavailable', 'blocked', 'unknown'] as const)('does not present stale %s as current', state => {
+        const { container } = render(<HealthStatusBadge state={state} isStale />);
+        expect(screen.getByText('Unknown · Stale evidence')).toBeInTheDocument();
+        expect(container.querySelector('[data-mc-status="success"]')).toBeNull();
+    });
+});
+
+it('preserves authoritative update timing on full health cards', () => {
+    render(<HealthStatusCard state="healthy" lastUpdated={new Date(Date.now() - 120_000)} />);
+    expect(screen.getByText('2m ago')).toBeInTheDocument();
+});

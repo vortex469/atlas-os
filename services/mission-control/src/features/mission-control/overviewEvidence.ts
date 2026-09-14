@@ -27,3 +27,8 @@ export function detailPath(prefix: string, id: unknown): string | null {
         return null;
     }
 }
+
+// Compare full evidence before display redaction/truncation; distinct conditions must survive.
+export function conditionKey(...parts: unknown[]): string {
+    return JSON.stringify(parts);
+}
