@@ -932,27 +932,65 @@ def test_valid_service_response_must_match_exact_request(
     )
 
 
-def test_unexpected_dependency_http_errors_are_redacted(tmp_path, facts, monkeypatch):
+@pytest.mark.parametrize(
+    "status_code", [200, 302, 401, 403, 404, 413, 415, 422, 429, 503]
+)
+def test_unexpected_dependency_http_errors_are_redacted(
+    tmp_path, facts, monkeypatch, status_code
+):
     from fastapi import HTTPException
 
-    client, session, _, create, _, url, _ = _application(tmp_path, facts)
+    from app.worker_activation_runtime_interface_prerequisite.test_service_store import (
+        counts,
+    )
+
+    client, session, _, create, reader, url, _ = _application(tmp_path, facts)
+    service = client._app.state.worker_activation_runtime_interface_prerequisite_service
+    calls = []
 
     def fail(*args, **kwargs):
-        raise HTTPException(200, "private-token")
+        calls.append((args, kwargs))
+        raise HTTPException(
+            status_code,
+            "private-token",
+            headers={
+                "Location": "https://private.example/secret",
+                "Retry-After": "1",
+                "WWW-Authenticate": "private-token",
+            },
+        )
 
-    monkeypatch.setattr(
-        client._app.state.worker_activation_runtime_interface_prerequisite_service,
-        "create",
-        fail,
+    monkeypatch.setattr(service, "create", fail)
+    payload = create.model_dump(mode="json")
+    assert client.post(url, json=payload, headers=_headers(session)).status_code == 401
+    assert calls == []
+    malformed = client.post(
+        url, json={}, cookies=_cookies(session), headers=_headers(session)
     )
+    assert malformed.status_code == 422
+    assert calls == []
     response = client.post(
         url,
-        json=create.model_dump(mode="json"),
+        json=payload,
         cookies=_cookies(session),
         headers=_headers(session),
     )
     assert response.status_code == 503
+    assert response.json()["error_code"] == "unavailable"
+    assert response.json()["retryable"] is False
+    assert response.headers["cache-control"] == "no-store"
+    assert not {"location", "retry-after", "www-authenticate"} & set(response.headers)
     assert "private-token" not in response.text
+    assert facts.operator_id not in response.text
+    assert len(response.content) < 16 * 1024
+    assert len(calls) == 1
+    assert calls[0][0] == (create,)
+    assert calls[0][1]["authenticated_operator_id"] == facts.operator_id
+    assert calls[0][1]["candidate_record_id"] == facts.candidate_record_id
+    assert calls[0][1]["permission_verified"] is True
+    assert calls[0][1]["idempotency_key"] == _headers(session)["Idempotency-Key"]
+    assert reader.calls == 0
+    assert counts(service._store) == (0, 0, 0)
 
 
 def test_response_must_bind_exact_idempotency_key(tmp_path, facts, monkeypatch):

@@ -260,14 +260,19 @@ async def create_worker_activation_runtime_interface_prerequisite(
         if len(keys) != 1:
             raise HTTPException(422)
         key = _idempotency_key(keys[0])
-        result = _service(request).create(
-            payload,
-            authenticated_operator_id=principal.operator_id,
-            permission_verified=True,
-            candidate_record_id=candidate_record_id,
-            idempotency_key=key,
-            correlation_id=correlation_id,
-        )
+        # Dependency exceptions cannot impersonate request validation failures.
+        # Only validated service error models carry domain failure semantics.
+        try:
+            result = _service(request).create(
+                payload,
+                authenticated_operator_id=principal.operator_id,
+                permission_verified=True,
+                candidate_record_id=candidate_record_id,
+                idempotency_key=key,
+                correlation_id=correlation_id,
+            )
+        except Exception:  # noqa: BLE001 - dependency failures remain redacted
+            return _json_error("unavailable", 503, correlation_id)
         result = _validated_result(result, principal.operator_id, candidate_record_id)
         if isinstance(result, WorkerActivationRuntimeInterfacePrerequisiteResultV1):
             record = result.record
