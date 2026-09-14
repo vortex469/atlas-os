@@ -8,6 +8,8 @@ import { conditionKey, detailPath, record, rows, safeText, status, timestamp } f
 import { useOverviewEvidence } from "./useOverviewEvidence";
 import type { Evidence, OverviewEvidence } from "./useOverviewEvidence";
 
+import { AgentOverviewContent, ProviderOverviewContent } from "./AgentProviderContent";
+import { providerDetailPath } from "./agentProviderEvidence";
 import { WorkerExecutionSection } from "./WorkerExecutionSection";
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
@@ -57,7 +59,6 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const workflowKnown = isCompleteWorkflowEvidence(evidence.workflows?.data) && workflows.length === validWorkflows.length;
     const ai = record(evidence.ai?.data);
     const runningModels = rows(record(ai.models).running).map(model => safeText(model.name ?? model.model)).filter(Boolean);
-    const agent = record(evidence.agent?.data);
     const findings = rows(record(evidence.summary?.data).findings);
     const findingsKnown = Array.isArray(record(evidence.summary?.data).findings) && findings.every(f =>
         typeof f.severity === "string" && ["info", "warning", "critical", "blocked"].includes(f.severity));
@@ -66,13 +67,13 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     // One row per authoritative source condition. Do not synthesize alerts from counts.
     const attention = [
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
-            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: detailPath("/providers", record(raw).provider_id) ?? "/operations", stale: evidence.health?.stale,
+            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "/operations", stale: evidence.health?.stale,
         })),
         ...providers.filter(p => ["degraded", "unavailable", "blocked"].includes(status(record(p.health).status))).map(p => ({
-            key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: detailPath("/providers", p.id) ?? "/operations", stale: evidence.providers?.stale,
+            key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: providerDetailPath(p.id) ?? "/operations", stale: evidence.providers?.stale,
         })),
         ...(["degraded", "unavailable", "blocked"].includes(status(aiHealth.status)) ? [{
-            key: detailPath("/providers", aiProvider.id) ? conditionKey(aiProvider.id, aiHealth.message) : conditionKey("ai/status", null, aiHealth.message), label: safeText(aiProvider.name) || "Configured AI provider", reason: safeText(aiHealth.message), state: aiHealth.status, to: detailPath("/providers", aiProvider.id) ?? "/operations", stale: evidence.ai?.stale,
+            key: detailPath("/providers", aiProvider.id) ? conditionKey(aiProvider.id, aiHealth.message) : conditionKey("ai/status", null, aiHealth.message), label: safeText(aiProvider.name) || "Configured AI provider", reason: safeText(aiHealth.message), state: aiHealth.status, to: providerDetailPath(aiProvider.id) ?? "/operations", stale: evidence.ai?.stale,
         }] : []),
         ...findings.filter(f => ["warning", "critical", "blocked"].includes(String(f.severity))).map(f => ({
             key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
@@ -105,9 +106,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
             <Card title="Agent state" evidence={evidence.agent}>
-                <ObservedStatus value={null} reason="Agent health is not supplied by the information API." />
-                <p>{safeText(agent.app_name) || "Agent identity unknown"}{safeText(agent.version) && ` · ${safeText(agent.version)}`}</p>
-                <Link to="/forge">Open agent details →</Link>
+                <AgentOverviewContent evidence={evidence.agent} />
             </Card>
             <Card title="Local AI / Runtime" evidence={evidence.ai}>
                 <ObservedStatus value={null} reason="Local AI availability is unknown; locality is not reported." />
@@ -117,16 +116,10 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <p>Locality and dedicated Local AI Runtime capabilities are not exposed. This is configured AI provider health only.</p>
                 <p>Configured model identity: Unknown.</p>
                 {runningModels.length > 0 && !record(ai.errors).running_models && <p>Reported running models: {runningModels.slice(0, 3).join(", ")}</p>}
-                {detailPath("/providers", record(ai.provider).id) && <Link to={detailPath("/providers", record(ai.provider).id)!}>Inspect runtime provider →</Link>}
+                {providerDetailPath(record(ai.provider).id) && <Link to={providerDetailPath(record(ai.provider).id)!}>Inspect runtime provider →</Link>}
             </Card>
             <Card title="Providers" evidence={evidence.providers}>
-                {providers.length === 0 && <p>{Array.isArray(evidence.providers?.data) ? "No providers configured." : "Provider configuration unknown."}</p>}
-                {providers.slice(0, 4).map((provider, index) => <div key={index}>
-                    <p>{safeText(provider.name) || "Unknown provider"} · {detailPath("/providers", provider.id) ? "Configured" : "Configuration unknown"}</p>
-                    <ObservedStatus value={detailPath("/providers", provider.id) ? record(provider.health).status : null} reason={record(provider.health).message} stale={evidence.providers?.stale} />
-                    {detailPath("/providers", provider.id) && <Link to={detailPath("/providers", provider.id)!}>Inspect {safeText(provider.name) || "provider"} →</Link>}
-                </div>)}
-                {providers.length > 4 && <details><summary>{providers.length - 4} more configured providers</summary>{providers.slice(4).map((p, i) => <div key={i}>{detailPath("/providers", p.id) ? <Link to={detailPath("/providers", p.id)!}>{safeText(p.name) || "Provider details"}</Link> : "Unknown provider"}<ObservedStatus value={detailPath("/providers", p.id) ? record(p.health).status : null} stale={evidence.providers?.stale} /></div>)}</details>}
+                <ProviderOverviewContent evidence={evidence.providers} />
             </Card>
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
