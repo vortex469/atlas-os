@@ -1,5 +1,22 @@
 # Atlas OS Roadmap
 
+## v0.60 P5 — retained isolation verified; release closure open
+
+P0/Sync and retained P1-P4 are repository-integrated at `0dd813dc`. P1 locks
+the existing contract, P2 bounds SQLite metadata before readback, P3 redacts
+unexpected read-dependency HTTP failures, and P4 explains deferred runtime
+definition in the existing nested evidence view. These implement retention;
+**runtime definition P1-P5 remain deferred**. No new pair or consumer exists.
+
+P5 adds recursive shared-envelope definition refusal and production isolation
+regressions. Exact v0.59 ancestry, current validation and remaining gates are
+recorded in [P5 evidence](docs/architecture/v0.60-p5-validation.md). Integrated
+v0.59 P5 still records open predecessor closure. Current Mission Control
+validation cannot run with the locked dependencies; Core Ruff also reports
+existing findings. **Do not close v0.60 or infer release authority.** Historical
+records and exact consumer allowances are unchanged. No runtime, execution,
+installation, deployment, rollback, publication, retry or resend is authorized.
+
 ## v0.60 Sync — retained boundary frozen (2026-09-14)
 
 The [normative freeze](docs/architecture/v0.60-runtime-definition-boundary.md)

@@ -6,6 +6,17 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.60 P5 - Retained Isolation and Release Evidence (closure open)
+
+- Preserve the integrated v0.59 boundary and deferred runtime definition;
+  synchronize P1 contract regressions, P2 bounded journal metadata, P3 redacted
+  API dependency failures and P4 non-authoritative nested presentation.
+- Reject runtime-definition claims at every shared evidence envelope and forbid
+  definition consumers across Core, UI, Agent, worker and operational surfaces.
+- Record exact ancestry and current release checks without widening historical
+  isolation allowances. Predecessor acceptance and required validation remain
+  open; see [P5 evidence](docs/architecture/v0.60-p5-validation.md).
+
 #### v0.59 P5 - Retained Authority Isolation Regressions (closure open)
 
 - Lock the synchronized inventory and reject unselected admission and definition
