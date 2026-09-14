@@ -21,7 +21,7 @@ function InventoryReader({ review }: { review: WorkerActivationRuntimePlanReview
             <p>This is the state at Core’s last evaluation.</p>
             <details className="mt-3">
                 <summary>Advanced Core evidence</summary>
-                <p>v0.59 retains the Core-owned v0.57 interface prerequisite inventory hardened in v0.58. Separate interface admission and definition-review stages are deferred.</p>
+                <p>v0.60 retains the Core-owned v0.57 interface prerequisite inventory integrated through v0.59. Runtime definition remains deferred; no new runtime authority is established.</p>
                 <p>Interface prerequisite inventory is evidence; runtime prerequisites remain incomplete.</p>
                 <dl>{Object.entries({ "Interface prerequisite inventory ID": state.runtimeInterfacePrerequisiteId, "Plan review ID": state.runtimePlanReviewId, "Runtime plan ID": state.runtimePlanId, "Runtime admission ID": state.runtimeAdmissionId, "Prerequisite ID": state.prerequisiteId, "Admission ID": state.admissionId, "Candidate ID": state.candidateId, "Operator ID": state.operatorId, "Recorded at": state.recordedAt, "Valid until": state.validUntil, "Core evaluated at": state.evaluatedAt, "Exact duplicate": String(state.exactDuplicate), ...Object.fromEntries(Object.entries(state.fingerprints).map(([key, value]) => [`${key} fingerprint`, value.value])) }).map(([key, value]) => <div key={key}><dt>{key}</dt><dd className="break-all">{value}</dd></div>)}</dl>
                 <pre aria-label="Core interface prerequisite inventory">{JSON.stringify({ profile: state.profile, inventory: state.inventory }, null, 2)}</pre>
