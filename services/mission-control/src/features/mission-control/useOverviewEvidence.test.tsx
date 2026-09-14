@@ -44,3 +44,16 @@ it('isolates policy reload failure, retains its evidence and recovers independen
     await act(() => result.current.refresh());
     expect(result.current.evidence.policyHealth).toEqual({ data: { status: 'healthy' } });
 });
+
+it('retains complete workflow evidence when pagination becomes malformed, then recovers', async () => {
+    vi.mocked(listWorkflows).mockResolvedValue({ items: [], total: 0, limit: 200, offset: 0 });
+    const { result } = renderHook(useOverviewEvidence);
+    await waitFor(() => expect(result.current.evidence.workflows?.data).toBeDefined());
+    vi.mocked(listWorkflows).mockResolvedValue({ items: [], total: 1, limit: 200, offset: 0 });
+    await act(() => result.current.refresh());
+    expect(result.current.evidence.workflows).toEqual({ data: { items: [], total: 0, limit: 200, offset: 0 }, stale: true, unavailable: true });
+    vi.mocked(listWorkflows).mockResolvedValue({ items: [], total: 0, limit: 200, offset: 0 });
+    await act(() => result.current.refresh());
+    expect(result.current.evidence.workflows?.stale).toBeUndefined();
+    expect(result.current.evidence.workflows?.unavailable).toBeUndefined();
+});

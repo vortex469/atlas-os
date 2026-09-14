@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { atlas } from "../../api/atlas";
-import { getAgentInfo, listWorkflows } from "../../api/atlas-agent";
+import { getAgentInfo } from "../../api/atlas-agent";
+
+import { fetchAllWorkflowSummary } from "./workerExecutionEvidence";
 
 const loaders = {
     health: () => atlas.get<unknown>("/health").then(r => r.data),
@@ -9,7 +11,7 @@ const loaders = {
     providers: () => atlas.get<unknown>("/providers").then(r => r.data),
     ai: () => atlas.get<unknown>("/ai/status").then(r => r.data),
     agent: () => getAgentInfo(),
-    workflows: () => listWorkflows({ limit: 200, offset: 0 }),
+    workflows: fetchAllWorkflowSummary,
     activity: () => atlas.get<unknown>("/ops/actions/page", { params: { limit: 5, offset: 0 } }).then(r => r.data),
 };
 export type Source = keyof typeof loaders;

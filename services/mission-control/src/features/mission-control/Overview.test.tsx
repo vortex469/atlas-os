@@ -13,7 +13,7 @@ describe("MC overview evidence", () => {
         for (const name of ['Atlas overall state','Core health','Worker / Execution','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
-        expect(screen.getByText('Execution observations unknown.')).toBeInTheDocument();
+        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
     });
     it("handles malformed values without success or a crash", () => {
         show({ health: { data: { atlas: {}, services: { broken: null } } }, providers: { data: [null, { health: { status: 23 } }] }, workflows: { data: { items: [null] } }, ai: { data: { health: { status: [] } } }, activity: { data: { items: [null] } } });
@@ -25,7 +25,7 @@ describe("MC overview evidence", () => {
         expect(screen.getByRole('link', { name: 'Inspect Alpha →' })).toHaveAttribute('href', '/providers/alpha');
         expect(screen.getByRole('link', { name: 'w/1' })).toHaveAttribute('href', '/workflows/w%2F1');
         expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Beta')).toHaveLength(1);
-        expect(screen.getByText(/Returned workflows: 2. Active: 1. Blocked: 1/)).toBeInTheDocument();
+        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
         expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     });
     it.each(['healthy','unavailable','unknown'])('shows configured AI %s without asserting locality', (value) => {
@@ -73,7 +73,7 @@ describe('operational activity and runtime evidence', () => {
 describe('overview fail-closed regressions', () => {
     it.each(['', 'idle', 'future_state', null, {}])('does not count malformed or unsupported workflow states: %s', state => {
         show({ workflows: { data: { items: [{ workflow_id: 'w', workflow_state: state }] } } });
-        expect(screen.getByText('Execution observations unknown.')).toBeInTheDocument();
+        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
         expect(screen.queryByText(/Active: 0/)).not.toBeInTheDocument();
     });
     it('retains distinct conditions for the same provider and does not call approval waits blocked', () => {
@@ -100,9 +100,9 @@ describe('overview fail-closed regressions', () => {
     });
 });
 
-it('counts execution, verification and commit activity without assuming worker availability', () => {
-    show({ workflows: { data: { items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state })) } } });
-    expect(screen.getByText(/Returned workflows: 3. Active: 3/)).toBeInTheDocument();
+it('distinguishes executing workflows from verification and commit activity', () => {
+    show({ workflows: { data: { total: 3, offset: 0, limit: 200, items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state, last_result_summary: '', timeline: [] })) } } });
+    expect(screen.getByText("1 executing workflows")).toBeInTheDocument();
     expect(screen.getByText(/Worker availability and queue depth are not exposed/)).toBeInTheDocument();
 });
 
@@ -191,4 +191,24 @@ it('does not promote operational success or malformed summary evidence to health
     show({ health: { data: { atlas: 'success' } }, summary: { data: { status: {}, summary: [] } }, policyHealth: { data: [] } });
     expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'System health' })).getAllByText('Unknown')).toHaveLength(3);
+});
+
+it('integrates execution outcomes and stale attention without duplicating health or workflow state', () => {
+    show({
+        health: { data: { atlas: 'healthy' } },
+        workflows: { stale: true, unavailable: true, data: { total: 1, offset: 0, limit: 200, items: [{
+            workflow_id: 'blocked/1', workflow_state: 'blocked', last_result_summary: 'Commit failed',
+            timeline: [{ name: 'Execution', status: 'completed' }],
+        }] } },
+    });
+    const worker = within(screen.getByRole('region', { name: 'Worker / Execution' }));
+    expect(worker.getByText('Execution completed')).toBeInTheDocument();
+    expect(worker.queryByText('Commit failed')).not.toBeInTheDocument();
+    expect(worker.queryByText('Healthy')).not.toBeInTheDocument();
+    expect(worker.getByText(/current execution state unknown/)).toBeInTheDocument();
+    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    expect(attention.getAllByRole('link', { name: 'blocked/1' })).toHaveLength(1);
+    expect(attention.getByText('Unknown · Stale evidence')).toBeInTheDocument();
+    expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
+    expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
 });

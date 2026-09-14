@@ -8,6 +8,9 @@ import { conditionKey, detailPath, record, rows, safeText, status, timestamp } f
 import { useOverviewEvidence } from "./useOverviewEvidence";
 import type { Evidence, OverviewEvidence } from "./useOverviewEvidence";
 
+import { WorkerExecutionSection } from "./WorkerExecutionSection";
+import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
+
 function SourceNote({ evidence }: { evidence?: Evidence }) {
     if (evidence?.stale) return <p role="status">Stale evidence — refresh failed. Last-known observations only.</p>;
     if (evidence?.unavailable) return <p>Evidence unavailable.</p>;
@@ -38,7 +41,7 @@ function attentionKey(finding: Record<string, unknown>, providers: Record<string
     return conditionKey("finding", finding.id, finding.source, finding.title, finding.message);
 }
 
-export function Overview({ evidence }: { evidence: OverviewEvidence }) {
+export function Overview({ evidence, loading = false }: { evidence: OverviewEvidence; loading?: boolean }) {
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
         const timer = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -51,7 +54,7 @@ export function Overview({ evidence }: { evidence: OverviewEvidence }) {
         Number(status(record(a.health).status) === "healthy") - Number(status(record(b.health).status) === "healthy"));
     const workflows = rows(record(evidence.workflows?.data).items);
     const validWorkflows = workflows.filter(w => detailPath("/workflows", w.workflow_id) && WORKFLOW_STATES.some(state => state === w.workflow_state));
-    const workflowKnown = Array.isArray(record(evidence.workflows?.data).items) && workflows.length === validWorkflows.length;
+    const workflowKnown = isCompleteWorkflowEvidence(evidence.workflows?.data) && workflows.length === validWorkflows.length;
     const ai = record(evidence.ai?.data);
     const runningModels = rows(record(ai.models).running).map(model => safeText(model.name ?? model.model)).filter(Boolean);
     const agent = record(evidence.agent?.data);
@@ -100,15 +103,7 @@ export function Overview({ evidence }: { evidence: OverviewEvidence }) {
                 <p>{services.length > 4 ? `Showing 4 of ${services.length} reported services. ` : ""}Core process health is not separately reported.</p>
                 <Link to="/operations">Inspect operations →</Link>
             </Card>
-            <Card title="Worker / Execution" evidence={evidence.workflows}>
-                <ObservedStatus value={null} reason="Worker availability and queue depth are not exposed by this evidence." />
-                {workflowKnown ? <>
-                    <p>{evidence.workflows?.stale ? "Last-known observations. " : ""}Returned workflows: {validWorkflows.length}. Active: {validWorkflows.filter(w => ["executing", "verifying", "committing"].includes(String(w.workflow_state))).length}. Blocked: {validWorkflows.filter(w => w.workflow_state === "blocked").length}.</p>
-                    <p>Completed outcomes: {validWorkflows.filter(w => w.workflow_state === "completed").length}. First page only, up to 200 workflows.</p>
-                </> : <p>Execution observations unknown.</p>}
-                <p>Workflow observations do not establish worker idleness, admission, or permission to execute.</p>
-                <Link to="/workflows">Inspect executions →</Link>
-            </Card>
+            <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
             <Card title="Agent state" evidence={evidence.agent}>
                 <ObservedStatus value={null} reason="Agent health is not supplied by the information API." />
                 <p>{safeText(agent.app_name) || "Agent identity unknown"}{safeText(agent.version) && ` · ${safeText(agent.version)}`}</p>
@@ -162,6 +157,6 @@ export function MissionControl() {
     const { evidence, loading, refresh } = useOverviewEvidence();
     return <main aria-label="Mission Control command center" className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 [&_a]:text-mc-primary [&_a]:underline [&_a]:underline-offset-4 [&_a:focus-visible]:outline-2">
         <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">Mission Control command center</h1><p className="text-sm text-mc-text-secondary">System overview · authoritative observations</p></div><button className="rounded-lg border border-mc-border-subtle px-4 py-2" disabled={loading} onClick={() => void refresh()}>{loading ? "Refreshing…" : "Refresh"}</button></header>
-        <Overview evidence={evidence} />
+        <Overview evidence={evidence} loading={loading} />
     </main>;
 }
