@@ -10,18 +10,27 @@ vi.mock("./atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(collection: unknown = inventoryCollection, result: unknown = inventoryResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: collection }).mockResolvedValueOnce({ data: result });
 }
-describe("v0.58 retained guarded interface prerequisite reader", () => {
+describe("v0.59 retained guarded interface prerequisite reader", () => {
     beforeEach(() => vi.resetAllMocks());
-    it.each(["collection", "listedRecord", "result", "record", "status"] as const)("rejects synthesized successor authority in %s", async (section) => {
-        for (const value of [true, false]) {
-            vi.resetAllMocks();
+    describe.each(["collection", "listedRecord", "result", "record", "status", "review", "reviewStatus"] as const)("closed retained %s envelope", (section) => {
+        it.each([
+            { worker_activation_runtime_interface_admitted: true },
+            { worker_activation_runtime_interface_admitted: false },
+            { worker_activation_runtime_interface_definition_review_recorded: true },
+            { worker_activation_runtime_interface_definition_review_recorded: false },
+            { schema: "worker-activation-runtime-interface-definition-review-v1" },
+        ])("rejects synthesized successor evidence: %j", async (change) => {
             const collection = structuredClone(inventoryCollection), result = structuredClone(inventoryResult);
-            const target = section === "collection" ? collection : section === "listedRecord" ? collection.items[0] : section === "result" ? result : result[section];
-            Object.assign(target, { worker_activation_runtime_interface_admitted: value });
+            const target = section === "collection" ? collection
+                : section === "listedRecord" ? collection.items[0]
+                : section === "review" ? result.record.worker_activation_runtime_plan_review
+                : section === "reviewStatus" ? result.record.worker_activation_runtime_plan_review_status
+                : section === "result" ? result : result[section];
+            Object.assign(target, change);
             responses(collection, result);
             await expect(getWorkerActivationRuntimeInterfacePrerequisite(parentAdmission)).rejects.toThrow(/unavailable/);
             expect(atlas.get).toHaveBeenCalledTimes(section === "collection" || section === "listedRecord" ? 1 : 2);
-        }
+        });
     });
     it("lists owned evidence then reads the exact interface prerequisite status with credentials", async () => {
         responses();

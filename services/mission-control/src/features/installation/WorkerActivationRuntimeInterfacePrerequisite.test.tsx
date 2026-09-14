@@ -9,7 +9,7 @@ vi.mock("../../api/atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(result: unknown = inventoryResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: inventoryCollection }).mockResolvedValueOnce({ data: result });
 }
-describe("v0.58 retained interface prerequisite presentation", () => {
+describe("v0.59 retained interface prerequisite presentation", () => {
     beforeEach(() => vi.resetAllMocks());
     it("shows incomplete prerequisites first with inspectable collapsed details and no controls", async () => {
         responses();
@@ -23,20 +23,28 @@ describe("v0.58 retained interface prerequisite presentation", () => {
         expect(details).not.toHaveAttribute("open");
         expect(screen.getByText(inventoryResult.record.prerequisite_id)).not.toBeVisible();
         expect(details).toHaveTextContent("worker_start_allowedfalse");
-        expect(details).toHaveTextContent("A separate interface admission stage is deferred");
+        expect(details).toHaveTextContent("v0.59 retains the Core-owned v0.57 interface prerequisite inventory hardened in v0.58");
+        expect(details).toHaveTextContent("Separate interface admission and definition-review stages are deferred");
         for (const label of ["Core interface prerequisite inventory", "Exact review lineage", "v0.57 fixed-false authority"]) {
             expect(details).toContainElement(screen.getByLabelText(label));
             expect(screen.getByLabelText(label)).not.toBeVisible();
         }
         expect(container.querySelectorAll("button,input,form,select,textarea")).toHaveLength(0);
     });
-    it("fails closed when an otherwise valid result invents interface admission", async () => {
-        responses({ ...inventoryResult, worker_activation_runtime_interface_admitted: true });
+    it.each([
+        { worker_activation_runtime_interface_admitted: true },
+        { worker_activation_runtime_interface_admitted: false },
+        { worker_activation_runtime_interface_definition_review_recorded: true },
+        { worker_activation_runtime_interface_definition_review_recorded: false },
+        { schema: "worker-activation-runtime-interface-definition-review-result-v1" },
+    ])("fails closed for an invented successor: %j", async (change) => {
+        responses({ ...inventoryResult, ...change });
         render(<WorkerActivationRuntimeInterfacePrerequisite review={review} />);
         expect(await screen.findByText(/Interface prerequisite inventory evidence is unavailable/)).toBeVisible();
         expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
         expect(screen.queryByText(/Core recorded an interface prerequisite inventory/)).not.toBeInTheDocument();
         expect(screen.queryByText("Advanced Core evidence")).not.toBeInTheDocument();
+        expect(atlas.get).toHaveBeenCalledTimes(2);
     });
     it("shows expired evidence without suggesting runtime readiness", async () => {
         responses({ ...inventoryResult, status: { ...inventoryResult.status, lifecycle: "expired", evaluated_at: inventoryResult.status.valid_until } });
