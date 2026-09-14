@@ -104,7 +104,7 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
             self._schema = set(reference.execute("SELECT name, sql FROM sqlite_master"))
         self._initialized = False
         with self._connect() as connection:
-            actual = set(connection.execute("SELECT name, sql FROM sqlite_master"))
+            actual = self._read_schema(connection)
             marker = connection.execute("PRAGMA application_id").fetchone()[0]
             if actual:
                 if actual != self._schema or marker != 57:
@@ -174,11 +174,39 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
             raise ValueError("noncanonical persisted model")
         return value
 
+    def _read_schema(self, connection):
+        # Schema metadata is persisted input too. Bound its row count and UTF-8
+        # cells in SQLite before fetching names/DDL into Python, including on
+        # construction. The fixed reference schema supplies exact ceilings;
+        # autoindexes legitimately have NULL SQL.
+        if connection.execute("SELECT count(*) FROM sqlite_master").fetchone()[0] > len(
+            self._schema
+        ):
+            raise WorkerActivationRuntimeInterfacePrerequisiteStoreError(
+                "store_corrupt"
+            )
+        for index, column in enumerate(("name", "sql")):
+            maximum = max(
+                len(row[index].encode())
+                for row in self._schema
+                if row[index] is not None
+            )
+            nullable = f"{column} IS NOT NULL AND " if column == "sql" else ""
+            if connection.execute(
+                f"SELECT 1 FROM sqlite_master WHERE {nullable}"
+                f"(typeof({column}) != 'text' "
+                f"OR length(CAST({column} AS BLOB)) > ?) LIMIT 1",
+                (maximum,),
+            ).fetchone():
+                raise WorkerActivationRuntimeInterfacePrerequisiteStoreError(
+                    "store_corrupt"
+                )
+        return set(connection.execute("SELECT name, sql FROM sqlite_master"))
+
     def _check_integrity(self, connection):
         try:
             if (
-                set(connection.execute("SELECT name, sql FROM sqlite_master"))
-                != self._schema
+                self._read_schema(connection) != self._schema
                 or connection.execute("PRAGMA application_id").fetchone()[0] != 57
                 or connection.execute("PRAGMA integrity_check").fetchall() != [("ok",)]
                 or connection.execute("PRAGMA foreign_key_check").fetchone() is not None
