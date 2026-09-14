@@ -10,10 +10,13 @@ vi.mock("./atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(collection: unknown = inventoryCollection, result: unknown = inventoryResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: collection }).mockResolvedValueOnce({ data: result });
 }
-describe("v0.59 retained guarded interface prerequisite reader", () => {
+describe("v0.60 retained guarded interface prerequisite reader", () => {
     beforeEach(() => vi.resetAllMocks());
     describe.each(["collection", "listedRecord", "result", "record", "status", "review", "reviewStatus"] as const)("closed retained %s envelope", (section) => {
         it.each([
+            { worker_activation_runtime_defined: true },
+            { worker_activation_runtime_defined: false },
+            { schema: "worker-activation-runtime-definition-result-v1" },
             { worker_activation_runtime_interface_admitted: true },
             { worker_activation_runtime_interface_admitted: false },
             { worker_activation_runtime_interface_definition_review_recorded: true },

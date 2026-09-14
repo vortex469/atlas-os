@@ -9,7 +9,7 @@ vi.mock("../../api/atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(result: unknown = inventoryResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: inventoryCollection }).mockResolvedValueOnce({ data: result });
 }
-describe("v0.59 retained interface prerequisite presentation", () => {
+describe("v0.60 retained interface prerequisite presentation", () => {
     beforeEach(() => vi.resetAllMocks());
     it("shows incomplete prerequisites first with inspectable collapsed details and no controls", async () => {
         responses();
@@ -23,8 +23,8 @@ describe("v0.59 retained interface prerequisite presentation", () => {
         expect(details).not.toHaveAttribute("open");
         expect(screen.getByText(inventoryResult.record.prerequisite_id)).not.toBeVisible();
         expect(details).toHaveTextContent("worker_start_allowedfalse");
-        expect(details).toHaveTextContent("v0.59 retains the Core-owned v0.57 interface prerequisite inventory hardened in v0.58");
-        expect(details).toHaveTextContent("Separate interface admission and definition-review stages are deferred");
+        expect(details).toHaveTextContent("v0.60 retains the Core-owned v0.57 interface prerequisite inventory integrated through v0.59");
+        expect(details).toHaveTextContent("Runtime definition remains deferred; no new runtime authority is established");
         for (const label of ["Core interface prerequisite inventory", "Exact review lineage", "v0.57 fixed-false authority"]) {
             expect(details).toContainElement(screen.getByLabelText(label));
             expect(screen.getByLabelText(label)).not.toBeVisible();
@@ -32,6 +32,9 @@ describe("v0.59 retained interface prerequisite presentation", () => {
         expect(container.querySelectorAll("button,input,form,select,textarea")).toHaveLength(0);
     });
     it.each([
+        { worker_activation_runtime_defined: true },
+        { worker_activation_runtime_defined: false },
+        { schema: "worker-activation-runtime-definition-result-v1" },
         { worker_activation_runtime_interface_admitted: true },
         { worker_activation_runtime_interface_admitted: false },
         { worker_activation_runtime_interface_definition_review_recorded: true },
@@ -51,6 +54,32 @@ describe("v0.59 retained interface prerequisite presentation", () => {
         render(<WorkerActivationRuntimeInterfacePrerequisite review={review} />);
         expect(await screen.findByText(/interface prerequisite evidence has expired/)).toBeVisible();
         expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
+    });
+    it.each(["2000-01-01T00:00:00Z", "2199-01-01T00:00:00Z"])("preserves Core lifecycle despite browser clock %s", async (clock) => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(new Date(clock));
+        try {
+            responses();
+            render(<WorkerActivationRuntimeInterfacePrerequisite review={review} />);
+            expect(await screen.findByText(/Core reports this interface prerequisite evidence is active/)).toBeVisible();
+            expect(screen.getByText(/state at Core’s last evaluation/)).toBeVisible();
+            expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
+            expect(atlas.get).toHaveBeenCalledTimes(2);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+    it("discards listed evidence when the authoritative item read fails", async () => {
+        vi.mocked(atlas.get).mockResolvedValueOnce({ data: inventoryCollection })
+            .mockRejectedValueOnce({ response: { status: 503, data: { detail: "private dependency failure" }, headers: { "retry-after": "0" } } });
+        const { container, rerender } = render(<WorkerActivationRuntimeInterfacePrerequisite review={review} />);
+        expect(await screen.findByText(/Interface prerequisite inventory evidence is unavailable/)).toBeVisible();
+        rerender(<WorkerActivationRuntimeInterfacePrerequisite review={structuredClone(review)} />);
+        await act(async () => { await Promise.resolve(); });
+        expect(screen.queryByText(/Core recorded an interface prerequisite inventory|private dependency failure|Advanced Core evidence/)).not.toBeInTheDocument();
+        expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
+        expect(container.querySelectorAll("button,input,form,select,textarea")).toHaveLength(0);
+        expect(atlas.get).toHaveBeenCalledTimes(2);
     });
     it("does not reread evidence on equivalent parent renders", async () => {
         responses();
