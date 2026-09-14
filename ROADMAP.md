@@ -1,5 +1,22 @@
 # Atlas OS Roadmap
 
+## v0.60 Sync — retained boundary frozen (2026-09-14)
+
+The [normative freeze](docs/architecture/v0.60-runtime-definition-boundary.md)
+reconciles P0 `00d586ac` and refinement `5ece1b52` with integrated v0.59 P5
+`d66bb00a`. Retain exactly the Core-owned v0.57 prerequisite record/status over
+v0.56 review, including v0.59 hardening. No runtime definition pair exists;
+trusted declaration provenance, a distinct predicate/consumer and bounded
+successor feasibility are unproved. **Runtime definition P1-P5 are deferred.**
+No new schema, ID, hash domain, reader, route or consumer is selected. All seven
+blockers and 67 fixed-false authority fields remain; Mission Control is GET-only.
+
+This completes repository planning synchronization, not release closure.
+v0.58/v0.59 full Mission Control gates remain open; closing them alone cannot
+authorize a successor. See [Sync evidence](docs/architecture/v0.60-sync-validation.md)
+and [release checklist](docs/RELEASE_CHECKLIST.md). No production implementation,
+release tag, publication or deployment belongs to this decision.
+
 ## 1. Current baseline - released v0.55 runtime plan evidence
 
 The inspected released baseline is `atlas-v0.55.0`, annotated tag object

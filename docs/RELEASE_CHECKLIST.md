@@ -1,5 +1,22 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.60 Sync — repository planning freeze (2026-09-14)
+
+- [x] Reconcile integrated v0.60 P0/refinement and v0.59 P5 at `5ece1b52`.
+- [x] Freeze exactly the retained v0.57 pair, IDs, fingerprints, full lineage,
+  owner-scoped Core/API semantics, seven blockers and fixed-false authority.
+- [x] Defer runtime definition P1-P5: provenance, distinct predicate/consumer
+  and expanded-size/time feasibility remain unproved; no successor is selected.
+- [x] Synchronize normative architecture, P0 notice and shared roadmap evidence.
+- [ ] Close predecessor v0.58/v0.59 required full Mission Control release gates.
+- [ ] Before any successor implementation, separately satisfy and freeze the
+  reopening requirements; release closure alone is insufficient.
+
+The [normative boundary](architecture/v0.60-runtime-definition-boundary.md) and
+[Sync evidence](architecture/v0.60-sync-validation.md) document planning scope.
+Historical dependency failures remain historical observations, not a fresh
+runtime diagnosis. No production, dependency, deployment or tag change is made.
+
 ## Atlas v0.59 P5 — retained closure gates (2026-09-14)
 
 - [x] Verify integrated v0.58 P5 and retained v0.59 Sync/P1-P4 ancestry at
