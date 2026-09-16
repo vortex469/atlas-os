@@ -6,7 +6,7 @@ import navigation from "../layouts/MainLayout.tsx?raw";
 import router from "../app/router.tsx?raw";
 import hook from "../hooks/useWorkerActivationRuntimeInterfacePrerequisite.ts?raw";
 const modules = import.meta.glob(["../**/*.{ts,tsx}", "!../**/*.test.{ts,tsx}", "!../test/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
-describe("v0.60 retained read-only Mission Control isolation", () => {
+describe("v0.61 retained read-only Mission Control isolation", () => {
     it("uses only credentialed Core collection and item reads", () => {
         expect(api.match(/atlas\.get/g)).toHaveLength(2);
         expect(api.match(/withCredentials: true/g)).toHaveLength(2);
@@ -14,7 +14,7 @@ describe("v0.60 retained read-only Mission Control isolation", () => {
         expect(component).not.toMatch(/<(button|form|input|select|textarea)\b|dangerouslySetInnerHTML/i);
         expect(component).not.toMatch(/<details[^>]*\bopen/);
         expect(component).toContain("Interface prerequisite inventory is evidence; runtime prerequisites remain incomplete");
-        expect(api + component + hook).not.toMatch(/worker_activation_runtime_defined|worker-activation-runtime-definition|worker_activation_runtime_interface_admitted|worker-activation-runtime-interface-admissions|worker_activation_runtime_interface_definition_review_recorded|worker-activation-runtime-interface-definition-review/);
+        expect(api + component + hook).not.toMatch(/worker_activation_runtime_defined|worker-activation-runtime-definition|worker_activation_runtime_interface_admitted|worker-activation-runtime-interface-admissions|worker_activation_runtime_interface_definition_review_recorded|worker-activation-runtime-interface-definition-review|worker_activation_runtime_inventory_admitted|worker-activation-runtime-inventory-admission|worker_activation_runtime_definition_recorded|worker_activation_runtime_definition_review_recorded/);
     });
     it("has only exact evidence consumers nested beneath the prerequisite, with no navigation", () => {
         expect(parent).toContain("<WorkerActivationRuntimeInterfacePrerequisite review={state} />");

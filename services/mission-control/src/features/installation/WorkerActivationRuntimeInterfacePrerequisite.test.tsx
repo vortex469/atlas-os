@@ -9,7 +9,7 @@ vi.mock("../../api/atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(result: unknown = inventoryResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: inventoryCollection }).mockResolvedValueOnce({ data: result });
 }
-describe("v0.60 retained interface prerequisite presentation", () => {
+describe("v0.61 retained interface prerequisite presentation", () => {
     beforeEach(() => vi.resetAllMocks());
     it("shows incomplete prerequisites first with inspectable collapsed details and no controls", async () => {
         responses();
@@ -23,8 +23,8 @@ describe("v0.60 retained interface prerequisite presentation", () => {
         expect(details).not.toHaveAttribute("open");
         expect(screen.getByText(inventoryResult.record.prerequisite_id)).not.toBeVisible();
         expect(details).toHaveTextContent("worker_start_allowedfalse");
-        expect(details).toHaveTextContent("v0.60 retains the Core-owned v0.57 interface prerequisite inventory integrated through v0.59");
-        expect(details).toHaveTextContent("Runtime definition remains deferred; no new runtime authority is established");
+        expect(details).toHaveTextContent("v0.61 retains the Core-owned v0.57 interface prerequisite inventory integrated through v0.60");
+        expect(details).toHaveTextContent("Successor runtime definition and presentation remain deferred; no new runtime authority is established");
         for (const label of ["Core interface prerequisite inventory", "Exact review lineage", "v0.57 fixed-false authority"]) {
             expect(details).toContainElement(screen.getByLabelText(label));
             expect(screen.getByLabelText(label)).not.toBeVisible();
@@ -40,6 +40,14 @@ describe("v0.60 retained interface prerequisite presentation", () => {
         { worker_activation_runtime_interface_definition_review_recorded: true },
         { worker_activation_runtime_interface_definition_review_recorded: false },
         { schema: "worker-activation-runtime-interface-definition-review-result-v1" },
+        { worker_activation_runtime_inventory_admitted: true },
+        { worker_activation_runtime_inventory_admitted: false },
+        { worker_activation_runtime_definition_recorded: true },
+        { worker_activation_runtime_definition_recorded: false },
+        { worker_activation_runtime_definition_review_recorded: true },
+        { worker_activation_runtime_definition_review_recorded: false },
+        { schema: "worker-activation-runtime-interface-prerequisite-v061" },
+        { schema: "worker-activation-runtime-interface-prerequisite-status-v061" },
     ])("fails closed for an invented successor: %j", async (change) => {
         responses({ ...inventoryResult, ...change });
         render(<WorkerActivationRuntimeInterfacePrerequisite review={review} />);
