@@ -1,5 +1,22 @@
 # Atlas OS Roadmap
 
+## v0.61 P5 — retained authority isolation; release closure open
+
+Sync and retained P1-P4 are repository-integrated at `5ec04904`. P1 locks the
+existing contract against invented inventory-admission/definition/definition-review
+authority, P2 bounds durable journal restart and corruption behavior, P3 isolates
+unexpected create-dependency failures, and P4 updates the nested Mission Control
+reader for the v0.61 disposition. These implement retention; **successor P1-P5
+remain deferred**. No new pair, schema, evidence stage or consumer is selected.
+
+P5 adds repository-wide v0.61 successor-marker refusal, shared-envelope Core/UI
+regressions and normalized release evidence. Exact ancestry, current validation
+and remaining gates are recorded in [P5 evidence](docs/architecture/v0.61-p5-validation.md).
+Integrated v0.60 P5 still records open predecessor acceptance. **Do not close
+v0.61 or infer release authority** from this synchronization. No runtime,
+execution, installation, deployment, rollback, publication, retry or resend is
+authorized.
+
 ## v0.61 Sync — retained authority boundary frozen (2026-09-14)
 
 The [normative freeze](docs/architecture/v0.61-authority-boundary.md) reconciles
@@ -12,8 +29,8 @@ fields and exact twelve production consumers remain; no operational consumer
 or new evidence stage is selected.
 
 Planning synchronization is complete; v0.60 and inherited release acceptance
-remain open. Full UI, Core and unrestricted worker gates recorded in P5 remain
-unwaived. Closing them alone cannot select a successor. See
+remain open. Full UI, Core and unrestricted worker gates recorded in v0.60 P5
+remain unwaived. Closing them alone cannot select a successor. See
 [Sync evidence](docs/architecture/v0.61-sync-validation.md) and the
 [release checklist](docs/RELEASE_CHECKLIST.md). No runtime or release authority
 follows from this documentation decision. Historical records below are preserved.

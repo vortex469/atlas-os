@@ -6,6 +6,18 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.61 P5 - Retained Authority Isolation and Release Evidence (closure open)
+
+- Preserve the synchronized v0.61 boundary and deferred successor phases;
+  synchronize P1 contract regressions, P2 bounded durable journal evidence, P3
+  guarded Core create-failure isolation and P4 non-authoritative nested evidence.
+- Reject inventory-admission, definition and definition-review claims at every
+  shared evidence envelope and forbid successor consumers across Core, UI, Agent,
+  worker and operational surfaces.
+- Record exact ancestry and current release checks without widening historical
+  isolation allowances. Predecessor acceptance and remaining Core/worker release
+  gates remain open; see [P5 evidence](docs/architecture/v0.61-p5-validation.md).
+
 #### v0.60 P5 - Retained Isolation and Release Evidence (closure open)
 
 - Preserve the integrated v0.59 boundary and deferred runtime definition;

@@ -1,5 +1,31 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.61 P5 — retained release gates (2026-09-14)
+
+- [x] Verify exact integrated v0.60/v0.61 ancestors at `5ec04904`.
+- [x] Reconcile Sync and retained P1-P4 in the normative [v0.61 boundary](architecture/v0.61-authority-boundary.md).
+- [x] Add v0.61 successor-marker refusal across eight production areas and shared
+  Core/UI evidence envelopes, including false-valued claims, without changing
+  historical isolation tests.
+- [x] Retain the exact twelve Core/API/UI consumers, seven blockers and 67 false
+  authority fields; add no Agent, worker, workflow or deployment consumer.
+- [x] Run new/retained closure, historical isolation, Agent isolation and bounded
+  worker config/health/ledger regressions; passing counts are in P5 evidence.
+- [x] Run retained v0.61 P1/P2 contract/durable regressions and historical
+  closure; exact guarded API isolation is recorded in
+  [v0.61 P3 evidence](architecture/v0.61-p3-validation.md).
+- [x] Current full Mission Control test/build/lint: 174 files, 2,319 tests, exit 0;
+  build and lint pass with the existing recorded warnings.
+- [ ] Repository-integrated predecessor release acceptance, including v0.60.
+- [ ] Full Core Ruff: existing findings remain; no broad cleanup or waiver.
+- [ ] Full Core validation: ownership fixture fails at unsupported `os.chown`.
+- [ ] Unrestricted worker API validation: threaded API invocation limitation.
+- [ ] Release acceptance after all required gates pass; no tag/publication implied.
+
+[P5 evidence](architecture/v0.61-p5-validation.md) records exact commits,
+commands, current results and limits. This synchronization records retained
+isolation and open release gates; it is not release acceptance.
+
 ## Atlas v0.61 Sync — repository planning freeze (2026-09-14)
 
 - [x] Reconcile v0.61 P0 at `827c751d` with integrated v0.60 P5 `819e1770`.
