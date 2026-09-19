@@ -12,6 +12,8 @@ from .store import (
     WorkerActivationRuntimeInterfacePrerequisiteStoreError,
 )
 
+DEFAULT_ENABLED = False
+
 
 class WorkerActivationRuntimeInterfacePrerequisiteReader(Protocol):
     def read_owned(
@@ -44,7 +46,7 @@ class WorkerActivationRuntimeInterfacePrerequisiteService:
         prerequisite_reader: WorkerActivationRuntimeInterfacePrerequisiteReader,
         store: WorkerActivationRuntimeInterfacePrerequisiteStore,
         clock: Callable[[], datetime],
-        enabled: bool = False,
+        enabled: bool = DEFAULT_ENABLED,
     ):
         self._prerequisite_reader = prerequisite_reader
         self._store = store
@@ -330,4 +332,7 @@ class WorkerActivationRuntimeInterfacePrerequisiteService:
 
 def create_worker_activation_runtime_interface_prerequisite_service(**kwargs):
     """Explicit opt-in composition only; never called by production startup."""
+    # Keep composition fail-closed when the feature flag is omitted. Enabling
+    # remains an explicit construction decision for separately authorized use.
+    kwargs.setdefault("enabled", DEFAULT_ENABLED)
     return WorkerActivationRuntimeInterfacePrerequisiteService(**kwargs)

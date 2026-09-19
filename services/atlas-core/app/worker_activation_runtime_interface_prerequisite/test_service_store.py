@@ -15,6 +15,7 @@ from app.worker_activation_runtime_interface_prerequisite.readers import (
 )
 from app.worker_activation_runtime_interface_prerequisite.service import (
     WorkerActivationRuntimeInterfacePrerequisiteService,
+    create_worker_activation_runtime_interface_prerequisite_service,
 )
 from app.worker_activation_runtime_interface_prerequisite.store import (
     WorkerActivationRuntimeInterfacePrerequisiteStore,
@@ -67,6 +68,18 @@ def setup(tmp_path, facts, *, enabled=True, **bounds):
         prerequisite_reader=reader, store=journal, clock=clock, enabled=enabled
     )
     return service, journal, reader, clock
+
+
+def test_factory_is_default_off(tmp_path, facts):
+    journal = WorkerActivationRuntimeInterfacePrerequisiteStore(
+        tmp_path / "v057.sqlite"
+    )
+    service = create_worker_activation_runtime_interface_prerequisite_service(
+        prerequisite_reader=Reader(facts), store=journal, clock=Clock(facts)
+    )
+
+    result = create(service, facts)
+    assert result.error_code == "installation_capability_unsupported"
 
 
 def create(service, facts, **kwargs):
