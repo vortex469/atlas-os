@@ -1,5 +1,21 @@
 # Atlas OS Roadmap
 
+## v0.62 P5 — retained authority isolation; release closure open
+
+The retained v0.62 boundary now has repository-wide release-isolation
+regressions. The new closure suite rejects inventory-admission,
+runtime-definition and definition-review claims across all shared Core/UI
+evidence envelopes, including false-valued claims, and forbids successor or
+operational consumers across Core, Agent, worker, Mission Control, deployment,
+configuration, scripts and workflows.
+
+This is retention hardening only: the Core-owned v0.57 pair, exact twelve
+production consumers, seven blockers and 67 fixed-false authority fields are
+unchanged. Successor P1-P5 remain deferred. Predecessor acceptance and the
+independent full Core/worker release obligations remain open; see [P5 evidence](docs/architecture/v0.62-p5-validation.md)
+and the [release checklist](docs/RELEASE_CHECKLIST.md). No tag, publication,
+deployment, runtime enablement or operational authority follows.
+
 ## v0.62 Sync — retained authority boundary frozen (2026-09-19)
 
 The [normative freeze](docs/architecture/v0.62-authority-boundary.md) reconciles

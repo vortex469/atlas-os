@@ -1,5 +1,26 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.62 P5 — retained release gates (2026-09-19)
+
+- [x] Add v0.62 successor-marker refusal across all shared Core/UI evidence
+  envelopes, including true and false claims, without changing the retained
+  schema or authority ceiling.
+- [x] Preserve the exact twelve Core/API/UI consumers, seven blockers and 67
+  false authority fields; add no Agent, worker, workflow or deployment
+  consumer.
+- [x] Run the new v0.62 release-isolation suite: 43 passed. Evidence is in
+  [P5 validation](architecture/v0.62-p5-validation.md).
+- [x] Synchronize the v0.62 normative boundary, roadmap and changelog with
+  retained P5 evidence and deferred successor phases.
+- [ ] Resolve repository-integrated predecessor release acceptance.
+- [ ] Complete the independent full Core Ruff/validation and unrestricted
+  worker API obligations retained from v0.61.
+- [ ] Release acceptance after all required gates pass; no tag, publication,
+  deployment or runtime enablement is implied.
+
+[P5 evidence](architecture/v0.62-p5-validation.md) records the focused
+regression and retained open gates. This is not release acceptance.
+
 ## Atlas v0.62 Sync — repository planning freeze (2026-09-19)
 
 - [x] Reconcile v0.62 P0 at `4e8b96bc` with integrated v0.61 P5 at `984c134b6`.

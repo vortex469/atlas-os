@@ -6,6 +6,17 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.62 P5 - Retained Authority Isolation and Release Evidence (closure open)
+
+- Preserve the synchronized v0.62 retained boundary and deferred successor
+  phases; add release-isolation regressions for every shared Core/UI evidence
+  envelope and all production surfaces.
+- Reject inventory-admission, runtime-definition and definition-review claims,
+  including false-valued claims, without reserving a successor schema, route,
+  consumer or operational authority.
+- Record focused closure evidence while retaining the independent predecessor,
+  Core and worker release obligations. See [P5 evidence](docs/architecture/v0.62-p5-validation.md).
+
 #### v0.61 P5 - Retained Authority Isolation and Release Evidence (closure open)
 
 - Preserve the synchronized v0.61 boundary and deferred successor phases;
