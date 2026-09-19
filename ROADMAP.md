@@ -1,5 +1,21 @@
 # Atlas OS Roadmap
 
+## v0.62 Sync — retained authority boundary frozen (2026-09-19)
+
+The [normative freeze](docs/architecture/v0.62-authority-boundary.md) reconciles
+v0.62 P0 at `4e8b96bc` with repository-integrated v0.61 P5 `984c134b6`. Retain
+the Core-owned v0.57 pair and complete inherited lineage with all v0.61
+hardening. **Successor P1-P5 remain deferred:** trusted provenance, a distinct
+decision and bounded successor feasibility are unproved. All seven blockers,
+67 fixed-false fields and exact twelve production consumers remain; no
+operational consumer or new evidence stage is selected.
+
+Planning synchronization is complete; v0.61 and inherited release acceptance
+remain open. See [Sync evidence](docs/architecture/v0.62-sync-validation.md)
+and the [release checklist](docs/RELEASE_CHECKLIST.md). No runtime or release
+authority follows from this documentation decision. Historical records below
+are preserved.
+
 ## v0.61 P5 — retained authority isolation; release closure open
 
 Sync and retained P1-P4 are repository-integrated at `5ec04904`. P1 locks the
