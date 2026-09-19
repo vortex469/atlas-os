@@ -10,7 +10,7 @@ vi.mock("./atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(collection: unknown = inventoryCollection, result: unknown = inventoryResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: collection }).mockResolvedValueOnce({ data: result });
 }
-describe("v0.61 retained guarded interface prerequisite reader", () => {
+describe("v0.62 retained guarded interface prerequisite reader", () => {
     beforeEach(() => vi.resetAllMocks());
     describe.each(["collection", "listedRecord", "result", "record", "status", "review", "reviewStatus"] as const)("closed retained %s envelope", (section) => {
         it.each([
@@ -30,6 +30,16 @@ describe("v0.61 retained guarded interface prerequisite reader", () => {
             { worker_activation_runtime_definition_review_recorded: false },
             { schema: "worker-activation-runtime-interface-prerequisite-v061" },
             { schema: "worker-activation-runtime-interface-prerequisite-status-v061" },
+            { worker_activation_runtime_identity_defined: true },
+            { worker_activation_runtime_identity_defined: false },
+            { worker_activation_runtime_capability_composition_recorded: true },
+            { worker_activation_runtime_capability_composition_recorded: false },
+            { worker_activation_runtime_lifecycle_defined: true },
+            { worker_activation_runtime_lifecycle_defined: false },
+            { worker_activation_runtime_definition_review_recorded: true },
+            { worker_activation_runtime_definition_review_recorded: false },
+            { schema: "worker-activation-runtime-interface-prerequisite-v062" },
+            { schema: "worker-activation-runtime-interface-prerequisite-status-v062" },
         ])("rejects synthesized successor evidence: %j", async (change) => {
             const collection = structuredClone(inventoryCollection), result = structuredClone(inventoryResult);
             const target = section === "collection" ? collection
