@@ -1,16 +1,15 @@
-from app.deploy.analysis import AnalysisRequest
 from app.application.deployment_service import DeploymentService
+from app.deploy.analysis import AnalysisRequest
 from app.deploy.analyzers import (
     AnalyzerRegistry,
     ComposeAnalyzer,
 )
 from app.deploy.enums import DeploymentSource
+from app.deploy.recognition import ApplicationRecognizer
 from app.deploy.risk import (
     PrivilegedContainerRule,
     RiskEngine,
 )
-from app.planning import PlanningEngine
-from app.deploy.recognition import ApplicationRecognizer
 from app.knowledge_engine import (
     ApplicationMatcher,
     KnowledgeCatalogLoader,
@@ -19,6 +18,8 @@ from app.knowledge_engine import (
 from app.knowledge_engine.assessors.registry import (
     AssessorRegistry,
 )
+from app.planning import PlanningEngine
+
 
 def test_complete_analysis_pipeline() -> None:
     registry = AnalyzerRegistry()

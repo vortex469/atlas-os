@@ -62,7 +62,7 @@ class KnowledgeCatalogLoader:
             )
 
         if not isinstance(document, dict):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004 - preserve knowledge catalog error contract
                 f"Knowledge file '{file_path}' "
                 "must contain a YAML mapping."
             )

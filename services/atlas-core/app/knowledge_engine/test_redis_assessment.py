@@ -1,3 +1,7 @@
+from app.deploy.components import (
+    ApplicationComponent,
+    StorageMount,
+)
 from app.deploy.enums import (
     ComponentKind,
     DeploymentSource,
@@ -9,12 +13,8 @@ from app.knowledge_engine.assessment import (
 from app.knowledge_engine.assessors.redis import (
     RedisAssessor,
 )
-from app.deploy.components import (
-    ApplicationComponent,
-    HealthCheck,
-    PortBinding,
-    StorageMount,
-)
+
+
 def test_redis_assessment() -> None:
     plan = DeploymentPlan(
         id="redis",

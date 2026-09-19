@@ -20,6 +20,7 @@ def create_knowledge_engine() -> KnowledgeEngine:
     return KnowledgeEngine(
         loader=KnowledgeCatalogLoader(),
         matcher=ApplicationMatcher(),
+        registry=AssessorRegistry(),
     )
 
 
@@ -151,10 +152,3 @@ def test_assesses_postgres_deployment() -> None:
     )
 
     assert len(assessment.best_practices) == 3
-
-def create_knowledge_engine() -> KnowledgeEngine:
-    return KnowledgeEngine(
-        loader=KnowledgeCatalogLoader(),
-        matcher=ApplicationMatcher(),
-        registry=AssessorRegistry(),
-    )

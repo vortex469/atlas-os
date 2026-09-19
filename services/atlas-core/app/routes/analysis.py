@@ -3,13 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.application import DeploymentAnalysis
 from app.container.deployment import create_deployment_service
 from app.deploy.analysis import AnalysisRequest
 from app.deploy.enums import DeploymentSource
-
 
 router = APIRouter(
     prefix="/analysis",

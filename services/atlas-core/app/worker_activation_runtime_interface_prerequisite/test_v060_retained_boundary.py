@@ -8,8 +8,10 @@ from pydantic import ValidationError
 from app.worker_activation_runtime_interface_prerequisite import contract as c
 from app.worker_activation_runtime_interface_prerequisite.test_v059_release_closure import (
     ROOT,
-    golden,  # noqa: F401
+    golden,
 )
+
+__all__ = ["ROOT", "golden"]
 
 
 @pytest.fixture(scope="module")

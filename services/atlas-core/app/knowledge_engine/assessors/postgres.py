@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from app.deploy.plan import DeploymentPlan
 from app.knowledge_engine.assessment import (
     KnowledgeAssessment,
@@ -20,13 +22,12 @@ from app.knowledge_engine.rules.port_exposure import (
 from app.knowledge_engine.rules.storage import (
     StorageRule,
 )
-from app.knowledge_engine.assessors.redis import (
-    RedisAssessor
-)
+
+
 class PostgresAssessor(ApplicationAssessor):
     """Assess PostgreSQL deployments."""
 
-    _POSTGRES_IMAGES = {
+    _POSTGRES_IMAGES: ClassVar[set[str]] = {
         "postgres",
         "library/postgres",
         "docker.io/library/postgres",

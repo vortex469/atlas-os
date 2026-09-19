@@ -3,7 +3,6 @@ from fastapi import APIRouter
 from app.models.dashboard import Dashboard
 from app.services.dashboard_service import get_dashboard
 
-
 router = APIRouter(
     prefix="/dashboard",
     tags=["Dashboard"],

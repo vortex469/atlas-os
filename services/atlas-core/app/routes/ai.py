@@ -7,7 +7,6 @@ from app.actions import (
 from app.application.ai_service import ai_service
 from app.providers import ProviderNotFoundError
 
-
 router = APIRouter(
     prefix="/ai",
     tags=["AI"],

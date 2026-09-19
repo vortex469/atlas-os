@@ -1,7 +1,6 @@
 from app.main import app
 from app.testing import ASGITestClient
 
-
 client = ASGITestClient(app)
 
 

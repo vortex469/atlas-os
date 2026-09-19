@@ -5,7 +5,6 @@ from app.services.proxmox_service import (
     get_proxmox_status,
 )
 
-
 router = APIRouter(
     prefix="/proxmox",
     tags=["Proxmox"],

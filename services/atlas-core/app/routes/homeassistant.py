@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
 from app.services.homeassistant_service import (
-    get_homeassistant_status,
     get_unavailable_entities,
 )
 

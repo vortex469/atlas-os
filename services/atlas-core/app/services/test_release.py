@@ -11,32 +11,32 @@ def test_release_identifier_comes_from_settings(
     monkeypatch.setattr(
         summary_service,
         "get_health",
-        lambda: {},
+        dict,
     )
     monkeypatch.setattr(
         summary_service,
         "get_system_status",
-        lambda: {},
+        dict,
     )
     monkeypatch.setattr(
         summary_service,
         "get_docker_status",
-        lambda: {},
+        dict,
     )
     monkeypatch.setattr(
         summary_service,
         "get_proxmox_status",
-        lambda: {},
+        dict,
     )
     monkeypatch.setattr(
         summary_service,
         "get_proxmox_guests",
-        lambda: {},
+        dict,
     )
     monkeypatch.setattr(
         summary_service,
         "get_homeassistant_status",
-        lambda: {},
+        dict,
     )
 
     expected = settings.atlas.release

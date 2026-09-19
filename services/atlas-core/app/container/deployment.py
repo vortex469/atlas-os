@@ -3,14 +3,13 @@ from app.deploy.analyzers import (
     AnalyzerRegistry,
     ComposeAnalyzer,
 )
+from app.deploy.recognition import ApplicationRecognizer
 from app.deploy.risk import (
     DockerSocketMountRule,
     HostNetworkRule,
     PrivilegedContainerRule,
     RiskEngine,
 )
-from app.planning import PlanningEngine
-from app.deploy.recognition import ApplicationRecognizer
 from app.knowledge_engine import (
     ApplicationMatcher,
     KnowledgeCatalogLoader,
@@ -19,6 +18,8 @@ from app.knowledge_engine import (
 from app.knowledge_engine.assessors.registry import (
     AssessorRegistry,
 )
+from app.planning import PlanningEngine
+
 
 def create_analyzer_registry() -> AnalyzerRegistry:
     registry = AnalyzerRegistry()
@@ -53,11 +54,6 @@ def create_application_recognizer() -> ApplicationRecognizer:
         knowledge_engine=create_knowledge_engine(),
     )
 
-def create_knowledge_engine() -> KnowledgeEngine:
-    return KnowledgeEngine(
-        loader=KnowledgeCatalogLoader(),
-        matcher=ApplicationMatcher(),
-    )
 def create_knowledge_engine() -> KnowledgeEngine:
     return KnowledgeEngine(
         loader=KnowledgeCatalogLoader(),

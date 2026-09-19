@@ -1,30 +1,16 @@
 from __future__ import annotations
 
-from app.deploy.plan import DeploymentPlan
-from app.knowledge_engine.assessment import (
-    KnowledgeAssessment,
-    KnowledgeFinding,
-)
-from app.knowledge_engine.assessors.base import (
-    ApplicationAssessor,
-)
-from app.knowledge_engine.rules.healthcheck import (
-    HealthCheckRule,
-)
-from app.knowledge_engine.rules.port_exposure import (
-    PortExposureRule,
-)
-from app.knowledge_engine.rules.storage import (
-    StorageRule,
-)
+from typing import ClassVar
+
 from app.knowledge_engine.assessors.database import (
     DatabaseAssessor,
 )
 
+
 class RedisAssessor(DatabaseAssessor):
     """Assess Redis deployments."""
 
-    _REDIS_IMAGES = {
+    _REDIS_IMAGES: ClassVar[set[str]] = {
         "redis",
         "library/redis",
         "docker.io/library/redis",
@@ -32,7 +18,7 @@ class RedisAssessor(DatabaseAssessor):
 
     APPLICATION_NAME = "Redis"
 
-    IMAGES = {
+    IMAGES: ClassVar[set[str]] = {
         "redis",
         "library/redis",
         "docker.io/library/redis",

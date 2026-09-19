@@ -2,7 +2,6 @@ from app.main import app
 from app.providers.loader import load_provider_registry
 from app.testing import ASGITestClient
 
-
 client = ASGITestClient(app)
 
 

@@ -2,7 +2,6 @@ import hashlib
 import json
 
 import pytest
-
 from app.n190_readiness_probe import (
     PROBE_DOMAIN,
     PROBE_VERDICTS,

@@ -60,7 +60,7 @@ class ProposedPlan(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_steps(self) -> "ProposedPlan":
+    def validate_steps(self) -> ProposedPlan:
         step_ids = [step.id for step in self.steps]
 
         if len(step_ids) != len(set(step_ids)):

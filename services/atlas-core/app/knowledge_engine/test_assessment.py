@@ -16,6 +16,7 @@ from app.knowledge_engine.assessors.postgres import (
     PostgresAssessor,
 )
 
+
 def test_postgres_assessment() -> None:
     plan = DeploymentPlan(
         id="postgres",

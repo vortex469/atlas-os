@@ -2,7 +2,6 @@ import hashlib
 import json
 
 import pytest
-
 from app.n121_artifact_metadata_helper import (
     PROOF_DOMAIN,
     build_artifact_metadata_proof,

@@ -17,7 +17,6 @@ from app.services.proxmox_service import (
     get_proxmox_status,
 )
 
-
 PASS = "✓"
 INFO = "i"
 WARN = "!"
@@ -110,7 +109,7 @@ def run_diagnostics(
 
     try:
         configuration_check()
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - fail-closed diagnosis aggregates any configuration error
         configuration_ok = False
         critical.append(str(error))
 
@@ -118,7 +117,7 @@ def run_diagnostics(
         try:
             results[name] = check()
             checks.append(DoctorCheck(name=name, passed=True))
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - fail-closed diagnosis aggregates per-check errors
             message = str(error)
             checks.append(
                 DoctorCheck(

@@ -5,7 +5,6 @@ import yaml
 
 from app.config.settings import CONFIG_FILE, settings
 
-
 REQUIRED_ENVIRONMENT_VARIABLES = (
     "PROXMOX_USER",
     "PROXMOX_TOKEN_NAME",

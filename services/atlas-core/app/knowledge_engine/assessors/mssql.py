@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from app.knowledge_engine.assessors.database import (
     DatabaseAssessor,
 )
@@ -10,7 +12,7 @@ class MSSQLAssessor(DatabaseAssessor):
 
     APPLICATION_NAME = "Microsoft SQL Server"
 
-    IMAGES = {
+    IMAGES: ClassVar[set[str]] = {
         "mcr.microsoft.com/mssql/server",
     }
 
@@ -18,7 +20,7 @@ class MSSQLAssessor(DatabaseAssessor):
 
     CONTAINER_PORT = 1433
 
-    REQUIRED_ENVIRONMENT_VARIABLES = [
+    REQUIRED_ENVIRONMENT_VARIABLES: ClassVar[list[str]] = [
         "MSSQL_SA_PASSWORD",
     ]
 
@@ -35,7 +37,7 @@ class MSSQLAssessor(DatabaseAssessor):
         "avoid publicly exposing port 1433."
     )
 
-    BEST_PRACTICES = [
+    BEST_PRACTICES: ClassVar[list[str]] = [
         "Use persistent storage.",
         "Configure health checks.",
         "Avoid public network exposure.",

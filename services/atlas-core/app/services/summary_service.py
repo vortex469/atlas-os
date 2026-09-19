@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any
 
 from app.config.settings import settings
 from app.services.docker_service import get_docker_status
@@ -21,7 +22,7 @@ def safely_collect(
             "status": "online",
             "data": collector(),
         }
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - fail closed into an offline collector result
         return {
             "status": "offline",
             "source": source,

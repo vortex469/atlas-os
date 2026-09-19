@@ -16,7 +16,6 @@ from app.models.health import HealthState
 from app.services.intelligence_service import get_intelligence_summary
 from app.services.summary_service import get_ops_summary
 
-
 _STATUS_PRIORITY = {
     HealthState.UNKNOWN: 0,
     HealthState.HEALTHY: 1,
@@ -192,7 +191,7 @@ async def get_dashboard() -> Dashboard:
 
     try:
         intelligence = await get_intelligence_summary()
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - degrade dashboard intelligence gracefully
         intelligence = {
             "score": 0,
             "status": "unknown",
@@ -203,7 +202,7 @@ async def get_dashboard() -> Dashboard:
 
     try:
         ai = await ai_task
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - degrade dashboard AI status gracefully
         ai = {
             "provider": {
                 "name": None,

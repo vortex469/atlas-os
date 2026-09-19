@@ -7,7 +7,7 @@ def collect_homeassistant_findings() -> list[Finding]:
     try:
         status = get_homeassistant_status()
         return evaluate_homeassistant(status)
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - fail closed into a critical provider finding
         return [
             Finding(
                 id="homeassistant-provider-failure",

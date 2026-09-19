@@ -2,7 +2,6 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-
 LOG_DIRECTORY = Path("/opt/atlas/logs")
 LOG_FILE = LOG_DIRECTORY / "atlas-core.log"
 

@@ -85,7 +85,7 @@ def test_pending_updates_without_unavailable_entities() -> None:
                 "pending_count": 2,
             },
         },
-        ignored_entities_getter=lambda: [],
+        ignored_entities_getter=list,
     )
 
     assert len(findings) == 1

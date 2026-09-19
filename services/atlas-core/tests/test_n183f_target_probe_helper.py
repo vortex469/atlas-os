@@ -2,7 +2,6 @@ import hashlib
 import json
 
 import pytest
-
 from app.n183f_target_probe_helper import (
     PROBE_DOMAIN,
     PROBE_OUTCOMES,

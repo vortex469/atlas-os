@@ -18,7 +18,6 @@ from app.intelligence.report import (
 from app.models.contracts import AceSummary, APIError
 from app.services.intelligence_service import get_intelligence_summary
 
-
 router = APIRouter(
     prefix="/intelligence",
     tags=["Intelligence"],

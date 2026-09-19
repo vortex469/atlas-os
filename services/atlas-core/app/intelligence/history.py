@@ -212,13 +212,13 @@ class IntelligenceTelemetryHistory:
             ]
             if not providers:
                 return False
-        if status is not None and not any(
+        if status is None:
+            return True
+
+        return any(
             provider.status == status
             for provider in providers
-        ):
-            return False
-
-        return True
+        )
 
     def _prune_locked(self, now: datetime) -> None:
         cutoff = now - timedelta(days=self._retention_days)

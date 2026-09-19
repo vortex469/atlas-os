@@ -8,7 +8,6 @@ from app.config.policies import (
 from app.config.policy_models import Policies, PolicyReloadHealth
 from app.models.contracts import APIError
 
-
 router = APIRouter(
     prefix="/policies",
     tags=["Policies"],

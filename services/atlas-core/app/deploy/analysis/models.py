@@ -10,6 +10,7 @@ from app.deploy.enums import DeploymentSource
 from app.deploy.plan import DeploymentPlan
 from app.deploy.recognition import ApplicationRecognition
 
+
 class AnalysisRequest(BaseModel):
     """Input to a deployment analyzer."""
 

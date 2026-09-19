@@ -2,7 +2,6 @@ import hashlib
 import json
 
 import pytest
-
 from app.n214b_quality_gate_probe import (
     GATE_VERDICTS,
     PROOF_DOMAIN,

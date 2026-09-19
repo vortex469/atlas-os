@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from app.deploy.plan import DeploymentPlan
 from app.knowledge_engine.assessment import (
     KnowledgeAssessment,
@@ -26,7 +28,7 @@ class DatabaseAssessor(ApplicationAssessor):
     """Base assessor for database services."""
 
     APPLICATION_NAME: str
-    IMAGES: set[str]
+    IMAGES: ClassVar[set[str]]
     STORAGE_PATH: str
     CONTAINER_PORT: int
 
@@ -34,9 +36,9 @@ class DatabaseAssessor(ApplicationAssessor):
     STORAGE_RECOMMENDATION: str
     PORT_RECOMMENDATION: str
 
-    REQUIRED_ENVIRONMENT_VARIABLES: list[str] = []
+    REQUIRED_ENVIRONMENT_VARIABLES: ClassVar[list[str]] = []
 
-    BEST_PRACTICES: list[str] = [
+    BEST_PRACTICES: ClassVar[list[str]] = [
         "Use persistent storage.",
         "Configure health checks.",
         "Avoid public network exposure.",

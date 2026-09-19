@@ -3,15 +3,17 @@ from __future__ import annotations
 from app.knowledge_engine.assessors.base import (
     ApplicationAssessor,
 )
+from app.knowledge_engine.assessors.mssql import (
+    MSSQLAssessor,
+)
 from app.knowledge_engine.assessors.postgres import (
     PostgresAssessor,
 )
 from app.knowledge_engine.assessors.redis import (
     RedisAssessor,
 )
-from app.knowledge_engine.assessors.mssql import (
-    MSSQLAssessor,
-)
+
+
 class AssessorRegistry:
     """Registry for application-specific assessors."""
 

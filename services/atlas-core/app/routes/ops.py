@@ -17,11 +17,10 @@ from app.actions import (
     ProviderActionPruneResult,
     get_provider_action_history,
 )
-from app.doctor import DoctorReport, run_diagnostics as run_atlas_doctor
-
+from app.doctor import DoctorReport
+from app.doctor import run_diagnostics as run_atlas_doctor
 from app.services.summary_service import get_ops_summary
 from app.services.system_service import get_system_status
-
 
 router = APIRouter(
     prefix="/ops",

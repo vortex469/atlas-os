@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from app.intelligence.history import IntelligenceTelemetryHistory
 from app.intelligence.report import (
     IntelligenceTelemetry,
+    IntelligenceTelemetryPruneRequest,
     ProviderCollectionTiming,
 )
 from app.routes.intelligence import (
@@ -15,7 +16,6 @@ from app.routes.intelligence import (
     intelligence_telemetry_retention,
     prune_intelligence_telemetry_history,
 )
-from app.intelligence.report import IntelligenceTelemetryPruneRequest
 
 
 def telemetry(duration_ms: float) -> IntelligenceTelemetry:

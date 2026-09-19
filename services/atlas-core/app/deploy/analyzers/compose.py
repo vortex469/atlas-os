@@ -19,12 +19,6 @@ from app.deploy.enums import (
 )
 from app.deploy.plan import DeploymentPlan
 
-from app.deploy.components import (
-    ApplicationComponent,
-    HealthCheck,
-    PortBinding,
-    StorageMount,
-)
 
 class ComposeAnalyzer(DeploymentAnalyzer):
     """Analyze parsed Docker Compose documents."""
@@ -47,7 +41,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
         services = request.document.get("services", {})
 
         if not isinstance(services, Mapping):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004 - preserve Compose document error contract
                 "Compose document 'services' must be a mapping."
             )
 
@@ -87,7 +81,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
         service: Any,
     ) -> ApplicationComponent:
         if not isinstance(service, Mapping):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004 - preserve Compose service error contract
                 f"Compose service '{service_name}' must be a mapping."
             )
 
@@ -139,7 +133,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
             return []
 
         if not isinstance(ports, list):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004 - preserve Compose ports error contract
                 "Compose service ports must be a list."
             )
 
@@ -233,7 +227,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
             return []
 
         if not isinstance(volumes, list):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004 - preserve Compose volumes error contract
                 "Compose service volumes must be a list."
             )
 
@@ -330,7 +324,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
 
             for item in environment:
                 if not isinstance(item, str):
-                    raise ValueError(
+                    raise ValueError(  # noqa: TRY004 - preserve Compose environment error contract
                         "Compose environment list values must be strings."
                     )
 
@@ -364,7 +358,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
         if isinstance(depends_on, Mapping):
             return [
                 self._normalize_id(str(item))
-                for item in depends_on.keys()
+                for item in depends_on
             ]
 
         raise ValueError(
@@ -379,7 +373,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
             return None
 
         if not isinstance(healthcheck, Mapping):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004 - preserve Compose healthcheck error contract
                 "Compose service healthcheck must be a mapping."
             )
 
@@ -394,7 +388,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
         elif isinstance(raw_test, list):
             test = [str(item) for item in raw_test]
         else:
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004 - preserve Compose healthcheck test error contract
                 "Compose healthcheck test must be a string or list."
             )
 
@@ -454,10 +448,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
                 ".yaml",
                 ".yml",
             ):
-                if filename.endswith(suffix):
-                    filename = filename[
-                        :-len(suffix)
-                    ]
+                filename = filename.removesuffix(suffix)
 
             return filename
 
@@ -473,10 +464,7 @@ class ComposeAnalyzer(DeploymentAnalyzer):
             ".yaml",
             ".yml",
         ):
-            if filename.endswith(suffix):
-                filename = filename[
-                    :-len(suffix)
-                ]
+            filename = filename.removesuffix(suffix)
 
         return self._normalize_id(filename)
 

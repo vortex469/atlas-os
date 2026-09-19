@@ -2,7 +2,6 @@ import hashlib
 import json
 
 import pytest
-
 from app.n17_smoke_helper import (
     SMOKE_DOMAIN,
     SMOKE_RESULTS,
