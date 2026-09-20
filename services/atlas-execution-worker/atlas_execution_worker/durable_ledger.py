@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,6 +28,8 @@ DurableState = Literal[
     "unknown_outcome",
 ]
 TERMINAL_STATES = {"completed", "failed_terminal", "unknown_outcome"}
+_INITIALIZATION_LOCK = Lock()
+_INITIALIZATION_RETRY_DELAYS = (0.01, 0.025, 0.05, 0.1, 0.2, 0.4, 0.8)
 
 
 class DurableLedgerError(RuntimeError):
@@ -64,38 +67,54 @@ class DurableRequestLedger:
         self._lock = Lock()
         self._initialize()
 
-    def _connect(self) -> sqlite3.Connection:
+    def _connect(self, *, configure_wal: bool = False) -> sqlite3.Connection:
         connection = sqlite3.connect(
             self.database_path,
-            timeout=5.0,
+            timeout=0.5 if configure_wal else 5.0,
             isolation_level=None,
             check_same_thread=False,
         )
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA busy_timeout=5000")
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("PRAGMA synchronous=FULL")
-        return connection
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute(
+                f"PRAGMA busy_timeout={500 if configure_wal else 5000}"
+            )
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute("PRAGMA synchronous=FULL")
+            return connection
+        except Exception:
+            connection.close()
+            raise
 
     def _initialize(self) -> None:
-        with self._connect() as connection:
-            connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS executions (
-                    execution_request_id TEXT PRIMARY KEY,
-                    request_digest TEXT NOT NULL,
-                    schema_version INTEGER NOT NULL,
-                    state TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    attempt INTEGER NOT NULL DEFAULT 1,
-                    execution_started_at TEXT,
-                    workspace_token TEXT,
-                    result_json TEXT
-                )
-                """
-            )
+        with _INITIALIZATION_LOCK:
+            for delay in (*_INITIALIZATION_RETRY_DELAYS, None):
+                try:
+                    with self._connect(configure_wal=True) as connection:
+                        connection.execute(
+                            """
+                            CREATE TABLE IF NOT EXISTS executions (
+                                execution_request_id TEXT PRIMARY KEY,
+                                request_digest TEXT NOT NULL,
+                                schema_version INTEGER NOT NULL,
+                                state TEXT NOT NULL,
+                                created_at TEXT NOT NULL,
+                                updated_at TEXT NOT NULL,
+                                attempt INTEGER NOT NULL DEFAULT 1,
+                                execution_started_at TEXT,
+                                workspace_token TEXT,
+                                result_json TEXT
+                            )
+                            """
+                        )
+                    return
+                except sqlite3.OperationalError as exc:
+                    if not any(
+                        marker in str(exc).lower() for marker in ("locked", "busy")
+                    ) or delay is None:
+                        raise
+                    time.sleep(delay)
 
     @staticmethod
     def _now() -> str:
