@@ -1,13 +1,29 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.64 P5 — authority isolation and release evidence (2026-09-20)
+
+- [x] Integrate the v0.64 P1-P4 reference-only contract, bounded journal,
+  default-off guarded API and nested GET-only Mission Control projection.
+- [x] Reject forged inventory, review, activation and worker-start authority,
+  including false-valued claims, and forbid effect-plane consumers.
+- [x] Run the focused v0.64 contract, durable-service/store and P5 closure
+  regressions; evidence is in [P5 validation](architecture/v0.64-p5-validation.md).
+- [x] Synchronize the v0.64 normative boundary, roadmap, changelog and release
+  evidence with the integrated implementation.
+- [ ] Resolve inherited full Core/worker release acceptance.
+- [ ] Release acceptance after all required gates pass; no tag, publication,
+  deployment or runtime enablement is implied.
+
+P5 evidence records the repository boundary only. It is not release acceptance.
+
 ## Atlas v0.64 Sync — repository planning freeze (2026-09-20)
 
 - [x] Reconcile the v0.64 P0 analysis at `72dadcab` with integrated v0.63 at
   `43123ed5` (`atlas-v0.63.0`).
 - [x] Retain the integrated v0.63 boundary, exact lineage, limits, inventory
   and authority ceiling; add no successor runtime authority.
-- [x] Freeze retention and defer successor P1-P5; reserve no new consumer,
-  schema, marker, route, credential or runtime effect.
+- [x] Record the planning freeze before the separately integrated v0.64 P1-P4
+  reference-only evidence; reserve no effect-plane consumer or runtime effect.
 - [x] Synchronize the normative architecture, P0 supersession notice,
   roadmap and Sync evidence.
 - [ ] Resolve repository-integrated v0.63 and inherited predecessor acceptance.

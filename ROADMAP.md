@@ -1,21 +1,32 @@
 # Atlas OS Roadmap
 
-## v0.64 Sync — retained authority boundary frozen (2026-09-20)
+## v0.64 P5 — authority isolation, synchronization closure, and release evidence (2026-09-20)
+
+P5 closes the repository boundary for the integrated v0.64 P1-P4 reference-only
+runtime-definition evidence. The Core contract, bounded durable journal,
+default-off guarded API and nested GET-only Mission Control projection are
+covered by release-isolation regressions. Effect-plane and operational
+consumers remain forbidden, and the exact reference-only authority ceiling is
+preserved. Release acceptance remains open; no runtime start, Agent invocation,
+deployment, publication or tag follows.
+
+See [v0.64 P5 evidence](docs/architecture/v0.64-p5-validation.md) and the
+[release checklist](docs/RELEASE_CHECKLIST.md).
+
+## v0.64 Sync — retained authority boundary synchronized (2026-09-20)
 
 The [normative freeze](docs/architecture/v0.64-authority-boundary.md)
-reconciles the v0.64 P0 analysis at `72dadcab` with repository-integrated
-v0.63 at `43123ed5` (`atlas-v0.63.0`). Retain the integrated v0.63
-Core-owned v0.57 prerequisite boundary and defer successor P1-P5: trusted
-provenance, a distinct decision, authenticated runtime contact and bounded
-successor feasibility remain unproved. The seven blockers, 67 fixed-false
-fields and exact consumer boundary remain unchanged; no new evidence stage or
-operational consumer is selected.
+reconciles the v0.64 P0 analysis at `72dadcab` with the integrated v0.64 P1-P4
+reference-only boundary. P1-P4 add only bounded evidence, with no authenticated
+runtime contact or effect-plane consumer; P5 records the isolation and release
+evidence. The seven predecessor blockers and effect-plane authority ceiling
+remain in force.
 
-Planning synchronization is complete; v0.63 and inherited release acceptance
+Planning synchronization is complete; v0.64 and inherited release acceptance
 remain open. See [Sync evidence](docs/architecture/v0.64-sync-validation.md)
 and the [release checklist](docs/RELEASE_CHECKLIST.md). No runtime or release
-authority follows from this documentation decision. Historical records below
-are preserved.
+authority follows from the evidence boundary. Historical records below are
+preserved.
 
 ## v0.63 Sync — retained authority boundary frozen (2026-09-20)
 
