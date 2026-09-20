@@ -1,5 +1,24 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.64 Sync — repository planning freeze (2026-09-20)
+
+- [x] Reconcile the v0.64 P0 analysis at `72dadcab` with integrated v0.63 at
+  `43123ed5` (`atlas-v0.63.0`).
+- [x] Retain the integrated v0.63 boundary, exact lineage, limits, inventory
+  and authority ceiling; add no successor runtime authority.
+- [x] Freeze retention and defer successor P1-P5; reserve no new consumer,
+  schema, marker, route, credential or runtime effect.
+- [x] Synchronize the normative architecture, P0 supersession notice,
+  roadmap and Sync evidence.
+- [ ] Resolve repository-integrated v0.63 and inherited predecessor acceptance.
+- [ ] Complete the independent full Core/worker release obligations retained
+  from v0.63.
+
+[Normative v0.64 boundary](architecture/v0.64-authority-boundary.md) and
+[Sync validation](architecture/v0.64-sync-validation.md) record planning
+completion, not release acceptance. No tag, publication or runtime enablement
+is authorized.
+
 ## Atlas v0.63 Sync — repository planning freeze (2026-09-20)
 
 - [x] Reconcile v0.63 P0 at `24dfdeeb` with integrated v0.62 at `426cac84`.
