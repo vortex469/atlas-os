@@ -6,6 +6,16 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.64 P5 - Authority isolation and release evidence (closure open)
+
+- Closed the integrated v0.64 reference-only runtime-definition boundary with
+  authority-isolation regressions across Core and production surfaces.
+- Preserved default-off behavior, bounded durable evidence, exact owner scope
+  and nested GET-only Mission Control presentation; no runtime or effect-plane
+  consumer is added.
+- Recorded focused release evidence while inherited Core/worker acceptance
+  remains open. See [P5 evidence](docs/architecture/v0.64-p5-validation.md).
+
 #### v0.62 P5 - Retained Authority Isolation and Release Evidence (closure open)
 
 - Preserve the synchronized v0.62 retained boundary and deferred successor
