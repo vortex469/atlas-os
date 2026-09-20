@@ -1,5 +1,6 @@
 import type { WorkerActivationRuntimePlanReview } from "../../types/workerActivationRuntimePlanReview";
 import { useWorkerActivationRuntimeInterfacePrerequisite } from "../../hooks/useWorkerActivationRuntimeInterfacePrerequisite";
+import { WorkerActivationRuntimeDefinitions } from "./WorkerActivationRuntimeDefinitions";
 
 export function WorkerActivationRuntimeInterfacePrerequisite({ review }: { review: WorkerActivationRuntimePlanReview }) {
     return <InventoryReader key={JSON.stringify(review)} review={review} />;
@@ -30,6 +31,7 @@ function InventoryReader({ review }: { review: WorkerActivationRuntimePlanReview
                 <ol>{state.blockers.map((code) => <li key={code}><code>{code}</code></li>)}</ol>
                 <dl aria-label="v0.57 fixed-false authority">{Object.entries(state.authority).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{String(value)}</dd></div>)}</dl>
             </details>
+            <WorkerActivationRuntimeDefinitions candidateId={state.candidateId} operatorId={state.operatorId} />
         </>}
     </section>;
 }

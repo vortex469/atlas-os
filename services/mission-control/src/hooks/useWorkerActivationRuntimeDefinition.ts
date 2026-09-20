@@ -1,0 +1,4 @@
+import { useEffect, useState } from "react";
+import { getWorkerActivationRuntimeDefinition, listWorkerActivationRuntimeDefinitions } from "../api/workerActivationRuntimeDefinition";
+import type { RuntimeDefinitionResult } from "../types/workerActivationRuntimeDefinition";
+export function useWorkerActivationRuntimeDefinition(candidateId: string, operatorId: string) { const [state, setState] = useState<RuntimeDefinitionResult[] | "loading" | "missing" | "unavailable">("loading"); useEffect(() => { let current = true; setState("loading"); listWorkerActivationRuntimeDefinitions(candidateId, operatorId).then((ids) => Promise.all(ids.map((id) => getWorkerActivationRuntimeDefinition(candidateId, operatorId, id)))).then((value) => { if (current) setState(value.length ? value : "missing"); }).catch(() => { if (current) setState("unavailable"); }); return () => { current = false; }; }, [candidateId, operatorId]); return state; }
