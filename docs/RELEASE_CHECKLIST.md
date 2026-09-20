@@ -18,6 +18,27 @@
 completion, not release acceptance. No tag, publication or runtime enablement
 is authorized.
 
+## Atlas v0.63 P5 — retained release gates (2026-09-20)
+
+- [x] Add v0.63 successor-marker refusal across all shared Core/UI evidence
+  envelopes, including true and false claims, without changing the retained
+  schema or authority ceiling.
+- [x] Preserve the exact twelve Core/API/UI consumers, seven blockers and 67
+  false authority fields; add no Agent, worker, workflow or deployment
+  consumer.
+- [x] Run the v0.63 retained-boundary, durable-evidence, guarded-API and
+  release-closure regressions; evidence is in [P5 validation](architecture/v0.63-p5-validation.md).
+- [x] Synchronize the v0.63 roadmap and release evidence with the retained P5
+  disposition.
+- [ ] Resolve repository-integrated predecessor release acceptance.
+- [ ] Complete the independent full Core/worker release obligations retained
+  from v0.62.
+- [ ] Release acceptance after all required gates pass; no tag, publication,
+  deployment or runtime enablement is implied.
+
+P5 evidence records retained isolation and open release gates. It is not
+release acceptance.
+
 ## Atlas v0.62 P5 — retained release gates (2026-09-19)
 
 - [x] Add v0.62 successor-marker refusal across all shared Core/UI evidence

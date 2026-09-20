@@ -17,6 +17,17 @@ and the [release checklist](docs/RELEASE_CHECKLIST.md). No runtime or release
 authority follows from this documentation decision. Historical records below
 are preserved.
 
+## v0.63 P5 — retained authority isolation; release closure open
+
+P5 adds repository-wide v0.63 successor-marker refusal, shared-envelope Core/UI
+regressions and normalized release evidence. The Core-owned v0.57 pair, exact
+twelve production consumers, seven blockers and 67 fixed-false authority
+fields are unchanged. Successor runtime-definition authority remains deferred;
+predecessor acceptance and the independent full Core/worker release
+obligations remain open. See [P5 evidence](docs/architecture/v0.63-p5-validation.md).
+No tag, publication, deployment, runtime enablement or operational authority
+follows.
+
 ## v0.62 P5 — retained authority isolation; release closure open
 
 The retained v0.62 boundary now has repository-wide release-isolation
