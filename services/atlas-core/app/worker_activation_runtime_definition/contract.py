@@ -404,6 +404,9 @@ def _fingerprint(kind: str, value: Any) -> FingerprintV1:
     return FingerprintV1(algorithm="sha256", canonicalization="atlas-jcs-nfc-v1", value=digest)
 
 
+fingerprint = _fingerprint
+
+
 def definition_fingerprint(value: WorkerActivationRuntimeDefinitionV1 | dict[str, Any]) -> FingerprintV1:
     raw = _plain(value)
     raw.setdefault("schema", "worker-activation-runtime-definition-v1")
@@ -444,3 +447,18 @@ def evaluate_worker_activation_runtime_definition(value: Any, *, evaluated_at: s
         result = {"definition_id": definition_id, "evaluated_at": now, "state": "blocked", "eligibility": "blocked", "refusal": "invalid_request", "definition_fingerprint": FingerprintV1(algorithm="sha256", canonicalization="atlas-jcs-nfc-v1", value="0" * 64)}
     seed = WorkerActivationRuntimeDefinitionEvaluationV1.model_construct(**result)
     return WorkerActivationRuntimeDefinitionEvaluationV1.model_validate({**_plain(seed), "evaluation_fingerprint": evaluation_fingerprint(seed)})
+
+
+def parse_create_json(payload: bytes | str) -> WorkerActivationRuntimeDefinitionCreateV1:
+    raw = payload.encode() if isinstance(payload, str) else bytes(payload)
+    if len(raw) > MAX_CREATE_BYTES:
+        raise ValueError("create envelope exceeds bound")
+    try:
+        decoded = raw.decode()
+        if unicodedata.normalize("NFC", decoded) != decoded:
+            raise ValueError("request must be NFC normalized")
+        return WorkerActivationRuntimeDefinitionCreateV1.model_validate(
+            json.loads(decoded, object_pairs_hook=_unique_keys)
+        )
+    except (UnicodeError, TypeError, ValueError) as error:
+        raise ValueError("invalid runtime definition create request") from error

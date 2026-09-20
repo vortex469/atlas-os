@@ -99,6 +99,9 @@ from app.routes.worker_activation_runtime_admission import (
 from app.routes.worker_activation_runtime_interface_prerequisite import (
     router as worker_activation_runtime_interface_prerequisite_router,
 )
+from app.routes.worker_activation_runtime_definition import (
+    router as worker_activation_runtime_definition_router,
+)
 from app.routes.worker_activation_runtime_plan import (
     router as worker_activation_runtime_plan_router,
 )
@@ -194,6 +197,7 @@ router.include_router(worker_activation_runtime_admission_router)
 router.include_router(worker_activation_runtime_plan_router)
 router.include_router(worker_activation_runtime_plan_review_router)
 router.include_router(worker_activation_runtime_interface_prerequisite_router)
+router.include_router(worker_activation_runtime_definition_router)
 router.include_router(installation_dispatch_handoff_router)
 router.include_router(installation_readiness_review_router)
 router.include_router(execution_permission_grant_router)
