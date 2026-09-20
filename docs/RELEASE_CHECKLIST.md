@@ -1,5 +1,23 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.63 Sync — repository planning freeze (2026-09-20)
+
+- [x] Reconcile v0.63 P0 at `24dfdeeb` with integrated v0.62 at `426cac84`.
+- [x] Retain the v0.57 pair, complete lineage, exact limits, inventory and
+  authority ceiling with integrated v0.62 closure and worker durability evidence.
+- [x] Freeze retention and defer successor P1-P5; reserve no new consumer,
+  schema, marker, route or runtime authority.
+- [x] Synchronize normative architecture, P0 supersession notice, roadmap and
+  Sync evidence.
+- [ ] Resolve repository-integrated v0.62 and inherited predecessor acceptance.
+- [ ] Complete the independent full Core/worker release obligations recorded by
+  v0.62 P5; focused closure and durability evidence do not waive them.
+
+[Normative v0.63 boundary](architecture/v0.63-authority-boundary.md) and
+[Sync validation](architecture/v0.63-sync-validation.md) record planning
+completion, not release acceptance. No tag, publication or runtime enablement
+is authorized.
+
 ## Atlas v0.62 P5 — retained release gates (2026-09-19)
 
 - [x] Add v0.62 successor-marker refusal across all shared Core/UI evidence
