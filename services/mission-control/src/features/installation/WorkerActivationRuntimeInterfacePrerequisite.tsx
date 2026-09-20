@@ -2,7 +2,7 @@ import type { WorkerActivationRuntimePlanReview } from "../../types/workerActiva
 import { useWorkerActivationRuntimeInterfacePrerequisite } from "../../hooks/useWorkerActivationRuntimeInterfacePrerequisite";
 
 export function WorkerActivationRuntimeInterfacePrerequisite({ review }: { review: WorkerActivationRuntimePlanReview }) {
-    return <InventoryReader key={JSON.stringify(review)} review={review} />;
+    return <InventoryReader review={review} />;
 }
 
 function InventoryReader({ review }: { review: WorkerActivationRuntimePlanReview }) {
