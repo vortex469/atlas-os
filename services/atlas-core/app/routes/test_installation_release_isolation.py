@@ -15,9 +15,7 @@ from fastapi import FastAPI
 from app.routes.installation import router
 
 APP_ROOT = Path(__file__).parents[1]
-V016_ROOTS = (
-    APP_ROOT / "installation_plan",
-)
+V016_ROOTS = (APP_ROOT / "installation_plan",)
 V017_ROOTS = (
     APP_ROOT / "installation_targets",
     APP_ROOT / "installation_assessment",
@@ -216,9 +214,7 @@ def _production_files() -> tuple[Path, ...]:
             files.append(root)
         else:
             files.extend(
-                path
-                for path in root.glob("*.py")
-                if not path.name.startswith("test_")
+                path for path in root.glob("*.py") if not path.name.startswith("test_")
             )
     return tuple(sorted(files))
 
@@ -236,11 +232,7 @@ def _imports(path: Path) -> set[str]:
 
 def _production_python_files(root: Path) -> tuple[Path, ...]:
     return tuple(
-        sorted(
-            path
-            for path in root.rglob("*.py")
-            if not path.name.startswith("test_")
-        )
+        sorted(path for path in root.rglob("*.py") if not path.name.startswith("test_"))
     )
 
 
@@ -352,7 +344,9 @@ def test_no_authority_or_mutation_subsystem_consumes_v018_records() -> None:
         source = path.read_text(encoding="utf-8")
         for marker in V018_RECORD_MARKERS:
             if marker in source:
-                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
     assert violations == []
 
 
@@ -382,11 +376,15 @@ def test_no_authority_or_mutation_subsystem_consumes_v019_records() -> None:
         source = path.read_text(encoding="utf-8")
         for marker in V019_RECORD_MARKERS:
             if marker in source:
-                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
     assert violations == []
 
 
-def test_v020_is_non_authorizing_and_older_installation_packages_do_not_import_it() -> None:
+def test_v020_is_non_authorizing_and_older_installation_packages_do_not_import_it() -> (
+    None
+):
     violations: list[str] = []
     for root in V020_ROOTS:
         paths = (root,) if root.is_file() else _production_python_files(root)
@@ -418,7 +416,9 @@ def test_no_core_or_agent_authority_or_mutation_path_consumes_v020_records() -> 
         source = path.read_text(encoding="utf-8")
         for marker in V020_RECORD_MARKERS:
             if marker in source:
-                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
     assert violations == []
 
 
@@ -561,33 +561,38 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
             "get",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-admissions": {
-            "get", "post",
+            "get",
+            "post",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-admissions/{runtime_admission_id}": {
             "get",
         },
         # v0.57 P3: exact guarded inventory evidence routes, no action endpoint.
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites": {
-            "get", "post",
+            "get",
+            "post",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-interface-prerequisites/{runtime_interface_prerequisite_id}": {
             "get",
         },
         # v0.56 P3: bounded owner-scoped review evidence, no action endpoint.
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plan-reviews": {
-            "get", "post",
+            "get",
+            "post",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plan-reviews/{runtime_plan_review_id}": {
             "get",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plans": {
-            "get", "post",
+            "get",
+            "post",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-plans/{runtime_plan_id}": {
             "get",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-prerequisites": {
-            "get", "post",
+            "get",
+            "post",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-prerequisites/{prerequisite_id}": {
             "get",
@@ -597,6 +602,15 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
             "post",
         },
         "/api/v1/installation/candidate-records/{candidate_record_id}/controlled-worker-queue-claim-lease-acknowledgements/{admission_id}": {
+            "get",
+        },
+        # v0.64 P5: reference-only runtime-definition evidence; no action
+        # endpoint and no operational authority is exposed by these routes.
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-definitions": {
+            "get",
+            "post",
+        },
+        "/api/v1/installation/candidate-records/{candidate_record_id}/worker-activation-runtime-definitions/{definition_id}": {
             "get",
         },
     }
@@ -615,33 +629,36 @@ def test_v020_openapi_is_lifecycle_only_with_no_authority_route() -> None:
         "resend",
     )
     assert not any(
-        token in path.removeprefix("/api/v1/installation/candidate-records").replace(
-            "controlled-dequeue-admissions", "controlled-admissions"
-        ).replace(
-            "one-shot-controlled-dequeues", "one-shot-controlled-receipts"
-        ).replace(
-            "one-shot-dequeue-worker-bindings", "one-shot-worker-binding-evidence"
-        ).replace(
+        token
+        in path.removeprefix("/api/v1/installation/candidate-records")
+        .replace("controlled-dequeue-admissions", "controlled-admissions")
+        .replace("one-shot-controlled-dequeues", "one-shot-controlled-receipts")
+        .replace("one-shot-dequeue-worker-bindings", "one-shot-worker-binding-evidence")
+        .replace(
             "controlled-worker-queue-claim-admissions",
             "controlled-worker-queue-admission-evidence",
-        ).replace(
+        )
+        .replace(
             "controlled-worker-queue-claim-lease-acknowledgement-prerequisites",
             "controlled-receipt-evidence",
-        ).replace(
+        )
+        .replace(
             "controlled-worker-queue-claim-lease-acknowledgement-admissions",
             "controlled-receipt-evidence",
-        ).replace(
+        )
+        .replace(
             "controlled-worker-queue-claim-lease-acknowledgements",
             "controlled-receipt-evidence",
-        ).replace(
-            "{dequeue_id}", "{receipt_id}"
         )
+        .replace("{dequeue_id}", "{receipt_id}")
         for path in paths
         for token in prohibited
     )
 
 
-def test_mission_control_v020_surface_adds_only_review_and_permission_evidence() -> None:
+def test_mission_control_v020_surface_adds_only_review_and_permission_evidence() -> (
+    None
+):
     mission_control = APP_ROOT.parents[1] / "mission-control" / "src"
     api_source = (
         mission_control / "api" / "installationCandidateLifecycle.ts"
@@ -690,6 +707,8 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         Path("api/workerActivationRuntimeInterfacePrerequisite.ts"),
         # v0.56: exact nested GET-only review evidence.
         Path("api/workerActivationRuntimePlanReview.ts"),
+        # v0.64 P5: exact nested GET-only reference-definition reader.
+        Path("api/workerActivationRuntimeDefinition.ts"),
         Path("features/discovery/InstallationCandidateLifecycle.tsx"),
     }
 
@@ -700,7 +719,12 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
         re.search(rf"atlas\s*\.\s*{method}(?:<[^>]+>)?\s*\(", api_source)
         for method in ("put", "patch")
     )
-    assert set(re.findall(r"\b(?:preserve|get|list|delete)InstallationCandidateRecord(?:s)?\b", component_source)) == {
+    assert set(
+        re.findall(
+            r"\b(?:preserve|get|list|delete)InstallationCandidateRecord(?:s)?\b",
+            component_source,
+        )
+    ) == {
         "deleteInstallationCandidateRecord",
         "getInstallationCandidateRecord",
         "listInstallationCandidateRecords",
@@ -709,7 +733,7 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
     assert "<Link" not in component_source
     assert "<form" not in component_source
     assert "navigate(" not in component_source
-    assert re.findall(r'href=\{`([^`]+)`\}', component_source) == [
+    assert re.findall(r"href=\{`([^`]+)`\}", component_source) == [
         (
             "/installation/candidate-records/"
             "${encodeURIComponent(record.candidate_record_id)}/readiness-review"
@@ -735,9 +759,7 @@ def test_home_assistant_v019_result_cannot_cross_v020_preservation_boundary() ->
     assert admission.status == "not_admitted"
     assert admission.candidate_record is None
     with pytest.raises(ValueError, match="not currently preservable"):
-        validate_preservable_admission(
-            admission, created_at="2026-08-27T12:00:01Z"
-        )
+        validate_preservable_admission(admission, created_at="2026-08-27T12:00:01Z")
 
 
 def test_mission_control_v019_surface_is_get_only_and_has_no_actions() -> None:
@@ -788,9 +810,7 @@ def test_v018_openapi_has_exactly_one_get_and_no_mutation_sibling() -> None:
         if "capability-assessments" in path
     }
     assert paths == {
-        "/api/v1/installation/capability-assessments/{item_id}/{selection_id}": {
-            "get"
-        }
+        "/api/v1/installation/capability-assessments/{item_id}/{selection_id}": {"get"}
     }
 
 
@@ -805,9 +825,7 @@ def test_v019_openapi_has_exactly_one_get_and_no_mutation_sibling() -> None:
         if "candidate-admissions" in path
     }
     assert paths == {
-        "/api/v1/installation/candidate-admissions/{item_id}/{selection_id}": {
-            "get"
-        }
+        "/api/v1/installation/candidate-admissions/{item_id}/{selection_id}": {"get"}
     }
 
 
@@ -894,15 +912,11 @@ def test_v021_openapi_is_exactly_append_list_get_with_no_authority_route() -> No
     }
     assert paths == {
         "/api/v1/installation/candidate-approval-intents": {"get", "post"},
-        "/api/v1/installation/candidate-approval-intents/{approval_intent_id}": {
-            "get"
-        },
+        "/api/v1/installation/candidate-approval-intents/{approval_intent_id}": {"get"},
     }
     prohibited = ("install", "execute", "dispatch", "deploy", "rollback", "replay")
     assert not any(
-        token in path.removeprefix(
-            "/api/v1/installation/candidate-approval-intents"
-        )
+        token in path.removeprefix("/api/v1/installation/candidate-approval-intents")
         for path in paths
         for token in prohibited
     )
@@ -920,9 +934,8 @@ def test_mission_control_v021_surface_has_only_append_list_get_calls() -> None:
         path.relative_to(mission_control)
         for path in mission_control.rglob("*.ts*")
         if ".test." not in path.name
-        and "/installation/candidate-approval-intents" in path.read_text(
-            encoding="utf-8"
-        )
+        and "/installation/candidate-approval-intents"
+        in path.read_text(encoding="utf-8")
     }
     assert route_consumers == {Path("api/installationApprovalIntent.ts")}
     assert len(re.findall(r"atlas\s*\.\s*get(?:<[^>]+>)?\s*\(", api_source)) == 2
@@ -958,9 +971,7 @@ def test_home_assistant_cannot_be_preserved_or_approved_in_v021() -> None:
     assert admission.status == "not_admitted"
     assert admission.candidate_record is None
     with pytest.raises(ValueError, match="not currently preservable"):
-        validate_preservable_admission(
-            admission, created_at="2026-08-27T12:00:01Z"
-        )
+        validate_preservable_admission(admission, created_at="2026-08-27T12:00:01Z")
 
 
 def test_no_core_production_path_consumes_v022_validation_records() -> None:
@@ -1090,14 +1101,11 @@ def test_v023_route_has_only_create_list_and_owned_item_read() -> None:
     application = FastAPI()
     application.include_router(execution_request_router, prefix="/api/v1")
     paths = {
-        path: set(methods)
-        for path, methods in application.openapi()["paths"].items()
+        path: set(methods) for path, methods in application.openapi()["paths"].items()
     }
     assert paths == {
         "/api/v1/installation/execution-requests": {"get", "post"},
-        "/api/v1/installation/execution-requests/{execution_request_id}": {
-            "get"
-        },
+        "/api/v1/installation/execution-requests/{execution_request_id}": {"get"},
     }
     prohibited = (
         "install",
@@ -1298,7 +1306,9 @@ def test_v025_simulation_has_no_core_or_agent_production_consumer() -> None:
         source = path.read_text(encoding="utf-8")
         for marker in V025_RECORD_MARKERS:
             if marker in source:
-                violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
+                violations.append(
+                    f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}"
+                )
 
     for path in _production_python_files(agent_root):
         if simulation_root in path.parents or delivery_agent_root in path.parents:
@@ -1306,7 +1316,9 @@ def test_v025_simulation_has_no_core_or_agent_production_consumer() -> None:
         source = path.read_text(encoding="utf-8")
         for marker in V025_RECORD_MARKERS:
             if marker in source:
-                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
 
     assert violations == []
 
@@ -1343,7 +1355,9 @@ def test_v026_evidence_has_no_core_or_agent_production_consumer() -> None:
         source = path.read_text(encoding="utf-8")
         for marker in V026_RECORD_MARKERS:
             if marker in source:
-                violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
+                violations.append(
+                    f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}"
+                )
 
     for path in _production_python_files(agent_root):
         if agent_package in path.parents:
@@ -1351,7 +1365,9 @@ def test_v026_evidence_has_no_core_or_agent_production_consumer() -> None:
         source = path.read_text(encoding="utf-8")
         for marker in V026_RECORD_MARKERS:
             if marker in source:
-                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
 
     assert violations == []
 
@@ -1423,14 +1439,18 @@ def test_v027_real_intake_has_no_core_or_agent_production_consumer() -> None:
         source = path.read_text(encoding="utf-8")
         for marker in markers:
             if marker in source:
-                violations.append(f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}")
+                violations.append(
+                    f"atlas-core/{path.relative_to(APP_ROOT)} -> {marker}"
+                )
     for path in _production_python_files(agent_root):
         if isolated_agent_package in path.parents or v032_agent_package in path.parents:
             continue
         source = path.read_text(encoding="utf-8")
         for marker in markers:
             if marker in source:
-                violations.append(f"atlas-agent/{path.relative_to(agent_root)} -> {marker}")
+                violations.append(
+                    f"atlas-agent/{path.relative_to(agent_root)} -> {marker}"
+                )
     assert violations == []
 
 
@@ -1473,8 +1493,14 @@ def test_v027_capability_parity_and_home_assistant_remain_blocked() -> None:
         encoding="utf-8"
     )
     status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
-    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
-    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert (
+        'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})'
+        in candidate_source
+    )
+    assert (
+        'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})'
+        in candidate_source
+    )
     assert "install-container" not in candidate_source
     assert 'capability_status: Literal["unsupported"]' in status_source
 
@@ -1529,9 +1555,10 @@ def test_v028_client_is_explicit_disabled_no_send_and_non_authorizing() -> None:
         "mutation_allowed",
         "replay_allowed",
     ):
-        assert DormantAgentIntakeDeliveryConfigurationV1.model_fields[field].annotation == Literal[
-            False
-        ]
+        assert (
+            DormantAgentIntakeDeliveryConfigurationV1.model_fields[field].annotation
+            == Literal[False]
+        )
 
 
 def test_v028_package_cannot_load_credentials_or_open_network_runtime() -> None:
@@ -1568,17 +1595,15 @@ def test_v028_package_cannot_load_credentials_or_open_network_runtime() -> None:
                 "request",
                 "connect",
             }:
-                violations.append(
-                    f"{path.relative_to(APP_ROOT)} -> {node.func.attr}"
-                )
+                violations.append(f"{path.relative_to(APP_ROOT)} -> {node.func.attr}")
         assert "Authorization: Bearer" not in source
     assert violations == []
 
 
 def test_v028_store_is_append_only_evidence_not_outbox_or_replay_bridge() -> None:
-    store = (
-        APP_ROOT / "dormant_agent_intake_delivery_wiring" / "store.py"
-    ).read_text(encoding="utf-8")
+    store = (APP_ROOT / "dormant_agent_intake_delivery_wiring" / "store.py").read_text(
+        encoding="utf-8"
+    )
     assert "UPDATE dormant_agent_intake_delivery" not in store
     assert "DELETE FROM dormant_agent_intake_delivery" not in store
     assert {
@@ -1586,7 +1611,17 @@ def test_v028_store_is_append_only_evidence_not_outbox_or_replay_bridge() -> Non
         for node in ast.walk(ast.parse(store))
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
     }.isdisjoint(
-        {"send", "deliver", "retry", "reconcile", "consume", "execute", "install", "deploy", "rollback"}
+        {
+            "send",
+            "deliver",
+            "retry",
+            "reconcile",
+            "consume",
+            "execute",
+            "install",
+            "deploy",
+            "rollback",
+        }
     )
 
 
@@ -1670,11 +1705,15 @@ def test_v028_capability_parity_and_home_assistant_remain_blocked() -> None:
     candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
         encoding="utf-8"
     )
-    status_source = (agent_root / "routes" / "status.py").read_text(
-        encoding="utf-8"
+    status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
+    assert (
+        'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})'
+        in candidate_source
     )
-    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
-    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert (
+        'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})'
+        in candidate_source
+    )
     assert "install-container" not in candidate_source
     assert 'capability_status: Literal["unsupported"]' in status_source
     artifacts = [
@@ -1701,12 +1740,30 @@ def test_v029_service_and_store_are_evidence_only_without_authority_bridge() -> 
     } == {"configuration", "create", "get", "list"}
     package = APP_ROOT / "delivery_activation_preflight"
     forbidden_import_roots = {
-        "aiohttp", "docker", "http", "httpx", "podman", "requests",
-        "socket", "ssl", "subprocess", "urllib",
+        "aiohttp",
+        "docker",
+        "http",
+        "httpx",
+        "podman",
+        "requests",
+        "socket",
+        "ssl",
+        "subprocess",
+        "urllib",
     }
     forbidden_calls = {
-        "activate", "send", "deliver", "dispatch", "consume", "execute",
-        "install", "deploy", "rollback", "connect", "request", "run",
+        "activate",
+        "send",
+        "deliver",
+        "dispatch",
+        "consume",
+        "execute",
+        "install",
+        "deploy",
+        "rollback",
+        "connect",
+        "request",
+        "run",
     }
     violations: list[str] = []
     for path in _production_python_files(package):
@@ -1717,7 +1774,10 @@ def test_v029_service_and_store_are_evidence_only_without_authority_bridge() -> 
             if imported.split(".")[0] in forbidden_import_roots
         )
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in forbidden_calls:
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name in forbidden_calls
+            ):
                 violations.append(f"{path.relative_to(APP_ROOT)} -> def {node.name}")
     store = (package / "store.py").read_text(encoding="utf-8")
     assert "UPDATE delivery_activation_preflights" not in store
@@ -1725,7 +1785,9 @@ def test_v029_service_and_store_are_evidence_only_without_authority_bridge() -> 
     assert violations == []
 
 
-def test_v029_is_default_absent_from_production_construction_and_has_no_consumer() -> None:
+def test_v029_is_default_absent_from_production_construction_and_has_no_consumer() -> (
+    None
+):
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
     package = APP_ROOT / "delivery_activation_preflight"
@@ -1748,13 +1810,15 @@ def test_v029_is_default_absent_from_production_construction_and_has_no_consumer
         source = path.read_text(encoding="utf-8")
         violations.extend(
             f"{path.relative_to(repository_root)} -> {marker}"
-            for marker in markers if marker in source
+            for marker in markers
+            if marker in source
         )
     for path in _production_python_files(agent_root):
         source = path.read_text(encoding="utf-8")
         violations.extend(
             f"{path.relative_to(repository_root)} -> {marker}"
-            for marker in markers if marker in source
+            for marker in markers
+            if marker in source
         )
     main = (APP_ROOT / "main.py").read_text(encoding="utf-8")
     assert "delivery_activation_preflight" not in main
@@ -1769,24 +1833,41 @@ def test_v029_openapi_is_exact_without_activation_or_delivery_sibling() -> None:
     paths = application.openapi()["paths"]
     collection = "/api/v1/installation-delivery-preflights"
     item = f"{collection}/{{preflight_id}}"
-    preflight_paths = {path: value for path, value in paths.items() if "delivery-preflight" in path}
+    preflight_paths = {
+        path: value for path, value in paths.items() if "delivery-preflight" in path
+    }
     assert set(preflight_paths) == {collection, item}
     assert set(preflight_paths[collection]) == {"get", "post"}
     assert set(preflight_paths[item]) == {"get"}
     for path in preflight_paths:
         normalized = path.lower().replace("installation-delivery-preflights", "")
-        assert all(word not in normalized for word in (
-            "activate", "send", "deliver", "execute", "deploy",
-        ))
+        assert all(
+            word not in normalized
+            for word in (
+                "activate",
+                "send",
+                "deliver",
+                "execute",
+                "deploy",
+            )
+        )
 
 
 def test_v029_capability_parity_and_home_assistant_remain_blocked() -> None:
     repository_root = APP_ROOT.parents[2]
     agent_root = repository_root / "services" / "atlas-agent" / "app"
-    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(encoding="utf-8")
+    candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
+        encoding="utf-8"
+    )
     status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
-    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
-    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert (
+        'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})'
+        in candidate_source
+    )
+    assert (
+        'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})'
+        in candidate_source
+    )
     assert "install-container" not in candidate_source
     assert 'capability_status: Literal["unsupported"]' in status_source
     assert [
@@ -1812,12 +1893,30 @@ def test_v030_service_store_and_route_are_evidence_only() -> None:
     } == {"configuration", "create", "get", "list"}
     package = APP_ROOT / "operator_controlled_delivery_enablement"
     forbidden_import_roots = {
-        "aiohttp", "docker", "http", "httpx", "podman", "requests",
-        "socket", "ssl", "subprocess", "urllib",
+        "aiohttp",
+        "docker",
+        "http",
+        "httpx",
+        "podman",
+        "requests",
+        "socket",
+        "ssl",
+        "subprocess",
+        "urllib",
     }
     forbidden_calls = {
-        "activate", "send", "deliver", "dispatch", "consume", "execute",
-        "install", "deploy", "rollback", "connect", "request", "run",
+        "activate",
+        "send",
+        "deliver",
+        "dispatch",
+        "consume",
+        "execute",
+        "install",
+        "deploy",
+        "rollback",
+        "connect",
+        "request",
+        "run",
     }
     violations: list[str] = []
     for path in _production_python_files(package):
@@ -1900,7 +1999,12 @@ def test_v030_openapi_is_exact_without_authority_sibling() -> None:
         assert all(
             word not in normalized
             for word in (
-                "send", "deliver", "activate", "install", "execute", "deploy",
+                "send",
+                "deliver",
+                "activate",
+                "install",
+                "execute",
+                "deploy",
             )
         )
 
@@ -1949,11 +2053,15 @@ def test_v030_capability_parity_and_home_assistant_remain_blocked() -> None:
     candidate_source = (agent_root / "candidate_planning" / "models.py").read_text(
         encoding="utf-8"
     )
-    status_source = (agent_root / "routes" / "status.py").read_text(
-        encoding="utf-8"
+    status_source = (agent_root / "routes" / "status.py").read_text(encoding="utf-8")
+    assert (
+        'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})'
+        in candidate_source
     )
-    assert 'SUPPORTED_EXECUTION_INTENTS = frozenset({"update-compose-stack"})' in candidate_source
-    assert 'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})' in candidate_source
+    assert (
+        'OPERATIONAL_EXECUTION_INTENTS = frozenset({"restart-service"})'
+        in candidate_source
+    )
     assert "install-container" not in candidate_source
     assert 'capability_status: Literal["unsupported"]' in status_source
     artifacts = [
@@ -1984,9 +2092,10 @@ def test_v031_live_send_is_explicit_default_off_one_shot_and_non_authorizing() -
         "transport",
         "clock",
     }
-    assert inspect.signature(LiveDeliverySendCoordinator).parameters[
-        "transport"
-    ].default is inspect.Parameter.empty
+    assert (
+        inspect.signature(LiveDeliverySendCoordinator).parameters["transport"].default
+        is inspect.Parameter.empty
+    )
     for model in (LiveDeliverySendReceiptV1, LiveDeliverySendTransportResultV1):
         for field in (
             "execution_authorized",
@@ -1999,10 +2108,12 @@ def test_v031_live_send_is_explicit_default_off_one_shot_and_non_authorizing() -
         ):
             if field in model.model_fields:
                 assert model.model_fields[field].annotation == Literal[False]
-    assert LiveDeliverySendTransportResultV1.model_fields[
-        "automatic_retries"
-    ].default == 0
-    assert LiveDeliverySendTransportResultV1.model_fields["one_shot_only"].default is True
+    assert (
+        LiveDeliverySendTransportResultV1.model_fields["automatic_retries"].default == 0
+    )
+    assert (
+        LiveDeliverySendTransportResultV1.model_fields["one_shot_only"].default is True
+    )
     for field in (
         "execution_attempted",
         "installation_attempted",
@@ -2011,9 +2122,10 @@ def test_v031_live_send_is_explicit_default_off_one_shot_and_non_authorizing() -
         "deployment_attempted",
         "mutation_attempted",
     ):
-        assert LiveDeliverySendTransportResultV1.model_fields[field].annotation == Literal[
-            False
-        ]
+        assert (
+            LiveDeliverySendTransportResultV1.model_fields[field].annotation
+            == Literal[False]
+        )
 
 
 def test_v031_live_send_has_no_route_registration_or_authority_consumer() -> None:
@@ -2139,8 +2251,8 @@ def test_v032_agent_admission_does_not_widen_core_live_send_or_gain_consumers() 
     transport_source = (
         APP_ROOT / "live_delivery_send_boundary" / "transport.py"
     ).read_text(encoding="utf-8")
-    assert 'automatic_retries: Literal[0] = 0' in contract_source
-    assert 'one_shot_only: Literal[True] = True' in contract_source
+    assert "automatic_retries: Literal[0] = 0" in contract_source
+    assert "one_shot_only: Literal[True] = True" in contract_source
     assert "for attempt in" not in transport_source
     assert "while " not in transport_source
     assert all(
@@ -2182,10 +2294,7 @@ def test_v033_receipt_composition_is_explicit_internal_and_unregistered() -> Non
             repository_root / "services" / "atlas-execution-worker",
         )
         for path in _production_python_files(root)
-        if (
-            package not in path.parents
-            and readiness_contract_root not in path.parents
-        )
+        if (package not in path.parents and readiness_contract_root not in path.parents)
         for marker in markers
         if marker in path.read_text(encoding="utf-8")
     ]
@@ -2212,9 +2321,7 @@ def test_v033_exact_duplicate_is_zero_io_and_persistence_is_secret_free(
     assert first.receipt == duplicate.receipt
     assert resolver.calls == writer.calls == len(transport.calls) == 1
     persisted = b"".join(
-        path.read_bytes()
-        for path in tmp_path.glob("v33.sqlite3*")
-        if path.is_file()
+        path.read_bytes() for path in tmp_path.glob("v33.sqlite3*") if path.is_file()
     )
     for forbidden in (
         b"transient-test-secret",
@@ -2282,8 +2389,8 @@ def test_v033_preserves_v031_one_shot_and_v032_admission_only_boundaries() -> No
     live_transport = (
         APP_ROOT / "live_delivery_send_boundary" / "transport.py"
     ).read_text(encoding="utf-8")
-    assert 'automatic_retries: Literal[0] = 0' in live_contract
-    assert 'one_shot_only: Literal[True] = True' in live_contract
+    assert "automatic_retries: Literal[0] = 0" in live_contract
+    assert "one_shot_only: Literal[True] = True" in live_contract
     assert "while " not in live_transport
 
     repository_root = APP_ROOT.parents[2]
@@ -2296,8 +2403,8 @@ def test_v033_preserves_v031_one_shot_and_v032_admission_only_boundaries() -> No
     )
     agent_contract = (agent_package / "contract.py").read_text(encoding="utf-8")
     agent_route = (agent_package / "route.py").read_text(encoding="utf-8")
-    assert 'evidence_only: Literal[True] = True' in agent_contract
-    assert 'execution_authorized: Literal[False] = False' in agent_contract
+    assert "evidence_only: Literal[True] = True" in agent_contract
+    assert "execution_authorized: Literal[False] = False" in agent_contract
     assert 'INTAKE_PATH = "/api/v1/internal/installation-intake"' in agent_contract
     assert "INTAKE_PATH" in agent_route
     for marker in ("install-container", "execute", "deploy", "start-workflow"):

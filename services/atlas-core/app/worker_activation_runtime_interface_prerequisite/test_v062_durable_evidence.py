@@ -44,7 +44,9 @@ def test_restart_keeps_terminal_or_reserved_subject_permanent(
     else:
         result = create(service, facts)
         if outcome == "recorded":
-            assert isinstance(result, c.WorkerActivationRuntimeInterfacePrerequisiteResultV1)
+            assert isinstance(
+                result, c.WorkerActivationRuntimeInterfacePrerequisiteResultV1
+            )
             assert not result.exact_duplicate
         else:
             error(result, "append_indeterminate")
@@ -73,7 +75,8 @@ def test_v062_cannot_relabel_retained_journal(tmp_path, facts, populated):
     service, journal, _, _ = setup(tmp_path, facts)
     if populated:
         assert isinstance(
-            create(service, facts), c.WorkerActivationRuntimeInterfacePrerequisiteResultV1
+            create(service, facts),
+            c.WorkerActivationRuntimeInterfacePrerequisiteResultV1,
         )
     with sqlite3.connect(journal.database_path) as connection:
         assert connection.execute("PRAGMA application_id").fetchone() == (57,)

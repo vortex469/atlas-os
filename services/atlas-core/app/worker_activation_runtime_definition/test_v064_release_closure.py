@@ -66,9 +66,18 @@ def test_no_effect_plane_or_operational_consumers() -> None:
 @pytest.mark.parametrize(
     "model, marker",
     [
-        (c.WorkerActivationRuntimeDefinitionV1, "worker_activation_runtime_inventory_admitted"),
-        (c.WorkerActivationRuntimeDefinitionV1, "worker_activation_runtime_definition_review_recorded"),
-        (c.WorkerActivationRuntimeDefinitionEvaluationV1, "worker_activation_runtime_activation_authorized"),
+        (
+            c.WorkerActivationRuntimeDefinitionV1,
+            "worker_activation_runtime_inventory_admitted",
+        ),
+        (
+            c.WorkerActivationRuntimeDefinitionV1,
+            "worker_activation_runtime_definition_review_recorded",
+        ),
+        (
+            c.WorkerActivationRuntimeDefinitionEvaluationV1,
+            "worker_activation_runtime_activation_authorized",
+        ),
     ],
 )
 @pytest.mark.parametrize("value", [True, False])

@@ -39,6 +39,32 @@ MARKERS = (
     "WORKER_ACTIVATION_RUNTIME_INTERFACE_PREREQUISITE",
 )
 
+# v0.64 is the first release allowed to introduce this boundary.  Historical
+# closure scans retain their successor/authority guarantees by recognizing only
+# these exact production surfaces; the v0.64 closure independently proves that
+# they remain reference-only and default-off.
+V064_REFERENCE_ONLY_PATHS = frozenset(
+    {
+        "services/atlas-core/app/api/v1/router.py",
+        "services/atlas-core/app/operator_auth/models.py",
+        "services/atlas-core/app/routes/worker_activation_runtime_definition.py",
+        "services/atlas-core/app/worker_activation_runtime_definition/contract.py",
+        "services/atlas-core/app/worker_activation_runtime_definition/service.py",
+        "services/atlas-core/app/worker_activation_runtime_definition/store.py",
+        "services/mission-control/src/api/workerActivationRuntimeDefinition.ts",
+        "services/mission-control/src/types/workerActivationRuntimeDefinition.ts",
+        "services/mission-control/src/hooks/useWorkerActivationRuntimeDefinition.ts",
+        "services/mission-control/src/features/installation/WorkerActivationRuntimeDefinitions.tsx",
+    }
+)
+
+
+def v064_allowed_markers(path: Path, markers: tuple[str, ...]) -> frozenset[str]:
+    """Return only the definition markers permitted on exact v0.64 surfaces."""
+    if path.relative_to(ROOT).as_posix() not in V064_REFERENCE_ONLY_PATHS:
+        return frozenset()
+    return frozenset(marker for marker in markers if "definition" in marker.lower())
+
 
 def test_durable_v056_lineage_authority_and_restart_no_replay(tmp_path, request):
     predecessor_facts = request.getfixturevalue("review_facts")

@@ -166,14 +166,10 @@ def test_auth_owner_linkage_and_permission_fail_closed(tmp_path: Path) -> None:
     denied = _record(admission_service, grant, permission_verified=False)
     assert denied.error.error_code == "unauthorized"
     assert reader.calls == 0
-    missing_auth = _record(
-        admission_service, grant, authenticated_operator_id=None
-    )
+    missing_auth = _record(admission_service, grant, authenticated_operator_id=None)
     assert missing_auth.error.error_code == "unauthenticated"
 
-    foreign = _record(
-        admission_service, grant, authenticated_operator_id="operator-b"
-    )
+    foreign = _record(admission_service, grant, authenticated_operator_id="operator-b")
     assert foreign.error.error_code == "not_found"
     assert reader.calls == 1
 
@@ -213,9 +209,7 @@ def test_stale_expired_and_home_assistant_are_blocked(tmp_path: Path) -> None:
     )
     blocked = _record(home_service, home_grant)
     assert blocked.error.error_code == "not_eligible"
-    assert blocked.error.blocker_codes == (
-        "installation_capability_unsupported",
-    )
+    assert blocked.error.blocker_codes == ("installation_capability_unsupported",)
 
 
 def test_quota_size_corruption_and_foreign_readback_fail_closed(
@@ -293,7 +287,12 @@ def test_persisted_corruption_is_redacted_and_audit_is_deterministic(
 
 def test_service_store_have_no_effect_dependencies_or_production_consumers() -> None:
     forbidden_imports = {
-        "docker", "httpx", "requests", "socket", "subprocess", "urllib"
+        "docker",
+        "httpx",
+        "requests",
+        "socket",
+        "subprocess",
+        "urllib",
     }
     forbidden_calls = {"exec", "eval", "open", "Popen", "run", "system"}
     for module in (service, store):
@@ -337,6 +336,9 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
         "worker_binding_activation_preflight/contract.py",
         "worker_binding_activation_evidence/contract.py",
         "controlled_worker_queue_claim_admission/contract.py",
+        # v0.64's contract may reuse the closed fingerprint value object, but
+        # its service/store remain outside the execution-admission boundary.
+        "worker_activation_runtime_definition/contract.py",
     }
     # v0.50-v0.57 inherit only the closed fingerprint type, never a service.
     fingerprint_contracts = {
@@ -397,7 +399,9 @@ def test_service_store_have_no_effect_dependencies_or_production_consumers() -> 
     ["worker_activation_runtime_plan", "worker_activation_runtime_plan_review"],
 )
 def test_runtime_plan_contract_rejects_additional_admission_imports(
-    monkeypatch: pytest.MonkeyPatch, extra_import: str, package: str,
+    monkeypatch: pytest.MonkeyPatch,
+    extra_import: str,
+    package: str,
 ) -> None:
     contract_path = Path(service.__file__).parents[1] / package / "contract.py"
     read_text = Path.read_text

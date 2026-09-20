@@ -96,11 +96,11 @@ from app.routes.status import router as status_router
 from app.routes.worker_activation_runtime_admission import (
     router as worker_activation_runtime_admission_router,
 )
-from app.routes.worker_activation_runtime_interface_prerequisite import (
-    router as worker_activation_runtime_interface_prerequisite_router,
-)
 from app.routes.worker_activation_runtime_definition import (
     router as worker_activation_runtime_definition_router,
+)
+from app.routes.worker_activation_runtime_interface_prerequisite import (
+    router as worker_activation_runtime_interface_prerequisite_router,
 )
 from app.routes.worker_activation_runtime_plan import (
     router as worker_activation_runtime_plan_router,

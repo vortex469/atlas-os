@@ -9,6 +9,7 @@ from app.worker_activation_runtime_interface_prerequisite import contract as c
 from app.worker_activation_runtime_interface_prerequisite.test_release_closure import (
     MARKERS,
     ROOT,
+    v064_allowed_markers,
 )
 from app.worker_activation_runtime_interface_prerequisite.test_v059_release_closure import (
     golden,  # noqa: F401
@@ -64,6 +65,8 @@ def test_v060_no_definition_or_operational_consumer():
                 forbidden += MARKERS
             source = path.read_text()
             for marker in forbidden:
+                if marker in v064_allowed_markers(path, forbidden):
+                    continue
                 assert marker not in source, (path.relative_to(ROOT), marker)
 
 

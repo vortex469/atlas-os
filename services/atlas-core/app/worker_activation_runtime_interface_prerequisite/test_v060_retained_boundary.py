@@ -44,7 +44,9 @@ def retained_facts(golden):
 
 
 def test_v060_freeze_retains_exact_inventory_and_schemas():
-    source = (ROOT / "docs/architecture/v0.60-runtime-definition-boundary.md").read_text()
+    source = (
+        ROOT / "docs/architecture/v0.60-runtime-definition-boundary.md"
+    ).read_text()
     table = source.split("| `blocker` | `owner` | `required_proof` |", 1)[1].split(
         "\n\n", 1
     )[0]
@@ -56,7 +58,7 @@ def test_v060_freeze_retains_exact_inventory_and_schemas():
         c.WorkerActivationRuntimeInterfacePrerequisiteV1,
         c.WorkerActivationRuntimeInterfacePrerequisiteStatusV1,
     ):
-        assert f'`{model.model_fields["schema"].default}`' in source
+        assert f"`{model.model_fields['schema'].default}`" in source
     assert "Runtime definition P1-P5 are deferred." in " ".join(source.split())
     assert "No proof is discharged." in source
 

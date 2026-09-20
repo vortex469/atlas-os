@@ -75,7 +75,8 @@ def test_v063_cannot_relabel_retained_journal(tmp_path, facts, populated):
     service, journal, _, _ = setup(tmp_path, facts)
     if populated:
         assert isinstance(
-            create(service, facts), c.WorkerActivationRuntimeInterfacePrerequisiteResultV1
+            create(service, facts),
+            c.WorkerActivationRuntimeInterfacePrerequisiteResultV1,
         )
     with sqlite3.connect(journal.database_path) as connection:
         assert connection.execute("PRAGMA application_id").fetchone() == (57,)
