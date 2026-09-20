@@ -9,7 +9,7 @@ vi.mock("../../api/atlas", () => ({ atlas: { get: vi.fn() } }));
 function responses(result: unknown = inventoryResult) {
     vi.mocked(atlas.get).mockResolvedValueOnce({ data: inventoryCollection }).mockResolvedValueOnce({ data: result });
 }
-describe("v0.62 retained interface prerequisite presentation", () => {
+describe("v0.63 retained interface prerequisite presentation", () => {
     beforeEach(() => vi.resetAllMocks());
     it("shows incomplete prerequisites first with inspectable collapsed details and no controls", async () => {
         responses();
@@ -23,7 +23,7 @@ describe("v0.62 retained interface prerequisite presentation", () => {
         expect(details).not.toHaveAttribute("open");
         expect(screen.getByText(inventoryResult.record.prerequisite_id)).not.toBeVisible();
         expect(details).toHaveTextContent("worker_start_allowedfalse");
-        expect(details).toHaveTextContent("v0.62 retains the Core-owned v0.57 interface prerequisite inventory integrated through v0.61");
+        expect(details).toHaveTextContent("v0.63 retains the Core-owned v0.57 interface prerequisite inventory integrated through v0.62");
         expect(details).toHaveTextContent("Successor runtime identity, capability and lifecycle definition and presentation remain deferred; no new runtime authority is established");
         for (const label of ["Core interface prerequisite inventory", "Exact review lineage", "v0.57 fixed-false authority"]) {
             expect(details).toContainElement(screen.getByLabelText(label));
@@ -58,6 +58,8 @@ describe("v0.62 retained interface prerequisite presentation", () => {
         { worker_activation_runtime_definition_review_recorded: false },
         { schema: "worker-activation-runtime-interface-prerequisite-v062" },
         { schema: "worker-activation-runtime-interface-prerequisite-status-v062" },
+        { schema: "worker-activation-runtime-interface-prerequisite-v063" },
+        { schema: "worker-activation-runtime-interface-prerequisite-status-v063" },
     ])("fails closed for an invented successor: %j", async (change) => {
         responses({ ...inventoryResult, ...change });
         render(<WorkerActivationRuntimeInterfacePrerequisite review={review} />);

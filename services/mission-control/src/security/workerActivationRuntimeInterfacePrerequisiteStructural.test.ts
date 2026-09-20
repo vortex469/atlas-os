@@ -6,7 +6,7 @@ import navigation from "../layouts/MainLayout.tsx?raw";
 import router from "../app/router.tsx?raw";
 import hook from "../hooks/useWorkerActivationRuntimeInterfacePrerequisite.ts?raw";
 const modules = import.meta.glob(["../**/*.{ts,tsx}", "!../**/*.test.{ts,tsx}", "!../test/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
-describe("v0.62 retained read-only Mission Control isolation", () => {
+describe("v0.63 retained read-only Mission Control isolation", () => {
     it("uses only credentialed Core collection and item reads", () => {
         expect(api.match(/atlas\.get/g)).toHaveLength(2);
         expect(api.match(/withCredentials: true/g)).toHaveLength(2);
