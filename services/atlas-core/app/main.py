@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -7,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from app.api.v1.router import router as api_v1_router
 from app.config.settings import settings
 from app.config.validation import validate_configuration
+from app.control_plane import ControlPlaneEvidenceService, ControlPlaneEvidenceStore
 from app.core.exceptions import (
     http_exception_handler,
     unhandled_exception_handler,
@@ -139,6 +141,17 @@ async def lifespan(app: FastAPI):
         app.state.operator_mutation_rate_limiter = OperatorRateLimiter(
             operator_settings.mutation_rate_limit,
             operator_settings.rate_limit_window_seconds,
+        )
+
+    evidence_settings = settings.control_plane_evidence
+    if evidence_settings.enabled:
+        app.state.control_plane_evidence_service = ControlPlaneEvidenceService(
+            store=ControlPlaneEvidenceStore(evidence_settings.database),
+            clock=lambda: datetime.now(UTC).replace(microsecond=0),
+            expected_lineage_fingerprint=evidence_settings.expected_lineage_fingerprint,
+            expected_policy_fingerprint=evidence_settings.expected_policy_fingerprint,
+            expected_predecessor_fingerprint=evidence_settings.expected_predecessor_fingerprint,
+            enabled=True,
         )
 
     load_provider_registry()

@@ -5,6 +5,7 @@ from app.models.api import APIDiscovery
 from app.routes.ace import router as ace_router
 from app.routes.ai import router as ai_router
 from app.routes.analysis import router as analysis_router
+from app.routes.control_plane_evidence import router as control_plane_evidence_router
 from app.routes.controlled_dequeue_admission import (
     router as controlled_dequeue_admission_router,
 )
@@ -151,6 +152,7 @@ def api_discovery() -> APIDiscovery:
             "operations": "/api/v1/ops",
             "policies": "/api/v1/policies",
             "intelligence": "/api/v1/intelligence",
+            "control_plane_evidence": "/api/v1/control-plane-evidence",
         },
     )
 
@@ -166,6 +168,7 @@ router.include_router(provider_intent_suggestions_router)
 router.include_router(provider_intent_mutation_router)
 router.include_router(provider_resources_router)
 router.include_router(discovery_router)
+router.include_router(control_plane_evidence_router)
 router.include_router(delivery_activation_preflight_router)
 router.include_router(delivery_enablement_router)
 router.include_router(installation_plan_router)

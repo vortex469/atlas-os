@@ -74,6 +74,8 @@ class ControlPlaneEvidenceService:
             if permission_verified is not True:
                 raise ControlPlaneStoreError("forbidden")
             owner = TypeAdapter(c.Identity).validate_python(authenticated_owner_id, strict=True)
+            if not self._enabled:
+                return self._error("disabled", correlation_id)
             subject = TypeAdapter(c.Identity).validate_python(subject_id, strict=True)
             return self._store.get(owner, subject)
         except ControlPlaneStoreError as error:
@@ -89,6 +91,8 @@ class ControlPlaneEvidenceService:
             if permission_verified is not True:
                 raise ControlPlaneStoreError("forbidden")
             owner = TypeAdapter(c.Identity).validate_python(authenticated_owner_id, strict=True)
+            if not self._enabled:
+                return self._error("disabled", correlation_id)
             return self._store.list(owner)
         except ControlPlaneStoreError as error:
             return self._error(error.code, correlation_id)
