@@ -1,24 +1,21 @@
 # Atlas Release Checklist and Evidence
 
-## Atlas v0.65 P5 — authority isolation and release closure (2026-09-23)
+## Atlas v0.65 Corrective — deferred Sync reconciled (2026-09-23)
 
-- [x] Verify the integrated lineage: v0.65 P0 `339aa497`, Sync `7db58c9e`,
-  P1 `106f578b`, P2 `150f578b`, P3 `d2b9142a`, and P4 `f8888004`, all descended
-  from v0.64 `5790b8ee` (`atlas-v0.64.0`).
-- [x] Preserve Core ownership, the seven blockers, 67 fixed-false fields, and
-  the GET-only retained Mission Control boundary.
-- [x] Add hostile regressions for shared-envelope authority refusal,
-  fixed-false ceilings, and Core/Agent/worker/scripts/deployment isolation.
-- [x] Record focused results, lineage, `git diff --check`, and hostile review
-  in the [P5 validation record](architecture/v0.65-p5-validation.md).
-- [ ] Resolve inherited full Core/Agent/execution-worker and Mission Control
+- [x] Confirm P0/Sync deferred successor implementation and remove the P1–P5
+  control-plane package, API, permissions, configuration, and startup wiring.
+- [x] Correct P2 lineage to `150fc253` and repository links to `vortex469/atlas-os`.
+- [x] Preserve Core authority, seven blockers, 67 fixed-false fields,
+  default-off behavior, GET-only Mission Control, and zero effect-plane consumers.
+- [x] Record the disposition and validation requirements in the corrective
+  [authority boundary](architecture/v0.65-authority-boundary.md).
+- [ ] Run/resolve inherited full Core/Agent/execution-worker and Mission Control
   release gates.
 - [ ] Release acceptance, tag, publication, deployment, or runtime enablement;
-  none is authorized by this evidence.
+  none is authorized by this correction.
 
-The [normative v0.65 boundary](architecture/v0.65-authority-boundary.md) and
-P5 validation record preserve the authority ceiling; they are not release
-acceptance.
+The [corrective validation record](architecture/v0.65-p5-validation.md) is not
+release acceptance.
 
 ## Atlas v0.64 P5 — authority isolation and release evidence (2026-09-20)
 

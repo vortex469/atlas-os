@@ -6,17 +6,17 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.65 P5 - Authority isolation and release evidence (closure open)
+#### v0.65 Corrective - deferred Sync reconciled (closure open)
 
-- Added hostile release-isolation regressions for the integrated v0.65
-  reference-only control-plane evidence boundary, including fixed-false
-  authority ceilings and rejection of forged successor markers.
-- Proved no v0.65 effect-plane consumer in Core, Agent, execution worker,
-  scripts, deployment or Mission Control; runtime contact, queue consumption,
-  execution and installation remain outside the boundary.
-- Recorded the complete P0–P4 lineage and current validation. Full Core/Agent/
-  worker/Mission Control release gates remain open; no tag, publication,
-  deployment, runtime enablement or release acceptance is claimed.
+- Removed the unauthorized P1–P5 successor control-plane contract, durable
+  store/service, Core API, permissions, configuration, startup wiring, and
+  related tests because P0/Sync deferred that decision.
+- Preserved Core authority, seven blockers, 67 fixed-false fields, default-off
+  behavior, GET-only Mission Control, and zero effect-plane consumers.
+- Corrected P2 evidence to `150fc253` and repository links to
+  `https://github.com/vortex469/atlas-os`; inherited full release gates remain
+  open and no tag, publication, deployment, enablement, or release acceptance
+  is claimed.
 
 #### v0.64 P5 - Authority isolation and release evidence (closure open)
 

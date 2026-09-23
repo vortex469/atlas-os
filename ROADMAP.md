@@ -1,35 +1,18 @@
 # Atlas OS Roadmap
 
-## v0.65 P1 — frozen closed control-plane contract (2026-09-23)
+## v0.65 Corrective — deferred Sync reconciled (2026-09-23)
 
-P1 implements only the reference-only Core value boundary selected after Sync:
-closed immutable models, domain-separated fingerprints, and a pure
-fail-closed evaluator under
-[`services/atlas-core/app/control_plane/contract.py`](services/atlas-core/app/control_plane/contract.py).
-Unknown fields, coercion, mutable aliasing, foreign lineage, policy widening,
-ambiguous outcomes, expiry, and authority-bearing payloads are rejected or
-redacted to a blocked result. Every result retains `evidence_only=true`,
-`reference_only=true`, and a zero authority/effect ceiling. There is no route,
-store, consumer, credential, runtime creation, contact, or effect. See the
-[P1 contract record](docs/architecture/v0.65-p1-control-plane-contract.md).
+The [corrective authority boundary](docs/architecture/v0.65-authority-boundary.md)
+removes the unauthorized P1–P5 successor contract, store/service, API,
+permissions, configuration, startup wiring, and related tests. P0 and Sync are
+restored as the authority boundary: no successor schema, route, consumer, or
+UI is selected.
 
-## v0.65 P5 — authority isolation and release closure open (2026-09-23)
-
-The [normative v0.65 boundary](docs/architecture/v0.65-authority-boundary.md)
-reconciles P0 `339aa497` with integrated v0.64 predecessor
-`5790b8eeb6e731271ea88531ec29c877dd0da31d` (`atlas-v0.64.0`) and the
-integrated P1–P4 commits. P5 proves the selected Core evidence boundary stays
-below the authority ceiling: no effect-plane consumer exists in Core, Agent,
-execution worker, scripts or deployment, and no runtime contact, queue
-consumption, execution, installation or release authority is added.
-
-Preserve Core ownership, the seven blockers, `evidence_only=true`,
-`reference_only=true`, `payload_bytes=0`, all 67 fixed-false authority/material
-fields, and the nested GET-only Mission Control projection. No operational
-route, permission, consumer, runtime client, effect-plane behavior, or
-successor authority is selected. Trusted provenance, a distinct operational
-decision, authenticated effect-plane contact and one-shot uncertainty recovery
-remain open. See the [P5 validation record](docs/architecture/v0.65-p5-validation.md).
+Core authority, the seven blockers, 67 fixed-false fields, default-off behavior,
+GET-only Mission Control, and zero effect-plane consumers remain preserved.
+Full release gates remain open; no runtime contact, worker start, Agent
+invocation, execution, installation, deployment, tag, push, or release follows.
+See the [corrective validation record](docs/architecture/v0.65-p5-validation.md).
 
 ## v0.65 P0 — controlled activation authorization boundary deferred (2026-09-23)
 

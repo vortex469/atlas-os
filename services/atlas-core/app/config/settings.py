@@ -78,36 +78,6 @@ class DynamicDiscoverySettings(BaseModel):
     enabled: bool = False
 
 
-class ControlPlaneEvidenceSettings(BaseModel):
-    enabled: bool = False
-    database: str = "/opt/atlas/data/control_plane_evidence.db"
-    expected_lineage_fingerprint: str = "0" * 64
-    expected_policy_fingerprint: str = "0" * 64
-    expected_predecessor_fingerprint: str = "0" * 64
-
-    @model_validator(mode="after")
-    def validate_configuration(self) -> "ControlPlaneEvidenceSettings":
-        database = Path(self.database)
-        if (
-            not self.database
-            or self.database != self.database.strip()
-            or not database.is_absolute()
-            or self.database == ":memory:"
-        ):
-            raise ValueError("control-plane evidence database must be an absolute path")
-        for name in (
-            "expected_lineage_fingerprint",
-            "expected_policy_fingerprint",
-            "expected_predecessor_fingerprint",
-        ):
-            value = getattr(self, name)
-            if type(value) is not str or len(value) != 64 or any(
-                character not in "0123456789abcdef" for character in value
-            ):
-                raise ValueError(f"{name} must be a lowercase SHA-256 fingerprint")
-        return self
-
-
 class ProviderIntentSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -363,9 +333,6 @@ class Settings(BaseModel):
     dynamic_discovery: DynamicDiscoverySettings = Field(
         default_factory=DynamicDiscoverySettings,
     )
-    control_plane_evidence: ControlPlaneEvidenceSettings = Field(
-        default_factory=ControlPlaneEvidenceSettings,
-    )
 
 
 def load_yaml_config() -> dict[str, Any]:
@@ -477,28 +444,6 @@ def load_settings() -> Settings:
                 }
             )
         raw["dynamic_discovery"] = dynamic_discovery_raw
-        control_plane_raw = dict(raw.get("control_plane_evidence") or {})
-        control_plane_overrides = {
-            "enabled": os.getenv("ATLAS_CONTROL_PLANE_EVIDENCE_ENABLED"),
-            "database": os.getenv("ATLAS_CONTROL_PLANE_EVIDENCE_DATABASE"),
-            "expected_lineage_fingerprint": os.getenv(
-                "ATLAS_CONTROL_PLANE_EVIDENCE_LINEAGE_FINGERPRINT"
-            ),
-            "expected_policy_fingerprint": os.getenv(
-                "ATLAS_CONTROL_PLANE_EVIDENCE_POLICY_FINGERPRINT"
-            ),
-            "expected_predecessor_fingerprint": os.getenv(
-                "ATLAS_CONTROL_PLANE_EVIDENCE_PREDECESSOR_FINGERPRINT"
-            ),
-        }
-        for key, value in control_plane_overrides.items():
-            if value is not None:
-                control_plane_raw[key] = (
-                    value.strip().lower() in {"1", "true", "yes", "on"}
-                    if key == "enabled"
-                    else value
-                )
-        raw["control_plane_evidence"] = control_plane_raw
         loaded = Settings.model_validate(raw)
         auth_file = os.getenv("ATLAS_OPERATIONAL_DISPATCH_AUTH_FILE")
         if auth_file:

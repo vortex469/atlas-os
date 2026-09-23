@@ -35,22 +35,12 @@ configuration, headers, endpoints, and raw exception payloads do not render.
 Sensitive-looking free text is withheld. No new Core authority, API contracts,
 queue operations, inference, or provider mutations are introduced.
 
-## v0.65 P4 successor evidence
+## v0.65 deferred successor
 
-Mission Control intentionally has no v0.65 control-plane evidence client, type,
-route, navigation entry, or nested view. The authoritative v0.65 Sync boundary
-explicitly excludes a UI projection because trusted provenance, a distinct
-control-plane decision, authenticated effect-plane contact, and one-shot
-uncertainty recovery are not established. The P3 Core API therefore has no UI
-consumer in this release; the existing retained v0.64 GET-only evidence views
-must not be relabeled or reused as v0.65 evidence.
-
-The structural regression
-`src/security/controlPlaneEvidenceStructural.test.ts` locks this absence. If
-Sync later selects a projection, it must first define the exact successor
-contract and then add a nested GET-only view with explicit recorded, refused,
-expired, and uncertain states. It must not add approval, activation, start,
-retry, resend, readiness, or execution controls.
+Mission Control has no v0.65 control-plane evidence client, type, route,
+navigation entry, or nested view because P0/Sync deferred the successor. The
+retained v0.64 GET-only evidence views must not be relabeled or reused as v0.65
+evidence. Reopening requires a new normative decision before any UI work.
 
 Browser regression coverage includes 320, 768, and 1440 pixel layouts and existing
 detail routes. In the managed task sandbox, browser execution was blocked by
