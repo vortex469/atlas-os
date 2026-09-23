@@ -8,6 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock
 
+from scripts.test_atlas_data_tool import _close, _source
+
 from app.operational_dispatch.ledger import (
     OperationalDispatchLedger,
     OperationalLedgerState,
@@ -20,7 +22,6 @@ from app.operational_dispatch.service import OperationalDispatchService
 from app.operational_dispatch.test_support import make_request
 from app.operator_auth.models import OperatorCredential
 from app.operator_auth.sessions import OperatorSessionStore
-from scripts.test_atlas_data_tool import _close, _source
 
 TOOL = runpy.run_path(
     str(Path(__file__).parents[4] / "scripts" / "atlas-data-tool.py")
