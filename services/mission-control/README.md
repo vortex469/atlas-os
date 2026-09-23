@@ -18,6 +18,12 @@ Mission Control presents and submits requests to authoritative backend contracts
 
 Released mutation authorities remain separate: Provider Intent is monitoring-policy only; legacy provider actions use their provider surface; repository execution is exactly `update-compose-stack`; hardened operational dispatch is exactly `restart-service / proxmox / qemu`. Discovery is GET-only/read-only. There is no automatic approval, remediation, update, deployment, rollback, or release publication.
 
+The v0.65 P4 successor control-plane evidence projection is intentionally
+absent. Sync did not select a UI projection, so Mission Control has no client,
+route, nested view, or action surface for the P3 Core evidence API. This is
+locked by `src/security/controlPlaneEvidenceStructural.test.ts`; the retained
+v0.64 GET-only evidence surfaces must not be promoted or relabeled as v0.65.
+
 P0 through P5 and production acceptance are complete. Atlas v0.15.0 is released
 as `atlas-v0.15.0` at
 `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
