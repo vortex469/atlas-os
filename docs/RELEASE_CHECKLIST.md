@@ -9,8 +9,11 @@
   default-off behavior, GET-only Mission Control, and zero effect-plane consumers.
 - [x] Record the disposition and validation requirements in the corrective
   [authority boundary](architecture/v0.65-authority-boundary.md).
-- [ ] Run/resolve inherited full Core/Agent/execution-worker and Mission Control
-  release gates.
+- [x] Run and record the inherited Core/Agent/execution-worker and Mission
+  Control gates in the [v0.65 release validation record](architecture/v0.65-release-validation.md).
+- [ ] Resolve failed and environment-limited Core/Agent/execution-worker and
+  Mission Control release gates; exact results remain open in the validation
+  record.
 - [ ] Release acceptance, tag, publication, deployment, or runtime enablement;
   none is authorized by this correction.
 
