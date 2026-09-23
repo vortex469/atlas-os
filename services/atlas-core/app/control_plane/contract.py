@@ -26,6 +26,8 @@ SCHEMA = "atlas-closed-control-plane-v1"
 PROFILE = "core-reference-only-control-plane-v1"
 MAX_ITEMS = 32
 MAX_BYTES = 64 * 1024
+MAX_IDEMPOTENCY_KEY = 128
+MAX_RECORD_BYTES = 96 * 1024
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _UTC = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z")
@@ -182,6 +184,64 @@ class ControlPlaneEvaluationV1(ContractModel):
         return self
 
 
+class ControlPlaneEvidenceCreateV1(ContractModel):
+    """The only input accepted by the durable, reference-only service."""
+
+    schema: Literal["atlas-control-plane-evidence-create-v1"] = "atlas-control-plane-evidence-create-v1"
+    owner_id: Identity
+    input: ControlPlaneInputV1
+    idempotency_key: Annotated[str, AfterValidator(_identity)]
+
+    @model_validator(mode="after")
+    def bounded_key(self) -> ControlPlaneEvidenceCreateV1:
+        if len(self.idempotency_key) > MAX_IDEMPOTENCY_KEY:
+            raise ValueError("idempotency key exceeds bound")
+        if self.input.subject_id == "blocked":
+            raise ValueError("blocked subject is not recordable")
+        return self
+
+
+class ControlPlaneEvidenceRecordV1(ContractModel):
+    schema: Literal["atlas-control-plane-evidence-record-v1"] = "atlas-control-plane-evidence-record-v1"
+    owner_id: Identity
+    subject_id: Identity
+    input: ControlPlaneInputV1
+    evaluation: ControlPlaneEvaluationV1
+    recorded_at: UtcSecond
+    valid_until: UtcSecond
+    subject_fingerprint: Sha256
+    idempotency_key_fingerprint: Sha256
+    record_fingerprint: Sha256
+
+    @model_validator(mode="after")
+    def exact(self) -> ControlPlaneEvidenceRecordV1:
+        if self.input.subject_id != self.subject_id:
+            raise ValueError("subject mismatch")
+        if self.evaluation.subject_id != self.subject_id:
+            raise ValueError("evaluation subject mismatch")
+        if self.evaluation.outcome != "accepted":
+            raise ValueError("only accepted evidence is recordable")
+        if self.valid_until != self.input.valid_until or self.recorded_at >= self.valid_until:
+            raise ValueError("invalid record validity")
+        if self.subject_fingerprint != evidence_subject_fingerprint(self):
+            raise ValueError("subject fingerprint mismatch")
+        if self.record_fingerprint != evidence_record_fingerprint(self):
+            raise ValueError("record fingerprint mismatch")
+        return self
+
+
+class ControlPlaneEvidenceErrorV1(ContractModel):
+    schema: Literal["atlas-control-plane-evidence-error-v1"] = "atlas-control-plane-evidence-error-v1"
+    error_code: Literal[
+        "unauthenticated", "forbidden", "disabled", "invalid_request",
+        "expired", "foreign_lineage", "policy_widening", "fingerprint_mismatch",
+        "ambiguous_state", "authority_payload", "idempotency_conflict",
+        "permanent_subject_reserved", "append_indeterminate", "quota_exceeded",
+        "store_corrupt", "unavailable", "evidence_not_found",
+    ]
+    correlation_fingerprint: Sha256
+
+
 def lineage_fingerprint(value: ControlPlaneLineageV1 | dict[str, Any]) -> str:
     raw = {"schema": "atlas-control-plane-lineage-v1", "generation": 1, **_plain(value)}
     return fingerprint("control-plane-lineage", {**raw, "lineage_fingerprint": None})
@@ -200,6 +260,20 @@ def input_fingerprint(value: ControlPlaneInputV1 | dict[str, Any]) -> str:
 def evaluation_fingerprint(value: ControlPlaneEvaluationV1 | dict[str, Any]) -> str:
     raw = {"schema": "atlas-closed-control-plane-evaluation-v1", "profile": PROFILE, "evidence_only": True, "reference_only": True, "authority_granted": False, "effect_allowed": False, "runtime_creation_allowed": False, "credential_present": False, "payload_bytes": 0, **_plain(value)}
     return fingerprint("control-plane-evaluation", {**raw, "evaluation_fingerprint": None})
+
+
+def idempotency_fingerprint(owner_id: str, key: str) -> str:
+    return fingerprint("control-plane-idempotency", {"owner_id": owner_id, "key": key})
+
+
+def evidence_subject_fingerprint(value: ControlPlaneEvidenceRecordV1 | dict[str, Any]) -> str:
+    raw = _plain(value)
+    return fingerprint("control-plane-evidence-subject", {"owner_id": raw["owner_id"], "subject_id": raw["subject_id"]})
+
+
+def evidence_record_fingerprint(value: ControlPlaneEvidenceRecordV1 | dict[str, Any]) -> str:
+    raw = _plain(value)
+    return fingerprint("control-plane-evidence-record", {"schema": "atlas-control-plane-evidence-record-v1", **raw, "record_fingerprint": None})
 
 
 def _result(subject_id: str, evaluated_at: str, reason: str) -> ControlPlaneEvaluationV1:
