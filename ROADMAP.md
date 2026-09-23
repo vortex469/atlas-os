@@ -1,5 +1,18 @@
 # Atlas OS Roadmap
 
+## v0.65 P1 — frozen closed control-plane contract (2026-09-23)
+
+P1 implements only the reference-only Core value boundary selected after Sync:
+closed immutable models, domain-separated fingerprints, and a pure
+fail-closed evaluator under
+[`services/atlas-core/app/control_plane/contract.py`](services/atlas-core/app/control_plane/contract.py).
+Unknown fields, coercion, mutable aliasing, foreign lineage, policy widening,
+ambiguous outcomes, expiry, and authority-bearing payloads are rejected or
+redacted to a blocked result. Every result retains `evidence_only=true`,
+`reference_only=true`, and a zero authority/effect ceiling. There is no route,
+store, consumer, credential, runtime creation, contact, or effect. See the
+[P1 contract record](docs/architecture/v0.65-p1-control-plane-contract.md).
+
 ## v0.65 Sync — deferred successor boundary frozen (2026-09-23)
 
 The [normative v0.65 boundary](docs/architecture/v0.65-authority-boundary.md)
