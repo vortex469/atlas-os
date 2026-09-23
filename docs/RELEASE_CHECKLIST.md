@@ -1,5 +1,25 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.65 Sync — deferred successor boundary (2026-09-23)
+
+- [x] Verify P0 `339aa497` is descended directly from integrated v0.64
+  predecessor `5790b8ee` (`atlas-v0.64.0`).
+- [x] Freeze the normative v0.65 boundary: P1–P5 are deferred, with no
+  reference-only successor evidence implementation authorized.
+- [x] Preserve Core ownership, the seven blockers, 67 fixed-false fields, and
+  the nested GET-only Mission Control projection.
+- [x] Record source citations, focused retained-contract regressions,
+  `git diff --check`, and hostile review in the [Sync validation record](architecture/v0.65-sync-validation.md).
+- [ ] Reopen a successor only after a separate decision proves trusted
+  provenance, distinct control-plane consumption, authenticated effect-plane
+  contact, immutable limits, and one-shot uncertainty recovery.
+- [ ] Release, tag, publish, deploy, or enable runtime behavior; none is
+  authorized by this Sync.
+
+The [normative v0.65 boundary](architecture/v0.65-authority-boundary.md) and
+Sync validation record freeze planning scope only; they are not release
+acceptance.
+
 ## Atlas v0.64 P5 — authority isolation and release evidence (2026-09-20)
 
 - [x] Integrate the v0.64 P1-P4 reference-only contract, bounded journal,

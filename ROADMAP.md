@@ -1,5 +1,22 @@
 # Atlas OS Roadmap
 
+## v0.65 Sync — deferred successor boundary frozen (2026-09-23)
+
+The [normative v0.65 boundary](docs/architecture/v0.65-authority-boundary.md)
+reconciles P0 `339aa497` with the integrated v0.64 predecessor
+`5790b8eeb6e731271ea88531ec29c877dd0da31d` (`atlas-v0.64.0`). P1–P5 are
+**deferred**, not authorized as reference-only successor evidence work:
+trusted provenance, a distinct control-plane decision, authenticated
+effect-plane contact, and one-shot uncertainty recovery remain unproved. Only
+documentation and validation of the retained v0.64 boundary may proceed.
+
+Preserve Core ownership, the seven blockers, `evidence_only=true`,
+`reference_only=true`, `payload_bytes=0`, all 67 fixed-false authority/material
+fields, and the nested GET-only Mission Control projection. No successor
+schema, route, permission, consumer, runtime client, effect-plane behavior,
+release, deployment, or enablement is selected. See the [Sync validation
+record](docs/architecture/v0.65-sync-validation.md).
+
 ## v0.65 P0 — controlled activation authorization boundary deferred (2026-09-23)
 
 The [v0.65 architecture analysis](docs/architecture/v0.65-authority-boundary.md)
