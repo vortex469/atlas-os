@@ -13,22 +13,23 @@ redacted to a blocked result. Every result retains `evidence_only=true`,
 store, consumer, credential, runtime creation, contact, or effect. See the
 [P1 contract record](docs/architecture/v0.65-p1-control-plane-contract.md).
 
-## v0.65 Sync — deferred successor boundary frozen (2026-09-23)
+## v0.65 P5 — authority isolation and release closure open (2026-09-23)
 
 The [normative v0.65 boundary](docs/architecture/v0.65-authority-boundary.md)
-reconciles P0 `339aa497` with the integrated v0.64 predecessor
-`5790b8eeb6e731271ea88531ec29c877dd0da31d` (`atlas-v0.64.0`). P1–P5 are
-**deferred**, not authorized as reference-only successor evidence work:
-trusted provenance, a distinct control-plane decision, authenticated
-effect-plane contact, and one-shot uncertainty recovery remain unproved. Only
-documentation and validation of the retained v0.64 boundary may proceed.
+reconciles P0 `339aa497` with integrated v0.64 predecessor
+`5790b8eeb6e731271ea88531ec29c877dd0da31d` (`atlas-v0.64.0`) and the
+integrated P1–P4 commits. P5 proves the selected Core evidence boundary stays
+below the authority ceiling: no effect-plane consumer exists in Core, Agent,
+execution worker, scripts or deployment, and no runtime contact, queue
+consumption, execution, installation or release authority is added.
 
 Preserve Core ownership, the seven blockers, `evidence_only=true`,
 `reference_only=true`, `payload_bytes=0`, all 67 fixed-false authority/material
-fields, and the nested GET-only Mission Control projection. No successor
-schema, route, permission, consumer, runtime client, effect-plane behavior,
-release, deployment, or enablement is selected. See the [Sync validation
-record](docs/architecture/v0.65-sync-validation.md).
+fields, and the nested GET-only Mission Control projection. No operational
+route, permission, consumer, runtime client, effect-plane behavior, or
+successor authority is selected. Trusted provenance, a distinct operational
+decision, authenticated effect-plane contact and one-shot uncertainty recovery
+remain open. See the [P5 validation record](docs/architecture/v0.65-p5-validation.md).
 
 ## v0.65 P0 — controlled activation authorization boundary deferred (2026-09-23)
 
