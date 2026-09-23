@@ -1,5 +1,26 @@
 # Atlas OS Roadmap
 
+## v0.65 P0 — controlled activation authorization boundary deferred (2026-09-23)
+
+The [v0.65 architecture analysis](docs/architecture/v0.65-authority-boundary.md)
+inspects exact baseline `5790b8eeb6e731271ea88531ec29c877dd0da31d` and the
+v0.64 normative freeze, runtime-definition contract/store/API, prerequisite
+blockers, approval and execution-admission contracts, Agent, execution worker,
+and Mission Control consumers. **No distinct, trusted, reference-only
+control-plane activation authorization decision is supportable from the tagged
+repository; defer selection.** The v0.64 runtime definition remains bounded
+evidence with all activation fields false, not an authorization.
+
+Open gates are precise and unchanged: trusted author/provenance, a distinct
+consumer decision, exact approval and immutable subject/policy inputs,
+authenticated effect-plane contact, expiry/cancellation/ownership semantics,
+one-shot uncertainty recovery, measurable limits, and repository-wide
+no-authority-promotion proof. Preserve Core authority, fail-closed behavior,
+all seven blockers, evidence boundaries, and zero effect-plane promotion. See
+the [v0.65 validation record](docs/architecture/v0.65-p0-validation.md).
+No schema, route, permission, consumer, runtime client, release, deployment,
+or runtime enablement is selected.
+
 ## v0.64 P5 — authority isolation, synchronization closure, and release evidence (2026-09-20)
 
 P5 closes the repository boundary for the integrated v0.64 P1-P4 reference-only
