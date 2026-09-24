@@ -32,6 +32,18 @@
 - [ ] Resolve failed and environment-limited Core/Agent/execution-worker and
   Mission Control release gates; exact results remain open in the validation
   record.
+- The retained exact outcomes are: Core Ruff **failed, exit 1** (one
+  import-order error); Core full pytest **failed, exit 2** (collection stopped
+  because `scripts` is not importable from the service directory); Agent full
+  pytest **failed, exit 2** (9 collection errors because the default state
+  directory is not readable/writable); execution-worker full pytest hit the
+  **environment/time limit, exit 124**; Mission Control dependency install
+  returned an **environment error, exit 1** (`Exit handler never called!`);
+  Mission Control tests and lint returned **environment error, exit 127**
+  (`vitest`/`eslint` not found); and Mission Control build **failed, exit 1**
+  (required TypeScript dependencies/compiler unavailable). These remain open,
+  not passed; the complete commands and output context are in the linked
+  validation record.
 - [ ] Release acceptance, tag, publication, deployment, or runtime enablement;
   none is authorized by this correction.
 
