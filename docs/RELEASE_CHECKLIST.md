@@ -1,5 +1,23 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.65 Core gate repair (2026-09-24)
+
+- [x] Correct the Core test import ordering in
+  `services/atlas-core/app/core/test_restore_invalidation.py`; the Core Ruff
+  gate passed with `PATH=/opt/atlas/.venv/bin:$PATH
+  ./scripts/rc1-python-ruff-gate services/atlas-core`.
+- [x] Re-run Core collection from the repository root with both import roots:
+  `PYTHONPATH="$PWD:$PWD/services/atlas-core"
+  /opt/atlas/.venv/bin/python -m pytest --collect-only -q services/atlas-core`;
+  5,097 tests collected, exit 0.
+- [ ] Complete the full Core pytest gate. The exact command
+  `PYTHONPATH="$PWD:$PWD/services/atlas-core"
+  PATH=/opt/atlas/.venv/bin:$PATH /opt/atlas/.venv/bin/python -m pytest -q
+  services/atlas-core` now collects successfully, but the environment cannot
+  execute the ownership-transition test: `os.chown(..., 12345, 12345)` raises
+  `OSError: [Errno 22] Invalid argument` in the root user namespace. No full
+  suite pass is claimed. See the [v0.65 validation record](architecture/v0.65-release-validation.md).
+
 ## Atlas v0.65 Corrective — deferred Sync reconciled (2026-09-23)
 
 - [x] Confirm P0/Sync deferred successor implementation and remove the P1–P5
