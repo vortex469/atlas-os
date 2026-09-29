@@ -32,12 +32,18 @@
 - [ ] Resolve failed and environment-limited Core/Agent/execution-worker and
   Mission Control release gates; exact results remain open in the validation
   record.
-- The retained exact outcomes are: Core Ruff **failed, exit 1** (one
-  import-order error); Core full pytest **failed, exit 2** (collection stopped
-  because `scripts` is not importable from the service directory); Agent full
-  pytest **failed, exit 2** (9 collection errors because the default state
-  directory is not readable/writable); execution-worker full pytest hit the
-  **environment/time limit, exit 124**; Mission Control dependency install
+- The current exact outcomes are: Core Ruff **passed, exit 0** after the
+  `f7ac10dd` import-order repair; Core collection **passed, exit 0** with
+  5,097 tests; Core full pytest remains environment-limited by unsupported
+  arbitrary `os.chown`; Agent collection with
+  `ATLAS_AGENT_STATE_DIR="$PWD/.task-evidence/agent-state-final"` **passed,
+  exit 0** with 1,049 tests; Agent full pytest ran for 120 seconds and
+  completed 32 tests before the installed async FastAPI/Starlette/httpx test
+  client stack hung at the live-intake route, **exit 124**; execution-worker
+  collection **passed, exit 0** with 51 tests; execution-worker full pytest
+  ran for 120 seconds and completed 14 tests, **exit 124**. The isolated
+  worker test at the stopping point passed in 0.25s, so no worker defect is
+  claimed. Mission Control dependency install
   returned an **environment error, exit 1** (`Exit handler never called!`);
   Mission Control tests and lint returned **environment error, exit 127**
   (`vitest`/`eslint` not found); and Mission Control build **failed, exit 1**
