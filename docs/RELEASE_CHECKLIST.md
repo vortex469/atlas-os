@@ -33,10 +33,18 @@
 - [ ] Complete the full Core pytest gate. The exact command
   `PYTHONPATH="$PWD:$PWD/services/atlas-core"
   PATH=/opt/atlas/.venv/bin:$PATH /opt/atlas/.venv/bin/python -m pytest -q
-  services/atlas-core` now collects successfully, but the environment cannot
+  services/atlas-core` collects successfully, but this Workbench cannot
   execute the ownership-transition test: `os.chown(..., 12345, 12345)` raises
-  `OSError: [Errno 22] Invalid argument` in the root user namespace. No full
-  suite pass is claimed. See the [v0.65 validation record](architecture/v0.65-release-validation.md).
+  `OSError: [Errno 22] Invalid argument` because its root namespace maps only
+  UID/GID 0 and has no effective capabilities. The focused test returned exit
+  1; a non-`-x` full rerun completed 2,234 tests, reached 2 failures at 43%
+  (the ownership transition and a read-only `/opt/atlas/data/secrets` path),
+  then was interrupted with exit 130 after no further progress. A focused
+  installation-target rerun returned 412 passed, 1 failed, exit 1 because the
+  Workbench cannot chmod that read-only path. No full-suite pass is claimed.
+  Re-run the gate in the supported `atlas-core` GitHub Actions `ubuntu-latest`
+  job, which provides the physical `/opt/atlas` setup and Python 3.12
+  environment. See the [v0.65 validation record](architecture/v0.65-release-validation.md).
 
 ## Atlas v0.65 Corrective — deferred Sync reconciled (2026-09-23)
 
