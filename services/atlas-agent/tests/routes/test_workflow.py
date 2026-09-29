@@ -51,7 +51,7 @@ from app.workflow.models import (
     WorkflowSource,
 )
 from app.workflow.orchestrator import WorkflowOrchestrator
-from fastapi.testclient import TestClient
+from asgi_test_client import ASGITestClient as TestClient
 
 
 def request_body(repository: Path) -> dict:

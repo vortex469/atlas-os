@@ -19,7 +19,7 @@ from app.real_agent_intake_boundary import (
     request_fingerprint,
 )
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from asgi_test_client import ASGITestClient as TestClient
 from tests.real_agent_intake_boundary.test_real_agent_intake_models import request_dict
 from tests.real_agent_intake_boundary.test_real_agent_intake_service import (
     EvidenceReader,

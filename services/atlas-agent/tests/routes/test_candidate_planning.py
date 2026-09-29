@@ -37,7 +37,7 @@ from app.workflow.models import (
     WorkflowSource,
 )
 from app.workflow.state import WorkflowStateStore
-from fastapi.testclient import TestClient
+from asgi_test_client import ASGITestClient as TestClient
 
 
 class FakeCandidatePlanningService:

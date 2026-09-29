@@ -43,7 +43,7 @@ from app.verification.engine import VerificationEngine
 from app.workflow.engine import WorkflowEngine
 from app.workflow.models import SprintPhase, WorkflowSessionState
 from app.workflow.state import WorkflowStateStore
-from fastapi.testclient import TestClient
+from asgi_test_client import ASGITestClient as TestClient
 from tests.candidate_planning.test_execution import FakeCoreClient, core_response
 
 

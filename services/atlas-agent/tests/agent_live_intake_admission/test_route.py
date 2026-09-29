@@ -19,7 +19,7 @@ from app.agent_live_intake_admission.route import (
 )
 from app.config.settings import Settings
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from asgi_test_client import ASGITestClient as TestClient
 
 from .test_contract import OPERATOR, canonical
 from .test_service_store import authentication, service
