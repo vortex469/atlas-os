@@ -3,9 +3,8 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-
 from asgi_test_client import ASGITestClient
+from fastapi import FastAPI
 
 
 def test_lifespan_requests_and_shutdown_share_one_event_loop() -> None:

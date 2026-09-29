@@ -18,8 +18,8 @@ from app.real_agent_intake_boundary import (
     create_dormant_real_intake_router,
     request_fingerprint,
 )
-from fastapi import FastAPI
 from asgi_test_client import ASGITestClient as TestClient
+from fastapi import FastAPI
 from tests.real_agent_intake_boundary.test_real_agent_intake_models import request_dict
 from tests.real_agent_intake_boundary.test_real_agent_intake_service import (
     EvidenceReader,

@@ -1,5 +1,19 @@
 # Atlas Release Checklist and Evidence
 
+## PR #37 first-run validation (2026-09-29)
+
+The exact first-run results for PR #37 are preserved here as evidence; they
+do not change the deferred v0.65 authority boundary or constitute release
+acceptance:
+
+- Mission Control: **passed**.
+- Container: **passed**.
+- Agent: **lint failed before pytest**.
+- Core: **cancelled at 60 minutes**.
+
+No release, tag, push, deployment, runtime enablement, or authority
+promotion follows from these results.
+
 ## Atlas v0.65 Mission Control gate repair (2026-09-29)
 
 - [x] Verify the supported Mission Control runtime: Node `v22.23.1` and npm

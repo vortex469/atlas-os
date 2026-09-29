@@ -18,8 +18,8 @@ from app.agent_live_intake_admission.route import (
     create_agent_live_intake_router,
 )
 from app.config.settings import Settings
-from fastapi import FastAPI
 from asgi_test_client import ASGITestClient as TestClient
+from fastapi import FastAPI
 
 from .test_contract import OPERATOR, canonical
 from .test_service_store import authentication, service

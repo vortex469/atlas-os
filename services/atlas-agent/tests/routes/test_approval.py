@@ -1,9 +1,8 @@
 """Tests for the approval routes."""
 
 import pytest
-from asgi_test_client import ASGITestClient as TestClient
-
 from app.main import create_app
+from asgi_test_client import ASGITestClient as TestClient
 
 
 @pytest.fixture
