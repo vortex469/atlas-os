@@ -42,6 +42,10 @@ jobs:
   atlas-core:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        core-shard: [0, 1, 2, 3]
 
     steps:
       - name: Check out Atlas
@@ -71,11 +75,25 @@ jobs:
       - name: Lint changed Atlas Core files
         run: ./scripts/rc1-python-ruff-gate services/atlas-core
 
-      - name: Test Atlas Core
+      - name: Test Atlas Core (shard ${{ matrix.core-shard }})
         working-directory: services/atlas-core
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/services/atlas-core
-        run: pytest -q
+          CORE_SHARD: ${{ matrix.core-shard }}
+          CORE_SHARD_COUNT: 4
+        run: |
+          pytest --collect-only -q > .core-collection.txt
+          mapfile -t all_core_nodes < <(
+            awk '/^(app|tests)\/.*::/ { print }' .core-collection.txt
+          )
+          test "${#all_core_nodes[@]}" -gt 0
+          mapfile -t core_nodes < <(
+            printf '%s\n' "${all_core_nodes[@]}" \
+              | awk -v shard="$CORE_SHARD" -v count="$CORE_SHARD_COUNT" \
+                  '((NR - 1) % count) == shard'
+          )
+          test "${#core_nodes[@]}" -gt 0
+          pytest -vv --tb=long --durations=25 -o faulthandler_timeout=300 "${core_nodes[@]}"
 
   mission-control:
     runs-on: ubuntu-latest

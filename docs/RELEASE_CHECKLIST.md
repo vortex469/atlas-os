@@ -6366,3 +6366,19 @@ outside release provenance.
 
 Exact evidence is recorded in `docs/architecture/v0.65-release-validation.md`
 and `.task-evidence/v065-rerun/`; all open results remain open.
+
+## v0.65 Core CI collection repair (2026-09-29)
+
+- [x] The unnamed CI F remains the historical PR #37 CI
+  failure/cancellation; it is not identified with a specific test node. The
+  named Workbench ownership reproduction is
+  `app/discovery/test_dynamic_cache.py::test_non_owned_existing_root_fails_closed`.
+  Its follow-on installation-target failure is separately caused by the
+  Workbench's read-only `/opt/atlas` filesystem. Neither limitation is treated
+  as a repository defect.
+- [x] Core CI collects pytest's configured discovery result and partitions
+  every node ID into four deterministic, non-skipping shards. All four matrix
+  jobs remain required for a Core pass.
+- [x] The current collection comparison is exact: original Core **5,097
+  unique node IDs**; shard counts **1,275 / 1,274 / 1,274 / 1,274**; union
+  **5,097**; omissions **0**; duplicates **0**.
