@@ -1,5 +1,25 @@
 # Atlas Release Checklist and Evidence
 
+## Atlas v0.65 Mission Control gate repair (2026-09-29)
+
+- [x] Verify the supported Mission Control runtime: Node `v22.23.1` and npm
+  `10.9.8`, satisfying the package engines and npm `10.9.8` package manager.
+- [x] Re-run the exact lockfile install from the repository root:
+  `npm ci --prefix services/mission-control --cache .task-evidence/npm-cache`;
+  npm read the v3 lockfile but registry tarball requests returned `EAI_AGAIN`,
+  then exited `1` with `Exit handler never called!`.
+- [ ] Complete the Mission Control test, lint, and build gates. With the
+  incomplete install, `npm test --prefix services/mission-control -- --run`
+  and `npm run lint --prefix services/mission-control` each returned
+  environment error, exit `127` (`vitest`/`eslint` not found), and
+  `npm run build --prefix services/mission-control` returned environment
+  error, exit `1` (missing `vite/client` and `node` types/toolchain). Exact
+  results are in the [v0.65 validation record](architecture/v0.65-release-validation.md).
+- [ ] Release acceptance, tag, publication, deployment, or runtime enablement;
+  none is authorized by this gate repair. The deferred v0.65 authority
+  boundary remains intact, including GET-only Mission Control and no v0.65
+  consumer or action.
+
 ## Atlas v0.65 Core gate repair (2026-09-24)
 
 - [x] Correct the Core test import ordering in
