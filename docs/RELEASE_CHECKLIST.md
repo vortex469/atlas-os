@@ -6328,3 +6328,27 @@ outside release provenance.
 - [x] `git diff --check` passes.
 - [x] `git status --short` is clean except explicitly local-only ignored directories before tagging.
 - [x] Review docs for RC tag/sequence selection before creating the next release tag.
+# v0.65 validation follow-up (2026-09-29)
+
+- [x] Diagnosed the Agent and execution-worker async TestClient hang in
+  isolation. The installed Python 3.12.3 / pytest 9.1.1 / FastAPI 0.139.2 /
+  Starlette 1.3.1 / httpx 0.28.1 / AnyIO 4.14.2 stack blocks Starlette's
+  cross-thread portal before request dispatch. A test-only thread-free ASGI
+  adapter makes the isolated Agent and worker reproductions pass.
+- [x] Fixed Agent `Settings` default state resolution so
+  `ATLAS_AGENT_STATE_DIR` is honored at construction time; full-suite commands
+  use isolated writable state directories.
+- [x] Worker full suite reached a terminal result: **49 passed, 2 failed,
+  exit 1**. The two failures are verified Workbench restrictions (socket
+  creation and arbitrary `chown`), not worker ledger behavior. The isolated
+  durable-ledger API test passes.
+- [ ] Agent full suite remains open. Collection is **1,049 tests, exit 0**;
+  the full run is not a pass because the route-sequence test stops at an
+  existing sync-validator/active-event-loop boundary after the TestClient
+  portal defect is removed. No timeout, partial progress, or collection result
+  is treated as a gate pass.
+- [x] No authority, admission, security, execution, runtime enablement,
+  release, deployment, push, or tag changes were made.
+
+Exact evidence is recorded in `docs/architecture/v0.65-release-validation.md`
+and `.task-evidence/v065-rerun/`; all open results remain open.
