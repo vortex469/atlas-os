@@ -14,6 +14,26 @@ acceptance:
 No release, tag, push, deployment, runtime enablement, or authority
 promotion follows from these results.
 
+## Atlas v0.65 Task 8 Core repair (2026-10-02)
+
+- [x] Verify the integrated-main base before editing:
+  `ace1bd1bf905de45295c1e167e9fb0b28971cc7a`.
+- [x] Repair the test-only rate-limit timing dependency with an injected frozen
+  clock; production retains the real 60-second limiter window and separate
+  expiry coverage.
+- [x] Repair inflight reservation refusal by making the initial idempotency
+  lookup read-only while retaining writer locks for reservation insertion,
+  prerequisite reads, and locked revalidation. The holder now completes after
+  release; both competitors refuse without predecessor reads; duplicate replay
+  is exact; final journal counts are `(1, 1, 0)`.
+- [x] Repeat each named failure three times: 3/3 passes for each, exit 0.
+- [x] Run the complete affected route module: 78 passed, exit 0, 1044.29s;
+  complete store module: 131 passed, exit 0, 1519.61s; and Core Ruff: passed,
+  exit 0. Exact commands are in the [v0.65 validation record](architecture/v0.65-release-validation.md).
+- [ ] Full Core and the remaining v0.65 release gates remain open. This repair
+  does not constitute Core acceptance, release acceptance, authority promotion,
+  runtime enablement, tag, push, deployment, or publication.
+
 ## Atlas v0.65 Mission Control gate repair (2026-09-29)
 
 - [x] Verify the supported Mission Control runtime: Node `v22.23.1` and npm

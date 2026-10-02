@@ -124,6 +124,16 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
+        with self._connect_impl(write=True) as connection:
+            yield connection
+
+    @contextmanager
+    def _read_connect(self) -> Iterator[sqlite3.Connection]:
+        with self._connect_impl(write=False) as connection:
+            yield connection
+
+    @contextmanager
+    def _connect_impl(self, *, write: bool) -> Iterator[sqlite3.Connection]:
         connection = None
         try:
             # Only explicit construction may create a journal. Reopening a
@@ -146,7 +156,7 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
             connection.execute(
                 f"PRAGMA max_page_count={self.max_database_bytes // size}"
             )
-            connection.execute("BEGIN IMMEDIATE")
+            connection.execute("BEGIN IMMEDIATE" if write else "BEGIN")
             if self._initialized:
                 self._check_integrity(connection)
             yield connection
@@ -363,7 +373,10 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
     def resolve_idempotency(
         self, *, operator_id, idempotency_key_fingerprint, request_fingerprint
     ):
-        with self._connect() as connection:
+        # Duplicate/refusal readback must not take the writer lock. A committed
+        # incomplete reservation is already durable and must be observable
+        # while its holder is completing the terminal append.
+        with self._read_connect() as connection:
             return self._resolve(
                 connection,
                 operator_id,
@@ -390,6 +403,25 @@ class WorkerActivationRuntimeInterfacePrerequisiteStore:
                 reservation
             )
             self._bounded(reservation)
+            # Refusal paths are read-only and must not wait behind the holder's
+            # terminal append. The write transaction below repeats every check
+            # under its lock, preserving the race-safe reservation boundary.
+            with self._read_connect() as connection:
+                existing = self._resolve(
+                    connection,
+                    reservation.operator_id,
+                    reservation.idempotency_key_fingerprint.value,
+                    reservation.request_fingerprint.value,
+                )
+                if existing is not None:
+                    return existing, False
+                if connection.execute(
+                    "SELECT 1 FROM reservations WHERE subject=?",
+                    (reservation.subject_fingerprint.value,),
+                ).fetchone():
+                    raise WorkerActivationRuntimeInterfacePrerequisiteStoreError(
+                        "permanent_subject_reserved"
+                    )
             with self._connect() as connection:
                 existing = self._resolve(
                     connection,
