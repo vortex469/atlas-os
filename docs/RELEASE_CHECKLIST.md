@@ -1,5 +1,123 @@
 # Atlas Release Checklist and Evidence
 
+## PR #37 first-run validation (2026-09-29)
+
+The exact first-run results for PR #37 are preserved here as evidence; they
+do not change the deferred v0.65 authority boundary or constitute release
+acceptance:
+
+- Mission Control: **passed**.
+- Container: **passed**.
+- Agent: **lint failed before pytest**.
+- Core: **cancelled at 60 minutes**.
+
+No release, tag, push, deployment, runtime enablement, or authority
+promotion follows from these results.
+
+## Atlas v0.65 Task 8 Core repair (2026-10-02)
+
+- [x] Verify the integrated-main base before editing:
+  `ace1bd1bf905de45295c1e167e9fb0b28971cc7a`.
+- [x] Repair the test-only rate-limit timing dependency with an injected frozen
+  clock; production retains the real 60-second limiter window and separate
+  expiry coverage.
+- [x] Repair inflight reservation refusal by making the initial idempotency
+  lookup read-only while retaining writer locks for reservation insertion,
+  prerequisite reads, and locked revalidation. The holder now completes after
+  release; both competitors refuse without predecessor reads; duplicate replay
+  is exact; final journal counts are `(1, 1, 0)`.
+- [x] Repeat each named failure three times: 3/3 passes for each, exit 0.
+- [x] Run the complete affected route module: 78 passed, exit 0, 1044.29s;
+  complete store module: 131 passed, exit 0, 1519.61s; and Core Ruff: passed,
+  exit 0. Exact commands are in the [v0.65 validation record](architecture/v0.65-release-validation.md).
+- [ ] Full Core and the remaining v0.65 release gates remain open. This repair
+  does not constitute Core acceptance, release acceptance, authority promotion,
+  runtime enablement, tag, push, deployment, or publication.
+
+## Atlas v0.65 Mission Control gate repair (2026-09-29)
+
+- [x] Verify the supported Mission Control runtime: Node `v22.23.1` and npm
+  `10.9.8`, satisfying the package engines and npm `10.9.8` package manager.
+- [x] Re-run the exact lockfile install from the repository root:
+  `npm ci --prefix services/mission-control --cache .task-evidence/npm-cache`;
+  npm read the v3 lockfile but registry tarball requests returned `EAI_AGAIN`,
+  then exited `1` with `Exit handler never called!`.
+- [ ] Complete the Mission Control test, lint, and build gates. With the
+  incomplete install, `npm test --prefix services/mission-control -- --run`
+  and `npm run lint --prefix services/mission-control` each returned
+  environment error, exit `127` (`vitest`/`eslint` not found), and
+  `npm run build --prefix services/mission-control` returned environment
+  error, exit `1` (missing `vite/client` and `node` types/toolchain). Exact
+  results are in the [v0.65 validation record](architecture/v0.65-release-validation.md).
+- [ ] Release acceptance, tag, publication, deployment, or runtime enablement;
+  none is authorized by this gate repair. The deferred v0.65 authority
+  boundary remains intact, including GET-only Mission Control and no v0.65
+  consumer or action.
+
+## Atlas v0.65 Core gate repair (2026-09-24)
+
+- [x] Correct the Core test import ordering in
+  `services/atlas-core/app/core/test_restore_invalidation.py`; the Core Ruff
+  gate passed with `PATH=/opt/atlas/.venv/bin:$PATH
+  ./scripts/rc1-python-ruff-gate services/atlas-core`.
+- [x] Re-run Core collection from the repository root with both import roots:
+  `PYTHONPATH="$PWD:$PWD/services/atlas-core"
+  /opt/atlas/.venv/bin/python -m pytest --collect-only -q services/atlas-core`;
+  5,097 tests collected, exit 0.
+- [ ] Complete the full Core pytest gate. The exact command
+  `PYTHONPATH="$PWD:$PWD/services/atlas-core"
+  PATH=/opt/atlas/.venv/bin:$PATH /opt/atlas/.venv/bin/python -m pytest -q
+  services/atlas-core` collects successfully, but this Workbench cannot
+  execute the ownership-transition test: `os.chown(..., 12345, 12345)` raises
+  `OSError: [Errno 22] Invalid argument` because its root namespace maps only
+  UID/GID 0 and has no effective capabilities. The focused test returned exit
+  1; a non-`-x` full rerun completed 2,234 tests, reached 2 failures at 43%
+  (the ownership transition and a read-only `/opt/atlas/data/secrets` path),
+  then was interrupted with exit 130 after no further progress. A focused
+  installation-target rerun returned 412 passed, 1 failed, exit 1 because the
+  Workbench cannot chmod that read-only path. No full-suite pass is claimed.
+  Re-run the gate in the supported `atlas-core` GitHub Actions `ubuntu-latest`
+  job, which provides the physical `/opt/atlas` setup and Python 3.12
+  environment. See the [v0.65 validation record](architecture/v0.65-release-validation.md).
+
+## Atlas v0.65 Corrective — deferred Sync reconciled (2026-09-23)
+
+- [x] Confirm P0/Sync deferred successor implementation and remove the P1–P5
+  control-plane package, API, permissions, configuration, and startup wiring.
+- [x] Correct P2 lineage to `150fc253` and repository links to `vortex469/atlas-os`.
+- [x] Preserve Core authority, seven blockers, 67 fixed-false fields,
+  default-off behavior, GET-only Mission Control, and zero effect-plane consumers.
+- [x] Record the disposition and validation requirements in the corrective
+  [authority boundary](architecture/v0.65-authority-boundary.md).
+- [x] Run and record the inherited Core/Agent/execution-worker and Mission
+  Control gates in the [v0.65 release validation record](architecture/v0.65-release-validation.md).
+- [ ] Resolve failed and environment-limited Core/Agent/execution-worker and
+  Mission Control release gates; exact results remain open in the validation
+  record.
+- The current exact outcomes are: Core Ruff **passed, exit 0** after the
+  `f7ac10dd` import-order repair; Core collection **passed, exit 0** with
+  5,097 tests; Core full pytest remains environment-limited by unsupported
+  arbitrary `os.chown`; Agent collection with
+  `ATLAS_AGENT_STATE_DIR="$PWD/.task-evidence/agent-state-final"` **passed,
+  exit 0** with 1,049 tests; Agent full pytest ran for 120 seconds and
+  completed 32 tests before the installed async FastAPI/Starlette/httpx test
+  client stack hung at the live-intake route, **exit 124**; execution-worker
+  collection **passed, exit 0** with 51 tests; execution-worker full pytest
+  ran for 120 seconds and completed 14 tests, **exit 124**. The isolated
+  worker test at the stopping point passed in 0.25s, so no worker defect is
+  claimed. Mission Control dependency install
+  returned an **environment error, exit 1** (`Exit handler never called!`);
+  Mission Control tests and lint returned **environment error, exit 127**
+  (`vitest`/`eslint` not found); and Mission Control build **failed, exit 1**
+  (required TypeScript dependencies/compiler unavailable). These remain open,
+  not passed; the complete commands and output context are in the linked
+  validation record.
+- [ ] Release acceptance, tag, publication, deployment, or runtime enablement;
+  none is authorized by this correction.
+
+The [corrective validation record](architecture/v0.65-p5-validation.md) is not
+release acceptance.
+
 ## Atlas v0.64 P5 — authority isolation and release evidence (2026-09-20)
 
 - [x] Integrate the v0.64 P1-P4 reference-only contract, bounded journal,
@@ -6244,3 +6362,43 @@ outside release provenance.
 - [x] `git diff --check` passes.
 - [x] `git status --short` is clean except explicitly local-only ignored directories before tagging.
 - [x] Review docs for RC tag/sequence selection before creating the next release tag.
+# v0.65 validation follow-up (2026-09-29)
+
+- [x] Diagnosed the Agent and execution-worker async TestClient hang in
+  isolation. The installed Python 3.12.3 / pytest 9.1.1 / FastAPI 0.139.2 /
+  Starlette 1.3.1 / httpx 0.28.1 / AnyIO 4.14.2 stack blocks Starlette's
+  cross-thread portal before request dispatch. A test-only thread-free ASGI
+  adapter makes the isolated Agent and worker reproductions pass.
+- [x] Fixed Agent `Settings` default state resolution so
+  `ATLAS_AGENT_STATE_DIR` is honored at construction time; full-suite commands
+  use isolated writable state directories.
+- [x] Worker full suite reached a terminal result: **49 passed, 2 failed,
+  exit 1**. The two failures are verified Workbench restrictions (socket
+  creation and arbitrary `chown`), not worker ledger behavior. The isolated
+  durable-ledger API test passes.
+- [ ] Agent full suite remains open. Collection is **1,049 tests, exit 0**;
+  the full run is not a pass because the route-sequence test stops at an
+  existing sync-validator/active-event-loop boundary after the TestClient
+  portal defect is removed. No timeout, partial progress, or collection result
+  is treated as a gate pass.
+- [x] No authority, admission, security, execution, runtime enablement,
+  release, deployment, push, or tag changes were made.
+
+Exact evidence is recorded in `docs/architecture/v0.65-release-validation.md`
+and `.task-evidence/v065-rerun/`; all open results remain open.
+
+## v0.65 Core CI collection repair (2026-09-29)
+
+- [x] The unnamed CI F remains the historical PR #37 CI
+  failure/cancellation; it is not identified with a specific test node. The
+  named Workbench ownership reproduction is
+  `app/discovery/test_dynamic_cache.py::test_non_owned_existing_root_fails_closed`.
+  Its follow-on installation-target failure is separately caused by the
+  Workbench's read-only `/opt/atlas` filesystem. Neither limitation is treated
+  as a repository defect.
+- [x] Core CI collects pytest's configured discovery result and partitions
+  every node ID into four deterministic, non-skipping shards. All four matrix
+  jobs remain required for a Core pass.
+- [x] The current collection comparison is exact: original Core **5,097
+  unique node IDs**; shard counts **1,275 / 1,274 / 1,274 / 1,274**; union
+  **5,097**; omissions **0**; duplicates **0**.

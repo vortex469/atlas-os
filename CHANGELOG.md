@@ -6,6 +6,18 @@ release boundaries.
 
 ## Unreleased
 
+#### v0.65 Corrective - deferred Sync reconciled (closure open)
+
+- Removed the unauthorized P1–P5 successor control-plane contract, durable
+  store/service, Core API, permissions, configuration, startup wiring, and
+  related tests because P0/Sync deferred that decision.
+- Preserved Core authority, seven blockers, 67 fixed-false fields, default-off
+  behavior, GET-only Mission Control, and zero effect-plane consumers.
+- Corrected P2 evidence to `150fc253` and repository links to
+  `https://github.com/vortex469/atlas-os`; inherited full release gates remain
+  open and no tag, publication, deployment, enablement, or release acceptance
+  is claimed.
+
 #### v0.64 P5 - Authority isolation and release evidence (closure open)
 
 - Closed the integrated v0.64 reference-only runtime-definition boundary with

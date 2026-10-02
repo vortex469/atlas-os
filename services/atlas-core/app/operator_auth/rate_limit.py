@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from threading import Lock
 
@@ -8,15 +9,22 @@ from threading import Lock
 class OperatorRateLimiter:
     """Bounded per-process defense-in-depth limiter; never an authorization control."""
 
-    def __init__(self, limit: int, window_seconds: int, max_keys: int = 2048) -> None:
+    def __init__(
+        self,
+        limit: int,
+        window_seconds: int,
+        max_keys: int = 2048,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
         self.limit = limit
         self.window = timedelta(seconds=window_seconds)
         self.max_keys = max_keys
+        self._clock = clock or (lambda: datetime.now(UTC))
         self._events: dict[str, deque[datetime]] = {}
         self._lock = Lock()
 
     def allow(self, key: str, now: datetime | None = None) -> bool:
-        current = now or datetime.now(UTC)
+        current = now or self._clock()
         cutoff = current - self.window
         with self._lock:
             events = self._events.setdefault(key, deque())

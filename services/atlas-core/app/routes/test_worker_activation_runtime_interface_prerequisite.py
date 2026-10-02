@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -50,6 +51,7 @@ def _application(
     rate_limit: int = 100,
     service_installed: bool = True,
     service_enabled: bool = True,
+    rate_clock=None,
 ):
     tmp_path.mkdir(parents=True, exist_ok=True)
     review_service, _store, reader, _clock = setup(
@@ -75,7 +77,7 @@ def _application(
     application.state.operator_auth_enabled = True
     application.state.operator_auth_trusted_origins = frozenset({ORIGIN})
     application.state.operator_mutation_rate_limiter = OperatorRateLimiter(
-        rate_limit, 60
+        rate_limit, 60, clock=rate_clock
     )
     sessions = OperatorSessionStore(tmp_path / "sessions.db", 3600)
     application.state.operator_session_store = sessions
@@ -379,7 +381,14 @@ def test_strict_body_query_method_rate_and_idempotency_bounds(
     )
 
     limited_client, limited_session, _, limited_create, _, limited_url, _ = (
-        _application(tmp_path / "limited", facts, rate_limit=1)
+        _application(
+            tmp_path / "limited",
+            facts,
+            rate_limit=1,
+            rate_clock=lambda: datetime.fromisoformat(
+                facts.authority.request_received_at
+            ),
+        )
     )
     assert (
         limited_client.post(

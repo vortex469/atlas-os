@@ -1,13 +1,23 @@
 """Runtime settings for Atlas Agent."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 _DEFAULT_REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-_DEFAULT_STATE_DIR = Path(
-    os.getenv("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))
-) / "atlas-agent"
+
+
+def _xdg_state_dir() -> Path:
+    return Path(os.getenv("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))) / "atlas-agent"
+
+
+def _default_state_dir() -> Path:
+    """Resolve the default state directory at Settings construction time."""
+
+    return Path(os.getenv("ATLAS_AGENT_STATE_DIR") or _xdg_state_dir()).expanduser().resolve()
+
+
+_DEFAULT_STATE_DIR = _xdg_state_dir().expanduser().resolve()
 _ALLOWED_ENVIRONMENTS = frozenset(
     {
         "development",
@@ -206,7 +216,7 @@ class Settings:
     host: str = "127.0.0.1"
     port: int = 8090
     repository_root: Path = _DEFAULT_REPOSITORY_ROOT
-    state_dir: Path = _DEFAULT_STATE_DIR
+    state_dir: Path = field(default_factory=_default_state_dir)
     atlas_core_host: str = "127.0.0.1"
     atlas_core_port: int = 8643
     atlas_core_timeout_seconds: float = 10.0

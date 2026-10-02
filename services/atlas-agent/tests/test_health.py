@@ -9,7 +9,7 @@ from app.config.settings import Settings
 from app.main import create_app
 from app.repository.exceptions import InvalidRepositoryError, RepositoryInspectionError
 from app.version import AGENT_VERSION
-from fastapi.testclient import TestClient
+from asgi_test_client import ASGITestClient as TestClient
 
 
 def run_git(repository, *arguments: str) -> None:
