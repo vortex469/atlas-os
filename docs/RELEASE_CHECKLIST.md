@@ -16,6 +16,21 @@ promotion follows from these results.
 
 ## Atlas v0.65 Task 8 Core repair (2026-10-02)
 
+### 2026-10-03 follow-up
+
+- [x] Preserve the existing diagnostic work and trace the holder delay past
+  SQLite into repeated immutable predecessor validation.
+- [x] Add bounded recursion protection to the v0.53–v0.57 strict-literal
+  reparsers and avoid the redundant v0.57 result/status reparse after the
+  record has already been validated.
+- [x] Re-run the reservation regression, hostile lineage reparse, route smoke,
+  changed-file Ruff, and whitespace checks; all passed. Exact commands and
+  timings are in the [follow-up validation record](architecture/v0.65-release-validation.md).
+- [ ] Full Core segmentation-fault/acceptance gate remains open. The prior
+  timeout/signal-11 evidence is retained, and this Workbench did not produce a
+  terminal full-suite pass. No release, tag, push, deployment, or runtime
+  enablement is claimed.
+
 - [x] Verify the integrated-main base before editing:
   `ace1bd1bf905de45295c1e167e9fb0b28971cc7a`.
 - [x] Repair the test-only rate-limit timing dependency with an injected frozen

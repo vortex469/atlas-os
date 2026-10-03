@@ -66,29 +66,38 @@ def _plain(value: Any, depth: int = 0) -> Any:
     return value
 
 
-def _strict_literals(annotation: Any, value: Any) -> Any:
+def _strict_literals(annotation: Any, value: Any, _active: set[int] | None = None) -> Any:
     """Pydantic Literal[False]/Literal[0] otherwise accept 0/False respectively.
 
     Inspect the actual historical schemas recursively; historical true evidence
     markers must not be mistaken for newly granted authority.
     """
-    origin, args = get_origin(annotation), get_args(annotation)
-    if origin is Literal:
-        if not any(type(value) is type(item) and value == item for item in args):
-            raise ValueError("literal type or value mismatch")
-    elif isinstance(annotation, type) and issubclass(annotation, BaseModel):
-        if isinstance(value, dict):
-            for name, field in annotation.model_fields.items():
-                if name in value:
-                    if name.endswith("_material_present") and value[name] is not False:
-                        raise ValueError("material is forbidden in inherited evidence")
-                    value[name] = _strict_literals(field.annotation, value[name])
-    elif origin is tuple and isinstance(value, tuple | list):
-        return tuple(_strict_literals(args[0], item) for item in value)
-    elif args:
-        for arg in args:
-            if isinstance(arg, type) and issubclass(arg, BaseModel):
-                value = _strict_literals(arg, value)
+    if _active is None:
+        _active = set()
+    marker = id(annotation)
+    if marker in _active:
+        return value
+    _active.add(marker)
+    try:
+        origin, args = get_origin(annotation), get_args(annotation)
+        if origin is Literal:
+            if not any(type(value) is type(item) and value == item for item in args):
+                raise ValueError("literal type or value mismatch")
+        elif isinstance(annotation, type) and issubclass(annotation, BaseModel):
+            if isinstance(value, dict):
+                for name, field in annotation.model_fields.items():
+                    if name in value:
+                        if name.endswith("_material_present") and value[name] is not False:
+                            raise ValueError("material is forbidden in inherited evidence")
+                        value[name] = _strict_literals(field.annotation, value[name], _active)
+        elif origin is tuple and isinstance(value, tuple | list):
+            return tuple(_strict_literals(args[0], item, _active) for item in value)
+        elif args:
+            for arg in args:
+                if isinstance(arg, type) and issubclass(arg, BaseModel):
+                    value = _strict_literals(arg, value, _active)
+    finally:
+        _active.remove(marker)
     return value
 
 

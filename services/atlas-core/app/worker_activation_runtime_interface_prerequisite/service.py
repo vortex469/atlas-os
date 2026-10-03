@@ -306,9 +306,11 @@ class WorkerActivationRuntimeInterfacePrerequisiteService:
         return TypeAdapter(c.OperatorId).validate_python(operator, strict=True)
 
     def _result(self, record, duplicate):
-        return c.WorkerActivationRuntimeInterfacePrerequisiteResultV1(
+        return c.WorkerActivationRuntimeInterfacePrerequisiteResultV1.model_construct(
             record=record,
-            status=c.derive_status(record, evaluated_at=server_now(self._clock)),
+            status=c.derive_status(
+                record, evaluated_at=server_now(self._clock), _validated=True
+            ),
             exact_duplicate=duplicate,
         )
 
