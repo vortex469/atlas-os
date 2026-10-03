@@ -59,17 +59,24 @@ def _plain(value: Any, depth: int = 0) -> Any:
     return value
 
 
-def _strict_literals(annotation: Any, value: Any, _active: set[int] | None = None) -> Any:
+def _strict_literals(
+    annotation: Any,
+    value: Any,
+    _active: set[tuple[int, int]] | None = None,
+    _depth: int = 0,
+) -> Any:
     """Pydantic Literal[False]/Literal[0] otherwise accept 0/False respectively.
 
     Inspect the actual historical schemas recursively; historical true evidence
     markers must not be mistaken for newly granted authority.
     """
+    if _depth > 128:
+        raise ValueError("contract nesting exceeds bound")
     if _active is None:
         _active = set()
-    marker = id(annotation)
+    marker = (id(annotation), id(value))
     if marker in _active:
-        return value
+        raise ValueError("cyclic contract input")
     _active.add(marker)
     try:
         origin, args = get_origin(annotation), get_args(annotation)
@@ -82,13 +89,17 @@ def _strict_literals(annotation: Any, value: Any, _active: set[int] | None = Non
                     if name in value:
                         if name.endswith("_material_present") and value[name] is not False:
                             raise ValueError("material is forbidden in inherited evidence")
-                        value[name] = _strict_literals(field.annotation, value[name], _active)
+                        value[name] = _strict_literals(
+                            field.annotation, value[name], _active, _depth + 1
+                        )
         elif origin is tuple and isinstance(value, tuple | list):
-            return tuple(_strict_literals(args[0], item, _active) for item in value)
+            return tuple(
+                _strict_literals(args[0], item, _active, _depth + 1) for item in value
+            )
         elif args:
             for arg in args:
                 if isinstance(arg, type) and issubclass(arg, BaseModel):
-                    value = _strict_literals(arg, value, _active)
+                    value = _strict_literals(arg, value, _active, _depth + 1)
     finally:
         _active.remove(marker)
     return value

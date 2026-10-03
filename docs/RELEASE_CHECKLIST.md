@@ -20,16 +20,19 @@ promotion follows from these results.
 
 - [x] Preserve the existing diagnostic work and trace the holder delay past
   SQLite into repeated immutable predecessor validation.
-- [x] Add bounded recursion protection to the v0.53–v0.57 strict-literal
-  reparsers and avoid the redundant v0.57 result/status reparse after the
-  record has already been validated.
-- [x] Re-run the reservation regression, hostile lineage reparse, route smoke,
-  changed-file Ruff, and whitespace checks; all passed. Exact commands and
+- [x] Replace the annotation-only recursion shortcut with active
+  `(annotation, value)` cycle/depth checks, remove the caller-controlled
+  validation bypass, and restore validated result construction. Add repeated
+  annotation, cycle/depth, forged nested-model, and inconsistent-envelope
+  regressions.
+- [x] Re-run the new regressions, existing hostile contract/store/route cases,
+  Ruff, and whitespace checks; all passed. Exact commands and before/after
   timings are in the [follow-up validation record](architecture/v0.65-release-validation.md).
 - [ ] Full Core segmentation-fault/acceptance gate remains open. The prior
-  timeout/signal-11 evidence is retained, and this Workbench did not produce a
-  terminal full-suite pass. No release, tag, push, deployment, or runtime
-  enablement is claimed.
+  timeout/signal-11 evidence is retained, but its cause remains unconfirmed;
+  this Workbench did not reproduce and isolate it or produce a terminal
+  full-suite pass. No release, tag, push, deployment, or runtime enablement is
+  claimed.
 
 - [x] Verify the integrated-main base before editing:
   `ace1bd1bf905de45295c1e167e9fb0b28971cc7a`.

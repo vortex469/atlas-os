@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal, get_args, get_origin
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.worker_activation_runtime_interface_prerequisite import contract as c
 from app.worker_activation_runtime_plan_review import contract as v056
@@ -22,6 +22,14 @@ from app.worker_activation_runtime_plan_review.test_contract import (
 
 RECEIPT = "worker_activation_runtime_plan_review"
 STATUS = RECEIPT + "_status"
+
+
+class _RepeatedAnnotation(BaseModel):
+    value: Literal[False]
+    child: _RepeatedAnnotation | None = None
+
+
+_RepeatedAnnotation.model_rebuild()
 
 
 @pytest.fixture(scope="module")
@@ -246,6 +254,51 @@ def test_forged_model_instances_and_nested_lineage_are_reparsed(facts):
     refused(hostile)
 
 
+def test_strict_literal_reparse_checks_repeated_values_and_rejects_cycles():
+    valid = {"value": False, "child": {"value": False, "child": None}}
+    assert c._strict_literals(_RepeatedAnnotation, copy.deepcopy(valid)) == valid
+
+    forged = {"value": False, "child": {"value": 0, "child": None}}
+    with pytest.raises(ValueError, match="literal type or value mismatch"):
+        c._strict_literals(_RepeatedAnnotation, forged)
+
+    cyclic = {"value": False}
+    cyclic["child"] = cyclic
+    with pytest.raises(ValueError, match="cyclic contract input"):
+        c._strict_literals(_RepeatedAnnotation, cyclic)
+
+    deep = {"value": False, "child": None}
+    for _ in range(130):
+        deep = {"value": False, "child": deep}
+    with pytest.raises(ValueError, match="contract nesting exceeds bound"):
+        c._strict_literals(_RepeatedAnnotation, deep)
+
+
+def test_result_envelope_revalidates_nested_models_and_exact_status(facts):
+    record = c.build_runtime_interface_prerequisite(
+        facts, idempotency_key="v057-result-envelope-key"
+    )
+    status = c.derive_status(record, evaluated_at=record.recorded_at)
+
+    forged_record = record.model_copy(update={"worker_start_allowed": 0})
+    with pytest.raises(ValidationError):
+        c.WorkerActivationRuntimeInterfacePrerequisiteResultV1(
+            record=forged_record, status=status
+        )
+
+    forged_status = status.model_copy(
+        update={
+            "status_fingerprint": c.FingerprintV1(
+                algorithm="sha256",
+                canonicalization="atlas-jcs-nfc-v1",
+                value="0" * 64,
+            )
+        }
+    )
+    with pytest.raises(ValidationError):
+        c.WorkerActivationRuntimeInterfacePrerequisiteResultV1(
+            record=record, status=forged_status
+        )
 def test_recomputed_outer_fingerprints_do_not_authorize_corrupt_facts(facts):
     for field, value in (
         ("worker_start_allowed", True),
