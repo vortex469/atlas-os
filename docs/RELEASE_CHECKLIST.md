@@ -1,5 +1,26 @@
 # Atlas Release Checklist and Evidence
 
+## v0.65 execution-worker failure repair (2026-10-06)
+
+- [x] Reproduced individually `test_tcp_health_and_submit_through_private_tcp`;
+  Hermes denied `socket.socket()` with `PermissionError: [Errno 1]`, an
+  environment limitation rather than a worker regression.
+- [x] Reproduced individually
+  `test_real_clone_succeeds_for_differently_owned_configured_source`; Hermes
+  rejected `os.chown(..., 65534, 65534)` with `OSError: [Errno 22]`, an
+  environment limitation rather than a workspace-runner regression.
+- [x] Made both capability-dependent tests skip only when the host capability
+  is unavailable. Assertions remain active in capable environments; no
+  authority, security, execution, or runtime behavior was weakened.
+- [x] Complete execution-worker suite: **50 passed, 2 skipped, 2 warnings**,
+  exit 0. Changed-file Ruff and `git diff --check` passed.
+- [ ] Execution-worker Docker runtime gate remains open because Hermes Docker
+  API access is unavailable. Full v0.65 release acceptance remains open until
+  all other release gates pass.
+
+Exact commands and results are recorded in the
+[v0.65 execution-worker validation record](architecture/v0.65-release-validation.md).
+
 ## Post-correction Hermes validation (2026-10-06)
 
 - [x] Verified HEAD is

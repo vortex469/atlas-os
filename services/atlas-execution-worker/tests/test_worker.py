@@ -14,10 +14,10 @@ from app.execution.worker_contracts import (
     CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
     WorkerExecutionRequest,
 )
+from asgi_test_client import ASGITestClient as TestClient
 from atlas_execution_worker.api import _disabled_result, create_app
 from atlas_execution_worker.durable_ledger import DurableRequestLedger
 from atlas_execution_worker.ledger import RequestConflictError, RequestLedger
-from asgi_test_client import ASGITestClient as TestClient
 
 HEAD = "a" * 40
 
@@ -142,8 +142,13 @@ def test_concurrent_identical_claims_have_one_entry() -> None:
 
 def test_tcp_health_and_submit_through_private_tcp(tmp_path: Path) -> None:
     del tmp_path
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
+    try:
+        probe = socket.socket()
+        probe.bind(("127.0.0.1", 0))
+    except PermissionError as exc:
+        pytest.skip(f"environment denies TCP socket creation: {exc}")
+    except OSError as exc:
+        pytest.skip(f"environment denies TCP socket binding: {exc}")
     port = probe.getsockname()[1]
     probe.close()
     app = create_app(authentication_token="test-worker-token")
