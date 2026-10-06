@@ -1,6 +1,24 @@
 # Atlas Release Checklist and Evidence
 
-## Post-correction Hermes validation (2026-10-06)
+## v0.65 execution-worker failure repair — correction (2026-10-06)
+
+The two capability-dependent execution-worker tests retain their original
+assertions and do not skip. A prior partial run recorded **50 passed, 2
+skipped, 2 warnings**, exit 0 only because the tests had been modified to skip
+after restrictions observed inside the Codex execution sandbox. That result is
+environment-limited evidence, not closure of the execution-worker gate. The
+restrictions were not verified from a normal SSH shell on the Hermes host, so
+they are not recorded as Hermes host limitations.
+
+- [ ] Execution-worker pytest gate remains open pending a capable run of both
+  tests.
+- [ ] Execution-worker Docker runtime gate remains open. Full v0.65 release
+  acceptance remains open until all required gates pass.
+
+The detailed partial-run evidence is recorded in the
+[v0.65 execution-worker validation record](architecture/v0.65-release-validation.md).
+
+## Post-correction sandbox validation (2026-10-06)
 
 - [x] Verified HEAD is
   `249981223f25acda126f380f98acd40ff5c41818` and the working tree was clean
@@ -10,16 +28,19 @@
   it recorded a failure at 9%, then stopped making progress and was
   interrupted with exit 130. A `-vv -x` diagnosis recorded 453 passed, 1
   failed, 350 warnings, exit 1; the exact failure is
-  `test_non_owned_existing_root_fails_closed`, where Hermes rejects the
-  deliberate foreign UID/GID `os.chown` with `OSError: [Errno 22] Invalid
-  argument`. The fail-closed ownership assertion was not changed.
+  `test_non_owned_existing_root_fails_closed`, where the Codex execution
+  sandbox rejects the deliberate foreign UID/GID `os.chown` with `OSError:
+  [Errno 22] Invalid argument`. This was not verified from a normal SSH shell
+  on the Hermes host; the fail-closed ownership assertion was not changed.
 - [ ] Agent pytest remains open: 32 tests progressed before the existing async
   route/client hang; timeout exit 124.
 - [ ] execution-worker pytest remains open: 50 passed, 2 failed, exit 1; the
-  failures are Hermes socket denial and unsupported arbitrary `os.chown`.
+  failures were observed in the Codex execution sandbox. They were not
+  verified from a normal SSH shell on the Hermes host.
 - [ ] Agent and execution-worker runtime gates remain open: repository scripts
-  reached compose validation where applicable, but both exited 1 because the
-  Hermes Docker API is unavailable.
+  reached compose validation where applicable, but both exited 1 because Docker
+  API access is unavailable in the Codex execution sandbox. Hermes host
+  availability was not verified from a normal SSH shell.
 - [ ] Mission Control remains open: `npm ci` exit 1 (`Exit handler never
   called!`), test and lint exit 127 (missing Vitest/ESLint), and build exit 127
   (missing `tsc`). Complete logs and exact commands are in the
