@@ -1,5 +1,19 @@
 # Atlas Release Checklist and Evidence
 
+## v0.65 manual Hermes SSH execution-worker validation (2026-10-06)
+
+- [x] Execution-worker pytest passed from a normal Hermes SSH shell at tested
+  commit `1e1c0c46846c9c016b8702c3a4a792806313c426`: **52 passed in 1.20s,
+  zero skips, exit 0**. Log: `.task-evidence/manual-worker/pytest.log`.
+  Both the TCP capability test and the differently-owned clone test passed.
+- [ ] Execution-worker Docker runtime gate remains open, as do the other
+  required v0.65 release gates.
+
+The earlier restrictions were observed inside Codex's execution environment,
+not in the normal Hermes SSH shell, and are not Hermes host limitations. This
+evidence does not authorize a push, tag, release, deployment, or runtime
+enablement.
+
 ## v0.65 execution-worker failure repair — correction (2026-10-06)
 
 The two capability-dependent execution-worker tests retain their original
@@ -10,8 +24,9 @@ environment-limited evidence, not closure of the execution-worker gate. The
 restrictions were not verified from a normal SSH shell on the Hermes host, so
 they are not recorded as Hermes host limitations.
 
-- [ ] Execution-worker pytest gate remains open pending a capable run of both
-  tests.
+- [x] The sandbox execution-worker pytest run remained environment-limited;
+  the gate was subsequently closed by the manual Hermes SSH validation above,
+  where both tests passed without skips.
 - [ ] Execution-worker Docker runtime gate remains open. Full v0.65 release
   acceptance remains open until all required gates pass.
 
