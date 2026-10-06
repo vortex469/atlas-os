@@ -10,9 +10,15 @@ UI is selected.
 
 Core authority, the seven blockers, 67 fixed-false fields, default-off behavior,
 GET-only Mission Control, and zero effect-plane consumers remain preserved.
-Full release gates remain open; no runtime contact, worker start, Agent
-invocation, execution, installation, deployment, tag, push, or release follows.
-See the [corrective validation record](docs/architecture/v0.65-p5-validation.md).
+The current v0.65 release checklist records the Core, Agent,
+execution-worker, Mission Control, container, recovery, Rest Server, Ruff, and
+execution-worker production-runtime gates as passed, including the formerly
+stale execution-worker runtime gate. Release acceptance is still a named
+v0.65 reviewer action; it is not delegated to v0.66. No runtime contact,
+worker start, Agent invocation, execution, installation, deployment, tag,
+push, or publication follows from this evidence. See the [corrective
+validation record](docs/architecture/v0.65-p5-validation.md) and [current
+release validation](docs/architecture/v0.65-release-validation.md).
 
 ## v0.65 P0 — controlled activation authorization boundary deferred (2026-09-23)
 
@@ -3147,3 +3153,154 @@ The following remain uncommitted directions, not commitments:
   egress, verification, and non-authority contracts are separately approved.
 
 No item above inherits commitment from an older deferred bullet.
+
+## 23. Proposed path to v1.0 — planning targets, not approved contracts
+
+This section is a proposed planning sequence, not a selection of successor
+authority. It does not approve a v0.65 control plane, reserve a schema or API,
+authorize a runtime consumer, or waive any existing release gate. Completed
+history above remains historical, and the v0.65 validation records remain
+evidence rather than final release acceptance.
+
+The immediate repository evidence points to one concrete v0.66 scope:
+**decide whether Atlas may perform one controlled `update-compose-stack`
+repository action, and produce the evidence packet for that decision without
+implementing or enabling the action**. The operator journey to specify is:
+select one immutable repository candidate, review its existing plan and exact
+approval, inspect verification evidence, request the one action, observe a
+bounded result or refusal, and recover an unknown result without replay. The
+packet may reuse the existing Agent candidate-planning/approval/verification
+and commit path, the existing execution-backend selection, and the packaged
+authenticated execution-worker request/ledger boundary. It must identify the
+missing authority decision: whether Atlas may authorize this exact intent to a
+named worker consumer, with which owner, subject/policy digest, credentials,
+limits, expiry/cancellation semantics, and effect-plane endpoint. v0.65
+already records the release-gate outcome; v0.66 must not reopen that closure
+or repeat completed approval, admission, durability, recovery, or transport
+work.
+
+Every milestone below requires its dependencies and completion criteria to be
+met in supported CI or an explicitly identified supported host. A passing
+validation run is not acceptance until the release reviewer records acceptance,
+and acceptance is not runtime enablement. Dates and version bands are targets
+for planning discussion only.
+
+### v0.66–v0.70 — provisional path to the first production capability
+
+The first production capability is deliberately identified here but not
+delivered by v0.66: a later milestone, provisionally **v0.73**, would deliver
+one bounded execution request for the exact approved `update-compose-stack`
+candidate. That milestone is conditional on the v0.66 authority decision and
+its evidence; version assignments remain provisional.
+
+| Target | User-visible outcome | Dependencies | Scope exclusions | Measurable completion criteria |
+| --- | --- | --- | --- | --- |
+| **v0.66 — controlled-action decision packet** | A reviewer can decide on the exact `update-compose-stack` journey, its authority boundary, and its measurable safety conditions. | v0.65 release acceptance; existing Agent and worker evidence; an authorized owner’s decision to consider this action. | No new approval/admission/durability/recovery/transport implementation; no activation route, worker start, Agent invocation, or runtime consumer. | Packet names the action, operator steps, reused implementation surfaces, owner, immutable subject/policy inputs, proposed consumer, endpoint, limits, expiry/cancellation, unknown-outcome handling, and refusal cases; independent review records yes/no or explicit deferral; repository scan proves no implementation or enablement changed. |
+| **v0.67 — action-bound provenance gap** | Reviewers can reproduce which candidate, policy, owner, and repository state the proposed action concerns. | v0.66 packet and an approved decision to close only a demonstrated provenance gap. | No new approval, admission, durable journal, recovery protocol, transport, or effect. | A bounded contract/test fixture rejects missing, forged, stale, cross-owner, and cross-subject provenance, or records why the existing implementation already closes each case. |
+| **v0.68 — action-bound authority gap** | Reviewers have a named answer for whether the exact action may cross from Atlas into the existing worker boundary. | v0.66 packet; v0.67 only where a gap is demonstrated. | No generic control plane, arbitrary intent, queue redesign, or automatic approval. | The decision names the consumer, credential/endpoint, allowed effect, ownership, limits, expiry, cancellation, and no-promotion proof, or explicitly keeps the action deferred. |
+| **v0.69 — bounded action rehearsal** | Operators can walk the proposed journey against an inert/test target and inspect refusal, success, and unknown-result evidence. | Accepted v0.66 decision; only demonstrated v0.67/v0.68 gaps; existing transport and recovery gates; isolated test target. | No production mutation, installation, deployment, retry, or runtime enablement. | Clean-environment rehearsal is repeatable, redacted, linked to the exact candidate, proves no production credentials/effects, and leaves the action default-off. |
+| **v0.70 — production-capability readiness review** | An independent reviewer can determine whether the exact action is ready for the later delivery milestone. | v0.65 acceptance; v0.66 packet; any gap-specific evidence; security review. | No delivery of the action and no new authority by roadmap ordering. | Every prerequisite has a terminal result, owner, and evidence digest; unresolved authority is explicit; the reviewer records a go/no-go for provisional v0.73. |
+
+### v0.71–v0.80 — user-facing workflows, including n8n integration
+
+The approval, admission, durable-state, recovery, and authenticated transport
+foundations already exist in the repository and are inherited here. These
+milestones schedule only a demonstrated gap in the exact action journey; they
+do not recreate those foundations.
+
+n8n has two different possible scopes. **Atlas integrating with n8n** means the
+provisional v0.75–v0.80 contract below: Atlas remains the authority, n8n is a
+bounded external workflow consumer, and callbacks/status envelopes are
+authenticated, versioned, redacted, and default-off. It depends on the v0.70
+readiness review and the exact action lifecycle. **Atlas installing or
+managing n8n** is a separate deployment capability: packaging or selecting a
+supported n8n version, provisioning/configuring it, upgrades, backup/restore,
+health, and removal. It is out of scope for the integration milestones and
+must not be inferred from them; if later selected, it requires a separate
+authority/security decision, supported deployment target, credential policy,
+upgrade/restore evidence, and an explicit provisional milestone. Neither
+scope grants n8n approval or arbitrary execution authority.
+
+| Target | User-visible outcome | Dependencies | Scope exclusions | Measurable completion criteria |
+| --- | --- | --- | --- | --- |
+| **v0.71 — operator review workspace** | Mission Control presents one coherent, read-only view of subject, policy, provenance, approval, limits, and current decision state. | v0.67–v0.70 accepted contracts; existing GET-only UI patterns. | No hidden action controls, implicit approval, or new authority labels. | Keyboard/accessibility and hostile-response tests pass; UI renders only server-authorized fields; action absence and ownership isolation are proven. |
+| **v0.72 — action-journey presentation gap** | Mission Control exposes the exact already-approved candidate, evidence, and proposed `update-compose-stack` request without inventing a second approval surface. | v0.70 readiness; existing GET-only UI and session/CSRF/authorization controls; only a demonstrated presentation gap. | Rebuilding approval/admission, hidden action controls, unattended approval, or effect execution. | Hostile-response, ownership, altered-input, accessibility, and action-absence tests pass; otherwise this milestone is omitted. |
+| **v0.73 — first production capability: bounded execution request** | The exact approved `update-compose-stack` candidate can be submitted once to the named worker consumer and tracked to a terminal, redacted result or refusal. | v0.70 go decision; v0.72 only if needed; existing Agent approval/planning/verification, execution-backend selection, authenticated worker transport, durable no-replay ledger, and unknown-outcome recovery. | General job queues, arbitrary intents, new approval/admission/durability/recovery/transport layers, and automatic retries. | At-most-once request identity and terminal-state invariants hold across restart and concurrent requests; duplicates return the same redacted result; refusal, timeout, cancellation, and unknown outcome are explicit; default-off and production isolation gates pass before any enablement. |
+| **v0.74 — operator notifications and audit export** | Operators can discover state changes and export a reviewable, redacted audit record. | Stable lifecycle states; redaction and retention policy; existing session model. | Secret export, webhook fan-out, or notification-driven approval. | Notification delivery is non-authoritative and bounded; audit exports are deterministic, redacted, owner-filtered, and tested against sensitive-data leakage. |
+| **v0.75 — n8n trigger and callback boundary** | An n8n workflow can start from an approved Atlas event and receive a bounded status/result envelope. | v0.70 rehearsal; v0.73 lifecycle; explicit n8n trust, authentication, and callback contract. | n8n-originated approval, arbitrary workflow execution, credential passthrough, and uncontrolled callbacks. | A versioned n8n integration contract, signature/authentication tests, replay protection, timeout behavior, redaction checks, and a disabled-by-default configuration pass; Atlas remains the authority. |
+| **v0.76 — n8n workflow templates** | Users can import documented templates for review, notification, and inert/test workflows. | v0.75 integration; supported n8n version matrix; template security review. | Templates that approve, mutate providers, deploy, install, or execute arbitrary code. | Templates are pinned, linted/validated, least-privilege documented, and exercised in a clean n8n instance with no secret or authority leakage. |
+| **v0.77 — bounded human-in-the-loop handoff** | An n8n workflow can pause for an Atlas operator decision and resume only from a fresh, valid result. | v0.72 approval; v0.75 callback; cancellation/expiry semantics. | Human approval delegated to n8n, indefinite pauses, or resume-by-retry. | Resume tokens are single-use, owner-bound, expiring, and subject-bound; stale, replayed, cancelled, and altered resumes are refused. |
+| **v0.78 — workflow observability** | Operators can correlate an Atlas request, n8n execution, and terminal outcome without exposing secrets. | v0.74 audit; v0.75 correlation contract; retention policy. | Full payload logging, credential inspection, and cross-tenant correlation. | Correlation IDs are non-authoritative and non-secret; logs are redacted, bounded, access-controlled, and validated under failure and restart. |
+| **v0.79 — integration compatibility** | Supported n8n and Atlas versions fail clearly when contracts are incompatible. | v0.75–v0.78 interfaces; versioning policy. | Silent downgrade, implicit schema migration, or compatibility promises beyond the matrix. | Compatibility matrix, negative contract tests, explicit negotiation/error behavior, and upgrade/downgrade fixtures pass. |
+| **v0.80 — workflow release gate** | Users receive a supported, documented workflow package whose authority and limitations are obvious. | All v0.71–v0.79 gates; release review; security review. | Production rollout, broad marketplace distribution, or new effect-plane authority. | Full UI/integration/recovery/isolation suites pass; package is reproducible and signed/pinned; release acceptance records the exact supported matrix. |
+
+### v0.81–v0.90 — operational reliability, recovery, and integration maturity
+
+| Target | User-visible outcome | Dependencies | Scope exclusions | Measurable completion criteria |
+| --- | --- | --- | --- | --- |
+| **v0.81 — durable lifecycle hardening** | Request and workflow state survives ordinary restart without duplication or loss of terminal evidence. | v0.73 lifecycle; v0.80 release gate. | New authority, distributed consensus, or automatic replay. | Crash/restart, corruption, migration, and concurrent-reader tests pass with explicit fail-closed behavior and bounded recovery time. |
+| **v0.82 — cancellation and timeout operations** | Operators can cancel bounded work and understand when a timeout is final. | v0.69 semantics; v0.81 durability. | Forced cancellation of an already committed external effect or indefinite lease. | Cancellation races, timeout boundaries, and post-timeout receipts are covered; no ambiguous state is presented as success. |
+| **v0.83 — backup and restore validation** | Administrators can restore Atlas evidence and verify continuity before resuming workflows. | Durable stores; existing backup/restore maintenance model. | Backup-triggered execution, secret recovery, or automatic failover. | Clean restore, partial restore, tamper, version mismatch, and ownership tests pass; restore requires explicit verification before any resume. |
+| **v0.84 — integration health and backpressure** | Operators see degraded dependencies and bounded queues before user actions become misleading. | v0.75 integration; lifecycle and limits. | Unbounded queues, silent drops, or autonomous scaling with authority implications. | Health/readiness semantics, queue bounds, overload refusal, and dependency isolation are measured and documented. |
+| **v0.85 — provider and repository connector maturity** | Supported connectors expose consistent capabilities, errors, and evidence without expanding intent. | Existing provider/Agent boundaries; v0.67 provenance. | New provider mutation or arbitrary repository intent. | Connector contract tests cover capability discovery, auth failure, timeout, ownership, redaction, and unsupported operation refusal. |
+| **v0.86 — security and abuse resistance** | Administrators receive actionable protection against replay, confused deputy, privilege escalation, and sensitive-data leakage. | All active contracts; threat model refresh. | Security claims without reproducible tests or a new identity authority. | Adversarial review, dependency scan, fuzz/bounds tests, audit of permissions, and zero known high-severity findings are recorded. |
+| **v0.87 — upgrade and migration rehearsal** | Operators can upgrade supported installations without losing evidence or changing authority unexpectedly. | v0.81 durability; v0.83 restore; versioned schemas/contracts. | Automatic production migration without rollback or operator visibility. | N-1/N/N+1 fixtures, interrupted migration, rollback, downgrade refusal, and post-upgrade authority-parity tests pass. |
+| **v0.88 — disaster and dependency recovery** | Documented recovery procedures restore service after database, n8n, provider, or worker failure. | v0.82–v0.87 operational contracts. | Claiming zero-downtime or recovery of effects that cannot be observed. | Failure drills meet published RTO/RPO and evidence-integrity targets; unknown external outcomes remain explicit and non-replayed. |
+| **v0.89 — integration contract certification** | Supported external integrations have a repeatable certification result rather than an informal compatibility claim. | n8n matrix; connector and recovery suites. | Certification of unsupported versions or third-party behavior outside the contract. | Certification fixtures pass in clean environments, results are signed/pinned, and each integration has an owner and expiry date. |
+| **v0.90 — operational readiness review** | Operators have a single readiness view for reliability, recovery, security, integrations, and known limitations. | v0.81–v0.89 evidence; independent review. | Final v1.0 acceptance, tag, or release claim. | Readiness review closes or explicitly accepts every operational finding; drills, dashboards, runbooks, and escalation ownership are verified. |
+
+### v0.91–v1.0 — stabilization, documentation, upgrade validation, and acceptance
+
+| Target | User-visible outcome | Dependencies | Scope exclusions | Measurable completion criteria |
+| --- | --- | --- | --- | --- |
+| **v0.91 — stabilization freeze** | Users receive predictable behavior while defects are prioritized against a fixed contract set. | v0.90 readiness; approved scope freeze. | New capabilities, authority surfaces, or unreviewed dependency upgrades. | Change policy, regression baseline, and release-blocking defect rubric are published; no unreviewed contract drift remains. |
+| **v0.92 — documentation completion** | Users and operators can install, use, secure, troubleshoot, and remove the supported system from maintained documentation. | Stable behavior and support matrix. | Marketing claims, undocumented experimental paths, or implied support. | Documentation is link-checked, versioned, example-tested, and reviewed for authority, security, recovery, and n8n limitations. |
+| **v0.93 — upgrade validation** | A supported installation can upgrade from the declared predecessor and prove its evidence and authority state are preserved. | v0.87 migration; v0.92 docs. | Unsupported in-place upgrades or silent data repair. | Fresh, upgrade, rollback, restore, and interrupted-upgrade fixtures pass with published timings and artifact hashes. |
+| **v0.94 — acceptance-candidate hardening** | The release candidate has no known release-blocking correctness, security, recovery, or compatibility gaps. | v0.91–v0.93; full test matrix. | Feature work, deferred control-plane decisions, or waiver by roadmap ordering. | Full supported CI gates pass; all exceptions have named owners, risk acceptance, expiry, and reviewer approval. |
+| **v0.95 — external/operator acceptance rehearsal** | Independent operators can complete critical workflows and recovery drills using only the release artifacts. | v0.92 docs; v0.94 candidate. | Treating internal validation as external acceptance. | Independent clean-environment walkthroughs meet task-success, safety, and recovery thresholds; findings are closed or explicitly accepted. |
+| **v0.96 — release evidence and provenance package** | Reviewers can reproduce what was tested, from which source, with which dependencies and outcomes. | v0.94–v0.95; immutable build inputs. | Mutable evidence, unverifiable binaries, or retrospective rewriting of failures. | Reproducible evidence manifest, source/dependency digests, signed review record, and complete validation/acceptance distinction are present. |
+| **v0.97 — final security and authority review** | The final candidate has a recorded answer for every authority boundary and security exception. | v0.96 package; independent security/authority reviewers. | Automatic promotion of any deferred v0.65 successor functionality. | All seven v0.65 blockers and any successor gates are either proven by an approved contract or remain explicitly out of scope; repository-wide no-promotion checks pass. |
+| **v0.98 — release-candidate upgrade and recovery gate** | The exact candidate survives the final supported upgrade, rollback, restore, and dependency-failure matrix. | v0.93; v0.97 review. | Tagging or publication before acceptance. | Required matrix passes from immutable artifacts; RTO/RPO, data integrity, and authority parity meet published thresholds. |
+| **v0.99 — final acceptance review** | A named release authority can make a yes/no v1.0 decision from a complete, immutable record. | v0.96–v0.98; all release blockers resolved. | Silent waivers, roadmap-based acceptance, or runtime enablement by review alone. | Acceptance record names tested commit/artifacts, gates, exceptions, reviewers, support matrix, and rollback plan; every required sign-off is present. |
+| **v1.0 — supported release** | Users have a documented, supportable, upgrade-validated Atlas release with bounded workflows and integrations. | v0.99 acceptance; approved publication procedure. | New scope, deferred authority, unreviewed integrations, or post-acceptance changes. | v1.0 ready definition below is satisfied, immutable tag/artifacts match the accepted evidence, and publication follows the separately approved release procedure. |
+
+### Definition of “v1.0 ready”
+
+Atlas is **v1.0 ready** only when all of the following are true:
+
+1. The exact candidate source, dependencies, build artifacts, configuration
+   defaults, and documentation are immutable and reproducible.
+2. Core, Agent, execution-worker, Mission Control, container, security,
+   integration, upgrade, backup/restore, recovery, and n8n gates pass in the
+   declared supported environments, with no unowned release-blocking finding.
+3. Critical workflows are usable by an operator, while refusal, cancellation,
+   expiry, timeout, restart, corruption, replay, dependency failure, and
+   unknown external outcomes remain safe, visible, bounded, and fail-closed.
+4. The authority model is explicit: Atlas does not infer approval from
+   evidence, workflow ordering, UI state, or a successful validation run; every
+   effect-plane consumer is named, authenticated, owner-bound, least-privilege,
+   auditable, and covered by a released contract.
+5. Upgrade, rollback, restore, retention, support, security response, and
+   operational runbooks have been exercised and meet published thresholds.
+6. Independent final review records acceptance, the supported compatibility
+   matrix, known limitations, artifact/source identity, and the authority to
+   publish. Only then may tagging and publication occur under their own
+   procedure.
+
+### Authority decision still required
+
+Before any milestone that creates a successor activation or effect-plane
+consumer, an authorized owner must decide whether Atlas should approve that
+authority at all. If yes, the decision must select a new normative contract
+covering trusted provenance, a distinct decision consumer, exact immutable
+subject/policy/approval inputs, authenticated contact, ownership, expiry,
+cancellation, limits, uncertainty recovery, audit, and repository-wide
+no-authority-promotion proof. It must also identify the precise allowed effect
+and its operator/recovery model. If no, the roadmap remains evidence-only and
+the later milestones are replanned.
+
+This roadmap does not make that decision. In particular, it does not
+automatically recreate the removed v0.65 control-plane package, API, route,
+permissions, configuration, startup wiring, Mission Control feature, worker
+contact, or Agent consumer. Those remain deferred until a separate normative
+authority decision is approved and its prerequisites are met.
