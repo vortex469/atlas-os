@@ -6,9 +6,17 @@ The current manual host evidence updates the gate status below. Earlier
 workbench failures remain historical records in this checklist and in the
 [v0.65 validation record](architecture/v0.65-release-validation.md).
 
-- [x] Core pytest: **5099 passed, 1782 warnings, 6164.70 seconds, exit 0**;
-  evidence directory `.task-evidence/manual-core-final`.
-- [x] Agent pytest: **1050 passed, 31 warnings, exit 0**; evidence directory
+The exact tested commit recorded for Agent pytest, Core pytest, and the
+production container/recovery gates is
+`d9c8687539767eb6b177f807087ce837ed2d4d72`. Changes after that commit were
+verified to be documentation-only; they do not alter the tested production or
+test code.
+
+- [x] Core pytest: **5099 passed, 1782 warnings, 6164.70 seconds, exit 0** at
+  tested commit `d9c8687539767eb6b177f807087ce837ed2d4d72`; evidence directory
+  `.task-evidence/manual-core-final`.
+- [x] Agent pytest: **1050 passed, 31 warnings, exit 0** at tested commit
+  `d9c8687539767eb6b177f807087ce837ed2d4d72`; evidence directory
   `.task-evidence/manual-agent`.
 - [x] Execution-worker pytest: **52 passed, zero skips, exit 0** at tested
   commit `1e1c0c46846c9c016b8702c3a4a792806313c426`; evidence
@@ -18,13 +26,15 @@ workbench failures remain historical records in this checklist and in the
   errors and one warning; build succeeded**.
 - [x] Core Ruff and Agent Ruff passed.
 - [x] Production container, recovery, and Rest Server gates passed with the
-  `runsc` sandbox; evidence directory `.task-evidence/manual-container`.
-- [ ] Standalone Agent Codex runtime check remains open. The documented
-  `./scripts/atlas-agent-codex-runtime-gate` invocation requires its own
-  successful evidence; the container gate does not substitute for it.
-- [ ] Exact tested SHAs from the requested Agent, Core, and container
-  `commit.txt` files remain to be transcribed when those artifacts are made
-  available; those files are absent from this checkout.
+  `runsc` sandbox at tested commit
+  `d9c8687539767eb6b177f807087ce837ed2d4d72`; evidence directory
+  `.task-evidence/manual-container`.
+- [x] Standalone Agent Codex runtime inspection passed, exit 0, using
+  `ATLAS_REPOSITORY_HOST_PATH=/opt/atlas ATLAS_CODEX_AUTH_HOST_PATH=/root/.codex/auth.json
+  ./scripts/atlas-agent-codex-runtime-gate`; log
+  `.task-evidence/manual-agent-runtime/gate.log`. This inspected the existing
+  deployed Agent container. Candidate container evidence comes from the
+  separate production container gate above.
 
 The v0.65 authority boundary remains **deferred**. The successor control-plane
 package, route, UI feature, permissions, configuration, startup wiring, and
