@@ -14,10 +14,10 @@ from app.execution.worker_contracts import (
     CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
     WorkerExecutionRequest,
 )
+from asgi_test_client import ASGITestClient as TestClient
 from atlas_execution_worker.api import _disabled_result, create_app
 from atlas_execution_worker.durable_ledger import DurableRequestLedger
 from atlas_execution_worker.ledger import RequestConflictError, RequestLedger
-from fastapi.testclient import TestClient
 
 HEAD = "a" * 40
 

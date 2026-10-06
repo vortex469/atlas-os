@@ -276,7 +276,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Atlas Core",
-    description="Central control-plane API for Atlas OS.",
+    description="Core API for Atlas OS.",
     version="0.4.0-alpha1",
     lifespan=lifespan,
 )

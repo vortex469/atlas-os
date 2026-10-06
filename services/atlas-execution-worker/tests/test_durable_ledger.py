@@ -17,7 +17,7 @@ from atlas_execution_worker.durable_ledger import (
     DurableRequestLedger,
 )
 from atlas_execution_worker.workspace import WorkerWorkspaceManager
-from fastapi.testclient import TestClient
+from asgi_test_client import ASGITestClient as TestClient
 from test_worker import make_request
 
 

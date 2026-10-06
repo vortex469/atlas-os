@@ -2,6 +2,10 @@
 
 import ast
 import sqlite3
+import sys
+import threading
+import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -109,6 +113,71 @@ def error(result, code):
     assert result.error_code == code
     assert result.retryable is False
     assert "private" not in result.model_dump_json()
+
+
+def _emit_timing(label, started, **details):
+    elapsed = time.perf_counter() - started
+    suffix = " ".join(f"{key}={value}" for key, value in details.items())
+    print(
+        f"[v057-ci-diagnostic] {label} elapsed={elapsed:.3f}s {suffix}".rstrip(),
+        file=sys.stderr,
+        flush=True,
+    )
+
+
+def _trace_store_integrity(store, timings, label):
+    original = store._check_integrity
+
+    def traced(connection):
+        started = time.perf_counter()
+        try:
+            return original(connection)
+        finally:
+            timings.append(
+                (
+                    f"{label}.integrity_check",
+                    time.perf_counter() - started,
+                    threading.current_thread().name,
+                )
+            )
+
+    store._check_integrity = traced
+
+
+def _trace_predecessor_reads(reader, timings, label):
+    original = reader.read_owned
+
+    def traced(**kwargs):
+        started = time.perf_counter()
+        try:
+            return original(**kwargs)
+        finally:
+            timings.append(
+                (
+                    f"{label}.predecessor_read",
+                    time.perf_counter() - started,
+                    threading.current_thread().name,
+                )
+            )
+
+    reader.read_owned = traced
+
+
+def _dump_thread_stacks(label):
+    frames = sys._current_frames()
+    print(f"[v057-ci-diagnostic] {label} thread_stacks", file=sys.stderr, flush=True)
+    for thread in threading.enumerate():
+        frame = frames.get(thread.ident)
+        print(
+            f"--- thread name={thread.name!r} ident={thread.ident} "
+            f"daemon={thread.daemon} ---",
+            file=sys.stderr,
+        )
+        if frame is None:
+            print("<no current frame>", file=sys.stderr)
+        else:
+            traceback.print_stack(frame, file=sys.stderr)
+    sys.stderr.flush()
 
 
 def test_restart_duplicate_expiry_ownership_and_subject_replay(tmp_path, facts):
@@ -889,8 +958,16 @@ def test_inflight_reservation_deterministically_refuses_all_competitors(
 ):
     from threading import Event
 
+    timings = []
+    started = time.perf_counter()
     service, journal, reader, _ = setup(tmp_path, facts)
+    _emit_timing("holder_setup", started)
+    _trace_store_integrity(journal, timings, "holder")
+    _trace_predecessor_reads(reader, timings, "holder")
+    started = time.perf_counter()
     other, _, other_reader, _ = setup(tmp_path, facts)
+    _emit_timing("competitor_setup", started)
+    _trace_store_integrity(other._store, timings, "competitor")
     reserved = Event()
     release = Event()
     original = journal._append_record
@@ -907,14 +984,41 @@ def test_inflight_reservation_deterministically_refuses_all_competitors(
         try:
             assert reserved.wait(30), "reservation was not committed"
             assert counts(journal) == (1, 0, 0)
+            refusal_started = time.perf_counter()
             error(create(other, facts), "append_indeterminate")
+            _emit_timing("competitor_same_key_refusal", refusal_started)
+            refusal_started = time.perf_counter()
             error(
                 create(other, facts, idempotency_key="another-inflight-key"),
                 "permanent_subject_reserved",
             )
+            _emit_timing("competitor_subject_refusal", refusal_started)
         finally:
             release.set()
-        result = pending.result(timeout=30)
+        watchdog = threading.Timer(
+            15,
+            _dump_thread_stacks,
+            args=("holder future still pending; 15s before 30s timeout",),
+        )
+        watchdog.daemon = True
+        watchdog.start()
+        completion_started = time.perf_counter()
+        try:
+            result = pending.result(timeout=30)
+        except TimeoutError:
+            _dump_thread_stacks("holder future timed out")
+            raise
+        finally:
+            watchdog.cancel()
+            watchdog.join(timeout=1)
+            _emit_timing("holder_future_completion", completion_started)
+    for label, elapsed, thread_name in timings:
+        print(
+            f"[v057-ci-diagnostic] {label} elapsed={elapsed:.3f}s "
+            f"thread={thread_name}",
+            file=sys.stderr,
+            flush=True,
+        )
     assert isinstance(result, c.WorkerActivationRuntimeInterfacePrerequisiteResultV1)
     assert reader.calls == 2
     assert create(other, facts).exact_duplicate

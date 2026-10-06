@@ -19,7 +19,7 @@ from app.verification.models import (
 )
 from app.version import AGENT_VERSION
 from app.workflow.models import SprintPhase, SprintStatus
-from fastapi.testclient import TestClient
+from asgi_test_client import ASGITestClient as TestClient
 
 
 def run_git(

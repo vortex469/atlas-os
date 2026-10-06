@@ -35,6 +35,13 @@ configuration, headers, endpoints, and raw exception payloads do not render.
 Sensitive-looking free text is withheld. No new Core authority, API contracts,
 queue operations, inference, or provider mutations are introduced.
 
+## v0.65 deferred successor
+
+Mission Control has no v0.65 control-plane evidence client, type, route,
+navigation entry, or nested view because P0/Sync deferred the successor. The
+retained v0.64 GET-only evidence views must not be relabeled or reused as v0.65
+evidence. Reopening requires a new normative decision before any UI work.
+
 Browser regression coverage includes 320, 768, and 1440 pixel layouts and existing
 detail routes. In the managed task sandbox, browser execution was blocked by
 `listen EPERM` when Vite attempted to bind 127.0.0.1:5173. Run `npm run test:e2e`
