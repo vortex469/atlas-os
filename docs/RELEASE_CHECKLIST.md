@@ -1,5 +1,37 @@
 # Atlas Release Checklist and Evidence
 
+## v0.65 current host validation status (2026-10-06)
+
+The current manual host evidence updates the gate status below. Earlier
+workbench failures remain historical records in this checklist and in the
+[v0.65 validation record](architecture/v0.65-release-validation.md).
+
+- [x] Core pytest: **5099 passed, 1782 warnings, 6164.70 seconds, exit 0**;
+  evidence directory `.task-evidence/manual-core-final`.
+- [x] Agent pytest: **1050 passed, 31 warnings, exit 0**; evidence directory
+  `.task-evidence/manual-agent`.
+- [x] Execution-worker pytest: **52 passed, zero skips, exit 0** at tested
+  commit `1e1c0c46846c9c016b8702c3a4a792806313c426`; evidence
+  `.task-evidence/manual-worker/pytest.log`. Current HEAD differs from that
+  tested worker source only by test import ordering.
+- [x] Mission Control: **2417 tests across 175 files passed; lint had zero
+  errors and one warning; build succeeded**.
+- [x] Core Ruff and Agent Ruff passed.
+- [x] Production container, recovery, and Rest Server gates passed with the
+  `runsc` sandbox; evidence directory `.task-evidence/manual-container`.
+- [ ] Standalone Agent Codex runtime check remains open. The documented
+  `./scripts/atlas-agent-codex-runtime-gate` invocation requires its own
+  successful evidence; the container gate does not substitute for it.
+- [ ] Exact tested SHAs from the requested Agent, Core, and container
+  `commit.txt` files remain to be transcribed when those artifacts are made
+  available; those files are absent from this checkout.
+
+The v0.65 authority boundary remains **deferred**. The successor control-plane
+package, route, UI feature, permissions, configuration, startup wiring, and
+consumers remain absent; no unauthorized successor surface was found. This
+validation update does not enable runtime behavior and does not authorize a
+push, tag, release, deployment, or publication.
+
 ## v0.65 manual Hermes SSH execution-worker validation (2026-10-06)
 
 - [x] Execution-worker pytest passed from a normal Hermes SSH shell at tested
