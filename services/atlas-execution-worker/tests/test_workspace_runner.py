@@ -135,12 +135,9 @@ def test_real_clone_succeeds_for_differently_owned_configured_source(
 ) -> None:
     source, head = repository
     source_status_before = _git(source, "status", "--porcelain")
-    try:
-        os.chown(source, 65534, 65534)
-        for path in source.rglob("*"):
-            os.chown(path, 65534, 65534)
-    except OSError as exc:
-        pytest.skip(f"environment cannot create a differently-owned source: {exc}")
+    os.chown(source, 65534, 65534)
+    for path in source.rglob("*"):
+        os.chown(path, 65534, 65534)
     config_path = tmp_path / "state" / "gitconfig"
     write_git_config([source], config_path)
     manager = WorkerWorkspaceManager(

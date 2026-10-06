@@ -142,13 +142,8 @@ def test_concurrent_identical_claims_have_one_entry() -> None:
 
 def test_tcp_health_and_submit_through_private_tcp(tmp_path: Path) -> None:
     del tmp_path
-    try:
-        probe = socket.socket()
-        probe.bind(("127.0.0.1", 0))
-    except PermissionError as exc:
-        pytest.skip(f"environment denies TCP socket creation: {exc}")
-    except OSError as exc:
-        pytest.skip(f"environment denies TCP socket binding: {exc}")
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
     port = probe.getsockname()[1]
     probe.close()
     app = create_app(authentication_token="test-worker-token")
