@@ -10,9 +10,15 @@ UI is selected.
 
 Core authority, the seven blockers, 67 fixed-false fields, default-off behavior,
 GET-only Mission Control, and zero effect-plane consumers remain preserved.
-Full release gates remain open; no runtime contact, worker start, Agent
-invocation, execution, installation, deployment, tag, push, or release follows.
-See the [corrective validation record](docs/architecture/v0.65-p5-validation.md).
+The current v0.65 release checklist records the Core, Agent,
+execution-worker, Mission Control, container, recovery, Rest Server, Ruff, and
+execution-worker production-runtime gates as passed, including the formerly
+stale execution-worker runtime gate. Release acceptance is still a named
+v0.65 reviewer action; it is not delegated to v0.66. No runtime contact,
+worker start, Agent invocation, execution, installation, deployment, tag,
+push, or publication follows from this evidence. See the [corrective
+validation record](docs/architecture/v0.65-p5-validation.md) and [current
+release validation](docs/architecture/v0.65-release-validation.md).
 
 ## v0.65 P0 — controlled activation authorization boundary deferred (2026-09-23)
 
@@ -3157,16 +3163,21 @@ history above remains historical, and the v0.65 validation records remain
 evidence rather than final release acceptance.
 
 The immediate repository evidence points to one concrete v0.66 scope:
-**close and independently review the v0.65 release, then produce a decision-ready
-controlled-execution prerequisite packet without implementing activation**. The
-v0.65 checklist records strong current-host validation, but also retains open
-release-acceptance and execution-worker runtime obligations. The authority
-boundary separately records that trusted provenance, a distinct consumer
-decision, immutable approval inputs, authenticated effect-plane contact,
-expiry/cancellation/ownership, uncertainty recovery, measurable limits, and
-repository-wide no-promotion proof are not yet established. A successful v0.66
-therefore needs to make those gaps reviewable and measurable; it must not fill
-them by implication.
+**decide whether Atlas may perform one controlled `update-compose-stack`
+repository action, and produce the evidence packet for that decision without
+implementing or enabling the action**. The operator journey to specify is:
+select one immutable repository candidate, review its existing plan and exact
+approval, inspect verification evidence, request the one action, observe a
+bounded result or refusal, and recover an unknown result without replay. The
+packet may reuse the existing Agent candidate-planning/approval/verification
+and commit path, the existing execution-backend selection, and the packaged
+authenticated execution-worker request/ledger boundary. It must identify the
+missing authority decision: whether Atlas may authorize this exact intent to a
+named worker consumer, with which owner, subject/policy digest, credentials,
+limits, expiry/cancellation semantics, and effect-plane endpoint. v0.65
+already records the release-gate outcome; v0.66 must not reopen that closure
+or repeat completed approval, admission, durability, recovery, or transport
+work.
 
 Every milestone below requires its dependencies and completion criteria to be
 met in supported CI or an explicitly identified supported host. A passing
@@ -3174,23 +3185,47 @@ validation run is not acceptance until the release reviewer records acceptance,
 and acceptance is not runtime enablement. Dates and version bands are targets
 for planning discussion only.
 
-### v0.66–v0.70 — prerequisites for useful, controlled execution
+### v0.66–v0.70 — provisional path to the first production capability
+
+The first production capability is deliberately identified here but not
+delivered by v0.66: a later milestone, provisionally **v0.73**, would deliver
+one bounded execution request for the exact approved `update-compose-stack`
+candidate. That milestone is conditional on the v0.66 authority decision and
+its evidence; version assignments remain provisional.
 
 | Target | User-visible outcome | Dependencies | Scope exclusions | Measurable completion criteria |
 | --- | --- | --- | --- | --- |
-| **v0.66 — release closure and decision packet** | Operators and maintainers can identify the exact accepted v0.65 baseline, its remaining limitations, and the evidence required before controlled execution can be considered. | Complete every v0.65 checklist gate in its supported environment; final release review; authority-boundary review. | No activation route, control-plane store, permission, worker start, Agent invocation, or runtime consumer. | All required v0.65 gates have terminal results; release reviewer records acceptance or names each exception; immutable source identity and evidence manifest agree; no deferred successor surface appears in a repository-wide scan. |
-| **v0.67 — trusted provenance and subject binding** | A reviewer can tell who/what produced a prospective execution decision and exactly which immutable subject, policy, and repository state it covers. | Accepted v0.65 baseline; explicit authority decision to design this boundary; stable identity and policy inputs. | No effect-plane contact, execution, installation, deployment, or generalized identity platform. | A normative contract and adversarial test corpus reject missing, forged, stale, cross-owner, and cross-subject provenance; every accepted record has a reproducible digest and owner. |
-| **v0.68 — bounded approval and execution-admission review** | An operator can review a narrowly scoped proposed action and receive a durable, fail-closed admission decision without the decision itself starting work. | v0.67 provenance; explicit approval wording; immutable subject/policy inputs; authorization and expiry rules. | No automatic approval, queue claim, worker start, retry, or side effect. | Independent decision and consumer are identified; approval, cancellation, expiry, ownership, replay, and ambiguity cases are covered; default-off tests prove zero effect-plane consumers. |
-| **v0.69 — contact, limits, and one-shot uncertainty recovery** | A bounded integration can report success, refusal, timeout, or unknown outcome without silently retrying or widening authority. | v0.68 admission; authenticated endpoint contract; timeout, quota, cancellation, and ownership semantics. | No scheduler, retry daemon, broad transport, arbitrary command, or production enablement. | Contract tests cover authentication, bounded payloads, rate/timeout limits, crash-after-send, duplicate, timeout, cancellation, and indeterminate outcomes; each uncertain outcome is terminal or has an explicitly authorized one-shot recovery path. |
-| **v0.70 — inert end-to-end rehearsal** | Operators can exercise the complete review-to-receipt journey against an inert/test effect plane and inspect evidence at every boundary. | v0.66 acceptance; v0.67–v0.69 contracts and tests; isolated test effect plane; security review. | No production mutation, installation, deployment, rollback, or Home Assistant artifact. | A repeatable clean-environment rehearsal covers refusal and success paths, produces redacted linked evidence, proves no production credentials/effects, and passes Core, Agent, worker, UI, and isolation gates. |
+| **v0.66 — controlled-action decision packet** | A reviewer can decide on the exact `update-compose-stack` journey, its authority boundary, and its measurable safety conditions. | v0.65 release acceptance; existing Agent and worker evidence; an authorized owner’s decision to consider this action. | No new approval/admission/durability/recovery/transport implementation; no activation route, worker start, Agent invocation, or runtime consumer. | Packet names the action, operator steps, reused implementation surfaces, owner, immutable subject/policy inputs, proposed consumer, endpoint, limits, expiry/cancellation, unknown-outcome handling, and refusal cases; independent review records yes/no or explicit deferral; repository scan proves no implementation or enablement changed. |
+| **v0.67 — action-bound provenance gap** | Reviewers can reproduce which candidate, policy, owner, and repository state the proposed action concerns. | v0.66 packet and an approved decision to close only a demonstrated provenance gap. | No new approval, admission, durable journal, recovery protocol, transport, or effect. | A bounded contract/test fixture rejects missing, forged, stale, cross-owner, and cross-subject provenance, or records why the existing implementation already closes each case. |
+| **v0.68 — action-bound authority gap** | Reviewers have a named answer for whether the exact action may cross from Atlas into the existing worker boundary. | v0.66 packet; v0.67 only where a gap is demonstrated. | No generic control plane, arbitrary intent, queue redesign, or automatic approval. | The decision names the consumer, credential/endpoint, allowed effect, ownership, limits, expiry, cancellation, and no-promotion proof, or explicitly keeps the action deferred. |
+| **v0.69 — bounded action rehearsal** | Operators can walk the proposed journey against an inert/test target and inspect refusal, success, and unknown-result evidence. | Accepted v0.66 decision; only demonstrated v0.67/v0.68 gaps; existing transport and recovery gates; isolated test target. | No production mutation, installation, deployment, retry, or runtime enablement. | Clean-environment rehearsal is repeatable, redacted, linked to the exact candidate, proves no production credentials/effects, and leaves the action default-off. |
+| **v0.70 — production-capability readiness review** | An independent reviewer can determine whether the exact action is ready for the later delivery milestone. | v0.65 acceptance; v0.66 packet; any gap-specific evidence; security review. | No delivery of the action and no new authority by roadmap ordering. | Every prerequisite has a terminal result, owner, and evidence digest; unresolved authority is explicit; the reviewer records a go/no-go for provisional v0.73. |
 
 ### v0.71–v0.80 — user-facing workflows, including n8n integration
+
+The approval, admission, durable-state, recovery, and authenticated transport
+foundations already exist in the repository and are inherited here. These
+milestones schedule only a demonstrated gap in the exact action journey; they
+do not recreate those foundations.
+
+n8n has two different possible scopes. **Atlas integrating with n8n** means the
+provisional v0.75–v0.80 contract below: Atlas remains the authority, n8n is a
+bounded external workflow consumer, and callbacks/status envelopes are
+authenticated, versioned, redacted, and default-off. It depends on the v0.70
+readiness review and the exact action lifecycle. **Atlas installing or
+managing n8n** is a separate deployment capability: packaging or selecting a
+supported n8n version, provisioning/configuring it, upgrades, backup/restore,
+health, and removal. It is out of scope for the integration milestones and
+must not be inferred from them; if later selected, it requires a separate
+authority/security decision, supported deployment target, credential policy,
+upgrade/restore evidence, and an explicit provisional milestone. Neither
+scope grants n8n approval or arbitrary execution authority.
 
 | Target | User-visible outcome | Dependencies | Scope exclusions | Measurable completion criteria |
 | --- | --- | --- | --- | --- |
 | **v0.71 — operator review workspace** | Mission Control presents one coherent, read-only view of subject, policy, provenance, approval, limits, and current decision state. | v0.67–v0.70 accepted contracts; existing GET-only UI patterns. | No hidden action controls, implicit approval, or new authority labels. | Keyboard/accessibility and hostile-response tests pass; UI renders only server-authorized fields; action absence and ownership isolation are proven. |
-| **v0.72 — explicit approval workflow** | An authorized operator can approve or cancel one exact proposed action with clear expiry and consequences. | v0.68 approval contract; session/CSRF/authorization controls. | Bulk approval, unattended approval, approval delegation, and effect execution. | Exact confirmation text, reauthentication/authorization, cancellation, expiry, replay, and audit tests pass; no approval is accepted for altered inputs. |
-| **v0.73 — bounded execution request workflow** | An admitted request can be submitted once and tracked through a terminal state. | v0.69 contact and idempotency; v0.72 approval. | General job queues, arbitrary intents, and automatic retries. | At-most-once submission and terminal-state invariants hold across restart and concurrent requests; duplicate submissions return the same redacted result. |
+| **v0.72 — action-journey presentation gap** | Mission Control exposes the exact already-approved candidate, evidence, and proposed `update-compose-stack` request without inventing a second approval surface. | v0.70 readiness; existing GET-only UI and session/CSRF/authorization controls; only a demonstrated presentation gap. | Rebuilding approval/admission, hidden action controls, unattended approval, or effect execution. | Hostile-response, ownership, altered-input, accessibility, and action-absence tests pass; otherwise this milestone is omitted. |
+| **v0.73 — first production capability: bounded execution request** | The exact approved `update-compose-stack` candidate can be submitted once to the named worker consumer and tracked to a terminal, redacted result or refusal. | v0.70 go decision; v0.72 only if needed; existing Agent approval/planning/verification, execution-backend selection, authenticated worker transport, durable no-replay ledger, and unknown-outcome recovery. | General job queues, arbitrary intents, new approval/admission/durability/recovery/transport layers, and automatic retries. | At-most-once request identity and terminal-state invariants hold across restart and concurrent requests; duplicates return the same redacted result; refusal, timeout, cancellation, and unknown outcome are explicit; default-off and production isolation gates pass before any enablement. |
 | **v0.74 — operator notifications and audit export** | Operators can discover state changes and export a reviewable, redacted audit record. | Stable lifecycle states; redaction and retention policy; existing session model. | Secret export, webhook fan-out, or notification-driven approval. | Notification delivery is non-authoritative and bounded; audit exports are deterministic, redacted, owner-filtered, and tested against sensitive-data leakage. |
 | **v0.75 — n8n trigger and callback boundary** | An n8n workflow can start from an approved Atlas event and receive a bounded status/result envelope. | v0.70 rehearsal; v0.73 lifecycle; explicit n8n trust, authentication, and callback contract. | n8n-originated approval, arbitrary workflow execution, credential passthrough, and uncontrolled callbacks. | A versioned n8n integration contract, signature/authentication tests, replay protection, timeout behavior, redaction checks, and a disabled-by-default configuration pass; Atlas remains the authority. |
 | **v0.76 — n8n workflow templates** | Users can import documented templates for review, notification, and inert/test workflows. | v0.75 integration; supported n8n version matrix; template security review. | Templates that approve, mutate providers, deploy, install, or execute arbitrary code. | Templates are pinned, linted/validated, least-privilege documented, and exercised in a clean n8n instance with no secret or authority leakage. |
