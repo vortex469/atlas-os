@@ -1,5 +1,33 @@
 # Atlas Release Checklist and Evidence
 
+## Post-correction Hermes validation (2026-10-06)
+
+- [x] Verified HEAD is
+  `249981223f25acda126f380f98acd40ff5c41818` and the working tree was clean
+  before validation.
+- [ ] Full Atlas Core pytest remains open. The requested dual-root command
+  was run and preserved at `.task-evidence/core-full-pytest-post-correction.log`;
+  it recorded a failure at 9%, then stopped making progress and was
+  interrupted with exit 130. A `-vv -x` diagnosis recorded 453 passed, 1
+  failed, 350 warnings, exit 1; the exact failure is
+  `test_non_owned_existing_root_fails_closed`, where Hermes rejects the
+  deliberate foreign UID/GID `os.chown` with `OSError: [Errno 22] Invalid
+  argument`. The fail-closed ownership assertion was not changed.
+- [ ] Agent pytest remains open: 32 tests progressed before the existing async
+  route/client hang; timeout exit 124.
+- [ ] execution-worker pytest remains open: 50 passed, 2 failed, exit 1; the
+  failures are Hermes socket denial and unsupported arbitrary `os.chown`.
+- [ ] Agent and execution-worker runtime gates remain open: repository scripts
+  reached compose validation where applicable, but both exited 1 because the
+  Hermes Docker API is unavailable.
+- [ ] Mission Control remains open: `npm ci` exit 1 (`Exit handler never
+  called!`), test and lint exit 127 (missing Vitest/ESLint), and build exit 127
+  (missing `tsc`). Complete logs and exact commands are in the
+  [post-correction validation record](architecture/v0.65-release-validation.md).
+- [ ] Release acceptance. Required gates are not all passing; no release,
+  tag, push, merge, deployment, publication, or runtime enablement is
+  claimed.
+
 ## PR #37 first-run validation (2026-09-29)
 
 The exact first-run results for PR #37 are preserved here as evidence; they
