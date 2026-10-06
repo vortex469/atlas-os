@@ -29,6 +29,11 @@ test code.
   `runsc` sandbox at tested commit
   `d9c8687539767eb6b177f807087ce837ed2d4d72`; evidence directory
   `.task-evidence/manual-container`.
+- [x] Execution-worker production `runsc` sandbox gate passed, exit 0, through
+  the direct `scripts/container-release-gate` invocation of
+  `scripts/atlas-execution-worker-runtime-gate`; evidence
+  `.task-evidence/manual-container/gate.log` records
+  `atlas-execution-worker production runsc sandbox gate passed`.
 - [x] Standalone Agent Codex runtime inspection passed, exit 0, using
   `ATLAS_REPOSITORY_HOST_PATH=/opt/atlas ATLAS_CODEX_AUTH_HOST_PATH=/root/.codex/auth.json
   ./scripts/atlas-agent-codex-runtime-gate`; log
@@ -48,8 +53,9 @@ push, tag, release, deployment, or publication.
   commit `1e1c0c46846c9c016b8702c3a4a792806313c426`: **52 passed in 1.20s,
   zero skips, exit 0**. Log: `.task-evidence/manual-worker/pytest.log`.
   Both the TCP capability test and the differently-owned clone test passed.
-- [ ] Execution-worker Docker runtime gate remains open, as do the other
-  required v0.65 release gates.
+- [x] The execution-worker Docker runtime gate was subsequently passed by the
+  production `runsc` invocation recorded in the current host status above.
+  The failed workbench runtime attempts below remain historical evidence.
 
 The earlier restrictions were observed inside Codex's execution environment,
 not in the normal Hermes SSH shell, and are not Hermes host limitations. This
