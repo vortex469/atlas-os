@@ -958,6 +958,10 @@ def test_inflight_reservation_deterministically_refuses_all_competitors(
 ):
     from threading import Event
 
+    coordination_timeout = 30
+    # Measured holder validation takes about 20s after release; retain margin
+    # for slow CI without leaving an unbounded future.
+    holder_completion_timeout = 45
     timings = []
     started = time.perf_counter()
     service, journal, reader, _ = setup(tmp_path, facts)
@@ -974,7 +978,7 @@ def test_inflight_reservation_deterministically_refuses_all_competitors(
 
     def pause_after_commit(*args):
         reserved.set()
-        assert release.wait(30), "reservation holder was not released"
+        assert release.wait(coordination_timeout), "reservation holder was not released"
         return original(*args)
 
     monkeypatch.setattr(journal, "_append_record", pause_after_commit)
@@ -982,7 +986,7 @@ def test_inflight_reservation_deterministically_refuses_all_competitors(
     with ThreadPoolExecutor(max_workers=1) as pool:
         pending = pool.submit(create, service, facts)
         try:
-            assert reserved.wait(30), "reservation was not committed"
+            assert reserved.wait(coordination_timeout), "reservation was not committed"
             assert counts(journal) == (1, 0, 0)
             refusal_started = time.perf_counter()
             error(create(other, facts), "append_indeterminate")
@@ -995,16 +999,20 @@ def test_inflight_reservation_deterministically_refuses_all_competitors(
             _emit_timing("competitor_subject_refusal", refusal_started)
         finally:
             release.set()
+        watchdog_message = (
+            f"holder future still pending; 15s before "
+            f"{holder_completion_timeout}s timeout"
+        )
         watchdog = threading.Timer(
             15,
             _dump_thread_stacks,
-            args=("holder future still pending; 15s before 30s timeout",),
+            args=(watchdog_message,),
         )
         watchdog.daemon = True
         watchdog.start()
         completion_started = time.perf_counter()
         try:
-            result = pending.result(timeout=30)
+            result = pending.result(timeout=holder_completion_timeout)
         except TimeoutError:
             _dump_thread_stacks("holder future timed out")
             raise
