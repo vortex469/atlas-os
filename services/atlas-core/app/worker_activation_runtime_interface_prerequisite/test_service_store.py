@@ -1,6 +1,8 @@
 """Hostile P2 persistence checks using the complete P1 prerequisite chain."""
 
 import ast
+import faulthandler
+import os
 import sqlite3
 import sys
 import threading
@@ -784,16 +786,75 @@ def test_response_failure_does_not_renew_evidence(tmp_path, facts, monkeypatch):
 
 def _process_create(path, facts, barrier, output):
     """Independent process/SQLite connection; only the evidence service runs."""
-    service = WorkerActivationRuntimeInterfacePrerequisiteService(
-        store=WorkerActivationRuntimeInterfacePrerequisiteStore(path),
-        prerequisite_reader=Reader(facts),
-        clock=Clock(facts),
-        enabled=True,
-    )
-    barrier.wait(timeout=30)
-    result = create(service, facts)
-    output.send(result.model_dump_json())
-    output.close()
+    process_started = time.perf_counter()
+    pid = os.getpid()
+    faulthandler.dump_traceback_later(15, repeat=True)
+    try:
+        stage_started = time.perf_counter()
+        service = WorkerActivationRuntimeInterfacePrerequisiteService(
+            store=WorkerActivationRuntimeInterfacePrerequisiteStore(path),
+            prerequisite_reader=Reader(facts),
+            clock=Clock(facts),
+            enabled=True,
+        )
+        _emit_timing(
+            "independent_child_service_setup",
+            stage_started,
+            pid=pid,
+            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
+        )
+        barrier_started = time.perf_counter()
+        _emit_timing(
+            "independent_child_barrier_entry",
+            barrier_started,
+            pid=pid,
+            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
+        )
+        barrier.wait(timeout=30)
+        _emit_timing(
+            "independent_child_barrier_exit",
+            barrier_started,
+            pid=pid,
+            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
+        )
+        stage_started = time.perf_counter()
+        result = create(service, facts)
+        _emit_timing(
+            "independent_child_create_completion",
+            stage_started,
+            pid=pid,
+            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
+        )
+        stage_started = time.perf_counter()
+        raw = result.model_dump_json()
+        _emit_timing(
+            "independent_child_serialization",
+            stage_started,
+            pid=pid,
+            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
+        )
+        stage_started = time.perf_counter()
+        output.send(raw)
+        _emit_timing(
+            "independent_child_pipe_send_completion",
+            stage_started,
+            pid=pid,
+            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
+        )
+    finally:
+        faulthandler.cancel_dump_traceback_later()
+        output.close()
+
+
+def _report_independent_processes(processes):
+    for process in processes:
+        print(
+            f"[v057-ci-diagnostic] independent_parent_child_state "
+            f"pid={process.pid} is_alive={process.is_alive()} "
+            f"exitcode={process.exitcode}",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def test_independent_processes_share_permanent_reservation(tmp_path, facts):
@@ -816,7 +877,9 @@ def test_independent_processes_share_permanent_reservation(tmp_path, facts):
         results = []
         for receiver, sender in pipes:
             sender.close()
-            assert receiver.poll(60), "evidence process did not return"
+            if not receiver.poll(60):
+                _report_independent_processes(processes)
+                pytest.fail("evidence process did not return")
             raw = receiver.recv()
             try:
                 result = c.WorkerActivationRuntimeInterfacePrerequisiteResultV1.model_validate_json(
