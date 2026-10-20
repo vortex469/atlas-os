@@ -1000,7 +1000,7 @@ def test_inflight_reservation_deterministically_refuses_all_competitors(
         finally:
             release.set()
         watchdog_message = (
-            f"holder future still pending; 15s before "
+            f"holder future still pending after 15s; completion deadline is "
             f"{holder_completion_timeout}s timeout"
         )
         watchdog = threading.Timer(
