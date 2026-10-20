@@ -788,8 +788,10 @@ def _process_create(path, facts, barrier, output):
     """Independent process/SQLite connection; only the evidence service runs."""
     process_started = time.perf_counter()
     pid = os.getpid()
+    stage = "startup"
     faulthandler.dump_traceback_later(15, repeat=True)
     try:
+        stage = "service_setup"
         stage_started = time.perf_counter()
         service = WorkerActivationRuntimeInterfacePrerequisiteService(
             store=WorkerActivationRuntimeInterfacePrerequisiteStore(path),
@@ -803,6 +805,7 @@ def _process_create(path, facts, barrier, output):
             pid=pid,
             process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
         )
+        stage = "barrier"
         barrier_started = time.perf_counter()
         _emit_timing(
             "independent_child_barrier_entry",
@@ -817,6 +820,7 @@ def _process_create(path, facts, barrier, output):
             pid=pid,
             process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
         )
+        stage = "create"
         stage_started = time.perf_counter()
         result = create(service, facts)
         _emit_timing(
@@ -825,6 +829,7 @@ def _process_create(path, facts, barrier, output):
             pid=pid,
             process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
         )
+        stage = "serialization"
         stage_started = time.perf_counter()
         raw = result.model_dump_json()
         _emit_timing(
@@ -833,6 +838,7 @@ def _process_create(path, facts, barrier, output):
             pid=pid,
             process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
         )
+        stage = "pipe_send"
         stage_started = time.perf_counter()
         output.send(raw)
         _emit_timing(
@@ -841,6 +847,23 @@ def _process_create(path, facts, barrier, output):
             pid=pid,
             process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
         )
+    except BaseException as error:
+        try:
+            output.send(
+                "__child_failure__"
+                + repr(
+                    {
+                        "pid": pid,
+                        "stage": stage,
+                        "error_type": type(error).__name__,
+                        "error_code": getattr(error, "code", None),
+                        "elapsed": f"{time.perf_counter() - process_started:.3f}s",
+                    }
+                )
+            )
+        except (BrokenPipeError, EOFError, OSError):
+            pass
+        raise
     finally:
         faulthandler.cancel_dump_traceback_later()
         output.close()
@@ -861,7 +884,11 @@ def test_independent_processes_share_permanent_reservation(tmp_path, facts):
     from multiprocessing import get_context
 
     _, journal, _, _ = setup(tmp_path, facts)
-    context = get_context("fork")
+    # pytest and its plugins may have live threads. Forking this parent can
+    # clone a lock held by another thread and leave a child permanently
+    # blocked during contract validation. Spawn gives each contender a clean
+    # interpreter while retaining independent SQLite connections.
+    context = get_context("spawn")
     barrier = context.Barrier(2)
     pipes = [context.Pipe(duplex=False) for _ in range(2)]
     processes = [
@@ -880,7 +907,14 @@ def test_independent_processes_share_permanent_reservation(tmp_path, facts):
             if not receiver.poll(60):
                 _report_independent_processes(processes)
                 pytest.fail("evidence process did not return")
-            raw = receiver.recv()
+            try:
+                raw = receiver.recv()
+            except EOFError:
+                _report_independent_processes(processes)
+                pytest.fail("evidence process closed its pipe without evidence")
+            if raw.startswith("__child_failure__"):
+                _report_independent_processes(processes)
+                pytest.fail(f"evidence process failed: {raw}")
             try:
                 result = c.WorkerActivationRuntimeInterfacePrerequisiteResultV1.model_validate_json(
                     raw
@@ -902,6 +936,10 @@ def test_independent_processes_share_permanent_reservation(tmp_path, facts):
         assert sum(not r.exact_duplicate for r in successes) == 1
         assert all(r.record == successes[0].record for r in successes)
         assert counts(journal) == (1, 1, 0)
+        reopened = WorkerActivationRuntimeInterfacePrerequisiteStore(
+            journal.database_path
+        )
+        assert counts(reopened) == (1, 1, 0)
     finally:
         for process in processes:
             if process.is_alive():
@@ -910,6 +948,7 @@ def test_independent_processes_share_permanent_reservation(tmp_path, facts):
         for receiver, sender in pipes:
             receiver.close()
             sender.close()
+        barrier.abort()
 
 
 @pytest.mark.parametrize("boundary", [1, 2])
