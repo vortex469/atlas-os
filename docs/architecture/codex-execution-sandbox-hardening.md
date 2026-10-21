@@ -201,3 +201,28 @@ failure to persist the request, and no automatic lookup on UI refresh.
 The durable worker rehearsal drops the submit response after an inert runner
 finishes, reopens the ledger, rejects unauthenticated lookup, and recovers the
 terminal result with exactly one submission, one lookup and one runner call.
+
+### TCP and container rehearsal
+
+`services/atlas-execution-worker/tests/test_transport_reconciliation.py`
+extends the same recovery checks across actual loopback TCP connections. A
+temporary proxy consumes the worker's completed POST response and drops the
+connection before Agent receives it. After restarting the worker app and
+reopening its ledger, a fresh Agent adapter retrieves the original result
+and applies only the fixture Compose patch. The proxy observes exactly one
+POST and one GET, and the ledger records one attempt. A separate interrupted
+start case remains unknown after restart, with one GET and zero POSTs.
+
+The test uses the production TCP client, API, durable ledger and patch
+validator with an inert runner and fixture attestation. It starts no model or
+deployment command and uses temporary credentials and repositories. Runtime
+attestation is validated by the enclosing container gate, not by the fixture.
+It is executable by stdlib unittest without installing test dependencies in
+the worker image, and the existing runtime gate executes it inside its
+selected isolated worker container. The container CI path filters include
+worker code and the runtime-gate script so those changes run this check.
+
+Supported-host validation passed both TCP tests, and the combined worker and
+container-gate regression selection passed **62 tests in 2.17s**. Container
+execution and runsc-specific results require their own observed runs; the
+host TCP pass alone does not establish container or production readiness.

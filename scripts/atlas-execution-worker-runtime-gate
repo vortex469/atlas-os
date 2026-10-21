@@ -81,6 +81,10 @@ relay_container=$("${compose[@]}" ps -q atlas-execution-worker-relay)
 [[ "$(docker inspect "$worker_container" --format '{{json .HostConfig.SecurityOpt}}')" == *'no-new-privileges:true'* ]] || { echo "ERROR: worker NoNewPrivs is not configured"; exit 1; }
 docker exec "$worker_container" python /opt/atlas/services/atlas-execution-worker/healthcheck.py
 
+echo "Checking real TCP response-loss recovery with an inert temporary fixture"
+docker exec -i "$worker_container" python - \
+    < "$ATLAS_ROOT/services/atlas-execution-worker/tests/test_transport_reconciliation.py"
+
 if [[ "$expected_runtime" = "runsc" ]]; then
     docker exec "$worker_container" sh -ceu '
 workspace=$(mktemp -d /tmp/atlas-codex-sandbox-proof.XXXXXX)
