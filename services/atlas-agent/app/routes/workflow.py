@@ -276,6 +276,13 @@ class WorkflowExecutionSummaryResponse(BaseModel):
     execution_request_id: str | None
 
 
+class WorkerReconciliationResponse(BaseModel):
+    request_id: str
+    outcome: str
+    can_check_result: bool
+    message: str
+
+
 class WorkflowVerificationPlanResponse(BaseModel):
     verification_plan_id: str | None
     verifier_version: str | None
@@ -564,6 +571,7 @@ class WorkflowDetailResponse(BaseModel):
     approval_presentations: list[WorkflowApprovalPresentationResponse]
     timeline: list[WorkflowTimelineStageResponse]
     execution: WorkflowExecutionSummaryResponse
+    worker_reconciliation: WorkerReconciliationResponse | None = None
     verification_plan: WorkflowVerificationPlanResponse
     verification_evidence: WorkflowVerificationEvidenceResponse
     review: WorkflowReviewResponse
@@ -757,6 +765,14 @@ def _validate_repository_root_boundary(
 def _raise_for_failure(result: WorkflowResult) -> None:
     if result.error_message is None:
         return
+    if result.error_message == "worker_outcome_unknown":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "worker_outcome_unknown",
+                "message": "Worker outcome is unknown. Check the original request; do not resubmit.",
+            },
+        )
     if result.error_message == "Workflow not found":
         code = "workflow_not_found"
         status_code = status.HTTP_404_NOT_FOUND
@@ -798,7 +814,10 @@ def _workflow_execution_summary(workflow) -> WorkflowExecutionSummaryResponse:
     implementation = workflow.candidate_implementation_request
     changed_files = [str(path) for path in workflow.changed_files]
     return WorkflowExecutionSummaryResponse(
-        execution_status=execution.status.value if execution else None,
+        execution_status=(
+            execution.status.value if execution
+            else "unknown" if workflow.worker_execution_request is not None else None
+        ),
         started_at=None,
         completed_at=None,
         result=execution.status.value if execution else None,
@@ -807,7 +826,11 @@ def _workflow_execution_summary(workflow) -> WorkflowExecutionSummaryResponse:
         working_directory=str(execution.working_directory) if execution else None,
         repository=str(implementation.repository_root) if implementation else None,
         changed_files=changed_files,
-        execution_request_id=execution.request_id if execution else None,
+        execution_request_id=(
+            execution.request_id if execution else
+            workflow.worker_execution_request.execution_request_id
+            if workflow.worker_execution_request is not None else None
+        ),
     )
 
 
@@ -1830,6 +1853,18 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         approval_presentations=approval_presentations,
         timeline=_workflow_timeline(workflow, approval_status),
         execution=_workflow_execution_summary(workflow),
+        worker_reconciliation=(
+            WorkerReconciliationResponse(
+                request_id=workflow.worker_execution_request.execution_request_id,
+                outcome=(
+                    "unknown" if workflow.execution_result is None
+                    or workflow.execution_result.status.value == "unknown" else "known"
+                ),
+                can_check_result=workflow.can_reconcile_worker,
+                message="Check the original worker request. Execution will not be resubmitted.",
+            )
+            if workflow.worker_execution_request is not None else None
+        ),
         verification_plan=_workflow_verification_plan(workflow),
         verification_evidence=_workflow_verification_evidence(workflow),
         review=_workflow_review(workflow),

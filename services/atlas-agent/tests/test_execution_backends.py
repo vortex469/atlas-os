@@ -49,12 +49,19 @@ class FakeWorkerClient:
         self.response = response
         self.error = error
         self.requests = []
+        self.lookups = []
 
     def submit(self, request):  # type: ignore[no-untyped-def]
         self.requests.append(request)
         if self.error is not None:
             raise self.error
         assert self.response is not None
+        return self.response
+
+    def get_result(self, request_id):
+        self.lookups.append(request_id)
+        if self.error is not None:
+            raise self.error
         return self.response
 
 
@@ -180,7 +187,7 @@ def test_worker_failure_codes_map_deterministically(failure: WorkerFailureCode) 
     client.response = worker_result(worker_request, failure_code=failure, status=status)
     result = backend.execute(request, context=context)
     assert result.error == failure.value
-    assert result.status is (ExecutionStatus.TIMED_OUT if failure is WorkerFailureCode.TIMEOUT else ExecutionStatus.LAUNCH_FAILED if failure in {WorkerFailureCode.WORKER_UNAVAILABLE, WorkerFailureCode.WORKER_CRASH} else ExecutionStatus.FAILED)
+    assert result.status is (ExecutionStatus.TIMED_OUT if failure is WorkerFailureCode.TIMEOUT else ExecutionStatus.UNKNOWN if failure is WorkerFailureCode.WORKER_CRASH else ExecutionStatus.LAUNCH_FAILED if failure is WorkerFailureCode.WORKER_UNAVAILABLE else ExecutionStatus.FAILED)
 
 
 def test_worker_transport_failure_has_no_local_fallback() -> None:
@@ -190,7 +197,8 @@ def test_worker_transport_failure_has_no_local_fallback() -> None:
 
     result = backend.execute(request, context=make_context())
 
-    assert result.error.startswith("worker_unavailable:")
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.error.startswith("worker_outcome_unknown:")
     assert runner.calls == 0
 
 
@@ -230,8 +238,8 @@ def test_worker_backend_rejects_result_with_stale_base_head() -> None:
     )
     client.response = {"state": "completed", "result": result.to_dict()}
     mapped = backend.execute(request, context=context)
-    assert mapped.status is ExecutionStatus.LAUNCH_FAILED
-    assert mapped.error.startswith("invalid_result:")
+    assert mapped.status is ExecutionStatus.UNKNOWN
+    assert mapped.error.startswith("worker_outcome_unknown:")
 
 
 def test_worker_backend_uses_opaque_configured_repository_token() -> None:
@@ -314,3 +322,55 @@ def test_worker_accepts_matching_subject_and_explicit_timeout() -> None:
     assert len(client.requests) == 1
     assert client.requests[0].timeout_seconds == 30.0
     assert client.requests[0].request_digest == worker_request.request_digest
+
+
+def test_worker_reconciliation_reads_original_id_without_submission() -> None:
+    request, context = make_request(), make_context()
+    expected = worker_request_for(request, context)
+    response = worker_result(expected, status=WorkerExecutionStatus.SUCCEEDED)
+    response["request_digest"] = expected.request_digest
+    client = FakeWorkerClient(response=response)
+
+    result = WorkerExecutionBackend(client).reconcile(request, context=context)
+
+    assert result.status is ExecutionStatus.SUCCEEDED
+    assert client.lookups == [request.identifier]
+    assert client.requests == []
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"request_digest": None},
+        {"request_digest": "execution-request-digest-v1:" + "b" * 64},
+        {"state": "claimed", "result": None},
+        {"state": "executing"},
+        {"state": "unknown_outcome"},
+        {"state": "failed_terminal"},
+        {"result": {"execution_request_id": "foreign-request"}},
+    ],
+)
+def test_worker_untrusted_or_uncertain_lookup_never_resubmits(change) -> None:
+    request, context = make_request(), make_context()
+    expected = worker_request_for(request, context)
+    response = worker_result(expected, status=WorkerExecutionStatus.SUCCEEDED)
+    response["request_digest"] = expected.request_digest
+    response.update(change)
+    client = FakeWorkerClient(response=response)
+
+    result = WorkerExecutionBackend(client).reconcile(request, context=context)
+
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.worker_result is None
+    assert client.lookups == [request.identifier]
+    assert client.requests == []
+
+
+def test_worker_lookup_transport_failure_is_redacted_and_does_not_resubmit() -> None:
+    client = FakeWorkerClient(error=WorkerTransportError("secret credential details"))
+    result = WorkerExecutionBackend(client).reconcile(make_request(), context=make_context())
+
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert "secret" not in result.error
+    assert client.requests == []
+    assert client.lookups == [make_request().identifier]

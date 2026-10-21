@@ -183,6 +183,66 @@ describe("WorkflowPage", () => {
         mockedResumeWorkflow.mockResolvedValue(undefined);
     });
 
+    it("checks an unknown worker result once and keeps verification approval separate", async () => {
+        const uncertain = workflow({
+            workflow_state: "blocked",
+            implementation_approval_status: "approved",
+            worker_reconciliation: {
+                request_id: "original-worker-request", outcome: "unknown",
+                can_check_result: true, message: "Check the original request.",
+            },
+        });
+        mockedGetWorkflowDetail.mockResolvedValueOnce(uncertain).mockResolvedValue(workflow({
+            workflow_state: "awaiting_verification_approval",
+            verification_approval_status: "pending",
+        }));
+        renderPage();
+
+        const check = await screen.findByRole("button", { name: "Check worker result" });
+        expect(screen.getByRole("heading", { name: "Worker outcome unknown" })).toBeInTheDocument();
+        expect(screen.getByText(/Original request: original-worker-request/)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        fireEvent.click(check);
+
+        await waitFor(() => expect(mockedResumeWorkflow).toHaveBeenCalledExactlyOnceWith("workflow-123"));
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Check worker result" })).not.toBeInTheDocument());
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowVerificationApproval).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
+    });
+
+    it("does not offer worker reconciliation without server eligibility", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            workflow_state: "blocked",
+            worker_reconciliation: {
+                request_id: "original-worker-request", outcome: "unknown",
+                can_check_result: false, message: "Operator review required.",
+            },
+        }));
+        renderPage();
+
+        await screen.findByRole("heading", { name: "Worker outcome unknown" });
+        expect(screen.queryByRole("button", { name: "Check worker result" })).not.toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("never checks a worker result automatically on load or refresh", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            workflow_state: "blocked",
+            worker_reconciliation: {
+                request_id: "original-worker-request", outcome: "unknown",
+                can_check_result: true, message: "Check the original request.",
+            },
+        }));
+        renderPage();
+        await screen.findByRole("button", { name: "Check worker result" });
+        const refresh = screen.getByRole("button", { name: "Refresh" });
+        fireEvent.click(refresh);
+
+        await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
     it("shows Resume Approved Implementation only when implementation is approved", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({
             workflow_state: "awaiting_implementation_approval",

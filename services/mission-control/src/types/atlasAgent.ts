@@ -463,6 +463,12 @@ export interface WorkflowCommitResultSummary {
 }
 
 export interface WorkflowDetailResponse {
+    worker_reconciliation?: {
+        request_id: string;
+        outcome: "unknown" | "known";
+        can_check_result: boolean;
+        message: string;
+    } | null;
     workflow_id: string;
     workflow_source: string;
     workflow_state: string;

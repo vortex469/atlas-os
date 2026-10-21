@@ -113,16 +113,56 @@ chain and terminal state after persistence reload. The worker fixture starts
 no worker and invokes no model, network transport or deployment command.
 
 Existing patch-journal recovery and worker-ledger restart tests establish
-their respective no-replay behavior. They do not demonstrate end-to-end
-production recovery from a lost transport response. Unknown outcomes must
-remain blocked: never resubmit merely because a response was lost.
+their respective no-replay behavior. The lost-response journey now reuses
+those mechanisms as described below. Unknown outcomes remain blocked until
+the original result is validated; a missing response never permits resubmission.
+
+### Lost response and operator reconciliation
+
+Before submitting a candidate worker request, Agent durably records the exact
+`WorkerExecutionRequest` in its existing workflow snapshot. If the record
+cannot be written, no worker submission occurs. A transport failure, missing
+result, malformed result or worker crash is represented as execution status
+`unknown`, rather than claiming the command failed to launch.
+
+Mission Control shows **Worker outcome unknown**, the original request ID and
+an explicit **Check worker result** control for an eligible blocked workflow.
+Page loads, GET projections and refreshes perform no worker lookup. The
+existing workflow Resume endpoint handles the explicit check; no new endpoint
+or permission is introduced. It revalidates the original exact approval,
+candidate, plan and repository, then atomically claims the blocked workflow.
+It requires the reconstructed request to equal the persisted request before
+making exactly one authenticated `GET /v1/executions/{original_request_id}`.
+It never submits an execution request or falls back to local execution.
+
+Worker submit and result envelopes now include the ledger's `request_digest`.
+Reconciliation requires that digest to match the original request, validates
+the result identity, base HEAD and scope, and accepts only terminal result
+envelopes. A valid recovered patch passes through the existing patch journal
+and Agent-owned patch application and pauses for separate verification and
+commit approvals. Concurrent checks cannot both consume the same blocked
+workflow. Unavailable, missing, conflicting, malformed, pending and unknown
+results remain blocked; further checks require another operator action.
+
+After an Agent restart, an interrupted recorded worker attempt is recovered
+as blocked and may only use the original result lookup. Existing patch-journal
+recovery takes over when a patch intent already exists. Legacy snapshots
+without a recorded worker request are not guessed or made resubmittable.
+The request field is additive to snapshot schema v3 and defaults to absent
+for older snapshots. New `unknown` execution statuses require an updated Agent
+reader; downgrading an affected snapshot to an older reader is not supported.
+An older worker without digest-bearing result envelopes cannot reconcile a
+result: the new Agent remains blocked. No automatic migration or production
+rollout follows from these compatibility rules.
 
 Production use still requires a named operator and reviewer, an immutable
 candidate/plan/repository/policy selection, approved credential and endpoint
 references, action-specific expiry/cancellation and ownership semantics, and
-an accepted isolated rehearsal including disconnect and restart cases. The
-current adapter maps transport failure or unknown worker outcome to a blocked
-workflow; a coherent operator reconciliation journey remains to be assessed.
+an accepted supported-environment rehearsal including disconnect and restart
+cases. Repository tests cover the operator reconciliation journey using
+disposable repositories, fake worker patches and an in-process authenticated
+worker API backed by its real durable ledger. They do not run a model command
+or demonstrate deployed container/network parity or production recovery.
 Running-image parity and production acceptance were not evaluated by the
 v0.65 pre-tag evidence run. They require separate supported-environment checks
 before any separately authorized activation.
@@ -137,8 +177,8 @@ evidence releases or grant authority.
 
 ### Repository validation
 
-The implementation passed the complete Agent suite: **1065 passed, 31
-warnings in 11.80s**. Test state was isolated under `/tmp` with
+The dispatch-binding implementation passed the complete Agent suite: **1065
+passed, 31 warnings in 11.80s**. Test state was isolated under `/tmp` with
 `ATLAS_AGENT_STATE_DIR`; the supported-host run used
 `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/atlas-agent .venv/bin/python -m
 pytest -q --tb=short services/atlas-agent/tests`.
@@ -149,3 +189,15 @@ The Agent changed-file Ruff gate, operational/repository capability parity
 check and `git diff --check` also passed.
 These are repository regression results, not release, container sandbox,
 running-image parity or production acceptance results.
+
+The subsequent lost-response implementation passed the complete Agent suite
+with **1087 tests**, execution-worker suite with **53 tests**, and Mission
+Control suite with **2420 tests in 175 files**. Mission Control lint and build
+passed with the existing hook-dependency and bundle-size advisories. Focused
+checks cover lost response before result consumption, Agent restart with an
+unrecorded response, unavailable/unknown/conflicting lookup results, changed
+repository configuration, stale candidate validation, concurrent checks,
+failure to persist the request, and no automatic lookup on UI refresh.
+The durable worker rehearsal drops the submit response after an inert runner
+finishes, reopens the ledger, rejects unauthenticated lookup, and recovers the
+terminal result with exactly one submission, one lookup and one runner call.

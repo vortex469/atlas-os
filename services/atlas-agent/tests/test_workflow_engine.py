@@ -2446,6 +2446,7 @@ def make_candidate_engine(
         modified_files=("compose.production.yaml",),
     )
     execution_engine = Mock()
+    execution_engine.uses_worker = False
     execution_engine.execute.return_value = make_execution_result(
         root,
         status=execution_status,

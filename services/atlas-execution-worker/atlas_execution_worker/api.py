@@ -173,6 +173,7 @@ def create_app(
             status_code=202 if entry.state == "claimed" else 200,
             content={
                 "state": entry.state,
+                "request_digest": entry.request_digest,
                 "result": entry.result.to_dict() if entry.result else None,
             },
         )
@@ -198,6 +199,7 @@ def create_app(
         return JSONResponse(
             content={
                 "state": entry.state,
+                "request_digest": entry.request_digest,
                 "result": entry.result.to_dict() if entry.result else None,
             }
         )

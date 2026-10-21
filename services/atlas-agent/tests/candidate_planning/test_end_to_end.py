@@ -35,6 +35,7 @@ from app.config.settings import Settings
 from app.execution.backends import WorkerExecutionBackend
 from app.execution.engine import ExecutionEngine
 from app.execution.models import RunnerOutcome
+from app.execution.worker_client import WorkerTransportError
 from app.execution.worker_contracts import WorkerExecutionRequest
 from app.main import create_app
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
@@ -113,8 +114,12 @@ class FakeVerificationRunner:
 class FakeComposeWorkerClient:
     """Return a patch without launching a worker or modifying the checkout."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, lose_response: bool = False) -> None:
         self.calls = 0
+        self.lose_response = lose_response
+        self.lookups: list[str] = []
+        self.response: dict[str, object] | None = None
+        self.original_id: str | None = None
 
     def submit(self, request: WorkerExecutionRequest) -> dict[str, object]:
         self.calls += 1
@@ -131,10 +136,23 @@ class FakeComposeWorkerClient:
 +    image: atlas-core:new
 """
         result = result_for(request, patch, request.expected_repository_head)
-        return {"state": "succeeded", "result": result.to_dict()}
+        self.original_id = request.execution_request_id
+        self.response = {
+            "state": "completed", "result": result.to_dict(),
+            "request_digest": request.request_digest,
+        }
+        if self.lose_response:
+            raise WorkerTransportError("response lost after worker completion")
+        return self.response
+
+    def get_result(self, request_id: str) -> dict[str, object]:
+        self.lookups.append(request_id)
+        assert request_id == self.original_id
+        assert self.response is not None
+        return self.response
 
 
-@pytest.mark.parametrize("backend", ["local", "worker"])
+@pytest.mark.parametrize("backend", ["local", "worker", "worker-lost-response", "worker-lost-response-reload"])
 def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     tmp_path: Path,
     backend: str,
@@ -162,11 +180,12 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         clock=lambda: mock_now,
     )
     implementation_runner = (
-        FakeComposeWorkerClient() if backend == "worker" else FakeImplementationRunner()
+        FakeComposeWorkerClient(lose_response="lost-response" in backend)
+        if backend.startswith("worker") else FakeImplementationRunner()
     )
     execution_engine = (
         ExecutionEngine(backend=WorkerExecutionBackend(implementation_runner))
-        if backend == "worker"
+        if backend.startswith("worker")
         else ExecutionEngine(implementation_runner)
     )
     verification_runner = FakeVerificationRunner()
@@ -249,6 +268,19 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         ),
     )
     verification_boundary = engine.resume(workflow_id)
+    if "lost-response" in backend:
+        assert verification_boundary.sprint.phase is SprintPhase.BLOCKED
+        assert verification_boundary.execution_result.status.value == "unknown"
+        assert implementation_runner.calls == 1
+        assert verification_runner.calls == 0
+        assert (repository / "compose.production.yaml").read_text().endswith("image: atlas-core:old\n")
+        if backend.endswith("reload"):
+            persistence.initialize()
+        stored = workflow_state.get_session(workflow_id)
+        assert stored.can_reconcile_worker
+        assert stored.worker_execution_request.execution_request_id == translated.implementation_request_id
+        verification_boundary = engine.resume(workflow_id)
+        assert implementation_runner.lookups == [translated.implementation_request_id]
     assert verification_boundary.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
     boundary_workflow = workflow_state.get_session(workflow_id)
     assert boundary_workflow is not None

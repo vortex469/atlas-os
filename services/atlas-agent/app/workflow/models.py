@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 
 from app.approval.models import ApprovalRequest
 from app.context.models import AgentContext
-from app.execution.models import ExecutionResult
+from app.execution.models import ExecutionResult, ExecutionStatus
+from app.execution.worker_contracts import WorkerExecutionRequest
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.models import CommitRequest, CommitResult
@@ -178,6 +179,7 @@ class WorkflowSession:
     review_analysis: ModelResponse | None = None
     context: AgentContext | None = None
     execution_result: ExecutionResult | None = None
+    worker_execution_request: WorkerExecutionRequest | None = None
     worker_patch_applied: bool = False
     worker_baseline_status: tuple[tuple[str, str], ...] | None = None
     changed_files: tuple[Path, ...] = ()
@@ -194,7 +196,38 @@ class WorkflowSession:
     reviewed_content_fingerprint: str | None = None
     blocked_reason: str | None = None
 
+    @property
+    def can_reconcile_worker(self) -> bool:
+        """Only uncertain, durably identified repository attempts are eligible."""
+        return (
+            self.state is WorkflowSessionState.BLOCKED
+            and self.source is WorkflowSource.CANDIDATE
+            and self.effect_kind is WorkflowEffectKind.REPOSITORY_CHANGE
+            and self.worker_execution_request is not None
+            and not self.worker_patch_applied
+            and (
+                self.execution_result is None
+                or self.execution_result.status is ExecutionStatus.UNKNOWN
+            )
+        )
+
     def __post_init__(self) -> None:
+        if self.worker_execution_request is not None:
+            worker = self.worker_execution_request
+            worker.validate()
+            implementation = self.candidate_implementation_request
+            if (
+                self.source is not WorkflowSource.CANDIDATE
+                or self.effect_kind is not WorkflowEffectKind.REPOSITORY_CHANGE
+                or implementation is None
+                or worker.workflow_id != self.identifier
+                or worker.execution_request_id != implementation.identifier
+                or worker.candidate_id != implementation.candidate_id
+                or worker.candidate_fingerprint != implementation.candidate_fingerprint
+                or worker.plan_id != implementation.candidate_plan_id
+                or worker.plan_fingerprint != implementation.candidate_plan_fingerprint
+            ):
+                raise ValueError("worker request does not match candidate workflow")
         if (
             self.candidate_metadata is not None
             and self.candidate_metadata.effect_kind is not self.effect_kind

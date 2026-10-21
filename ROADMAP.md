@@ -16,6 +16,13 @@ candidate workflow through separate approvals and a local commit with both
 the local backend and a fake worker. This is repository implementation, not
 production acceptance or a new evidence stage. See the
 [action boundary and remaining prerequisites](docs/architecture/codex-execution-sandbox-hardening.md#v066-approved-repository-action-binding).
+The subsequent approved lost-response work records the exact worker request
+before dispatch, shows an unknown outcome explicitly, and offers an operator
+check of the original result through the existing Resume endpoint. Result
+lookup is read-only at the worker, requires the original ledger digest, never
+resubmits execution, and retains separate verification and commit approvals.
+Disposable-repository and durable-ledger rehearsals cover response loss,
+restart, concurrent checks and fail-closed refusal cases.
 The seven installation blockers, 67 fixed-false fields and deferred successor
 control-plane boundary remain unchanged. Production action readiness and
 activation are not claimed.

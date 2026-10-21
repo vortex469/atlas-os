@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from app.execution.worker_contracts import CODEX_WORKSPACE_EXEC_ARGV_PREFIX
+from asgi_test_client import ASGITestClient as TestClient
 from atlas_execution_worker.api import _disabled_result, create_app
 from atlas_execution_worker.durable_ledger import (
     DurableLedgerConflictError,
@@ -17,7 +18,6 @@ from atlas_execution_worker.durable_ledger import (
     DurableRequestLedger,
 )
 from atlas_execution_worker.workspace import WorkerWorkspaceManager
-from asgi_test_client import ASGITestClient as TestClient
 from test_worker import make_request
 
 
@@ -126,6 +126,88 @@ def test_durable_api_reuses_disabled_result_after_restart(tmp_path: Path) -> Non
     assert first_response.status_code == second_response.status_code == 200
     assert first_response.json() == second_response.json()
     assert second.get(f"/v1/executions/{request.execution_request_id}").json() == second_response.json()
+
+
+def test_lost_response_reconciles_authenticated_durable_result_without_reexecution(tmp_path):
+    from app.execution.backends import WorkerExecutionBackend, WorkerExecutionContext
+    from app.execution.models import ExecutionRequest, ExecutionStatus
+    from app.execution.worker_client import WorkerTransportError
+    from app.execution.worker_contracts import WorkerExecutionStatus
+    from app.planning.models import ImplementationPlan
+
+    request = make_request()
+    database = tmp_path / "ledger.sqlite3"
+
+    class InertRunner:
+        calls = 0
+
+        def execute(self, worker_request):
+            self.calls += 1
+            return replace(
+                _disabled_result(worker_request),
+                status=WorkerExecutionStatus.SUCCEEDED,
+                failure_code=None, return_code=0,
+                workspace_head=worker_request.expected_repository_head,
+                base_repository_head=worker_request.expected_repository_head,
+            )
+
+    runner = InertRunner()
+    api = TestClient(create_app(
+        durable_ledger=DurableRequestLedger(database), execution_enabled=True,
+        runners={request.repository_token: runner}, authentication_token="test-only-token",
+    ))
+
+    class LosingClient:
+        submissions = 0
+        lookups = 0
+
+        def submit(self, worker_request):
+            self.submissions += 1
+            response = api.post(
+                "/v1/executions", json=worker_request.to_dict(),
+                headers={"Authorization": "Bearer test-only-token"},
+            )
+            assert response.status_code == 200
+            raise WorkerTransportError("response dropped after durable completion")
+
+        def get_result(self, request_id):
+            self.lookups += 1
+            reopened = TestClient(create_app(
+                durable_ledger=DurableRequestLedger(database),
+                authentication_token="test-only-token",
+            ))
+            assert reopened.get(f"/v1/executions/{request_id}").status_code == 401
+            response = reopened.get(
+                f"/v1/executions/{request_id}",
+                headers={"Authorization": "Bearer test-only-token"},
+            )
+            assert response.status_code == 200
+            return response.json()
+
+    client = LosingClient()
+    backend = WorkerExecutionBackend(client, repository_token=request.repository_token)
+    plan = ImplementationPlan(
+        checkpoint_id="checkpoint", title="Inert rehearsal", goal="No execution",
+        repository_root=tmp_path, branch=request.repository_branch,
+        head_commit=request.expected_repository_head,
+        scope_items=(request.execution_intent,),
+        affected_files=(Path("compose.production.yaml"),), required_tests=(), risks=(),
+    )
+    execution = ExecutionRequest(request.execution_request_id, plan, request.argv, tmp_path)
+    context = WorkerExecutionContext(
+        workflow_id=request.workflow_id, candidate_id=request.candidate_id,
+        candidate_fingerprint=request.candidate_fingerprint,
+        plan_id=request.plan_id, plan_fingerprint=request.plan_fingerprint,
+        expected_repository_head=request.expected_repository_head,
+        repository_token=request.repository_token,
+        allowed_affected_files=request.allowed_affected_files,
+        repository_branch=request.repository_branch,
+    )
+
+    assert backend.execute(execution, context=context).status is ExecutionStatus.UNKNOWN
+    assert backend.reconcile(execution, context=context).status is ExecutionStatus.SUCCEEDED
+    assert client.submissions == client.lookups == runner.calls == 1
+    assert len(DurableRequestLedger(database)) == 1
 
 
 def test_unknown_workspace_is_quarantined(tmp_path: Path) -> None:
