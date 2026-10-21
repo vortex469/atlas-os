@@ -1,5 +1,25 @@
 # Atlas OS Roadmap
 
+## v0.66 approved bounded repository action implementation
+
+After P0 review, the operator approved implementation directly in Codex of the
+bounded `update-compose-stack` journey, excluding deployment, runtime
+enablement, tags, push and publication. The demonstrated implementation gap
+is pre-dispatch binding of worker context to the configured repository and
+approved request plan. The adapter now refuses substituted repository tokens,
+HEADs, branches, file scopes and directories before worker submission, and
+refuses silently changed explicit timeouts or omitted environment overrides.
+
+The existing approval, transport, durable ledger, patch application,
+verification and commit mechanisms are reused. Tests exercise the complete
+candidate workflow through separate approvals and a local commit with both
+the local backend and a fake worker. This is repository implementation, not
+production acceptance or a new evidence stage. See the
+[action boundary and remaining prerequisites](docs/architecture/codex-execution-sandbox-hardening.md#v066-approved-repository-action-binding).
+The seven installation blockers, 67 fixed-false fields and deferred successor
+control-plane boundary remain unchanged. Production action readiness and
+activation are not claimed.
+
 ## v0.65 published release status (2026-10-21)
 
 The v0.65 release is published as

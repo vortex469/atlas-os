@@ -1,5 +1,6 @@
 """Tests for the S3 execution backend seam and worker adapter."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,12 @@ from app.execution.backends import (
     WorkerExecutionContext,
 )
 from app.execution.exceptions import ExecutionValidationError
-from app.execution.models import ExecutionRequest, ExecutionStatus, RunnerOutcome
+from app.execution.models import (
+    EnvironmentVariable,
+    ExecutionRequest,
+    ExecutionStatus,
+    RunnerOutcome,
+)
 from app.execution.worker_client import TcpWorkerClient, WorkerTransportError
 from app.execution.worker_contracts import (
     CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
@@ -81,7 +87,7 @@ def make_context() -> WorkerExecutionContext:
         plan_id="plan-1",
         plan_fingerprint="plan-fingerprint-1",
         expected_repository_head="a" * 40,
-        repository_token="repository-token-1",
+        repository_token="atlas-repository",
         allowed_affected_files=("compose.production.yaml",),
         repository_branch="feature/worker",
     )
@@ -195,7 +201,7 @@ def test_worker_requires_explicit_context() -> None:
 
 def test_worker_backend_rejects_result_with_stale_base_head() -> None:
     request = make_request()
-    context = make_context()
+    context = replace(make_context(), repository_token="opaque-token")
     client = FakeWorkerClient()
     backend = WorkerExecutionBackend(client, repository_token="opaque-token")
     worker_request = worker_request_for(request, context)
@@ -233,3 +239,78 @@ def test_worker_backend_uses_opaque_configured_repository_token() -> None:
     assert backend.repository_token == "opaque-token"
     with pytest.raises(ValueError):
         WorkerExecutionBackend(FakeWorkerClient(), repository_token="/workspace/repository")
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"repository_token": "other-repository"}, "repository token"),
+        ({"expected_repository_head": "b" * 40}, "repository subject"),
+        ({"repository_branch": "other-branch"}, "repository subject"),
+        ({"repository_branch": None}, "repository subject"),
+        ({"allowed_affected_files": ("secrets.yaml",)}, "affected files"),
+        (
+            {"allowed_affected_files": ("compose.production.yaml", "secrets.yaml")},
+            "affected files",
+        ),
+        ({"allowed_affected_files": ()}, "affected files"),
+        ({"working_directory": "subdirectory"}, "working directory"),
+        ({"working_directory": ".."}, "working directory"),
+    ],
+)
+def test_worker_rejects_substituted_subject_before_submission(changes, message) -> None:
+    client = FakeWorkerClient()
+    backend = WorkerExecutionBackend(client)
+
+    with pytest.raises(ExecutionValidationError, match=message):
+        backend.execute(make_request(), context=replace(make_context(), **changes))
+
+    assert client.requests == []
+
+
+@pytest.mark.parametrize("directory", [Path("subdirectory"), Path("/outside")])
+def test_worker_rejects_request_directory_substitution_before_submission(directory) -> None:
+    client = FakeWorkerClient()
+    request = replace(make_request(), working_directory=directory)
+
+    with pytest.raises(ExecutionValidationError, match="working directory"):
+        WorkerExecutionBackend(client).execute(request, context=make_context())
+
+    assert client.requests == []
+
+
+def test_worker_does_not_silently_replace_an_explicit_request_timeout() -> None:
+    client = FakeWorkerClient()
+    request = replace(make_request(), timeout_seconds=30.0)
+
+    with pytest.raises(ExecutionValidationError, match="timeout"):
+        WorkerExecutionBackend(client).execute(request, context=make_context())
+
+    assert client.requests == []
+
+
+def test_worker_does_not_silently_drop_request_environment() -> None:
+    client = FakeWorkerClient()
+    request = replace(
+        make_request(), environment=(EnvironmentVariable("APP_MODE", "review"),)
+    )
+
+    with pytest.raises(ExecutionValidationError, match="environment overrides"):
+        WorkerExecutionBackend(client).execute(request, context=make_context())
+
+    assert client.requests == []
+
+
+def test_worker_accepts_matching_subject_and_explicit_timeout() -> None:
+    client = FakeWorkerClient()
+    request = replace(make_request(), timeout_seconds=30.0, working_directory=Path("."))
+    context = replace(make_context(), timeout_seconds=30.0)
+    worker_request = worker_request_for(request, context)
+    client.response = worker_result(worker_request, status=WorkerExecutionStatus.SUCCEEDED)
+
+    result = WorkerExecutionBackend(client).execute(request, context=context)
+
+    assert result.status is ExecutionStatus.SUCCEEDED
+    assert len(client.requests) == 1
+    assert client.requests[0].timeout_seconds == 30.0
+    assert client.requests[0].request_digest == worker_request.request_digest

@@ -30,3 +30,122 @@ reaches the worker through the relay.
 Atlas Agent remains the sole workflow, approval, verification, review, patch
 application, and commit authority. Worker execution stays disabled by default;
 enabling it remains an explicit production setting.
+
+## v0.66 approved repository action binding
+
+The operator approved bounded `update-compose-stack` implementation work in
+Codex after reviewing the P0 scope. This approval permits repository changes
+and tests; it does not enable the worker or authorize a particular production
+execution request. The v0.65 successor installation control plane remains
+deferred.
+
+The selected operator journey reuses candidate planning, exact implementation
+approval, one worker request, Agent-owned patch application, separate exact
+verification approval, review, and separate exact local-commit approval. Its
+effect is a repository change to `compose.production.yaml`, not running
+`docker compose up`, restarting services, installing software, pushing, or
+publishing. The existing translator permits only the named repository targets
+`atlas-compose` and `atlas-repository`; it does not accept arbitrary intents
+or file scopes. The fixed RC1 smoke operation remains a separate test path.
+
+### Demonstrated gap and implementation
+
+Before this change, `WorkerExecutionBackend` built its outbound request from
+the supplied context without comparing its repository token to the configured
+token, or its HEAD, branch, affected files and directory to the approved
+request plan. Workflow construction normally supplied matching values and
+later patch checks rejected some mismatches, but those checks occurred after
+worker submission. A substituted context could therefore request work before
+the mismatch was detected.
+
+The adapter now raises `ExecutionValidationError` before worker contact if:
+
+- the context token differs from the configured repository token;
+- its HEAD or branch differs from the request plan;
+- its affected-file set differs from the plan;
+- its directory differs from the request directory, or the request resolves
+  outside the repository;
+- its timeout differs from an explicitly specified request timeout; or
+- the request has environment overrides, which the worker protocol cannot
+  represent and previously silently omitted.
+
+Existing worker-contract validation still rejects invalid paths, unsupported
+argv, malformed identities and out-of-bounds timeouts before submission.
+Matching requests retain the existing wire schema and digest. The normal
+candidate workflow uses a 120-second worker timeout, or 30 seconds for the
+fixed smoke operation. Existing limits remain 64 changed files, 1 MiB per
+bounded text field and 4 MiB for a patch; candidate translation further limits
+the normal action to `compose.production.yaml`.
+
+These checks verify consistency at the dispatch boundary. The upstream exact
+approval validator remains responsible for approval, candidate and plan
+freshness. Neither a matching context nor a successful worker result grants
+verification, commit, deployment or installation approval.
+
+### Seven installation blockers remain unresolved
+
+The exact blocker/owner/proof inventory remains in
+[`worker_activation_runtime_interface_prerequisite/contract.py`](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py).
+The repository-action path does not consume or discharge it.
+
+| Blocker | Missing installation contract or implementation |
+| --- | --- |
+| `worker_activation_runtime_not_defined` | Trusted installation-runtime identity, capability composition, lifecycle, policy provenance and a distinct activation decision. The v0.64 definition remains reference-only. |
+| `store_contact_not_defined` | Authenticated installation-store subject, permitted operations, ownership and recovery protocol. Existing evidence stores and the repository ledger do not define this contact. |
+| `runtime_contact_not_defined` | Authenticated installation-runtime peer, endpoint, request/effect binding, limits and uncertain-contact handling. Repository worker transport is a separate capability. |
+| `worker_start_admission_not_defined` | Core admission of one exact owned runtime-start subject against validated contact prerequisites, expiry and cancellation. Existing execution-admission evidence does not admit runtime start. |
+| `worker_start_not_defined` | An installation start handler with durable one-shot reservation, crash-safe effect boundary and reconciliation without replay. The repository worker ledger does not implement installation start. |
+| `agent_invocation_not_defined` | A supported installation intent with authenticated invocation and exact request approvals. `update-compose-stack` support does not introduce `install-container`. |
+| `execution_start_boundary_not_defined` | Installation-specific execution capability, request and approval binding, and durable effect accounting. Repository execution contracts confer no installation authority. |
+
+All 67 fixed-false authority/material fields, the retained GET-only evidence
+projection and zero installation effect-plane consumers remain unchanged.
+
+### Acceptance and remaining path
+
+Focused acceptance requires zero worker submissions for every substituted
+subject, directory, timeout or unsupported environment, plus one submission
+for a matching request. The full candidate journey is tested with both the
+local backend and a fake worker returning a bounded Compose patch. It must
+pause before implementation without approval, pause separately for
+verification and commit, change only the approved file, and preserve its audit
+chain and terminal state after persistence reload. The worker fixture starts
+no worker and invokes no model, network transport or deployment command.
+
+Existing patch-journal recovery and worker-ledger restart tests establish
+their respective no-replay behavior. They do not demonstrate end-to-end
+production recovery from a lost transport response. Unknown outcomes must
+remain blocked: never resubmit merely because a response was lost.
+
+Production use still requires a named operator and reviewer, an immutable
+candidate/plan/repository/policy selection, approved credential and endpoint
+references, action-specific expiry/cancellation and ownership semantics, and
+an accepted isolated rehearsal including disconnect and restart cases. The
+current adapter maps transport failure or unknown worker outcome to a blocked
+workflow; a coherent operator reconciliation journey remains to be assessed.
+Running-image parity and production acceptance were not evaluated by the
+v0.65 pre-tag evidence run. They require separate supported-environment checks
+before any separately authorized activation.
+
+The path to v1 is to close demonstrated action-specific gaps, validate the
+operator journey and recovery in isolation, separately review activation,
+then validate the supported capability matrix, security, upgrade,
+backup/restore, recovery targets and runbooks against immutable release
+artifacts. Installation and external workflow integrations require their own
+contracts if selected. Roadmap version bands do not mandate intermediate
+evidence releases or grant authority.
+
+### Repository validation
+
+The implementation passed the complete Agent suite: **1065 passed, 31
+warnings in 11.80s**. Test state was isolated under `/tmp` with
+`ATLAS_AGENT_STATE_DIR`; the supported-host run used
+`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/atlas-agent .venv/bin/python -m
+pytest -q --tb=short services/atlas-agent/tests`.
+The existing worker durable-ledger suite also passed: **9 passed in 0.52s**,
+using `PYTHONPATH=services/atlas-agent:services/atlas-execution-worker` and
+`services/atlas-execution-worker/tests/test_durable_ledger.py`.
+The Agent changed-file Ruff gate, operational/repository capability parity
+check and `git diff --check` also passed.
+These are repository regression results, not release, container sandbox,
+running-image parity or production acceptance results.

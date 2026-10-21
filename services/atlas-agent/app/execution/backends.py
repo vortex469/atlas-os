@@ -6,6 +6,7 @@ import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from app.execution.exceptions import ExecutionValidationError
@@ -144,6 +145,7 @@ class WorkerExecutionBackend:
     ) -> ExecutionResult:
         if context is None:
             raise ExecutionValidationError("Worker execution context is required")
+        self._validate_context(request, context)
         worker_request = WorkerExecutionRequest.build(
             execution_request_id=request.identifier,
             workflow_id=context.workflow_id,
@@ -181,6 +183,40 @@ class WorkerExecutionBackend:
         except (TypeError, ValueError, KeyError) as exc:
             return self._failure(request, ExecutionStatus.LAUNCH_FAILED, "invalid_result", str(exc))
         return self._map_result(request, result)
+
+    def _validate_context(
+        self, request: ExecutionRequest, context: WorkerExecutionContext
+    ) -> None:
+        """Reject subject substitution before any worker contact occurs."""
+        if context.repository_token != self.repository_token:
+            raise ExecutionValidationError("Worker repository token mismatch")
+        if (
+            context.expected_repository_head != request.plan.head_commit
+            or context.repository_branch != request.plan.branch
+        ):
+            raise ExecutionValidationError("Worker repository subject mismatch")
+        if set(context.allowed_affected_files) != {
+            path.as_posix() for path in request.plan.affected_files
+        }:
+            raise ExecutionValidationError("Worker affected files mismatch")
+        root = request.plan.repository_root.resolve(strict=False)
+        working_directory = request.working_directory
+        if not working_directory.is_absolute():
+            working_directory = root / working_directory
+        working_directory = working_directory.resolve(strict=False)
+        if (
+            not working_directory.is_relative_to(root)
+            or (root / Path(context.working_directory)).resolve(strict=False)
+            != working_directory
+        ):
+            raise ExecutionValidationError("Worker working directory mismatch")
+        if (
+            request.timeout_seconds is not None
+            and context.timeout_seconds != request.timeout_seconds
+        ):
+            raise ExecutionValidationError("Worker timeout mismatch")
+        if request.environment:
+            raise ExecutionValidationError("Worker environment overrides are unsupported")
 
     @staticmethod
     def _map_result(
