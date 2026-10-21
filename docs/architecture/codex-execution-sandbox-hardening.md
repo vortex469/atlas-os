@@ -236,3 +236,39 @@ success is not proof that these assertions ran; validation of the corrected
 commands requires a new candidate run. The initial `2a63d5c2` isolated CI-mode
 container run passed the new TCP tests, integration, recovery and Rest Server
 checks, but is not used to establish those previously skipped assertions.
+
+The corrected candidate `be803781ea01f94c4d82926d88a0a94c33d96655`
+passed the existing `container-release-gate` on Hermes in
+`ATLAS_CONTAINER_GATE_MODE=github-integration`, exit 0. This run included the
+two TCP tests inside the packaged worker, the now-executed worker/relay and
+Agent/worker checks, Core Docker diagnostics, container integration, the
+five-volume data-recovery gate and Rest Server replication/restore. It used
+an isolated Compose project and dummy credentials; it did not use an operator
+Codex login. The corrected gate-script regression tests also passed: **7
+passed in 0.56s**.
+
+A separate untagged worker image built from that candidate,
+`sha256:b0488377fa41e6bcc7dccdebea43cdcf17db6efb77c0947dde9913de2874986e`,
+passed both TCP tests under `runsc` (**2 tests in 0.754s**, exit 0). Container
+inspection confirmed UID/GID `10001:10001`, read-only root, all capabilities
+dropped, `no-new-privileges:true`, network mode `none`, and no host bind mounts.
+Only loopback listeners and a temporary filesystem were used. The temporary
+container was removed afterward.
+
+Evidence is retained locally in
+`.task-evidence/v066-container-rehearsal/`: `container-gate-corrected.log`,
+`worker-build.log`, `worker-image.id`, `runsc-container.txt`, `runsc-tcp.log`,
+and `production-before.txt` / `production-after.txt`. The before/after records
+match for all seven existing production containers: IDs, image IDs and start
+times were unchanged. The corrected gate's containers, volumes and networks
+and the standalone rehearsal container were absent after cleanup.
+
+This closes the bounded real-TCP and isolated-container rehearsal for the
+inert recovery fixture. CI-mode integration is not a production `runsc`
+sandbox proof. The separate `runsc` result proves this TCP fixture under that
+runtime, not the nested Codex sandbox, authenticated model execution, the
+full deployed operator journey or production acceptance. Those remain
+separate prerequisites, along with selection of an exact candidate, owned
+policy and approvals, credential/endpoint references, expiry/cancellation
+semantics and an independent readiness decision. No tag, push, publication,
+production deployment or production execution enablement was performed.

@@ -23,6 +23,13 @@ lookup is read-only at the worker, requires the original ledger digest, never
 resubmits execution, and retains separate verification and commit approvals.
 Disposable-repository and durable-ledger rehearsals cover response loss,
 restart, concurrent checks and fail-closed refusal cases.
+The bounded real-TCP rehearsal also passed in the packaged worker and in a
+separate hardened `runsc` container, using an inert runner. Corrected stdin
+handling makes the existing worker/relay, Agent/worker and Core Docker probes
+actually execute. The isolated CI-mode container, data-recovery and Rest
+Server gates passed at `be803781`; existing production container identities,
+image IDs and start times were unchanged. This does not establish nested
+Codex sandbox/model execution or acceptance of the deployed operator journey.
 The seven installation blockers, 67 fixed-false fields and deferred successor
 control-plane boundary remain unchanged. Production action readiness and
 activation are not claimed.
