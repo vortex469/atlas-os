@@ -105,7 +105,7 @@ else
     echo "NOTICE: skipping the runsc/Codex nested-sandbox proof in runc integration mode"
 fi
 
-docker exec "$worker_container" python - <<'PY'
+docker exec -i "$worker_container" python - <<'PY'
 import socket
 try:
     socket.create_connection(('atlas-execution-worker-relay', 8081), timeout=1)
@@ -115,7 +115,7 @@ else:
     raise SystemExit('worker can reach the relay control-plane listener')
 PY
 
-docker exec "$agent_container" python - <<'PY'
+docker exec -i "$agent_container" python - <<'PY'
 import json
 import socket
 s = socket.create_connection(('atlas-execution-worker-relay', 8081), timeout=3)

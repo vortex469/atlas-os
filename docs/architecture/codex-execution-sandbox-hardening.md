@@ -226,3 +226,13 @@ Supported-host validation passed both TCP tests, and the combined worker and
 container-gate regression selection passed **62 tests in 2.17s**. Container
 execution and runsc-specific results require their own observed runs; the
 host TCP pass alone does not establish container or production readiness.
+
+Review of the container validation found three older stdin-fed Python probes
+without `docker exec -i`: worker-to-relay isolation, Agent-to-worker health,
+and Core Docker connection diagnostics. A print-only comparison in the
+isolated worker confirmed that the commands without `-i` did not execute
+their supplied code. All three probes now keep stdin open. Historical gate
+success is not proof that these assertions ran; validation of the corrected
+commands requires a new candidate run. The initial `2a63d5c2` isolated CI-mode
+container run passed the new TCP tests, integration, recovery and Rest Server
+checks, but is not used to establish those previously skipped assertions.
