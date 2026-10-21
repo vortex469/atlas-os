@@ -1,8 +1,38 @@
 # Atlas Release Checklist and Evidence
 
-## v0.65 current host validation status (2026-10-06)
+## v0.65 published release status (2026-10-21)
 
-The current manual host evidence updates the gate status below. Earlier
+The published release is
+[`atlas-v0.65.0`](https://github.com/vortex469/atlas-os/releases/tag/atlas-v0.65.0)
+at exact released SHA
+[`a631ff07a6c58d6387008c69fa10c2edc491ef20`](https://github.com/vortex469/atlas-os/commit/a631ff07a6c58d6387008c69fa10c2edc491ef20).
+
+- [x] Quality gates: run
+  [`39516193289`](https://github.com/vortex469/atlas-os/actions/runs/39516193289),
+  **success**.
+- [x] Container release gate: run
+  [`39516193301`](https://github.com/vortex469/atlas-os/actions/runs/39516193301),
+  **success**.
+- [x] Pre-tag `release-evidence`: **exit 0**,
+  `summary.status=ready`.
+- [x] Published release: [GitHub release page](https://github.com/vortex469/atlas-os/releases/tag/atlas-v0.65.0).
+- [ ] Running-image parity was not evaluated by the pre-tag evidence run.
+- [ ] Production deployment acceptance was not evaluated by the pre-tag
+  evidence run.
+
+These facts establish publication and the recorded release gates; they do not
+enable runtime behavior, select v0.66, or accept inherited milestones without
+supporting evidence. The deferred successor control-plane boundary remains
+unchanged.
+
+The detailed host and workbench records below are historical evidence from
+their original dates and SHAs. Their earlier failures and open-gate results
+remain preserved and are not rewritten as passes.
+
+## v0.65 current host validation status (historical, 2026-10-06)
+
+The manual host evidence from 2026-10-06 updated the gate status recorded
+below at that time. Earlier
 workbench failures remain historical records in this checklist and in the
 [v0.65 validation record](architecture/v0.65-release-validation.md).
 

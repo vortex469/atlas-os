@@ -1,6 +1,28 @@
 # Atlas OS Roadmap
 
-## v0.65 Corrective — deferred Sync reconciled (2026-09-23)
+## v0.65 published release status (2026-10-21)
+
+The v0.65 release is published as
+[`atlas-v0.65.0`](https://github.com/vortex469/atlas-os/releases/tag/atlas-v0.65.0),
+at exact released SHA
+[`a631ff07a6c58d6387008c69fa10c2edc491ef20`](https://github.com/vortex469/atlas-os/commit/a631ff07a6c58d6387008c69fa10c2edc491ef20).
+The quality gate run [`39516193289`](https://github.com/vortex469/atlas-os/actions/runs/39516193289)
+and container release gate run
+[`39516193301`](https://github.com/vortex469/atlas-os/actions/runs/39516193301)
+both succeeded. Pre-tag `release-evidence` exited 0 with
+`summary.status=ready`.
+
+This publication records the release and its validation evidence; it does not
+enable runtime behavior, select v0.66, or accept inherited milestones without
+supporting evidence. The pre-tag evidence run did not evaluate running-image
+parity or production deployment acceptance, so neither is claimed here. The
+deferred successor control-plane boundary remains in force.
+
+The corrective and gate records below are historical evidence from their
+original SHAs and dates. Their earlier open-gate or no-publication statements
+are not the current publication status and are not rewritten as passes.
+
+## v0.65 Corrective — deferred Sync reconciled (historical, 2026-09-23)
 
 The [corrective authority boundary](docs/architecture/v0.65-authority-boundary.md)
 removes the unauthorized P1–P5 successor contract, store/service, API,
@@ -10,7 +32,7 @@ UI is selected.
 
 Core authority, the seven blockers, 67 fixed-false fields, default-off behavior,
 GET-only Mission Control, and zero effect-plane consumers remain preserved.
-The current v0.65 release checklist records the Core, Agent,
+The then-current v0.65 release checklist recorded the Core, Agent,
 execution-worker, Mission Control, container, recovery, Rest Server, Ruff, and
 execution-worker production-runtime gates as passed, including the formerly
 stale execution-worker runtime gate. Release acceptance is still a named

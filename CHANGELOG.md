@@ -6,7 +6,22 @@ release boundaries.
 
 ## Unreleased
 
-#### v0.65 Corrective - deferred Sync reconciled (closure open)
+#### v0.65 published release
+
+- Published as [`atlas-v0.65.0`](https://github.com/vortex469/atlas-os/releases/tag/atlas-v0.65.0)
+  at exact SHA
+  [`a631ff07a6c58d6387008c69fa10c2edc491ef20`](https://github.com/vortex469/atlas-os/commit/a631ff07a6c58d6387008c69fa10c2edc491ef20).
+- Quality gate run [`39516193289`](https://github.com/vortex469/atlas-os/actions/runs/39516193289)
+  and container release gate run
+  [`39516193301`](https://github.com/vortex469/atlas-os/actions/runs/39516193301)
+  succeeded. Pre-tag `release-evidence` exited 0 with
+  `summary.status=ready`.
+- The pre-tag evidence run did not evaluate running-image parity or production
+  deployment acceptance. Publication does not enable runtime behavior, select
+  v0.66, or accept inherited milestones without supporting evidence; the
+  deferred successor control-plane boundary remains in force.
+
+#### v0.65 Corrective - deferred Sync reconciled (historical, closure open)
 
 - Removed the unauthorized P1–P5 successor control-plane contract, durable
   store/service, Core API, permissions, configuration, startup wiring, and
