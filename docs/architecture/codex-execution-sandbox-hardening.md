@@ -272,3 +272,68 @@ separate prerequisites, along with selection of an exact candidate, owned
 policy and approvals, credential/endpoint references, expiry/cancellation
 semantics and an independent readiness decision. No tag, push, publication,
 production deployment or production execution enablement was performed.
+
+### Nested sandbox and pending model rehearsal
+
+The credential-free
+`services/atlas-execution-worker/tests/probe_nested_sandbox.py` rehearsal
+passed with the pinned worker image and **Codex CLI 0.147.0** under `runsc`.
+It invokes the existing packaged `sandbox_probe.py` through `codex sandbox`,
+with a writable workspace, separate protected worker-state tmpfs and a
+loopback-only execution-disabled worker fixture. The workspace write passed,
+the write to `/opt/atlas/execution-worker-state` was denied, and a direct
+request carrying a valid fixture token was rejected as `403 untrusted_peer`.
+There were zero model invocations and no account credentials were mounted.
+
+The initial probe used an outside target in `/tmp`, where the workspace
+profile permits scratch writes, and failed that overly broad assertion. The
+corrected probe uses the same persistent worker-state boundary as the existing
+production probe. This result does not claim isolation between all temporary
+paths or prove a model-generated change. Both logs are retained in
+`.task-evidence/v066-model-rehearsal/`, including
+`nested-sandbox-protected-state.log` for the passing case. The standalone
+container used no external network, a read-only root, UID/GID `10001:10001`,
+all capabilities dropped and `no-new-privileges:true`; it was removed afterward.
+
+The [official CLI reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli#codex-sandbox)
+describes the sandbox command, and the
+[non-interactive authentication guidance](https://learn.chatgpt.com/docs/non-interactive-mode#authenticate-in-automation)
+describes saved CLI authentication. The observed pinned-binary result above
+is the version-specific proof; it does not assume current documentation and
+the older worker CLI have identical behavior.
+
+The next model request is concretely prepared, with its native implementation
+approval still **pending**. The disposable repository is
+`/tmp/atlas-v066-model-fixture-86a3_lx0/repository` at immutable HEAD
+`2b08584b00478df1cada2e0ea0c14cb4cea17cbe`. Its only proposed edit is the
+`atlas-agent` image in its fixture `compose.production.yaml`, from
+`example.invalid/atlas-rehearsal:before` to
+`example.invalid/atlas-rehearsal:after`. This is an inert image reference;
+there is no image pull or deployment in the request.
+
+Existing candidate planning, translation, persistence and approval validation
+prepared the request from an explicitly local fixture reader, not a trusted
+Core production candidate. The validator refused the pending approval as
+`approval_not_granted`. The fixture repository is clean; no model ran.
+This establishes preparation and refusal behavior only, not Core provenance
+or any of the seven installation proofs.
+
+The exact worker request digest is
+`execution-request-digest-v1:9d4a9b4b710f991c46a2eb196c7b96865fc56e343bd9f76d0299f5ee73171dfc`.
+The native approval payload SHA-256 is
+`730bffe117fefaa97e11a1fd51ed402f5c0972f9bbeaaf06f2d8430f3b5a4cf1`.
+The candidate expires at `2026-10-22T17:02:49Z`. Its reviewed limits are one
+model invocation, 120 seconds, one affected file, the existing output/patch
+bounds, original-request lookup without replay on uncertainty, and separate
+verification and commit approvals after implementation. A local login-status
+check confirmed saved authentication is available without exposing its contents;
+using it in the isolated model worker remains unapproved.
+
+The full native request, expected patch and proposed credential/network/runtime
+plan are retained as `request-review.json`, `expected.patch` and
+`execution-plan.json` in the same ignored evidence directory. Model execution
+awaits an operator decision on that exact request and its use of saved Codex
+authentication. The repository contribution rule requires implementation,
+verification and commit approvals to bind to their respective immutable
+requests; earlier approval of implementation work does not approve this
+later-generated model request. Production activation remains excluded.

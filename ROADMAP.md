@@ -30,6 +30,12 @@ actually execute. The isolated CI-mode container, data-recovery and Rest
 Server gates passed at `be803781`; existing production container identities,
 image IDs and start times were unchanged. This does not establish nested
 Codex sandbox/model execution or acceptance of the deployed operator journey.
+The subsequent credential-free nested Codex sandbox probe passed under
+`runsc` with CLI 0.147.0 for workspace writes, protected worker-state write
+denial and authenticated wrong-peer refusal. A concrete disposable Compose
+model request is prepared with native approval pending; its missing approval
+is verified to block execution. No model call or account credential use is
+inherited from the implementation and test approvals.
 The seven installation blockers, 67 fixed-false fields and deferred successor
 control-plane boundary remain unchanged. Production action readiness and
 activation are not claimed.
