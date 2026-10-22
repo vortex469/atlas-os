@@ -1,13 +1,14 @@
-# Repository action implementation through the v0.70 target
+# v0.66 repository action implementation acceptance
 
 ## Selected outcome and authority
 
-The operator authorized continuing from v0.66 toward v0.70 and selected
-**finish the repository-edit journey first**. This is one useful implementation
-outcome, not five evidence releases. No intermediate versions are tagged or
-published. The approved action remains `update-compose-stack`: prepare one
-bounded repository edit, apply its patch under Agent ownership, verify and
-review it, then create a separately approved local commit.
+This record closes the bounded v0.66 repository-action implementation.
+Earlier wording described a consolidated v0.70 target; that was not separate
+completion of v0.67–v0.70. The operator has now selected the
+[sequential v0.66–v0.77 plan](v0.66-v0.77-repository-action-plan.md).
+The approved action remains `update-compose-stack`: prepare one bounded
+repository edit, apply its patch under Agent ownership, verify and review it,
+then create a separately approved local commit. Nothing here is published.
 
 Production deployment, backend enablement, image replacement, push, tags and
 publication remain excluded. Core installation activation is still deferred;
