@@ -19,6 +19,7 @@ from app.execution.worker_contracts import (
     WorkerFailureCode,
 )
 
+from .process import run_command
 from .workspace import WorkerWorkspaceManager, WorkspaceError
 
 MAX_CAPTURE_BYTES = 1_048_576
@@ -66,14 +67,8 @@ class WorkspaceExecutionRunner:
                     request, workspace.path, workspace.base_head, started
                 )
                 return result
-            process = subprocess.run(
-                list(request.argv),
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                timeout=request.timeout_seconds,
-                shell=False,
-                check=False,
+            process = run_command(
+                list(request.argv), cwd=cwd, timeout=request.timeout_seconds,
             )
             result = self._collect(request, workspace.path, workspace.base_head, process, started)
             return result
