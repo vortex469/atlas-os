@@ -365,6 +365,15 @@ export function WorkflowPage() {
                 </section>
             )}
 
+            {isRepository && workflow.worker_reconciliation?.request_digest && (
+                <details className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
+                    <summary className="cursor-pointer text-sm text-slate-300">Worker request record</summary>
+                    <p className="mt-2 break-all text-sm text-slate-400">Request: {workflow.worker_reconciliation.request_id}</p>
+                    <p className="mt-2 break-all text-sm text-slate-400">Digest: {workflow.worker_reconciliation.request_digest}</p>
+                    <p className="mt-2 text-sm text-slate-400">This identifies the submitted request. It does not grant approval for another action.</p>
+                </details>
+            )}
+
             {isRepository && (
                 <>
                     <VerificationReviewSection

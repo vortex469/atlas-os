@@ -142,7 +142,7 @@ def worker_result(request: WorkerExecutionRequest, *, failure_code=None, status=
             sandbox_profile="atlas-worker",
         ),
     )
-    return {"state": "completed", "result": result.to_dict()}
+    return {"state": "completed", "request_digest": request.request_digest, "result": result.to_dict()}
 
 
 def test_local_backend_preserves_runner_success() -> None:
@@ -207,6 +207,25 @@ def test_worker_requires_explicit_context() -> None:
         WorkerExecutionBackend(FakeWorkerClient()).execute(make_request())
 
 
+@pytest.mark.parametrize("digest", [None, "execution-request-digest-v1:" + "0" * 64])
+def test_submission_result_requires_the_exact_request_digest(digest) -> None:
+    request = make_request()
+    context = make_context()
+    response = worker_result(worker_request_for(request, context), status=WorkerExecutionStatus.SUCCEEDED)
+    if digest is None:
+        response.pop("request_digest")
+    else:
+        response["request_digest"] = digest
+    client = FakeWorkerClient(response)
+
+    result = WorkerExecutionBackend(client).execute(request, context=context)
+
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.worker_result is None
+    assert len(client.requests) == 1
+    assert client.lookups == []
+
+
 def test_worker_backend_rejects_result_with_stale_base_head() -> None:
     request = make_request()
     context = replace(make_context(), repository_token="opaque-token")
@@ -236,7 +255,7 @@ def test_worker_backend_rejects_result_with_stale_base_head() -> None:
             sandbox_profile="worker",
         ),
     )
-    client.response = {"state": "completed", "result": result.to_dict()}
+    client.response = {"state": "completed", "request_digest": worker_request.request_digest, "result": result.to_dict()}
     mapped = backend.execute(request, context=context)
     assert mapped.status is ExecutionStatus.UNKNOWN
     assert mapped.error.startswith("worker_outcome_unknown:")

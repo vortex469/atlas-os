@@ -189,8 +189,6 @@ class WorkerExecutionBackend:
             response = self._client.get_result(worker_request.execution_request_id)
         except WorkerTransportError:
             return self._unknown(request)
-        if not isinstance(response, dict) or response.get("request_digest") != worker_request.request_digest:
-            return self._unknown(request)
         return self._decode_response(request, worker_request, response)
 
     def _decode_response(
@@ -200,6 +198,8 @@ class WorkerExecutionBackend:
         response: object,
     ) -> ExecutionResult:
         if not isinstance(response, dict):
+            return self._unknown(request)
+        if response.get("request_digest") != worker_request.request_digest:
             return self._unknown(request)
         if response.get("state") not in {"completed", "failed_terminal"}:
             return self._unknown(request)

@@ -12,6 +12,7 @@ import pytest
 from app.candidate_planning.execution import (
     CandidateExecutionFailureCode,
     CandidateExecutionValidationResult,
+    candidate_worker_execution_context,
 )
 from app.execution.backends import WorkerExecutionBackend
 from app.execution.engine import ExecutionEngine
@@ -59,6 +60,32 @@ def lost_attempt(tmp_path):
     assert (root / TARGET).read_text() == "old\n"
     assert approvals.get_request("approval-verification-candidate-workflow-1") is None
     return engine, state, approvals, persistence, client, root
+
+
+def test_review_preparation_matches_durable_native_dispatch(tmp_path):
+    engine, state, _, persistence, worker, _, _ = _fixture(tmp_path)
+    session = state.get_session("candidate-workflow-1")
+    request = engine._candidate_execution_validator.result.execution_request
+    backend = engine._execution_engine
+    context = candidate_worker_execution_context(
+        session, request.plan, repository_token=backend.repository_token,
+    )
+    reviewed = backend.prepare_worker_request(request, context=context)
+    assert type(reviewed.timeout_seconds) is float
+    # Preparation must be inert.
+    assert worker.calls == 0
+    assert not persistence.snapshot_path.exists()
+    assert backend.prepare_worker_request(request, context=context).to_json() == reviewed.to_json()
+    assert not persistence.snapshot_path.exists()
+
+    engine.resume(session.identifier)
+
+    actual = state.get_session(session.identifier).worker_execution_request
+    assert actual.to_json() == reviewed.to_json()
+    assert actual.request_digest == reviewed.request_digest
+    payload = json.loads(persistence.snapshot_path.read_text())
+    assert payload["workflow_state"]["sessions"][session.identifier]["worker_execution_request"] == reviewed.to_dict()
+    assert worker.calls == 1
 
 
 def test_lost_response_recovers_after_agent_restart_without_resubmission(tmp_path):
@@ -213,6 +240,7 @@ def test_workflow_api_exposes_unknown_outcome_and_checks_only_on_explicit_resume
     assert detail.status_code == 200
     assert detail.json()["execution"]["execution_status"] == "unknown"
     assert detail.json()["worker_reconciliation"]["can_check_result"] is True
+    assert detail.json()["worker_reconciliation"]["request_digest"] == state.get_session("candidate-workflow-1").worker_execution_request.request_digest
     assert client.lookups == []
     client.lookup_error = True
     uncertain = api.post(path + "/resume")

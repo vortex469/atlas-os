@@ -189,6 +189,7 @@ describe("WorkflowPage", () => {
             implementation_approval_status: "approved",
             worker_reconciliation: {
                 request_id: "original-worker-request", outcome: "unknown",
+                request_digest: "execution-request-digest-v1:fixture",
                 can_check_result: true, message: "Check the original request.",
             },
         });
@@ -201,6 +202,9 @@ describe("WorkflowPage", () => {
         const check = await screen.findByRole("button", { name: "Check worker result" });
         expect(screen.getByRole("heading", { name: "Worker outcome unknown" })).toBeInTheDocument();
         expect(screen.getByText(/Original request: original-worker-request/)).toBeInTheDocument();
+        const record = screen.getByText("Worker request record").closest("details");
+        expect(record).not.toHaveAttribute("open");
+        expect(record).toHaveTextContent("execution-request-digest-v1:fixture");
         expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
         fireEvent.click(check);
 

@@ -278,6 +278,7 @@ class WorkflowExecutionSummaryResponse(BaseModel):
 
 class WorkerReconciliationResponse(BaseModel):
     request_id: str
+    request_digest: str
     outcome: str
     can_check_result: bool
     message: str
@@ -1856,6 +1857,7 @@ def _workflow_detail(request: Request, workflow_id: str) -> WorkflowDetailRespon
         worker_reconciliation=(
             WorkerReconciliationResponse(
                 request_id=workflow.worker_execution_request.execution_request_id,
+                request_digest=workflow.worker_execution_request.request_digest,
                 outcome=(
                     "unknown" if workflow.execution_result is None
                     or workflow.execution_result.status.value == "unknown" else "known"

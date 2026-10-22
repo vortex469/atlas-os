@@ -44,7 +44,7 @@ class FakeWorkerClient:
             patch=BoundedOutput(self.patch),
             patch_digest="sha256:" + sha256(self.patch.encode()).hexdigest(),
         )
-        return {"state": "completed", "result": result.to_dict()}
+        return {"state": "completed", "request_digest": request.request_digest, "result": result.to_dict()}
 
 
 def _repo(tmp_path: Path) -> tuple[Path, str, str]:

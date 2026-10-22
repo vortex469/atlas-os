@@ -39,6 +39,11 @@ jobs:
       - name: Test Atlas Agent
         run: PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests
 
+      - name: Test bounded worker ledger export
+        run: |
+          python -m ruff check scripts/atlas-worker-ledger-export scripts/test_atlas_worker_ledger_export.py
+          python -m pytest -q scripts/test_atlas_worker_ledger_export.py
+
   atlas-core:
     runs-on: ubuntu-latest
     timeout-minutes: 90

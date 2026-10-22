@@ -1,5 +1,25 @@
 # Atlas OS Roadmap
 
+## Repository-edit journey through the v0.70 target (unreleased)
+
+The operator authorized continuing toward v0.70 and selected finishing the
+repository-edit journey first. The [bounded action acceptance record](docs/architecture/repository-action-acceptance.md)
+records shared review/dispatch preparation, exact digest checks on submission
+and recovery, an operator-visible request record, and a private chunked ledger
+export. A fresh isolated model request passed preflight, ran once, and reached
+native `completed` after separately approved verification and local commit.
+Agent 1,090, worker 55, UI 2,420 and export-tool four tests passed, alongside
+the updated image's credential-free runsc transport and boundary probes.
+
+This target consolidates useful repository-action work; it does not invent
+intermediate evidence releases. Nested patch-helper compatibility remains an
+explicit limit; sandboxed shell editing is the demonstrated capability. The
+fresh model run retained terminal ledger JSON; its optional binary backup was
+truncated, while the corrected chunked exporter passed a separate runsc test.
+Production identities were unchanged. No push, tag, publication, deployment
+or production enablement is authorized or claimed. The seven installation
+blockers and deferred successor control plane remain unchanged.
+
 ## v0.66 approved bounded repository action implementation
 
 After P0 review, the operator approved implementation directly in Codex of the
@@ -32,10 +52,14 @@ image IDs and start times were unchanged. This does not establish nested
 Codex sandbox/model execution or acceptance of the deployed operator journey.
 The subsequent credential-free nested Codex sandbox probe passed under
 `runsc` with CLI 0.147.0 for workspace writes, protected worker-state write
-denial and authenticated wrong-peer refusal. A concrete disposable Compose
-model request is prepared with native approval pending; its missing approval
-is verified to block execution. No model call or account credential use is
-inherited from the implementation and test approvals.
+denial and authenticated wrong-peer refusal. After exact operator approval,
+the isolated model completed the intended one-file fixture edit and the native
+workflow paused at verification approval. Acceptance remains incomplete: the
+preparation script serialized timeout `120` versus native `120.0`, producing
+different request digests; its post-run assertion prevented ledger export.
+The model's patch helper also failed under the nested sandbox before the same
+edit succeeded through its sandboxed shell. No request replay, verification,
+commit, production enablement or deployment followed.
 The seven installation blockers, 67 fixed-false fields and deferred successor
 control-plane boundary remain unchanged. Production action readiness and
 activation are not claimed.

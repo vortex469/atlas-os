@@ -465,6 +465,7 @@ export interface WorkflowCommitResultSummary {
 export interface WorkflowDetailResponse {
     worker_reconciliation?: {
         request_id: string;
+        request_digest?: string;
         outcome: "unknown" | "known";
         can_check_result: boolean;
         message: string;

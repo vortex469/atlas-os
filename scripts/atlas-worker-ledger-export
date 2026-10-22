@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Copy a consistent worker ledger without exposing its contents in stdout.
+
+This is an operator diagnostic, not an execution or approval endpoint. The
+container must already exist. Only a temporary SQLite backup is created there.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import tempfile
+from pathlib import Path
+
+CHUNK_BYTES = 2048
+MAX_BYTES = 64 * 1024 * 1024
+
+BACKUP_CODE = """import hashlib,json,sqlite3,tempfile
+from pathlib import Path
+root=Path(tempfile.mkdtemp(prefix='atlas-ledger-export-'))
+p=root/'ledger.sqlite3'
+src=sqlite3.connect('file:/opt/atlas/execution-worker-state/ledger.sqlite3?mode=ro',uri=True)
+dst=sqlite3.connect(p)
+try:
+ src.backup(dst)
+finally:
+ dst.close(); src.close()
+with sqlite3.connect('file:'+str(p)+'?mode=ro',uri=True) as db:
+ if db.execute('PRAGMA quick_check').fetchall()!=[('ok',)]:
+  raise RuntimeError('worker backup failed integrity check')
+with p.open('rb') as snapshot:
+ digest=hashlib.file_digest(snapshot,'sha256').hexdigest()
+print(json.dumps({'path':str(p),'size':p.stat().st_size,'sha256':digest}),flush=True)
+"""
+
+
+def docker_python(container: str, code: str, *args: str) -> str:
+    result = subprocess.run(
+        ['docker', 'exec', container, 'python', '-c', code, *args],
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    if result.returncode:
+        # Container stderr can contain model output. Keep the diagnostic bounded.
+        raise RuntimeError('worker ledger export command failed')
+    return result.stdout.strip()
+
+
+def export_ledger(container: str, destination: Path) -> dict[str, str | int]:
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', container):
+        raise ValueError('invalid container identity')
+    if destination.exists() or destination.is_symlink():
+        raise ValueError('destination already exists')
+    metadata = json.loads(docker_python(container, BACKUP_CODE))
+    remote = metadata['path']
+    if not isinstance(remote, str) or not re.fullmatch(
+        r'/tmp/atlas-ledger-export-[A-Za-z0-9_-]+/ledger\.sqlite3', remote,
+    ):
+        raise ValueError('invalid backup path')
+    partial: Path | None = None
+    try:
+        size, expected = metadata['size'], metadata['sha256']
+        if type(size) is not int or not 0 < size <= MAX_BYTES:
+            raise ValueError('worker ledger exceeds export limit')
+        if not isinstance(expected, str) or not re.fullmatch(r'[0-9a-f]{64}', expected):
+            raise ValueError('invalid backup digest')
+        descriptor, name = tempfile.mkstemp(prefix='.atlas-ledger-', dir=destination.parent)
+        partial = Path(name)
+        digest = hashlib.sha256()
+        with os.fdopen(descriptor, 'wb') as output:
+            for offset in range(0, size, CHUNK_BYTES):
+                length = min(CHUNK_BYTES, size - offset)
+                encoded = docker_python(
+                    container,
+                    "import base64,sys; f=open(sys.argv[1],'rb'); f.seek(int(sys.argv[2])); print(base64.b64encode(f.read(int(sys.argv[3]))).decode(),flush=True)",
+                    remote, str(offset), str(length),
+                )
+                chunk = base64.b64decode(encoded, validate=True)
+                if len(chunk) != length:
+                    raise ValueError('worker ledger chunk is incomplete')
+                output.write(chunk)
+                digest.update(chunk)
+            output.flush()
+            os.fsync(output.fileno())
+        if digest.hexdigest() != expected:
+            raise ValueError('worker ledger backup digest mismatch')
+        with sqlite3.connect(partial.resolve().as_uri() + '?mode=ro', uri=True) as database:
+            if database.execute('PRAGMA quick_check').fetchall() != [('ok',)]:
+                raise ValueError('exported ledger failed integrity check')
+        # Atomic and no overwrite, including if the destination appeared mid-copy.
+        os.link(partial, destination)
+        return {'bytes': size, 'sha256': expected, 'integrity': 'ok'}
+    finally:
+        if partial is not None:
+            partial.unlink(missing_ok=True)
+        docker_python(container, "import shutil,sys; from pathlib import Path; shutil.rmtree(Path(sys.argv[1]).parent)", remote)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--container', required=True)
+    parser.add_argument('--destination', type=Path, required=True)
+    arguments = parser.parse_args()
+    print(json.dumps(export_ledger(arguments.container, arguments.destination), sort_keys=True))
+
+
+if __name__ == '__main__':
+    main()

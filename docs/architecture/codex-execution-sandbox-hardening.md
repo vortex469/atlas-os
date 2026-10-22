@@ -273,7 +273,7 @@ policy and approvals, credential/endpoint references, expiry/cancellation
 semantics and an independent readiness decision. No tag, push, publication,
 production deployment or production execution enablement was performed.
 
-### Nested sandbox and pending model rehearsal
+### Nested sandbox and bounded model rehearsal
 
 The credential-free
 `services/atlas-execution-worker/tests/probe_nested_sandbox.py` rehearsal
@@ -302,8 +302,8 @@ describes saved CLI authentication. The observed pinned-binary result above
 is the version-specific proof; it does not assume current documentation and
 the older worker CLI have identical behavior.
 
-The next model request is concretely prepared, with its native implementation
-approval still **pending**. The disposable repository is
+At preparation time, the model request was concretely prepared, with its native
+implementation approval still **pending**. The disposable repository is
 `/tmp/atlas-v066-model-fixture-86a3_lx0/repository` at immutable HEAD
 `2b08584b00478df1cada2e0ea0c14cb4cea17cbe`. Its only proposed edit is the
 `atlas-agent` image in its fixture `compose.production.yaml`, from
@@ -327,7 +327,7 @@ model invocation, 120 seconds, one affected file, the existing output/patch
 bounds, original-request lookup without replay on uncertainty, and separate
 verification and commit approvals after implementation. A local login-status
 check confirmed saved authentication is available without exposing its contents;
-using it in the isolated model worker remains unapproved.
+using it in the isolated model worker was still unapproved at that point.
 
 The full native request, expected patch and proposed credential/network/runtime
 plan are retained as `request-review.json`, `expected.patch` and
@@ -337,3 +337,53 @@ authentication. The repository contribution rule requires implementation,
 verification and commit approvals to bind to their respective immutable
 requests; earlier approval of implementation work does not approve this
 later-generated model request. Production activation remains excluded.
+
+
+### Approved isolated model result and remaining discrepancy
+
+The operator subsequently approved the exact fixture edit and saved-login use.
+The isolated `runsc` worker ran CLI 0.147.0 once, returned success in about
+27 seconds, and the native Agent applied only the intended image-reference
+patch. The workflow is now `awaiting_verification_approval`; verification is
+pending and no commit was requested. The saved login passed the pinned CLI
+preflight. Production identities, image IDs and start times stayed unchanged;
+the isolated project and its secret/state volumes were removed.
+
+This is not yet a clean end-to-end acceptance result. The rehearsal script's
+post-run digest assertion failed: its prepared request used integer `120`,
+while the native workflow used float `120.0`. All other request values match,
+but canonical JSON gives different hashes. The actual digest is
+`execution-request-digest-v1:118a592f8c30bf4451c9aed79c7281d5d21e9431c72ee8ebf2b0db177349ca23`;
+the reviewed digest above remains the immutable preparation record. The native
+implementation approval itself matched the approved payload. Do not replay
+this consumed request or silently rewrite its reviewed digest. Numeric
+canonicalization/preflight comparison needs a focused fix and regression test.
+
+The assertion prevented the planned ledger export before cleanup, so this
+run cannot claim a persisted attempt-count audit. Logs show one successful
+execution POST; native state preserves the successful result and exact
+verification plan. The model also encountered repeated `apply_patch` sandbox
+helper failures (`bwrap: loopback: Failed RTM_NEWADDR`) before completing the
+same edit through the sandboxed shell. This helper limitation remains open.
+The result, patch, pending verification request and these limits are recorded
+in ignored `model-workflow-outcome.json`, `actual-model.patch` and service logs.
+No production provenance, installation blocker or activation claim follows.
+
+
+### Repository-action continuation toward v0.70
+
+The operator selected completion of the repository-edit journey. The original
+fixture subsequently passed its separately approved configuration verification
+and review, then completed its separately approved local commit as
+`d427859d9a1cd9e8ccc3d7121f1763c2fded08f9`. Its digest discrepancy remains
+historical; the consumed request was not replayed.
+
+Shared context preparation now avoids the duplicated timeout representation.
+A fresh exact request passed canonical preflight and worker/result digest
+binding, with one ledger attempt. It reached `completed` after separate
+verification and commit approvals, creating fixture commit
+`72f65f4c957b7538ffce3b1b141435c44723170a`. See the
+[acceptance record](repository-action-acceptance.md) for exact identities,
+validation, the retained helper limitation, diagnostic export fix and remaining
+production boundaries. No production activation or installation authority
+follows from the v0.70 target or these local results.
