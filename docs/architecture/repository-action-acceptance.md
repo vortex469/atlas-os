@@ -73,7 +73,8 @@ reviewed-content fingerprint
 `42c747342084db198588d33ea4b6f2ad7c0e5b692292090153a8c6dc001f6069`.
 Atlas committed only `compose.production.yaml` as
 `72f65f4c957b7538ffce3b1b141435c44723170a`; native workflow state is
-`completed`. The original fixture also completed as local commit
+`completed`. A fresh persistence reload preserved completion, and the native
+complete audit-chain validator returned `valid=true`. The original fixture also completed as local commit
 `d427859d9a1cd9e8ccc3d7121f1763c2fded08f9`, with its digest discrepancy
 retained as a historical qualification.
 
@@ -123,10 +124,14 @@ existing staging and isolation tests use root-relative paths. Broad unscoped
 Ruff reports pre-existing import-order findings; the release's configured
 changed-file Ruff gate is the validation used here.
 
-The existing container integration gate must run against a clean committed
-source. Its current result is recorded separately after that run; a runc
-integration pass must not be described as runsc production acceptance. No
-remote exact-SHA CI, release readiness, tag or publication is claimed here.
+The existing container integration gate exited 0 against clean implementation
+commit `26c5656a8ee94e573567c5412c5d383430d5ccb3`. Its worker/relay probes,
+container checks, five-volume data recovery and Rest Server replication/recovery
+all passed with dummy authentication and a separate disposable project. This
+was explicitly runc integration mode, not runsc production acceptance. The
+separate hardened runsc probes above cover the selected transport and nested
+boundaries. Final production identity comparison was unchanged. No remote
+exact-SHA CI, release readiness, tag or publication is claimed here.
 
 ## Remaining path toward v1
 

@@ -10,6 +10,9 @@ export. A fresh isolated model request passed preflight, ran once, and reached
 native `completed` after separately approved verification and local commit.
 Agent 1,090, worker 55, UI 2,420 and export-tool four tests passed, alongside
 the updated image's credential-free runsc transport and boundary probes.
+The existing container integration, five-volume data recovery and Rest Server
+replication/recovery gates exited 0 at implementation commit `26c5656a`.
+The completed fixture also passed its full native audit chain after reload.
 
 This target consolidates useful repository-action work; it does not invent
 intermediate evidence releases. Nested patch-helper compatibility remains an
