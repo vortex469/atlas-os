@@ -1,5 +1,28 @@
 # v0.66 repository action implementation acceptance
 
+## v0.66 local closeout
+
+Status: **implementation complete and locally validated; unreleased**.
+The validated implementation source is
+`26c5656a8ee94e573567c5412c5d383430d5ccb3`; its final validation documentation
+is `e2181444`. These are the v0.66 implementation boundary, not the current
+branch tip and not a published release. The later process-lifetime change at
+`d80d336b` is draft v0.67 work and is excluded from this closeout.
+
+The selected repository-edit outcome completed with separate operator
+implementation, verification and local-commit approvals and a valid terminal
+audit after reload. The checks and exact fixture identities below substantiate
+that bounded result. Remaining qualifications are the nested patch-helper
+limitation and the unusable optional binary backup from the model run; its
+terminal ledger JSON was retained and the corrected exporter was tested
+separately. Neither qualification is rewritten as a pass.
+
+Release acceptance, remote exact-SHA CI, production image parity, production
+operator acceptance, activation and publication are not complete or authorized
+by this record. No release tag or version publication is implied. Subsequent
+versions must remain individually scoped and recorded rather than being
+reported as one consolidated v0.70 or v0.77 completion.
+
 ## Selected outcome and authority
 
 This record closes the bounded v0.66 repository-action implementation.
