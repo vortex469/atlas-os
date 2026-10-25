@@ -1,5 +1,6 @@
 """Tests for the S3 execution backend seam and worker adapter."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,12 @@ from app.execution.backends import (
     WorkerExecutionContext,
 )
 from app.execution.exceptions import ExecutionValidationError
-from app.execution.models import ExecutionRequest, ExecutionStatus, RunnerOutcome
+from app.execution.models import (
+    EnvironmentVariable,
+    ExecutionRequest,
+    ExecutionStatus,
+    RunnerOutcome,
+)
 from app.execution.worker_client import TcpWorkerClient, WorkerTransportError
 from app.execution.worker_contracts import (
     CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
@@ -43,12 +49,19 @@ class FakeWorkerClient:
         self.response = response
         self.error = error
         self.requests = []
+        self.lookups = []
 
     def submit(self, request):  # type: ignore[no-untyped-def]
         self.requests.append(request)
         if self.error is not None:
             raise self.error
         assert self.response is not None
+        return self.response
+
+    def get_result(self, request_id):
+        self.lookups.append(request_id)
+        if self.error is not None:
+            raise self.error
         return self.response
 
 
@@ -81,7 +94,7 @@ def make_context() -> WorkerExecutionContext:
         plan_id="plan-1",
         plan_fingerprint="plan-fingerprint-1",
         expected_repository_head="a" * 40,
-        repository_token="repository-token-1",
+        repository_token="atlas-repository",
         allowed_affected_files=("compose.production.yaml",),
         repository_branch="feature/worker",
     )
@@ -129,7 +142,7 @@ def worker_result(request: WorkerExecutionRequest, *, failure_code=None, status=
             sandbox_profile="atlas-worker",
         ),
     )
-    return {"state": "completed", "result": result.to_dict()}
+    return {"state": "completed", "request_digest": request.request_digest, "result": result.to_dict()}
 
 
 def test_local_backend_preserves_runner_success() -> None:
@@ -174,7 +187,7 @@ def test_worker_failure_codes_map_deterministically(failure: WorkerFailureCode) 
     client.response = worker_result(worker_request, failure_code=failure, status=status)
     result = backend.execute(request, context=context)
     assert result.error == failure.value
-    assert result.status is (ExecutionStatus.TIMED_OUT if failure is WorkerFailureCode.TIMEOUT else ExecutionStatus.LAUNCH_FAILED if failure in {WorkerFailureCode.WORKER_UNAVAILABLE, WorkerFailureCode.WORKER_CRASH} else ExecutionStatus.FAILED)
+    assert result.status is (ExecutionStatus.TIMED_OUT if failure is WorkerFailureCode.TIMEOUT else ExecutionStatus.UNKNOWN if failure is WorkerFailureCode.WORKER_CRASH else ExecutionStatus.LAUNCH_FAILED if failure is WorkerFailureCode.WORKER_UNAVAILABLE else ExecutionStatus.FAILED)
 
 
 def test_worker_transport_failure_has_no_local_fallback() -> None:
@@ -184,7 +197,8 @@ def test_worker_transport_failure_has_no_local_fallback() -> None:
 
     result = backend.execute(request, context=make_context())
 
-    assert result.error.startswith("worker_unavailable:")
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.error.startswith("worker_outcome_unknown:")
     assert runner.calls == 0
 
 
@@ -193,9 +207,28 @@ def test_worker_requires_explicit_context() -> None:
         WorkerExecutionBackend(FakeWorkerClient()).execute(make_request())
 
 
-def test_worker_backend_rejects_result_with_stale_base_head() -> None:
+@pytest.mark.parametrize("digest", [None, "execution-request-digest-v1:" + "0" * 64])
+def test_submission_result_requires_the_exact_request_digest(digest) -> None:
     request = make_request()
     context = make_context()
+    response = worker_result(worker_request_for(request, context), status=WorkerExecutionStatus.SUCCEEDED)
+    if digest is None:
+        response.pop("request_digest")
+    else:
+        response["request_digest"] = digest
+    client = FakeWorkerClient(response)
+
+    result = WorkerExecutionBackend(client).execute(request, context=context)
+
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.worker_result is None
+    assert len(client.requests) == 1
+    assert client.lookups == []
+
+
+def test_worker_backend_rejects_result_with_stale_base_head() -> None:
+    request = make_request()
+    context = replace(make_context(), repository_token="opaque-token")
     client = FakeWorkerClient()
     backend = WorkerExecutionBackend(client, repository_token="opaque-token")
     worker_request = worker_request_for(request, context)
@@ -222,10 +255,10 @@ def test_worker_backend_rejects_result_with_stale_base_head() -> None:
             sandbox_profile="worker",
         ),
     )
-    client.response = {"state": "completed", "result": result.to_dict()}
+    client.response = {"state": "completed", "request_digest": worker_request.request_digest, "result": result.to_dict()}
     mapped = backend.execute(request, context=context)
-    assert mapped.status is ExecutionStatus.LAUNCH_FAILED
-    assert mapped.error.startswith("invalid_result:")
+    assert mapped.status is ExecutionStatus.UNKNOWN
+    assert mapped.error.startswith("worker_outcome_unknown:")
 
 
 def test_worker_backend_uses_opaque_configured_repository_token() -> None:
@@ -233,3 +266,154 @@ def test_worker_backend_uses_opaque_configured_repository_token() -> None:
     assert backend.repository_token == "opaque-token"
     with pytest.raises(ValueError):
         WorkerExecutionBackend(FakeWorkerClient(), repository_token="/workspace/repository")
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"repository_token": "other-repository"}, "repository token"),
+        ({"expected_repository_head": "b" * 40}, "repository subject"),
+        ({"repository_branch": "other-branch"}, "repository subject"),
+        ({"repository_branch": None}, "repository subject"),
+        ({"allowed_affected_files": ("secrets.yaml",)}, "affected files"),
+        (
+            {"allowed_affected_files": ("compose.production.yaml", "secrets.yaml")},
+            "affected files",
+        ),
+        ({"allowed_affected_files": ()}, "affected files"),
+        ({"working_directory": "subdirectory"}, "working directory"),
+        ({"working_directory": ".."}, "working directory"),
+    ],
+)
+def test_worker_rejects_substituted_subject_before_submission(changes, message) -> None:
+    client = FakeWorkerClient()
+    backend = WorkerExecutionBackend(client)
+
+    with pytest.raises(ExecutionValidationError, match=message):
+        backend.execute(make_request(), context=replace(make_context(), **changes))
+
+    assert client.requests == []
+
+
+@pytest.mark.parametrize("directory", [Path("subdirectory"), Path("/outside")])
+def test_worker_rejects_request_directory_substitution_before_submission(directory) -> None:
+    client = FakeWorkerClient()
+    request = replace(make_request(), working_directory=directory)
+
+    with pytest.raises(ExecutionValidationError, match="working directory"):
+        WorkerExecutionBackend(client).execute(request, context=make_context())
+
+    assert client.requests == []
+
+
+def test_worker_does_not_silently_replace_an_explicit_request_timeout() -> None:
+    client = FakeWorkerClient()
+    request = replace(make_request(), timeout_seconds=30.0)
+
+    with pytest.raises(ExecutionValidationError, match="timeout"):
+        WorkerExecutionBackend(client).execute(request, context=make_context())
+
+    assert client.requests == []
+
+
+def test_worker_does_not_silently_drop_request_environment() -> None:
+    client = FakeWorkerClient()
+    request = replace(
+        make_request(), environment=(EnvironmentVariable("APP_MODE", "review"),)
+    )
+
+    with pytest.raises(ExecutionValidationError, match="environment overrides"):
+        WorkerExecutionBackend(client).execute(request, context=make_context())
+
+    assert client.requests == []
+
+
+def test_worker_accepts_matching_subject_and_explicit_timeout() -> None:
+    client = FakeWorkerClient()
+    request = replace(make_request(), timeout_seconds=30.0, working_directory=Path("."))
+    context = replace(make_context(), timeout_seconds=30.0)
+    worker_request = worker_request_for(request, context)
+    client.response = worker_result(worker_request, status=WorkerExecutionStatus.SUCCEEDED)
+
+    result = WorkerExecutionBackend(client).execute(request, context=context)
+
+    assert result.status is ExecutionStatus.SUCCEEDED
+    assert len(client.requests) == 1
+    assert client.requests[0].timeout_seconds == 30.0
+    assert client.requests[0].request_digest == worker_request.request_digest
+
+
+def test_worker_reconciliation_reads_original_id_without_submission() -> None:
+    request, context = make_request(), make_context()
+    expected = worker_request_for(request, context)
+    response = worker_result(expected, status=WorkerExecutionStatus.SUCCEEDED)
+    response["request_digest"] = expected.request_digest
+    client = FakeWorkerClient(response=response)
+
+    result = WorkerExecutionBackend(client).reconcile(request, context=context)
+
+    assert result.status is ExecutionStatus.SUCCEEDED
+    assert client.lookups == [request.identifier]
+    assert client.requests == []
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"request_digest": None},
+        {"request_digest": "execution-request-digest-v1:" + "b" * 64},
+        {"state": "claimed", "result": None},
+        {"state": "executing"},
+        {"state": "unknown_outcome"},
+        {"state": "failed_terminal"},
+        {"result": {"execution_request_id": "foreign-request"}},
+    ],
+)
+def test_worker_untrusted_or_uncertain_lookup_never_resubmits(change) -> None:
+    request, context = make_request(), make_context()
+    expected = worker_request_for(request, context)
+    response = worker_result(expected, status=WorkerExecutionStatus.SUCCEEDED)
+    response["request_digest"] = expected.request_digest
+    response.update(change)
+    client = FakeWorkerClient(response=response)
+
+    result = WorkerExecutionBackend(client).reconcile(request, context=context)
+
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.worker_result is None
+    assert client.lookups == [request.identifier]
+    assert client.requests == []
+
+
+def test_worker_lookup_transport_failure_is_redacted_and_does_not_resubmit() -> None:
+    client = FakeWorkerClient(error=WorkerTransportError("secret credential details"))
+    result = WorkerExecutionBackend(client).reconcile(make_request(), context=make_context())
+
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert "secret" not in result.error
+    assert client.requests == []
+    assert client.lookups == [make_request().identifier]
+
+
+def test_nonzero_worker_capabilities_never_authorize_patch_use():
+    request, context = make_request(), make_context()
+    response = worker_result(worker_request_for(request, context), status=WorkerExecutionStatus.SUCCEEDED)
+    response['result']['worker_attestation']['effective_capabilities'] = '0000000000000001'
+    client = FakeWorkerClient(response)
+    result = WorkerExecutionBackend(client).execute(request, context=context)
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.worker_result is None
+    assert len(client.requests) == 1
+    assert client.lookups == []
+
+
+def test_inconsistent_patch_payload_stays_unknown_without_replay():
+    request, context = make_request(), make_context()
+    response = worker_result(worker_request_for(request, context), status=WorkerExecutionStatus.SUCCEEDED)
+    response['result']['patch'] = BoundedOutput('unbound patch').to_dict()
+    client = FakeWorkerClient(response)
+    result = WorkerExecutionBackend(client).execute(request, context=context)
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.worker_result is None
+    assert len(client.requests) == 1
+    assert client.lookups == []

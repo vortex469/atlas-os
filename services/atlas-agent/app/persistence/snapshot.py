@@ -53,7 +53,7 @@ from app.candidate_planning.verification import (
 )
 from app.context.models import AgentContext
 from app.execution.models import EnvironmentVariable, ExecutionResult, ExecutionStatus
-from app.execution.worker_contracts import WorkerExecutionResult
+from app.execution.worker_contracts import WorkerExecutionRequest, WorkerExecutionResult
 from app.model_providers.models import ModelResponse
 from app.persistence.patch_journal import PatchJournal
 from app.planning.models import ImplementationPlan, PlanRisk, RoadmapCheckpoint
@@ -2195,6 +2195,10 @@ def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
         "commit_result": _encode_commit_result(session.commit_result),
         "context": _encode_context(session.context),
         "execution_result": _encode_execution_result(session.execution_result),
+        "worker_execution_request": (
+            session.worker_execution_request.to_dict()
+            if session.worker_execution_request is not None else None
+        ),
         "worker_patch_applied": session.worker_patch_applied,
         "worker_baseline_status": (
             [list(item) for item in session.worker_baseline_status]
@@ -2261,6 +2265,10 @@ def _decode_workflow_session(
         review_analysis=_decode_model_response(payload.get("review_analysis")),
         context=_decode_context(payload.get("context")),
         execution_result=_decode_execution_result(payload.get("execution_result")),
+        worker_execution_request=(
+            WorkerExecutionRequest.from_dict(payload["worker_execution_request"])
+            if payload.get("worker_execution_request") is not None else None
+        ),
         worker_patch_applied=bool(payload.get("worker_patch_applied", False)),
         worker_baseline_status=(
             tuple(

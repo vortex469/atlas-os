@@ -251,11 +251,18 @@ export function WorkflowPage() {
         &&
         workflow.workflow_state === "awaiting_commit_approval"
         && workflow.commit_approval_status === "approved";
+    const canReconcileWorker =
+        isRepository
+        && workflow.workflow_state === "blocked"
+        && workflow.worker_reconciliation?.outcome === "unknown"
+        && workflow.worker_reconciliation.can_check_result === true;
     const canResume =
         !isResuming
-        && (canResumeImplementation || canResumeVerification || canResumeCommit);
+        && (canResumeImplementation || canResumeVerification || canResumeCommit || canReconcileWorker);
 
-    const resumeButtonLabel = canResumeImplementation
+    const resumeButtonLabel = canReconcileWorker
+        ? "Check worker result"
+        : canResumeImplementation
         ? "Resume Approved Implementation"
         : canResumeVerification
             ? "Resume Approved Verification"
@@ -350,6 +357,33 @@ export function WorkflowPage() {
 
             <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} onRefresh={refreshWorkflow} />
 
+            {isRepository && workflow.execution.output_capture?.some((item) => item.truncated) && (
+                <section aria-labelledby="output-capture-heading" className="rounded-xl border border-amber-500/50 p-5">
+                    <h2 id="output-capture-heading" className="font-semibold text-white">Worker output was shortened</h2>
+                    <p className="mt-2 text-sm text-slate-300">The worker retained a bounded portion of its output. Verification and commit still require their own approvals.</p>
+                    {workflow.execution.output_capture.filter((item) => item.truncated).map((item) => (
+                        <p key={item.stream} className="mt-2 text-sm text-slate-400">{item.stream}: {item.retained_bytes} bytes retained; {item.observed_bytes ?? "unknown"} bytes observed.</p>
+                    ))}
+                </section>
+            )}
+
+            {isRepository && workflow.worker_reconciliation?.outcome === "unknown" && (
+                <section aria-labelledby="worker-outcome-heading" className="rounded-xl border border-amber-500/50 bg-slate-900/70 p-5">
+                    <h2 id="worker-outcome-heading" className="text-lg font-semibold text-white">Worker outcome unknown</h2>
+                    <p className="mt-2 text-sm text-slate-300">The worker may have completed the change. Check its original result before taking further action. Do not submit another execution request.</p>
+                    <p className="mt-2 break-all text-sm text-slate-400">Original request: {workflow.worker_reconciliation.request_id}</p>
+                </section>
+            )}
+
+            {isRepository && workflow.worker_reconciliation?.request_digest && (
+                <details className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
+                    <summary className="cursor-pointer text-sm text-slate-300">Worker request record</summary>
+                    <p className="mt-2 break-all text-sm text-slate-400">Request: {workflow.worker_reconciliation.request_id}</p>
+                    <p className="mt-2 break-all text-sm text-slate-400">Digest: {workflow.worker_reconciliation.request_digest}</p>
+                    <p className="mt-2 text-sm text-slate-400">This identifies the submitted request. It does not grant approval for another action.</p>
+                </details>
+            )}
+
             {isRepository && (
                 <>
                     <VerificationReviewSection
@@ -403,8 +437,8 @@ export function WorkflowPage() {
 
             {canResume && (
                 <section aria-labelledby="resume-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">Resume approved stage</h2>
-                    <p className="mt-2 text-sm text-slate-400">Use this to advance execution after an approval decision.</p>
+                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">{canReconcileWorker ? "Check original worker result" : "Resume approved stage"}</h2>
+                    <p className="mt-2 text-sm text-slate-400">{canReconcileWorker ? "This checks the original request once. It will not run the change again. A recovered change still requires separate verification and commit approvals." : "Use this to advance execution after an approval decision."}</p>
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button
                             type="button"

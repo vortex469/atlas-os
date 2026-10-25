@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
 from app.approval.engine import ApprovalEngine
 from app.approval.models import ApprovalDecision, ApprovalStatus
 from app.approval.repository import ApprovalRepository
@@ -31,8 +32,11 @@ from app.candidate_planning.verification import (
     CandidateVerificationValidator,
 )
 from app.config.settings import Settings
+from app.execution.backends import WorkerExecutionBackend
 from app.execution.engine import ExecutionEngine
 from app.execution.models import RunnerOutcome
+from app.execution.worker_client import WorkerTransportError
+from app.execution.worker_contracts import WorkerExecutionRequest
 from app.main import create_app
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.engine import PlanningEngine
@@ -45,6 +49,7 @@ from app.workflow.models import SprintPhase, WorkflowSessionState
 from app.workflow.state import WorkflowStateStore
 from asgi_test_client import ASGITestClient as TestClient
 from tests.candidate_planning.test_execution import FakeCoreClient, core_response
+from tests.test_execution_patches import result_for
 
 
 def run_git(repository: Path, *arguments: str) -> str:
@@ -106,8 +111,51 @@ class FakeVerificationRunner:
         return RunnerOutcome(return_code=0, stdout="valid compose", stderr="")
 
 
+class FakeComposeWorkerClient:
+    """Return a patch without launching a worker or modifying the checkout."""
+
+    def __init__(self, *, lose_response: bool = False) -> None:
+        self.calls = 0
+        self.lose_response = lose_response
+        self.lookups: list[str] = []
+        self.response: dict[str, object] | None = None
+        self.original_id: str | None = None
+
+    def submit(self, request: WorkerExecutionRequest) -> dict[str, object]:
+        self.calls += 1
+        assert request.execution_intent == "update-compose-stack"
+        assert request.repository_token == "atlas-repository"
+        assert request.allowed_affected_files == ("compose.production.yaml",)
+        patch = """diff --git a/compose.production.yaml b/compose.production.yaml
+--- a/compose.production.yaml
++++ b/compose.production.yaml
+@@ -1,3 +1,3 @@
+ services:
+   atlas-core:
+-    image: atlas-core:old
++    image: atlas-core:new
+"""
+        result = result_for(request, patch, request.expected_repository_head)
+        self.original_id = request.execution_request_id
+        self.response = {
+            "state": "completed", "result": result.to_dict(),
+            "request_digest": request.request_digest,
+        }
+        if self.lose_response:
+            raise WorkerTransportError("response lost after worker completion")
+        return self.response
+
+    def get_result(self, request_id: str) -> dict[str, object]:
+        self.lookups.append(request_id)
+        assert request_id == self.original_id
+        assert self.response is not None
+        return self.response
+
+
+@pytest.mark.parametrize("backend", ["local", "worker", "worker-lost-response", "worker-lost-response-reload"])
 def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     tmp_path: Path,
+    backend: str,
 ) -> None:
     repository = tmp_path / "repository"
     head = initialize_candidate_repository(repository)
@@ -131,13 +179,21 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         repository_resolver=resolver,
         clock=lambda: mock_now,
     )
-    implementation_runner = FakeImplementationRunner()
+    implementation_runner = (
+        FakeComposeWorkerClient(lose_response="lost-response" in backend)
+        if backend.startswith("worker") else FakeImplementationRunner()
+    )
+    execution_engine = (
+        ExecutionEngine(backend=WorkerExecutionBackend(implementation_runner))
+        if backend.startswith("worker")
+        else ExecutionEngine(implementation_runner)
+    )
     verification_runner = FakeVerificationRunner()
     review_engine = ReviewEngine()
     engine = WorkflowEngine(
         repository_inspector_factory=GitInspector,
         planning_engine=Mock(spec=PlanningEngine),
-        execution_engine=ExecutionEngine(implementation_runner),
+        execution_engine=execution_engine,
         verification_engine=VerificationEngine(verification_runner),
         review_engine=review_engine,
         approval_engine=ApprovalEngine(),
@@ -200,6 +256,9 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
 
     implementation_approval = approvals.get_request(f"approval-implementation-{workflow_id}")
     assert implementation_approval is not None
+    pending = engine.resume(workflow_id)
+    assert pending.sprint.phase is SprintPhase.AWAITING_APPROVAL
+    assert implementation_runner.calls == 0
     assert approvals.update_decision(
         implementation_approval.decision.request.identifier,
         ApprovalDecision(
@@ -209,6 +268,19 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         ),
     )
     verification_boundary = engine.resume(workflow_id)
+    if "lost-response" in backend:
+        assert verification_boundary.sprint.phase is SprintPhase.BLOCKED
+        assert verification_boundary.execution_result.status.value == "unknown"
+        assert implementation_runner.calls == 1
+        assert verification_runner.calls == 0
+        assert (repository / "compose.production.yaml").read_text().endswith("image: atlas-core:old\n")
+        if backend.endswith("reload"):
+            persistence.initialize()
+        stored = workflow_state.get_session(workflow_id)
+        assert stored.can_reconcile_worker
+        assert stored.worker_execution_request.execution_request_id == translated.implementation_request_id
+        verification_boundary = engine.resume(workflow_id)
+        assert implementation_runner.lookups == [translated.implementation_request_id]
     assert verification_boundary.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
     boundary_workflow = workflow_state.get_session(workflow_id)
     assert boundary_workflow is not None
@@ -227,6 +299,8 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
 
     exact_verification_boundary = engine.resume(workflow_id)
     assert exact_verification_boundary.sprint.phase is SprintPhase.AWAITING_VERIFICATION_APPROVAL
+    assert implementation_runner.calls == 1
+    assert verification_runner.calls == 0
     verification_approval = exact_verification_boundary.approval_request
     assert verification_approval is not None
     assert approvals.update_decision(

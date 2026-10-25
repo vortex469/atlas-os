@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Run maintained, explicitly synthetic native repository fixture phases.
+
+Requires the Agent development dependencies. This checker never makes a real
+model request or consumes an operator approval. Fixture approvals and workers
+are synthetic test data. No arbitrary pytest nodes or commands are accepted.
+"""
+import argparse
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT/'scripts'))
+from atlas_repository_fixture_source import (
+    log_digest,
+    source_snapshot,
+    verify_report,
+    write_report,
+)
+
+TESTS = 'services/atlas-agent/tests/'
+PHASES = {
+    'approval': ['candidate_planning/test_execution.py','candidate_planning/test_verification.py','candidate_planning/test_commit.py'],
+    'journey': ['candidate_planning/test_end_to_end.py::test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit'],
+    'recovery': ['test_worker_response_reconciliation.py'],
+    'audit': ['candidate_planning/test_audit.py'],
+}
+
+
+def run_check(phase, output_dir=None):
+    if phase not in (*PHASES, 'all'):
+        raise ValueError('unknown fixture phase')
+    source_before = source_snapshot(ROOT)
+    root = Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix='atlas-repository-check-'))
+    if root.is_symlink() or (root.exists() and any(root.iterdir())):
+        raise ValueError('fixture output directory must be empty and not a symlink')
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    root = root.resolve()
+    root.chmod(0o700)
+    bindir = root/'bin'
+    bindir.mkdir()
+    trap = bindir/'codex'
+    trap.write_text('#!/bin/sh\nexit 97\n')
+    trap.chmod(0o700)
+    environment = {k:v for k,v in os.environ.items() if not k.startswith(('ATLAS_','CODEX_','OPENAI_','AZURE_OPENAI_','ANTHROPIC_'))}
+    (root/'repository').mkdir()
+    subprocess.run(['git','init','--quiet',str(root/'repository')], check=True, capture_output=True)
+    environment.update(ATLAS_AGENT_STATE_DIR=str(root/'state'), ATLAS_AGENT_REPOSITORY_ROOT=str(root/'repository'), CODEX_HOME=str(root/'codex-home'), PYTHONPATH=os.pathsep.join([str(ROOT/'scripts'), str(ROOT/'services/atlas-agent')]), PATH=str(bindir)+os.pathsep+os.environ.get('PATH',''))
+    nodes = [TESTS+node for key,values in PHASES.items() if phase in ('all',key) for node in values]
+    log = root/'fixture.log'
+    process = None
+    status = 'failed'
+    with log.open('xb') as output:
+        log.chmod(0o600)
+        try:
+            process = subprocess.Popen([sys.executable,'-m','pytest','-q','--disable-warnings','-p','atlas_repository_fixture_guard','--basetemp',str(root/'tmp'),*nodes], cwd=ROOT, env=environment, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+            code = process.wait(timeout=120)
+        except subprocess.TimeoutExpired:
+            code, status = 124, 'timed_out'
+        except KeyboardInterrupt:
+            code, status = 130, 'interrupted'
+        except OSError:
+            code, status = 125, 'launch_failed'
+        finally:
+            if process is not None:
+                try:
+                    os.killpg(process.pid,signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait(timeout=1)
+    with log.open('rb') as output:
+        output.seek(max(0,log.stat().st_size-65536))
+        tail = output.read(65536).decode('utf-8',errors='replace')
+    match = re.search(r'(\d+) passed',tail)
+    source_after = source_snapshot(ROOT)
+    stable = source_before['content_sha256'] == source_after['content_sha256']
+    if code == 0:
+        status = 'passed' if stable and match else 'source_changed_or_incomplete'
+        if status != 'passed':
+            code = 3
+    report = {'phase':phase,'status':status,'complete':status == 'passed','source':source_before,'source_changed':not stable,'log_sha256':log_digest(log),'exit_code':code,'passed_tests':int(match[1]) if match else 0,'synthetic_approvals':True,'real_model_invocations':0,'account_credentials_used':False,'production_contact_allowed':False,'log':str(log)}
+    write_report(root/'report.json',report)
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--phase',choices=[*PHASES,'all'],default='all')
+    parser.add_argument('--output-dir',type=Path)
+    parser.add_argument('--verify-report',type=Path)
+    arguments = parser.parse_args()
+    if arguments.verify_report is not None:
+        try:
+            report = verify_report(arguments.verify_report, ROOT)
+        except (ValueError, OSError):
+            print(json.dumps({'valid':False,'reason':'fixture_report_invalid_or_stale'}))
+            raise SystemExit(2) from None
+        print(json.dumps(report,sort_keys=True))
+        return
+    report = run_check(arguments.phase, arguments.output_dir)
+    print(json.dumps(report,sort_keys=True))
+    raise SystemExit(report['exit_code'])
+
+
+if __name__ == '__main__':
+    main()

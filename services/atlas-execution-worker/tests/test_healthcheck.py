@@ -19,6 +19,7 @@ def health(*, execution_enabled: object = False) -> dict[str, object]:
         "status": "healthy",
         "contract_schema_version": 1,
         "execution_enabled": execution_enabled,
+        "execution_readiness": {"configured_enabled":execution_enabled,"isolation_observed_safe":True if execution_enabled is True else None,"full_readiness_proven":False,"activation_authorized":False},
     }
 
 
@@ -55,4 +56,24 @@ def test_malformed_environment_fails_closed(monkeypatch: pytest.MonkeyPatch) -> 
 )
 def test_malformed_response_fails(payload: object) -> None:
     with pytest.raises((TypeError, ValueError)):
+        healthcheck.validate_health(payload, expected_execution_enabled=False)
+
+
+@pytest.mark.parametrize('safe', [None,False])
+def test_configured_execution_without_observation_is_not_healthy(safe):
+    payload = health(execution_enabled=True)
+    payload['execution_readiness']['isolation_observed_safe'] = safe
+    with pytest.raises(ValueError, match='not observed'):
+        healthcheck.validate_health(payload, expected_execution_enabled=True)
+
+
+def test_complete_durable_state_health_and_legacy_compatibility():
+    payload = {**health(), 'ledger_status': 'available', 'ledger_counts': {
+        'claimed': 0, 'executing': 1, 'completed': 2, 'failed_terminal': 3, 'unknown_outcome': 4}}
+    healthcheck.validate_health(payload, expected_execution_enabled=False)
+    payload['ledger_counts'].pop('executing')
+    with pytest.raises(ValueError):
+        healthcheck.validate_health(payload, expected_execution_enabled=False)
+    payload.update(ledger_status='unavailable', ledger_counts=None)
+    with pytest.raises(ValueError):
         healthcheck.validate_health(payload, expected_execution_enabled=False)

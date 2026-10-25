@@ -30,3 +30,360 @@ reaches the worker through the relay.
 Atlas Agent remains the sole workflow, approval, verification, review, patch
 application, and commit authority. Worker execution stays disabled by default;
 enabling it remains an explicit production setting.
+
+## v0.66 approved repository action binding
+
+The operator approved bounded `update-compose-stack` implementation work in
+Codex after reviewing the P0 scope. This approval permits repository changes
+and tests; it does not enable the worker or authorize a particular production
+execution request. The v0.65 successor installation control plane remains
+deferred.
+
+The selected operator journey reuses candidate planning, exact implementation
+approval, one worker request, Agent-owned patch application, separate exact
+verification approval, review, and separate exact local-commit approval. Its
+effect is a repository change to `compose.production.yaml`, not running
+`docker compose up`, restarting services, installing software, pushing, or
+publishing. The existing translator permits only the named repository targets
+`atlas-compose` and `atlas-repository`; it does not accept arbitrary intents
+or file scopes. The fixed RC1 smoke operation remains a separate test path.
+
+### Demonstrated gap and implementation
+
+Before this change, `WorkerExecutionBackend` built its outbound request from
+the supplied context without comparing its repository token to the configured
+token, or its HEAD, branch, affected files and directory to the approved
+request plan. Workflow construction normally supplied matching values and
+later patch checks rejected some mismatches, but those checks occurred after
+worker submission. A substituted context could therefore request work before
+the mismatch was detected.
+
+The adapter now raises `ExecutionValidationError` before worker contact if:
+
+- the context token differs from the configured repository token;
+- its HEAD or branch differs from the request plan;
+- its affected-file set differs from the plan;
+- its directory differs from the request directory, or the request resolves
+  outside the repository;
+- its timeout differs from an explicitly specified request timeout; or
+- the request has environment overrides, which the worker protocol cannot
+  represent and previously silently omitted.
+
+Existing worker-contract validation still rejects invalid paths, unsupported
+argv, malformed identities and out-of-bounds timeouts before submission.
+Matching requests retain the existing wire schema and digest. The normal
+candidate workflow uses a 120-second worker timeout, or 30 seconds for the
+fixed smoke operation. Existing limits remain 64 changed files, 1 MiB per
+bounded text field and 4 MiB for a patch; candidate translation further limits
+the normal action to `compose.production.yaml`.
+
+These checks verify consistency at the dispatch boundary. The upstream exact
+approval validator remains responsible for approval, candidate and plan
+freshness. Neither a matching context nor a successful worker result grants
+verification, commit, deployment or installation approval.
+
+### Seven installation blockers remain unresolved
+
+The exact blocker/owner/proof inventory remains in
+[`worker_activation_runtime_interface_prerequisite/contract.py`](../../services/atlas-core/app/worker_activation_runtime_interface_prerequisite/contract.py).
+The repository-action path does not consume or discharge it.
+
+| Blocker | Missing installation contract or implementation |
+| --- | --- |
+| `worker_activation_runtime_not_defined` | Trusted installation-runtime identity, capability composition, lifecycle, policy provenance and a distinct activation decision. The v0.64 definition remains reference-only. |
+| `store_contact_not_defined` | Authenticated installation-store subject, permitted operations, ownership and recovery protocol. Existing evidence stores and the repository ledger do not define this contact. |
+| `runtime_contact_not_defined` | Authenticated installation-runtime peer, endpoint, request/effect binding, limits and uncertain-contact handling. Repository worker transport is a separate capability. |
+| `worker_start_admission_not_defined` | Core admission of one exact owned runtime-start subject against validated contact prerequisites, expiry and cancellation. Existing execution-admission evidence does not admit runtime start. |
+| `worker_start_not_defined` | An installation start handler with durable one-shot reservation, crash-safe effect boundary and reconciliation without replay. The repository worker ledger does not implement installation start. |
+| `agent_invocation_not_defined` | A supported installation intent with authenticated invocation and exact request approvals. `update-compose-stack` support does not introduce `install-container`. |
+| `execution_start_boundary_not_defined` | Installation-specific execution capability, request and approval binding, and durable effect accounting. Repository execution contracts confer no installation authority. |
+
+All 67 fixed-false authority/material fields, the retained GET-only evidence
+projection and zero installation effect-plane consumers remain unchanged.
+
+### Acceptance and remaining path
+
+Focused acceptance requires zero worker submissions for every substituted
+subject, directory, timeout or unsupported environment, plus one submission
+for a matching request. The full candidate journey is tested with both the
+local backend and a fake worker returning a bounded Compose patch. It must
+pause before implementation without approval, pause separately for
+verification and commit, change only the approved file, and preserve its audit
+chain and terminal state after persistence reload. The worker fixture starts
+no worker and invokes no model, network transport or deployment command.
+
+Existing patch-journal recovery and worker-ledger restart tests establish
+their respective no-replay behavior. The lost-response journey now reuses
+those mechanisms as described below. Unknown outcomes remain blocked until
+the original result is validated; a missing response never permits resubmission.
+
+### Lost response and operator reconciliation
+
+Before submitting a candidate worker request, Agent durably records the exact
+`WorkerExecutionRequest` in its existing workflow snapshot. If the record
+cannot be written, no worker submission occurs. A transport failure, missing
+result, malformed result or worker crash is represented as execution status
+`unknown`, rather than claiming the command failed to launch.
+
+Mission Control shows **Worker outcome unknown**, the original request ID and
+an explicit **Check worker result** control for an eligible blocked workflow.
+Page loads, GET projections and refreshes perform no worker lookup. The
+existing workflow Resume endpoint handles the explicit check; no new endpoint
+or permission is introduced. It revalidates the original exact approval,
+candidate, plan and repository, then atomically claims the blocked workflow.
+It requires the reconstructed request to equal the persisted request before
+making exactly one authenticated `GET /v1/executions/{original_request_id}`.
+It never submits an execution request or falls back to local execution.
+
+Worker submit and result envelopes now include the ledger's `request_digest`.
+Reconciliation requires that digest to match the original request, validates
+the result identity, base HEAD and scope, and accepts only terminal result
+envelopes. A valid recovered patch passes through the existing patch journal
+and Agent-owned patch application and pauses for separate verification and
+commit approvals. Concurrent checks cannot both consume the same blocked
+workflow. Unavailable, missing, conflicting, malformed, pending and unknown
+results remain blocked; further checks require another operator action.
+
+After an Agent restart, an interrupted recorded worker attempt is recovered
+as blocked and may only use the original result lookup. Existing patch-journal
+recovery takes over when a patch intent already exists. Legacy snapshots
+without a recorded worker request are not guessed or made resubmittable.
+The request field is additive to snapshot schema v3 and defaults to absent
+for older snapshots. New `unknown` execution statuses require an updated Agent
+reader; downgrading an affected snapshot to an older reader is not supported.
+An older worker without digest-bearing result envelopes cannot reconcile a
+result: the new Agent remains blocked. No automatic migration or production
+rollout follows from these compatibility rules.
+
+Production use still requires a named operator and reviewer, an immutable
+candidate/plan/repository/policy selection, approved credential and endpoint
+references, action-specific expiry/cancellation and ownership semantics, and
+an accepted supported-environment rehearsal including disconnect and restart
+cases. Repository tests cover the operator reconciliation journey using
+disposable repositories, fake worker patches and an in-process authenticated
+worker API backed by its real durable ledger. They do not run a model command
+or demonstrate deployed container/network parity or production recovery.
+Running-image parity and production acceptance were not evaluated by the
+v0.65 pre-tag evidence run. They require separate supported-environment checks
+before any separately authorized activation.
+
+The path to v1 is to close demonstrated action-specific gaps, validate the
+operator journey and recovery in isolation, separately review activation,
+then validate the supported capability matrix, security, upgrade,
+backup/restore, recovery targets and runbooks against immutable release
+artifacts. Installation and external workflow integrations require their own
+contracts if selected. Roadmap version bands do not mandate intermediate
+evidence releases or grant authority.
+
+### Repository validation
+
+The dispatch-binding implementation passed the complete Agent suite: **1065
+passed, 31 warnings in 11.80s**. Test state was isolated under `/tmp` with
+`ATLAS_AGENT_STATE_DIR`; the supported-host run used
+`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/atlas-agent .venv/bin/python -m
+pytest -q --tb=short services/atlas-agent/tests`.
+The existing worker durable-ledger suite also passed: **9 passed in 0.52s**,
+using `PYTHONPATH=services/atlas-agent:services/atlas-execution-worker` and
+`services/atlas-execution-worker/tests/test_durable_ledger.py`.
+The Agent changed-file Ruff gate, operational/repository capability parity
+check and `git diff --check` also passed.
+These are repository regression results, not release, container sandbox,
+running-image parity or production acceptance results.
+
+The subsequent lost-response implementation passed the complete Agent suite
+with **1087 tests**, execution-worker suite with **53 tests**, and Mission
+Control suite with **2420 tests in 175 files**. Mission Control lint and build
+passed with the existing hook-dependency and bundle-size advisories. Focused
+checks cover lost response before result consumption, Agent restart with an
+unrecorded response, unavailable/unknown/conflicting lookup results, changed
+repository configuration, stale candidate validation, concurrent checks,
+failure to persist the request, and no automatic lookup on UI refresh.
+The durable worker rehearsal drops the submit response after an inert runner
+finishes, reopens the ledger, rejects unauthenticated lookup, and recovers the
+terminal result with exactly one submission, one lookup and one runner call.
+
+### TCP and container rehearsal
+
+`services/atlas-execution-worker/tests/test_transport_reconciliation.py`
+extends the same recovery checks across actual loopback TCP connections. A
+temporary proxy consumes the worker's completed POST response and drops the
+connection before Agent receives it. After restarting the worker app and
+reopening its ledger, a fresh Agent adapter retrieves the original result
+and applies only the fixture Compose patch. The proxy observes exactly one
+POST and one GET, and the ledger records one attempt. A separate interrupted
+start case remains unknown after restart, with one GET and zero POSTs.
+
+The test uses the production TCP client, API, durable ledger and patch
+validator with an inert runner and fixture attestation. It starts no model or
+deployment command and uses temporary credentials and repositories. Runtime
+attestation is validated by the enclosing container gate, not by the fixture.
+It is executable by stdlib unittest without installing test dependencies in
+the worker image, and the existing runtime gate executes it inside its
+selected isolated worker container. The container CI path filters include
+worker code and the runtime-gate script so those changes run this check.
+
+Supported-host validation passed both TCP tests, and the combined worker and
+container-gate regression selection passed **62 tests in 2.17s**. Container
+execution and runsc-specific results require their own observed runs; the
+host TCP pass alone does not establish container or production readiness.
+
+Review of the container validation found three older stdin-fed Python probes
+without `docker exec -i`: worker-to-relay isolation, Agent-to-worker health,
+and Core Docker connection diagnostics. A print-only comparison in the
+isolated worker confirmed that the commands without `-i` did not execute
+their supplied code. All three probes now keep stdin open. Historical gate
+success is not proof that these assertions ran; validation of the corrected
+commands requires a new candidate run. The initial `2a63d5c2` isolated CI-mode
+container run passed the new TCP tests, integration, recovery and Rest Server
+checks, but is not used to establish those previously skipped assertions.
+
+The corrected candidate `be803781ea01f94c4d82926d88a0a94c33d96655`
+passed the existing `container-release-gate` on Hermes in
+`ATLAS_CONTAINER_GATE_MODE=github-integration`, exit 0. This run included the
+two TCP tests inside the packaged worker, the now-executed worker/relay and
+Agent/worker checks, Core Docker diagnostics, container integration, the
+five-volume data-recovery gate and Rest Server replication/restore. It used
+an isolated Compose project and dummy credentials; it did not use an operator
+Codex login. The corrected gate-script regression tests also passed: **7
+passed in 0.56s**.
+
+A separate untagged worker image built from that candidate,
+`sha256:b0488377fa41e6bcc7dccdebea43cdcf17db6efb77c0947dde9913de2874986e`,
+passed both TCP tests under `runsc` (**2 tests in 0.754s**, exit 0). Container
+inspection confirmed UID/GID `10001:10001`, read-only root, all capabilities
+dropped, `no-new-privileges:true`, network mode `none`, and no host bind mounts.
+Only loopback listeners and a temporary filesystem were used. The temporary
+container was removed afterward.
+
+Evidence is retained locally in
+`.task-evidence/v066-container-rehearsal/`: `container-gate-corrected.log`,
+`worker-build.log`, `worker-image.id`, `runsc-container.txt`, `runsc-tcp.log`,
+and `production-before.txt` / `production-after.txt`. The before/after records
+match for all seven existing production containers: IDs, image IDs and start
+times were unchanged. The corrected gate's containers, volumes and networks
+and the standalone rehearsal container were absent after cleanup.
+
+This closes the bounded real-TCP and isolated-container rehearsal for the
+inert recovery fixture. CI-mode integration is not a production `runsc`
+sandbox proof. The separate `runsc` result proves this TCP fixture under that
+runtime, not the nested Codex sandbox, authenticated model execution, the
+full deployed operator journey or production acceptance. Those remain
+separate prerequisites, along with selection of an exact candidate, owned
+policy and approvals, credential/endpoint references, expiry/cancellation
+semantics and an independent readiness decision. No tag, push, publication,
+production deployment or production execution enablement was performed.
+
+### Nested sandbox and bounded model rehearsal
+
+The credential-free
+`services/atlas-execution-worker/tests/probe_nested_sandbox.py` rehearsal
+passed with the pinned worker image and **Codex CLI 0.147.0** under `runsc`.
+It invokes the existing packaged `sandbox_probe.py` through `codex sandbox`,
+with a writable workspace, separate protected worker-state tmpfs and a
+loopback-only execution-disabled worker fixture. The workspace write passed,
+the write to `/opt/atlas/execution-worker-state` was denied, and a direct
+request carrying a valid fixture token was rejected as `403 untrusted_peer`.
+There were zero model invocations and no account credentials were mounted.
+
+The initial probe used an outside target in `/tmp`, where the workspace
+profile permits scratch writes, and failed that overly broad assertion. The
+corrected probe uses the same persistent worker-state boundary as the existing
+production probe. This result does not claim isolation between all temporary
+paths or prove a model-generated change. Both logs are retained in
+`.task-evidence/v066-model-rehearsal/`, including
+`nested-sandbox-protected-state.log` for the passing case. The standalone
+container used no external network, a read-only root, UID/GID `10001:10001`,
+all capabilities dropped and `no-new-privileges:true`; it was removed afterward.
+
+The [official CLI reference](https://learn.chatgpt.com/docs/developer-commands?surface=cli#codex-sandbox)
+describes the sandbox command, and the
+[non-interactive authentication guidance](https://learn.chatgpt.com/docs/non-interactive-mode#authenticate-in-automation)
+describes saved CLI authentication. The observed pinned-binary result above
+is the version-specific proof; it does not assume current documentation and
+the older worker CLI have identical behavior.
+
+At preparation time, the model request was concretely prepared, with its native
+implementation approval still **pending**. The disposable repository is
+`/tmp/atlas-v066-model-fixture-86a3_lx0/repository` at immutable HEAD
+`2b08584b00478df1cada2e0ea0c14cb4cea17cbe`. Its only proposed edit is the
+`atlas-agent` image in its fixture `compose.production.yaml`, from
+`example.invalid/atlas-rehearsal:before` to
+`example.invalid/atlas-rehearsal:after`. This is an inert image reference;
+there is no image pull or deployment in the request.
+
+Existing candidate planning, translation, persistence and approval validation
+prepared the request from an explicitly local fixture reader, not a trusted
+Core production candidate. The validator refused the pending approval as
+`approval_not_granted`. The fixture repository is clean; no model ran.
+This establishes preparation and refusal behavior only, not Core provenance
+or any of the seven installation proofs.
+
+The exact worker request digest is
+`execution-request-digest-v1:9d4a9b4b710f991c46a2eb196c7b96865fc56e343bd9f76d0299f5ee73171dfc`.
+The native approval payload SHA-256 is
+`730bffe117fefaa97e11a1fd51ed402f5c0972f9bbeaaf06f2d8430f3b5a4cf1`.
+The candidate expires at `2026-10-22T17:02:49Z`. Its reviewed limits are one
+model invocation, 120 seconds, one affected file, the existing output/patch
+bounds, original-request lookup without replay on uncertainty, and separate
+verification and commit approvals after implementation. A local login-status
+check confirmed saved authentication is available without exposing its contents;
+using it in the isolated model worker was still unapproved at that point.
+
+The full native request, expected patch and proposed credential/network/runtime
+plan are retained as `request-review.json`, `expected.patch` and
+`execution-plan.json` in the same ignored evidence directory. Model execution
+awaits an operator decision on that exact request and its use of saved Codex
+authentication. The repository contribution rule requires implementation,
+verification and commit approvals to bind to their respective immutable
+requests; earlier approval of implementation work does not approve this
+later-generated model request. Production activation remains excluded.
+
+
+### Approved isolated model result and remaining discrepancy
+
+The operator subsequently approved the exact fixture edit and saved-login use.
+The isolated `runsc` worker ran CLI 0.147.0 once, returned success in about
+27 seconds, and the native Agent applied only the intended image-reference
+patch. The workflow is now `awaiting_verification_approval`; verification is
+pending and no commit was requested. The saved login passed the pinned CLI
+preflight. Production identities, image IDs and start times stayed unchanged;
+the isolated project and its secret/state volumes were removed.
+
+This is not yet a clean end-to-end acceptance result. The rehearsal script's
+post-run digest assertion failed: its prepared request used integer `120`,
+while the native workflow used float `120.0`. All other request values match,
+but canonical JSON gives different hashes. The actual digest is
+`execution-request-digest-v1:118a592f8c30bf4451c9aed79c7281d5d21e9431c72ee8ebf2b0db177349ca23`;
+the reviewed digest above remains the immutable preparation record. The native
+implementation approval itself matched the approved payload. Do not replay
+this consumed request or silently rewrite its reviewed digest. Numeric
+canonicalization/preflight comparison needs a focused fix and regression test.
+
+The assertion prevented the planned ledger export before cleanup, so this
+run cannot claim a persisted attempt-count audit. Logs show one successful
+execution POST; native state preserves the successful result and exact
+verification plan. The model also encountered repeated `apply_patch` sandbox
+helper failures (`bwrap: loopback: Failed RTM_NEWADDR`) before completing the
+same edit through the sandboxed shell. This helper limitation remains open.
+The result, patch, pending verification request and these limits are recorded
+in ignored `model-workflow-outcome.json`, `actual-model.patch` and service logs.
+No production provenance, installation blocker or activation claim follows.
+
+
+### Repository-action continuation toward v0.70
+
+The operator selected completion of the repository-edit journey. The original
+fixture subsequently passed its separately approved configuration verification
+and review, then completed its separately approved local commit as
+`d427859d9a1cd9e8ccc3d7121f1763c2fded08f9`. Its digest discrepancy remains
+historical; the consumed request was not replayed.
+
+Shared context preparation now avoids the duplicated timeout representation.
+A fresh exact request passed canonical preflight and worker/result digest
+binding, with one ledger attempt. It reached `completed` after separate
+verification and commit approvals, creating fixture commit
+`72f65f4c957b7538ffce3b1b141435c44723170a`. See the
+[acceptance record](repository-action-acceptance.md) for exact identities,
+validation, the retained helper limitation, diagnostic export fix and remaining
+production boundaries. No production activation or installation authority
+follows from the v0.70 target or these local results.

@@ -14,6 +14,7 @@ class ExecutionStatus(StrEnum):
     FAILED = "failed"
     TIMED_OUT = "timed_out"
     LAUNCH_FAILED = "launch_failed"
+    UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True, slots=True)

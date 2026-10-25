@@ -19,6 +19,10 @@ from app.execution.worker_contracts import (
     WorkerExecutionStatus,
     WorkerFailureCode,
 )
+from app.execution.worker_ledger_contract import (
+    LEDGER_COLUMNS,
+    validate_worker_ledger_row,
+)
 
 DurableState = Literal[
     "claimed",
@@ -56,6 +60,14 @@ class DurableLedgerEntry:
     execution_started_at: str | None = None
     workspace_token: str | None = None
     result: WorkerExecutionResult | None = None
+
+
+class DurableLedgerStartConflict(DurableLedgerError):
+    """Another caller already owns the start barrier; never execute again."""
+
+    def __init__(self, entry: DurableLedgerEntry) -> None:
+        super().__init__("execution start is already owned")
+        self.entry = entry
 
 
 class DurableRequestLedger:
@@ -108,6 +120,8 @@ class DurableRequestLedger:
                             )
                             """
                         )
+                        if {row[1] for row in connection.execute('PRAGMA table_info(executions)')} != LEDGER_COLUMNS:
+                            raise DurableLedgerCorruptionError("unsupported worker ledger schema")
                     return
                 except sqlite3.OperationalError as exc:
                     if not any(
@@ -150,11 +164,11 @@ class DurableRequestLedger:
                     "SELECT * FROM executions WHERE execution_request_id = ?",
                     (request.execution_request_id,),
                 ).fetchone()
-            elif row["request_digest"] != request.request_digest:
-                connection.rollback()
-                raise DurableLedgerConflictError(
-                    "execution request ID has a different digest"
-                )
+            else:
+                self._entry(row)
+                if row["request_digest"] != request.request_digest:
+                    connection.rollback()
+                    raise DurableLedgerConflictError("execution request ID has a different digest")
             connection.commit()
             return self._entry(row)
 
@@ -165,6 +179,8 @@ class DurableRequestLedger:
             connection.execute("BEGIN IMMEDIATE")
             row = self._row_for(connection, request.execution_request_id)
             self._check_digest(row, request)
+            if row["state"] != "claimed":
+                raise DurableLedgerStartConflict(self._entry(row))
             if row["state"] == "claimed":
                 connection.execute(
                     """
@@ -203,6 +219,11 @@ class DurableRequestLedger:
                     raise DurableLedgerError("terminal result is immutable")
                 connection.commit()
                 return existing
+            if result.status is WorkerExecutionStatus.SUCCEEDED and row["state"] != "executing":
+                raise DurableLedgerError("successful result requires the execution start barrier")
+            candidate = dict(row)
+            candidate.update(state=state, result_json=encoded, updated_at=now)
+            self._entry(candidate)
             connection.execute(
                 "UPDATE executions SET state=?, result_json=?, updated_at=? WHERE execution_request_id=?",
                 (state, encoded, now, request.execution_request_id),
@@ -211,8 +232,8 @@ class DurableRequestLedger:
             connection.commit()
             return self._entry(row)
 
-    def mark_unknown_outcome(self, request_id: str) -> DurableLedgerEntry:
-        now = self._now()
+    @staticmethod
+    def _unknown_result(request_id: str) -> str:
         result = WorkerExecutionResult(
             schema_version=1,
             execution_request_id=request_id,
@@ -235,10 +256,15 @@ class DurableRequestLedger:
                 sandbox_profile="unknown-outcome",
             ),
         )
-        encoded = json.dumps(result.to_dict(), sort_keys=True, separators=(",", ":"))
+        return json.dumps(result.to_dict(), sort_keys=True, separators=(",", ":"))
+
+    def mark_unknown_outcome(self, request_id: str) -> DurableLedgerEntry:
+        now = self._now()
+        encoded = self._unknown_result(request_id)
         with self._lock, self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             row = self._row_for(connection, request_id)
+            self._entry(row)
             if row["state"] == "executing":
                 connection.execute(
                     "UPDATE executions SET state='unknown_outcome', result_json=?, updated_at=? WHERE execution_request_id=?",
@@ -253,15 +279,22 @@ class DurableRequestLedger:
 
         with self._lock, self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            claimed = connection.execute(
-                "SELECT COUNT(*) FROM executions WHERE state='claimed'"
-            ).fetchone()[0]
-            executing = connection.execute(
-                "SELECT execution_request_id FROM executions WHERE state='executing'"
-            ).fetchall()
+            claimed = 0
+            executing = []
+            for row in connection.execute("SELECT * FROM executions"):
+                entry = self._entry(row)
+                if entry.state == "claimed":
+                    claimed += 1
+                elif entry.state == "executing":
+                    executing.append(entry.execution_request_id)
+            now = self._now()
+            for request_id in executing:
+                encoded = self._unknown_result(request_id)
+                connection.execute(
+                    "UPDATE executions SET state='unknown_outcome', result_json=?, updated_at=? WHERE execution_request_id=? AND state='executing'",
+                    (encoded, now, request_id),
+                )
             connection.commit()
-        for row in executing:
-            self.mark_unknown_outcome(row["execution_request_id"])
         return {"claimed": claimed, "unknown_outcome": len(executing)}
 
     def get(self, request_id: str) -> DurableLedgerEntry | None:
@@ -272,11 +305,14 @@ class DurableRequestLedger:
             return self._entry(row) if row else None
 
     def counts(self) -> dict[str, int]:
+        # Validate the same records used by execution/lookup. Corruption is not
+        # healthy emptiness and must never be hidden behind aggregate counts.
+        counts: dict[str, int] = {}
         with self._lock, self._connect() as connection:
-            rows = connection.execute(
-                "SELECT state, COUNT(*) AS count FROM executions GROUP BY state"
-            ).fetchall()
-        return {str(row["state"]): int(row["count"]) for row in rows}
+            for row in connection.execute("SELECT * FROM executions"):
+                entry = self._entry(row)
+                counts[entry.state] = counts.get(entry.state, 0) + 1
+        return counts
 
     def __len__(self) -> int:
         return sum(self.counts().values())
@@ -290,24 +326,18 @@ class DurableRequestLedger:
             raise KeyError(request_id)
         return row
 
-    @staticmethod
-    def _check_digest(row: sqlite3.Row, request: WorkerExecutionRequest) -> None:
+    @classmethod
+    def _check_digest(cls, row: sqlite3.Row, request: WorkerExecutionRequest) -> None:
+        cls._entry(row)
         if row["request_digest"] != request.request_digest:
             raise DurableLedgerConflictError("execution request ID has a different digest")
 
     @classmethod
     def _entry(cls, row: sqlite3.Row) -> DurableLedgerEntry:
-        result = None
-        if row["result_json"]:
-            try:
-                result = WorkerExecutionResult.from_dict(json.loads(row["result_json"]))
-                result.validate()
-                if result.execution_request_id != row["execution_request_id"]:
-                    raise ValueError("stored result request ID does not match ledger row")
-            except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                raise DurableLedgerCorruptionError("stored execution result is invalid") from exc
-        if row["state"] in TERMINAL_STATES and result is None:
-            raise DurableLedgerCorruptionError("terminal ledger row has no result")
+        try:
+            result = validate_worker_ledger_row(dict(row))
+        except (TypeError, ValueError, RecursionError) as exc:
+            raise DurableLedgerCorruptionError("stored worker ledger record is invalid") from exc
         return DurableLedgerEntry(
             execution_request_id=row["execution_request_id"],
             request_digest=row["request_digest"],

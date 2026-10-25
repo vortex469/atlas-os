@@ -8,11 +8,14 @@ from collections.abc import Callable
 from app.execution.backends import (
     ExecutionBackend,
     LocalExecutionBackend,
+    WorkerExecutionBackend,
     WorkerExecutionContext,
 )
+from app.execution.exceptions import ExecutionValidationError
 from app.execution.models import ExecutionRequest, ExecutionResult
 from app.execution.policy import ToolPolicy
 from app.execution.runner import CommandRunner, SubprocessRunner
+from app.execution.worker_contracts import WorkerExecutionRequest
 
 
 class ExecutionEngine:
@@ -42,6 +45,20 @@ class ExecutionEngine:
         """Execute through the selected backend without changing request semantics."""
 
         return self._backend.execute(request, context=context)
+
+    def prepare_worker_request(
+        self, request: ExecutionRequest, *, context: WorkerExecutionContext
+    ) -> WorkerExecutionRequest:
+        if not isinstance(self._backend, WorkerExecutionBackend):
+            raise ExecutionValidationError("Worker backend is required for reconciliation")
+        return self._backend.prepare(request, context=context)
+
+    def reconcile_worker(
+        self, request: ExecutionRequest, *, context: WorkerExecutionContext
+    ) -> ExecutionResult:
+        if not isinstance(self._backend, WorkerExecutionBackend):
+            raise ExecutionValidationError("Worker backend is required for reconciliation")
+        return self._backend.reconcile(request, context=context)
 
     @property
     def uses_worker(self) -> bool:

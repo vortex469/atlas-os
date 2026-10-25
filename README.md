@@ -11,15 +11,21 @@ unless a released contract explicitly activates it.
 
 ## Current repository state
 
-The current repository baseline is **Atlas v0.49 P5**, completing Controlled
-Worker Queue Claim Admission evidence. This is the latest completed development
-baseline recorded in [the roadmap](ROADMAP.md) and
-[release checklist](docs/RELEASE_CHECKLIST.md).
+The selected development scope through **Atlas v1.0.0** is complete: bounded,
+explicitly approved repository editing, separate verification and local commit,
+durable result lookup/recovery, and fail-closed worker isolation and transport.
+See the [roadmap](ROADMAP.md), [v1.0.0 release scope](docs/releases/atlas-v1.0.0.md)
+and [release checklist](docs/RELEASE_CHECKLIST.md).
 
-The latest immutable annotated release tag present in this checkout is
-**`atlas-v0.39.0`** at `474cd83e6e8edbcaa2694dcb62aa8ee93c52e684`. Do not
-treat v0.49 as a published/tagged release unless a later explicit release tag
-exists.
+The release identity is the immutable annotated **`atlas-v1.0.0`** tag when
+present on GitHub. Branch names and completed development milestones alone do
+not establish a tagged release. The previous published release is
+[`atlas-v0.65.0`](https://github.com/vortex469/atlas-os/releases/tag/atlas-v0.65.0).
+
+This release scope does not authorize deployment or runtime activation. The
+nested patch-helper limitation, seven installation blockers and deferred
+successor control-plane activation remain explicit. Production running-image
+parity and production operator acceptance require separate evaluation.
 
 ## What Atlas does today
 

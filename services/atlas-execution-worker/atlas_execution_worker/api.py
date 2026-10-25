@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import secrets
-from typing import Any
+import sqlite3
+import time
 
 from app.execution.worker_contracts import (
     BoundedOutput,
@@ -14,19 +16,24 @@ from app.execution.worker_contracts import (
     WorkerExecutionStatus,
     WorkerFailureCode,
 )
+from app.execution.worker_json import decode_worker_json
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .durable_ledger import (
     DurableLedgerConflictError,
     DurableLedgerCorruptionError,
+    DurableLedgerStartConflict,
     DurableRequestLedger,
 )
+from .isolation import IsolationUnavailable
 from .ledger import RequestConflictError, RequestLedger
 from .runner import WorkspaceExecutionRunner
 
 LOGGER = logging.getLogger("atlas_execution_worker")
 SERVICE_NAME = "atlas-execution-worker"
+MAX_EXECUTION_REQUEST_BYTES = 2 * 1024 * 1024
+MAX_REQUEST_READ_SECONDS = 5.0
 
 
 def _disabled_result(request: WorkerExecutionRequest) -> WorkerExecutionResult:
@@ -61,6 +68,17 @@ def _error(status_code: int, code: str, message: str) -> JSONResponse:
     )
 
 
+def _authenticated(request: Request, token: str) -> bool:
+    values = request.headers.getlist("authorization")
+    if len(values) != 1:
+        return False
+    try:
+        provided = values[0].encode("ascii")
+    except UnicodeEncodeError:
+        return False
+    return secrets.compare_digest(provided, ("Bearer " + token).encode("ascii"))
+
+
 def create_app(
     ledger: RequestLedger | None = None,
     durable_ledger: DurableRequestLedger | None = None,
@@ -72,32 +90,75 @@ def create_app(
 ) -> FastAPI:
     """Create the execution-disabled app with an injectable ledger."""
 
+    if authentication_token is not None and (
+        not isinstance(authentication_token, str) or not authentication_token
+        or len(authentication_token) > 1024
+        or any(not 33 <= ord(char) <= 126 for char in authentication_token)
+    ):
+        raise ValueError("worker authentication must be one bounded ASCII credential")
     app = FastAPI(title=SERVICE_NAME, docs_url=None, redoc_url=None)
+    @app.middleware("http")
+    async def ledger_errors(request: Request, call_next):
+        try:
+            return await call_next(request)
+        except DurableLedgerCorruptionError:
+            LOGGER.error("worker ledger unavailable code=ledger_corrupt")
+            return _error(503, "ledger_corrupt", "stored execution result is invalid")
+        except sqlite3.Error:
+            LOGGER.error("worker ledger unavailable code=ledger_unavailable")
+            return _error(503, "ledger_unavailable", "worker state is unavailable; reconcile before further action")
+
     request_ledger = (
         ledger if ledger is not None else durable_ledger if durable_ledger is not None else RequestLedger()
     )
     configured_runners = runners or {}
 
     @app.get("/health")
-    async def health() -> dict[str, Any]:
-        counts = request_ledger.counts() if isinstance(request_ledger, DurableRequestLedger) else {}
-        return {
+    async def health():
+        durable = isinstance(request_ledger, DurableRequestLedger)
+        ledger_available = True
+        try:
+            counts = request_ledger.counts() if durable else {}
+        except (sqlite3.Error, DurableLedgerCorruptionError):
+            counts = {}
+            ledger_available = False
+            LOGGER.error("worker health unavailable code=ledger_unavailable")
+        observed = None
+        reason = "execution_disabled"
+        if execution_enabled:
+            reason = "runtime_provider_unobserved"
+            if configured_runners and all(isinstance(runner, WorkspaceExecutionRunner) for runner in configured_runners.values()):
+                try:
+                    for runner in configured_runners.values():
+                        runner.observe_runtime()
+                    observed, reason = True, "isolation_observed"
+                except IsolationUnavailable:
+                    observed, reason = False, "isolation_unavailable"
+        payload = {
+            "execution_readiness": {
+                "configured_enabled":execution_enabled, "isolation_observed_safe":observed,
+                "reason":reason, "full_readiness_proven":False, "activation_authorized":False,
+            },
             "service": SERVICE_NAME,
-            "status": "healthy",
+            "status": "healthy" if ledger_available else "unavailable",
             "contract_schema_version": 1,
             "execution_enabled": execution_enabled,
             **(
                 {
                     "ledger_counts": {
                         "claimed": counts.get("claimed", 0),
+                        "executing": counts.get("executing", 0),
+                        "failed_terminal": counts.get("failed_terminal", 0),
                         "completed": counts.get("completed", 0),
                         "unknown_outcome": counts.get("unknown_outcome", 0),
-                    }
+                    } if ledger_available else None,
+                    "ledger_status": "available" if ledger_available else "unavailable",
                 }
-                if isinstance(request_ledger, DurableRequestLedger)
+                if durable
                 else {}
             ),
         }
+        return JSONResponse(status_code=200 if ledger_available else 503, content=payload)
 
     @app.post("/v1/executions")
     async def submit(request: Request) -> JSONResponse:
@@ -106,21 +167,45 @@ def create_app(
             and (request.client is None or request.client.host != allowed_client_address)
         ):
             return _error(403, "untrusted_peer", "worker client network identity rejected")
-        if authentication_token is not None and not secrets.compare_digest(
-            request.headers.get("authorization", ""),
-            f"Bearer {authentication_token}",
-        ):
+        if authentication_token is not None and not _authenticated(request, authentication_token):
             return _error(401, "authentication_required", "worker authentication failed")
+        lengths = request.headers.getlist("content-length")
+        if (lengths and request.headers.get("transfer-encoding")) or len(lengths) > 1 or (lengths and (not lengths[0].isascii() or not lengths[0].isdigit() or len(lengths[0]) > 10)):
+            return _error(400, "invalid_request", "invalid request framing")
+        if lengths and int(lengths[0]) > MAX_EXECUTION_REQUEST_BYTES:
+            return _error(413, "request_too_large", "execution request exceeds byte bound")
+        body = bytearray()
+        deadline = time.monotonic() + MAX_REQUEST_READ_SECONDS
         try:
-            payload = await request.json()
+            async with asyncio.timeout(MAX_REQUEST_READ_SECONDS):
+                async for chunk in request.stream():
+                    if len(body) + len(chunk) > MAX_EXECUTION_REQUEST_BYTES:
+                        return _error(413, "request_too_large", "execution request exceeds byte bound")
+                    body.extend(chunk)
+            if lengths and len(body) != int(lengths[0]):
+                return _error(400, "invalid_request", "request length mismatch")
+            payload = decode_worker_json(body)
             worker_request = WorkerExecutionRequest.from_dict(payload)
-        except (ValueError, TypeError, KeyError, UnicodeDecodeError) as exc:
+            if time.monotonic() >= deadline:
+                return _error(408, "request_timeout", "execution request read deadline exceeded")
+        except TimeoutError:
+            return _error(408, "request_timeout", "execution request read deadline exceeded")
+        except (ValueError, TypeError, KeyError, UnicodeDecodeError, RecursionError):
             LOGGER.info("worker request rejected code=invalid_request")
-            return _error(400, "invalid_request", str(exc))
-        except Exception:
-            LOGGER.exception("worker request parsing failed code=invalid_request")
+            return _error(400, "invalid_request", "execution request failed contract validation")
+        except Exception:  # noqa: BLE001 -- protocol boundary: sanitize all parser failures
+            LOGGER.error("worker request parsing failed code=invalid_request")
             return _error(400, "invalid_request", "request could not be parsed")
 
+        if execution_enabled:
+            configured = configured_runners.get(worker_request.repository_token)
+            if configured is None:
+                return _error(400, "unknown_repository_token", "repository token is not configured")
+            if isinstance(configured, WorkspaceExecutionRunner):
+                try:
+                    configured.validate_runtime()
+                except IsolationUnavailable:
+                    return _error(503, "sandbox_unavailable", "required execution isolation unavailable")
         try:
             entry = request_ledger.claim(worker_request)
         except DurableLedgerCorruptionError:
@@ -144,6 +229,12 @@ def create_app(
                 request_ledger.mark_executing(worker_request)
                 result = runner.execute(worker_request)
                 entry = request_ledger.persist_result(worker_request, result)
+            except DurableLedgerStartConflict as conflict:
+                entry = conflict.entry
+            except IsolationUnavailable:
+                return _error(503, "sandbox_unavailable", "required execution isolation unavailable")
+            except (sqlite3.Error, DurableLedgerCorruptionError):
+                raise
             except ValueError:
                 LOGGER.exception(
                     "worker result rejected execution_request_id=%s result_code=invalid_result",
@@ -173,6 +264,7 @@ def create_app(
             status_code=202 if entry.state == "claimed" else 200,
             content={
                 "state": entry.state,
+                "request_digest": entry.request_digest,
                 "result": entry.result.to_dict() if entry.result else None,
             },
         )
@@ -184,10 +276,7 @@ def create_app(
             and (request.client is None or request.client.host != allowed_client_address)
         ):
             return _error(403, "untrusted_peer", "worker client network identity rejected")
-        if authentication_token is not None and not secrets.compare_digest(
-            request.headers.get("authorization", ""),
-            f"Bearer {authentication_token}",
-        ):
+        if authentication_token is not None and not _authenticated(request, authentication_token):
             return _error(401, "authentication_required", "worker authentication failed")
         try:
             entry = request_ledger.get(execution_request_id)
@@ -198,6 +287,7 @@ def create_app(
         return JSONResponse(
             content={
                 "state": entry.state,
+                "request_digest": entry.request_digest,
                 "result": entry.result.to_dict() if entry.result else None,
             }
         )

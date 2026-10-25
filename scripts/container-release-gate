@@ -376,7 +376,7 @@ docker exec "$core_container" test -S /var/run/docker.sock
 test "$(docker inspect \
     --format '{{range .Mounts}}{{if eq .Destination "/var/run/docker.sock"}}{{.RW}}{{end}}{{end}}' \
     "$core_container")" = "false"
-docker exec "$core_container" python - <<'PY'
+docker exec -i "$core_container" python - <<'PY'
 from app.services.atlas_contexts import LegacyAtlasContextResolver
 from app.clients.docker_client import create_docker_client, docker_connection_diagnostics
 

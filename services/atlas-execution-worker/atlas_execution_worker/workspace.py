@@ -3,17 +3,25 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
 from app.execution.worker_contracts import WorkerExecutionRequest
 
+from .process import run_command
+
 
 class WorkspaceError(RuntimeError):
     """The trusted source cannot produce a safe request workspace."""
+
+
+class WorkspaceTimeout(WorkspaceError):
+    """Workspace preparation exceeded its fixed setup budget."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +29,7 @@ class WorkerWorkspace:
     request_id: str
     path: Path
     base_head: str
+    request_digest: str
 
 
 class WorkerWorkspaceManager:
@@ -46,66 +55,90 @@ class WorkerWorkspaceManager:
         self._active: dict[str, WorkerWorkspace] = {}
         self._workspace_root.mkdir(parents=True, exist_ok=True)
 
+    def _request_path(self, request_id: str) -> Path:
+        if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", request_id) or request_id == "quarantine":
+            raise WorkspaceError("invalid owned workspace identity")
+        try:
+            if self._workspace_root.is_symlink() or not self._workspace_root.is_dir() or self._workspace_root.resolve() != self._workspace_root:
+                raise WorkspaceError("workspace root ownership changed")
+            path = self._workspace_root / request_id
+            if path.is_symlink() or path.resolve().parent != self._workspace_root:
+                raise WorkspaceError("workspace path ownership changed")
+            return path
+        except (OSError, RuntimeError) as exc:
+            raise WorkspaceError("workspace ownership cannot be verified") from exc
+
     def prepare(self, request: WorkerExecutionRequest) -> WorkerWorkspace:
         request.validate()
+        path = self._request_path(request.execution_request_id)
         if request.repository_token != self._repository_token:
             raise WorkspaceError("repository token is not accepted")
         existing = self._active.get(request.execution_request_id)
         if existing is not None:
-            if existing.base_head != request.expected_repository_head:
-                raise WorkspaceError("request workspace has conflicting base head")
+            if existing.base_head != request.expected_repository_head or existing.request_digest != request.request_digest:
+                raise WorkspaceError("request workspace has conflicting immutable request")
+            if existing.path != path or not path.is_dir():
+                raise WorkspaceError("active workspace material is unavailable")
             return existing
         source = self._source_root
         if self._source_root_input.is_symlink() or not source.is_dir():
             raise WorkspaceError("trusted repository source is invalid")
         if source not in self._trusted_repository_paths:
             raise WorkspaceError("repository source is not configured")
-        source_head = self._git(source, "rev-parse", "HEAD")
+        deadline = time.monotonic() + min(30.0, request.timeout_seconds)
+        def remaining():
+            value = deadline - time.monotonic()
+            if value <= 0:
+                raise WorkspaceTimeout("workspace preparation deadline exceeded")
+            return value
+        source_head = self._git(source, "rev-parse", "HEAD", timeout=remaining())
         if source_head != request.expected_repository_head:
             raise WorkspaceError("stale repository")
-        path = self._workspace_root / request.execution_request_id
         if path.exists() or path.is_symlink():
             raise WorkspaceError("request workspace already exists")
-        subprocess.run(
-            [
-                "git",
-                "clone",
-                "--no-local",
-                "--no-hardlinks",
-                str(source),
-                str(path),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=False,
-            env={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
-        )
-        cloned_head = self._git(path, "rev-parse", "HEAD")
-        if cloned_head != request.expected_repository_head:
-            shutil.rmtree(path, ignore_errors=True)
-            raise WorkspaceError("cloned workspace head does not match expected head")
-        workspace = WorkerWorkspace(request.execution_request_id, path, cloned_head)
+        try:
+            result = run_command(
+                ["git", "clone", "--no-local", "--no-hardlinks", str(source), str(path)],
+                cwd=self._workspace_root, timeout=remaining(),
+                environment={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
+            )
+            if result.returncode != 0 or result.stdout.truncated or result.stderr.truncated:
+                raise WorkspaceError("workspace clone failed")
+            cloned_head = self._git(path, "rev-parse", "HEAD", timeout=remaining())
+            if cloned_head != request.expected_repository_head:
+                raise WorkspaceError("cloned workspace head does not match expected head")
+        except (OSError, subprocess.TimeoutExpired, WorkspaceError) as exc:
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path)
+            if isinstance(exc, (subprocess.TimeoutExpired, WorkspaceTimeout)):
+                raise WorkspaceTimeout("workspace preparation deadline exceeded") from exc
+            raise WorkspaceError("workspace preparation failed") from exc
+        workspace = WorkerWorkspace(request.execution_request_id, path, cloned_head, request.request_digest)
         self._active[request.execution_request_id] = workspace
         return workspace
 
     def cleanup(self, request_id: str) -> None:
-        workspace = self._active.pop(request_id, None)
-        path = workspace.path if workspace else self._workspace_root / request_id
+        path = self._request_path(request_id)
+        workspace = self._active.get(request_id)
+        if workspace is not None and workspace.path != path:
+            raise WorkspaceError("active workspace ownership mismatch")
         if path.is_symlink() or (path.exists() and not path.is_dir()):
             raise WorkspaceError("refusing to clean non-directory workspace")
         if path.exists():
             shutil.rmtree(path)
+        self._active.pop(request_id, None)
 
     def quarantine(self, request_id: str) -> Path | None:
         """Move an unknown-outcome workspace aside without reusing or deleting it."""
 
-        path = self._workspace_root / request_id
+        path = self._request_path(request_id)
         if path.is_symlink() or (path.exists() and not path.is_dir()):
             raise WorkspaceError("refusing to quarantine non-directory workspace")
         if not path.exists():
             return None
         quarantine_root = self._workspace_root / "quarantine"
+        if quarantine_root.is_symlink() or quarantine_root.resolve() != quarantine_root or (quarantine_root.exists() and not quarantine_root.is_dir()):
+            raise WorkspaceError("quarantine root ownership changed")
         quarantine_root.mkdir(mode=0o700, exist_ok=True)
         destination = quarantine_root / f"{request_id}.unknown"
         if destination.exists() or destination.is_symlink():
@@ -114,13 +147,16 @@ class WorkerWorkspaceManager:
         self._active.pop(request_id, None)
         return destination
 
-    def _git(self, path: Path, *args: str) -> str:
-        result = subprocess.run(
-            ["git", "-C", str(path), *args],
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=False,
-            env={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
-        )
-        return result.stdout.strip()
+    def _git(self, path: Path, *args: str, timeout: float = 30.0) -> str:
+        try:
+            result = run_command(
+                ["git", "-C", str(path), *args], cwd=self._workspace_root,
+                timeout=timeout, environment={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise WorkspaceTimeout("workspace Git deadline exceeded") from exc
+        except OSError as exc:
+            raise WorkspaceError("workspace Git unavailable") from exc
+        if result.returncode != 0 or result.stdout.truncated:
+            raise WorkspaceError("workspace Git failed")
+        return result.stdout.text.strip()

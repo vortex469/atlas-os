@@ -197,3 +197,46 @@ def test_result_rejects_invalid_attestation_and_truncation_metadata() -> None:
             request,
             stdout=BoundedOutput("partial", truncated=True, original_bytes=7),
         ).validate(request)
+
+
+@pytest.mark.parametrize('changes', [{'schema_version':True},{'schema_version':1.0},{'timeout_seconds':True},{'timeout_seconds':10**1000}])
+def test_request_refuses_ambiguous_numeric_types(changes):
+    with pytest.raises(ValueError):
+        make_request(**changes)
+
+
+@pytest.mark.parametrize('changes', [{'schema_version':True},{'return_code':False},{'duration_seconds':True},{'patch_size_bytes':True},{'patch_truncated':1}])
+def test_result_refuses_ambiguous_numeric_types(changes):
+    result = make_result(make_request())
+    with pytest.raises(ValueError):
+        replace(result, **changes).validate()
+
+
+@pytest.mark.parametrize('output', [BoundedOutput('x', 1, 2), BoundedOutput('', False, False)])
+def test_capture_counts_and_flags_are_strict(output):
+    with pytest.raises(ValueError):
+        output.validate()
+
+
+def complete_patch_result():
+    import hashlib
+    text = 'é\n'
+    data = text.encode('utf-8')
+    return replace(make_result(make_request()), patch=BoundedOutput(text), patch_size_bytes=len(data), patch_digest='sha256:'+hashlib.sha256(data).hexdigest())
+
+
+def test_complete_patch_links_utf8_bytes_size_and_digest():
+    complete_patch_result().validate()
+
+
+@pytest.mark.parametrize('changes', [{'patch_digest':'sha256:'+'0'*64},{'patch_size_bytes':2},{'patch_digest':None},{'patch_size_bytes':None},{'patch_truncated':True},{'patch':BoundedOutput('tampered')}])
+def test_inconsistent_patch_metadata_is_refused(changes):
+    with pytest.raises(ValueError):
+        replace(complete_patch_result(), **changes).validate()
+
+
+def test_truncated_success_refused_but_linked_failure_diagnostic_allowed():
+    result = replace(complete_patch_result(), patch=BoundedOutput('é',True,3), patch_truncated=True)
+    with pytest.raises(ValueError, match='cannot be truncated'):
+        result.validate()
+    replace(result,status=WorkerExecutionStatus.BLOCKED,return_code=1,failure_code=WorkerFailureCode.CODEX_FAILED).validate()

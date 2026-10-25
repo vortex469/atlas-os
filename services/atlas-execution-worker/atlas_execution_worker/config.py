@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
+
+from .process import run_command
 
 
 class WorkerConfigurationError(ValueError):
@@ -20,7 +23,13 @@ def write_git_config(repository_paths: list[Path], config_path: Path) -> Path:
         for path in repository_paths
         for entry in (path.resolve(), path.resolve() / ".git")
     ]
-    content = "[safe]\n" + "".join(f"\tdirectory = {entry}\n" for entry in entries)
+    def quote(entry: Path) -> str:
+        value = str(entry)
+        if any(ord(char) < 32 or ord(char) == 127 for char in value):
+            raise WorkerConfigurationError("repository path contains unsupported control characters")
+        return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
+
+    content = "[safe]\n" + "".join(f"\tdirectory = {quote(entry)}\n" for entry in entries)
     temporary = config_path.with_suffix(".tmp")
     temporary.write_text(content, encoding="utf-8")
     temporary.chmod(0o600)
@@ -48,6 +57,8 @@ def load_repository_mapping(
     """Load opaque-token to trusted-git-source mappings from token=path pairs."""
 
     raw = os.getenv("ATLAS_EXECUTION_WORKER_REPOSITORY_MAP", "") if value is None else value
+    if len(raw.encode("utf-8")) > 65536 or raw.count(",") >= 64:
+        raise WorkerConfigurationError("repository map exceeds configured bounds")
     mapping: dict[str, Path] = {}
     for item in filter(None, (part.strip() for part in raw.split(","))):
         try:
@@ -56,7 +67,7 @@ def load_repository_mapping(
             raise WorkerConfigurationError("repository map entries must be token=path") from exc
         token = token.strip()
         path = Path(source.strip()).expanduser()
-        if not token or "/" in token or "\\" in token or not path.is_absolute():
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", token) or token == "quarantine" or not path.is_absolute() or any(ord(char) < 32 or ord(char) == 127 for char in str(path)):
             raise WorkerConfigurationError("repository map token/path is unsafe")
         resolved = path.resolve()
         if path.is_symlink() or not resolved.is_dir():
@@ -71,21 +82,20 @@ def load_repository_mapping(
             "git",
             "-C",
             str(resolved),
+            "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
             "rev-parse",
             "--is-inside-work-tree",
         ]
-        environment = None
-        if git_config_path is not None:
-            environment = os.environ.copy()
-            environment["GIT_CONFIG_GLOBAL"] = str(git_config_path)
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=environment,
-        )
-        if result.returncode != 0 or result.stdout.strip() != "true":
+        environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        environment.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(git_config_path or "/dev/null"), GIT_NO_REPLACE_OBJECTS="1")
+        try:
+            result = run_command(
+                command, cwd=resolved, timeout=10, output_limit=4096,
+                environment=environment,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            raise WorkerConfigurationError("repository source check unavailable") from None
+        if result.returncode != 0 or result.stdout.truncated or result.stdout.text.strip() != "true":
             raise WorkerConfigurationError("repository map source must be a git worktree")
     return mapping
 

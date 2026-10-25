@@ -1,5 +1,155 @@
 # Atlas OS Roadmap
 
+## v0.91–v1.00 repository-action implementation (complete locally; unreleased)
+
+The selected local continuation through v1.00 is complete. Ten separately
+committed behaviors close inspected execution-start, terminal-transition,
+recovery, unavailable-state, error-privacy, configuration and relay-lifetime
+gaps. Worker health now exposes all durable states and refuses unreadable or
+corrupt state instead of implying healthy emptiness. See the
+[implementation and operator acceptance record](docs/architecture/v0.91-v1.00-repository-action-plan.md).
+
+Final source `7b4363a4` passed 1,147 Agent tests, 175 worker tests, 27 script
+tests, 72 guarded workflow checks, configured lint, independent runsc probes
+and the existing isolated container/five-volume/Rest Server recovery gates.
+Source report verification passed. Production identities were unchanged and
+test-owned integration resources removed.
+
+This completes the selected local repository-action milestone; Atlas production
+v1 acceptance remains outstanding. The known nested helper limitation, seven
+installation blockers and deferred successor activation remain unchanged. No
+real model/account credentials, deployment, runtime enablement, push, tags or
+publication were used. Supported-environment acceptance, immutable production
+artifact parity, security/upgrades/recovery acceptance and separately requested
+activation/release work remain required.
+
+## v0.81–v0.90 repository-action implementation (complete locally; unreleased)
+
+The selected continuation through v0.90 is complete. Ten separate behavior
+changes and acceptance records are documented in the
+[selected sequential plan](docs/architecture/v0.81-v0.90-repository-action-plan.md).
+These cover process budgets, authentication, strict protocol JSON, incoming
+request deadlines, workspace disposal and reuse, ledger validation, patch
+integrity, observed readiness and source-bound fixture reports.
+
+Final source `c2982235` passed 1,147 Agent tests, 145 worker tests, 27 script
+tests and 72 guarded workflow checks, configured lint, final-image runsc probes,
+and the existing container/five-volume recovery/Rest Server gates. Report
+verification passed and stale reports were refused. Production identities were
+unchanged. No real model/account credentials, push, tags, publication, deployment
+or runtime enablement were used. The nested patch-helper limitation and seven
+installation blockers remain explicit; full production readiness is not claimed.
+Further capabilities and production/release acceptance require separate selection.
+
+## v0.71–v0.80 repository-action implementation (complete locally; unreleased)
+
+The operator selected continuation through v0.80. Each version now has a
+separate committed behavior change and acceptance record in the
+[selected sequential plan](docs/architecture/v0.71-v0.80-repository-action-plan.md).
+
+| Version | Completed result | Commit |
+| --- | --- | --- |
+| v0.71 | Incoming byte/framing refusal before JSON parsing and claim. | `a5901f96` |
+| v0.72 | Exact NUL-delimited path and rename scope checks. | `71febd0e` |
+| v0.73 | Bounded complete-patch capture; no retained/hashed oversized prefix. | `da7ee334` |
+| v0.74 | Private ledger export with schema/domain/result validation. | `0ad15d1d` |
+| v0.75 | Independent shell/helper diagnostics without readiness authority. | `190d5317` |
+| v0.76 | Operator truncation summary without raw output or effects. | `0cffcfaa` |
+| v0.77 | Phase-selectable guarded synthetic native fixture checker. | `5f2ba147` |
+| v0.78 | Bounded Git setup/metadata and failed partial-clone cleanup. | `e1e4f2e6` |
+| v0.79 | Revision/control refusal and safe post-model Git collection. | `1f5078f7` |
+| v0.80 | Observed isolation, zero capabilities and fail-closed execution guard. | `889646f0` |
+
+Integrated validation passed 1,127 Agent tests, 96 worker tests, 2,421 UI tests,
+16 script tests and 72 guarded native fixture checks. Configured lint/UI build,
+final-image runsc process/TCP/isolation/shell-boundary checks, a validated
+100-entry synthetic ledger export, and the existing committed-source container,
+five-volume recovery and Rest Server gates passed. Container integration used
+runc and dummy credentials; independent runsc checks are recorded separately.
+Production container identities were unchanged and isolated resources removed.
+
+No real model or account credentials were used in this continuation. Full
+runtime readiness is not claimed: the known nested helper limitation remains
+explicit. Release acceptance, remote CI, production activation, push, tags and
+publication remain separate. The seven installation blockers and deferred
+successor control plane are unchanged. This closes the selected local work
+through v0.80 without authorizing further versions or production effects.
+
+## v0.66–v0.70 repository-action implementation (complete locally; unreleased)
+
+The operator selected sequential completion **through v0.70**. Each selected
+scope now has its own implementation and acceptance record:
+
+| Version | Completed behavior | Implementation / record |
+| --- | --- | --- |
+| v0.66 | Approved bounded repository edit through separately approved verification and local commit; terminal audit survives reload. | `26c5656a`; [closeout](docs/architecture/repository-action-acceptance.md#v066-local-closeout). |
+| v0.67 | Owned process-group timeout/exit cleanup; timed-out edits never become patches. | `075fecb0`; [closeout](docs/architecture/v0.67-worker-process-lifetime.md). |
+| v0.68 | Concurrent bounded stdout/stderr capture, truncation and byte counts. | `015c5f03`; [closeout](docs/architecture/v0.68-worker-output-capture.md). |
+| v0.69 | Bounded worker response headers/bodies with no execution replay. | `5f940ab1`; [closeout](docs/architecture/v0.69-worker-response-bounds.md). |
+| v0.70 | Strict complete response framing and a total request deadline. | `2d4e81c5`; [closeout](docs/architecture/v0.70-worker-response-framing.md). |
+
+Final integrated validation passed 1,124 Agent tests, 62 worker tests, configured
+lint, two maintained process probes on the host and runsc, two real-TCP runsc
+recovery probes, and the existing container integration/five-volume data
+recovery/Rest Server gates. Container integration ran with runc and dummy
+credentials, not production acceptance. The seven production container IDs,
+image IDs and start times were unchanged. No new real model or account
+credential use was required.
+
+The [sequential plan](docs/architecture/v0.66-v0.77-repository-action-plan.md)
+records the earlier consolidated-target correction and exact boundaries.
+Those v0.71–v0.77 proposals were outside the earlier v0.70 run; their
+subsequent selection and implementation are recorded above. Nested
+patch-helper compatibility remains a documented limit. Production activation,
+remote exact-SHA CI, release acceptance, push, tags and publication remain
+separate and are not claimed. The seven installation blockers and deferred
+successor control plane are unchanged.
+
+## v0.66 approved bounded repository action implementation
+
+After P0 review, the operator approved implementation directly in Codex of the
+bounded `update-compose-stack` journey, excluding deployment, runtime
+enablement, tags, push and publication. The demonstrated implementation gap
+is pre-dispatch binding of worker context to the configured repository and
+approved request plan. The adapter now refuses substituted repository tokens,
+HEADs, branches, file scopes and directories before worker submission, and
+refuses silently changed explicit timeouts or omitted environment overrides.
+
+The existing approval, transport, durable ledger, patch application,
+verification and commit mechanisms are reused. Tests exercise the complete
+candidate workflow through separate approvals and a local commit with both
+the local backend and a fake worker. This is repository implementation, not
+production acceptance or a new evidence stage. See the
+[action boundary and remaining prerequisites](docs/architecture/codex-execution-sandbox-hardening.md#v066-approved-repository-action-binding).
+The subsequent approved lost-response work records the exact worker request
+before dispatch, shows an unknown outcome explicitly, and offers an operator
+check of the original result through the existing Resume endpoint. Result
+lookup is read-only at the worker, requires the original ledger digest, never
+resubmits execution, and retains separate verification and commit approvals.
+Disposable-repository and durable-ledger rehearsals cover response loss,
+restart, concurrent checks and fail-closed refusal cases.
+The bounded real-TCP rehearsal also passed in the packaged worker and in a
+separate hardened `runsc` container, using an inert runner. Corrected stdin
+handling makes the existing worker/relay, Agent/worker and Core Docker probes
+actually execute. The isolated CI-mode container, data-recovery and Rest
+Server gates passed at `be803781`; existing production container identities,
+image IDs and start times were unchanged. This does not establish nested
+Codex sandbox/model execution or acceptance of the deployed operator journey.
+The subsequent credential-free nested Codex sandbox probe passed under
+`runsc` with CLI 0.147.0 for workspace writes, protected worker-state write
+denial and authenticated wrong-peer refusal. The initial fixture exposed a
+`120` versus `120.0` preparation discrepancy; shared request preparation fixed
+it without rewriting old hashes or replaying consumed work. A fresh exactly
+approved model request matched preflight and ledger digests, then reached
+`completed` after separately approved configuration verification and local
+commit. Its full audit chain validated after persistence reload. Sandboxed
+shell editing is demonstrated; nested patch-helper compatibility remains an
+explicit limitation. Implementation is complete locally, not published or
+accepted for production activation.
+The seven installation blockers, 67 fixed-false fields and deferred successor
+control-plane boundary remain unchanged. Production action readiness and
+activation are not claimed.
+
 ## v0.65 published release status (2026-10-21)
 
 The v0.65 release is published as

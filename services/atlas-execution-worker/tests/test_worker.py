@@ -53,6 +53,7 @@ def test_health_and_disabled_submission_have_bounded_contract() -> None:
         "status": "healthy",
         "contract_schema_version": 1,
         "execution_enabled": False,
+        "execution_readiness": {"configured_enabled":False,"isolation_observed_safe":None,"reason":"execution_disabled","full_readiness_proven":False,"activation_authorized":False},
     }
 
     response = client.post("/v1/executions", json=make_request().to_dict())
@@ -287,3 +288,116 @@ def test_enabled_runner_failure_is_deterministic_and_not_retried(tmp_path: Path)
     assert duplicate.status_code == 200
     assert duplicate.json()["state"] == "executing"
     assert runner.calls == 1
+
+
+def test_oversized_request_is_refused_without_ledger_claim(monkeypatch):
+    from atlas_execution_worker import api
+    ledger = RequestLedger()
+    monkeypatch.setattr(api, 'MAX_EXECUTION_REQUEST_BYTES', 32)
+    client = TestClient(create_app(ledger=ledger))
+    response = client.post('/v1/executions', content=b'x' * 33)
+    assert response.status_code == 413
+    assert response.json()['error']['code'] == 'request_too_large'
+    assert len(ledger) == 0
+
+
+def test_streamed_overflow_and_length_mismatch_have_no_claim(monkeypatch):
+    import asyncio
+    import json
+
+    from atlas_execution_worker import api
+    monkeypatch.setattr(api, 'MAX_EXECUTION_REQUEST_BYTES', 32)
+    ledger = RequestLedger()
+    app = create_app(ledger=ledger)
+
+    async def send_body(chunks, headers):
+        sent = []
+        messages = iter({'type': 'http.request', 'body': part, 'more_body': index < len(chunks) - 1} for index, part in enumerate(chunks))
+        async def receive():
+            return next(messages)
+        async def send(message):
+            sent.append(message)
+        await app({'type':'http','asgi':{'version':'3.0'},'http_version':'1.1','method':'POST','scheme':'http','path':'/v1/executions','raw_path':b'/v1/executions','query_string':b'','headers':headers,'client':('127.0.0.1',1),'server':('testserver',80)}, receive, send)
+        return sent[0]['status'], json.loads(sent[1]['body'])
+
+    status, body = asyncio.run(send_body([b'x'*20, b'x'*20], []))
+    assert status == 413
+    assert body['error']['code'] == 'request_too_large'
+    assert asyncio.run(send_body([b'{}'], [(b'content-length',b'3')]))[0] == 400
+    assert len(ledger) == 0
+
+
+@pytest.mark.parametrize('headers', [[(b'authorization', b'Bearer \xff')], [(b'authorization', b'Bearer test-worker-token'), (b'authorization', b'Bearer test-worker-token')]])
+def test_malformed_auth_is_controlled_on_submission_and_lookup(headers):
+    ledger = RequestLedger()
+    client = TestClient(create_app(ledger=ledger, authentication_token='test-worker-token'))
+    assert client.post('/v1/executions', json=make_request().to_dict(), headers=headers).status_code == 401
+    assert client.get('/v1/executions/execution-1', headers=headers).status_code == 401
+    assert len(ledger) == 0
+
+
+@pytest.mark.parametrize('token', ['', 'white space', 'non-ascii-雪', 'x'*1025])
+def test_invalid_auth_configuration_never_starts(token):
+    with pytest.raises(ValueError, match='bounded ASCII'):
+        create_app(authentication_token=token)
+
+
+@pytest.mark.parametrize('body', [b'{"x":1,"x":2}', b'{"x":NaN}', b'{"x":Infinity}', b'[]', b'{"x":"\xff"}'])
+def test_ambiguous_json_refused_without_claim(body):
+    ledger = RequestLedger()
+    response = TestClient(create_app(ledger=ledger)).post('/v1/executions', content=body)
+    assert response.status_code == 400
+    assert response.json()['error']['code'] == 'invalid_request'
+    assert len(ledger) == 0
+
+
+def test_slow_stream_times_out_before_claim(monkeypatch):
+    import asyncio
+
+    from atlas_execution_worker import api
+    ledger = RequestLedger()
+    monkeypatch.setattr(api, 'MAX_REQUEST_READ_SECONDS', 0.01)
+    app = create_app(ledger=ledger)
+    async def scenario():
+        sent = []
+        async def receive():
+            await asyncio.sleep(0.1)
+            return {'type':'http.request','body':b'{}','more_body':False}
+        async def send(message):
+            sent.append(message)
+        await app({'type':'http','asgi':{'version':'3.0'},'http_version':'1.1','method':'POST','scheme':'http','path':'/v1/executions','raw_path':b'/v1/executions','query_string':b'','headers':[],'client':('127.0.0.1',1),'server':('testserver',80)},receive,send)
+        return sent
+    messages = asyncio.run(scenario())
+    assert messages[0]['status'] == 408
+    assert len(ledger) == 0
+
+
+def test_decode_cannot_claim_after_read_deadline(monkeypatch):
+    from atlas_execution_worker import api
+    ledger = RequestLedger()
+    original = api.decode_worker_json
+    def decode(raw):
+        time.sleep(0.02)
+        return original(raw)
+    monkeypatch.setattr(api, 'MAX_REQUEST_READ_SECONDS', 0.01)
+    monkeypatch.setattr(api, 'decode_worker_json', decode)
+    response = TestClient(create_app(ledger=ledger)).post('/v1/executions', json=make_request().to_dict())
+    assert response.status_code == 408
+    assert response.json()['error']['code'] == 'request_timeout'
+    assert len(ledger) == 0
+
+
+@pytest.mark.parametrize('exception', [ValueError, TypeError, KeyError, RuntimeError])
+def test_invalid_request_never_echoes_decoder_errors(monkeypatch, caplog, exception):
+    from atlas_execution_worker import api
+
+    def reject(_):
+        raise exception('PRIVATE_CALLER_PAYLOAD')
+
+    monkeypatch.setattr(api, 'decode_worker_json', reject)
+    ledger = RequestLedger()
+    response = TestClient(create_app(ledger)).post('/v1/executions', json={})
+    assert response.status_code == 400
+    assert response.json()['error']['code'] == 'invalid_request'
+    assert 'PRIVATE_CALLER_PAYLOAD' not in response.text + caplog.text
+    assert len(ledger) == 0

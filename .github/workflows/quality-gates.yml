@@ -39,6 +39,19 @@ jobs:
       - name: Test Atlas Agent
         run: PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests
 
+      - name: Check bounded worker execution
+        run: |
+          python -m ruff check services/atlas-execution-worker/atlas_execution_worker services/atlas-execution-worker/healthcheck.py services/atlas-execution-worker/tests/test_healthcheck.py services/atlas-execution-worker/tests/test_relay.py services/atlas-execution-worker/tests/test_config.py services/atlas-execution-worker/tests/test_durable_ledger.py services/atlas-execution-worker/tests/test_process.py services/atlas-execution-worker/tests/test_workspace_runner.py services/atlas-execution-worker/tests/test_worker.py services/atlas-execution-worker/tests/test_isolation.py services/atlas-execution-worker/tests/test_diagnostics.py services/atlas-execution-worker/tests/probe_bounded_process.py services/atlas-execution-worker/tests/probe_nested_sandbox.py services/atlas-execution-worker/tests/probe_runtime_isolation.py
+          PYTHONPATH=services/atlas-agent:services/atlas-execution-worker python -m pytest -q services/atlas-execution-worker/tests
+          PYTHONPATH=services/atlas-agent:services/atlas-execution-worker python services/atlas-execution-worker/tests/probe_bounded_process.py
+
+      - name: Test bounded worker ledger export
+        run: |
+          python -m ruff check scripts/atlas-worker-ledger-export scripts/test_atlas_worker_ledger_export.py scripts/atlas-repository-action-check scripts/atlas_repository_fixture_guard.py scripts/test_atlas_repository_action_check.py scripts/atlas_repository_fixture_source.py scripts/test_atlas_repository_fixture_source.py
+          python -m pytest -q scripts/test_atlas_worker_ledger_export.py scripts/test_atlas_repository_action_check.py scripts/test_atlas_repository_fixture_source.py
+          python scripts/atlas-repository-action-check --phase all --output-dir "$RUNNER_TEMP/atlas-repository-fixture"
+          python scripts/atlas-repository-action-check --verify-report "$RUNNER_TEMP/atlas-repository-fixture/report.json"
+
   atlas-core:
     runs-on: ubuntu-latest
     timeout-minutes: 90

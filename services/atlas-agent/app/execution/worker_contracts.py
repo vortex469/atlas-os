@@ -17,6 +17,8 @@ from enum import StrEnum
 from pathlib import PurePosixPath
 from typing import Any
 
+from app.execution.worker_json import decode_worker_json
+
 SCHEMA_VERSION = 1
 _DIGEST_PREFIX = "execution-request-digest-v1:"
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$")
@@ -74,9 +76,19 @@ class WorkerFailureCode(StrEnum):
     CODEX_FAILED = "codex_failed"
     OUT_OF_SCOPE_CHANGES = "out_of_scope_changes"
     NO_COMMITTABLE_CHANGES = "no_committable_changes"
+    PATCH_TOO_LARGE = "patch_too_large"
     DUPLICATE_REQUEST = "duplicate_request"
     WORKER_UNAVAILABLE = "worker_unavailable"
     WORKER_CRASH = "worker_crash"
+
+
+def _finite_number(value: Any) -> bool:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,10 +103,12 @@ class BoundedOutput:
         if not isinstance(self.text, str):
             raise TypeError("output text must be a string")
         encoded = len(self.text.encode("utf-8"))
+        if type(self.truncated) is not bool:
+            raise ValueError("output truncation must be boolean")
         if encoded > _MAX_TEXT_BYTES:
             raise ValueError("output exceeds the contract bound")
         if self.original_bytes is not None and (
-            not isinstance(self.original_bytes, int)
+            type(self.original_bytes) is not int
             or self.original_bytes < encoded
         ):
             raise ValueError("invalid output original_bytes")
@@ -137,7 +151,7 @@ class WorkerAttestation:
     sandbox_profile: str
 
     def validate(self) -> None:
-        if self.runtime_uid != 10001:
+        if type(self.runtime_uid) is not int or self.runtime_uid != 10001:
             raise ValueError("worker runtime uid must be 10001")
         if not isinstance(self.readonly_rootfs, bool) or not self.readonly_rootfs:
             raise ValueError("worker rootfs must be read-only")
@@ -147,6 +161,8 @@ class WorkerAttestation:
             char not in "0123456789abcdefABCDEF, _-" for char in self.effective_capabilities
         ):
             raise ValueError("invalid capability representation")
+        if not re.fullmatch(r"[0-9a-fA-F]{1,32}", self.effective_capabilities) or int(self.effective_capabilities, 16) != 0:
+            raise ValueError("worker effective capabilities must be zero")
         if not self.sandbox_profile or "unconfined" in self.sandbox_profile.lower():
             raise ValueError("sandbox profile must be named and confined")
 
@@ -269,7 +285,7 @@ class WorkerExecutionRequest:
         return cls(**{**values, "request_digest": _digest_payload(_canonical_request_payload(request))})
 
     def validate(self, *, check_digest: bool = True) -> None:
-        if self.schema_version != SCHEMA_VERSION:
+        if type(self.schema_version) is not int or self.schema_version != SCHEMA_VERSION:
             raise ValueError("unsupported worker request schema")
         for value, name in (
             (self.execution_request_id, "execution request id"),
@@ -313,7 +329,7 @@ class WorkerExecutionRequest:
             raise ValueError("unsupported Codex workspace profile argv")
         _validate_path(self.working_directory, "working directory", allow_dot=True)
         _canonical_files(self.allowed_affected_files)
-        if not isinstance(self.timeout_seconds, (int, float)) or not math.isfinite(self.timeout_seconds):
+        if not _finite_number(self.timeout_seconds):
             raise ValueError("invalid timeout")
         if not _MIN_TIMEOUT <= self.timeout_seconds <= _MAX_TIMEOUT:
             raise ValueError("timeout outside contract bounds")
@@ -343,7 +359,7 @@ class WorkerExecutionRequest:
 
     @classmethod
     def from_json(cls, value: str) -> WorkerExecutionRequest:
-        return cls.from_dict(json.loads(value))
+        return cls.from_dict(decode_worker_json(value))
 
 
 @dataclass(frozen=True, slots=True)
@@ -368,7 +384,7 @@ class WorkerExecutionResult:
     patch: BoundedOutput | None = None
 
     def validate(self, request: WorkerExecutionRequest | None = None) -> None:
-        if self.schema_version != SCHEMA_VERSION:
+        if type(self.schema_version) is not int or self.schema_version != SCHEMA_VERSION:
             raise ValueError("unsupported worker result schema")
         _validate_id(self.execution_request_id, "execution request id")
         if request is not None and self.execution_request_id != request.execution_request_id:
@@ -386,11 +402,13 @@ class WorkerExecutionResult:
             raise ValueError("changed file is outside approved scope")
         if self.patch_digest is not None and not re.fullmatch(r"sha256:[0-9a-f]{64}", self.patch_digest):
             raise ValueError("malformed patch digest")
-        if self.patch_size_bytes is not None and not 0 <= self.patch_size_bytes <= _MAX_PATCH_BYTES:
+        if self.patch_size_bytes is not None and (type(self.patch_size_bytes) is not int or not 0 <= self.patch_size_bytes <= _MAX_PATCH_BYTES):
             raise ValueError("invalid patch size")
+        if type(self.patch_truncated) is not bool or (self.return_code is not None and type(self.return_code) is not int):
+            raise ValueError("invalid result numeric or boolean type")
         if self.patch_truncated and self.patch_size_bytes is None:
             raise ValueError("truncated patch requires patch size")
-        if not isinstance(self.duration_seconds, (int, float)) or not math.isfinite(self.duration_seconds) or self.duration_seconds < 0:
+        if not _finite_number(self.duration_seconds) or self.duration_seconds < 0:
             raise ValueError("invalid duration")
         if self.workspace_head is not None and not _HEAD_RE.fullmatch(self.workspace_head):
             raise ValueError("invalid workspace head")
@@ -400,8 +418,20 @@ class WorkerExecutionResult:
             self.patch.validate()
             if self.patch.original_bytes is not None and self.patch.original_bytes > _MAX_PATCH_BYTES:
                 raise ValueError("patch exceeds the contract bound")
+            if self.patch.truncated != self.patch_truncated:
+                raise ValueError("patch truncation metadata mismatch")
+            if self.patch_digest is None or self.patch_size_bytes is None:
+                raise ValueError("patch payload requires size and digest")
+            data = self.patch.text.encode("utf-8")
+            if self.patch.truncated:
+                if self.patch_size_bytes != self.patch.original_bytes:
+                    raise ValueError("truncated patch size mismatch")
+            elif self.patch_size_bytes != len(data) or self.patch_digest != "sha256:" + hashlib.sha256(data).hexdigest():
+                raise ValueError("complete patch size or digest mismatch")
         self.worker_attestation.validate()
         if self.status is WorkerExecutionStatus.SUCCEEDED:
+            if self.patch_truncated:
+                raise ValueError("successful patch cannot be truncated")
             if self.failure_code is not None or self.return_code != 0:
                 raise ValueError("success result has failure evidence")
         elif self.failure_code is None:
@@ -473,7 +503,7 @@ class WorkerExecutionResult:
 
     @classmethod
     def from_json(cls, value: str) -> WorkerExecutionResult:
-        return cls.from_dict(json.loads(value))
+        return cls.from_dict(decode_worker_json(value))
 
 
 def validate_worker_execution_request(request: WorkerExecutionRequest) -> None:

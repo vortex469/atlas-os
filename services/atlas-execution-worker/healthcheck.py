@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import os
-import socket
 from typing import Any
+
+from app.execution.worker_client import TcpWorkerClient, WorkerTransportError
 
 HOST = "127.0.0.1"
 PORT = 8081
@@ -29,34 +29,38 @@ def validate_health(health: Any, *, expected_execution_enabled: bool) -> None:
         raise ValueError("unexpected worker service")
     if health.get("status") != "healthy":
         raise ValueError("worker is not healthy")
-    if health.get("contract_schema_version") != EXPECTED_SCHEMA_VERSION:
+    if type(health.get("contract_schema_version")) is not int or health.get("contract_schema_version") != EXPECTED_SCHEMA_VERSION:
         raise ValueError("unexpected worker contract schema")
     if health.get("execution_enabled") is not expected_execution_enabled:
         raise ValueError("worker execution mode does not match configuration")
+    readiness = health.get("execution_readiness")
+    if expected_execution_enabled and (not isinstance(readiness, dict) or readiness.get("isolation_observed_safe") is not True):
+        raise ValueError("worker execution isolation is not observed")
+    if readiness is not None and (
+        not isinstance(readiness, dict)
+        or readiness.get("configured_enabled") is not expected_execution_enabled
+        or readiness.get("full_readiness_proven") is not False
+        or readiness.get("activation_authorized") is not False
+    ):
+        raise ValueError("worker readiness must not imply authority")
+    if "ledger_status" in health and health["ledger_status"] != "available":
+        raise ValueError("worker ledger is unavailable")
     counts = health.get("ledger_counts")
+    if "ledger_status" in health and (not isinstance(counts, dict) or set(counts) != {"claimed", "executing", "completed", "failed_terminal", "unknown_outcome"}):
+        raise ValueError("incomplete worker ledger states")
     if counts is not None:
-        if not isinstance(counts, dict) or set(counts) != {"claimed", "completed", "unknown_outcome"}:
+        if not isinstance(counts, dict) or set(counts) not in ({"claimed", "completed", "unknown_outcome"}, {"claimed", "executing", "completed", "failed_terminal", "unknown_outcome"}):
             raise ValueError("invalid worker ledger counts")
-        if any(not isinstance(value, int) or value < 0 for value in counts.values()):
+        if any(type(value) is not int or value < 0 for value in counts.values()):
             raise ValueError("invalid worker ledger counts")
 
 
 def main() -> None:
-    expected_execution_enabled = configured_execution_enabled()
-    with socket.create_connection((HOST, PORT), timeout=3) as connection:
-        connection.sendall(
-            b"GET /health HTTP/1.1\r\nHost: worker\r\nConnection: close\r\n\r\n"
-        )
-        response = b""
-        while chunk := connection.recv(4096):
-            response += chunk
-    header, separator, body = response.partition(b"\r\n\r\n")
-    if not separator or b" 200 " not in header.split(b"\r\n", 1)[0]:
-        raise SystemExit("worker health contract failed")
     try:
-        health = json.loads(body)
+        expected_execution_enabled = configured_execution_enabled()
+        health = TcpWorkerClient(HOST, PORT, timeout_seconds=3).health()
         validate_health(health, expected_execution_enabled=expected_execution_enabled)
-    except (ValueError, TypeError, json.JSONDecodeError):
+    except (WorkerTransportError, ValueError, TypeError):
         raise SystemExit("worker health contract failed") from None
 
 

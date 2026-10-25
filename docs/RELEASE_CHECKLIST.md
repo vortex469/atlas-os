@@ -1,5 +1,33 @@
 # Atlas Release Checklist and Evidence
 
+## v1.0.0 repository-action release acceptance
+
+The operator selected merging and tagging the completed bounded repository-action
+work as `atlas-v1.0.0`. [Release scope and limitations](releases/atlas-v1.0.0.md)
+describe the supported capability; historical evidence below remains unchanged.
+
+The release procedure is:
+
+1. Review/merge the repository-action pull request after both GitHub workflows
+   pass: **Quality gates** and **Container release gate**.
+2. Require both workflows to pass again for the exact resulting `origin/main`
+   SHA. A PR merge ref or an earlier source SHA is not a substitute.
+3. Run the existing read-only `release-evidence` with the previous released SHA
+   as `--expected-base`, the exact main SHA as `--expected-sha`, and
+   `--require-main --json`. Require exit 0 and `summary.status=ready`.
+4. Create an annotated `atlas-v1.0.0` tag on that exact SHA, including CI run IDs
+   and the bounded capability/known limitations in its message. Verify it using
+   the same evidence check with `--candidate-tag atlas-v1.0.0 --require-tag`.
+5. Push only the verified tag and verify its remote peeled commit identity.
+
+The authoritative final SHA and CI IDs are in the immutable tag annotation and
+GitHub workflow runs. Local implementation acceptance records are linked from
+the roadmap. Release evidence without `--check-running-images` does not evaluate
+running-image parity or production acceptance. Tagging grants no deployment,
+production enablement, installation capability, real model request approval,
+or successor control-plane authority. Publishing a GitHub release page remains
+separate from pushing the tag.
+
 ## v0.65 published release status (2026-10-21)
 
 The published release is

@@ -44,7 +44,7 @@ class FakeWorkerClient:
             patch=BoundedOutput(self.patch),
             patch_digest="sha256:" + sha256(self.patch.encode()).hexdigest(),
         )
-        return {"state": "succeeded", "result": result.to_dict()}
+        return {"state": "completed", "request_digest": request.request_digest, "result": result.to_dict()}
 
 
 def _repo(tmp_path: Path) -> tuple[Path, str, str]:
@@ -163,11 +163,11 @@ def test_real_candidate_resume_uses_disk_journal_and_recovers_without_worker_rer
 def test_real_candidate_checkpoint_failure_leaves_recoverable_journal(tmp_path: Path) -> None:
     engine, _state, approvals, persistence, client, root, _ = _fixture(tmp_path)
     original_mutate = persistence.mutate_aggregate
-    calls = {"mutate": 0}
-
+    failed = False
     def fail_checkpoint(*args, **kwargs):
-        calls["mutate"] += 1
-        if calls["mutate"] == 3:
+        nonlocal failed
+        if not failed and persistence.read_patch_journal() is not None:
+            failed = True
             raise RuntimeError("checkpoint failure")
         return original_mutate(*args, **kwargs)
 
@@ -222,11 +222,11 @@ def test_real_candidate_checkpoint_failure_leaves_recoverable_journal(tmp_path: 
 def test_real_candidate_recovery_projects_a_valid_partial_audit_chain(tmp_path: Path) -> None:
     engine, _state, _approvals, persistence, client, root, _ = _fixture(tmp_path)
     original_mutate = persistence.mutate_aggregate
-    calls = {"mutate": 0}
-
+    failed = False
     def fail_checkpoint(*args, **kwargs):
-        calls["mutate"] += 1
-        if calls["mutate"] == 3:
+        nonlocal failed
+        if not failed and persistence.read_patch_journal() is not None:
+            failed = True
             raise RuntimeError("checkpoint failure")
         return original_mutate(*args, **kwargs)
 
@@ -271,11 +271,11 @@ def test_real_candidate_recovery_projects_a_valid_partial_audit_chain(tmp_path: 
 def test_real_candidate_verification_approval_is_created_once_on_recovery(tmp_path: Path) -> None:
     engine, _state, _approvals, persistence, client, root, _ = _fixture(tmp_path)
     original_mutate = persistence.mutate_aggregate
-    calls = {"mutate": 0}
-
+    failed = False
     def fail_checkpoint(*args, **kwargs):
-        calls["mutate"] += 1
-        if calls["mutate"] == 3:
+        nonlocal failed
+        if not failed and persistence.read_patch_journal() is not None:
+            failed = True
             raise RuntimeError("checkpoint failure")
         return original_mutate(*args, **kwargs)
 

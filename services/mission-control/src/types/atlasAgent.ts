@@ -402,6 +402,7 @@ export interface WorkflowAuditResponse {
 }
 
 export interface WorkflowExecutionSummary {
+    output_capture?: { stream: string; retained_bytes: number; observed_bytes: number | null; truncated: boolean }[];
     execution_status: string | null;
     started_at: string | null;
     completed_at: string | null;
@@ -463,6 +464,13 @@ export interface WorkflowCommitResultSummary {
 }
 
 export interface WorkflowDetailResponse {
+    worker_reconciliation?: {
+        request_id: string;
+        request_digest?: string;
+        outcome: "unknown" | "known";
+        can_check_result: boolean;
+        message: string;
+    } | null;
     workflow_id: string;
     workflow_source: string;
     workflow_state: string;

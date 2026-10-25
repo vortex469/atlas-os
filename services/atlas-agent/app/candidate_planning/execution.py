@@ -23,6 +23,8 @@ from app.candidate_planning.planner import RepositoryResolver
 from app.candidate_planning.state import CandidatePlanningStateStore
 from app.core_client.exceptions import AtlasCoreClientError
 from app.core_client.models import CoreCandidatePlanningIntakeResponse
+from app.execution.backends import WorkerExecutionContext
+from app.execution.exceptions import ExecutionValidationError
 from app.execution.models import ExecutionRequest, PolicyViolation
 from app.execution.policy import ToolPolicy
 from app.planning.models import ImplementationPlan
@@ -393,6 +395,31 @@ class CandidateExecutionValidator:
             approved=True,
             repository_snapshot=snapshot,
         )
+
+
+def candidate_worker_execution_context(
+    workflow: WorkflowSession,
+    plan: ImplementationPlan,
+    *,
+    repository_token: str,
+) -> WorkerExecutionContext:
+    """Prepare review and dispatch identically, without approval or execution."""
+    metadata = workflow.candidate_metadata
+    if metadata is None or plan.head_commit is None:
+        raise ExecutionValidationError("Candidate metadata and repository HEAD are required")
+    return WorkerExecutionContext(
+        workflow_id=workflow.identifier,
+        candidate_id=metadata.candidate_id,
+        candidate_fingerprint=metadata.candidate_fingerprint,
+        plan_id=metadata.candidate_plan_id,
+        plan_fingerprint=metadata.candidate_plan_fingerprint,
+        execution_intent=metadata.execution_intent,
+        repository_token=repository_token,
+        expected_repository_head=plan.head_commit,
+        repository_branch=plan.branch,
+        allowed_affected_files=tuple(str(path) for path in plan.affected_files),
+        timeout_seconds=(30.0 if metadata.execution_intent == RC1_VALIDATION_SMOKE_INTENT else 120.0),
+    )
 
 
 def implementation_plan_from_candidate_request(

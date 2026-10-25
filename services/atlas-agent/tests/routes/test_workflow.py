@@ -1112,6 +1112,7 @@ def test_candidate_workflow_implementation_request_is_read_only(tmp_path: Path, 
         "repository": str(tmp_path),
         "changed_files": [],
         "execution_request_id": None,
+        "output_capture": [],
     }
     assert "argv" not in body
     assert "requested_command" not in body
@@ -1860,5 +1861,6 @@ def test_candidate_workflow_implementation_request_includes_execution_summary(tm
         "repository": str(tmp_path),
         "changed_files": ["compose.yaml", "services/demo/Dockerfile"],
         "execution_request_id": "exec-123",
+        "output_capture": [],
     }
     assert "argv" not in body["execution"]

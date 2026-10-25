@@ -72,6 +72,7 @@ function ExecutionSection({ execution, workflowState, approvalStatus }: { execut
 
 function executionStateText(workflow: WorkflowDetailResponse): string {
     const execution = workflow.execution;
+    if (execution.execution_status === "unknown") return "Worker outcome unknown. Check the original result; do not resubmit.";
     if (workflow.workflow_state === "executing") return "Execution running...";
     if (execution.execution_status === "succeeded") return "Execution complete.";
     if (execution.execution_status === "failed" || execution.execution_status === "timed_out" || execution.execution_status === "launch_failed") return "Execution failed.";

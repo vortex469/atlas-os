@@ -30,6 +30,7 @@ from app.candidate_planning.execution import (
     CandidateExecutionFailureCode,
     CandidateExecutionValidationResult,
     CandidateExecutionValidator,
+    candidate_worker_execution_context,
 )
 from app.candidate_planning.models import is_operational_execution_enabled
 from app.candidate_planning.verification import (
@@ -40,7 +41,6 @@ from app.candidate_planning.verification import (
     build_verification_evidence,
 )
 from app.context.models import AgentContext
-from app.execution.backends import WorkerExecutionContext
 from app.execution.engine import ExecutionEngine
 from app.execution.exceptions import ExecutionValidationError
 from app.execution.models import (
@@ -307,6 +307,13 @@ class WorkflowEngine:
                 workflow_id=workflow_id,
                 error_message="Workflow not found",
             )
+
+        if session.can_reconcile_worker:
+            if not self._execution_engine.uses_worker:
+                return self._blocked_session_result(
+                    session=session, error_message="worker_reconciliation_unavailable",
+                )
+            return self._resume_candidate_implementation(session, reconcile=True)
 
         if session.state in {
             WorkflowSessionState.EXECUTING,
@@ -586,6 +593,8 @@ class WorkflowEngine:
     def _resume_candidate_implementation(
         self,
         session: WorkflowSession,
+        *,
+        reconcile: bool = False,
     ) -> WorkflowResult:
         """Execute one approved immutable candidate implementation request."""
 
@@ -621,7 +630,10 @@ class WorkflowEngine:
                     )
 
         validation = self._candidate_execution_validator.validate(
-            workflow=session,
+            workflow=(
+                replace(session, state=WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL)
+                if reconcile else session
+            ),
             approval_result=approval_result,
         )
         if not validation.approved:
@@ -654,10 +666,11 @@ class WorkflowEngine:
         )
         if not self._transition_session(
             session.identifier,
-            WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+            WorkflowSessionState.BLOCKED if reconcile else WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
             WorkflowSessionState.EXECUTING,
             request=workflow_request,
             plan=implementation_plan,
+            blocked_reason=None,
         ):
             current_session = self._state_store.get_session(session.identifier)
             self._log_candidate_pre_execution_failure(
@@ -697,29 +710,39 @@ class WorkflowEngine:
                         session=claimed_session,
                         error_message=CandidateExecutionFailureCode.EXECUTION_FAILED.value,
                     )
-                execution_context = WorkerExecutionContext(
-                    workflow_id=claimed_session.identifier,
-                    candidate_id=metadata.candidate_id,
-                    candidate_fingerprint=metadata.candidate_fingerprint,
-                    plan_id=metadata.candidate_plan_id,
-                    plan_fingerprint=metadata.candidate_plan_fingerprint,
-                    execution_intent=metadata.execution_intent,
+                execution_context = candidate_worker_execution_context(
+                    claimed_session,
+                    implementation_plan,
                     repository_token=self._execution_engine.repository_token,
-                    expected_repository_head=implementation_plan.head_commit,
-                    repository_branch=implementation_plan.branch,
-                    allowed_affected_files=tuple(
-                        str(path) for path in implementation_plan.affected_files
-                    ),
-                    timeout_seconds=(
-                        30.0
-                        if metadata.execution_intent == "rc1-validation-smoke"
-                        else 120.0
-                    ),
                 )
-            execution_result = self._execution_engine.execute(
-                execution_request,
-                context=execution_context,
-            )
+                worker_request = self._execution_engine.prepare_worker_request(
+                    execution_request, context=execution_context,
+                )
+                if reconcile:
+                    if worker_request != session.worker_execution_request:
+                        raise ExecutionValidationError("Original worker request mismatch")
+                else:
+                    if self._state_persistence is None:
+                        raise ExecutionValidationError("Durable worker request storage is required")
+                    if not self._transition_session(
+                        session.identifier,
+                        WorkflowSessionState.EXECUTING,
+                        WorkflowSessionState.EXECUTING,
+                        worker_execution_request=worker_request,
+                    ):
+                        raise ExecutionValidationError("Worker request could not be recorded")
+                    claimed_session = replace(
+                        claimed_session, worker_execution_request=worker_request,
+                    )
+            if reconcile:
+                execution_result = self._execution_engine.reconcile_worker(
+                    execution_request, context=execution_context,
+                )
+            else:
+                execution_result = self._execution_engine.execute(
+                    execution_request,
+                    context=execution_context,
+                )
         except ExecutionValidationError:
             logger.exception("Candidate execution denied by tool policy")
             self._block_claimed_session(
@@ -747,11 +770,19 @@ class WorkflowEngine:
                 WorkflowSessionState.EXECUTING,
                 WorkflowSessionState.BLOCKED,
                 execution_result=execution_result,
+                blocked_reason=(
+                    "Worker outcome unknown. Check the original request; do not resubmit."
+                    if execution_result.status is ExecutionStatus.UNKNOWN else None
+                ),
             )
             return self._blocked_session_result(
                 session=claimed_session,
                 execution_result=execution_result,
-                error_message=CandidateExecutionFailureCode.EXECUTION_FAILED.value,
+                error_message=(
+                    "worker_outcome_unknown"
+                    if execution_result.status is ExecutionStatus.UNKNOWN
+                    else CandidateExecutionFailureCode.EXECUTION_FAILED.value
+                ),
             )
 
         try:
