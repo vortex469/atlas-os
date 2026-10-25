@@ -360,3 +360,32 @@ def test_reconcile_rolls_back_every_classification_on_write_failure(tmp_path):
         connection.execute('DROP TRIGGER reject_second')
     assert ledger.reconcile_startup() == {'claimed': 0, 'unknown_outcome': 2}
     assert ledger.reconcile_startup() == {'claimed': 0, 'unknown_outcome': 0}
+
+
+@pytest.mark.parametrize('operation', ['claim', 'get', 'mark_executing', 'persist_result'])
+def test_database_failure_is_controlled_without_reexecution(tmp_path, monkeypatch, caplog, operation):
+    from test_worker import FakeRunner
+
+    request = make_request()
+    ledger = DurableRequestLedger(tmp_path / 'unavailable.sqlite3')
+    runner = FakeRunner()
+    original = getattr(ledger, operation)
+
+    def broken(*args, **kwargs):
+        raise sqlite3.OperationalError('PRIVATE_DATABASE_PATH')
+
+    monkeypatch.setattr(ledger, operation, broken)
+    client = TestClient(create_app(durable_ledger=ledger, execution_enabled=True,
+                                  runners={request.repository_token: runner}))
+    response = (client.get('/v1/executions/execution-1') if operation == 'get'
+                else client.post('/v1/executions', json=request.to_dict()))
+    assert response.status_code == 503
+    assert response.json()['error']['code'] == 'ledger_unavailable'
+    assert 'PRIVATE_DATABASE_PATH' not in response.text + caplog.text
+    assert runner.calls == (1 if operation == 'persist_result' else 0)
+    monkeypatch.setattr(ledger, operation, original)
+    if operation == 'persist_result':
+        # Failure after execution must remain in-flight; duplicate cannot rerun.
+        duplicate = client.post('/v1/executions', json=request.to_dict())
+        assert duplicate.json()['state'] == 'executing'
+        assert runner.calls == 1

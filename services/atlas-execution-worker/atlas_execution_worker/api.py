@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import secrets
+import sqlite3
 import time
 from typing import Any
 
@@ -97,6 +98,17 @@ def create_app(
     ):
         raise ValueError("worker authentication must be one bounded ASCII credential")
     app = FastAPI(title=SERVICE_NAME, docs_url=None, redoc_url=None)
+    @app.middleware("http")
+    async def ledger_errors(request: Request, call_next):
+        try:
+            return await call_next(request)
+        except DurableLedgerCorruptionError:
+            LOGGER.error("worker ledger unavailable code=ledger_corrupt")
+            return _error(503, "ledger_corrupt", "stored execution result is invalid")
+        except sqlite3.Error:
+            LOGGER.error("worker ledger unavailable code=ledger_unavailable")
+            return _error(503, "ledger_unavailable", "worker state is unavailable; reconcile before further action")
+
     request_ledger = (
         ledger if ledger is not None else durable_ledger if durable_ledger is not None else RequestLedger()
     )
@@ -211,6 +223,8 @@ def create_app(
                 entry = conflict.entry
             except IsolationUnavailable:
                 return _error(503, "sandbox_unavailable", "required execution isolation unavailable")
+            except (sqlite3.Error, DurableLedgerCorruptionError):
+                raise
             except ValueError:
                 LOGGER.exception(
                     "worker result rejected execution_request_id=%s result_code=invalid_result",
