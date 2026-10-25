@@ -11,6 +11,7 @@ from app.execution.worker_contracts import (
     RC1_SMOKE_MARKER,
     RC1_SMOKE_TARGET,
     BoundedOutput,
+    WorkerAttestation,
     WorkerExecutionIntent,
     WorkerExecutionRequest,
     WorkerFailureCode,
@@ -42,6 +43,14 @@ def _request(head: str, *, request_id: str = "execution-1", allowed: tuple[str, 
         allowed_affected_files=allowed,
         timeout_seconds=10,
     )
+
+
+@pytest.fixture(autouse=True)
+def synthetic_isolation(monkeypatch):
+    # These tests run fake commands on the host, never a real model. The real
+    # observer is covered separately and in a hardened runsc probe.
+    from atlas_execution_worker import isolation
+    monkeypatch.setattr(isolation, 'observe_attestation', lambda: WorkerAttestation(10001,True,True,'0000000000000000','synthetic-fixture'))
 
 
 @pytest.fixture

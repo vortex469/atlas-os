@@ -148,6 +148,8 @@ class WorkerAttestation:
             char not in "0123456789abcdefABCDEF, _-" for char in self.effective_capabilities
         ):
             raise ValueError("invalid capability representation")
+        if not re.fullmatch(r"[0-9a-fA-F]{1,32}", self.effective_capabilities) or int(self.effective_capabilities, 16) != 0:
+            raise ValueError("worker effective capabilities must be zero")
         if not self.sandbox_profile or "unconfined" in self.sandbox_profile.lower():
             raise ValueError("sandbox profile must be named and confined")
 

@@ -23,6 +23,7 @@ from .durable_ledger import (
     DurableLedgerCorruptionError,
     DurableRequestLedger,
 )
+from .isolation import IsolationUnavailable
 from .ledger import RequestConflictError, RequestLedger
 from .runner import WorkspaceExecutionRunner
 
@@ -135,6 +136,15 @@ def create_app(
             LOGGER.exception("worker request parsing failed code=invalid_request")
             return _error(400, "invalid_request", "request could not be parsed")
 
+        if execution_enabled:
+            configured = configured_runners.get(worker_request.repository_token)
+            if configured is None:
+                return _error(400, "unknown_repository_token", "repository token is not configured")
+            if isinstance(configured, WorkspaceExecutionRunner):
+                try:
+                    configured.validate_runtime()
+                except IsolationUnavailable:
+                    return _error(503, "sandbox_unavailable", "required execution isolation unavailable")
         try:
             entry = request_ledger.claim(worker_request)
         except DurableLedgerCorruptionError:
@@ -158,6 +168,8 @@ def create_app(
                 request_ledger.mark_executing(worker_request)
                 result = runner.execute(worker_request)
                 entry = request_ledger.persist_result(worker_request, result)
+            except IsolationUnavailable:
+                return _error(503, "sandbox_unavailable", "required execution isolation unavailable")
             except ValueError:
                 LOGGER.exception(
                     "worker result rejected execution_request_id=%s result_code=invalid_result",

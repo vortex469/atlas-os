@@ -20,6 +20,7 @@ from app.execution.worker_contracts import (
     WorkerFailureCode,
 )
 
+from . import isolation
 from .process import CapturedCommand, CommandTimeout, run_command
 from .workspace import WorkerWorkspaceManager, WorkspaceError, WorkspaceTimeout
 
@@ -90,12 +91,26 @@ def _control_digest(root: Path) -> str:
 class WorkspaceExecutionRunner:
     """Run only in disposable workspaces, and only when explicitly enabled."""
 
-    def __init__(self, manager: WorkerWorkspaceManager, *, enabled: bool = False) -> None:
+    def __init__(self, manager: WorkerWorkspaceManager, *, enabled: bool = False, attestation_provider=None) -> None:
         self._manager = manager
         self._enabled = enabled
+        self._attestation_provider = attestation_provider or isolation.observe_attestation
+        self._attestation = None
+
+    def validate_runtime(self) -> None:
+        try:
+            observed = self._attestation_provider()
+            if not isinstance(observed, WorkerAttestation):
+                raise TypeError("invalid observation")
+            observed.validate()
+            self._attestation = observed
+        except (OSError, ValueError, TypeError) as exc:
+            raise isolation.IsolationUnavailable("execution isolation observation unavailable") from exc
 
     def execute(self, request: WorkerExecutionRequest) -> WorkerExecutionResult:
         request.validate()
+        if self._enabled:
+            self.validate_runtime()
         started = time.monotonic()
         try:
             workspace = self._manager.prepare(request)
@@ -301,8 +316,7 @@ class WorkspaceExecutionRunner:
             return BoundedOutput(text, False, len(raw))
         return BoundedOutput(raw[:MAX_CAPTURE_BYTES].decode(errors="ignore"), True, len(raw))
 
-    @staticmethod
-    def _result(request: WorkerExecutionRequest, failure: WorkerFailureCode | None, started: float, *, status: WorkerExecutionStatus = WorkerExecutionStatus.BLOCKED, return_code: int | None = None, stdout: BoundedOutput | None = None, stderr: BoundedOutput | None = None, changed_files: tuple[str, ...] = (), patch: BoundedOutput | None = None, patch_digest: str | None = None, patch_size: int | None = None, base: str | None = None, workspace_head: str | None = None) -> WorkerExecutionResult:
+    def _result(self, request: WorkerExecutionRequest, failure: WorkerFailureCode | None, started: float, *, status: WorkerExecutionStatus = WorkerExecutionStatus.BLOCKED, return_code: int | None = None, stdout: BoundedOutput | None = None, stderr: BoundedOutput | None = None, changed_files: tuple[str, ...] = (), patch: BoundedOutput | None = None, patch_digest: str | None = None, patch_size: int | None = None, base: str | None = None, workspace_head: str | None = None) -> WorkerExecutionResult:
         return WorkerExecutionResult(
             schema_version=1,
             execution_request_id=request.execution_request_id,
@@ -317,12 +331,8 @@ class WorkspaceExecutionRunner:
             duration_seconds=max(0.0, time.monotonic() - started),
             failure_code=failure,
             workspace_head=workspace_head,
-            worker_attestation=WorkerAttestation(
-                10001,
-                True,
-                True,
-                "0000000000000000",
-                "runsc-squid+atlas-workspace",
+            worker_attestation=self._attestation or WorkerAttestation(
+                10001, True, True, "0000000000000000", "execution-disabled",
             ),
             base_repository_head=base,
             patch=patch,

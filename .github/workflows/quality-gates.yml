@@ -41,14 +41,15 @@ jobs:
 
       - name: Check bounded worker execution
         run: |
-          python -m ruff check services/atlas-execution-worker/atlas_execution_worker/process.py services/atlas-execution-worker/atlas_execution_worker/runner.py services/atlas-execution-worker/tests/test_process.py services/atlas-execution-worker/tests/test_workspace_runner.py services/atlas-execution-worker/tests/probe_bounded_process.py
+          python -m ruff check services/atlas-execution-worker/atlas_execution_worker services/atlas-execution-worker/tests/test_process.py services/atlas-execution-worker/tests/test_workspace_runner.py services/atlas-execution-worker/tests/test_worker.py services/atlas-execution-worker/tests/test_isolation.py services/atlas-execution-worker/tests/test_diagnostics.py services/atlas-execution-worker/tests/probe_bounded_process.py services/atlas-execution-worker/tests/probe_nested_sandbox.py services/atlas-execution-worker/tests/probe_runtime_isolation.py
           PYTHONPATH=services/atlas-agent:services/atlas-execution-worker python -m pytest -q services/atlas-execution-worker/tests
           PYTHONPATH=services/atlas-agent:services/atlas-execution-worker python services/atlas-execution-worker/tests/probe_bounded_process.py
 
       - name: Test bounded worker ledger export
         run: |
-          python -m ruff check scripts/atlas-worker-ledger-export scripts/test_atlas_worker_ledger_export.py
-          python -m pytest -q scripts/test_atlas_worker_ledger_export.py
+          python -m ruff check scripts/atlas-worker-ledger-export scripts/test_atlas_worker_ledger_export.py scripts/atlas-repository-action-check scripts/atlas_repository_fixture_guard.py scripts/test_atlas_repository_action_check.py
+          python -m pytest -q scripts/test_atlas_worker_ledger_export.py scripts/test_atlas_repository_action_check.py
+          python scripts/atlas-repository-action-check --phase all
 
   atlas-core:
     runs-on: ubuntu-latest
