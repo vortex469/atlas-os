@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Run maintained, explicitly synthetic native repository fixture phases.
+
+Requires the Agent development dependencies. This checker never makes a real
+model request or consumes an operator approval. Fixture approvals and workers
+are synthetic test data. No arbitrary pytest nodes or commands are accepted.
+"""
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+TESTS = 'services/atlas-agent/tests/'
+PHASES = {
+    'approval': ['candidate_planning/test_execution.py','candidate_planning/test_verification.py','candidate_planning/test_commit.py'],
+    'journey': ['candidate_planning/test_end_to_end.py::test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit'],
+    'recovery': ['test_worker_response_reconciliation.py'],
+    'audit': ['candidate_planning/test_audit.py'],
+}
+
+
+def run_check(phase, output_dir=None):
+    if phase not in (*PHASES, 'all'):
+        raise ValueError('unknown fixture phase')
+    root = Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix='atlas-repository-check-'))
+    if root.is_symlink() or (root.exists() and any(root.iterdir())):
+        raise ValueError('fixture output directory must be empty and not a symlink')
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    root = root.resolve()
+    root.chmod(0o700)
+    bindir = root/'bin'
+    bindir.mkdir()
+    trap = bindir/'codex'
+    trap.write_text('#!/bin/sh\nexit 97\n')
+    trap.chmod(0o700)
+    environment = {k:v for k,v in os.environ.items() if not k.startswith(('ATLAS_','CODEX_','OPENAI_','AZURE_OPENAI_','ANTHROPIC_'))}
+    (root/'repository').mkdir()
+    subprocess.run(['git','init','--quiet',str(root/'repository')], check=True, capture_output=True)
+    environment.update(ATLAS_AGENT_STATE_DIR=str(root/'state'), ATLAS_AGENT_REPOSITORY_ROOT=str(root/'repository'), CODEX_HOME=str(root/'codex-home'), PYTHONPATH=os.pathsep.join([str(ROOT/'scripts'), str(ROOT/'services/atlas-agent')]), PATH=str(bindir)+os.pathsep+os.environ.get('PATH',''))
+    nodes = [TESTS+node for key,values in PHASES.items() if phase in ('all',key) for node in values]
+    log = root/'fixture.log'
+    with log.open('xb') as output:
+        log.chmod(0o600)
+        result = subprocess.run([sys.executable,'-m','pytest','-q','--disable-warnings','-p','atlas_repository_fixture_guard','--basetemp',str(root/'tmp'),*nodes], cwd=ROOT, env=environment, stdout=output, stderr=subprocess.STDOUT, timeout=120, check=False)
+    match = re.search(r'(\d+) passed', log.read_text())
+    report = {'phase':phase,'exit_code':result.returncode,'passed_tests':int(match[1]) if match else 0,'synthetic_approvals':True,'real_model_invocations':0,'account_credentials_used':False,'production_contact_allowed':False,'log':str(log)}
+    (root/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+    (root/'report.json').chmod(0o600)
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--phase',choices=[*PHASES,'all'],default='all')
+    parser.add_argument('--output-dir',type=Path)
+    arguments = parser.parse_args()
+    report = run_check(arguments.phase, arguments.output_dir)
+    print(json.dumps(report,sort_keys=True))
+    raise SystemExit(report['exit_code'])
+
+
+if __name__ == '__main__':
+    main()
