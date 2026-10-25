@@ -24,6 +24,11 @@ from .workspace import WorkerWorkspaceManager, WorkspaceError
 
 MAX_CAPTURE_BYTES = 1_048_576
 MAX_PATCH_BYTES = 4_194_304
+MAX_PATCH_CAPTURE_BYTES = min(MAX_PATCH_BYTES, MAX_CAPTURE_BYTES)
+
+
+class PatchTooLarge(WorkspaceError):
+    """The complete patch cannot fit the existing bounded text contract."""
 
 
 class WorkspaceExecutionRunner:
@@ -72,6 +77,8 @@ class WorkspaceExecutionRunner:
             )
             result = self._collect(request, workspace.path, workspace.base_head, process, started)
             return result
+        except PatchTooLarge:
+            return self._result(request, WorkerFailureCode.PATCH_TOO_LARGE, started, base=workspace.base_head)
         except WorkspaceError:
             return self._result(request, WorkerFailureCode.INVALID_REQUEST, started, base=workspace.base_head)
         except subprocess.TimeoutExpired as exc:
@@ -141,10 +148,14 @@ class WorkspaceExecutionRunner:
         allowed = set(request.allowed_affected_files)
         failure = None
         status = WorkerExecutionStatus.SUCCEEDED if process.returncode == 0 else WorkerExecutionStatus.BLOCKED
-        if not set(changed).issubset(allowed):
-            failure = WorkerFailureCode.OUT_OF_SCOPE_CHANGES
-            status = WorkerExecutionStatus.BLOCKED
-        elif process.returncode != 0:
+        if not set(changed).issubset(allowed) or len(changed) > 64:
+            return self._result(
+                request, WorkerFailureCode.OUT_OF_SCOPE_CHANGES, started,
+                base=base_head, workspace_head=self._git(root, "rev-parse", "HEAD"),
+                changed_files=changed if len(changed) <= 64 else (),
+                stdout=process.stdout, stderr=process.stderr,
+            )
+        if process.returncode != 0:
             failure = WorkerFailureCode.CODEX_FAILED
         patch_text = self._patch(root)
         if process.returncode == 0 and not patch_text:
@@ -199,8 +210,15 @@ class WorkspaceExecutionRunner:
 
     @staticmethod
     def _patch(root: Path) -> str:
-        result = subprocess.run(["git", "-C", str(root), "diff", "--binary", "--no-ext-diff", "--no-color", "HEAD"], check=True, capture_output=True, text=True, shell=False)
-        return result.stdout
+        result = run_command(
+            ["git", "-C", str(root), "diff", "--binary", "--no-ext-diff", "--no-color", "HEAD"],
+            cwd=root, timeout=30.0, output_limit=MAX_PATCH_CAPTURE_BYTES,
+        )
+        if result.returncode != 0:
+            raise WorkspaceError("patch generation failed")
+        if result.stdout.truncated:
+            raise PatchTooLarge("patch exceeds bounded transport text")
+        return result.stdout.text
 
     @staticmethod
     def _git(root: Path, *args: str) -> str:

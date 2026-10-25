@@ -325,3 +325,18 @@ def test_newline_out_of_scope_change_is_blocked(repository, tmp_path, monkeypatc
     assert result.failure_code is WorkerFailureCode.OUT_OF_SCOPE_CHANGES
     assert 'outside\nname.txt' in result.changed_files
     assert _git(source, 'diff') == ''
+
+
+def test_oversized_patch_is_not_retained_or_hashed(repository, tmp_path, monkeypatch):
+    source, head = repository
+    bindir = _fake_codex(tmp_path)
+    with (bindir / 'codex').open('a') as script:
+        script.write("Path('compose.production.yaml').write_text('x'*2097152)\n")
+    monkeypatch.setenv('PATH', f"{bindir}:{os.environ['PATH']}")
+    manager = WorkerWorkspaceManager(source, tmp_path/'workspaces', 'trusted-repository', trusted_repository_paths=(source,), git_config_path=tmp_path/'gitconfig')
+    result = WorkspaceExecutionRunner(manager, enabled=True).execute(_request(head))
+    assert result.failure_code is WorkerFailureCode.PATCH_TOO_LARGE
+    assert result.patch is result.patch_digest is None
+    assert result.changed_files == ()
+    assert not (tmp_path/'workspaces'/'execution-1').exists()
+    assert _git(source, 'diff') == ''

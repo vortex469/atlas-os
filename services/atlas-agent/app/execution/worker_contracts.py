@@ -74,6 +74,7 @@ class WorkerFailureCode(StrEnum):
     CODEX_FAILED = "codex_failed"
     OUT_OF_SCOPE_CHANGES = "out_of_scope_changes"
     NO_COMMITTABLE_CHANGES = "no_committable_changes"
+    PATCH_TOO_LARGE = "patch_too_large"
     DUPLICATE_REQUEST = "duplicate_request"
     WORKER_UNAVAILABLE = "worker_unavailable"
     WORKER_CRASH = "worker_crash"
