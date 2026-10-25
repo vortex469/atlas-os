@@ -22,7 +22,11 @@ Screen recovery keeps shared navigation available for missing pages and page
 rendering failures, with plain-language recovery actions. An initial workflow
 load failure offers a read-only retry. Provider absence is shown only after a
 successful catalog load; a loading or unavailable catalog is not reported as a
-missing provider. These presentation changes grant no new action authority.
+missing provider. Maintenance history keeps unavailable diagnostics findable,
+leaves recovery guidance visible, and places secondary metadata under optional
+workflow details. Local filters can be cleared without fetching or executing
+work, and empty later pages retain a route back to earlier results. These
+presentation changes grant no new action authority.
 
 The deferred v0.65 successor control-plane projection is absent. Mission
 Control has no client, route, nested view, or action surface for that

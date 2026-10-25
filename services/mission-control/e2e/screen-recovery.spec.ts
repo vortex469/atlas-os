@@ -61,3 +61,37 @@ test("a broken page keeps navigation and hides raw error details", async ({ page
     await page.getByRole("link", { name: "Return to Mission Control" }).click();
     await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
 });
+
+test("maintenance history keeps unavailable requests findable and details optional", async ({ page }) => {
+    let reads = 0;
+    await page.route("**/agent-api/**", async (route) => {
+        const path = new URL(route.request().url()).pathname;
+        if (path.endsWith("/workflows")) {
+            reads += 1;
+            await route.fulfill({ json: {
+                items: [{ workflow_id: "maintenance-test", workflow_source: "candidate",
+                    workflow_state: "completed", effect_kind: "operational_action",
+                    execution_intent: "restart-service", candidate_id: null,
+                    planning_session_id: null, repository: null, target_id: "VM 110",
+                    last_result_summary: "", timeline: [] }],
+                total: 1, limit: 10, offset: 0,
+            } });
+            return;
+        }
+        if (path.includes("/workflows/maintenance-test/")) {
+            await route.fulfill({ status: 503, json: { detail: "Unavailable" } });
+            return;
+        }
+        await route.fallback();
+    });
+    await page.goto("/operations/history");
+    await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
+    await page.getByRole("combobox", { name: "Status", exact: true }).selectOption("unavailable");
+    await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
+    await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
+    await expect(page.getByText("Workflow State", { exact: true })).toBeHidden();
+    await page.getByText("Workflow details", { exact: true }).click();
+    await expect(page.getByText("Workflow State", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/maintenance-test");
+    expect(reads).toBe(1);
+});
