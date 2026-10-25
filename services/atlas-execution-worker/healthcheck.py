@@ -43,9 +43,13 @@ def validate_health(health: Any, *, expected_execution_enabled: bool) -> None:
         or readiness.get("activation_authorized") is not False
     ):
         raise ValueError("worker readiness must not imply authority")
+    if "ledger_status" in health and health["ledger_status"] != "available":
+        raise ValueError("worker ledger is unavailable")
     counts = health.get("ledger_counts")
+    if "ledger_status" in health and (not isinstance(counts, dict) or set(counts) != {"claimed", "executing", "completed", "failed_terminal", "unknown_outcome"}):
+        raise ValueError("incomplete worker ledger states")
     if counts is not None:
-        if not isinstance(counts, dict) or set(counts) != {"claimed", "completed", "unknown_outcome"}:
+        if not isinstance(counts, dict) or set(counts) not in ({"claimed", "completed", "unknown_outcome"}, {"claimed", "executing", "completed", "failed_terminal", "unknown_outcome"}):
             raise ValueError("invalid worker ledger counts")
         if any(type(value) is not int or value < 0 for value in counts.values()):
             raise ValueError("invalid worker ledger counts")

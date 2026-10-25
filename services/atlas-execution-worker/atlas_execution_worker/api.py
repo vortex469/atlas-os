@@ -7,7 +7,6 @@ import logging
 import secrets
 import sqlite3
 import time
-from typing import Any
 
 from app.execution.worker_contracts import (
     BoundedOutput,
@@ -115,8 +114,15 @@ def create_app(
     configured_runners = runners or {}
 
     @app.get("/health")
-    async def health() -> dict[str, Any]:
-        counts = request_ledger.counts() if isinstance(request_ledger, DurableRequestLedger) else {}
+    async def health():
+        durable = isinstance(request_ledger, DurableRequestLedger)
+        ledger_available = True
+        try:
+            counts = request_ledger.counts() if durable else {}
+        except (sqlite3.Error, DurableLedgerCorruptionError):
+            counts = {}
+            ledger_available = False
+            LOGGER.error("worker health unavailable code=ledger_unavailable")
         observed = None
         reason = "execution_disabled"
         if execution_enabled:
@@ -128,27 +134,31 @@ def create_app(
                     observed, reason = True, "isolation_observed"
                 except IsolationUnavailable:
                     observed, reason = False, "isolation_unavailable"
-        return {
+        payload = {
             "execution_readiness": {
                 "configured_enabled":execution_enabled, "isolation_observed_safe":observed,
                 "reason":reason, "full_readiness_proven":False, "activation_authorized":False,
             },
             "service": SERVICE_NAME,
-            "status": "healthy",
+            "status": "healthy" if ledger_available else "unavailable",
             "contract_schema_version": 1,
             "execution_enabled": execution_enabled,
             **(
                 {
                     "ledger_counts": {
                         "claimed": counts.get("claimed", 0),
+                        "executing": counts.get("executing", 0),
+                        "failed_terminal": counts.get("failed_terminal", 0),
                         "completed": counts.get("completed", 0),
                         "unknown_outcome": counts.get("unknown_outcome", 0),
-                    }
+                    } if ledger_available else None,
+                    "ledger_status": "available" if ledger_available else "unavailable",
                 }
-                if isinstance(request_ledger, DurableRequestLedger)
+                if durable
                 else {}
             ),
         }
+        return JSONResponse(status_code=200 if ledger_available else 503, content=payload)
 
     @app.post("/v1/executions")
     async def submit(request: Request) -> JSONResponse:
@@ -183,7 +193,7 @@ def create_app(
         except (ValueError, TypeError, KeyError, UnicodeDecodeError, RecursionError):
             LOGGER.info("worker request rejected code=invalid_request")
             return _error(400, "invalid_request", "execution request failed contract validation")
-        except Exception:
+        except Exception:  # noqa: BLE001 -- protocol boundary: sanitize all parser failures
             LOGGER.error("worker request parsing failed code=invalid_request")
             return _error(400, "invalid_request", "request could not be parsed")
 

@@ -136,9 +136,9 @@ def test_source_check_failure_is_bounded_and_sanitized(tmp_path, monkeypatch, er
     monkeypatch.setenv('GIT_CONFIG_COUNT', '1')
     monkeypatch.setenv('GIT_CONFIG_KEY_0', 'include.path')
     monkeypatch.setenv('GIT_CONFIG_VALUE_0', 'PRIVATE_PATH')
-    with patch.object(config, 'run_command', side_effect=error) as run:
-        with pytest.raises(WorkerConfigurationError, match='check unavailable') as caught:
-            load_repository_mapping(f'fixture={source}')
+    with (patch.object(config, 'run_command', side_effect=error) as run,
+          pytest.raises(WorkerConfigurationError, match='check unavailable') as caught):
+        load_repository_mapping(f'fixture={source}')
     assert caught.value.__suppress_context__
     kwargs = run.call_args.kwargs
     assert kwargs['timeout'] == 10 and kwargs['output_limit'] == 4096

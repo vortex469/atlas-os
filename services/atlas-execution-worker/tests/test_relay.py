@@ -149,3 +149,45 @@ def test_external_cancellation_closes_both_writers():
         assert all(writer.close.call_count == 1 for writer in writers)
 
     asyncio.run(exercise())
+
+
+def test_real_tcp_half_close_preserves_response():
+    async def exercise():
+        finished = asyncio.Event()
+
+        async def upstream(reader, writer):
+            try:
+                request = await reader.read()
+                writer.write(b'response:' + request)
+                await writer.drain()
+            finally:
+                writer.close()
+                await writer.wait_closed()
+
+        source = await asyncio.start_server(upstream, '127.0.0.1', 0)
+        source_port = source.sockets[0].getsockname()[1]
+
+        async def forward(reader, writer):
+            try:
+                await relay_connection(reader, writer, upstream_host='127.0.0.1',
+                                       upstream_port=source_port)
+            finally:
+                finished.set()
+
+        server = await asyncio.start_server(forward, '127.0.0.1', 0)
+        try:
+            reader, writer = await asyncio.open_connection('127.0.0.1', server.sockets[0].getsockname()[1])
+            writer.write(b'fixture')
+            await writer.drain()
+            writer.write_eof()
+            assert await asyncio.wait_for(reader.read(), timeout=2) == b'response:fixture'
+            writer.close()
+            await writer.wait_closed()
+            await asyncio.wait_for(finished.wait(), timeout=2)
+        finally:
+            server.close()
+            source.close()
+            await server.wait_closed()
+            await source.wait_closed()
+
+    asyncio.run(exercise())

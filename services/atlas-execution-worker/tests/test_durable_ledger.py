@@ -389,3 +389,44 @@ def test_database_failure_is_controlled_without_reexecution(tmp_path, monkeypatc
         duplicate = client.post('/v1/executions', json=request.to_dict())
         assert duplicate.json()['state'] == 'executing'
         assert runner.calls == 1
+
+
+def test_operator_health_reports_all_states_without_mutation(tmp_path):
+    ledger = DurableRequestLedger(tmp_path / 'health.sqlite3')
+    for identity in ['claimed', 'executing', 'failed']:
+        request = make_request(execution_request_id=identity)
+        ledger.claim(request)
+        if identity == 'executing':
+            ledger.mark_executing(request)
+        elif identity == 'failed':
+            ledger.persist_result(request, _disabled_result(request))
+    with sqlite3.connect(ledger.database_path) as connection:
+        before = connection.execute('SELECT * FROM executions ORDER BY execution_request_id').fetchall()
+    response = TestClient(create_app(durable_ledger=ledger)).get('/health')
+    assert response.status_code == 200
+    assert response.json()['ledger_status'] == 'available'
+    assert response.json()['ledger_counts'] == {'claimed': 1, 'executing': 1,
+        'failed_terminal': 1, 'completed': 0, 'unknown_outcome': 0}
+    assert response.json()['execution_readiness']['activation_authorized'] is False
+    with sqlite3.connect(ledger.database_path) as connection:
+        assert connection.execute('SELECT * FROM executions ORDER BY execution_request_id').fetchall() == before
+    assert ledger.get('executing').state == 'executing'
+
+
+@pytest.mark.parametrize('failure', ['corrupt', 'busy'])
+def test_operator_health_refuses_unavailable_state(tmp_path, monkeypatch, caplog, failure):
+    ledger = DurableRequestLedger(tmp_path / 'unhealthy.sqlite3')
+    if failure == 'corrupt':
+        ledger.claim(make_request())
+        with sqlite3.connect(ledger.database_path) as connection:
+            connection.execute("UPDATE executions SET state='PRIVATE_STORED_VALUE'")
+    else:
+        def broken():
+            raise sqlite3.OperationalError('PRIVATE_STORED_VALUE')
+        monkeypatch.setattr(ledger, 'counts', broken)
+    response = TestClient(create_app(durable_ledger=ledger)).get('/health')
+    assert response.status_code == 503
+    assert response.json()['status'] == response.json()['ledger_status'] == 'unavailable'
+    assert response.json()['ledger_counts'] is None
+    assert response.json()['execution_readiness']['full_readiness_proven'] is False
+    assert 'PRIVATE_STORED_VALUE' not in response.text + caplog.text

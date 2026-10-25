@@ -305,11 +305,14 @@ class DurableRequestLedger:
             return self._entry(row) if row else None
 
     def counts(self) -> dict[str, int]:
+        # Validate the same records used by execution/lookup. Corruption is not
+        # healthy emptiness and must never be hidden behind aggregate counts.
+        counts: dict[str, int] = {}
         with self._lock, self._connect() as connection:
-            rows = connection.execute(
-                "SELECT state, COUNT(*) AS count FROM executions GROUP BY state"
-            ).fetchall()
-        return {str(row["state"]): int(row["count"]) for row in rows}
+            for row in connection.execute("SELECT * FROM executions"):
+                entry = self._entry(row)
+                counts[entry.state] = counts.get(entry.state, 0) + 1
+        return counts
 
     def __len__(self) -> int:
         return sum(self.counts().values())
