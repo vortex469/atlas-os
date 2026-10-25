@@ -29,6 +29,7 @@ class WorkerWorkspace:
     request_id: str
     path: Path
     base_head: str
+    request_digest: str
 
 
 class WorkerWorkspaceManager:
@@ -74,8 +75,10 @@ class WorkerWorkspaceManager:
             raise WorkspaceError("repository token is not accepted")
         existing = self._active.get(request.execution_request_id)
         if existing is not None:
-            if existing.base_head != request.expected_repository_head:
-                raise WorkspaceError("request workspace has conflicting base head")
+            if existing.base_head != request.expected_repository_head or existing.request_digest != request.request_digest:
+                raise WorkspaceError("request workspace has conflicting immutable request")
+            if existing.path != path or not path.is_dir():
+                raise WorkspaceError("active workspace material is unavailable")
             return existing
         source = self._source_root
         if self._source_root_input.is_symlink() or not source.is_dir():
@@ -110,7 +113,7 @@ class WorkerWorkspaceManager:
             if isinstance(exc, (subprocess.TimeoutExpired, WorkspaceTimeout)):
                 raise WorkspaceTimeout("workspace preparation deadline exceeded") from exc
             raise WorkspaceError("workspace preparation failed") from exc
-        workspace = WorkerWorkspace(request.execution_request_id, path, cloned_head)
+        workspace = WorkerWorkspace(request.execution_request_id, path, cloned_head, request.request_digest)
         self._active[request.execution_request_id] = workspace
         return workspace
 

@@ -456,3 +456,33 @@ def test_owned_quarantine_retains_data_and_cleanup_does_not_remove_archive(repos
     assert (destination/'forbidden.txt').read_text() == 'unchanged\n'
     manager.cleanup(request.execution_request_id)
     assert destination.is_dir()
+
+
+def test_active_workspace_cannot_inherit_a_different_request(repository, tmp_path):
+    from atlas_execution_worker.workspace import WorkspaceError
+    source, head = repository
+    manager = WorkerWorkspaceManager(source,tmp_path/'workspaces','trusted-repository',trusted_repository_paths=(source,),git_config_path=tmp_path/'gitconfig')
+    request = _request(head)
+    original = manager.prepare(request)
+    values = request.to_dict()
+    values.pop('request_digest')
+    values['argv'] = (*CODEX_WORKSPACE_EXEC_ARGV_PREFIX,'different approved subject')
+    changed = WorkerExecutionRequest.build(**values)
+    with pytest.raises(WorkspaceError, match='immutable request'):
+        manager.prepare(changed)
+    assert original.path.is_dir()
+    assert manager.prepare(request) == original
+    manager.cleanup(request.execution_request_id)
+
+
+def test_missing_active_workspace_is_not_returned_as_usable(repository, tmp_path):
+    import shutil
+
+    from atlas_execution_worker.workspace import WorkspaceError
+    source, head = repository
+    manager = WorkerWorkspaceManager(source,tmp_path/'workspaces','trusted-repository',trusted_repository_paths=(source,),git_config_path=tmp_path/'gitconfig')
+    request = _request(head)
+    original = manager.prepare(request)
+    shutil.rmtree(original.path)
+    with pytest.raises(WorkspaceError, match='material'):
+        manager.prepare(request)
