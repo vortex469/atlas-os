@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import secrets
+import time
 from typing import Any
 
 from app.execution.worker_contracts import (
@@ -30,6 +32,7 @@ from .runner import WorkspaceExecutionRunner
 LOGGER = logging.getLogger("atlas_execution_worker")
 SERVICE_NAME = "atlas-execution-worker"
 MAX_EXECUTION_REQUEST_BYTES = 2 * 1024 * 1024
+MAX_REQUEST_READ_SECONDS = 5.0
 
 
 def _disabled_result(request: WorkerExecutionRequest) -> WorkerExecutionResult:
@@ -134,15 +137,21 @@ def create_app(
         if lengths and int(lengths[0]) > MAX_EXECUTION_REQUEST_BYTES:
             return _error(413, "request_too_large", "execution request exceeds byte bound")
         body = bytearray()
+        deadline = time.monotonic() + MAX_REQUEST_READ_SECONDS
         try:
-            async for chunk in request.stream():
-                if len(body) + len(chunk) > MAX_EXECUTION_REQUEST_BYTES:
-                    return _error(413, "request_too_large", "execution request exceeds byte bound")
-                body.extend(chunk)
+            async with asyncio.timeout(MAX_REQUEST_READ_SECONDS):
+                async for chunk in request.stream():
+                    if len(body) + len(chunk) > MAX_EXECUTION_REQUEST_BYTES:
+                        return _error(413, "request_too_large", "execution request exceeds byte bound")
+                    body.extend(chunk)
             if lengths and len(body) != int(lengths[0]):
                 return _error(400, "invalid_request", "request length mismatch")
             payload = decode_worker_json(body)
             worker_request = WorkerExecutionRequest.from_dict(payload)
+            if time.monotonic() >= deadline:
+                return _error(408, "request_timeout", "execution request read deadline exceeded")
+        except TimeoutError:
+            return _error(408, "request_timeout", "execution request read deadline exceeded")
         except (ValueError, TypeError, KeyError, UnicodeDecodeError, RecursionError) as exc:
             LOGGER.info("worker request rejected code=invalid_request")
             return _error(400, "invalid_request", str(exc))

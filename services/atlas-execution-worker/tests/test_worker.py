@@ -348,3 +348,39 @@ def test_ambiguous_json_refused_without_claim(body):
     assert response.status_code == 400
     assert response.json()['error']['code'] == 'invalid_request'
     assert len(ledger) == 0
+
+
+def test_slow_stream_times_out_before_claim(monkeypatch):
+    import asyncio
+
+    from atlas_execution_worker import api
+    ledger = RequestLedger()
+    monkeypatch.setattr(api, 'MAX_REQUEST_READ_SECONDS', 0.01)
+    app = create_app(ledger=ledger)
+    async def scenario():
+        sent = []
+        async def receive():
+            await asyncio.sleep(0.1)
+            return {'type':'http.request','body':b'{}','more_body':False}
+        async def send(message):
+            sent.append(message)
+        await app({'type':'http','asgi':{'version':'3.0'},'http_version':'1.1','method':'POST','scheme':'http','path':'/v1/executions','raw_path':b'/v1/executions','query_string':b'','headers':[],'client':('127.0.0.1',1),'server':('testserver',80)},receive,send)
+        return sent
+    messages = asyncio.run(scenario())
+    assert messages[0]['status'] == 408
+    assert len(ledger) == 0
+
+
+def test_decode_cannot_claim_after_read_deadline(monkeypatch):
+    from atlas_execution_worker import api
+    ledger = RequestLedger()
+    original = api.decode_worker_json
+    def decode(raw):
+        time.sleep(0.02)
+        return original(raw)
+    monkeypatch.setattr(api, 'MAX_REQUEST_READ_SECONDS', 0.01)
+    monkeypatch.setattr(api, 'decode_worker_json', decode)
+    response = TestClient(create_app(ledger=ledger)).post('/v1/executions', json=make_request().to_dict())
+    assert response.status_code == 408
+    assert response.json()['error']['code'] == 'request_timeout'
+    assert len(ledger) == 0
