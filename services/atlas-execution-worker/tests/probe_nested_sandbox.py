@@ -16,6 +16,10 @@ from pathlib import Path
 
 import uvicorn
 from atlas_execution_worker.api import create_app
+from atlas_execution_worker.diagnostics import (
+    capability_report,
+    helper_network_namespace,
+)
 
 
 def main() -> None:
@@ -68,6 +72,7 @@ def main() -> None:
             ).stdout.strip()
             print(json.dumps({
                 "status": "passed", "codex_cli": version,
+                "capabilities": capability_report(shell_boundaries_passed=True, helper=helper_network_namespace()),
                 "workspace_write": "passed", "protected_worker_state_write_denial": "passed",
                 "authenticated_untrusted_peer_denial": "passed",
                 "model_invocations": 0, "account_credentials_used": False,
