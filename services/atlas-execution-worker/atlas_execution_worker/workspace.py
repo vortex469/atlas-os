@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -53,8 +54,22 @@ class WorkerWorkspaceManager:
         self._active: dict[str, WorkerWorkspace] = {}
         self._workspace_root.mkdir(parents=True, exist_ok=True)
 
+    def _request_path(self, request_id: str) -> Path:
+        if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", request_id) or request_id == "quarantine":
+            raise WorkspaceError("invalid owned workspace identity")
+        try:
+            if self._workspace_root.is_symlink() or not self._workspace_root.is_dir() or self._workspace_root.resolve() != self._workspace_root:
+                raise WorkspaceError("workspace root ownership changed")
+            path = self._workspace_root / request_id
+            if path.is_symlink() or path.resolve().parent != self._workspace_root:
+                raise WorkspaceError("workspace path ownership changed")
+            return path
+        except (OSError, RuntimeError) as exc:
+            raise WorkspaceError("workspace ownership cannot be verified") from exc
+
     def prepare(self, request: WorkerExecutionRequest) -> WorkerWorkspace:
         request.validate()
+        path = self._request_path(request.execution_request_id)
         if request.repository_token != self._repository_token:
             raise WorkspaceError("repository token is not accepted")
         existing = self._active.get(request.execution_request_id)
@@ -76,7 +91,6 @@ class WorkerWorkspaceManager:
         source_head = self._git(source, "rev-parse", "HEAD", timeout=remaining())
         if source_head != request.expected_repository_head:
             raise WorkspaceError("stale repository")
-        path = self._workspace_root / request.execution_request_id
         if path.exists() or path.is_symlink():
             raise WorkspaceError("request workspace already exists")
         try:
@@ -101,22 +115,27 @@ class WorkerWorkspaceManager:
         return workspace
 
     def cleanup(self, request_id: str) -> None:
-        workspace = self._active.pop(request_id, None)
-        path = workspace.path if workspace else self._workspace_root / request_id
+        path = self._request_path(request_id)
+        workspace = self._active.get(request_id)
+        if workspace is not None and workspace.path != path:
+            raise WorkspaceError("active workspace ownership mismatch")
         if path.is_symlink() or (path.exists() and not path.is_dir()):
             raise WorkspaceError("refusing to clean non-directory workspace")
         if path.exists():
             shutil.rmtree(path)
+        self._active.pop(request_id, None)
 
     def quarantine(self, request_id: str) -> Path | None:
         """Move an unknown-outcome workspace aside without reusing or deleting it."""
 
-        path = self._workspace_root / request_id
+        path = self._request_path(request_id)
         if path.is_symlink() or (path.exists() and not path.is_dir()):
             raise WorkspaceError("refusing to quarantine non-directory workspace")
         if not path.exists():
             return None
         quarantine_root = self._workspace_root / "quarantine"
+        if quarantine_root.is_symlink() or quarantine_root.resolve() != quarantine_root or (quarantine_root.exists() and not quarantine_root.is_dir()):
+            raise WorkspaceError("quarantine root ownership changed")
         quarantine_root.mkdir(mode=0o700, exist_ok=True)
         destination = quarantine_root / f"{request_id}.unknown"
         if destination.exists() or destination.is_symlink():

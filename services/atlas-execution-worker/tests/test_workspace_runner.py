@@ -406,3 +406,53 @@ def test_post_model_git_hook_is_not_executed(repository, tmp_path, monkeypatch):
     result = WorkspaceExecutionRunner(manager, enabled=True).execute(_request(head))
     assert result.failure_code is None
     assert not marker.exists()
+
+
+@pytest.mark.parametrize('identity', ['../source','/tmp/source','quarantine','','nested/path'])
+@pytest.mark.parametrize('operation', ['cleanup','quarantine'])
+def test_workspace_disposal_refuses_unowned_identity(repository, tmp_path, identity, operation):
+    from atlas_execution_worker.workspace import WorkspaceError
+    source, head = repository
+    manager = WorkerWorkspaceManager(source,tmp_path/'workspaces','trusted-repository',trusted_repository_paths=(source,),git_config_path=tmp_path/'gitconfig')
+    with pytest.raises(WorkspaceError):
+        getattr(manager, operation)(identity)
+    assert _git(source,'rev-parse','HEAD') == head
+    assert (source/'forbidden.txt').read_text() == 'unchanged\n'
+
+
+@pytest.mark.parametrize('operation', ['cleanup','quarantine'])
+def test_workspace_disposal_refuses_symlink_target(repository, tmp_path, operation):
+    from atlas_execution_worker.workspace import WorkspaceError
+    source, _ = repository
+    manager = WorkerWorkspaceManager(source,tmp_path/'workspaces','trusted-repository',trusted_repository_paths=(source,),git_config_path=tmp_path/'gitconfig')
+    (tmp_path/'workspaces'/'execution-1').symlink_to(source, target_is_directory=True)
+    with pytest.raises(WorkspaceError):
+        getattr(manager, operation)('execution-1')
+    assert (source/'forbidden.txt').exists()
+
+
+def test_quarantine_refuses_external_destination(repository, tmp_path):
+    from atlas_execution_worker.workspace import WorkspaceError
+    source, _ = repository
+    manager = WorkerWorkspaceManager(source,tmp_path/'workspaces','trusted-repository',trusted_repository_paths=(source,),git_config_path=tmp_path/'gitconfig')
+    owned = tmp_path/'workspaces'/'execution-1'
+    owned.mkdir()
+    (owned/'retain').write_text('owned')
+    (tmp_path/'workspaces'/'quarantine').symlink_to(source,target_is_directory=True)
+    with pytest.raises(WorkspaceError):
+        manager.quarantine('execution-1')
+    assert (owned/'retain').read_text() == 'owned'
+    assert not (source/'execution-1.unknown').exists()
+
+
+def test_owned_quarantine_retains_data_and_cleanup_does_not_remove_archive(repository, tmp_path):
+    source, head = repository
+    manager = WorkerWorkspaceManager(source,tmp_path/'workspaces','trusted-repository',trusted_repository_paths=(source,),git_config_path=tmp_path/'gitconfig')
+    request = _request(head)
+    workspace = manager.prepare(request)
+    destination = manager.quarantine(request.execution_request_id)
+    assert destination == tmp_path/'workspaces'/'quarantine'/'execution-1.unknown'
+    assert not workspace.path.exists()
+    assert (destination/'forbidden.txt').read_text() == 'unchanged\n'
+    manager.cleanup(request.execution_request_id)
+    assert destination.is_dir()
