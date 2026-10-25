@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 from .durable_ledger import (
     DurableLedgerConflictError,
     DurableLedgerCorruptionError,
+    DurableLedgerStartConflict,
     DurableRequestLedger,
 )
 from .isolation import IsolationUnavailable
@@ -206,6 +207,8 @@ def create_app(
                 request_ledger.mark_executing(worker_request)
                 result = runner.execute(worker_request)
                 entry = request_ledger.persist_result(worker_request, result)
+            except DurableLedgerStartConflict as conflict:
+                entry = conflict.entry
             except IsolationUnavailable:
                 return _error(503, "sandbox_unavailable", "required execution isolation unavailable")
             except ValueError:

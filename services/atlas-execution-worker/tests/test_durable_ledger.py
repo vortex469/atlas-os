@@ -274,3 +274,46 @@ def test_corrupt_record_error_chain_does_not_echo_stored_values(tmp_path, field)
     with pytest.raises(DurableLedgerCorruptionError) as raised:
         ledger.get(request.execution_request_id)
     assert private not in ''.join(traceback.format_exception(raised.value))
+
+
+def test_concurrent_start_barrier_has_exactly_one_winner(tmp_path):
+    from atlas_execution_worker.durable_ledger import DurableLedgerStartConflict
+
+    database = tmp_path / 'start.sqlite3'
+    request = make_request()
+    DurableRequestLedger(database).claim(request)
+
+    def start(_):
+        try:
+            DurableRequestLedger(database).mark_executing(request)
+            return 'winner'
+        except DurableLedgerStartConflict as conflict:
+            assert conflict.entry.state == 'executing'
+            return 'loser'
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        outcomes = list(executor.map(start, range(8)))
+    assert outcomes.count('winner') == 1
+    assert outcomes.count('loser') == 7
+
+
+def test_submitter_losing_start_barrier_never_calls_runner(tmp_path, monkeypatch):
+    from test_worker import FakeRunner
+
+    request = make_request()
+    ledger = DurableRequestLedger(tmp_path / 'race.sqlite3')
+    original_claim = ledger.claim
+
+    def racing_claim(request):
+        entry = original_claim(request)
+        ledger.mark_executing(request)
+        return entry
+
+    monkeypatch.setattr(ledger, 'claim', racing_claim)
+    runner = FakeRunner()
+    client = TestClient(create_app(durable_ledger=ledger, execution_enabled=True,
+                                  runners={request.repository_token: runner}))
+    response = client.post('/v1/executions', json=request.to_dict())
+    assert response.status_code == 200
+    assert response.json()['state'] == 'executing'
+    assert runner.calls == 0

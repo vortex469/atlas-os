@@ -62,6 +62,14 @@ class DurableLedgerEntry:
     result: WorkerExecutionResult | None = None
 
 
+class DurableLedgerStartConflict(DurableLedgerError):
+    """Another caller already owns the start barrier; never execute again."""
+
+    def __init__(self, entry: DurableLedgerEntry) -> None:
+        super().__init__("execution start is already owned")
+        self.entry = entry
+
+
 class DurableRequestLedger:
     """SQLite-backed single-owner ledger with an explicit execution barrier."""
 
@@ -171,6 +179,8 @@ class DurableRequestLedger:
             connection.execute("BEGIN IMMEDIATE")
             row = self._row_for(connection, request.execution_request_id)
             self._check_digest(row, request)
+            if row["state"] != "claimed":
+                raise DurableLedgerStartConflict(self._entry(row))
             if row["state"] == "claimed":
                 connection.execute(
                     """
