@@ -66,8 +66,8 @@ def test_repository_mapping_writes_only_exact_configured_source_paths(tmp_path: 
     assert run.call_args.kwargs["environment"]["GIT_CONFIG_GLOBAL"] == str(config_path)
     assert config_path.read_text() == (
         "[safe]\n"
-        f'\tdirectory = "{source.resolve()}"\n' 
-        f'\tdirectory = "{source.resolve() / ".git"}"\n' 
+        f'\tdirectory = "{source.resolve()}"\n'
+        f'\tdirectory = "{source.resolve() / ".git"}"\n'
     )
     assert config_path.stat().st_mode & 0o777 == 0o600
     assert "safe.directory=*" not in config_path.read_text()
