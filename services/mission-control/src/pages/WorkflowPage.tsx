@@ -312,7 +312,9 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow</p>
                     <h1 className="mt-3 break-all text-3xl font-bold text-white">Workflow {workflow.workflow_id}</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Review the immutable implementation request and approve or reject that exact request only. Mission Control does not execute, edit commands, modify repositories, verify, review, or commit from this page.
+                        {workflow.effect_kind === "operational_action"
+                            ? "Review the maintenance request, its approval and current result. Use Resume to advance an approved stage."
+                            : "Review this workflow and its exact approval requests. Use Resume to advance an approved stage. Implementation, verification and commit each need their own approval."}
                     </p>
                 </div>
                 <WorkflowRail workflow={workflow} />
@@ -617,7 +619,7 @@ function CommitSection({
             <div>
                 <h2 id="commit-heading" className="text-lg font-semibold text-white">Commit</h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    Read-only commit approval boundary. Mission Control may approve or reject the exact commit request only. It never edits messages, edits paths, pushes, tags, amends, releases, or rolls back.
+                    Review and approve or reject this exact local commit request. Approval and resuming the commit are separate steps. This does not push or publish a release.
                 </p>
             </div>
 

@@ -259,7 +259,7 @@ const discoveryMetadata = {
     schema_version: 1,
 };
 
-const discoveryItemsPage = {
+export const discoveryItemsPage = {
     entries: [{
         schema_version: 1,
         item: {

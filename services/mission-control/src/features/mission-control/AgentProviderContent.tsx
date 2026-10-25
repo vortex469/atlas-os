@@ -11,7 +11,7 @@ export function AgentOverviewContent({ evidence }: { evidence?: Evidence }) {
         <HealthEvidence status={null} stale={evidence?.stale} reason="Agent health is not supplied by the information API." />
         <p>{name || "Agent identity unknown"}{publicLabel(agent.version) && ` · ${publicLabel(agent.version)}`}</p>
         <p>{name ? "Agent identity observed from Atlas Agent." : "Agent configuration unknown."} Identity does not establish availability or execution readiness.</p>
-        <Link to="/forge">Open agent details →</Link>
+        <Link to="/forge">Open Forge →</Link>
         <Link className="block" to="/workflows">View agent workflows</Link>
     </>;
 }

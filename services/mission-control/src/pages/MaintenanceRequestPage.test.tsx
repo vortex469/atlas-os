@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -65,7 +65,11 @@ function authenticated(invalidate = vi.fn()) {
 }
 
 function renderPage(state?: unknown) {
-    render(<MemoryRouter initialEntries={[{ pathname: "/operations/request", state }]}><Routes><Route path="/operations/request" element={<MaintenanceRequestPage />} /><Route path="/operator/login" element={<p>Login destination</p>} /><Route path="/execution-candidates/:candidateId" element={<p>Candidate destination</p>} /></Routes></MemoryRouter>);
+    render(<MemoryRouter initialEntries={[{ pathname: "/operations/request", state }]}><Routes><Route path="/operations/request" element={<MaintenanceRequestPage />} /><Route path="/operator/login" element={<LoginDestination />} /><Route path="/execution-candidates/:candidateId" element={<p>Candidate destination</p>} /></Routes></MemoryRouter>);
+}
+
+function LoginDestination() {
+    return <><p>Login destination</p><output data-testid="login-context">{JSON.stringify(useLocation().state)}</output></>;
 }
 
 describe("MaintenanceRequestPage", () => {
@@ -208,8 +212,10 @@ describe("MaintenanceRequestPage", () => {
             logout: vi.fn(),
             invalidate: vi.fn(),
         });
-        renderPage({ proposalId: `discovery-operator-proposal-${"e".repeat(64)}` });
+        const proposalId = `discovery-operator-proposal-${"e".repeat(64)}`;
+        renderPage({ proposalId, resourceId: "999", approved: true });
         expect(await screen.findByText("Login destination")).toBeInTheDocument();
+        expect(JSON.parse(screen.getByTestId("login-context").textContent!)).toEqual({ proposalId });
         expect(getDiscoveryProposal).not.toHaveBeenCalled();
         expect(getOperationalCapabilities).not.toHaveBeenCalled();
         expect(requestRestartServiceIntent).not.toHaveBeenCalled();

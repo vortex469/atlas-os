@@ -1,5 +1,14 @@
 import type { DiscoveryProposalNavigation } from "../../types/discovery";
 
+/** Advisory navigation context only; never a target selection or approval. */
+export function proposalIdFromState(state: unknown): string | null {
+    if (typeof state !== "object" || state === null || !("proposalId" in state)) return null;
+    const value = (state as { proposalId?: unknown }).proposalId;
+    return typeof value === "string" && /^discovery-operator-proposal-[a-f0-9]{64}$/.test(value)
+        ? value
+        : null;
+}
+
 export type ClosedProposalDestination = {
     kind: "discovery_item" | "operator_maintenance_selection";
     itemId?: string;

@@ -57,6 +57,16 @@ catalog item requires a 404 from the catalog read itself; supporting-read
 failures remain unavailable information. Failed reads offer a retry or reload
 and retain a way back. These displays do not grant installation authority.
 
+Operator sign-in returns to the supported maintenance selector. Discovery
+navigation preserves only a validated advisory proposal ID across sign-in,
+then reloads its current status; target hints, selected resources and approval
+fields are never carried forward. Arbitrary return destinations are ignored.
+Leaving a pending sign-in does not navigate the operator back afterward, and
+unexpected sign-in failures clear the password and offer a controlled retry.
+Browser coverage uses a separate fixture allowing only an exact synthetic
+login; all operational mutations remain rejected. No real credentials or
+maintenance actions are used by these checks.
+
 Mission Control completion requires the supported operator journey to have
 working navigation, useful empty and unavailable states, recovery controls,
 and readable layouts on desktop and mobile. Proposal, planning, workflow and
