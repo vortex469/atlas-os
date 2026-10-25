@@ -278,3 +278,24 @@ def test_symlinked_source_is_rejected(repository: tuple[Path, str], tmp_path: Pa
     manager = WorkerWorkspaceManager(link, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,), git_config_path=tmp_path / "gitconfig")
     with pytest.raises(Exception, match="trusted repository source"):
         manager.prepare(_request(_git(source, "rev-parse", "HEAD")))
+
+
+def test_timed_out_edit_is_not_collected_and_workspace_is_removed(repository, tmp_path, monkeypatch):
+    source, head = repository
+    bindir = _fake_codex(tmp_path)
+    with (bindir / "codex").open("a") as script:
+        script.write("import time; time.sleep(60)\n")
+    monkeypatch.setenv("PATH", f"{bindir}:{os.environ['PATH']}")
+    manager = WorkerWorkspaceManager(source, tmp_path / "workspaces", "trusted-repository", trusted_repository_paths=(source,), git_config_path=tmp_path / "gitconfig")
+    values = _request(head).to_dict()
+    values.pop("request_digest")
+    values["timeout_seconds"] = 1.0
+    request = WorkerExecutionRequest.build(**values)
+
+    result = WorkspaceExecutionRunner(manager, enabled=True).execute(request)
+
+    assert result.failure_code is WorkerFailureCode.TIMEOUT
+    assert result.patch is None
+    assert result.changed_files == ()
+    assert not (tmp_path / "workspaces" / request.execution_request_id).exists()
+    assert _git(source, "diff") == ""

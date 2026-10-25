@@ -5,10 +5,11 @@
 The [selected sequential plan](docs/architecture/v0.66-v0.77-repository-action-plan.md)
 closes v0.66 implementation and defines separate useful milestones through
 v0.77. Earlier consolidated v0.70 completion wording was incorrect: v0.67
-and later milestones were not individually completed. The process-lifetime change at `d80d336b` is draft v0.67 work only,
-not a completed milestone. Subsequent planned work covers bounded capture,
-transport and request limits, safe path/patch handling, audit export,
-capability diagnostics and a maintained operator fixture.
+and later milestones were not individually completed. The operator has now selected completion through v0.70. v0.67 process
+lifetime and timeout cleanup passed its full acceptance (59 worker tests),
+including timeout/no-patch cleanup; see its [closeout](docs/architecture/v0.67-worker-process-lifetime.md).
+v0.68–v0.70 remain active implementation work. v0.71–v0.77 are future
+proposals outside this run.
 
 The [v0.66 local closeout](docs/architecture/repository-action-acceptance.md#v066-local-closeout)
 fixes the implementation boundary at `26c5656a`, with final validation
