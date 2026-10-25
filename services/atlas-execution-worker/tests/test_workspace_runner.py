@@ -299,3 +299,29 @@ def test_timed_out_edit_is_not_collected_and_workspace_is_removed(repository, tm
     assert result.changed_files == ()
     assert not (tmp_path / "workspaces" / request.execution_request_id).exists()
     assert _git(source, "diff") == ""
+
+
+@pytest.mark.parametrize('name', ['space name.txt', 'line\nbreak.txt', '雪.txt', 'literal -> arrow.txt'])
+def test_status_preserves_exact_unusual_file_name(repository, name):
+    source, _ = repository
+    (source / name).write_text('outside scope')
+    assert WorkspaceExecutionRunner._changed_files(source) == (name,)
+
+
+def test_status_rename_includes_both_ends(repository):
+    source, _ = repository
+    _git(source, 'mv', 'forbidden.txt', 'renamed\n雪.txt')
+    assert WorkspaceExecutionRunner._changed_files(source) == ('forbidden.txt', 'renamed\n雪.txt')
+
+
+def test_newline_out_of_scope_change_is_blocked(repository, tmp_path, monkeypatch):
+    source, head = repository
+    bindir = _fake_codex(tmp_path)
+    with (bindir / 'codex').open('a') as script:
+        script.write("Path('outside\\nname.txt').write_text('changed')\n")
+    monkeypatch.setenv('PATH', f"{bindir}:{os.environ['PATH']}")
+    manager = WorkerWorkspaceManager(source, tmp_path/'workspaces', 'trusted-repository', trusted_repository_paths=(source,), git_config_path=tmp_path/'gitconfig')
+    result = WorkspaceExecutionRunner(manager, enabled=True).execute(_request(head))
+    assert result.failure_code is WorkerFailureCode.OUT_OF_SCOPE_CHANGES
+    assert 'outside\nname.txt' in result.changed_files
+    assert _git(source, 'diff') == ''

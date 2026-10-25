@@ -72,6 +72,8 @@ class WorkspaceExecutionRunner:
             )
             result = self._collect(request, workspace.path, workspace.base_head, process, started)
             return result
+        except WorkspaceError:
+            return self._result(request, WorkerFailureCode.INVALID_REQUEST, started, base=workspace.base_head)
         except subprocess.TimeoutExpired as exc:
             return self._result(
                 request,
@@ -167,17 +169,33 @@ class WorkspaceExecutionRunner:
 
     @staticmethod
     def _changed_files(root: Path) -> tuple[str, ...]:
-        result = subprocess.run(["git", "-C", str(root), "status", "--porcelain=v1"], check=True, capture_output=True, text=True, shell=False)
-        files = []
-        for line in result.stdout.splitlines():
-            name = line[3:]
-            if " -> " in name:
-                name = name.split(" -> ", 1)[1]
-            path = Path(name)
-            if path.is_absolute() or ".." in path.parts:
-                raise WorkspaceError("changed path escapes workspace")
-            files.append(path.as_posix())
-        return tuple(sorted(set(files)))
+        result = subprocess.run(["git", "-C", str(root), "status", "--porcelain=v1", "-z", "--untracked-files=all"], check=True, capture_output=True, shell=False)
+        records = result.stdout.split(b"\x00")
+        if records[-1] != b"":
+            raise WorkspaceError("unterminated repository status")
+        files = set()
+        index = 0
+        try:
+            while index < len(records) - 1:
+                record = records[index]
+                if len(record) < 4 or record[2:3] != b" ":
+                    raise WorkspaceError("invalid repository status")
+                names = [record[3:]]
+                index += 1
+                if b"R" in record[:2] or b"C" in record[:2]:
+                    if index >= len(records) - 1:
+                        raise WorkspaceError("incomplete rename status")
+                    names.append(records[index])
+                    index += 1
+                for raw in names:
+                    name = raw.decode("utf-8")
+                    path = Path(name)
+                    if not name or path.is_absolute() or ".." in path.parts or "\\" in name:
+                        raise WorkspaceError("changed path escapes supported scope")
+                    files.add(path.as_posix())
+        except UnicodeDecodeError as exc:
+            raise WorkspaceError("changed path is not UTF-8") from exc
+        return tuple(sorted(files))
 
     @staticmethod
     def _patch(root: Path) -> str:
