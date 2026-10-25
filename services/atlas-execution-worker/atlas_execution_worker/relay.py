@@ -12,16 +12,24 @@ DEFAULT_UPSTREAM_HOST = "atlas-execution-worker"
 DEFAULT_UPSTREAM_PORT = 8081
 CONNECT_TIMEOUT_SECONDS = 5.0
 MAX_CONNECTION_SECONDS = 3900.0
+CLOSE_TIMEOUT_SECONDS = 1.0
 
 
 async def _copy(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    while data := await reader.read(65_536):
+        writer.write(data)
+        await writer.drain()
+    # Preserve TCP half-close: a finished request may still await its response.
+    if writer.can_write_eof():
+        writer.write_eof()
+        await writer.drain()
+
+
+async def _wait_closed(writer: asyncio.StreamWriter) -> None:
     try:
-        while data := await reader.read(65_536):
-            writer.write(data)
-            await writer.drain()
-    finally:
-        writer.close()
-        await writer.wait_closed()
+        await asyncio.wait_for(writer.wait_closed(), timeout=CLOSE_TIMEOUT_SECONDS)
+    except (OSError, TimeoutError):
+        pass
 
 
 async def relay_connection(
@@ -31,21 +39,30 @@ async def relay_connection(
     upstream_host: str,
     upstream_port: int,
 ) -> None:
-    """Relay one connection and close both directions deterministically."""
+    """Bound one connection; cancel/join owned copies and close both writers."""
 
+    upstream_writer = None
+    tasks = []
     try:
         async with asyncio.timeout(MAX_CONNECTION_SECONDS):
             upstream_reader, upstream_writer = await asyncio.wait_for(
                 asyncio.open_connection(upstream_host, upstream_port),
                 timeout=CONNECT_TIMEOUT_SECONDS,
             )
-            await asyncio.gather(
-                _copy(reader, upstream_writer),
-                _copy(upstream_reader, writer),
-            )
+            tasks = [asyncio.create_task(_copy(reader, upstream_writer)),
+                     asyncio.create_task(_copy(upstream_reader, writer))]
+            await asyncio.gather(*tasks)
     except (OSError, TimeoutError):
-        writer.close()
-        await writer.wait_closed()
+        pass
+    finally:
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        writers = [writer] + ([upstream_writer] if upstream_writer is not None else [])
+        for owned in writers:
+            owned.close()
+        await asyncio.gather(*(_wait_closed(owned) for owned in writers))
 
 
 async def serve() -> None:
