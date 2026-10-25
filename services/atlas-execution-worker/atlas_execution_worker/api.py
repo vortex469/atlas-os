@@ -180,11 +180,11 @@ def create_app(
                 return _error(408, "request_timeout", "execution request read deadline exceeded")
         except TimeoutError:
             return _error(408, "request_timeout", "execution request read deadline exceeded")
-        except (ValueError, TypeError, KeyError, UnicodeDecodeError, RecursionError) as exc:
+        except (ValueError, TypeError, KeyError, UnicodeDecodeError, RecursionError):
             LOGGER.info("worker request rejected code=invalid_request")
-            return _error(400, "invalid_request", str(exc))
+            return _error(400, "invalid_request", "execution request failed contract validation")
         except Exception:
-            LOGGER.exception("worker request parsing failed code=invalid_request")
+            LOGGER.error("worker request parsing failed code=invalid_request")
             return _error(400, "invalid_request", "request could not be parsed")
 
         if execution_enabled:

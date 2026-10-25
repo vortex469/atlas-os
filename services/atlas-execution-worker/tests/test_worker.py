@@ -385,3 +385,19 @@ def test_decode_cannot_claim_after_read_deadline(monkeypatch):
     assert response.status_code == 408
     assert response.json()['error']['code'] == 'request_timeout'
     assert len(ledger) == 0
+
+
+@pytest.mark.parametrize('exception', [ValueError, TypeError, KeyError, RuntimeError])
+def test_invalid_request_never_echoes_decoder_errors(monkeypatch, caplog, exception):
+    from atlas_execution_worker import api
+
+    def reject(_):
+        raise exception('PRIVATE_CALLER_PAYLOAD')
+
+    monkeypatch.setattr(api, 'decode_worker_json', reject)
+    ledger = RequestLedger()
+    response = TestClient(create_app(ledger)).post('/v1/executions', json={})
+    assert response.status_code == 400
+    assert response.json()['error']['code'] == 'invalid_request'
+    assert 'PRIVATE_CALLER_PAYLOAD' not in response.text + caplog.text
+    assert len(ledger) == 0
