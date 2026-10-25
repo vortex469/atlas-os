@@ -324,3 +324,18 @@ def test_streamed_overflow_and_length_mismatch_have_no_claim(monkeypatch):
     assert body['error']['code'] == 'request_too_large'
     assert asyncio.run(send_body([b'{}'], [(b'content-length',b'3')]))[0] == 400
     assert len(ledger) == 0
+
+
+@pytest.mark.parametrize('headers', [[(b'authorization', b'Bearer \xff')], [(b'authorization', b'Bearer test-worker-token'), (b'authorization', b'Bearer test-worker-token')]])
+def test_malformed_auth_is_controlled_on_submission_and_lookup(headers):
+    ledger = RequestLedger()
+    client = TestClient(create_app(ledger=ledger, authentication_token='test-worker-token'))
+    assert client.post('/v1/executions', json=make_request().to_dict(), headers=headers).status_code == 401
+    assert client.get('/v1/executions/execution-1', headers=headers).status_code == 401
+    assert len(ledger) == 0
+
+
+@pytest.mark.parametrize('token', ['', 'white space', 'non-ascii-雪', 'x'*1025])
+def test_invalid_auth_configuration_never_starts(token):
+    with pytest.raises(ValueError, match='bounded ASCII'):
+        create_app(authentication_token=token)

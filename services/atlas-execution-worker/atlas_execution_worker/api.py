@@ -64,6 +64,17 @@ def _error(status_code: int, code: str, message: str) -> JSONResponse:
     )
 
 
+def _authenticated(request: Request, token: str) -> bool:
+    values = request.headers.getlist("authorization")
+    if len(values) != 1:
+        return False
+    try:
+        provided = values[0].encode("ascii")
+    except UnicodeEncodeError:
+        return False
+    return secrets.compare_digest(provided, ("Bearer " + token).encode("ascii"))
+
+
 def create_app(
     ledger: RequestLedger | None = None,
     durable_ledger: DurableRequestLedger | None = None,
@@ -75,6 +86,12 @@ def create_app(
 ) -> FastAPI:
     """Create the execution-disabled app with an injectable ledger."""
 
+    if authentication_token is not None and (
+        not isinstance(authentication_token, str) or not authentication_token
+        or len(authentication_token) > 1024
+        or any(not 33 <= ord(char) <= 126 for char in authentication_token)
+    ):
+        raise ValueError("worker authentication must be one bounded ASCII credential")
     app = FastAPI(title=SERVICE_NAME, docs_url=None, redoc_url=None)
     request_ledger = (
         ledger if ledger is not None else durable_ledger if durable_ledger is not None else RequestLedger()
@@ -109,10 +126,7 @@ def create_app(
             and (request.client is None or request.client.host != allowed_client_address)
         ):
             return _error(403, "untrusted_peer", "worker client network identity rejected")
-        if authentication_token is not None and not secrets.compare_digest(
-            request.headers.get("authorization", ""),
-            f"Bearer {authentication_token}",
-        ):
+        if authentication_token is not None and not _authenticated(request, authentication_token):
             return _error(401, "authentication_required", "worker authentication failed")
         lengths = request.headers.getlist("content-length")
         if (lengths and request.headers.get("transfer-encoding")) or len(lengths) > 1 or (lengths and (not lengths[0].isascii() or not lengths[0].isdigit() or len(lengths[0]) > 10)):
@@ -211,10 +225,7 @@ def create_app(
             and (request.client is None or request.client.host != allowed_client_address)
         ):
             return _error(403, "untrusted_peer", "worker client network identity rejected")
-        if authentication_token is not None and not secrets.compare_digest(
-            request.headers.get("authorization", ""),
-            f"Bearer {authentication_token}",
-        ):
+        if authentication_token is not None and not _authenticated(request, authentication_token):
             return _error(401, "authentication_required", "worker authentication failed")
         try:
             entry = request_ledger.get(execution_request_id)
