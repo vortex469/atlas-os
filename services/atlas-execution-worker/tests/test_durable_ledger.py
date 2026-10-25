@@ -222,3 +222,35 @@ def test_unknown_workspace_is_quarantined(tmp_path: Path) -> None:
     assert quarantined is not None
     assert quarantined.name == "execution-1.unknown"
     assert (quarantined / "evidence.txt").read_text(encoding="utf-8") == "preserve"
+
+
+@pytest.mark.parametrize('column,value', [('state','invalid'),('attempt',2),('schema_version',2),('request_digest','invalid'),('created_at','not-a-time')])
+def test_corrupt_row_is_refused_without_repair_or_replay(tmp_path, column, value):
+    database = tmp_path/'ledger.sqlite3'
+    ledger = DurableRequestLedger(database)
+    request = make_request()
+    ledger.claim(request)
+    with sqlite3.connect(database) as connection:
+        connection.execute(f'UPDATE executions SET {column}=?', (value,))
+        before = connection.execute('SELECT * FROM executions').fetchall()
+    for operation in (lambda: ledger.get(request.execution_request_id), lambda: ledger.claim(request), ledger.reconcile_startup):
+        with pytest.raises(DurableLedgerCorruptionError):
+            operation()
+    with sqlite3.connect(database) as connection:
+        assert connection.execute('SELECT * FROM executions').fetchall() == before
+
+
+def test_startup_validates_all_rows_before_classifying_execution(tmp_path):
+    database = tmp_path/'ledger.sqlite3'
+    ledger = DurableRequestLedger(database)
+    first = make_request()
+    ledger.claim(first)
+    ledger.mark_executing(first)
+    other = make_request(execution_request_id='other-id')
+    ledger.claim(other)
+    with sqlite3.connect(database) as connection:
+        connection.execute("UPDATE executions SET attempt=2 WHERE execution_request_id='other-id'")
+    with pytest.raises(DurableLedgerCorruptionError):
+        ledger.reconcile_startup()
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT state FROM executions WHERE execution_request_id='execution-1'").fetchone()[0] == 'executing'
