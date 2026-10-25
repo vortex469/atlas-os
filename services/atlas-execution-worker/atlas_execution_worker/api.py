@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import secrets
 from typing import Any
@@ -15,6 +14,7 @@ from app.execution.worker_contracts import (
     WorkerExecutionStatus,
     WorkerFailureCode,
 )
+from app.execution.worker_json import decode_worker_json
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -141,9 +141,9 @@ def create_app(
                 body.extend(chunk)
             if lengths and len(body) != int(lengths[0]):
                 return _error(400, "invalid_request", "request length mismatch")
-            payload = json.loads(body)
+            payload = decode_worker_json(body)
             worker_request = WorkerExecutionRequest.from_dict(payload)
-        except (ValueError, TypeError, KeyError, UnicodeDecodeError) as exc:
+        except (ValueError, TypeError, KeyError, UnicodeDecodeError, RecursionError) as exc:
             LOGGER.info("worker request rejected code=invalid_request")
             return _error(400, "invalid_request", str(exc))
         except Exception:

@@ -197,3 +197,22 @@ def test_result_rejects_invalid_attestation_and_truncation_metadata() -> None:
             request,
             stdout=BoundedOutput("partial", truncated=True, original_bytes=7),
         ).validate(request)
+
+
+@pytest.mark.parametrize('changes', [{'schema_version':True},{'schema_version':1.0},{'timeout_seconds':True},{'timeout_seconds':10**1000}])
+def test_request_refuses_ambiguous_numeric_types(changes):
+    with pytest.raises(ValueError):
+        make_request(**changes)
+
+
+@pytest.mark.parametrize('changes', [{'schema_version':True},{'return_code':False},{'duration_seconds':True},{'patch_size_bytes':True},{'patch_truncated':1}])
+def test_result_refuses_ambiguous_numeric_types(changes):
+    result = make_result(make_request())
+    with pytest.raises(ValueError):
+        replace(result, **changes).validate()
+
+
+@pytest.mark.parametrize('output', [BoundedOutput('x', 1, 2), BoundedOutput('', False, False)])
+def test_capture_counts_and_flags_are_strict(output):
+    with pytest.raises(ValueError):
+        output.validate()

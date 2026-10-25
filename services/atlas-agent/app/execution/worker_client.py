@@ -9,6 +9,7 @@ import time
 from typing import Any
 
 from app.execution.worker_contracts import WorkerExecutionRequest
+from app.execution.worker_json import decode_worker_json
 
 MAX_RESPONSE_HEADER_BYTES = 16_384
 # Three bounded text fields can each expand sixfold under JSON escaping.
@@ -47,19 +48,6 @@ def _response_headers(raw: bytes | bytearray) -> tuple[int, int]:
     if size > MAX_RESPONSE_BODY_BYTES:
         raise WorkerTransportError('worker response body exceeds bound')
     return int(match[1]), size
-
-
-def _json_object(pairs):
-    value = {}
-    for key, item in pairs:
-        if key in value:
-            raise ValueError('duplicate worker response field')
-        value[key] = item
-    return value
-
-
-def _invalid_constant(value):
-    raise ValueError('non-finite worker response number')
 
 
 class TcpWorkerClient:
@@ -135,7 +123,7 @@ class TcpWorkerClient:
         except OSError as exc:
             raise WorkerTransportError('worker socket unavailable') from exc
         try:
-            decoded = json.loads(response[header_end + 4:].decode('utf-8'), object_pairs_hook=_json_object, parse_constant=_invalid_constant)
+            decoded = decode_worker_json(response[header_end + 4:])
             if not isinstance(decoded, dict):
                 raise TypeError('worker response must be an object')
         except (TypeError, ValueError, UnicodeDecodeError, RecursionError) as exc:

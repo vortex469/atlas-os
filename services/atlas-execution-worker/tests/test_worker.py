@@ -339,3 +339,12 @@ def test_malformed_auth_is_controlled_on_submission_and_lookup(headers):
 def test_invalid_auth_configuration_never_starts(token):
     with pytest.raises(ValueError, match='bounded ASCII'):
         create_app(authentication_token=token)
+
+
+@pytest.mark.parametrize('body', [b'{"x":1,"x":2}', b'{"x":NaN}', b'{"x":Infinity}', b'[]', b'{"x":"\xff"}'])
+def test_ambiguous_json_refused_without_claim(body):
+    ledger = RequestLedger()
+    response = TestClient(create_app(ledger=ledger)).post('/v1/executions', content=body)
+    assert response.status_code == 400
+    assert response.json()['error']['code'] == 'invalid_request'
+    assert len(ledger) == 0
