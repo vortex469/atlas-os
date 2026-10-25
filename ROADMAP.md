@@ -1,5 +1,39 @@
 # Atlas OS Roadmap
 
+## v0.71–v0.80 repository-action implementation (complete locally; unreleased)
+
+The operator selected continuation through v0.80. Each version now has a
+separate committed behavior change and acceptance record in the
+[selected sequential plan](docs/architecture/v0.71-v0.80-repository-action-plan.md).
+
+| Version | Completed result | Commit |
+| --- | --- | --- |
+| v0.71 | Incoming byte/framing refusal before JSON parsing and claim. | `a5901f96` |
+| v0.72 | Exact NUL-delimited path and rename scope checks. | `71febd0e` |
+| v0.73 | Bounded complete-patch capture; no retained/hashed oversized prefix. | `da7ee334` |
+| v0.74 | Private ledger export with schema/domain/result validation. | `0ad15d1d` |
+| v0.75 | Independent shell/helper diagnostics without readiness authority. | `190d5317` |
+| v0.76 | Operator truncation summary without raw output or effects. | `0cffcfaa` |
+| v0.77 | Phase-selectable guarded synthetic native fixture checker. | `5f2ba147` |
+| v0.78 | Bounded Git setup/metadata and failed partial-clone cleanup. | `e1e4f2e6` |
+| v0.79 | Revision/control refusal and safe post-model Git collection. | `1f5078f7` |
+| v0.80 | Observed isolation, zero capabilities and fail-closed execution guard. | `889646f0` |
+
+Integrated validation passed 1,127 Agent tests, 96 worker tests, 2,421 UI tests,
+16 script tests and 72 guarded native fixture checks. Configured lint/UI build,
+final-image runsc process/TCP/isolation/shell-boundary checks, a validated
+100-entry synthetic ledger export, and the existing committed-source container,
+five-volume recovery and Rest Server gates passed. Container integration used
+runc and dummy credentials; independent runsc checks are recorded separately.
+Production container identities were unchanged and isolated resources removed.
+
+No real model or account credentials were used in this continuation. Full
+runtime readiness is not claimed: the known nested helper limitation remains
+explicit. Release acceptance, remote CI, production activation, push, tags and
+publication remain separate. The seven installation blockers and deferred
+successor control plane are unchanged. This closes the selected local work
+through v0.80 without authorizing further versions or production effects.
+
 ## v0.66–v0.70 repository-action implementation (complete locally; unreleased)
 
 The operator selected sequential completion **through v0.70**. Each selected
@@ -23,7 +57,8 @@ credential use was required.
 
 The [sequential plan](docs/architecture/v0.66-v0.77-repository-action-plan.md)
 records the earlier consolidated-target correction and exact boundaries.
-v0.71–v0.77 remain future proposals outside the selected run. Nested
+Those v0.71–v0.77 proposals were outside the earlier v0.70 run; their
+subsequent selection and implementation are recorded above. Nested
 patch-helper compatibility remains a documented limit. Production activation,
 remote exact-SHA CI, release acceptance, push, tags and publication remain
 separate and are not claimed. The seven installation blockers and deferred
