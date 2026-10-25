@@ -5,15 +5,22 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
 from app.execution.worker_contracts import WorkerExecutionRequest
 
+from .process import run_command
+
 
 class WorkspaceError(RuntimeError):
     """The trusted source cannot produce a safe request workspace."""
+
+
+class WorkspaceTimeout(WorkspaceError):
+    """Workspace preparation exceeded its fixed setup budget."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,31 +67,35 @@ class WorkerWorkspaceManager:
             raise WorkspaceError("trusted repository source is invalid")
         if source not in self._trusted_repository_paths:
             raise WorkspaceError("repository source is not configured")
-        source_head = self._git(source, "rev-parse", "HEAD")
+        deadline = time.monotonic() + min(30.0, request.timeout_seconds)
+        def remaining():
+            value = deadline - time.monotonic()
+            if value <= 0:
+                raise WorkspaceTimeout("workspace preparation deadline exceeded")
+            return value
+        source_head = self._git(source, "rev-parse", "HEAD", timeout=remaining())
         if source_head != request.expected_repository_head:
             raise WorkspaceError("stale repository")
         path = self._workspace_root / request.execution_request_id
         if path.exists() or path.is_symlink():
             raise WorkspaceError("request workspace already exists")
-        subprocess.run(
-            [
-                "git",
-                "clone",
-                "--no-local",
-                "--no-hardlinks",
-                str(source),
-                str(path),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=False,
-            env={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
-        )
-        cloned_head = self._git(path, "rev-parse", "HEAD")
-        if cloned_head != request.expected_repository_head:
-            shutil.rmtree(path, ignore_errors=True)
-            raise WorkspaceError("cloned workspace head does not match expected head")
+        try:
+            result = run_command(
+                ["git", "clone", "--no-local", "--no-hardlinks", str(source), str(path)],
+                cwd=self._workspace_root, timeout=remaining(),
+                environment={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
+            )
+            if result.returncode != 0 or result.stdout.truncated or result.stderr.truncated:
+                raise WorkspaceError("workspace clone failed")
+            cloned_head = self._git(path, "rev-parse", "HEAD", timeout=remaining())
+            if cloned_head != request.expected_repository_head:
+                raise WorkspaceError("cloned workspace head does not match expected head")
+        except (OSError, subprocess.TimeoutExpired, WorkspaceError) as exc:
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path)
+            if isinstance(exc, (subprocess.TimeoutExpired, WorkspaceTimeout)):
+                raise WorkspaceTimeout("workspace preparation deadline exceeded") from exc
+            raise WorkspaceError("workspace preparation failed") from exc
         workspace = WorkerWorkspace(request.execution_request_id, path, cloned_head)
         self._active[request.execution_request_id] = workspace
         return workspace
@@ -114,13 +125,16 @@ class WorkerWorkspaceManager:
         self._active.pop(request_id, None)
         return destination
 
-    def _git(self, path: Path, *args: str) -> str:
-        result = subprocess.run(
-            ["git", "-C", str(path), *args],
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=False,
-            env={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
-        )
-        return result.stdout.strip()
+    def _git(self, path: Path, *args: str, timeout: float = 30.0) -> str:
+        try:
+            result = run_command(
+                ["git", "-C", str(path), *args], cwd=self._workspace_root,
+                timeout=timeout, environment={**os.environ, "GIT_CONFIG_GLOBAL": str(self._git_config_path)},
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise WorkspaceTimeout("workspace Git deadline exceeded") from exc
+        except OSError as exc:
+            raise WorkspaceError("workspace Git unavailable") from exc
+        if result.returncode != 0 or result.stdout.truncated:
+            raise WorkspaceError("workspace Git failed")
+        return result.stdout.text.strip()

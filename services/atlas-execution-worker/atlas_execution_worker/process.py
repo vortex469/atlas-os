@@ -6,6 +6,7 @@ import selectors
 import signal
 import subprocess
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,6 +72,7 @@ def _drain(selector: selectors.BaseSelector, deadline: float) -> bool:
 def run_command(
     argv: list[str], *, cwd: Path, timeout: float,
     output_limit: int = MAX_CAPTURE_BYTES,
+    environment: Mapping[str, str] | None = None,
 ) -> CapturedCommand:
     """Drain both streams without retaining more than output_limit per stream.
 
@@ -85,7 +87,7 @@ def run_command(
     process = subprocess.Popen(
         argv, cwd=cwd, stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        bufsize=0, start_new_session=True,
+        bufsize=0, start_new_session=True, env=environment,
     )
     stdout, stderr = _Capture(output_limit), _Capture(output_limit)
     try:

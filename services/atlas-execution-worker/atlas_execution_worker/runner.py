@@ -20,7 +20,7 @@ from app.execution.worker_contracts import (
 )
 
 from .process import CapturedCommand, CommandTimeout, run_command
-from .workspace import WorkerWorkspaceManager, WorkspaceError
+from .workspace import WorkerWorkspaceManager, WorkspaceError, WorkspaceTimeout
 
 MAX_CAPTURE_BYTES = 1_048_576
 MAX_PATCH_BYTES = 4_194_304
@@ -45,7 +45,8 @@ class WorkspaceExecutionRunner:
             workspace = self._manager.prepare(request)
         except WorkspaceError as exc:
             failure = (
-                WorkerFailureCode.STALE_REPOSITORY
+                WorkerFailureCode.TIMEOUT
+                if isinstance(exc, WorkspaceTimeout) else WorkerFailureCode.STALE_REPOSITORY
                 if "stale" in str(exc)
                 else WorkerFailureCode.INVALID_REQUEST
             )
@@ -143,7 +144,9 @@ class WorkspaceExecutionRunner:
         )
 
     def _collect(self, request: WorkerExecutionRequest, root: Path, base_head: str, process: CapturedCommand, started: float) -> WorkerExecutionResult:
-        subprocess.run(["git", "-C", str(root), "add", "--all", "--"], check=True, capture_output=True, text=True, shell=False)
+        staged = run_command(["git", "-C", str(root), "add", "--all", "--"], cwd=root, timeout=30)
+        if staged.returncode != 0:
+            raise WorkspaceError("workspace staging failed")
         changed = self._changed_files(root)
         allowed = set(request.allowed_affected_files)
         failure = None
@@ -180,8 +183,10 @@ class WorkspaceExecutionRunner:
 
     @staticmethod
     def _changed_files(root: Path) -> tuple[str, ...]:
-        result = subprocess.run(["git", "-C", str(root), "status", "--porcelain=v1", "-z", "--untracked-files=all"], check=True, capture_output=True, shell=False)
-        records = result.stdout.split(b"\x00")
+        result = run_command(["git", "-C", str(root), "status", "--porcelain=v1", "-z", "--untracked-files=all"], cwd=root, timeout=30)
+        if result.returncode != 0 or result.stdout.truncated:
+            raise WorkspaceError("unsupported repository status")
+        records = result.stdout.text.encode("utf-8").split(b"\x00")
         if records[-1] != b"":
             raise WorkspaceError("unterminated repository status")
         files = set()
@@ -222,7 +227,10 @@ class WorkspaceExecutionRunner:
 
     @staticmethod
     def _git(root: Path, *args: str) -> str:
-        return subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True, shell=False).stdout.strip()
+        result = run_command(["git", "-C", str(root), *args], cwd=root, timeout=30)
+        if result.returncode != 0 or result.stdout.truncated:
+            raise WorkspaceError("workspace metadata unavailable")
+        return result.stdout.text.strip()
 
     @staticmethod
     def _bounded(value: str | bytes | None) -> BoundedOutput:

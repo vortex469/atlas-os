@@ -10,11 +10,13 @@ from app.execution.worker_contracts import (
     CODEX_WORKSPACE_EXEC_ARGV_PREFIX,
     RC1_SMOKE_MARKER,
     RC1_SMOKE_TARGET,
+    BoundedOutput,
     WorkerExecutionIntent,
     WorkerExecutionRequest,
     WorkerFailureCode,
 )
 from atlas_execution_worker.config import write_git_config
+from atlas_execution_worker.process import CapturedCommand
 from atlas_execution_worker.runner import WorkspaceExecutionRunner
 from atlas_execution_worker.workspace import WorkerWorkspaceManager
 
@@ -75,14 +77,12 @@ def _fake_codex(tmp_path: Path, *, touch_forbidden: bool = False) -> Path:
 def test_workspace_git_uses_exact_scoped_safe_directory(tmp_path: Path) -> None:
     path = tmp_path / "workspace"
     path.mkdir()
-    with patch("atlas_execution_worker.workspace.subprocess.run") as run:
-        run.return_value = subprocess.CompletedProcess(
-            args=[], returncode=0, stdout="head\n", stderr=""
-        )
+    with patch("atlas_execution_worker.workspace.run_command") as run:
+        run.return_value = CapturedCommand(0, BoundedOutput("head\n"), BoundedOutput(""))
         assert WorkerWorkspaceManager(path, tmp_path / "workspaces", "token", trusted_repository_paths=(path,), git_config_path=tmp_path / "gitconfig")._git(path, "rev-parse", "HEAD") == "head"
     command = run.call_args.args[0]
     assert command[:3] == ["git", "-C", str(path)]
-    assert run.call_args.kwargs["env"]["GIT_CONFIG_GLOBAL"] == str((tmp_path / "gitconfig").resolve())
+    assert run.call_args.kwargs["environment"]["GIT_CONFIG_GLOBAL"] == str((tmp_path / "gitconfig").resolve())
     assert "safe.directory=*" not in command
 
 
@@ -98,16 +98,16 @@ def test_workspace_clone_uses_exact_source_safe_directory_and_no_local(
         git_config_path=tmp_path / "gitconfig",
     )
     request = _request(head)
-    with patch("atlas_execution_worker.workspace.subprocess.run") as run:
+    with patch("atlas_execution_worker.workspace.run_command") as run:
         run.side_effect = [
-            subprocess.CompletedProcess([], 0, f"{head}\n", ""),
-            subprocess.CompletedProcess([], 0, "", ""),
-            subprocess.CompletedProcess([], 0, f"{head}\n", ""),
+            CapturedCommand(0, BoundedOutput(f"{head}\n"), BoundedOutput("")),
+            CapturedCommand(0, BoundedOutput(""), BoundedOutput("")),
+            CapturedCommand(0, BoundedOutput(f"{head}\n"), BoundedOutput("")),
         ]
         manager.prepare(request)
     clone = run.call_args_list[1].args[0]
     assert clone[:2] == ["git", "clone"]
-    assert run.call_args_list[1].kwargs["env"]["GIT_CONFIG_GLOBAL"] == str((tmp_path / "gitconfig").resolve())
+    assert run.call_args_list[1].kwargs["environment"]["GIT_CONFIG_GLOBAL"] == str((tmp_path / "gitconfig").resolve())
     assert "--no-local" in clone
     assert "--no-hardlinks" in clone
     assert "safe.directory=*" not in clone
@@ -338,5 +338,28 @@ def test_oversized_patch_is_not_retained_or_hashed(repository, tmp_path, monkeyp
     assert result.failure_code is WorkerFailureCode.PATCH_TOO_LARGE
     assert result.patch is result.patch_digest is None
     assert result.changed_files == ()
+    assert not (tmp_path/'workspaces'/'execution-1').exists()
+    assert _git(source, 'diff') == ''
+
+
+@pytest.mark.parametrize('timeout', [False, True])
+def test_failed_partial_clone_is_cleaned_before_model(repository, tmp_path, monkeypatch, timeout):
+    from atlas_execution_worker import workspace
+    source, head = repository
+    manager = WorkerWorkspaceManager(source, tmp_path/'workspaces', 'trusted-repository', trusted_repository_paths=(source,), git_config_path=tmp_path/'gitconfig')
+    original = workspace.run_command
+    def run(argv, **kwargs):
+        if argv[:2] == ['git', 'clone']:
+            path = Path(argv[-1])
+            path.mkdir()
+            (path/'partial').write_text('incomplete')
+            if timeout:
+                raise subprocess.TimeoutExpired(argv, kwargs['timeout'])
+            return CapturedCommand(1, BoundedOutput(''), BoundedOutput('failure'))
+        return original(argv, **kwargs)
+    monkeypatch.setattr(workspace, 'run_command', run)
+    result = WorkspaceExecutionRunner(manager, enabled=True).execute(_request(head))
+    assert result.failure_code is (WorkerFailureCode.TIMEOUT if timeout else WorkerFailureCode.INVALID_REQUEST)
+    assert result.patch is None
     assert not (tmp_path/'workspaces'/'execution-1').exists()
     assert _git(source, 'diff') == ''
