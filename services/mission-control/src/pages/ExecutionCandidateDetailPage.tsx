@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -9,10 +10,15 @@ import {
 import { getExecutionCandidate } from "../api/executionCandidates";
 import type { CandidatePlanningResponse } from "../types/atlasAgent";
 import type { ExecutionCandidate } from "../types/executionCandidates";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import { WorkflowRail } from "./ExecutionCandidatesPage";
 
 export function ExecutionCandidateDetailPage() {
     const { candidateId = "" } = useParams<{ candidateId: string }>();
+    return <CandidateDetail key={candidateId} candidateId={candidateId} />;
+}
+
+function CandidateDetail({ candidateId }: { candidateId: string }) {
     const [candidate, setCandidate] = useState<ExecutionCandidate | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -26,9 +32,12 @@ export function ExecutionCandidateDetailPage() {
 
         getExecutionCandidate(candidateId)
             .then((nextCandidate) => {
-                if (!cancelled) {
-                    setCandidate(nextCandidate);
+                if (cancelled) return;
+                if (!nextCandidate || nextCandidate.id !== candidateId) {
+                    setError("The returned proposal does not match this page.");
+                    return;
                 }
+                setCandidate(nextCandidate);
             })
             .catch((requestError: unknown) => {
                 if (cancelled) return;
@@ -37,7 +46,7 @@ export function ExecutionCandidateDetailPage() {
                     requestError,
                     "Mission Control could not load this execution candidate.",
                 );
-                if (message.toLowerCase().includes("not found") || message.toLowerCase().includes("not present")) {
+                if (isAxiosError(requestError) && requestError.response?.status === 404) {
                     setNotFound(true);
                 }
                 setError(message);
@@ -68,6 +77,10 @@ export function ExecutionCandidateDetailPage() {
             const response = await createCandidatePlanningSession({
                 candidate_id: candidate.id,
             });
+            if (!response || response.candidate_id !== candidate.id) {
+                setPlanningError("The planning response did not match this proposal. No planning result was opened.");
+                return;
+            }
             setPlanningResponse(response);
         } catch (requestError) {
             console.error("Unable to create candidate planning session:", requestError);
@@ -110,32 +123,32 @@ export function ExecutionCandidateDetailPage() {
                         <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{formatLabel(candidate.execution_intent)}</span>
                     </div>
                     <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">
-                        Eligibility means Atlas Agent may consider this candidate for planning. It does not mean implementation, approval, or execution has occurred.
+                        Review this proposal before planning. Planning does not approve or apply a change.
                     </p>
                 </div>
                 <WorkflowRail activeStep="Planning Session" />
             </header>
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5" aria-labelledby="planning-action-heading">
-                <h2 id="planning-action-heading" className="text-lg font-semibold text-white">Planning session</h2>
+                <h2 id="planning-action-heading" className="text-lg font-semibold text-white">Plan this change</h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    Mission Control sends only the candidate ID to Atlas Agent. Atlas Agent revalidates the current candidate with Atlas Core before creating or reusing a planning-only session.
+                    Start planning this change. Atlas will check that the proposal is still current.
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                     <button type="button" onClick={askAtlasAgentToPlan} disabled={!actionState.enabled || isPlanningPending} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
-                        {isPlanningPending ? "Requesting planning session…" : "Ask Atlas Agent to plan"}
+                        {isPlanningPending ? "Requesting planning session…" : "Start planning"}
                     </button>
                     {(!actionState.enabled || isPlanningPending) && <p className="text-sm text-slate-400">{isPlanningPending ? "Planning request is already pending." : actionState.reason}</p>}
                 </div>
                 {planningResponse && <PlanningResult response={planningResponse} />}
-                {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">Atlas Agent unavailable</p><p className="mt-1 text-sm text-red-200/80">{planningError}</p></div>}
+                {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">Planning unavailable</p><p className="mt-1 text-sm text-red-200/80">{planningError}</p></div>}
             </section>
 
             <section className="grid gap-4 lg:grid-cols-2" aria-label="Execution candidate details">
                 <InfoPanel title="Immutable identity">
                     <DetailField label="Candidate ID" value={candidate.id} />
                     <DetailField label="Created" value={formatTimestamp(candidate.created_at)} />
-                    <DetailField label="Expires" value={candidate.expires_at ? formatTimestamp(candidate.expires_at) : "No expiry"} />
+                    <DetailField label="Expires" value={formatExpiry(candidate.expires_at)} />
                 </InfoPanel>
                 <InfoPanel title="Source recommendation">
                     <DetailField label="Source recommendation ID" value={candidate.source_recommendation_id} />
@@ -204,7 +217,7 @@ function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
             {response.session_id && <p className="mt-1 break-all text-sm text-slate-200">Planning session ID: {response.session_id}</p>}
             {response.session_id && (
                 <Link to={`/candidate-planning/${encodeURIComponent(response.session_id)}`} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    Open planning session
+                    Continue planning
                 </Link>
             )}
             <p className="mt-1 text-sm text-slate-400">Status: {formatLabel(response.status)}</p>
@@ -228,10 +241,18 @@ function planningMessage(response: CandidatePlanningResponse): string {
     return "Atlas Agent returned a planning intake response.";
 }
 
+function formatExpiry(value: string | null | undefined): string {
+    if (value === null || value === undefined) return "No expiry";
+    const parsed = evidenceTimestamp(value);
+    return parsed === null ? "Unverified expiry" : new Date(parsed).toLocaleString();
+}
+
 function getPlanningActionState(candidate: ExecutionCandidate | null): { enabled: boolean; reason: string } {
     if (!candidate) return { enabled: false, reason: "Candidate is not loaded." };
-    if (candidate.expires_at && new Date(candidate.expires_at).getTime() <= Date.now()) {
-        return { enabled: false, reason: "Candidate has expired." };
+    if (candidate.expires_at !== null && candidate.expires_at !== undefined) {
+        const expiresAt = evidenceTimestamp(candidate.expires_at);
+        if (expiresAt === null) return { enabled: false, reason: "The expiry time could not be confirmed. Open a current proposal to continue." };
+        if (expiresAt <= Date.now()) return { enabled: false, reason: "Candidate has expired." };
     }
     if (candidate.status !== "eligible") {
         return { enabled: false, reason: "Candidate is not eligible for planning." };

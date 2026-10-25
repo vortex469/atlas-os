@@ -29,6 +29,13 @@ workflow details. Local filters can be cleared without fetching or executing
 work, and empty later pages retain a route back to earlier results. These
 presentation changes grant no new action authority.
 
+Proposed-change screens keep loading and planning state scoped to the proposal
+in the current URL. Mismatched response identities are refused, late results
+cannot attach to another proposal, and malformed explicit expiry times keep
+planning unavailable. Optional expiry remains supported. The planning entry
+uses plain-language labels and still sends only the candidate ID for backend
+revalidation; it grants no approval or execution permission.
+
 The deferred v0.65 successor control-plane projection is absent. Mission
 Control has no client, route, nested view, or action surface for that
 unselected API; retained v0.64 GET-only evidence must not be promoted or

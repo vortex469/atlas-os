@@ -148,7 +148,7 @@ const workflowPage = {
     offset: 0,
 };
 
-const executionCandidates = [
+export const executionCandidates = [
     {
         id: "candidate-browser-baseline",
         source_recommendation_id: "recommendation-1",

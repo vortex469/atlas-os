@@ -1,4 +1,4 @@
-import { expect, test } from "./mission-control-fixtures";
+import { executionCandidates, expect, test } from "./mission-control-fixtures";
 
 for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
     test(`unknown pages retain navigation at ${viewport.width}px`, async ({ page }) => {
@@ -130,4 +130,41 @@ test("provider registry retries an unavailable read", async ({ page }) => {
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("link", { name: "Open Proxmox provider" })).toBeVisible();
     expect(attempts).toBe(2);
+});
+
+for (const expires_at of [null, "2999-02-30T00:00:00Z"]) {
+    test(`proposal planning stays review-only and validates expiry ${expires_at ?? "none"}`, async ({ page }) => {
+        const proposal = { ...executionCandidates[0], expires_at };
+        await page.route("**/api/v1/execution-candidates/*", (route) => route.fulfill({ json: proposal }));
+        await page.goto(`/execution-candidates/${proposal.id}`);
+        await expect(page.getByRole("heading", { name: proposal.id, exact: true })).toBeVisible();
+        await expect(page.getByText("Review this proposal before planning. Planning does not approve or apply a change.")).toBeVisible();
+        const planning = page.getByRole("button", { name: "Start planning", exact: true });
+        if (expires_at === null) await expect(planning).toBeEnabled();
+        else {
+            await expect(planning).toBeDisabled();
+            await expect(page.getByText("Unverified expiry", { exact: true })).toBeVisible();
+        }
+        await expect(page.getByRole("button", { name: /execute|install|apply|approve|run now/i })).toHaveCount(0);
+    });
+}
+
+test("a proposal with the wrong response identity cannot offer planning", async ({ page }) => {
+    await page.route("**/api/v1/execution-candidates/*", (route) => route.fulfill({
+        json: { ...executionCandidates[0], id: "other-proposal" },
+    }));
+    await page.goto(`/execution-candidates/${executionCandidates[0].id}`);
+    await expect(page.getByRole("alert")).toContainText("The returned proposal does not match this page.");
+    await expect(page.getByRole("button", { name: "Start planning" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "other-proposal" })).toHaveCount(0);
+});
+
+test("a missing proposal is distinct from a service outage", async ({ page }) => {
+    await page.route("**/api/v1/execution-candidates/*", (route) => route.fulfill({
+        status: 404, json: { detail: "PRIVATE_BACKEND_DETAIL" },
+    }));
+    await page.goto("/execution-candidates/missing-proposal");
+    await expect(page.getByRole("heading", { name: "Execution candidate not found" })).toBeVisible();
+    await expect(page.getByText("PRIVATE_BACKEND_DETAIL")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Start planning" })).toHaveCount(0);
 });
