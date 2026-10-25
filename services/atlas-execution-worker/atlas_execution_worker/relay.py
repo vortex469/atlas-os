@@ -10,6 +10,8 @@ DEFAULT_LISTEN_HOST = "atlas-execution-worker-relay-transport"
 DEFAULT_LISTEN_PORT = 8081
 DEFAULT_UPSTREAM_HOST = "atlas-execution-worker"
 DEFAULT_UPSTREAM_PORT = 8081
+CONNECT_TIMEOUT_SECONDS = 5.0
+MAX_CONNECTION_SECONDS = 3900.0
 
 
 async def _copy(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -32,17 +34,18 @@ async def relay_connection(
     """Relay one connection and close both directions deterministically."""
 
     try:
-        upstream_reader, upstream_writer = await asyncio.open_connection(
-            upstream_host, upstream_port
-        )
-    except OSError:
+        async with asyncio.timeout(MAX_CONNECTION_SECONDS):
+            upstream_reader, upstream_writer = await asyncio.wait_for(
+                asyncio.open_connection(upstream_host, upstream_port),
+                timeout=CONNECT_TIMEOUT_SECONDS,
+            )
+            await asyncio.gather(
+                _copy(reader, upstream_writer),
+                _copy(upstream_reader, writer),
+            )
+    except (OSError, TimeoutError):
         writer.close()
         await writer.wait_closed()
-        return
-    await asyncio.gather(
-        _copy(reader, upstream_writer),
-        _copy(upstream_reader, writer),
-    )
 
 
 async def serve() -> None:
