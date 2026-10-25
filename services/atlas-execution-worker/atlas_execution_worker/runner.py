@@ -97,15 +97,18 @@ class WorkspaceExecutionRunner:
         self._attestation_provider = attestation_provider or isolation.observe_attestation
         self._attestation = None
 
-    def validate_runtime(self) -> None:
+    def observe_runtime(self) -> WorkerAttestation:
         try:
             observed = self._attestation_provider()
             if not isinstance(observed, WorkerAttestation):
                 raise TypeError("invalid observation")
             observed.validate()
-            self._attestation = observed
+            return observed
         except (OSError, ValueError, TypeError) as exc:
             raise isolation.IsolationUnavailable("execution isolation observation unavailable") from exc
+
+    def validate_runtime(self) -> None:
+        self._attestation = self.observe_runtime()
 
     def execute(self, request: WorkerExecutionRequest) -> WorkerExecutionResult:
         request.validate()

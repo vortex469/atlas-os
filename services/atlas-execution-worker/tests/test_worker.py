@@ -53,6 +53,7 @@ def test_health_and_disabled_submission_have_bounded_contract() -> None:
         "status": "healthy",
         "contract_schema_version": 1,
         "execution_enabled": False,
+        "execution_readiness": {"configured_enabled":False,"isolation_observed_safe":None,"reason":"execution_disabled","full_readiness_proven":False,"activation_authorized":False},
     }
 
     response = client.post("/v1/executions", json=make_request().to_dict())

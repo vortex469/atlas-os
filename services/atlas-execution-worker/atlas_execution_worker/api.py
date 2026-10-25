@@ -104,7 +104,22 @@ def create_app(
     @app.get("/health")
     async def health() -> dict[str, Any]:
         counts = request_ledger.counts() if isinstance(request_ledger, DurableRequestLedger) else {}
+        observed = None
+        reason = "execution_disabled"
+        if execution_enabled:
+            reason = "runtime_provider_unobserved"
+            if configured_runners and all(isinstance(runner, WorkspaceExecutionRunner) for runner in configured_runners.values()):
+                try:
+                    for runner in configured_runners.values():
+                        runner.observe_runtime()
+                    observed, reason = True, "isolation_observed"
+                except IsolationUnavailable:
+                    observed, reason = False, "isolation_unavailable"
         return {
+            "execution_readiness": {
+                "configured_enabled":execution_enabled, "isolation_observed_safe":observed,
+                "reason":reason, "full_readiness_proven":False, "activation_authorized":False,
+            },
             "service": SERVICE_NAME,
             "status": "healthy",
             "contract_schema_version": 1,

@@ -84,3 +84,23 @@ def test_omitted_proc_field_without_safe_kernel_query_is_refused(kernel):
 def test_conflicting_kernel_and_proc_privilege_observations_are_refused():
     with pytest.raises(IsolationUnavailable):
         from_observations(**observations(), no_new_privileges=False)
+
+
+@pytest.mark.parametrize('safe', [False, True])
+def test_health_observation_does_not_claim_execute_or_cache(tmp_path, safe):
+    manager = Mock()
+    def observe():
+        if not safe:
+            raise IsolationUnavailable('not proven')
+        return from_observations(**observations())
+    runner = WorkspaceExecutionRunner(manager, enabled=True, attestation_provider=observe)
+    ledger = DurableRequestLedger(tmp_path/'ledger.sqlite3')
+    client = ASGITestClient(create_app(durable_ledger=ledger,execution_enabled=True,runners={'repository-token-1':runner}))
+    report = client.get('/health').json()
+    assert report['execution_enabled'] is True
+    assert report['execution_readiness']['isolation_observed_safe'] is safe
+    assert report['execution_readiness']['full_readiness_proven'] is False
+    assert report['execution_readiness']['activation_authorized'] is False
+    assert runner._attestation is None
+    assert len(ledger) == 0
+    manager.prepare.assert_not_called()
