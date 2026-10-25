@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -20,7 +21,13 @@ def write_git_config(repository_paths: list[Path], config_path: Path) -> Path:
         for path in repository_paths
         for entry in (path.resolve(), path.resolve() / ".git")
     ]
-    content = "[safe]\n" + "".join(f"\tdirectory = {entry}\n" for entry in entries)
+    def quote(entry: Path) -> str:
+        value = str(entry)
+        if any(ord(char) < 32 or ord(char) == 127 for char in value):
+            raise WorkerConfigurationError("repository path contains unsupported control characters")
+        return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
+
+    content = "[safe]\n" + "".join(f"\tdirectory = {quote(entry)}\n" for entry in entries)
     temporary = config_path.with_suffix(".tmp")
     temporary.write_text(content, encoding="utf-8")
     temporary.chmod(0o600)
@@ -56,7 +63,7 @@ def load_repository_mapping(
             raise WorkerConfigurationError("repository map entries must be token=path") from exc
         token = token.strip()
         path = Path(source.strip()).expanduser()
-        if not token or "/" in token or "\\" in token or not path.is_absolute():
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,255}", token) or token == "quarantine" or not path.is_absolute() or any(ord(char) < 32 or ord(char) == 127 for char in str(path)):
             raise WorkerConfigurationError("repository map token/path is unsafe")
         resolved = path.resolve()
         if path.is_symlink() or not resolved.is_dir():

@@ -66,8 +66,8 @@ def test_repository_mapping_writes_only_exact_configured_source_paths(tmp_path: 
     assert run.call_args.kwargs["env"]["GIT_CONFIG_GLOBAL"] == str(config_path)
     assert config_path.read_text() == (
         "[safe]\n"
-        f"\tdirectory = {source.resolve()}\n"
-        f"\tdirectory = {source.resolve() / '.git'}\n"
+        f'\tdirectory = "{source.resolve()}"\n' 
+        f'\tdirectory = "{source.resolve() / ".git"}"\n' 
     )
     assert config_path.stat().st_mode & 0o777 == 0o600
     assert "safe.directory=*" not in config_path.read_text()
@@ -97,3 +97,32 @@ def test_disabled_settings_do_not_require_repository_mapping(monkeypatch: pytest
     settings = WorkerSettings.from_environment()
     assert settings.execution_enabled is False
     assert settings.repository_mapping == {}
+
+
+@pytest.mark.parametrize('token', ['bad\ntoken', '..', 'quarantine', 'a' * 257, 'with space'])
+def test_repository_tokens_share_request_path_contract(tmp_path, token):
+    source = git_repository(tmp_path / 'source')
+    with pytest.raises(WorkerConfigurationError):
+        load_repository_mapping(f'{token}={source}')
+
+
+def test_safe_directory_config_round_trips_quotes_and_backslashes(tmp_path):
+    from atlas_execution_worker.config import write_git_config
+
+    source = git_repository(tmp_path / 'source "quoted" \\ path #comment')
+    config = write_git_config([source], tmp_path / 'gitconfig')
+    result = subprocess.run(['git', 'config', '--file', str(config), '--null',
+                             '--get-all', 'safe.directory'], capture_output=True, check=True)
+    assert result.stdout.decode().split('\0') == [str(source), str(source / '.git'), '']
+    assert config.stat().st_mode & 0o777 == 0o600
+
+
+def test_config_directive_injection_is_refused_before_write(tmp_path):
+    from atlas_execution_worker.config import write_git_config
+
+    source = tmp_path / 'source\n[include]\npath = private'
+    source.mkdir()
+    config = tmp_path / 'gitconfig'
+    with pytest.raises(WorkerConfigurationError):
+        write_git_config([source], config)
+    assert not config.exists()
