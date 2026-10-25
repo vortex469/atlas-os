@@ -17,10 +17,21 @@ durable result lookup/recovery, and fail-closed worker isolation and transport.
 See the [roadmap](ROADMAP.md), [v1.0.0 release scope](docs/releases/atlas-v1.0.0.md)
 and [release checklist](docs/RELEASE_CHECKLIST.md).
 
-The release identity is the immutable annotated **`atlas-v1.0.0`** tag when
-present on GitHub. Branch names and completed development milestones alone do
-not establish a tagged release. The previous published release is
-[`atlas-v0.65.0`](https://github.com/vortex469/atlas-os/releases/tag/atlas-v0.65.0).
+The latest verified annotated tag is
+**[`atlas-v1.0.0`](https://github.com/vortex469/atlas-os/tree/atlas-v1.0.0)**,
+pushed after [PR #38](https://github.com/vortex469/atlas-os/pull/38) merged to
+`main` at exact commit `e41d6017d19d0e86321dede3d3a36ea3c1c8df4b`.
+Both exact-commit workflows passed:
+[Quality gates](https://github.com/vortex469/atlas-os/actions/runs/40228623388)
+and [Container release gate](https://github.com/vortex469/atlas-os/actions/runs/40228623378).
+The existing pre-tag release-evidence check exited 0 with `summary.status=ready`;
+the annotated tag's commit identity was verified on GitHub.
+
+The **v1.0.0 GitHub release page has not been published**. GitHub's Releases
+sidebar therefore still lists
+[`atlas-v0.65.0`](https://github.com/vortex469/atlas-os/releases/tag/atlas-v0.65.0)
+as the latest published release. A pushed tag and a published release page are
+separate records; neither deploys Atlas.
 
 This release scope does not authorize deployment or runtime activation. The
 nested patch-helper limitation, seven installation blockers and deferred

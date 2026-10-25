@@ -1,6 +1,40 @@
 # Atlas OS Roadmap
 
-## v0.91–v1.00 repository-action implementation (complete locally; unreleased)
+## v1.0.0 merge and tag status (2026-10-25)
+
+The bounded repository-action implementation through v1.00 is merged into
+`main` through [PR #38](https://github.com/vortex469/atlas-os/pull/38) and tagged
+**[`atlas-v1.0.0`](https://github.com/vortex469/atlas-os/tree/atlas-v1.0.0)** at
+exact commit `e41d6017d19d0e86321dede3d3a36ea3c1c8df4b`.
+
+Both required workflows passed on that exact main commit:
+
+- [Quality gates, run 40228623388](https://github.com/vortex469/atlas-os/actions/runs/40228623388).
+- [Container release gate, run 40228623378](https://github.com/vortex469/atlas-os/actions/runs/40228623378).
+
+Pre-tag release evidence exited 0 with `summary.status=ready`. The annotated
+tag was verified before push and its remote tag object and peeled commit were
+verified afterward. The existing root-only Core ownership test skipped by the
+non-root GitHub runner passed separately on the release checkout.
+
+A **v1.0.0 GitHub release page remains unpublished**, so the Releases sidebar
+still lists v0.65.0 as Latest. Publishing that page is the remaining GitHub
+publication step. The implementation and tag are already on GitHub.
+
+Production deployment and runtime activation were not performed. Running-image
+parity and production operator acceptance were not evaluated. The nested
+patch-helper limitation, seven installation blockers, 67 fixed-false fields and
+deferred successor activation remain unchanged. Production acceptance still
+requires separately selected supported-environment, security, upgrade and
+recovery validation and explicit activation authorization. See the
+[v1.0.0 release scope](docs/releases/atlas-v1.0.0.md).
+
+The implementation sections below preserve their local closeout evidence and
+original authorization boundaries. Their code was subsequently included in the
+v1.0.0 tag; references to then-pending CI, push or tagging describe those earlier
+closeouts. The release status above records the later merge and tag acceptance.
+
+## v0.91–v1.00 repository-action implementation (included in atlas-v1.0.0)
 
 The selected local continuation through v1.00 is complete. Ten separately
 committed behaviors close inspected execution-start, terminal-transition,
@@ -17,13 +51,14 @@ test-owned integration resources removed.
 
 This completes the selected local repository-action milestone; Atlas production
 v1 acceptance remains outstanding. The known nested helper limitation, seven
-installation blockers and deferred successor activation remain unchanged. No
-real model/account credentials, deployment, runtime enablement, push, tags or
-publication were used. Supported-environment acceptance, immutable production
+installation blockers and deferred successor activation remain unchanged. At
+this local closeout, no real model/account credentials, deployment, runtime
+enablement, push, tags or publication were used; the subsequent merge and tag
+are recorded above. Supported-environment acceptance, immutable production
 artifact parity, security/upgrades/recovery acceptance and separately requested
-activation/release work remain required.
+production activation remain required.
 
-## v0.81–v0.90 repository-action implementation (complete locally; unreleased)
+## v0.81–v0.90 repository-action implementation (included in atlas-v1.0.0)
 
 The selected continuation through v0.90 is complete. Ten separate behavior
 changes and acceptance records are documented in the
@@ -41,7 +76,7 @@ or runtime enablement were used. The nested patch-helper limitation and seven
 installation blockers remain explicit; full production readiness is not claimed.
 Further capabilities and production/release acceptance require separate selection.
 
-## v0.71–v0.80 repository-action implementation (complete locally; unreleased)
+## v0.71–v0.80 repository-action implementation (included in atlas-v1.0.0)
 
 The operator selected continuation through v0.80. Each version now has a
 separate committed behavior change and acceptance record in the
@@ -75,7 +110,7 @@ publication remain separate. The seven installation blockers and deferred
 successor control plane are unchanged. This closes the selected local work
 through v0.80 without authorizing further versions or production effects.
 
-## v0.66–v0.70 repository-action implementation (complete locally; unreleased)
+## v0.66–v0.70 repository-action implementation (included in atlas-v1.0.0)
 
 The operator selected sequential completion **through v0.70**. Each selected
 scope now has its own implementation and acceptance record:
