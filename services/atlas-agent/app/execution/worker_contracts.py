@@ -418,8 +418,20 @@ class WorkerExecutionResult:
             self.patch.validate()
             if self.patch.original_bytes is not None and self.patch.original_bytes > _MAX_PATCH_BYTES:
                 raise ValueError("patch exceeds the contract bound")
+            if self.patch.truncated != self.patch_truncated:
+                raise ValueError("patch truncation metadata mismatch")
+            if self.patch_digest is None or self.patch_size_bytes is None:
+                raise ValueError("patch payload requires size and digest")
+            data = self.patch.text.encode("utf-8")
+            if self.patch.truncated:
+                if self.patch_size_bytes != self.patch.original_bytes:
+                    raise ValueError("truncated patch size mismatch")
+            elif self.patch_size_bytes != len(data) or self.patch_digest != "sha256:" + hashlib.sha256(data).hexdigest():
+                raise ValueError("complete patch size or digest mismatch")
         self.worker_attestation.validate()
         if self.status is WorkerExecutionStatus.SUCCEEDED:
+            if self.patch_truncated:
+                raise ValueError("successful patch cannot be truncated")
             if self.failure_code is not None or self.return_code != 0:
                 raise ValueError("success result has failure evidence")
         elif self.failure_code is None:

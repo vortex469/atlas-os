@@ -405,3 +405,15 @@ def test_nonzero_worker_capabilities_never_authorize_patch_use():
     assert result.worker_result is None
     assert len(client.requests) == 1
     assert client.lookups == []
+
+
+def test_inconsistent_patch_payload_stays_unknown_without_replay():
+    request, context = make_request(), make_context()
+    response = worker_result(worker_request_for(request, context), status=WorkerExecutionStatus.SUCCEEDED)
+    response['result']['patch'] = BoundedOutput('unbound patch').to_dict()
+    client = FakeWorkerClient(response)
+    result = WorkerExecutionBackend(client).execute(request, context=context)
+    assert result.status is ExecutionStatus.UNKNOWN
+    assert result.worker_result is None
+    assert len(client.requests) == 1
+    assert client.lookups == []
