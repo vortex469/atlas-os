@@ -52,7 +52,7 @@ def test_success_also_stops_background_child_without_output_pipes(tmp_path):
     try:
         result = run_command([sys.executable, '-c', code], cwd=tmp_path, timeout=2)
         assert result.returncode == 0
-        assert result.stdout == 'complete\n'
+        assert result.stdout.text == 'complete\n'
         pid = int(marker.read_text())
         deadline = time.monotonic() + 1
         while alive(pid) and time.monotonic() < deadline:
@@ -61,3 +61,45 @@ def test_success_also_stops_background_child_without_output_pipes(tmp_path):
     finally:
         if marker.exists() and alive(int(marker.read_text())):
             os.kill(int(marker.read_text()), signal.SIGKILL)
+
+
+def test_concurrent_large_streams_are_drained_with_bounded_memory(tmp_path):
+    import tracemalloc
+
+    size = 4 * 1024 * 1024
+    code = ("import os,threading; "
+            f"t=threading.Thread(target=lambda: os.write(2,b'e'*{size})); t.start(); "
+            f"os.write(1,b'o'*{size}); t.join()")
+    tracemalloc.start()
+    try:
+        result = run_command([sys.executable, '-c', code], cwd=tmp_path, timeout=5, output_limit=65536)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert result.returncode == 0
+    for output in (result.stdout, result.stderr):
+        output.validate()
+        assert output.original_bytes == size
+        assert output.truncated
+        assert len(output.text.encode()) == 65536
+    assert peak < 1024 * 1024
+
+
+def test_invalid_utf8_and_partial_character_remain_within_contract(tmp_path):
+    code = "import os; os.write(1,b'a' + bytes([0xff]) + '€'.encode()*3)"
+    result = run_command([sys.executable, '-c', code], cwd=tmp_path, timeout=2, output_limit=4)
+    result.stdout.validate()
+    assert result.stdout.text == 'a'
+    assert result.stdout.original_bytes == 11
+    assert result.stdout.truncated
+
+
+def test_chatty_command_timeout_preserves_bounded_capture(tmp_path):
+    code = "import os\nwhile True: os.write(1,b'x'*4096)"
+    with pytest.raises(subprocess.TimeoutExpired) as raised:
+        run_command([sys.executable, '-c', code], cwd=tmp_path, timeout=0.2, output_limit=4096)
+    output = raised.value.stdout_capture
+    output.validate()
+    assert len(output.text) == 4096
+    assert output.original_bytes > 4096
+    assert output.truncated

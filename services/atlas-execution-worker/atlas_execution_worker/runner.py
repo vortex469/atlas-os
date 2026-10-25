@@ -19,7 +19,7 @@ from app.execution.worker_contracts import (
     WorkerFailureCode,
 )
 
-from .process import run_command
+from .process import CapturedCommand, CommandTimeout, run_command
 from .workspace import WorkerWorkspaceManager, WorkspaceError
 
 MAX_CAPTURE_BYTES = 1_048_576
@@ -78,8 +78,8 @@ class WorkspaceExecutionRunner:
                 WorkerFailureCode.TIMEOUT,
                 started,
                 return_code=None,
-                stdout=self._bounded(exc.stdout),
-                stderr=self._bounded(exc.stderr),
+                stdout=exc.stdout_capture if isinstance(exc, CommandTimeout) else self._bounded(exc.stdout),
+                stderr=exc.stderr_capture if isinstance(exc, CommandTimeout) else self._bounded(exc.stderr),
                 base=workspace.base_head,
             )
         finally:
@@ -133,7 +133,7 @@ class WorkspaceExecutionRunner:
             patch_size=len(patch_text.encode()),
         )
 
-    def _collect(self, request: WorkerExecutionRequest, root: Path, base_head: str, process: subprocess.CompletedProcess[str], started: float) -> WorkerExecutionResult:
+    def _collect(self, request: WorkerExecutionRequest, root: Path, base_head: str, process: CapturedCommand, started: float) -> WorkerExecutionResult:
         subprocess.run(["git", "-C", str(root), "add", "--all", "--"], check=True, capture_output=True, text=True, shell=False)
         changed = self._changed_files(root)
         allowed = set(request.allowed_affected_files)
@@ -155,8 +155,8 @@ class WorkspaceExecutionRunner:
             started,
             status=status,
             return_code=process.returncode,
-            stdout=self._bounded(process.stdout),
-            stderr=self._bounded(process.stderr),
+            stdout=process.stdout,
+            stderr=process.stderr,
             changed_files=changed,
             patch=patch,
             patch_digest="sha256:" + hashlib.sha256(patch_text.encode()).hexdigest() if patch_text else None,

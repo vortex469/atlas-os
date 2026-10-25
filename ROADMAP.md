@@ -8,7 +8,9 @@ v0.77. Earlier consolidated v0.70 completion wording was incorrect: v0.67
 and later milestones were not individually completed. The operator has now selected completion through v0.70. v0.67 process
 lifetime and timeout cleanup passed its full acceptance (59 worker tests),
 including timeout/no-patch cleanup; see its [closeout](docs/architecture/v0.67-worker-process-lifetime.md).
-v0.68–v0.70 remain active implementation work. v0.71–v0.77 are future
+v0.68 bounded output capture passed all 62 worker tests; see its
+[closeout](docs/architecture/v0.68-worker-output-capture.md).
+v0.69–v0.70 remain active implementation work. v0.71–v0.77 are future
 proposals outside this run.
 
 The [v0.66 local closeout](docs/architecture/repository-action-acceptance.md#v066-local-closeout)
