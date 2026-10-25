@@ -1,26 +1,33 @@
 # Atlas OS Roadmap
 
-## Sequential v0.66–v0.77 repository-action work (unreleased)
+## v0.66–v0.70 repository-action implementation (complete locally; unreleased)
 
-The [selected sequential plan](docs/architecture/v0.66-v0.77-repository-action-plan.md)
-closes v0.66 implementation and defines separate useful milestones through
-v0.77. Earlier consolidated v0.70 completion wording was incorrect: v0.67
-and later milestones were not individually completed. The operator has now selected completion through v0.70. v0.67 process
-lifetime and timeout cleanup passed its full acceptance (59 worker tests),
-including timeout/no-patch cleanup; see its [closeout](docs/architecture/v0.67-worker-process-lifetime.md).
-v0.68 bounded output capture passed all 62 worker tests; see its
-[closeout](docs/architecture/v0.68-worker-output-capture.md).
-v0.69 response bounds passed 59 focused Agent tests; see its
-[closeout](docs/architecture/v0.69-worker-response-bounds.md).
-v0.70 strict framing and total deadlines remain active implementation work. v0.71–v0.77 are future
-proposals outside this run.
+The operator selected sequential completion **through v0.70**. Each selected
+scope now has its own implementation and acceptance record:
 
-The [v0.66 local closeout](docs/architecture/repository-action-acceptance.md#v066-local-closeout)
-fixes the implementation boundary at `26c5656a`, with final validation
-documentation at `e2181444`, excluding the v0.67 draft. It retains the completed real-model journey, separate exact verification/commit
-approvals, matching request digests, terminal audit reload and passing local
-container/recovery checks. No production, push, tag, publication or installation
-authority follows from this plan.
+| Version | Completed behavior | Implementation / record |
+| --- | --- | --- |
+| v0.66 | Approved bounded repository edit through separately approved verification and local commit; terminal audit survives reload. | `26c5656a`; [closeout](docs/architecture/repository-action-acceptance.md#v066-local-closeout). |
+| v0.67 | Owned process-group timeout/exit cleanup; timed-out edits never become patches. | `075fecb0`; [closeout](docs/architecture/v0.67-worker-process-lifetime.md). |
+| v0.68 | Concurrent bounded stdout/stderr capture, truncation and byte counts. | `015c5f03`; [closeout](docs/architecture/v0.68-worker-output-capture.md). |
+| v0.69 | Bounded worker response headers/bodies with no execution replay. | `5f940ab1`; [closeout](docs/architecture/v0.69-worker-response-bounds.md). |
+| v0.70 | Strict complete response framing and a total request deadline. | `2d4e81c5`; [closeout](docs/architecture/v0.70-worker-response-framing.md). |
+
+Final integrated validation passed 1,124 Agent tests, 62 worker tests, configured
+lint, two maintained process probes on the host and runsc, two real-TCP runsc
+recovery probes, and the existing container integration/five-volume data
+recovery/Rest Server gates. Container integration ran with runc and dummy
+credentials, not production acceptance. The seven production container IDs,
+image IDs and start times were unchanged. No new real model or account
+credential use was required.
+
+The [sequential plan](docs/architecture/v0.66-v0.77-repository-action-plan.md)
+records the earlier consolidated-target correction and exact boundaries.
+v0.71–v0.77 remain future proposals outside the selected run. Nested
+patch-helper compatibility remains a documented limit. Production activation,
+remote exact-SHA CI, release acceptance, push, tags and publication remain
+separate and are not claimed. The seven installation blockers and deferred
+successor control plane are unchanged.
 
 ## v0.66 approved bounded repository action implementation
 
