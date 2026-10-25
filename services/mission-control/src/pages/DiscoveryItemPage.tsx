@@ -38,8 +38,12 @@ type DetailState = {
 };
 
 export function DiscoveryItemPage() {
-    const operatorSession = useOptionalOperatorSession();
     const { itemId = "" } = useParams<{ itemId: string }>();
+    return <DiscoveryItem key={itemId} itemId={itemId} />;
+}
+
+function DiscoveryItem({ itemId }: { itemId: string }) {
+    const operatorSession = useOptionalOperatorSession();
     const [state, setState] = useState<DetailState>({
         entry: null,
         incoming: [],
@@ -84,6 +88,7 @@ export function DiscoveryItemPage() {
                 if (requestId !== compatibilityRequestId.current) {
                     return;
                 }
+                if (nextCompatibility.item_id !== itemId) throw new Error("The compatibility result does not match this catalog item.");
                 setCompatibility(nextCompatibility);
             })
             .catch((requestError: unknown) => {
@@ -116,6 +121,7 @@ export function DiscoveryItemPage() {
         getDiscoveryInstallationPlan(itemId)
             .then((plan) => {
                 if (!cancelled) {
+                    if (plan.application.item_id !== itemId) throw new Error("The installation plan does not match this catalog item.");
                     setInstallationPlanState({ itemId, plan, loading: false, unavailable: false });
                 }
             })
@@ -143,7 +149,10 @@ export function DiscoveryItemPage() {
 
         getDiscoveryImageGrounding(itemId)
             .then((projection) => {
-                if (!cancelled) setImageGrounding(projection);
+                if (!cancelled) {
+                    if (projection.catalog_item_id !== itemId) throw new Error("The image grounding does not match this catalog item.");
+                    setImageGrounding(projection);
+                }
             })
             .catch((requestError: unknown) => {
                 if (cancelled) return;
@@ -167,9 +176,19 @@ export function DiscoveryItemPage() {
     useEffect(() => {
         let cancelled = false;
 
-        Promise.all([getDiscoveryItem(itemId), getDiscoveryRelationships(itemId)])
+        Promise.all([
+            getDiscoveryItem(itemId).catch((requestError: unknown) => {
+                if (!cancelled && isAxiosError(requestError) && requestError.response?.status === 404) setNotFound(true);
+                throw requestError;
+            }),
+            getDiscoveryRelationships(itemId),
+        ])
             .then(([entry, relationships]) => {
                 if (cancelled) {
+                    return;
+                }
+                if (entry.item.id !== itemId || relationships.item_id !== itemId) {
+                    setError("The catalog response does not match this item. Reload to check again.");
                     return;
                 }
                 setState({
@@ -187,9 +206,6 @@ export function DiscoveryItemPage() {
                     requestError,
                     "Mission Control could not load this Discovery item.",
                 );
-                if (message.toLowerCase().includes("not found")) {
-                    setNotFound(true);
-                }
                 setError(message);
             })
             .finally(() => {
@@ -215,7 +231,10 @@ export function DiscoveryItemPage() {
 
         getDiscoveryItemEvidence(itemId)
             .then((nextEvidence) => {
-                if (!cancelled) setEvidence(nextEvidence);
+                if (!cancelled) {
+                    if (nextEvidence.catalog_item_id !== itemId || nextEvidence.curated.item.id !== itemId) throw new Error("The source evidence does not match this catalog item.");
+                    setEvidence(nextEvidence);
+                }
             })
             .catch((requestError: unknown) => {
                 if (cancelled) return;
@@ -331,6 +350,7 @@ export function DiscoveryItemPage() {
                     <p className="mt-1 text-sm text-red-200/80">
                         {error ?? "Mission Control could not load this Discovery item."}
                     </p>
+                    <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload page</button>
                 </div>
             </main>
         );

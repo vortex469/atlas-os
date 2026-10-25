@@ -1,5 +1,5 @@
 import { act, render, screen, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -280,6 +280,11 @@ function RouteDriver() {
 }
 
 function renderNavigablePage() {
+    mockedGetDiscoveryItem.mockImplementation(async (id) => ({ ...entry(), item: { ...entry().item, id } }));
+    mockedGetDiscoveryRelationships.mockImplementation(async (item_id) => ({ ...relationships(), item_id }));
+    mockedGetDiscoveryCompatibility.mockImplementation(async (item_id) => compatibilityAssessment({ item_id }));
+    mockedGetDiscoveryItemEvidence.mockImplementation(async (catalog_item_id) => ({ ...itemEvidence(), catalog_item_id, curated: { ...entry(), item: { ...entry().item, id: catalog_item_id } } }));
+    mockedGetDiscoveryImageGrounding.mockImplementation(async (catalog_item_id) => ({ ...imageGrounding(), catalog_item_id }));
     return render(
         <MemoryRouter initialEntries={["/discovery/items/item-a"]}>
             <RouteDriver />
@@ -297,6 +302,56 @@ function httpError(status: number, detail: string) {
 }
 
 describe("DiscoveryItemPage", () => {
+    it("clears the previous item's details as soon as the URL changes", async () => {
+        const nextRequest = deferred<DiscoveryCatalogEntry>();
+        mockedGetDiscoveryItem.mockResolvedValueOnce(entry()).mockReturnValueOnce(nextRequest.promise);
+        mockedGetDiscoveryRelationships.mockImplementation(async (item_id) => ({ ...relationships(), item_id }));
+        const router = createMemoryRouter([{ path: "/discovery/items/:itemId", element: <DiscoveryItemPage /> }], { initialEntries: ["/discovery/items/frigate"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("heading", { name: "Frigate" });
+        await act(() => router.navigate("/discovery/items/next-item"));
+        expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
+        expect(screen.getByText("Loading Discovery item…")).toBeInTheDocument();
+        await act(async () => nextRequest.resolve({ ...entry(), item: { ...entry().item, id: "next-item", name: "Next item" } }));
+        expect(await screen.findByRole("heading", { name: "Next item" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
+    });
+
+    it.each(["catalog", "relationships"])("refuses %s data for a different item", async (source) => {
+        if (source === "catalog") mockedGetDiscoveryItem.mockResolvedValue({ ...entry(), item: { ...entry().item, id: "other" } });
+        else mockedGetDiscoveryRelationships.mockResolvedValue({ ...relationships(), item_id: "other" });
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this item");
+        expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+    });
+
+    it.each(["compatibility", "evidence", "grounding", "plan"])("does not display unrelated %s evidence", async (source) => {
+        if (source === "compatibility") mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment({ item_id: "other" }));
+        if (source === "evidence") mockedGetDiscoveryItemEvidence.mockResolvedValue({ ...itemEvidence(), catalog_item_id: "other" });
+        if (source === "grounding") mockedGetDiscoveryImageGrounding.mockResolvedValue({ ...imageGrounding(), catalog_item_id: "other" });
+        if (source === "plan") mockedGetDiscoveryInstallationPlan.mockResolvedValue(installationPlan("other"));
+        renderPage();
+        await screen.findByRole("heading", { name: "Frigate" });
+        const message = source === "compatibility" ? "Compatibility unavailable" : source === "evidence" ? "Dynamic evidence unavailable" : source === "grounding" ? "Image grounding is currently unavailable." : "Installation plan is currently unavailable.";
+        expect(await screen.findByText(message)).toBeInTheDocument();
+        expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
+    });
+
+    it("does not report a missing item when its relationships read fails", async () => {
+        mockedGetDiscoveryRelationships.mockRejectedValue(httpError(404, "Relationships not found"));
+        renderPage();
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Discovery item not found" })).not.toBeInTheDocument();
+    });
+
+    it("does not infer a missing item from error prose", async () => {
+        mockedGetDiscoveryItem.mockRejectedValue(new Error("Proxy not found while reading catalog"));
+        renderPage();
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Discovery item not found" })).not.toBeInTheDocument();
+    });
+
     beforeEach(() => {
         vi.resetAllMocks();
         mockedGetDiscoveryItem.mockResolvedValue(entry());
@@ -641,7 +696,7 @@ describe("DiscoveryItemPage", () => {
     });
 
     it("renders not found state", async () => {
-        mockedGetDiscoveryItem.mockRejectedValue(new Error("Discovery item not found"));
+        mockedGetDiscoveryItem.mockRejectedValue(httpError(404, "Discovery item not found"));
 
         renderPage();
 

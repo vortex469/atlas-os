@@ -49,6 +49,14 @@ details bearing another workflow ID. An unavailable read offers a read-only
 retry and a link to the workflow list; retry does not submit approval or resume
 an execution.
 
+Read-only workflow audits and Discovery details reset when their subject URL
+changes. Audits check both reported workflow identities. Discovery checks the
+catalog, relationships, compatibility, source evidence, image grounding and
+installation plan against the requested item before displaying them. A missing
+catalog item requires a 404 from the catalog read itself; supporting-read
+failures remain unavailable information. Failed reads offer a retry or reload
+and retain a way back. These displays do not grant installation authority.
+
 Mission Control completion requires the supported operator journey to have
 working navigation, useful empty and unavailable states, recovery controls,
 and readable layouts on desktop and mobile. Proposal, planning, workflow and

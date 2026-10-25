@@ -167,6 +167,10 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
 
 export function WorkflowAuditPage() {
     const { workflowId = "" } = useParams<{ workflowId: string }>();
+    return <WorkflowAudit key={workflowId} workflowId={workflowId} />;
+}
+
+function WorkflowAudit({ workflowId }: { workflowId: string }) {
     const [audit, setAudit] = useState<WorkflowAuditResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -176,6 +180,11 @@ export function WorkflowAuditPage() {
         setLoadError(null);
         try {
             const detail = await getWorkflowAudit(workflowId);
+            if (detail && (detail.workflow_id !== workflowId || detail.workflow.workflow_id !== workflowId)) {
+                setAudit(null);
+                setLoadError("The returned audit does not match this workflow. Try loading it again.");
+                return;
+            }
             setAudit(detail);
         } catch (error) {
             setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
@@ -185,7 +194,9 @@ export function WorkflowAuditPage() {
     }, [workflowId]);
 
     useEffect(() => {
-        void Promise.resolve().then(() => loadAudit());
+        let cancelled = false;
+        void Promise.resolve().then(() => { if (!cancelled) void loadAudit(); });
+        return () => { cancelled = true; };
     }, [loadAudit]);
 
     if (isLoading) {
@@ -203,6 +214,7 @@ export function WorkflowAuditPage() {
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflow audit unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError}</p>
+                    <button type="button" onClick={() => void loadAudit()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
             </main>
         );
@@ -229,8 +241,7 @@ export function WorkflowAuditPage() {
                 <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow Audit</p>
                 <h1 className="text-3xl font-bold text-white">Workflow {audit.workflow_id}</h1>
                 <p className="max-w-3xl text-sm leading-6 text-slate-400">
-                    Read-only audit explorer for the candidate workflow chain. Mission Control renders only server-provided
-                    fields and does not expose approval mutation, resume, execution, or commit controls.
+                    Review the recorded steps, approvals and results for this workflow. This page only reads information.
                 </p>
             </header>
 

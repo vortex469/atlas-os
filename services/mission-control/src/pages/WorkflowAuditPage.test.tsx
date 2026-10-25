@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getWorkflowAudit } from "../api/atlas-agent";
@@ -146,6 +147,53 @@ function renderAuditPage(path = "/workflows/workflow-123/audit") {
 }
 
 describe("WorkflowAuditPage", () => {
+    it("clears the previous audit while a new workflow loads", async () => {
+        let resolveNext!: (value: WorkflowAuditResponse) => void;
+        mockedGetWorkflowAudit.mockResolvedValueOnce(audit()).mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        const router = createMemoryRouter([{ path: "/workflows/:workflowId/audit", element: <WorkflowAuditPage /> }], { initialEntries: ["/workflows/workflow-123/audit"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("heading", { name: "Workflow workflow-123" });
+        await act(() => router.navigate("/workflows/next-workflow/audit"));
+        expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow audit");
+        await act(async () => resolveNext(audit({ workflow_id: "next-workflow", workflow: { ...audit().workflow, workflow_id: "next-workflow" } })));
+        expect(await screen.findByRole("heading", { name: "Workflow next-workflow" })).toBeInTheDocument();
+    });
+
+    it.each(["outer", "nested"])("refuses an audit with a mismatched %s workflow identity", async (field) => {
+        const response = audit();
+        if (field === "outer") response.workflow_id = "other";
+        else response.workflow.workflow_id = "other";
+        mockedGetWorkflowAudit.mockResolvedValue(response);
+        renderAuditPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this workflow");
+        expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
+    });
+
+    it("retries an unavailable audit with one read under Strict Mode", async () => {
+        mockedGetWorkflowAudit.mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue(audit());
+        render(<StrictMode><MemoryRouter initialEntries={["/workflows/workflow-123/audit"]}><Routes>
+            <Route path="/workflows/:workflowId/audit" element={<WorkflowAuditPage />} />
+        </Routes></MemoryRouter></StrictMode>);
+        fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+        await screen.findByRole("heading", { name: "Workflow workflow-123" });
+        expect(mockedGetWorkflowAudit).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps a late audit from an earlier workflow out of the current page", async () => {
+        let resolveOld!: (value: WorkflowAuditResponse) => void;
+        const next = audit({ workflow_id: "next-workflow", workflow: { ...audit().workflow, workflow_id: "next-workflow" } });
+        mockedGetWorkflowAudit.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; })).mockResolvedValue(next);
+        const router = createMemoryRouter([{ path: "/workflows/:workflowId/audit", element: <WorkflowAuditPage /> }], { initialEntries: ["/workflows/workflow-123/audit"] });
+        render(<RouterProvider router={router} />);
+        await waitFor(() => expect(mockedGetWorkflowAudit).toHaveBeenCalledWith("workflow-123"));
+        await act(() => router.navigate("/workflows/next-workflow/audit"));
+        await screen.findByRole("heading", { name: "Workflow next-workflow" });
+        await act(async () => resolveOld(audit()));
+        expect(screen.getByRole("heading", { name: "Workflow next-workflow" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Workflow workflow-123" })).not.toBeInTheDocument();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetWorkflowAudit.mockResolvedValue(audit());

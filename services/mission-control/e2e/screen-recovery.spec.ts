@@ -1,5 +1,35 @@
 import { executionCandidates, expect, test } from "./mission-control-fixtures";
 
+test("audit recovery refuses another workflow without losing navigation", async ({ page }) => {
+    let reads = 0;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route("**/agent-api/**/workflows/audit-recovery/audit", (route) => {
+        reads += 1;
+        return reads === 1
+            ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
+            : route.fulfill({ json: { workflow_id: "other", workflow: { workflow_id: "other" } } });
+    });
+    await page.goto("/workflows/audit-recovery/audit");
+    await expect(page.getByRole("heading", { name: "Workflow audit unavailable" })).toBeVisible();
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("alert")).toContainText("does not match this workflow");
+    await expect(page.getByRole("link", { name: "← Back to Workflow" })).toHaveAttribute("href", "/workflows/audit-recovery");
+    expect(reads).toBe(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test("discovery refuses another catalog item's details", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route("**/api/v1/discovery/items/requested-item", (route) => route.fulfill({ json: { item: { id: "other" } } }));
+    await page.route("**/api/v1/discovery/items/requested-item/relationships", (route) => route.fulfill({ json: { item_id: "requested-item", incoming: [], outgoing: [] } }));
+    await page.goto("/discovery/items/requested-item");
+    await expect(page.getByRole("alert")).toContainText("does not match this item");
+    await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole("link", { name: "← Discovery Center" }).click();
+    await expect(page.getByRole("heading", { name: "Provider-neutral catalog", exact: true })).toBeVisible();
+});
+
 test("workflow recovery retries only the read and keeps a way back", async ({ page }) => {
     let reads = 0;
     await page.setViewportSize({ width: 390, height: 844 });
