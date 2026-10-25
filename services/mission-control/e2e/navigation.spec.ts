@@ -71,7 +71,7 @@ const routes = [
 for (const route of routes) {
     test(`enabled primary navigation reaches ${route.label}`, async ({ page }) => {
         await page.goto("/");
-        await page.getByRole("link", { name: route.label }).click();
+        await page.getByRole("link", { name: route.label, exact: true }).click();
 
         await expect(page).toHaveURL(new RegExp(`${route.expectedPath ?? route.path}(?:[?#].*)?$`));
         await route.assertion(page);

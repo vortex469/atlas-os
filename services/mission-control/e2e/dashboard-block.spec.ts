@@ -13,7 +13,7 @@ for (const width of [320, 390, 1280]) {
         const activity = page.getByRole("region", { name: "Recent Activity" });
         await expect(attention.getByText("Human action required", { exact: true })).toBeVisible();
         await expect(activity.getByRole("listitem")).toHaveCount(1);
-        await expect(activity.getByText(`Error · ${label}`)).toBeVisible();
+        await expect(activity.getByText(`Error · ${label.slice(0, 240)}`)).toBeVisible();
         await expect(page.getByTestId("overview-grid").locator(":scope > section")).toHaveCount(6);
         for (const card of [attention, activity]) {
             const box = await card.evaluate(node => ({ left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right, scroll: node.scrollWidth, client: node.clientWidth }));

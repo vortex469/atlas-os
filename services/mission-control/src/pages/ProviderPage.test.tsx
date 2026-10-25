@@ -42,6 +42,23 @@ describe("ProviderPage authority layout", () => {
         } as unknown as ReturnType<typeof useMissionControl>);
     });
 
+    it("explains an empty provider catalog instead of leaving the detail screen blank", () => {
+        vi.mocked(useMissionControl).mockReturnValue({ ...vi.mocked(useMissionControl).getMockImplementation()!(), providers: [] });
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+        expect(screen.getByRole("heading", { name: "Provider not found" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Return to Mission Control" })).toHaveAttribute("href", "/");
+    });
+
+    it.each([
+        { isLoading: true, error: null },
+        { isLoading: false, error: "Could not load providers" },
+    ])("does not call a provider missing before its catalog is available: %j", (state) => {
+        vi.mocked(useMissionControl).mockReturnValue({ ...vi.mocked(useMissionControl).getMockImplementation()!(), providers: [], ...state });
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+        expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
+        expect(screen.getByText(state.isLoading ? "Loading provider details..." : "Atlas Core unavailable")).toBeInTheDocument();
+    });
+
     it("orders monitoring, diagnostics, compatibility, maintenance, and retained evidence distinctly", () => {
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 

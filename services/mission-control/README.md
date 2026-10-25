@@ -18,6 +18,12 @@ Mission Control presents and submits requests to authoritative backend contracts
 
 Released mutation authorities remain separate: Provider Intent is monitoring-policy only; legacy provider actions use their provider surface; repository execution is exactly `update-compose-stack`; hardened operational dispatch is exactly `restart-service / proxmox / qemu`. Discovery is GET-only/read-only. There is no automatic approval, remediation, update, deployment, rollback, or release publication.
 
+Screen recovery keeps shared navigation available for missing pages and page
+rendering failures, with plain-language recovery actions. An initial workflow
+load failure offers a read-only retry. Provider absence is shown only after a
+successful catalog load; a loading or unavailable catalog is not reported as a
+missing provider. These presentation changes grant no new action authority.
+
 The deferred v0.65 successor control-plane projection is absent. Mission
 Control has no client, route, nested view, or action surface for that
 unselected API; retained v0.64 GET-only evidence must not be promoted or

@@ -97,7 +97,7 @@ export function ProviderPage() {
                         <p className="mt-1 text-sm text-slate-300">
                             {lastUpdated
                                 ? lastUpdated.toLocaleTimeString()
-                                : "Connecting..."}
+                                : isLoading ? "Connecting..." : "Not updated yet"}
                         </p>
                     </div>
 
@@ -142,7 +142,7 @@ export function ProviderPage() {
             )}
 
             {!isLoading &&
-                providers.length > 0 &&
+                !error &&
                 !provider && (
                     <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-8">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-400">
@@ -150,12 +150,12 @@ export function ProviderPage() {
                         </p>
 
                         <h1 className="mt-3 text-2xl font-bold text-slate-100">
-                            {providerName}
+                            Provider not found
                         </h1>
 
                         <p className="mt-3 text-sm leading-6 text-slate-300">
-                            This provider was not found in the Atlas
-                            Provider Registry.
+                            This provider is not in the current catalog. Refresh
+                            to check again, or return to Mission Control.
                         </p>
 
                         <Link

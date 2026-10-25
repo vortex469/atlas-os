@@ -8,6 +8,7 @@ import { ForgePage } from "../pages/ForgePage";
 import { MainLayout } from "../layouts/MainLayout";
 import { ActionHistoryDetailPage } from "../pages/ActionHistoryDetailPage";
 import { MissionControlPage } from "../pages/MissionControlPage";
+import { PageErrorPage } from "../pages/PageErrorPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { OperationsPage } from "../pages/OperationsPage";
 import { OperationalHistoryPage } from "../pages/OperationalHistoryPage";
@@ -97,10 +98,10 @@ export const router = createBrowserRouter([
                 path: "operator/login",
                 element: <OperatorLoginPage />,
             },
-        ],
-    },
-    {
-        path: "*",
-        element: <NotFoundPage />,
+            {
+                path: "*",
+                element: <NotFoundPage />,
+            },
+        ].map((route) => ({ ...route, errorElement: <PageErrorPage /> })),
     },
 ]);

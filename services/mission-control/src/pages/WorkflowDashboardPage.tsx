@@ -157,6 +157,10 @@ export function WorkflowDashboardPage() {
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflows unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError}</p>
+                    <p className="mt-2 text-sm text-slate-300">Try loading your workflows again.</p>
+                    <button type="button" onClick={() => void loadDashboard()} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Try again
+                    </button>
                 </section>
             </main>
         );
@@ -169,7 +173,7 @@ export function WorkflowDashboardPage() {
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow Dashboard</p>
                     <h1 className="mt-3 text-3xl font-bold text-white">Workflows</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Find persisted candidate workflows and open their read-only workflow detail. This dashboard never approves, executes, resumes, mutates repositories, or creates workflows.
+                        See what is running, what needs your review, and what has finished. Open a workflow to see its details.
                     </p>
                 </div>
                 <button
@@ -243,7 +247,7 @@ export function WorkflowDashboardPage() {
                 </div>
 
                 {workflows.length === 0 ? (
-                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows have been persisted yet.</p>
+                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows yet.</p>
                 ) : visibleWorkflows.length === 0 ? (
                     <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows match the current filters.</p>
                 ) : (

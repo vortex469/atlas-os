@@ -147,7 +147,7 @@ describe("WorkflowDashboardPage", () => {
     it("renders empty, filtered empty, and Agent unavailable states", async () => {
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([]));
         renderDashboard();
-        expect(await screen.findByText("No workflows have been persisted yet.")).toBeInTheDocument();
+        expect(await screen.findByText("No workflows yet.")).toBeInTheDocument();
 
         vi.mocked(listWorkflows).mockReset();
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]));
@@ -161,6 +161,20 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
         renderDashboard();
         expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
+    });
+
+    it("lets an operator retry an initial failure without reloading the page", async () => {
+        vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
+        let resolveRetry!: (value: WorkflowListResponse) => void;
+        vi.mocked(listWorkflows).mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve; }));
+        renderDashboard();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
+        fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflows");
+        expect(listWorkflows).toHaveBeenCalledTimes(2);
+        resolveRetry(response([workflow({ workflow_state: "completed" })]));
+        expect(await screen.findByText("workflow-123")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
     it("does not expose approval, execution, resume, or commit controls", async () => {

@@ -121,6 +121,11 @@ const workflows = [
         workflow_id: "workflow-browser-baseline",
         workflow_source: "candidate",
         workflow_state: "awaiting_implementation_approval",
+        last_result_summary: "Waiting for implementation approval",
+        timeline: [
+            { name: "Implementation Approval", status: "current" },
+            { name: "Execution", status: "waiting" },
+        ],
         planning_session_id: "plan-browser-baseline",
         candidate_id: "candidate-browser-baseline",
         candidate_fingerprint: "candidate-fingerprint",
@@ -249,36 +254,29 @@ const repository = {
 };
 
 const discoveryMetadata = {
-    generated_at: isoNow,
-    total_items: 1,
-    item_types: ["application"],
-    statuses: ["active"],
-    tags: ["browser-fixture"],
-    capabilities: ["read-only"],
+    catalog_loaded: true,
+    entry_count: 1,
+    schema_version: 1,
 };
 
 const discoveryItemsPage = {
-    entries: [
-        {
-            id: "fixture-app",
-            name: "Fixture Application",
-            item_type: "application",
-            status: "active",
-            summary: "Read-only browser regression fixture item.",
-            description: "Read-only browser regression fixture item.",
-            tags: ["browser-fixture"],
-            capabilities: ["read-only"],
-            links: [],
-            evidence_ids: [],
-            relationship_ids: [],
-            created_at: isoNow,
-            updated_at: isoNow,
+    entries: [{
+        schema_version: 1,
+        item: {
+            id: "fixture-app", type: "application", status: "active",
+            name: "Fixture Application", description: "Read-only browser regression fixture item.",
+            aliases: [], tags: ["browser-fixture"], capabilities: ["read-only"],
+            requirements: {
+                capabilities: [], resources: { gpu_required: false },
+                platform: { architectures: [], operating_systems: [], runtimes: [], devices: [] },
+                network: { ports: [] },
+            },
+            relationships: [], metadata: {},
         },
-    ],
-    total: 1,
-    limit: 25,
-    offset: 0,
-    has_more: false,
+        provenance: { source_type: "curated", source: "browser-fixture", trust_level: "curated" },
+        metadata: {},
+    }],
+    total: 1, limit: 25, offset: 0, has_more: false,
 };
 
 const actionHistoryPage = {

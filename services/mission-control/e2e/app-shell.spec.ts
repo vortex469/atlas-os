@@ -8,14 +8,14 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByText("browser-regression-baseline")).toBeVisible();
     await expect(page.getByText("Mission Control command center", { exact: true })).toHaveCount(1);
 
-    await expect(page.getByRole("link", { name: "Mission Control" })).toHaveAttribute("href", "/");
-    await expect(page.getByRole("link", { name: "Operations" })).toHaveAttribute("href", "/operations");
-    await expect(page.getByRole("link", { name: "Operational History" })).toHaveAttribute("href", "/operations/history");
-    await expect(page.getByRole("link", { name: "Maintenance" })).toHaveAttribute("href", "/operations/request");
-    await expect(page.getByRole("link", { name: "Discovery" })).toHaveAttribute("href", "/discovery");
-    await expect(page.getByRole("link", { name: "Execution Candidates" })).toHaveAttribute("href", "/execution-candidates");
-    await expect(page.getByRole("link", { name: "Workflows" })).toHaveAttribute("href", "/workflows");
-    await expect(page.getByRole("link", { name: "Forge" })).toHaveAttribute("href", "/forge");
+    await expect(page.getByRole("link", { name: "Mission Control", exact: true })).toHaveAttribute("href", "/");
+    await expect(page.getByRole("link", { name: "Operations", exact: true })).toHaveAttribute("href", "/operations");
+    await expect(page.getByRole("link", { name: "Operational History", exact: true })).toHaveAttribute("href", "/operations/history");
+    await expect(page.getByRole("link", { name: "Maintenance", exact: true })).toHaveAttribute("href", "/operations/request");
+    await expect(page.getByRole("link", { name: "Discovery", exact: true })).toHaveAttribute("href", "/discovery");
+    await expect(page.getByRole("link", { name: "Execution Candidates", exact: true })).toHaveAttribute("href", "/execution-candidates");
+    await expect(page.getByRole("link", { name: "Workflows", exact: true })).toHaveAttribute("href", "/workflows");
+    await expect(page.getByRole("link", { name: "Forge", exact: true })).toHaveAttribute("href", "/forge");
 
     await expect(page.getByText("Knowledge").locator("..")).toContainText("Soon");
     await expect(page.getByText("Developer").locator("..")).toContainText("Soon");
@@ -27,7 +27,7 @@ test("Mission Control dashboard loads from controlled Core and Agent responses",
 
     await expect(page.getByRole("heading", { name: "Operator Attention" })).toBeVisible();
     await expect(page.getByText("workflow-browser-baseline")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Inspect executions →" })).toHaveAttribute("href", "/workflows");
+    await expect(page.getByRole("link", { name: "Inspect executions →", exact: true })).toHaveAttribute("href", "/workflows");
     await expect(page.getByRole("heading", { name: "Agent state" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Recent Activity" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
@@ -59,7 +59,7 @@ test.describe("Mobile navigation", () => {
             "Workflows",
             "Forge",
         ]) {
-            await expect(dialog.getByRole("link", { name: label })).toBeVisible();
+            await expect(dialog.getByRole("link", { name: label, exact: true })).toBeVisible();
         }
 
         await page.getByRole("button", { name: "Close navigation" }).click();
@@ -75,7 +75,7 @@ test.describe("Mobile navigation", () => {
         await page.goto("/forge");
         const trigger = page.getByRole("button", { name: "Open navigation" });
         await trigger.click();
-        await page.getByRole("dialog").getByRole("link", { name: "Discovery" }).click();
+        await page.getByRole("dialog").getByRole("link", { name: "Discovery", exact: true }).click();
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await expect(page.getByLabel("Current page: Discovery")).toBeVisible();
         await trigger.click();
@@ -88,7 +88,7 @@ test.describe("Mobile navigation", () => {
         await page.setViewportSize({ width: 1280, height: 800 });
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await expect(page.getByRole("complementary", { name: "Primary sidebar" })).toBeVisible();
-        expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
+        await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe("");
         await page.setViewportSize({ width: 320, height: 844 });
         await expect(trigger).toBeVisible();
         await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -105,7 +105,7 @@ test.describe("Mobile navigation", () => {
         const dialog = page.getByRole("dialog");
         await dialog.getByRole("button", { name: "Close navigation" }).focus();
         await page.keyboard.press("Shift+Tab");
-        await expect(dialog.getByRole("link", { name: "Forge" })).toBeFocused();
+        await expect(dialog.getByRole("link", { name: "Forge", exact: true })).toBeFocused();
         await page.keyboard.press("Tab");
         await expect(dialog.getByRole("button", { name: "Close navigation" })).toBeFocused();
         await page.keyboard.press("Escape");
