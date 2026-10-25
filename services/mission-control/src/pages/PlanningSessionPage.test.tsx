@@ -1,6 +1,6 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -89,9 +89,9 @@ function workflow(overrides: Partial<CandidateWorkflowResponse> = {}): Candidate
     };
 }
 
-function renderPage() {
+function renderPage(path = "/candidate-planning/candidate-plan-1") {
     return render(
-        <MemoryRouter initialEntries={["/candidate-planning/candidate-plan-1"]}>
+        <MemoryRouter initialEntries={[path]}>
             <Routes>
                 <Route path="/candidate-planning/:sessionId" element={<PlanningSessionPage />} />
             </Routes>
@@ -132,7 +132,7 @@ describe("PlanningSessionPage", () => {
                 successor_session_id: "candidate-plan-3",
             }),
         );
-        renderPage();
+        renderPage("/candidate-planning/candidate-plan-2");
 
         expect(await screen.findByText("Successor of")).toBeInTheDocument();
         expect(screen.getByText("candidate-plan-1")).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe("PlanningSessionPage", () => {
         await user.click(screen.getByRole("button", { name: "Generate Plan" }));
 
         await waitFor(() => expect(mockedGenerateCandidatePlan).toHaveBeenCalledWith("candidate-plan-1"));
-        expect(await screen.findByText("Plan ready")).toBeInTheDocument();
+        expect(await screen.findByText("Plan details")).toBeInTheDocument();
         expect(screen.getByText("Update Home Assistant compose stack")).toBeInTheDocument();
         expect(screen.getByText("Objective: Update the compose stack safely.")).toBeInTheDocument();
         expect(screen.getByText("Operator has reviewed the candidate.")).toBeInTheDocument();
@@ -177,14 +177,14 @@ describe("PlanningSessionPage", () => {
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
         expect(screen.getAllByText("Generating plan...").length).toBeGreaterThan(0);
         resolveRequest(session({ status: "plan_ready", plan: plan() }));
-        expect(await screen.findByText("Plan ready")).toBeInTheDocument();
+        expect(await screen.findByText("Plan details")).toBeInTheDocument();
     });
 
     it("loads an existing plan when session is already plan_ready", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready" }));
         renderPage();
 
-        expect(await screen.findByText("Plan ready")).toBeInTheDocument();
+        expect(await screen.findByText("Plan details")).toBeInTheDocument();
         expect(mockedGetCandidatePlan).toHaveBeenCalledWith("candidate-plan-1");
     });
 
@@ -294,4 +294,104 @@ describe("PlanningSessionPage", () => {
         expect(await screen.findByRole("alert")).toHaveTextContent("Generation failed");
         expect(screen.queryByRole("button", { name: /create workflow|approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
+    it("clears an older session while a different session is loading", async () => {
+        let resolveNext!: (value: CandidatePlanningResponse) => void;
+        mockedGetCandidatePlanningSession.mockImplementation((id) => id === "candidate-plan-1"
+            ? Promise.resolve(session()) : new Promise((resolve) => { resolveNext = resolve; }));
+        const router = createMemoryRouter([{ path: "/candidate-planning/:sessionId", element: <PlanningSessionPage /> }], { initialEntries: ["/candidate-planning/candidate-plan-1"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("heading", { name: "Planning Session candidate-plan-1" });
+        await act(() => router.navigate("/candidate-planning/candidate-plan-2"));
+        expect(screen.queryByRole("heading", { name: "Planning Session candidate-plan-1" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+        resolveNext(session({ session_id: "candidate-plan-2" }));
+        expect(await screen.findByRole("heading", { name: "Planning Session candidate-plan-2" })).toBeInTheDocument();
+    });
+
+    it("does not attach a late generated plan to the next session", async () => {
+        const user = userEvent.setup();
+        let resolvePlan!: (value: CandidatePlanningResponse) => void;
+        mockedGetCandidatePlanningSession.mockImplementation(async (id) => session({ session_id: id }));
+        mockedGenerateCandidatePlan.mockImplementationOnce(() => new Promise((resolve) => { resolvePlan = resolve; }));
+        const router = createMemoryRouter([{ path: "/candidate-planning/:sessionId", element: <PlanningSessionPage /> }], { initialEntries: ["/candidate-planning/candidate-plan-1"] });
+        render(<RouterProvider router={router} />);
+        await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
+        await act(() => router.navigate("/candidate-planning/candidate-plan-2"));
+        await screen.findByRole("heading", { name: "Planning Session candidate-plan-2" });
+        await act(async () => resolvePlan(session({ status: "plan_ready", plan: plan() })));
+        expect(screen.queryByText("Update Home Assistant compose stack")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Generate Plan" })).toBeEnabled();
+    });
+
+    it("rejects a planning session returned for a different URL identity", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ session_id: "other-session" }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+    });
+
+    it("does not show a ready plan belonging to another session", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan({ session_id: "other-session" }) }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByText("Update Home Assistant compose stack")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+    });
+
+    it("rejects a generated result for a different session", async () => {
+        const user = userEvent.setup();
+        mockedGenerateCandidatePlan.mockResolvedValue(session({ session_id: "other-session", status: "plan_ready", plan: plan({ session_id: "other-session" }) }));
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByText("Update Home Assistant compose stack")).not.toBeInTheDocument();
+    });
+
+    it("does not open a workflow result from another planning session", async () => {
+        const user = userEvent.setup();
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan() }));
+        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow({ candidate_planning_session_id: "other-session" }));
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Open Workflow" })).not.toBeInTheDocument();
+    });
+
+    it("does not offer generation when planning is explicitly disallowed", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ planning_allowed: false }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Planning Session candidate-plan-1" });
+        expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+    });
+
+    it("keeps a saved plan read-only when planning is disallowed", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ planning_allowed: false, status: "plan_ready", plan: plan() }));
+        renderPage();
+        await screen.findByText("Update Home Assistant compose stack");
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
+    it("shows recovery instead of an empty ready screen when a saved plan is missing", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready" }));
+        mockedGetCandidatePlan.mockResolvedValue(null);
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("The saved plan could not be loaded");
+        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+    });
+
+    it("does not repeat generation when the server reports ready but its plan read fails", async () => {
+        const user = userEvent.setup();
+        mockedGenerateCandidatePlan.mockResolvedValue(session({ status: "plan_ready" }));
+        mockedGetCandidatePlan.mockRejectedValue(new Error("read unavailable"));
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
+    });
+
 });

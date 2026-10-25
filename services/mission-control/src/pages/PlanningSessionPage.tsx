@@ -18,6 +18,10 @@ const SUPPORTED_INTENT = "update-compose-stack";
 
 export function PlanningSessionPage() {
     const { sessionId = "" } = useParams<{ sessionId: string }>();
+    return <PlanningSession key={sessionId} sessionId={sessionId} />;
+}
+
+function PlanningSession({ sessionId }: { sessionId: string }) {
     const [session, setSession] = useState<CandidatePlanningResponse | null>(null);
     const [plan, setPlan] = useState<CandidatePlanApiResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -36,17 +40,23 @@ export function PlanningSessionPage() {
                 if (cancelled) {
                     return;
                 }
-                setSession(nextSession);
-                if (nextSession?.plan) {
-                    setPlan(nextSession.plan);
+                if (nextSession && nextSession.session_id !== sessionId) {
+                    setError("The returned planning session does not match this page.");
                     return;
                 }
-                if (nextSession?.status === "plan_ready") {
-                    const existingPlan = await getCandidatePlan(sessionId);
-                    if (!cancelled) {
-                        setPlan(existingPlan);
-                    }
+                let loadedPlan = nextSession?.plan ?? null;
+                if (!loadedPlan && nextSession?.status === "plan_ready") loadedPlan = await getCandidatePlan(sessionId);
+                if (cancelled) return;
+                if (loadedPlan && (!nextSession || loadedPlan.session_id !== sessionId || loadedPlan.candidate_id !== nextSession.candidate_id)) {
+                    setError("The returned plan does not match this planning session.");
+                    return;
                 }
+                if (nextSession?.status === "plan_ready" && loadedPlan === null) {
+                    setError("The saved plan could not be loaded. Reload to check again.");
+                    return;
+                }
+                setSession(nextSession);
+                setPlan(loadedPlan);
             })
             .catch((requestError: unknown) => {
                 if (cancelled) {
@@ -74,7 +84,7 @@ export function PlanningSessionPage() {
     const sessionState = useMemo(() => describeSessionState(session, error), [session, error]);
 
     async function generatePlan() {
-        if (!session || session.status !== "ready_for_planning" || isGenerating) {
+        if (!session || session.planning_allowed !== true || session.status !== "ready_for_planning" || isGenerating) {
             return;
         }
 
@@ -83,8 +93,20 @@ export function PlanningSessionPage() {
 
         try {
             const response = await generateCandidatePlan(sessionId);
+            if (!response || response.session_id !== sessionId || response.candidate_id !== session.candidate_id) {
+                setGenerateError("The planning response did not match this session. No plan was opened.");
+                return;
+            }
             setSession(response);
             const generatedPlan = response.plan ?? await getCandidatePlan(sessionId);
+            if (generatedPlan && (generatedPlan.session_id !== sessionId || generatedPlan.candidate_id !== session.candidate_id)) {
+                setGenerateError("The returned plan does not match this planning session.");
+                return;
+            }
+            if (response.status === "plan_ready" && generatedPlan === null) {
+                setGenerateError("The generated plan could not be loaded. Reload to check again.");
+                return;
+            }
             setPlan(generatedPlan);
         } catch (requestError) {
             console.error(`Unable to generate plan for ${sessionId}:`, requestError);
@@ -100,7 +122,7 @@ export function PlanningSessionPage() {
     }
 
     async function createWorkflow() {
-        if (!session || session.status !== "plan_ready" || isCreatingWorkflow) {
+        if (!session || session.planning_allowed !== true || session.status !== "plan_ready" || isCreatingWorkflow) {
             return;
         }
 
@@ -109,6 +131,10 @@ export function PlanningSessionPage() {
 
         try {
             const response = await createCandidateWorkflowShell(sessionId);
+            if (!response || response.candidate_planning_session_id !== sessionId || response.candidate_id !== session.candidate_id) {
+                setWorkflowError("The workflow response did not match this planning session. No workflow was opened.");
+                return;
+            }
             setWorkflow(response);
         } catch (requestError) {
             console.error(`Unable to create workflow shell for ${sessionId}:`, requestError);
@@ -136,13 +162,12 @@ export function PlanningSessionPage() {
     if (error || session === null) {
         return (
             <main className="mx-auto max-w-6xl space-y-6 p-8">
-                <PlanningRail current="Planning Session" />
-                <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
-                    <p className="font-semibold text-red-300">Atlas Agent unavailable</p>
-                    <p className="mt-1 text-sm text-red-200/80">
-                        {error ?? "Planning session was not found."}
-                    </p>
-                </div>
+                <Link to="/execution-candidates" className="text-sm text-blue-300">← Execution Candidates</Link>
+                <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
+                    <h1 className="text-xl font-semibold text-red-100">{error ? "Planning unavailable" : "Planning session not found"}</h1>
+                    <p className="mt-2 text-sm text-slate-300">{error ?? "Planning session was not found."}</p>
+                    <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload page</button>
+                </section>
             </main>
         );
     }
@@ -158,7 +183,7 @@ export function PlanningSessionPage() {
                         Planning Session {session.session_id ?? sessionId}
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        This page can generate and display a read-only candidate plan. It cannot create workflows, approve changes, execute changes, generate implementation requests, verify changes, or commit code.
+                        Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals.
                     </p>
                 </div>
                 <PlanningRail current={workflow ? "Workflow" : plan ? "Candidate Plan" : "Planning Session"} />
@@ -202,9 +227,9 @@ export function PlanningSessionPage() {
             <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">Candidate plan</h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    Generate Plan asks Atlas Agent for a read-only plan only. Mission Control does not send workflow, approval, implementation, execution, verification, or commit requests.
+                    Generate a plan to review. This does not apply changes or grant approval.
                 </p>
-                {session.status === "ready_for_planning" && !plan && (
+                {session.status === "ready_for_planning" && session.planning_allowed === true && !plan && (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button type="button" onClick={generatePlan} disabled={isGenerating} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                             {isGenerating ? "Generating plan..." : "Generate Plan"}
@@ -212,13 +237,14 @@ export function PlanningSessionPage() {
                         {isGenerating && <p className="text-sm text-slate-400">Generating plan...</p>}
                     </div>
                 )}
-                {session.status !== "ready_for_planning" && !plan && (
+                {(session.status !== "ready_for_planning" || session.planning_allowed !== true) && !plan && (
                     <p className="mt-4 text-sm text-slate-400">{nonReadyMessage(session)}</p>
                 )}
                 {generateError && (
                     <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                         <p className="font-semibold text-red-300">Plan generation failed</p>
                         <p className="mt-1 text-sm text-red-200/80">{generateError}</p>
+                        <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Reload page</button>
                     </div>
                 )}
                 {plan && <PlanViewer plan={plan} />}
@@ -228,9 +254,9 @@ export function PlanningSessionPage() {
                 <section aria-labelledby="workflow-shell-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                     <h2 id="workflow-shell-heading" className="text-lg font-semibold text-white">Workflow shell</h2>
                     <p className="mt-2 text-sm text-slate-400">
-                        Create Workflow asks Atlas Agent to create or return an approval-gated workflow shell. Mission Control sends only the planning session ID and does not send commands, workflow payloads, implementation requests, approval fields, or repository paths.
+                        Create a workflow from this plan. You will approve any later changes separately.
                     </p>
-                    {session.status === "plan_ready" && !workflow && (
+                    {session.status === "plan_ready" && session.planning_allowed === true && !workflow && (
                         <div className="mt-4 flex flex-wrap items-center gap-3">
                             <button type="button" onClick={createWorkflow} disabled={isCreatingWorkflow} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                                 {isCreatingWorkflow ? "Creating workflow..." : "Create Workflow"}
@@ -289,7 +315,7 @@ function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {
     return (
         <article className="mt-5 space-y-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
             <div>
-                <p className="text-sm font-semibold text-emerald-200">Plan ready</p>
+                <p className="text-sm font-semibold text-emerald-200">Plan details</p>
                 <h3 className="mt-2 text-xl font-bold text-white">{plan.title}</h3>
                 <p className="mt-2 text-sm text-slate-300">Objective: {plan.objective}</p>
             </div>
@@ -382,6 +408,7 @@ function describeSessionState(session: CandidatePlanningResponse | null, error: 
 }
 
 function nonReadyMessage(session: CandidatePlanningResponse): string {
+    if (session.planning_allowed !== true) return "Planning is not available for this session.";
     if (session.status === "plan_ready") return "Plan is ready.";
     if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable during planning.";
     if (session.planning_failure?.code === "persistence_failed") return "Planning session could not be persisted.";

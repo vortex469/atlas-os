@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { StrictMode } from "react";
+import { act, render, screen } from "@testing-library/react";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -598,4 +599,89 @@ describe("WorkflowShellPage", () => {
         expect(screen.getByText("Failure: candidate_stale - Candidate changed")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
+    it.each(["awaiting_approval", "blocked"])("does not offer cached %s actions after server validation fails", async (workflow_status) => {
+        mockedCreateCandidateWorkflowShell.mockRejectedValue(new Error("unavailable"));
+        renderPage({ workflow: workflow({ workflow_status }) });
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("button", { name: /create implementation request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
+    });
+
+    it("ignores cached workflow data for a different planning session", async () => {
+        renderPage({ workflow: workflow({ candidate_planning_session_id: "other-session", workflow_session_id: "other-workflow", candidate_fingerprint: "other-fingerprint" }) });
+        expect(screen.queryByRole("heading", { name: "Workflow other-workflow" })).not.toBeInTheDocument();
+        await screen.findByRole("heading", { name: "Workflow workflow-1" });
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1");
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", { expected_candidate_fingerprint: "fingerprint-1" });
+    });
+
+    it("does not create a workflow from a mismatched planning-session read", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(planningSession({ session_id: "other-session" }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
+    it("rejects an authoritative workflow response for a different session", async () => {
+        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow({ candidate_planning_session_id: "other-session" }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /create implementation request/i })).not.toBeInTheDocument();
+    });
+
+    it("does not let a late implementation response navigate away from another session", async () => {
+        const user = userEvent.setup();
+        let resolveTranslation!: (value: CandidateImplementationTranslationResponse) => void;
+        mockedGetCandidatePlanningSession.mockImplementation(async (id) => planningSession({ session_id: id }));
+        mockedCreateCandidateWorkflowShell.mockImplementation(async (id) => workflow({ candidate_planning_session_id: id, workflow_session_id: `workflow-${id}` }));
+        mockedCreateCandidateImplementationRequest.mockImplementationOnce(() => new Promise((resolve) => { resolveTranslation = resolve; }));
+        const router = createMemoryRouter([
+            { path: "/candidate-planning/:sessionId/workflow", element: <WorkflowShellPage /> },
+            { path: "/workflows/:workflowId", element: <div>Wrong workflow navigation</div> },
+        ], { initialEntries: ["/candidate-planning/candidate-plan-1/workflow"] });
+        render(<RouterProvider router={router} />);
+        await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
+        await act(() => router.navigate("/candidate-planning/candidate-plan-2/workflow"));
+        await screen.findByRole("heading", { name: "Workflow workflow-candidate-plan-2" });
+        await act(async () => resolveTranslation(implementationTranslationResponse({ workflow_session_id: "workflow-candidate-plan-1" })));
+        expect(router.state.location.pathname).toBe("/candidate-planning/candidate-plan-2/workflow");
+        expect(screen.queryByText("Wrong workflow navigation")).not.toBeInTheDocument();
+    });
+
+    it("does not navigate to a translation for a different workflow", async () => {
+        const user = userEvent.setup();
+        mockedCreateCandidateImplementationRequest.mockResolvedValue(implementationTranslationResponse({ workflow_session_id: "other-workflow" }));
+        renderPage({ workflow: workflow() });
+        await user.click(await screen.findByRole("button", { name: /create implementation request/i }));
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
+    });
+
+    it("revalidates a cached workflow once under Strict Mode", async () => {
+        render(<StrictMode><MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state: { workflow: workflow() } }]}>
+            <Routes><Route path="/candidate-planning/:sessionId/workflow" element={<WorkflowShellPage />} /></Routes>
+        </MemoryRouter></StrictMode>);
+        await screen.findByRole("button", { name: /create implementation request/i });
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not let a late recovery response navigate away from another session", async () => {
+        const user = userEvent.setup();
+        let resolveSuccessor!: (value: CandidatePlanningResponse) => void;
+        mockedGetCandidatePlanningSession.mockImplementation(async (id) => planningSession({ session_id: id }));
+        mockedCreateCandidateWorkflowShell.mockImplementation(async (id) => workflow({ candidate_planning_session_id: id, workflow_session_id: `workflow-${id}`, workflow_status: "blocked" }));
+        mockedCreateSuccessorCandidatePlanningSession.mockImplementationOnce(() => new Promise((resolve) => { resolveSuccessor = resolve; }));
+        const router = createMemoryRouter([
+            { path: "/candidate-planning/:sessionId/workflow", element: <WorkflowShellPage /> },
+            { path: "/candidate-planning/:sessionId", element: <div>Wrong recovery navigation</div> },
+        ], { initialEntries: ["/candidate-planning/candidate-plan-1/workflow"] });
+        render(<RouterProvider router={router} />);
+        await user.click(await screen.findByRole("button", { name: /re-plan against current repository/i }));
+        await act(() => router.navigate("/candidate-planning/candidate-plan-2/workflow"));
+        await screen.findByRole("heading", { name: "Workflow workflow-candidate-plan-2" });
+        await act(async () => resolveSuccessor(planningSession({ session_id: "successor-session" })));
+        expect(router.state.location.pathname).toBe("/candidate-planning/candidate-plan-2/workflow");
+        expect(screen.queryByText("Wrong recovery navigation")).not.toBeInTheDocument();
+    });
+
 });

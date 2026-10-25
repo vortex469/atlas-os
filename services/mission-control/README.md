@@ -36,6 +36,23 @@ planning unavailable. Optional expiry remains supported. The planning entry
 uses plain-language labels and still sends only the candidate ID for backend
 revalidation; it grants no approval or execution permission.
 
+Planning and workflow summaries also keep state tied to the current session.
+Responses for another session or plan are refused. Failed workflow validation
+removes cached action controls, and late implementation or recovery responses
+cannot navigate away from a newer session. Planning requires the backend's
+explicit availability flag; missing saved plans offer a reload instead of
+presenting another generation action. Workflow creation and later exact
+approvals remain separate steps.
+
+Mission Control completion requires the supported operator journey to have
+working navigation, useful empty and unavailable states, recovery controls,
+and readable layouts on desktop and mobile. Proposal, planning, workflow and
+exact-approval screens must keep displayed evidence and actions tied to the
+current server-validated subject, including when responses arrive late or
+refreshes fail. Regression checks cover these cases without granting real
+execution authority. Deferred screens and capabilities remain outside this
+completion scope. Source validation does not establish production acceptance.
+
 The deferred v0.65 successor control-plane projection is absent. Mission
 Control has no client, route, nested view, or action surface for that
 unselected API; retained v0.64 GET-only evidence must not be promoted or

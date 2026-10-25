@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
     createCandidateWorkflowShell,
@@ -20,8 +20,15 @@ type WorkflowLocationState = {
 export function WorkflowShellPage() {
     const { sessionId = "" } = useParams<{ sessionId: string }>();
     const location = useLocation();
+    const supplied = (location.state as WorkflowLocationState | null)?.workflow;
+    const initialWorkflow = supplied && supplied.candidate_planning_session_id === sessionId ? supplied : null;
+    return <WorkflowShell key={JSON.stringify([sessionId, location.key])} sessionId={sessionId} initialWorkflow={initialWorkflow} />;
+}
+
+function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; initialWorkflow: CandidateWorkflowResponse | null }) {
     const navigate = useNavigate();
-    const workflowFromLocation = (location.state as WorkflowLocationState | null)?.workflow ?? null;
+    const workflowFromLocation = initialWorkflow;
+    const viewGeneration = useRef(0);
     const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(workflowFromLocation);
     const [isCreatingImplementation, setIsCreatingImplementation] = useState(false);
     const [isCreatingSuccessor, setIsCreatingSuccessor] = useState(false);
@@ -30,12 +37,13 @@ export function WorkflowShellPage() {
     const [implementationError, setImplementationError] = useState<string | null>(null);
     const [successorError, setSuccessorError] = useState<string | null>(null);
     const [implementationResult, setImplementationResult] = useState<CandidateImplementationTranslationResponse | null>(null);
-    const candidateFingerprintFromLocation = workflowFromLocation?.candidate_fingerprint;
 
     useEffect(() => {
         let cancelled = false;
+        viewGeneration.current += 1;
 
-        void (async () => {
+        void Promise.resolve().then(async () => {
+            if (cancelled) return;
             setIsLoadingWorkflow(true);
             setWorkflowLoadError(null);
 
@@ -52,22 +60,31 @@ export function WorkflowShellPage() {
                     return;
                 }
 
+                if (planningSession && planningSession.session_id !== sessionId) {
+                    setWorkflow(null);
+                    setWorkflowLoadError("The returned planning session does not match this page.");
+                    return;
+                }
                 const response = await createCandidateWorkflowShell(sessionId, {
-                    expected_candidate_fingerprint: planningSession?.candidate_fingerprint ?? candidateFingerprintFromLocation,
+                    expected_candidate_fingerprint: planningSession?.candidate_fingerprint ?? workflowFromLocation?.candidate_fingerprint,
                 });
 
                 if (cancelled) {
                     return;
                 }
 
-                if (response) {
-                    setWorkflow(response);
+                if (!response || response.candidate_planning_session_id !== sessionId) {
+                    setWorkflow(null);
+                    setWorkflowLoadError("The workflow response did not match this planning session.");
+                    return;
                 }
+                setWorkflow(response);
             } catch (error: unknown) {
                 if (cancelled) {
                     return;
                 }
 
+                setWorkflow(null);
                 setWorkflowLoadError(
                     getAtlasAgentErrorMessage(
                         error,
@@ -79,24 +96,20 @@ export function WorkflowShellPage() {
                     setIsLoadingWorkflow(false);
                 }
             }
-        })();
+        });
 
         return () => {
             cancelled = true;
+            viewGeneration.current += 1;
         };
-    }, [
-        sessionId,
-        candidateFingerprintFromLocation,
-        workflowFromLocation?.candidate_planning_session_id,
-        workflowFromLocation?.workflow_session_id,
-        workflowFromLocation?.candidate_plan_fingerprint,
-    ]);
+    }, [sessionId, workflowFromLocation]);
     const canCreateImplementation =
         workflow !== null
         && workflow.workflow_status === "awaiting_approval"
         && workflow.workflow_session_id !== null
         && workflow.failure === null
-        && !isLoadingWorkflow;
+        && !isLoadingWorkflow
+        && workflowLoadError === null;
 
     const canCreateStaleRecovery =
         workflow !== null
@@ -115,7 +128,8 @@ export function WorkflowShellPage() {
     const canCreateSuccessor =
         (canCreateStaleRecovery || canCreateBlockedRecovery)
         && !isCreatingSuccessor
-        && !isLoadingWorkflow;
+        && !isLoadingWorkflow
+        && workflowLoadError === null;
 
     function isSuccessfulImplementationResponse(
         response: CandidateImplementationTranslationResponse,
@@ -138,6 +152,7 @@ export function WorkflowShellPage() {
             return;
         }
 
+        const generation = viewGeneration.current;
         setIsCreatingImplementation(true);
         setImplementationError(null);
         setImplementationResult(null);
@@ -149,6 +164,12 @@ export function WorkflowShellPage() {
                     expected_plan_fingerprint: workflow.candidate_plan_fingerprint ?? undefined,
                 },
             );
+            if (generation !== viewGeneration.current) return;
+            if (!response || response.candidate_planning_session_id !== sessionId
+                || (response.workflow_session_id !== null && response.workflow_session_id !== workflow.workflow_session_id)) {
+                setImplementationError("The implementation response did not match this workflow. No workflow was opened.");
+                return;
+            }
             setImplementationResult(response);
             const isSuccessfulTranslation = isSuccessfulImplementationResponse(response);
 
@@ -164,11 +185,12 @@ export function WorkflowShellPage() {
                 );
             }
         } catch (error) {
+            if (generation !== viewGeneration.current) return;
             setImplementationError(
                 getAtlasAgentErrorMessage(error, "Candidate implementation request could not be created."),
             );
         } finally {
-            setIsCreatingImplementation(false);
+            if (generation === viewGeneration.current) setIsCreatingImplementation(false);
         }
     }
 
@@ -177,6 +199,7 @@ export function WorkflowShellPage() {
             return;
         }
 
+        const generation = viewGeneration.current;
         setIsCreatingSuccessor(true);
         setSuccessorError(null);
         try {
@@ -187,6 +210,7 @@ export function WorkflowShellPage() {
                 },
             );
 
+            if (generation !== viewGeneration.current) return;
             if (response.session_id === null) {
                 setSuccessorError(
                     response.planning_failure
@@ -198,6 +222,7 @@ export function WorkflowShellPage() {
 
             navigate(`/candidate-planning/${encodeURIComponent(response.session_id)}`);
         } catch (error) {
+            if (generation !== viewGeneration.current) return;
             setSuccessorError(
                 getAtlasAgentErrorMessage(
                     error,
@@ -205,7 +230,7 @@ export function WorkflowShellPage() {
                 ),
             );
         } finally {
-            setIsCreatingSuccessor(false);
+            if (generation === viewGeneration.current) setIsCreatingSuccessor(false);
         }
     }
 

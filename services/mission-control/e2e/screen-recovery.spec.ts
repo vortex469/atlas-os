@@ -1,5 +1,28 @@
 import { executionCandidates, expect, test } from "./mission-control-fixtures";
 
+for (const wrongIdentity of [false, true]) {
+    test(`planning refuses unavailable or mismatched sessions (${wrongIdentity})`, async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.route("**/agent-api/**/candidate-planning/browser-session", (route) => route.fulfill({ json: {
+            session_id: wrongIdentity ? "other-session" : "browser-session",
+            candidate_id: "browser-candidate", status: "ready_for_planning",
+            planning_allowed: false, intake_status: "accepted_for_planning",
+            intake_reason_codes: [], candidate_fingerprint: "browser-fingerprint",
+            unsupported_reason: null, plan: null, planning_failure: null,
+        } }));
+        await page.goto("/candidate-planning/browser-session");
+        if (wrongIdentity) {
+            await expect(page.getByRole("heading", { name: "Planning unavailable" })).toBeVisible();
+            await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+        } else {
+            await expect(page.getByText("Planning is not available for this session.")).toBeVisible();
+        }
+        await expect(page.getByRole("button", { name: "Generate Plan" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Create Workflow" })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}
+
 for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
     test(`unknown pages retain navigation at ${viewport.width}px`, async ({ page }) => {
         await page.setViewportSize(viewport);
