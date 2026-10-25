@@ -1,5 +1,23 @@
 # Atlas OS Roadmap
 
+## v0.81–v0.90 repository-action implementation (complete locally; unreleased)
+
+The selected continuation through v0.90 is complete. Ten separate behavior
+changes and acceptance records are documented in the
+[selected sequential plan](docs/architecture/v0.81-v0.90-repository-action-plan.md).
+These cover process budgets, authentication, strict protocol JSON, incoming
+request deadlines, workspace disposal and reuse, ledger validation, patch
+integrity, observed readiness and source-bound fixture reports.
+
+Final source `c2982235` passed 1,147 Agent tests, 145 worker tests, 27 script
+tests and 72 guarded workflow checks, configured lint, final-image runsc probes,
+and the existing container/five-volume recovery/Rest Server gates. Report
+verification passed and stale reports were refused. Production identities were
+unchanged. No real model/account credentials, push, tags, publication, deployment
+or runtime enablement were used. The nested patch-helper limitation and seven
+installation blockers remain explicit; full production readiness is not claimed.
+Further capabilities and production/release acceptance require separate selection.
+
 ## v0.71–v0.80 repository-action implementation (complete locally; unreleased)
 
 The operator selected continuation through v0.80. Each version now has a
