@@ -317,3 +317,26 @@ def test_submitter_losing_start_barrier_never_calls_runner(tmp_path, monkeypatch
     assert response.status_code == 200
     assert response.json()['state'] == 'executing'
     assert runner.calls == 0
+
+
+def test_success_requires_start_and_invalid_result_never_persists(tmp_path):
+    from app.execution.worker_contracts import WorkerExecutionStatus, WorkerFailureCode
+    from atlas_execution_worker.durable_ledger import DurableLedgerError
+
+    request = make_request()
+    ledger = DurableRequestLedger(tmp_path / 'barrier.sqlite3')
+    before = ledger.claim(request)
+    success = replace(_disabled_result(request), status=WorkerExecutionStatus.SUCCEEDED,
+                      failure_code=None, return_code=0,
+                      workspace_head=request.expected_repository_head,
+                      base_repository_head=request.expected_repository_head)
+    with pytest.raises(DurableLedgerError, match='start barrier'):
+        ledger.persist_result(request, success)
+    assert ledger.get(request.execution_request_id) == before
+    unknown = replace(_disabled_result(request), status=WorkerExecutionStatus.UNKNOWN,
+                      failure_code=WorkerFailureCode.WORKER_CRASH)
+    with pytest.raises(DurableLedgerCorruptionError):
+        ledger.persist_result(request, unknown)
+    assert ledger.get(request.execution_request_id) == before
+    ledger.mark_executing(request)
+    assert ledger.persist_result(request, success).state == 'completed'

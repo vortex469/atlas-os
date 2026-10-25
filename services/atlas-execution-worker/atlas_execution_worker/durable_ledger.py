@@ -219,6 +219,11 @@ class DurableRequestLedger:
                     raise DurableLedgerError("terminal result is immutable")
                 connection.commit()
                 return existing
+            if result.status is WorkerExecutionStatus.SUCCEEDED and row["state"] != "executing":
+                raise DurableLedgerError("successful result requires the execution start barrier")
+            candidate = dict(row)
+            candidate.update(state=state, result_json=encoded, updated_at=now)
+            self._entry(candidate)
             connection.execute(
                 "UPDATE executions SET state=?, result_json=?, updated_at=? WHERE execution_request_id=?",
                 (state, encoded, now, request.execution_request_id),
