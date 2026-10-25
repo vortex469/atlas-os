@@ -47,9 +47,10 @@ jobs:
 
       - name: Test bounded worker ledger export
         run: |
-          python -m ruff check scripts/atlas-worker-ledger-export scripts/test_atlas_worker_ledger_export.py scripts/atlas-repository-action-check scripts/atlas_repository_fixture_guard.py scripts/test_atlas_repository_action_check.py
-          python -m pytest -q scripts/test_atlas_worker_ledger_export.py scripts/test_atlas_repository_action_check.py
-          python scripts/atlas-repository-action-check --phase all
+          python -m ruff check scripts/atlas-worker-ledger-export scripts/test_atlas_worker_ledger_export.py scripts/atlas-repository-action-check scripts/atlas_repository_fixture_guard.py scripts/test_atlas_repository_action_check.py scripts/atlas_repository_fixture_source.py scripts/test_atlas_repository_fixture_source.py
+          python -m pytest -q scripts/test_atlas_worker_ledger_export.py scripts/test_atlas_repository_action_check.py scripts/test_atlas_repository_fixture_source.py
+          python scripts/atlas-repository-action-check --phase all --output-dir "$RUNNER_TEMP/atlas-repository-fixture"
+          python scripts/atlas-repository-action-check --verify-report "$RUNNER_TEMP/atlas-repository-fixture/report.json"
 
   atlas-core:
     runs-on: ubuntu-latest
