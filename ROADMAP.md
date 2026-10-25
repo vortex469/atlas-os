@@ -10,7 +10,9 @@ lifetime and timeout cleanup passed its full acceptance (59 worker tests),
 including timeout/no-patch cleanup; see its [closeout](docs/architecture/v0.67-worker-process-lifetime.md).
 v0.68 bounded output capture passed all 62 worker tests; see its
 [closeout](docs/architecture/v0.68-worker-output-capture.md).
-v0.69–v0.70 remain active implementation work. v0.71–v0.77 are future
+v0.69 response bounds passed 59 focused Agent tests; see its
+[closeout](docs/architecture/v0.69-worker-response-bounds.md).
+v0.70 strict framing and total deadlines remain active implementation work. v0.71–v0.77 are future
 proposals outside this run.
 
 The [v0.66 local closeout](docs/architecture/repository-action-acceptance.md#v066-local-closeout)

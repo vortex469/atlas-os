@@ -8,6 +8,10 @@ from typing import Any
 
 from app.execution.worker_contracts import WorkerExecutionRequest
 
+MAX_RESPONSE_HEADER_BYTES = 16_384
+# Three bounded text fields can each expand sixfold under JSON escaping.
+MAX_RESPONSE_BODY_BYTES = 24 * 1024 * 1024
+
 
 class WorkerTransportError(RuntimeError):
     """The worker could not be reached or returned malformed HTTP."""
@@ -59,12 +63,21 @@ class TcpWorkerClient:
             ) as connection:
                 connection.settimeout(self._timeout_seconds)
                 connection.sendall(headers + body)
-                response = b""
+                response = bytearray()
+                header_end = -1
                 while True:
                     chunk = connection.recv(65536)
                     if not chunk:
                         break
-                    response += chunk
+                    response.extend(chunk)
+                    if header_end < 0:
+                        header_end = response.find(b"\r\n\r\n")
+                        if header_end < 0 and len(response) > MAX_RESPONSE_HEADER_BYTES:
+                            raise WorkerTransportError("worker response headers exceed bound")
+                        if header_end >= 0 and header_end + 4 > MAX_RESPONSE_HEADER_BYTES:
+                            raise WorkerTransportError("worker response headers exceed bound")
+                    if header_end >= 0 and len(response) - header_end - 4 > MAX_RESPONSE_BODY_BYTES:
+                        raise WorkerTransportError("worker response body exceeds bound")
         except OSError as exc:
             raise WorkerTransportError("worker socket unavailable") from exc
         try:
