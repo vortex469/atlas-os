@@ -7,6 +7,8 @@ import re
 import subprocess
 from pathlib import Path
 
+from .process import run_command
+
 
 class WorkerConfigurationError(ValueError):
     """Worker configuration is missing or unsafe."""
@@ -55,6 +57,8 @@ def load_repository_mapping(
     """Load opaque-token to trusted-git-source mappings from token=path pairs."""
 
     raw = os.getenv("ATLAS_EXECUTION_WORKER_REPOSITORY_MAP", "") if value is None else value
+    if len(raw.encode("utf-8")) > 65536 or raw.count(",") >= 64:
+        raise WorkerConfigurationError("repository map exceeds configured bounds")
     mapping: dict[str, Path] = {}
     for item in filter(None, (part.strip() for part in raw.split(","))):
         try:
@@ -78,21 +82,20 @@ def load_repository_mapping(
             "git",
             "-C",
             str(resolved),
+            "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
             "rev-parse",
             "--is-inside-work-tree",
         ]
-        environment = None
-        if git_config_path is not None:
-            environment = os.environ.copy()
-            environment["GIT_CONFIG_GLOBAL"] = str(git_config_path)
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=environment,
-        )
-        if result.returncode != 0 or result.stdout.strip() != "true":
+        environment = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        environment.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(git_config_path or "/dev/null"), GIT_NO_REPLACE_OBJECTS="1")
+        try:
+            result = run_command(
+                command, cwd=resolved, timeout=10, output_limit=4096,
+                environment=environment,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            raise WorkerConfigurationError("repository source check unavailable") from None
+        if result.returncode != 0 or result.stdout.truncated or result.stdout.text.strip() != "true":
             raise WorkerConfigurationError("repository map source must be a git worktree")
     return mapping
 
