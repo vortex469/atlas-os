@@ -15,7 +15,11 @@ TERMINAL = frozenset({'completed','failed_terminal','unknown_outcome'})
 def _timestamp(value: Any) -> None:
     if not isinstance(value, str) or len(value) > 128:
         raise ValueError('invalid ledger timestamp')
-    if datetime.fromisoformat(value).tzinfo is None:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        raise ValueError('invalid ledger timestamp') from None
+    if parsed.tzinfo is None:
         raise ValueError('ambiguous ledger timestamp')
 
 
@@ -50,7 +54,10 @@ def validate_worker_ledger_row(row: Mapping[str, Any]) -> WorkerExecutionResult 
         return None
     if not isinstance(raw, str) or len(raw) > 24 * 1024 * 1024:
         raise ValueError('terminal worker row has no bounded result')
-    result = WorkerExecutionResult.from_dict(decode_worker_json(raw))
+    try:
+        result = WorkerExecutionResult.from_dict(decode_worker_json(raw))
+    except (TypeError, ValueError, RecursionError):
+        raise ValueError('invalid stored worker result') from None
     if result.execution_request_id != identity:
         raise ValueError('worker result identity mismatch')
     expected = 'completed' if result.status.value == 'succeeded' else 'unknown_outcome' if result.status.value == 'unknown' else 'failed_terminal'

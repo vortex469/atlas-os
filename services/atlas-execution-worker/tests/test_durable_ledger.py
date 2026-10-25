@@ -254,3 +254,23 @@ def test_startup_validates_all_rows_before_classifying_execution(tmp_path):
         ledger.reconcile_startup()
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT state FROM executions WHERE execution_request_id='execution-1'").fetchone()[0] == 'executing'
+
+
+@pytest.mark.parametrize('field', ['created_at','result_json'])
+def test_corrupt_record_error_chain_does_not_echo_stored_values(tmp_path, field):
+    import traceback
+    database = tmp_path/'ledger.sqlite3'
+    ledger = DurableRequestLedger(database)
+    request = make_request()
+    ledger.claim(request)
+    private = 'PRIVATE_STORED_VALUE'
+    with sqlite3.connect(database) as connection:
+        if field == 'created_at':
+            connection.execute('UPDATE executions SET created_at=?', (private,))
+        else:
+            payload = _disabled_result(request).to_dict()
+            payload['status'] = private
+            connection.execute("UPDATE executions SET state='failed_terminal',result_json=?", (json.dumps(payload),))
+    with pytest.raises(DurableLedgerCorruptionError) as raised:
+        ledger.get(request.execution_request_id)
+    assert private not in ''.join(traceback.format_exception(raised.value))
