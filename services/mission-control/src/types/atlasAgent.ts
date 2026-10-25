@@ -402,6 +402,7 @@ export interface WorkflowAuditResponse {
 }
 
 export interface WorkflowExecutionSummary {
+    output_capture?: { stream: string; retained_bytes: number; observed_bytes: number | null; truncated: boolean }[];
     execution_status: string | null;
     started_at: string | null;
     completed_at: string | null;

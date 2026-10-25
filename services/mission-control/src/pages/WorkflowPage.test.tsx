@@ -183,6 +183,19 @@ describe("WorkflowPage", () => {
         mockedResumeWorkflow.mockResolvedValue(undefined);
     });
 
+    it("shows output truncation without granting execution or approvals", async () => {
+        const detail = workflow();
+        detail.execution.output_capture = [{ stream: "stdout", retained_bytes: 1024, observed_bytes: 4096, truncated: true }];
+        mockedGetWorkflowDetail.mockResolvedValue(detail);
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Worker output was shortened" })).toBeInTheDocument();
+        expect(screen.getByText(/1024 bytes retained; 4096 bytes observed/)).toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowVerificationApproval).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
+    });
+
     it("checks an unknown worker result once and keeps verification approval separate", async () => {
         const uncertain = workflow({
             workflow_state: "blocked",

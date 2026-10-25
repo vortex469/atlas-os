@@ -357,6 +357,16 @@ export function WorkflowPage() {
 
             <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} onRefresh={refreshWorkflow} />
 
+            {isRepository && workflow.execution.output_capture?.some((item) => item.truncated) && (
+                <section aria-labelledby="output-capture-heading" className="rounded-xl border border-amber-500/50 p-5">
+                    <h2 id="output-capture-heading" className="font-semibold text-white">Worker output was shortened</h2>
+                    <p className="mt-2 text-sm text-slate-300">The worker retained a bounded portion of its output. Verification and commit still require their own approvals.</p>
+                    {workflow.execution.output_capture.filter((item) => item.truncated).map((item) => (
+                        <p key={item.stream} className="mt-2 text-sm text-slate-400">{item.stream}: {item.retained_bytes} bytes retained; {item.observed_bytes ?? "unknown"} bytes observed.</p>
+                    ))}
+                </section>
+            )}
+
             {isRepository && workflow.worker_reconciliation?.outcome === "unknown" && (
                 <section aria-labelledby="worker-outcome-heading" className="rounded-xl border border-amber-500/50 bg-slate-900/70 p-5">
                     <h2 id="worker-outcome-heading" className="text-lg font-semibold text-white">Worker outcome unknown</h2>

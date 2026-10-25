@@ -263,6 +263,13 @@ class WorkflowTimelineStageResponse(BaseModel):
     status: str
 
 
+class WorkerOutputCaptureResponse(BaseModel):
+    stream: str
+    retained_bytes: int
+    observed_bytes: int | None
+    truncated: bool
+
+
 class WorkflowExecutionSummaryResponse(BaseModel):
     execution_status: str | None
     started_at: str | None
@@ -274,6 +281,7 @@ class WorkflowExecutionSummaryResponse(BaseModel):
     repository: str | None
     changed_files: list[str]
     execution_request_id: str | None
+    output_capture: list[WorkerOutputCaptureResponse] = Field(default_factory=list)
 
 
 class WorkerReconciliationResponse(BaseModel):
@@ -814,7 +822,14 @@ def _workflow_execution_summary(workflow) -> WorkflowExecutionSummaryResponse:
     execution = workflow.execution_result
     implementation = workflow.candidate_implementation_request
     changed_files = [str(path) for path in workflow.changed_files]
+    from app.execution.worker_contracts import WorkerExecutionResult
+    worker = execution.worker_result if execution else None
+    captures = []
+    if isinstance(worker, WorkerExecutionResult):
+        for stream, output in (("stdout", worker.stdout), ("stderr", worker.stderr)):
+            captures.append(WorkerOutputCaptureResponse(stream=stream, retained_bytes=len(output.text.encode("utf-8")), observed_bytes=output.original_bytes, truncated=output.truncated))
     return WorkflowExecutionSummaryResponse(
+        output_capture=captures,
         execution_status=(
             execution.status.value if execution
             else "unknown" if workflow.worker_execution_request is not None else None

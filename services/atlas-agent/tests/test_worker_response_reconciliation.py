@@ -251,3 +251,18 @@ def test_workflow_api_exposes_unknown_outcome_and_checks_only_on_explicit_resume
     assert api.get(path + "/implementation-request").json()["worker_reconciliation"]["can_check_result"] is False
     assert client.submissions == 1
     assert len(client.lookups) == 2
+
+
+def test_output_capture_projection_omits_raw_output_and_does_not_execute(tmp_path):
+    from app.execution.worker_contracts import BoundedOutput
+    from app.routes.workflow import _workflow_execution_summary
+    engine, state, _, _, client, _, _ = _fixture(tmp_path)
+    engine.resume('candidate-workflow-1')
+    session = state.get_session('candidate-workflow-1')
+    worker = replace(session.execution_result.worker_result, stdout=BoundedOutput('private raw text', True, 4096))
+    subject = replace(session, execution_result=replace(session.execution_result, worker_result=worker))
+    calls = client.calls
+    summary = _workflow_execution_summary(subject).model_dump()
+    assert summary['output_capture'][0] == {'stream':'stdout','retained_bytes':16,'observed_bytes':4096,'truncated':True}
+    assert 'private raw text' not in str(summary)
+    assert client.calls == calls
