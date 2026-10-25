@@ -232,8 +232,8 @@ class DurableRequestLedger:
             connection.commit()
             return self._entry(row)
 
-    def mark_unknown_outcome(self, request_id: str) -> DurableLedgerEntry:
-        now = self._now()
+    @staticmethod
+    def _unknown_result(request_id: str) -> str:
         result = WorkerExecutionResult(
             schema_version=1,
             execution_request_id=request_id,
@@ -256,7 +256,11 @@ class DurableRequestLedger:
                 sandbox_profile="unknown-outcome",
             ),
         )
-        encoded = json.dumps(result.to_dict(), sort_keys=True, separators=(",", ":"))
+        return json.dumps(result.to_dict(), sort_keys=True, separators=(",", ":"))
+
+    def mark_unknown_outcome(self, request_id: str) -> DurableLedgerEntry:
+        now = self._now()
+        encoded = self._unknown_result(request_id)
         with self._lock, self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             row = self._row_for(connection, request_id)
@@ -283,9 +287,14 @@ class DurableRequestLedger:
                     claimed += 1
                 elif entry.state == "executing":
                     executing.append(entry.execution_request_id)
+            now = self._now()
+            for request_id in executing:
+                encoded = self._unknown_result(request_id)
+                connection.execute(
+                    "UPDATE executions SET state='unknown_outcome', result_json=?, updated_at=? WHERE execution_request_id=? AND state='executing'",
+                    (encoded, now, request_id),
+                )
             connection.commit()
-        for row in executing:
-            self.mark_unknown_outcome(row)
         return {"claimed": claimed, "unknown_outcome": len(executing)}
 
     def get(self, request_id: str) -> DurableLedgerEntry | None:

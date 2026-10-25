@@ -340,3 +340,23 @@ def test_success_requires_start_and_invalid_result_never_persists(tmp_path):
     assert ledger.get(request.execution_request_id) == before
     ledger.mark_executing(request)
     assert ledger.persist_result(request, success).state == 'completed'
+
+
+def test_reconcile_rolls_back_every_classification_on_write_failure(tmp_path):
+    database = tmp_path / 'reconcile.sqlite3'
+    ledger = DurableRequestLedger(database)
+    for identity in ['first', 'second']:
+        request = make_request(execution_request_id=identity)
+        ledger.claim(request)
+        ledger.mark_executing(request)
+    with sqlite3.connect(database) as connection:
+        connection.execute("""CREATE TRIGGER reject_second BEFORE UPDATE ON executions
+            WHEN NEW.execution_request_id = 'second'
+            BEGIN SELECT RAISE(ABORT, 'synthetic write failure'); END""")
+    with pytest.raises(sqlite3.DatabaseError):
+        ledger.reconcile_startup()
+    assert ledger.get('first').state == ledger.get('second').state == 'executing'
+    with sqlite3.connect(database) as connection:
+        connection.execute('DROP TRIGGER reject_second')
+    assert ledger.reconcile_startup() == {'claimed': 0, 'unknown_outcome': 2}
+    assert ledger.reconcile_startup() == {'claimed': 0, 'unknown_outcome': 0}
