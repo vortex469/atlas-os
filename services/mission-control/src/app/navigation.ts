@@ -118,6 +118,7 @@ export function navigationItemForPath(
 
 // Existing detail and utility routes that are not primary destinations.
 export function routeContextForPath(pathname: string): string {
+    if (pathname === "/providers") return "Providers";
     if (pathname.startsWith("/providers/")) return "Provider";
     if (pathname.startsWith("/installation/")) return "Installation readiness review";
     if (pathname.startsWith("/candidate-planning/")) return "Candidate planning";

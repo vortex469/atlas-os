@@ -16,6 +16,7 @@ import { MaintenanceRequestPage } from "../pages/MaintenanceRequestPage";
 import { InstallationReadinessReviewPage } from "../pages/InstallationReadinessReviewPage";
 import { OperatorLoginPage } from "../pages/OperatorLoginPage";
 import { PlanningSessionPage } from "../pages/PlanningSessionPage";
+import { ProvidersPage } from "../pages/ProvidersPage";
 import { ProviderPage } from "../pages/ProviderPage";
 import { WorkflowPage } from "../pages/WorkflowPage";
 import { WorkflowDashboardPage } from "../pages/WorkflowDashboardPage";
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
             {
                 path: "operations/actions/:auditId",
                 element: <ActionHistoryDetailPage />,
+            },
+            {
+                path: "providers",
+                element: <ProvidersPage />,
             },
             {
                 path: "providers/:providerId",

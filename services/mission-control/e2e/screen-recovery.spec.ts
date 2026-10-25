@@ -95,3 +95,39 @@ test("maintenance history keeps unavailable requests findable and details option
     await expect(page.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/maintenance-test");
     expect(reads).toBe(1);
 });
+
+for (const width of [390, 1280]) {
+    test(`provider registry is reachable and links back from details at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/");
+        await page.getByRole("link", { name: "View provider registry", exact: true }).click();
+        await expect(page).toHaveURL(/\/providers$/);
+        await expect(page.getByRole("heading", { name: "Providers", exact: true })).toBeVisible();
+        await expect(page.getByLabel("Current page: Providers", { exact: true })).toBeVisible();
+        await page.getByRole("link", { name: "Open Proxmox provider", exact: true }).click();
+        await expect(page).toHaveURL(/\/providers\/proxmox$/);
+        await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
+        await page.getByRole("link", { name: /All providers/ }).click();
+        await expect(page).toHaveURL(/\/providers$/);
+        await expect(page.getByRole("link", { name: "Open Proxmox provider" })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    });
+}
+
+test("provider registry retries an unavailable read", async ({ page }) => {
+    let attempts = 0;
+    await page.route("**/api/v1/providers", async (route) => {
+        attempts += 1;
+        if (attempts === 1) {
+            await route.fulfill({ status: 503, json: { detail: "PRIVATE_SERVER_ERROR" } });
+            return;
+        }
+        await route.fallback();
+    });
+    await page.goto("/providers");
+    await expect(page.getByRole("alert")).toHaveText("Providers could not loadTry again to get the latest provider list.Try again");
+    await expect(page.getByText("PRIVATE_SERVER_ERROR")).toHaveCount(0);
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("link", { name: "Open Proxmox provider" })).toBeVisible();
+    expect(attempts).toBe(2);
+});

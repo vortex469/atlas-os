@@ -5,6 +5,7 @@ Mission Control is the Atlas OS operator interface: a React, TypeScript, and Vit
 ## Current surfaces
 
 - Infrastructure dashboard with Atlas, inventory-service, health, policy, finding, recommendation, and intelligence summaries.
+- A read-only provider registry at `/providers`, with local name search, refresh/retry, and links to the existing provider detail screens.
 - Provider workspaces for connections, resources, monitoring status, Provider Intent editing, intent suggestions, diagnostics, provider-advertised legacy actions, and filterable action history/detail.
 - Discovery browse and item detail views with relationships, compatibility, dynamic evidence, freshness/health/conflicts, installed-version evidence, release evaluation, Compose/image evidence, grounding, and provenance.
 - The additive v0.15 Image Grounding panel presents status, release, deployment binding, observed image, accepted evidence, source class, source identity, and attestation time. It is advisory, grants no deployment or execution authority, and adds no action controls.

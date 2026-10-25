@@ -77,10 +77,10 @@ export function ProviderPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <Link
-                        to="/"
+                        to="/providers"
                         className="text-sm font-medium text-blue-400 transition hover:text-blue-300"
                     >
-                        ← Mission Control
+                        ← All providers
                     </Link>
 
                     <p className="mt-2 text-xs text-slate-500">
