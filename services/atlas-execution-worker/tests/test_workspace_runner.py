@@ -363,3 +363,37 @@ def test_failed_partial_clone_is_cleaned_before_model(repository, tmp_path, monk
     assert result.patch is None
     assert not (tmp_path/'workspaces'/'execution-1').exists()
     assert _git(source, 'diff') == ''
+
+
+@pytest.mark.parametrize('operation', ['commit', 'config', 'replace-ref'])
+def test_model_revision_or_control_change_is_refused(repository, tmp_path, monkeypatch, operation):
+    source, head = repository
+    bindir = _fake_codex(tmp_path)
+    extra = {
+        'commit': "import subprocess\nsubprocess.run(['git','-c','user.name=Fixture','-c','user.email=fixture@example.invalid','add','--all'],check=True)\nsubprocess.run(['git','-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','unapproved commit'],check=True)\n",
+        'config': "p=Path('.git/config'); p.write_text(p.read_text()+'\\n[core]\\n fsmonitor = arbitrary-command\\n')\n",
+        'replace-ref': "p=Path('.git/refs/replace'); p.mkdir(); (p/'fake').write_text('invalid')\n",
+    }[operation]
+    with (bindir/'codex').open('a') as script:
+        script.write(extra)
+    monkeypatch.setenv('PATH', f"{bindir}:{os.environ['PATH']}")
+    manager = WorkerWorkspaceManager(source, tmp_path/'workspaces', 'trusted-repository', trusted_repository_paths=(source,), git_config_path=tmp_path/'gitconfig')
+    result = WorkspaceExecutionRunner(manager, enabled=True).execute(_request(head))
+    assert result.failure_code is WorkerFailureCode.STALE_REPOSITORY
+    assert result.patch is None
+    assert not (tmp_path/'workspaces'/'execution-1').exists()
+    assert _git(source, 'rev-parse', 'HEAD') == head
+    assert _git(source, 'diff') == ''
+
+
+def test_post_model_git_hook_is_not_executed(repository, tmp_path, monkeypatch):
+    source, head = repository
+    bindir = _fake_codex(tmp_path)
+    marker = tmp_path/'hook-ran'
+    with (bindir/'codex').open('a') as script:
+        script.write(f"p=Path('.git/hooks/post-index-change'); p.write_text('#!/bin/sh\\ntouch {marker}\\n'); p.chmod(0o755)\n")
+    monkeypatch.setenv('PATH', f"{bindir}:{os.environ['PATH']}")
+    manager = WorkerWorkspaceManager(source, tmp_path/'workspaces', 'trusted-repository', trusted_repository_paths=(source,), git_config_path=tmp_path/'gitconfig')
+    result = WorkspaceExecutionRunner(manager, enabled=True).execute(_request(head))
+    assert result.failure_code is None
+    assert not marker.exists()

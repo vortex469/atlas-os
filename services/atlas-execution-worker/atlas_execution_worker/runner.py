@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -29,6 +30,61 @@ MAX_PATCH_CAPTURE_BYTES = min(MAX_PATCH_BYTES, MAX_CAPTURE_BYTES)
 
 class PatchTooLarge(WorkspaceError):
     """The complete patch cannot fit the existing bounded text contract."""
+
+
+class RepositoryControlChanged(WorkspaceError):
+    """Model work changed repository revision or execution-control metadata."""
+
+
+def _git_argv(root: Path, *args: str) -> list[str]:
+    return ["git", "-C", str(root), "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", *args]
+
+
+def _git_environment() -> dict[str, str]:
+    return {**os.environ, "GIT_NO_REPLACE_OBJECTS":"1", "GIT_CONFIG_NOSYSTEM":"1"}
+
+
+def _read_control_digest(root: Path) -> str:
+    git = root / ".git"
+    if not git.is_dir() or git.is_symlink():
+        raise RepositoryControlChanged("unsupported repository metadata")
+    replace = git / "refs/replace"
+    if replace.is_symlink() or (replace.exists() and (not replace.is_dir() or next(replace.iterdir(), None) is not None)):
+        raise RepositoryControlChanged("replacement refs are unsupported")
+    names = ["HEAD","config","packed-refs","commondir","gitdir","shallow","info/attributes","info/grafts","objects/info/alternates"]
+    head = git / "HEAD"
+    if head.is_symlink():
+        raise RepositoryControlChanged("unsupported HEAD")
+    with head.open("rb") as stream:
+        text = stream.read(65537)
+    if text.startswith(b"ref: "):
+        reference = text[5:].strip().decode("utf-8")
+        if not reference.startswith("refs/") or ".." in Path(reference).parts:
+            raise RepositoryControlChanged("unsupported HEAD ref")
+        names.append(reference)
+    digest = hashlib.sha256()
+    for name in names:
+        path = git / name
+        if path.is_symlink() or not path.resolve().is_relative_to(git.resolve()):
+            raise RepositoryControlChanged("repository metadata escapes clone")
+        if not path.exists():
+            digest.update(name.encode() + b":missing\0")
+            continue
+        if not path.is_file():
+            raise RepositoryControlChanged("unsupported repository metadata")
+        with path.open("rb") as stream:
+            data = stream.read(65537)
+        if len(data) > 65536:
+            raise RepositoryControlChanged("repository metadata exceeds bound")
+        digest.update(name.encode() + b":" + data + b"\0")
+    return digest.hexdigest()
+
+
+def _control_digest(root: Path) -> str:
+    try:
+        return _read_control_digest(root)
+    except (OSError, UnicodeError) as exc:
+        raise RepositoryControlChanged("unreadable repository metadata") from exc
 
 
 class WorkspaceExecutionRunner:
@@ -73,11 +129,16 @@ class WorkspaceExecutionRunner:
                     request, workspace.path, workspace.base_head, started
                 )
                 return result
+            controls = _control_digest(workspace.path)
             process = run_command(
                 list(request.argv), cwd=cwd, timeout=request.timeout_seconds,
             )
+            if _control_digest(workspace.path) != controls or self._git(workspace.path, "rev-parse", "HEAD") != workspace.base_head:
+                raise RepositoryControlChanged("repository revision or metadata changed")
             result = self._collect(request, workspace.path, workspace.base_head, process, started)
             return result
+        except RepositoryControlChanged:
+            return self._result(request, WorkerFailureCode.STALE_REPOSITORY, started, base=workspace.base_head)
         except PatchTooLarge:
             return self._result(request, WorkerFailureCode.PATCH_TOO_LARGE, started, base=workspace.base_head)
         except WorkspaceError:
@@ -144,7 +205,7 @@ class WorkspaceExecutionRunner:
         )
 
     def _collect(self, request: WorkerExecutionRequest, root: Path, base_head: str, process: CapturedCommand, started: float) -> WorkerExecutionResult:
-        staged = run_command(["git", "-C", str(root), "add", "--all", "--"], cwd=root, timeout=30)
+        staged = run_command(_git_argv(root, "add", "--all", "--"), cwd=root, timeout=30, environment=_git_environment())
         if staged.returncode != 0:
             raise WorkspaceError("workspace staging failed")
         changed = self._changed_files(root)
@@ -183,7 +244,7 @@ class WorkspaceExecutionRunner:
 
     @staticmethod
     def _changed_files(root: Path) -> tuple[str, ...]:
-        result = run_command(["git", "-C", str(root), "status", "--porcelain=v1", "-z", "--untracked-files=all"], cwd=root, timeout=30)
+        result = run_command(_git_argv(root, "status", "--porcelain=v1", "-z", "--untracked-files=all"), cwd=root, timeout=30, environment=_git_environment())
         if result.returncode != 0 or result.stdout.truncated:
             raise WorkspaceError("unsupported repository status")
         records = result.stdout.text.encode("utf-8").split(b"\x00")
@@ -216,8 +277,8 @@ class WorkspaceExecutionRunner:
     @staticmethod
     def _patch(root: Path) -> str:
         result = run_command(
-            ["git", "-C", str(root), "diff", "--binary", "--no-ext-diff", "--no-color", "HEAD"],
-            cwd=root, timeout=30.0, output_limit=MAX_PATCH_CAPTURE_BYTES,
+            _git_argv(root, "diff", "--binary", "--no-ext-diff", "--no-textconv", "--no-color", "HEAD"),
+            cwd=root, timeout=30.0, output_limit=MAX_PATCH_CAPTURE_BYTES, environment=_git_environment(),
         )
         if result.returncode != 0:
             raise WorkspaceError("patch generation failed")
@@ -227,7 +288,7 @@ class WorkspaceExecutionRunner:
 
     @staticmethod
     def _git(root: Path, *args: str) -> str:
-        result = run_command(["git", "-C", str(root), *args], cwd=root, timeout=30)
+        result = run_command(_git_argv(root, *args), cwd=root, timeout=30, environment=_git_environment())
         if result.returncode != 0 or result.stdout.truncated:
             raise WorkspaceError("workspace metadata unavailable")
         return result.stdout.text.strip()
