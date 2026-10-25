@@ -39,6 +39,12 @@ jobs:
       - name: Test Atlas Agent
         run: PYTHONPATH=services/atlas-agent python -m pytest -q services/atlas-agent/tests
 
+      - name: Check bounded worker execution
+        run: |
+          python -m ruff check services/atlas-execution-worker/atlas_execution_worker/process.py services/atlas-execution-worker/atlas_execution_worker/runner.py services/atlas-execution-worker/tests/test_process.py services/atlas-execution-worker/tests/test_workspace_runner.py services/atlas-execution-worker/tests/probe_bounded_process.py
+          PYTHONPATH=services/atlas-agent:services/atlas-execution-worker python -m pytest -q services/atlas-execution-worker/tests
+          PYTHONPATH=services/atlas-agent:services/atlas-execution-worker python services/atlas-execution-worker/tests/probe_bounded_process.py
+
       - name: Test bounded worker ledger export
         run: |
           python -m ruff check scripts/atlas-worker-ledger-export scripts/test_atlas_worker_ledger_export.py
