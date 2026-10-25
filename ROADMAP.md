@@ -1,5 +1,28 @@
 # Atlas OS Roadmap
 
+## v0.91–v1.00 repository-action implementation (complete locally; unreleased)
+
+The selected local continuation through v1.00 is complete. Ten separately
+committed behaviors close inspected execution-start, terminal-transition,
+recovery, unavailable-state, error-privacy, configuration and relay-lifetime
+gaps. Worker health now exposes all durable states and refuses unreadable or
+corrupt state instead of implying healthy emptiness. See the
+[implementation and operator acceptance record](docs/architecture/v0.91-v1.00-repository-action-plan.md).
+
+Final source `7b4363a4` passed 1,147 Agent tests, 175 worker tests, 27 script
+tests, 72 guarded workflow checks, configured lint, independent runsc probes
+and the existing isolated container/five-volume/Rest Server recovery gates.
+Source report verification passed. Production identities were unchanged and
+test-owned integration resources removed.
+
+This completes the selected local repository-action milestone; Atlas production
+v1 acceptance remains outstanding. The known nested helper limitation, seven
+installation blockers and deferred successor activation remain unchanged. No
+real model/account credentials, deployment, runtime enablement, push, tags or
+publication were used. Supported-environment acceptance, immutable production
+artifact parity, security/upgrades/recovery acceptance and separately requested
+activation/release work remain required.
+
 ## v0.81–v0.90 repository-action implementation (complete locally; unreleased)
 
 The selected continuation through v0.90 is complete. Ten separate behavior
