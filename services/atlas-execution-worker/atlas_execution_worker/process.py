@@ -1,6 +1,7 @@
 """Bounded output and process-group lifetime for one worker command on Linux."""
 from __future__ import annotations
 
+import math
 import os
 import selectors
 import signal
@@ -14,6 +15,7 @@ from app.execution.worker_contracts import BoundedOutput
 
 MAX_CAPTURE_BYTES = 1_048_576
 READ_BYTES = 65_536
+MAX_COMMAND_TIMEOUT_SECONDS = 3600.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +83,8 @@ def run_command(
     escape still requires outer sandbox/container isolation. Timeout byte counts
     describe bytes drained, not bytes an escaped process might later produce.
     """
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= MAX_COMMAND_TIMEOUT_SECONDS or not math.isfinite(timeout):
+        raise ValueError('command timeout must be finite and positive')
     if type(output_limit) is not int or not 0 < output_limit <= MAX_CAPTURE_BYTES:
         raise ValueError('invalid output capture bound')
     deadline = time.monotonic() + timeout

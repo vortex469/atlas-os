@@ -103,3 +103,13 @@ def test_chatty_command_timeout_preserves_bounded_capture(tmp_path):
     assert len(output.text) == 4096
     assert output.original_bytes > 4096
     assert output.truncated
+
+
+@pytest.mark.parametrize('timeout', [0, -1, float('nan'), float('inf'), 1e100, 10**1000, True, '1'])
+def test_invalid_timeout_never_launches_process(tmp_path, monkeypatch, timeout):
+    from atlas_execution_worker import process
+    launches = []
+    monkeypatch.setattr(process.subprocess, 'Popen', lambda *args, **kwargs: launches.append(args))
+    with pytest.raises(ValueError, match='finite and positive'):
+        run_command([sys.executable, '-c', 'pass'], cwd=tmp_path, timeout=timeout)
+    assert launches == []
