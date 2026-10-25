@@ -1,5 +1,25 @@
 import { executionCandidates, expect, test } from "./mission-control-fixtures";
 
+test("workflow recovery retries only the read and keeps a way back", async ({ page }) => {
+    let reads = 0;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route("**/agent-api/**/workflows/recovery-workflow/implementation-request", (route) => {
+        reads += 1;
+        return reads === 1
+            ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
+            : route.fulfill({ json: { workflow_id: "different-workflow" } });
+    });
+    await page.goto("/workflows/recovery-workflow");
+    await expect(page.getByRole("heading", { name: "Workflow unavailable" })).toBeVisible();
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("alert")).toContainText("does not match this page");
+    expect(reads).toBe(2);
+    await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole("link", { name: "← All workflows" }).click();
+    await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
+});
+
 for (const wrongIdentity of [false, true]) {
     test(`planning refuses unavailable or mismatched sessions (${wrongIdentity})`, async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });

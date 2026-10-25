@@ -44,6 +44,11 @@ explicit availability flag; missing saved plans offer a reload instead of
 presenting another generation action. Workflow creation and later exact
 approvals remain separate steps.
 
+The exact-approval workflow detail resets when its URL changes and rejects
+details bearing another workflow ID. An unavailable read offers a read-only
+retry and a link to the workflow list; retry does not submit approval or resume
+an execution.
+
 Mission Control completion requires the supported operator journey to have
 working navigation, useful empty and unavailable states, recovery controls,
 and readable layouts on desktop and mobile. Proposal, planning, workflow and

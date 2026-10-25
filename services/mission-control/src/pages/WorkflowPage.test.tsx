@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 
 import {
     getWorkflowDetail,
@@ -174,6 +175,62 @@ function renderPage(path = "/workflows/workflow-123") {
 }
 
 describe("WorkflowPage", () => {
+    it("loads once under Strict Mode without submitting any action", async () => {
+        render(<StrictMode><MemoryRouter initialEntries={["/workflows/workflow-123"]}><Routes>
+            <Route path="/workflows/:workflowId" element={<WorkflowPage />} />
+        </Routes></MemoryRouter></StrictMode>);
+        await screen.findByRole("button", { name: "Approve Implementation" });
+        expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(1);
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("clears the previous workflow and its approval controls while another workflow loads", async () => {
+        let resolveNext!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflow()).mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        const router = createMemoryRouter([{ path: "/workflows/:workflowId", element: <WorkflowPage /> }], { initialEntries: ["/workflows/workflow-123"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("button", { name: "Approve Implementation" });
+        await act(() => router.navigate("/workflows/next-workflow"));
+        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow");
+        await act(async () => resolveNext(workflow({ workflow_id: "next-workflow", workflow_state: "completed" })));
+        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+    });
+
+    it("refuses workflow details for a different route identity", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_id: "wrong-workflow" }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this page");
+        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
+    });
+
+    it("does not attach a late read from a previous workflow to the current page", async () => {
+        let resolveOld!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; }))
+            .mockResolvedValue(workflow({ workflow_id: "next-workflow", workflow_state: "completed" }));
+        const router = createMemoryRouter([{ path: "/workflows/:workflowId", element: <WorkflowPage /> }], { initialEntries: ["/workflows/workflow-123"] });
+        render(<RouterProvider router={router} />);
+        await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledWith("workflow-123"));
+        await act(() => router.navigate("/workflows/next-workflow"));
+        expect(await screen.findByRole("link", { name: "Open Audit" })).toHaveAttribute("href", "/workflows/next-workflow/audit");
+        await act(async () => resolveOld(workflow()));
+        expect(screen.getByRole("link", { name: "Open Audit" })).toHaveAttribute("href", "/workflows/next-workflow/audit");
+        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+    });
+
+    it("retries a failed read without submitting a workflow action", async () => {
+        mockedGetWorkflowDetail.mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue(workflow());
+        renderPage();
+        fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+        await screen.findByRole("button", { name: "Approve Implementation" });
+        expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetWorkflowDetail.mockResolvedValue(workflow());

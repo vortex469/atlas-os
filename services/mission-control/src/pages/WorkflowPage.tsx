@@ -32,6 +32,10 @@ type LoadMode = "initial" | "refresh";
 
 export function WorkflowPage() {
     const { workflowId = "" } = useParams<{ workflowId: string }>();
+    return <WorkflowDetail key={workflowId} workflowId={workflowId} />;
+}
+
+function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const [workflow, setWorkflow] = useState<WorkflowDetailResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,6 +65,11 @@ export function WorkflowPage() {
         setLoadError(null);
         try {
             const detail = await getWorkflowDetail(workflowId);
+            if (detail && detail.workflow_id !== workflowId) {
+                setWorkflow(null);
+                setLoadError("The returned workflow does not match this page. Try loading it again.");
+                return;
+            }
             setWorkflow(detail);
             setLifecycleError(null);
             setDiagnosticError(null);
@@ -94,7 +103,11 @@ export function WorkflowPage() {
     }, [workflowId]);
 
     useEffect(() => {
-        void Promise.resolve().then(() => loadWorkflow());
+        let cancelled = false;
+        void Promise.resolve().then(() => {
+            if (!cancelled) void loadWorkflow();
+        });
+        return () => { cancelled = true; };
     }, [loadWorkflow]);
 
     useEffect(() => {
@@ -205,7 +218,9 @@ export function WorkflowPage() {
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflow unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError}</p>
+                    <button type="button" onClick={() => void loadWorkflow()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
+                <Link to="/workflows" className="text-sm text-blue-300">← All workflows</Link>
             </main>
         );
     }
@@ -218,6 +233,7 @@ export function WorkflowPage() {
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
                     <p className="mt-2 text-sm text-slate-300">Atlas Agent did not find workflow {workflowId}.</p>
                 </section>
+                <Link to="/workflows" className="text-sm text-blue-300">← All workflows</Link>
             </main>
         );
     }
