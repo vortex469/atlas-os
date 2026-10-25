@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import secrets
 from typing import Any
@@ -27,6 +28,7 @@ from .runner import WorkspaceExecutionRunner
 
 LOGGER = logging.getLogger("atlas_execution_worker")
 SERVICE_NAME = "atlas-execution-worker"
+MAX_EXECUTION_REQUEST_BYTES = 2 * 1024 * 1024
 
 
 def _disabled_result(request: WorkerExecutionRequest) -> WorkerExecutionResult:
@@ -111,8 +113,20 @@ def create_app(
             f"Bearer {authentication_token}",
         ):
             return _error(401, "authentication_required", "worker authentication failed")
+        lengths = request.headers.getlist("content-length")
+        if (lengths and request.headers.get("transfer-encoding")) or len(lengths) > 1 or (lengths and (not lengths[0].isascii() or not lengths[0].isdigit() or len(lengths[0]) > 10)):
+            return _error(400, "invalid_request", "invalid request framing")
+        if lengths and int(lengths[0]) > MAX_EXECUTION_REQUEST_BYTES:
+            return _error(413, "request_too_large", "execution request exceeds byte bound")
+        body = bytearray()
         try:
-            payload = await request.json()
+            async for chunk in request.stream():
+                if len(body) + len(chunk) > MAX_EXECUTION_REQUEST_BYTES:
+                    return _error(413, "request_too_large", "execution request exceeds byte bound")
+                body.extend(chunk)
+            if lengths and len(body) != int(lengths[0]):
+                return _error(400, "invalid_request", "request length mismatch")
+            payload = json.loads(body)
             worker_request = WorkerExecutionRequest.from_dict(payload)
         except (ValueError, TypeError, KeyError, UnicodeDecodeError) as exc:
             LOGGER.info("worker request rejected code=invalid_request")
