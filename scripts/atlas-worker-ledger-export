@@ -14,8 +14,13 @@ import os
 import re
 import sqlite3
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
+
+# Load only the dependency-free wire contracts, never the Agent application.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'services/atlas-agent'))
+from app.execution.worker_contracts import WorkerExecutionResult
 
 CHUNK_BYTES = 2048
 MAX_BYTES = 64 * 1024 * 1024
@@ -48,6 +53,39 @@ def docker_python(container: str, code: str, *args: str) -> str:
         # Container stderr can contain model output. Keep the diagnostic bounded.
         raise RuntimeError('worker ledger export command failed')
     return result.stdout.strip()
+
+
+def validate_ledger(database: sqlite3.Connection) -> int:
+    expected = {'execution_request_id','request_digest','schema_version','state','created_at','updated_at','attempt','execution_started_at','workspace_token','result_json'}
+    if {row[1] for row in database.execute('PRAGMA table_info(executions)')} != expected:
+        raise ValueError('unsupported worker ledger schema')
+    if database.execute("SELECT type FROM sqlite_master WHERE name='executions'").fetchone() != ('table',):
+        raise ValueError('worker ledger must be a table')
+    count = 0
+    for row in database.execute('SELECT execution_request_id,request_digest,schema_version,state,attempt,result_json FROM executions'):
+        identity, digest, version, state, attempt, raw = row
+        if not isinstance(identity, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,255}', identity):
+            raise ValueError('invalid worker ledger identity')
+        if not isinstance(digest, str) or not re.fullmatch(r'execution-request-digest-v1:[0-9a-f]{64}', digest):
+            raise ValueError('invalid worker ledger digest')
+        if version != 1 or attempt != 1 or state not in {'claimed','executing','completed','failed_terminal','unknown_outcome'}:
+            raise ValueError('invalid worker ledger state')
+        if state in {'claimed','executing'} and raw is not None:
+            raise ValueError('nonterminal worker row has a result')
+        if state in {'completed','failed_terminal','unknown_outcome'}:
+            if not isinstance(raw, str) or len(raw) > 24 * 1024 * 1024:
+                raise ValueError('invalid terminal worker result')
+            result = WorkerExecutionResult.from_dict(json.loads(raw))
+            if result.execution_request_id != identity:
+                raise ValueError('worker result identity mismatch')
+            if state == 'completed' and result.status.value != 'succeeded':
+                raise ValueError('completed worker state mismatch')
+            if state == 'failed_terminal' and result.status.value in {'succeeded','unknown'}:
+                raise ValueError('failed worker state mismatch')
+            if state == 'unknown_outcome' and result.status.value != 'unknown':
+                raise ValueError('unknown worker state mismatch')
+        count += 1
+    return count
 
 
 def export_ledger(container: str, destination: Path) -> dict[str, str | int]:
@@ -91,9 +129,10 @@ def export_ledger(container: str, destination: Path) -> dict[str, str | int]:
         with sqlite3.connect(partial.resolve().as_uri() + '?mode=ro', uri=True) as database:
             if database.execute('PRAGMA quick_check').fetchall() != [('ok',)]:
                 raise ValueError('exported ledger failed integrity check')
+            entries = validate_ledger(database)
         # Atomic and no overwrite, including if the destination appeared mid-copy.
         os.link(partial, destination)
-        return {'bytes': size, 'sha256': expected, 'integrity': 'ok'}
+        return {'bytes': size, 'sha256': expected, 'integrity': 'ok', 'ledger_entries': entries}
     finally:
         if partial is not None:
             partial.unlink(missing_ok=True)
