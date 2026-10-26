@@ -199,6 +199,73 @@ describe("ProviderConnection", () => {
         vi.spyOn(window, "confirm").mockReturnValue(true);
     });
 
+    it.each(["Save Connection", "Test Connection", "Reload settings"])("admits one %s request during batched clicks", async (name) => {
+        await renderConnection();
+        if (name === "Save Connection") mockedUpdateProviderConnection.mockReturnValue(new Promise(() => {}));
+        if (name === "Test Connection") mockedTestProviderConnection.mockReturnValue(new Promise(() => {}));
+        if (name === "Reload settings") mockedGetProviderConnection.mockReturnValue(new Promise(() => {}));
+        const button = screen.getByRole("button", { name });
+        act(() => { button.click(); button.click(); });
+        expect(mockedUpdateProviderConnection).toHaveBeenCalledTimes(name === "Save Connection" ? 1 : 0);
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(name === "Test Connection" ? 1 : 0);
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(name === "Reload settings" ? 2 : 1);
+        expect(window.confirm).toHaveBeenCalledTimes(name === "Reload settings" ? 0 : 1);
+    });
+
+    it.each(["Save Connection", "Test Connection"])("blocks the other connection controls while %s starts", async (name) => {
+        await renderConnection();
+        mockedUpdateProviderConnection.mockReturnValue(new Promise(() => {}));
+        mockedTestProviderConnection.mockReturnValue(new Promise(() => {}));
+        const save = screen.getByRole("button", { name: "Save Connection" });
+        const test = screen.getByRole("button", { name: "Test Connection" });
+        const reload = screen.getByRole("button", { name: "Reload settings" });
+        act(() => { (name === "Save Connection" ? save : test).click(); (name === "Save Connection" ? test : save).click(); reload.click(); });
+        expect(mockedUpdateProviderConnection).toHaveBeenCalledTimes(name === "Save Connection" ? 1 : 0);
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(name === "Test Connection" ? 1 : 0);
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(1);
+        expect(window.confirm).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["Save Connection", "Test Connection"])("does not lock controls after declining %s", async name => {
+        const user = userEvent.setup();
+        await renderConnection();
+        vi.mocked(window.confirm).mockReturnValueOnce(false);
+        await user.click(screen.getByRole("button", { name }));
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name }));
+        expect(mockedUpdateProviderConnection).toHaveBeenCalledTimes(name === "Save Connection" ? 1 : 0);
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(name === "Test Connection" ? 1 : 0);
+    });
+
+    it("does not start an automatic settings read when the provider label changes during a live test", async () => {
+        const user = userEvent.setup();
+        let finish!: (value: Awaited<ReturnType<typeof testProviderConnection>>) => void;
+        mockedTestProviderConnection.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+        const view = render(<ProviderConnection provider={provider} />);
+        await screen.findByLabelText("Host");
+        await user.click(screen.getByRole("button", { name: "Test Connection" }));
+        view.rerender(<ProviderConnection provider={{ ...provider, name: "Updated provider name" }} />);
+        await act(async () => { await Promise.resolve(); });
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole("button", { name: "Save Connection" })).toBeDisabled();
+        await act(async () => finish({ provider_id: "proxmox", status: "success", message: "Connection OK.", tested_at: "2026-08-01T20:01:00Z", latency_ms: 42, diagnostics: {} }));
+        expect(screen.getByRole("button", { name: "Test Connection" })).toBeEnabled();
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(1);
+    });
+
+    it("releases the request guard after a rejection without replaying it", async () => {
+        const user = userEvent.setup();
+        mockedTestProviderConnection.mockRejectedValueOnce(new Error("Test unavailable"));
+        await renderConnection();
+        await user.click(screen.getByRole("button", { name: "Test Connection" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Test unavailable");
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(1);
+        await user.click(screen.getByRole("button", { name: "Reload settings" }));
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(2);
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(1);
+    });
+
     it("renders Proxmox schema fields without secret values", async () => {
         await renderConnection();
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
@@ -28,6 +28,12 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
 
 function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     const hasConnectionCapability = provider.capabilities.includes("connection");
+    const requestInFlight = useRef(false);
+    const active = useRef(true);
+    useEffect(() => {
+        active.current = true;
+        return () => { active.current = false; };
+    }, []);
     const [schema, setSchema] = useState<ProviderConnectionSchema | null>(null);
     const [formValues, setFormValues] = useState<FormValues>({});
     const [secretValues, setSecretValues] = useState<Record<string, string>>({});
@@ -40,10 +46,11 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         useState<TestProviderConnectionResult | null>(null);
 
     const loadConnection = useCallback(async () => {
-        if (!hasConnectionCapability) {
+        if (!active.current || !hasConnectionCapability || requestInFlight.current) {
             return;
         }
 
+        requestInFlight.current = true;
         setSaveConfirmed(false);
         setBusyMode("loading");
         setError(null);
@@ -51,10 +58,12 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
 
         try {
             const nextSchema = await getProviderConnection(provider.id);
+            if (!active.current) return;
             setSchema(nextSchema);
             setFormValues(initialFormValues(nextSchema));
             setSecretValues({});
         } catch (requestError) {
+            if (!active.current) return;
             console.error(
                 `Unable to load connection for ${provider.id}:`,
                 requestError,
@@ -66,54 +75,18 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                 ),
             );
         } finally {
-            setBusyMode(null);
+            requestInFlight.current = false;
+            if (active.current) setBusyMode(null);
         }
     }, [hasConnectionCapability, provider.id, provider.name]);
 
     useEffect(() => {
-        if (!hasConnectionCapability) {
-            return;
-        }
-
         let cancelled = false;
-
         void Promise.resolve().then(() => {
-            if (cancelled) return;
-            return getProviderConnection(provider.id)
-                .then((nextSchema) => {
-                    if (cancelled) {
-                        return;
-                    }
-                    setSchema(nextSchema);
-                    setFormValues(initialFormValues(nextSchema));
-                    setSecretValues({});
-                })
-                .catch((requestError: unknown) => {
-                    if (cancelled) {
-                        return;
-                    }
-                    console.error(
-                        `Unable to load connection for ${provider.id}:`,
-                        requestError,
-                    );
-                    setError(
-                        getAtlasErrorMessage(
-                            requestError,
-                            `Mission Control could not load the connection schema for ${provider.name}.`,
-                        ),
-                    );
-                })
-                .finally(() => {
-                    if (!cancelled) {
-                        setBusyMode(null);
-                    }
-                });
+            if (!cancelled) void loadConnection();
         });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [hasConnectionCapability, provider.id, provider.name]);
+        return () => { cancelled = true; };
+    }, [loadConnection]);
 
     const editableFields = useMemo(
         () => schema?.fields.filter((field) => field.editable) ?? [],
@@ -149,7 +122,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     }
 
     async function runTest(): Promise<void> {
-        if (!schema) {
+        if (!active.current || !schema || !schema.testable || requestInFlight.current) {
             return;
         }
 
@@ -160,6 +133,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             return;
         }
 
+        requestInFlight.current = true;
         setBusyMode("testing");
         setError(null);
         setTestResult(null);
@@ -169,8 +143,10 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                 confirmed: true,
                 values: requestValues(schema, formValues, secretValues),
             });
+            if (!active.current) return;
             setTestResult(result);
         } catch (requestError) {
+            if (!active.current) return;
             const message = sanitizeMessage(
                 getAtlasErrorMessage(
                     requestError,
@@ -184,12 +160,13 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             );
             setError(message);
         } finally {
-            setBusyMode(null);
+            requestInFlight.current = false;
+            if (active.current) setBusyMode(null);
         }
     }
 
     async function saveConnection(): Promise<void> {
-        if (!schema || !canSave) {
+        if (!active.current || !schema || !canSave || requestInFlight.current) {
             return;
         }
 
@@ -200,6 +177,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             return;
         }
 
+        requestInFlight.current = true;
         setSaveConfirmed(false);
         setBusyMode("saving");
         setError(null);
@@ -209,12 +187,14 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                 confirmed: true,
                 values: requestValues(schema, formValues, secretValues),
             });
+            if (!active.current) return;
             setSchema(result.connection_schema);
             setSaveConfirmed(true);
             setFormValues(initialFormValues(result.connection_schema));
             setSecretValues({});
             setTestResult(null);
         } catch (requestError) {
+            if (!active.current) return;
             const message = sanitizeMessage(
                 getAtlasErrorMessage(
                     requestError,
@@ -228,7 +208,8 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             );
             setError(message);
         } finally {
-            setBusyMode(null);
+            requestInFlight.current = false;
+            if (active.current) setBusyMode(null);
         }
     }
 
