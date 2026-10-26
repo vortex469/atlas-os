@@ -77,7 +77,7 @@ export const providers = [
     },
 ];
 
-const policies = {
+export const policies = {
     proxmox: { guests: {} },
     docker: { containers: {} },
     homeassistant: { ignored_entities: [] },

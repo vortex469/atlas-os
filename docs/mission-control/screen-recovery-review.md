@@ -44,7 +44,11 @@ and empty snapshots. Optional collection-history read failures are
 reported separately from provider health. A failed history read preserves prior
 points with a last-reported label, or shows an unavailable state when no points
 were loaded. A successful refresh restores the chart or a confirmed empty state.
-`e2e/provider-history.spec.ts` checks recovery without provider mutations.
+`e2e/provider-history.spec.ts` checks recovery without provider mutations. Policy-read failures likewise label
+retained settings, show an unavailable state before any settings are loaded, and
+suspend chart threshold comparisons until settings refresh successfully. This
+changes display behavior only; backend policy enforcement is unchanged.
+`e2e/provider-policies.spec.ts` checks these independent read states.
 
 Paths in the table are relative to `services/mission-control`.
 

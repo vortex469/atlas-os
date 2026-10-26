@@ -5,7 +5,8 @@ import { SectionHeader } from "./SectionHeader";
 
 type ProviderPolicyDetailsProps = {
     providerId: string;
-    policies: AtlasPolicies;
+    policies: AtlasPolicies | null;
+    unavailable?: boolean;
 };
 
 type PolicyDetail = {
@@ -196,11 +197,12 @@ function policyDetails(
 export function ProviderPolicyDetails({
     providerId,
     policies,
+    unavailable = false,
 }: ProviderPolicyDetailsProps) {
-    const providerDetails = policyDetails(providerId, policies);
+    const providerDetails = policies ? policyDetails(providerId, policies) : null;
     const isProxmox = providerId.replaceAll("_", "-") === "proxmox";
     const performance =
-        policies.intelligence.providers[providerId];
+        policies?.intelligence.providers[providerId];
     const details =
         isProxmox || performance === undefined
             ? providerDetails
@@ -224,13 +226,13 @@ export function ProviderPolicyDetails({
                 title={isProxmox ? "Legacy policy evidence" : "Operational Policy"}
                 description={isProxmox
                     ? "Retained policies.yaml compatibility history. These guest values are non-authoritative review context, do not automatically apply to current resource identities, and do not replace Provider Intent."
-                    : "Live validated expectations currently enforced for this provider."}
+                    : unavailable || !policies ? "Previously reported settings. Current policy settings could not be checked." : "Live validated expectations currently enforced for this provider."}
             />
 
-            {details === null ? (
+            {unavailable && <p role="status" className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">{policies ? "Policy settings could not be refreshed. Showing the last reported settings." : "Policy settings could not be loaded. Use Refresh to try again."}</p>}
+            {policies === null ? null : details === null ? (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                    No provider-specific operational policy is
-                    configured.
+                    {unavailable ? "No provider-specific policy was reported in the last successful refresh." : "No provider-specific operational policy is configured."}
                 </div>
             ) : (
                 <dl className="grid gap-px overflow-hidden rounded-lg border border-slate-800 bg-slate-800 sm:grid-cols-2">

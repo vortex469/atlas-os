@@ -26,6 +26,7 @@ export function ProviderPage() {
         summary,
         providers,
         policies,
+        policiesUnavailable,
         telemetryHistory,
         telemetryHistoryUnavailable,
         lastUpdated,
@@ -262,12 +263,14 @@ export function ProviderPage() {
                         snapshots={telemetryHistory}
                         unavailable={Boolean(error || telemetryHistoryUnavailable)}
                         performancePolicy={policies?.intelligence.providers[provider.id] ?? null}
+                        thresholdUnavailable={Boolean(error || policiesUnavailable)}
                     />
 
-                    {policies && (
+                    {(policies || error || policiesUnavailable) && (
                         <ProviderPolicyDetails
                             providerId={provider.id}
                             policies={policies}
+                            unavailable={Boolean(error || policiesUnavailable)}
                         />
                     )}
                 </>
