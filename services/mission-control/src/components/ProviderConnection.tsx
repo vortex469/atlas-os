@@ -491,7 +491,7 @@ function TestResult({
                 <dl className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
                     {Object.entries(result.diagnostics).map(([key, value]) => (
                         <div key={key}>
-                            <dt className="font-semibold text-slate-400">{key}</dt>
+                            <dt className="font-semibold text-slate-400">{sanitizeText(key, redactedValues)}</dt>
                             <dd>{formatDiagnosticValue(value, redactedValues)}</dd>
                         </div>
                     ))}

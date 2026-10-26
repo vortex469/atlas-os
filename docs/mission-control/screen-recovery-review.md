@@ -21,7 +21,7 @@ runtime, tag, or publish a release.
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
 | Provider action history | Changing filters or refreshing hides previous results; failed reads do not retain an actionable retention policy; superseded responses cannot replace current results | `src/pages/OperationsPage.test.tsx` includes delayed-response and failure regressions |
 | Atlas Doctor | Rerunning clears the previous report; pending and failed reads cannot retain an old healthy score | `src/components/AtlasDoctorPanel.test.tsx` includes healthy-to-pending-to-unavailable coverage |
-| Provider connection tests | Editing public or secret inputs and reloading settings clears the old test result; changing the redaction input cannot reveal a previous tested secret | `src/components/ProviderConnection.test.tsx` uses synthetic secret canaries and mocks every test/save request |
+| Provider connection tests | Editing inputs or reloading settings clears the old test result; tested secrets are redacted in result messages, diagnostic field names and values | `src/components/ProviderConnection.test.tsx` uses synthetic secret canaries, checks stale-result invalidation, and mocks every test/save request |
 | Forge | Edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts` |
 | Installation readiness | Owner evidence loads after read-only recovery, remains bound to the current record, and grants no installation authority | Readiness component/parser/structural tests; `e2e/readiness-review.spec.ts` and invalid-review browser recovery case |
 
@@ -43,7 +43,8 @@ No execution gate or approval contract is expanded.
 
 ## Validation snapshot — 2026-10-26
 
-Current local screen-loading follow-up, based on `69819169`:
+Screen-loading source at `2377e9f7`, before the diagnostic field-name redaction
+follow-up:
 
 - Full component suite: 2,577 passed, zero failed or skipped.
 - Full browser suite: 67 passed against synthetic local backends. This includes
@@ -59,6 +60,11 @@ Current local screen-loading follow-up, based on `69819169`:
 - Eight focused Core health/route/release tests and the Core Ruff gate passed.
   Isolated probes establish overlap, a four-probe limit per request, complete
   results, stable mapping/order and unchanged timeout/offline behavior.
+
+The later diagnostic field-name redaction follow-up passes all 14 connection
+component tests, UI lint and build. Its extended canary test checks that a tested
+secret cannot appear in rendered diagnostic names or values. This focused result
+is not a new full-suite or integration acceptance claim.
 
 Reproduce UI checks from `services/mission-control` with `npm test --
 --maxWorkers=2`, `npm run test:e2e -- --workers=2`, `npm run lint`, and

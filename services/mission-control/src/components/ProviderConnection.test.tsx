@@ -268,7 +268,7 @@ describe("ProviderConnection", () => {
             message: "Bad token candidate-secret",
             tested_at: "2026-08-01T20:01:00Z",
             latency_ms: null,
-            diagnostics: { error: "candidate-secret rejected" },
+            diagnostics: { error: "candidate-secret rejected", "candidate-secret": "candidate-secret" },
         });
         const user = userEvent.setup();
         await renderConnection();
@@ -281,6 +281,8 @@ describe("ProviderConnection", () => {
         expect(await screen.findByText(/Test failure/)).toBeInTheDocument();
         expect(screen.getByText(/Bad token \[redacted\]/)).toBeInTheDocument();
         expect(screen.getByText(/\[redacted\] rejected/)).toBeInTheDocument();
+        expect(screen.getAllByText("[redacted]", { exact: true })).toHaveLength(2);
+        expect(document.body.textContent).not.toContain("candidate-secret");
         expect(screen.queryByText("candidate-secret")).not.toBeInTheDocument();
         expect(screen.getByLabelText("Host")).toHaveValue("candidate.invalid");
     });
