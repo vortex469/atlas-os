@@ -141,7 +141,7 @@ describe("ProviderPage monitoring and legacy authority", () => {
         expect(legacy).not.toBeNull();
         expect(await within(monitoring!).findByText("Expected running")).toBeInTheDocument();
         expect(within(monitoring!).getByText("Running")).toBeInTheDocument();
-        expect(within(monitoring!).getByText("Authoritative")).toBeInTheDocument();
+        expect(within(monitoring!).getByText("Verified")).toBeInTheDocument();
         expect(within(monitoring!).getByText("Configured — matches observed state")).toBeInTheDocument();
         expect(within(monitoring!).queryByText("Expected stopped")).not.toBeInTheDocument();
         expect(screen.getByText(/Advisory finding · Proxmox/)).toBeInTheDocument();
@@ -225,7 +225,7 @@ describe("ProviderPage monitoring and legacy authority", () => {
         expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
         expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
         expect(screen.getAllByRole("button", { name: "Save" })).toHaveLength(1);
-        expect(screen.getByText("Unsupported for identity-bound monitoring")).toBeInTheDocument();
+        expect(screen.getByText("Monitoring settings are not supported for this resource type")).toBeInTheDocument();
         expect(within(screen.getByTestId("resource-row-lxc-110")).queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /Start|Restart|Remediate/i })).not.toBeInTheDocument();
     });
