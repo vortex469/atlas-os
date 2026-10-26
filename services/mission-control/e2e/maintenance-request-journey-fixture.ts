@@ -5,9 +5,10 @@ import { capability, resource } from "./maintenance-selector-fixture";
 
 // Extend the exact simulated workflow with login and candidate creation only.
 // Unknown writes still fall through to the original fixture's rejection path.
-export async function installMaintenanceRequestJourney(page: Page) {
+export async function installMaintenanceRequestJourney(page: Page, baseURL?: string) {
+    const origin = new URL(baseURL ?? "http://127.0.0.1:5173").origin;
     await page.clock.setFixedTime(new Date("2026-10-26T00:00:00.000Z"));
-    const workflow = await installMaintenanceJourney(page);
+    const workflow = await installMaintenanceJourney(page, baseURL);
     const writes: string[] = [];
     const expectedWrites = ["/operator-auth/login", "/execution-candidates/operator-intents"];
     const unexpected: string[] = [];
@@ -18,7 +19,7 @@ export async function installMaintenanceRequestJourney(page: Page) {
     await page.route("**/api/v1/**", async (route) => {
         const request = route.request();
         const url = new URL(request.url());
-        if (url.origin !== "http://127.0.0.1:5173") return route.fallback();
+        if (url.origin !== origin) return route.fallback();
         const path = url.pathname.slice("/api/v1".length);
         if (request.method() === "POST" && expectedWrites.includes(path)) {
             const expectedBody = path === "/operator-auth/login"

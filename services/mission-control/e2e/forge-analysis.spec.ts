@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 for (const width of [390, 1280]) {
-    test(`Forge keeps analysis tied to current input at ${width}px`, async ({ page }) => {
+    test(`Forge keeps analysis tied to current input at ${width}px`, async ({ page, baseURL }) => {
+        const origin = new URL(baseURL ?? "http://127.0.0.1:5173").origin;
         let reads = 0;
         let unavailable = false;
         const unexpected: string[] = [];
@@ -10,7 +11,7 @@ for (const width of [390, 1280]) {
         await page.route("**/*", (route) => {
             const request = route.request();
             const url = new URL(request.url());
-            if (url.origin !== "http://127.0.0.1:5173" || request.method() !== "GET") {
+            if (url.origin !== origin || request.method() !== "GET") {
                 unexpected.push(`${request.method()} ${url.pathname}`);
                 return route.abort();
             }
@@ -23,7 +24,7 @@ for (const width of [390, 1280]) {
         await page.route("**/api/v1/analysis/deployments", async (route) => {
             const request = route.request();
             const body = request.postDataJSON();
-            expect(new URL(request.url()).origin).toBe("http://127.0.0.1:5173");
+            expect(new URL(request.url()).origin).toBe(origin);
             expect(request.method()).toBe("POST");
             expect(body).toEqual({ source: "compose", reference: reads === 0 ? "first-analysis" : "current-analysis",
                 document: { services: { web: { image: "example.invalid/fixture:one" } } } });

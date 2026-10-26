@@ -11,7 +11,7 @@ runtime, tag, or publish a release.
 | --- | --- | --- |
 | Shared navigation | Working primary links, mobile drawer, keyboard focus, skip link, missing-page recovery | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` |
 | Screen loading | Secondary screens load on demand; pending navigation pauses the old page's controls while keeping navigation available; module failure offers reload and home recovery | `e2e/page-loading.spec.ts` covers delayed modules, leaving a pending screen, and direct-link failure/reload at phone and desktop widths |
-| Generated frontend assets | Built pages and direct links retain working navigation and the responsive shell | `playwright.built.config.ts` reuses 17 read-only shell/navigation browser cases against the generated build, with all backend requests mocked |
+| Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` reuses 42 compatible browser cases against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
 | Providers | Registry and detail links work; unavailable data differs from absence; forms and late responses stay with their provider | Provider page/component tests; provider registry and route-switch browser cases in `e2e/screen-recovery.spec.ts` |
@@ -44,7 +44,7 @@ No execution gate or approval contract is expanded.
 
 ## Validation snapshot — 2026-10-26
 
-At `dd1bc770`, before the built-asset browser configuration follow-up:
+At `b7dcf36f`, before expanding built-asset journey coverage:
 
 - Full component suite: 2,577 passed, zero failed or skipped.
 - Full browser suite: 67 passed against synthetic local backends. This includes
@@ -57,13 +57,18 @@ At `dd1bc770`, before the built-asset browser configuration follow-up:
   entry and shared HTTP-client files, compared with about 1.23 MB before screen
   splitting. Secondary screen modules load on demand. These are build artifact
   sizes, not measurements of load time on a real network.
-- Eight focused Core health/route/release tests and the Core Ruff gate passed.
-  Isolated probes establish overlap, a four-probe limit per request, complete
-  results, stable mapping/order and unchanged timeout/offline behavior.
+- Core's complete health-change Quality run 40265297120 passed 5,104 tests with
+  one skipped. The tested Core source tree is identical to the current branch
+  (`b4c17d8ce33ffad697e246f75217751e6ccef62b`). This is source validation, not a
+  completed latest-head CI gate or release acceptance record. Eight focused
+  health/route/release tests and the Core Ruff gate also passed locally.
 
 The diagnostic canary test checks that a tested secret cannot appear in rendered
-field names or values. The built-asset follow-up passes all 17 reused read-only
-shell/navigation checks against a completed build, plus UI lint and build. This
+field names or values. The expanded built-asset follow-up passes all 42 compatible
+journeys against a completed build, including repository and maintenance exact
+approvals, sign-in, readiness, analysis and navigation. The fixtures reject
+other origins and unexpected requests. Development-specific source-module cases
+stay in the 67-check development-server suite. This
 does not establish production Nginx routing or real backend integration.
 
 Reproduce UI checks from `services/mission-control` with `npm test --
@@ -73,10 +78,10 @@ the local test server and Chromium.
 The development proxy regression binds isolated HTTP stubs; it contacts no
 running Atlas service. The Quality gates workflow also runs browser checks and
 preserves failure screenshots/traces for seven days, including built-preview
-failures. At preceding head `dd1bc770`, UI CI passed 2,577 component tests and all
-67 development-server browser checks, lint and build; Agent and container checks
-passed. Full CI for the new test configuration remains required, including the
-unfinished Core gate.
+failures. At preceding head `b7dcf36f`, UI CI passed 2,577 component tests, all
+67 development-server checks and 17 built-asset shell/navigation checks, lint and
+build; Agent and container checks passed. Full CI for the expanded test
+configuration remains required, including the unfinished latest-head Core gate.
 
 Nine representative synthetic responses were checked against native Core/Agent
 models during fixture review. This corrected candidate effect kinds and audit

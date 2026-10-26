@@ -148,7 +148,7 @@ jobs:
         working-directory: services/mission-control
         run: npm run test:e2e -- --workers=2 --output="$RUNNER_TEMP/mission-control-browser-results"
 
-      - name: Test built Mission Control navigation
+      - name: Test built Mission Control journeys
         id: built-browser-tests
         working-directory: services/mission-control
         run: npm run test:e2e:built -- --workers=2 --output="$RUNNER_TEMP/mission-control-browser-results/built"

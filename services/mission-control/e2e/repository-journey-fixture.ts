@@ -148,7 +148,8 @@ function completedAudit(): WorkflowAuditResponse {
     };
 }
 
-export async function installRepositoryJourney(page: Page, reject = false, options: { maintenance?: boolean } = {}) {
+export async function installRepositoryJourney(page: Page, reject = false, options: { maintenance?: boolean; baseURL?: string } = {}) {
+    const origin = new URL(options.baseURL ?? "http://127.0.0.1:5173").origin;
     const maintenance = options.maintenance === true;
     const maintenancePlan = operationalPlan({ identifier: journey.plan, session_id: journey.session,
         candidate_id: journey.candidate, candidate_fingerprint: journey.candidateFingerprint,
@@ -187,7 +188,7 @@ export async function installRepositoryJourney(page: Page, reject = false, optio
     await page.route("**/*", async (route) => {
         const request = route.request();
         const url = new URL(request.url());
-        if (url.origin !== "http://127.0.0.1:5173") {
+        if (url.origin !== origin) {
             unexpected.push(`External request: ${url.origin}`);
             return route.abort();
         }
@@ -312,6 +313,6 @@ function maintenanceWorkflow(phase: Phase, approved: boolean, request: ReturnTyp
     };
 }
 
-export function installMaintenanceJourney(page: Page) {
-    return installRepositoryJourney(page, false, { maintenance: true });
+export function installMaintenanceJourney(page: Page, baseURL?: string) {
+    return installRepositoryJourney(page, false, { maintenance: true, baseURL });
 }

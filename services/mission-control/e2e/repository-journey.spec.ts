@@ -7,8 +7,8 @@ async function fitsViewport(page: Page) {
 }
 
 for (const width of [390, 1280]) {
-    test(`repository journey keeps every approval and resume separate at ${width}px`, async ({ page }) => {
-        const fixture = await installRepositoryJourney(page);
+    test(`repository journey keeps every approval and resume separate at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installRepositoryJourney(page, false, { baseURL });
         await page.setViewportSize({ width, height: 844 });
         await page.goto(`/execution-candidates/${journey.candidate}`);
         await page.getByRole("button", { name: "Start planning", exact: true }).click();
@@ -69,8 +69,8 @@ for (const width of [390, 1280]) {
     });
 }
 
-test("rejecting implementation leaves execution and later approvals unavailable after reload", async ({ page }) => {
-    const fixture = await installRepositoryJourney(page, true);
+test("rejecting implementation leaves execution and later approvals unavailable after reload", async ({ page, baseURL }) => {
+    const fixture = await installRepositoryJourney(page, true, { baseURL });
     await page.goto(`/workflows/${journey.workflow}`);
     await page.getByRole("button", { name: "Reject", exact: true }).click();
     await expect(page.getByText("Approval rejected.", { exact: true })).toBeVisible();
@@ -82,8 +82,8 @@ test("rejecting implementation leaves execution and later approvals unavailable 
     expect(fixture.unexpected).toEqual([]);
 });
 
-test("a pending workflow refresh disables decisions without submitting a request", async ({ page }) => {
-    const fixture = await installRepositoryJourney(page, true);
+test("a pending workflow refresh disables decisions without submitting a request", async ({ page, baseURL }) => {
+    const fixture = await installRepositoryJourney(page, true, { baseURL });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/workflows/${journey.workflow}`);
     await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeEnabled();

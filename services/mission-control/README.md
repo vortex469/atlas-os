@@ -166,8 +166,11 @@ npm run test:e2e:built -- --workers=2
 ```
 
 The existing Quality gates workflow also installs Chromium and runs the
-simulated browser journeys with two workers. It then reuses 17 read-only shell
-and navigation checks against generated assets through a temporary local preview.
+simulated browser journeys with two workers. It then reuses 42 compatible
+journeys against generated assets through a temporary local preview, including
+repository and maintenance approvals, sign-in, readiness, analysis and navigation.
+The fixtures remain bound to the configured test origin and exact expected
+requests. Only development-specific source-module tests stay in the dev suite.
 Run the build before the built-asset checks. This preview checks frontend assets,
 not production Nginx routing or a running Atlas backend.
 Browser failures retain a screenshot

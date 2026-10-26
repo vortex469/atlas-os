@@ -3,8 +3,8 @@ import { journey } from "./repository-journey-fixture";
 import { installMaintenanceRequestJourney } from "./maintenance-request-journey-fixture";
 
 for (const width of [390, 1280]) {
-    test(`maintenance request through audit keeps approval and execution separate at ${width}px`, async ({ page }) => {
-        const fixture = await installMaintenanceRequestJourney(page);
+    test(`maintenance request through audit keeps approval and execution separate at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installMaintenanceRequestJourney(page, baseURL);
         await page.setViewportSize({ width, height: 844 });
         await page.goto("/operations/request");
         await page.getByLabel("Operator ID").fill("browser-operator");
