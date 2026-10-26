@@ -55,6 +55,30 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const [compatibilityLoading, setCompatibilityLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
+    const [relationshipsLoading, setRelationshipsLoading] = useState(true);
+    const [relationshipsError, setRelationshipsError] = useState(false);
+    const relationshipsRequestId = useRef(0);
+    const loadRelationships = useCallback(async () => {
+        const requestId = ++relationshipsRequestId.current;
+        setRelationshipsLoading(true);
+        setRelationshipsError(false);
+        try {
+            const relationships = await getDiscoveryRelationships(itemId);
+            if (requestId !== relationshipsRequestId.current) return;
+            if (relationships.item_id !== itemId) throw new Error("Mismatched relationship response");
+            setState(current => ({ ...current, incoming: relationships.incoming, outgoing: relationships.outgoing }));
+        } catch {
+            if (requestId === relationshipsRequestId.current) setRelationshipsError(true);
+        } finally {
+            if (requestId === relationshipsRequestId.current) setRelationshipsLoading(false);
+        }
+    }, [itemId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        void Promise.resolve().then(() => { if (!cancelled) void loadRelationships(); });
+        return () => { cancelled = true; relationshipsRequestId.current += 1; };
+    }, [loadRelationships]);
     const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
     const [evidence, setEvidence] = useState<DiscoveryItemEvidence | null>(null);
     const [evidenceLoading, setEvidenceLoading] = useState(true);
@@ -176,26 +200,19 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     useEffect(() => {
         let cancelled = false;
 
-        Promise.all([
-            getDiscoveryItem(itemId).catch((requestError: unknown) => {
+        getDiscoveryItem(itemId).catch((requestError: unknown) => {
                 if (!cancelled && isAxiosError(requestError) && requestError.response?.status === 404) setNotFound(true);
                 throw requestError;
-            }),
-            getDiscoveryRelationships(itemId),
-        ])
-            .then(([entry, relationships]) => {
+            })
+            .then((entry) => {
                 if (cancelled) {
                     return;
                 }
-                if (entry.item.id !== itemId || relationships.item_id !== itemId) {
+                if (entry.item.id !== itemId) {
                     setError("The catalog response does not match this item. Reload to check again.");
                     return;
                 }
-                setState({
-                    entry,
-                    incoming: relationships.incoming,
-                    outgoing: relationships.outgoing,
-                });
+                setState(current => ({ ...current, entry }));
             })
             .catch((requestError: unknown) => {
                 if (cancelled) {
@@ -444,7 +461,14 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
             <RequirementsPanel requirements={item.requirements} />
 
-            <section className="grid gap-4 lg:grid-cols-2">
+            {relationshipsLoading ? (
+                <p role="status" className="text-sm text-slate-400">Loading item relationships...</p>
+            ) : relationshipsError ? (
+                <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-200">
+                    <p>Item relationships unavailable. The catalog item is still shown.</p>
+                    <button type="button" onClick={() => void loadRelationships()} className="mt-3 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-100">Retry item relationships</button>
+                </section>
+            ) : <section className="grid gap-4 lg:grid-cols-2">
                 <RelationshipsPanel
                     title="Outgoing relationships"
                     empty="No outgoing relationships."
@@ -455,7 +479,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     empty="No incoming relationships."
                     relationships={state.incoming}
                 />
-            </section>
+            </section>}
 
             <section className="grid gap-4 lg:grid-cols-2">
                 <ProvenancePanel entry={entry} />
