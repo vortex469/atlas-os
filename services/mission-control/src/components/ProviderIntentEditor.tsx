@@ -35,18 +35,10 @@ function parseExpectationSelection(
     }
 }
 
-export function ProviderIntentEditor({
-    resource,
-    mutationResource,
-    operatorState,
-    saving,
-    blocked = false,
-    initialSelection,
-    requireExplicitSelection = false,
-    onSave,
-}: {
+type ProviderIntentEditorProps = {
     resource: ManagedProviderResourceV2;
     mutationResource: ManagedProviderResourceV3 | null;
+    operatorEpoch?: string;
     operatorState: "anonymous" | "available" | "unavailable";
     saving: boolean;
     blocked?: boolean;
@@ -56,16 +48,10 @@ export function ProviderIntentEditor({
         expectation: ProviderMonitoringExpectation,
         acknowledgeSuppression: boolean,
     ) => Promise<void>;
-}) {
-    const configured = resource.intent_status === "configured";
-    const [selected, setSelected] = useState<ProviderMonitoringExpectation | "">(
-        requireExplicitSelection
-            ? ""
-            : configured ? resource.expectation ?? "" : initialSelection ?? "",
-    );
-    const [acknowledged, setAcknowledged] = useState(false);
+};
 
-    const canEdit = mutationResource !== null
+function canEditMonitoring({ resource, mutationResource, operatorState }: Pick<ProviderIntentEditorProps, "resource" | "mutationResource" | "operatorState">): boolean {
+    return operatorState === "available" && mutationResource !== null
         && mutationResource.caller_can_mutate
         && mutationResource.provider_intent_mutation_supported
         && mutationResource.editable_in_principle
@@ -75,6 +61,31 @@ export function ProviderIntentEditor({
         && resource.resource_type === "qemu"
         && resource.identity_assurance === "authoritative"
         && mutationResource.management_fingerprint !== null;
+}
+
+export function ProviderIntentEditor(props: ProviderIntentEditorProps) {
+    return <ProviderIntentEditorForm key={JSON.stringify([props.operatorState, props.operatorEpoch, canEditMonitoring(props)])} {...props} />;
+}
+
+function ProviderIntentEditorForm({
+    resource,
+    mutationResource,
+    operatorState,
+    saving,
+    blocked = false,
+    initialSelection,
+    requireExplicitSelection = false,
+    onSave,
+}: ProviderIntentEditorProps) {
+    const configured = resource.intent_status === "configured";
+    const [selected, setSelected] = useState<ProviderMonitoringExpectation | "">(
+        requireExplicitSelection
+            ? ""
+            : configured ? resource.expectation ?? "" : initialSelection ?? "",
+    );
+    const [acknowledged, setAcknowledged] = useState(false);
+
+    const canEdit = canEditMonitoring({ resource, mutationResource, operatorState });
     const canSave = canEdit
         && selected !== ""
         && (selected !== "ignored" || acknowledged);
