@@ -174,7 +174,7 @@ def workflow_with_saved_facts(root: Path):
 def test_commit_response_uses_saved_facts_without_execution_or_inspection(
     tmp_path, monkeypatch
 ) -> None:
-    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    client, container, engine, orchestrator = make_client(tmp_path, monkeypatch)
     workflow = workflow_with_saved_facts(tmp_path)
     request = workflow.commit_request
     save_candidate_workflow(container, workflow)
@@ -192,6 +192,8 @@ def test_commit_response_uses_saved_facts_without_execution_or_inspection(
         response = client.get(
             "/api/v1/agent/workflows/workflow-123/implementation-request"
         )
+    engine.resume.assert_not_called()
+    orchestrator.run.assert_not_awaited()
     assert response.status_code == 200
     body = response.json()["commit_request"]
     assert body["reviewed_changes"] == [
