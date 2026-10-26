@@ -31,7 +31,12 @@ latency, HTTP status, priority, version, workspace, capabilities and endpoint ar
 collapsed under **Technical details**. Native disclosure controls support Enter
 and Space. `e2e/provider-overview.spec.ts` checks healthy and offline views at
 320, 390 and 1280 pixels, including keeping the monitoring heading in the initial
-900-pixel viewport. Opening details sends no mutation requests.
+900-pixel viewport. Opening details sends no mutation requests. A failed page refresh marks the
+retained provider health unknown and labels its status/message as last reported.
+Successful reads restore the normalized current health state. Provider health uses
+the shared health-state mapping; unrecognized codes do not imply success.
+`e2e/provider-health-recovery.spec.ts` verifies failed-refresh recovery through
+reads without provider mutations.
 
 Paths in the table are relative to `services/mission-control`.
 

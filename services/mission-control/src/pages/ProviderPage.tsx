@@ -169,7 +169,7 @@ export function ProviderPage() {
 
             {provider && (
                 <>
-                    <ProviderOverview provider={provider} />
+                    <ProviderOverview provider={provider} stale={Boolean(error)} />
 
                     {provider.capabilities.includes("resources") && (
                         <section aria-label="Monitoring policy boundary">

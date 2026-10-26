@@ -21,7 +21,7 @@ for (const width of [320, 390, 1280]) for (const status of ["healthy", "offline"
             const monitoring = page.getByRole("heading", { name: "Resources and monitoring", exact: true });
             await expect(monitoring).toBeInViewport();
             const overview = page.locator("section").filter({ has: page.getByRole("heading", { name: "Proxmox", level: 1 }) });
-            await expect(overview.locator("[data-mc-status]")).toHaveText(status);
+            await expect(overview.locator("[data-mc-status]")).toHaveText(status === "healthy" ? "Healthy" : "Unavailable");
             const summary = overview.locator("summary");
             await expect(summary).toHaveText("Technical details");
             await expect(overview.getByText("Latency", { exact: true })).toBeHidden();
