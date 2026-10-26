@@ -5,6 +5,7 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -561,7 +562,73 @@ def test_competing_keys_cannot_reserve_same_subject(tmp_path, facts):
         for item in results
         if isinstance(item, c.WorkerActivationRuntimePlanRedactedErrorV1)
     )
-    error(failure, "permanent_subject_reserved")
+    # SQLite may refuse the competing call while the winner holds the write
+    # lock. That is a valid fail-closed outcome, not a second reservation.
+    assert failure.error_code in {"permanent_subject_reserved", "unavailable"}
+    error(failure, failure.error_code)
+    assert counts(journal) == (1, 1, 0)
+    services = (service, other)
+    keys = ("v055-service-idempotency", "competing-v055-key")
+    winner_index = next(
+        index
+        for index, item in enumerate(results)
+        if isinstance(item, c.WorkerActivationRuntimePlanResultV1)
+    )
+    loser_index = 1 - winner_index
+    for instance in services:
+        instance._store = WorkerActivationRuntimePlanStore(journal.database_path)
+    error(
+        create(services[loser_index], facts, idempotency_key=keys[loser_index]),
+        "permanent_subject_reserved",
+    )
+    duplicate = create(
+        services[winner_index], facts, idempotency_key=keys[winner_index]
+    )
+    assert duplicate.exact_duplicate
+    assert duplicate.record == results[winner_index].record
+    assert counts(journal) == (1, 1, 0)
+
+
+def test_busy_competitor_cannot_reserve_or_replay_subject(tmp_path, facts):
+    service, journal, reader, _ = setup(tmp_path, facts)
+    other_reader = Reader(facts)
+    other = WorkerActivationRuntimePlanService(
+        store=WorkerActivationRuntimePlanStore(journal.database_path),
+        prerequisite_reader=other_reader,
+        clock=Clock(facts),
+        enabled=True,
+    )
+    holding = Event()
+    release = Event()
+
+    def hold_first_read(call):
+        if call == 1:
+            holding.set()
+            assert release.wait(120), "test owner was not released"
+        return reader.pair
+
+    reader.hook = hold_first_read
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        owner = pool.submit(create, service, facts)
+        try:
+            assert holding.wait(120), "test owner did not acquire its write lock"
+            error(
+                create(other, facts, idempotency_key="busy-competing-key"),
+                "unavailable",
+            )
+        finally:
+            release.set()
+        result = owner.result(timeout=120)
+    assert isinstance(result, c.WorkerActivationRuntimePlanResultV1)
+    assert reader.calls == 2
+    assert other_reader.calls == 0
+    assert counts(journal) == (1, 1, 0)
+    other._store = WorkerActivationRuntimePlanStore(journal.database_path)
+    error(
+        create(other, facts, idempotency_key="busy-competing-key"),
+        "permanent_subject_reserved",
+    )
+    assert other_reader.calls == 0
     assert counts(journal) == (1, 1, 0)
 
 
