@@ -54,3 +54,32 @@ test('mobile attention includes configured AI failure and follows its provider r
     await expect(page).toHaveURL(/\/providers\/proxmox$/);
     expect(rejectedMutationRequests).toEqual([]);
 });
+
+test('overview puts decisions first and keeps secondary observations keyboard accessible', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
+    const attention = page.getByRole('region', { name: 'Operator Attention' });
+    const grid = page.getByTestId('overview-grid');
+    const attentionBox = await attention.boundingBox();
+    const gridBox = await grid.boundingBox();
+    expect(attentionBox!.y + attentionBox!.height).toBeLessThanOrEqual(gridBox!.y);
+    await expect(attention.getByText('Human action required', { exact: true })).toBeVisible();
+    await expect(attention.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeVisible();
+    await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
+    const runtime = page.getByRole('region', { name: 'Local AI / Runtime' });
+    await expect(runtime.getByText('Local AI availability is unknown; locality is not reported.')).toBeVisible();
+    await expect(runtime.getByText('Reported runtime version', { exact: true })).toBeHidden();
+    await page.screenshot({ path: testInfo.outputPath('dashboard-default.png'), fullPage: true });
+    const runtimeToggle = runtime.locator('summary', { hasText: 'Runtime observations' });
+    await runtimeToggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(runtime.getByText('Reported runtime version', { exact: true })).toBeVisible();
+    const worker = page.getByRole('region', { name: 'Worker / Execution' });
+    await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
+    const workerToggle = worker.locator('summary', { hasText: 'Execution observations' });
+    await workerToggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

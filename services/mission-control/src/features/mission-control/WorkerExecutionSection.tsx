@@ -36,26 +36,32 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 <Link to="/workflows" className="text-sm font-semibold text-mc-primary focus-visible:outline-2">Inspect executions →</Link>
             </div>
             <p className="mt-2 text-sm text-mc-text-muted">
-                Read-only observation from persisted Atlas Agent workflows, not execution authority.
-                Admission, reservation and controlled dequeue remain in their existing boundaries.
+                Recorded workflow progress. This view does not start work.
             </p>
             <HealthEvidence status={null} stale={evidence?.stale} reason="Worker availability and queue depth are not exposed by this evidence." />
             {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Stale evidence — last-known workflow observations; current execution state unknown.</p>}
             {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing execution evidence; displayed observations may be stale.</p>}
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Metric label="Worker availability / state" value="Unknown — worker heartbeat not exposed" />
                 <Metric label="Active execution" value={items && knownStates ? `${active.length} executing workflows` : fallback} />
-                <Metric label="Queued / admitted work" value="Unknown — aggregate queue and admission evidence not exposed" />
                 <Metric label="Blocked execution / workflow" value={items && knownStates ? `${blocked.length} blocked workflows` : fallback} />
             </dl>
             {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No executing workflows observed. Worker idleness is unknown.</p>}
             {items && !knownStates && <p className="mt-3 text-sm text-amber-200">Unrecognized workflow state; activity totals are unknown.</p>}
             <div className="mt-4 grid gap-4">
-                <EvidenceList title="Active execution evidence" items={active} available={!!items} empty={knownStates ? "None observed" : "Unknown"} />
-                <EvidenceList title="Blocked workflow evidence" items={blocked} available={!!items} empty={knownStates ? "None observed" : "Unknown"} />
-                <EvidenceList title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Unknown — execution evidence missing or malformed" : "No execution outcomes recorded"} outcomes />
+                {active.length > 0 && <EvidenceList title="Active execution evidence" items={active} available={!!items} empty="Unknown" />}
+                {blocked.length > 0 && <EvidenceList title="Blocked workflow evidence" items={blocked} available={!!items} empty="Unknown" />}
             </div>
-            <p className="mt-3 text-xs text-mc-text-muted">Up to 3 records per group. Execution timestamps are not exposed: outcome recency is unavailable; records are shown in workflow ID order. Workflow blockers may precede execution.</p>
+            <details className="mt-4 text-sm text-mc-text-secondary">
+                <summary className="mc-focusable cursor-pointer text-mc-primary">Execution observations</summary>
+                <div className="mt-3 space-y-4">
+                    <dl className="grid gap-4 sm:grid-cols-2">
+                        <Metric label="Worker availability / state" value="Unknown — worker heartbeat not exposed" />
+                        <Metric label="Queued / admitted work" value="Unknown — aggregate queue and admission evidence not exposed" />
+                    </dl>
+                    <EvidenceList title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Unknown — execution evidence missing or malformed" : "No execution outcomes recorded"} outcomes />
+                    <p className="text-xs text-mc-text-muted">Up to 3 records per group. Execution timestamps are not exposed: outcome recency is unavailable; records are shown in workflow ID order. Workflow blockers may precede execution.</p>
+                </div>
+            </details>
             {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution evidence is missing or malformed; outcomes are incomplete.</p>}
             {!items && <p role="status" className="mt-3 text-sm text-amber-200">Execution evidence {unavailable ? "unavailable" : "unknown or incomplete"}. No idle or healthy state inferred.</p>}
         </section>

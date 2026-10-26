@@ -79,7 +79,7 @@ describe("Worker / Execution observation", () => {
         const section = screen.getByRole("region", { name: "Worker / Execution" });
         expect(within(section).getAllByRole("link")).toHaveLength(4);
         expect(section.querySelectorAll("button,form,input,select,textarea")).toHaveLength(0);
-        expect(section).toHaveTextContent("not execution authority");
+        expect(section).toHaveTextContent("This view does not start work.");
     });
     it("rejects malformed JSON fields before the shared dashboard consumes them", () => {
         expect(isWorkflowEvidencePage({ ...page([]), total: Infinity })).toBe(false);

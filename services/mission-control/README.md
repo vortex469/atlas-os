@@ -67,6 +67,16 @@ Browser coverage uses a separate fixture allowing only an exact synthetic
 login; all operational mutations remain rejected. No real credentials or
 maintenance actions are used by these checks.
 
+The overview places operator attention before the six status cards and recent
+activity. Source failures remain visible and name the affected source. Runtime
+inventory and historical execution observations are expandable with the
+keyboard; provider health, unknown runtime readiness, active and blocked work,
+and freshness warnings stay in the main view. Expanding observations performs
+no requests and changes no execution or approval state.
+Approval waits use workflow-stage labels rather than degraded-health badges.
+Stale approval requirements remain explicitly last-known, and workflow stage
+update times remain unknown when the source does not supply them.
+
 Mission Control completion requires the supported operator journey to have
 working navigation, useful empty and unavailable states, recovery controls,
 and readable layouts on desktop and mobile. Proposal, planning, workflow and

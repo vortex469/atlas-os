@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { SystemHealthSummary } from "./SystemHealthSummary";
-import { WORKFLOW_STATES, workflowActionRequired } from "../../utils/workflowState";
+import { formatWorkflowLabel, WORKFLOW_STATES, workflowActionRequired } from "../../utils/workflowState";
 import { conditionKey, detailPath, record, rows, safeText, status } from "./overviewEvidence";
 import { useOverviewEvidence } from "./useOverviewEvidence";
 import type { Evidence, OverviewEvidence } from "./useOverviewEvidence";
@@ -14,10 +14,11 @@ import { RecentActivity } from "./RecentActivity";
 import { WorkerExecutionSection } from "./WorkerExecutionSection";
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
-function SourceNote({ evidence }: { evidence?: Evidence }) {
-    if (evidence?.stale) return <p role="status">Stale evidence — refresh failed. Last-known observations only.</p>;
-    if (evidence?.unavailable) return <p>Evidence unavailable.</p>;
-    if (evidence?.data === undefined) return <p>Evidence unknown.</p>;
+function SourceNote({ evidence, label }: { evidence?: Evidence; label?: string }) {
+    const prefix = label ? `${label}: ` : "";
+    if (evidence?.stale) return <p role="status">{prefix}Stale evidence — refresh failed. Last-known observations only.</p>;
+    if (evidence?.unavailable) return <p>{prefix}Evidence unavailable.</p>;
+    if (evidence?.data === undefined) return <p>{prefix}Evidence unknown.</p>;
     return null;
 }
 function Card({ title, children, evidence }: { title: string; children: ReactNode; evidence?: Evidence }) {
@@ -74,7 +75,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
         })),
         ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => ({
-            actionRequired: workflowActionRequired(String(w.workflow_state)), key: `workflow:${String(w.workflow_id)}`, label: safeText(w.workflow_id), reason: `${safeText(w.workflow_state)} · ${safeText(w.last_result_summary)}`, state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
+            actionRequired: workflowActionRequired(String(w.workflow_state)), workflowState: String(w.workflow_state), key: `workflow:${String(w.workflow_id)}`, label: safeText(w.workflow_id), reason: safeText(w.last_result_summary), state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
         })),
     ];
     const deduplicated = new Map<string, typeof attention[number]>();
@@ -85,6 +86,28 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const uniqueAttention = [...deduplicated.values()]
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
     return <>
+        <Card title="Operator Attention" evidence={evidence.summary}>
+            <p>Review the conditions below and open a workflow when it needs your decision.</p>
+            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" />
+            {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
+            {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
+            {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
+                <Link to={item.to}>{item.label || "Inspect condition"}</Link>
+                {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
+                {"workflowState" in item ? <>
+                    <p className={item.state === "blocked" ? "text-red-300" : "text-mc-text-secondary"}>{item.stale ? "Last-known workflow stage" : "Workflow stage"}: {formatWorkflowLabel(safeText(item.workflowState))}</p>
+                    {item.reason && <p>{item.reason}</p>}
+                    <p className="text-xs text-mc-text-muted">Stage update time is not supplied.</p>
+                </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />}
+                {item.stale && <p>Last-known condition; current state unknown.</p>}
+            </li>)}</ul>
+            {uniqueAttention.length > 5 && <p>Showing 5 of {uniqueAttention.length} reported conditions. Open the detail views for more.</p>}
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+                <Link to="/operations">Review operational conditions →</Link>
+                <Link to="/workflows">Review workflow attention →</Link>
+            </div>
+        </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="Atlas overall state" evidence={evidence.health}>
                 <SystemHealthSummary evidence={evidence} />
@@ -109,33 +132,15 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <ProviderOverviewContent evidence={evidence.providers} />
             </Card>
         </div>
-        <div aria-label="Attention and activity" className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
-            <Card title="Operator Attention" evidence={evidence.summary}>
-                <p>Reported workflow and operational conditions. Overview counts describe these same conditions.</p>
-                <SourceNote evidence={evidence.workflows} /><SourceNote evidence={evidence.health} /><SourceNote evidence={evidence.providers} /><SourceNote evidence={evidence.ai} />
-                {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
-                {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
-                {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
-                <ul className="space-y-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
-                    <Link to={item.to}>{item.label || "Inspect condition"}</Link>
-                    {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
-                    <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />
-                    {item.stale && <p>Last-known condition; current state unknown.</p>}
-                </li>)}</ul>
-                {uniqueAttention.length > 5 && <p>Showing 5 of {uniqueAttention.length} reported conditions. Open the detail views for more.</p>}
-                <Link to="/operations">Review operational conditions →</Link>
-                <Link to="/workflows">Review workflow attention →</Link>
-            </Card>
-            <Card title="Recent Activity" evidence={evidence.activity}>
-                <RecentActivity evidence={evidence.activity} />
-            </Card>
-        </div>
+        <Card title="Recent Activity" evidence={evidence.activity}>
+            <RecentActivity evidence={evidence.activity} />
+        </Card>
     </>;
 }
 export function MissionControl() {
     const { evidence, loading, refresh } = useOverviewEvidence();
     return <main aria-label="Mission Control command center" className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 [&_a]:text-mc-primary [&_a]:underline [&_a]:underline-offset-4 [&_a:focus-visible]:outline-2">
-        <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">Mission Control command center</h1><p className="text-sm text-mc-text-secondary">System overview · authoritative observations</p></div><button className="rounded-lg border border-mc-border-subtle px-4 py-2" disabled={loading} onClick={() => void refresh()}>{loading ? "Refreshing…" : "Refresh"}</button></header>
+        <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">Mission Control command center</h1><p className="text-sm text-mc-text-secondary">Status, alerts and recent work.</p></div><button className="rounded-lg border border-mc-border-subtle px-4 py-2" disabled={loading} onClick={() => void refresh()}>{loading ? "Refreshing…" : "Refresh"}</button></header>
         <Overview evidence={evidence} loading={loading} />
     </main>;
 }

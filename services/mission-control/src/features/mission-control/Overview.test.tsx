@@ -7,6 +7,24 @@ import type { OverviewEvidence } from "./useOverviewEvidence";
 const show = (evidence: OverviewEvidence = {}) => render(<MemoryRouter><Overview evidence={evidence} /></MemoryRouter>);
 
 describe("MC overview evidence", () => {
+    it.each(['awaiting_implementation_approval', 'awaiting_verification_approval', 'awaiting_commit_approval'])("shows %s as a workflow decision rather than degraded health", workflow_state => {
+        show({ workflows: { data: { items: [{ workflow_id: 'review-me', workflow_state, last_result_summary: 'Review the exact request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('Human action required')).toBeVisible();
+        expect(attention.getByText(/^Workflow stage: Awaiting/)).toBeVisible();
+        expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
+        expect(attention.getByRole('link', { name: 'review-me' })).toHaveAttribute('href', '/workflows/review-me');
+    });
+
+    it('keeps a stale approval requirement explicitly last-known', () => {
+        show({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: 'old-review', workflow_state: 'awaiting_implementation_approval', last_result_summary: 'Previous review request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('Last-known human action required; current requirement unknown.')).toBeVisible();
+        expect(attention.getByText(/^Last-known workflow stage:/)).toBeVisible();
+        expect(attention.queryByText('Human action required', { exact: true })).not.toBeInTheDocument();
+        expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
+    });
+
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
@@ -95,7 +113,7 @@ describe('overview fail-closed regressions', () => {
     it('does not equate configured provider health with local runtime availability', () => {
         show({ ai: { data: { health: { status: 'healthy' } } } });
         const runtime = within(screen.getByRole('region', { name: 'Local AI / Runtime' }));
-        expect(runtime.getByText('Unknown')).toBeInTheDocument();
+        expect(runtime.getByText('Local AI availability is unknown; locality is not reported.')).toBeVisible();
         expect(runtime.getByText('Configured provider health')).toBeInTheDocument();
     });
 });
@@ -208,7 +226,8 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(worker.getByText(/current execution state unknown/)).toBeInTheDocument();
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
     expect(attention.getAllByRole('link', { name: 'blocked/1' })).toHaveLength(1);
-    expect(attention.getByText('Unknown · Stale evidence')).toBeInTheDocument();
+    expect(attention.getByText('Last-known workflow stage: Blocked')).toBeVisible();
+    expect(attention.getByText('Last-known condition; current state unknown.')).toBeVisible();
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
 });
