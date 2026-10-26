@@ -1,6 +1,8 @@
 """Git repository inspector implementation."""
 
 import json
+import os
+import stat
 import subprocess
 from hashlib import sha256
 from pathlib import Path
@@ -205,12 +207,13 @@ class GitInspector:
         expected_paths: tuple[Path, ...],
         records: dict[Path, dict[str, object]],
     ) -> ReviewedChangeEvidence:
+        trust_filemode = self._trust_filemode()
         changes = tuple(
-            self._reviewed_change(records[path], root)
+            self._reviewed_change(records[path], root, trust_filemode=trust_filemode)
             for path in expected_paths
         )
         manifest = {
-            "version": 1,
+            "version": 2,
             "repository_root": str(root),
             "expected_branch": expected_branch,
             "expected_head": expected_head,
@@ -221,6 +224,7 @@ class GitInspector:
                     "path": str(change.path),
                     "status": change.status,
                     "content_sha256": change.content_sha256,
+                    "git_mode": change.git_mode,
                     "deletion_marker": change.deletion_marker,
                     "rename_source": (
                         str(change.rename_source)
@@ -423,8 +427,33 @@ class GitInspector:
     def _is_excluded(path: Path, excluded_roots: tuple[str, ...]) -> bool:
         return bool(path.parts) and path.parts[0] in excluded_roots
 
-    @staticmethod
-    def _reviewed_change(record: dict[str, object], root: Path) -> ReviewedChange:
+    def _trust_filemode(self) -> bool:
+        result = self._run_git("config", "--bool", "--get", "core.filemode", check=False)
+        if result.returncode == 1:
+            return True
+        value = result.stdout.strip()
+        if result.returncode != 0 or value not in {"true", "false"}:
+            raise RepositoryInspectionError("Unable to determine Git filemode policy")
+        return value == "true"
+
+    def _index_mode(self, path: Path) -> str:
+        output = self._run_git(
+            "--literal-pathspecs", "ls-files", "--stage", "-z", "--", str(path)
+        ).stdout
+        if not output:
+            return "100644"
+        metadata, separator, name = output.partition("\t")
+        fields = metadata.split()
+        if not (
+            separator and name == f"{path}\0" and len(fields) == 3
+            and fields[0] in {"100644", "100755"} and fields[2] == "0"
+        ):
+            raise RepositoryInspectionError("Reviewed index entry must be one regular file without conflicts")
+        return fields[0]
+
+    def _reviewed_change(
+        self, record: dict[str, object], root: Path, *, trust_filemode: bool,
+    ) -> ReviewedChange:
         path = record["path"]
         if not isinstance(path, Path):
             raise RepositoryInspectionError("Malformed Git status path")
@@ -435,6 +464,8 @@ class GitInspector:
         if rename_source is not None and not isinstance(rename_source, Path):
             raise RepositoryInspectionError("Malformed Git rename source")
         absolute_path = root / path
+        if absolute_path.is_symlink():
+            raise RepositoryInspectionError("Reviewed path is not a regular file")
         if index_status == "D" or worktree_status == "D" or not absolute_path.exists():
             return ReviewedChange(
                 path=path,
@@ -442,13 +473,27 @@ class GitInspector:
                 deletion_marker="deleted",
                 rename_source=rename_source,
             )
-        if not absolute_path.is_file():
-            raise RepositoryInspectionError(
-                f"Reviewed path is not a regular file: {path}"
-            )
+        try:
+            descriptor = os.open(absolute_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            try:
+                with os.fdopen(descriptor, "rb", closefd=False) as source:
+                    mode = os.fstat(source.fileno()).st_mode
+                    if not stat.S_ISREG(mode):
+                        raise RepositoryInspectionError("Reviewed path is not a regular file")
+                    content_digest = sha256()
+                    while chunk := source.read(65536):
+                        content_digest.update(chunk)
+            finally:
+                os.close(descriptor)
+        except OSError:
+            raise RepositoryInspectionError("Unable to read reviewed regular file") from None
+        git_mode = (
+            "100755" if mode & stat.S_IXUSR else "100644"
+        ) if trust_filemode else self._index_mode(path)
         return ReviewedChange(
             path=path,
             status=status,
-            content_sha256=sha256(absolute_path.read_bytes()).hexdigest(),
+            content_sha256=content_digest.hexdigest(),
             rename_source=rename_source,
+            git_mode=git_mode,
         )

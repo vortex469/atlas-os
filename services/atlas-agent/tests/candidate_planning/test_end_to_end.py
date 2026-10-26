@@ -50,6 +50,7 @@ from app.workflow.models import SprintPhase, WorkflowSessionState
 from app.workflow.state import WorkflowStateStore
 from asgi_test_client import ASGITestClient as TestClient
 from tests.candidate_planning.test_execution import FakeCoreClient, core_response
+from tests.legacy_review_evidence import version_one_fingerprint
 from tests.test_execution_patches import result_for
 
 
@@ -154,7 +155,10 @@ class FakeComposeWorkerClient:
 
 
 @pytest.mark.parametrize("backend", ["local", "worker", "worker-lost-response", "worker-lost-response-reload"])
-@pytest.mark.parametrize("commit_case", ["success", "staging-drift", "lost-commit-response", "commit-mismatch"])
+@pytest.mark.parametrize("commit_case", [
+    "success", "staging-drift", "staging-mode-drift", "lost-commit-response",
+    "commit-mismatch", "commit-mode-mismatch", "legacy-review", "legacy-completed",
+])
 def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     tmp_path: Path,
     backend: str,
@@ -163,6 +167,13 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
 ) -> None:
     repository = tmp_path / "repository"
     head = initialize_candidate_repository(repository)
+    evidence_builder = GitInspector._build_reviewed_change_evidence
+    if commit_case in {"legacy-review", "legacy-completed"}:
+        def legacy_evidence(inspector, **kwargs):
+            evidence = evidence_builder(inspector, **kwargs)
+            return replace(evidence, fingerprint=version_one_fingerprint(evidence))
+
+        monkeypatch.setattr(GitInspector, "_build_reviewed_change_evidence", legacy_evidence)
     mock_now = datetime(2026, 8, 2, 0, 0, tzinfo=UTC)
     core = FakeCoreClient(core_response(fingerprint="a" * 64))
     candidate_state = CandidatePlanningStateStore()
@@ -208,11 +219,16 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
                         "services:\n  atlas-core:\n    image: atlas-core:unreviewed\n",
                         encoding="utf-8",
                     )
-            if arguments[0] == "commit" and commit_case == "commit-mismatch":
-                (root / "compose.production.yaml").write_text(
-                    "services:\n  atlas-core:\n    image: atlas-core:unreviewed\n",
-                    encoding="utf-8",
-                )
+                if commit_case == "staging-mode-drift":
+                    (root / "compose.production.yaml").chmod(0o755)
+            if arguments[0] == "commit" and commit_case in {"commit-mismatch", "commit-mode-mismatch"}:
+                if commit_case == "commit-mismatch":
+                    (root / "compose.production.yaml").write_text(
+                        "services:\n  atlas-core:\n    image: atlas-core:unreviewed\n",
+                        encoding="utf-8",
+                    )
+                else:
+                    (root / "compose.production.yaml").chmod(0o755)
                 run_git(root, "add", "compose.production.yaml")
             return original_run(*arguments)
 
@@ -345,6 +361,10 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
 
     commit_approval = commit_boundary.approval_request
     assert commit_approval is not None
+    approved_review_fingerprint = commit_approval.commit_metadata.reviewed_content_fingerprint
+    if commit_case == "legacy-review":
+        # Upgrade after creating the old review: never rewrite its approval.
+        monkeypatch.setattr(GitInspector, "_build_reviewed_change_evidence", evidence_builder)
     assert persistence.mutate_approval(
         lambda repository: repository.update_decision(
             commit_approval.identifier,
@@ -369,7 +389,18 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         monkeypatch.setattr("app.repository.committer.COMMIT_TIMEOUT_SECONDS", 2.0)
     commit_started = time.monotonic()
     completed = engine.resume(workflow_id)
-    if commit_case in {"lost-commit-response", "commit-mismatch"}:
+    if commit_case == "legacy-review":
+        assert completed.sprint.phase is SprintPhase.BLOCKED
+        assert completed.error_message == "reviewed_evidence_mismatch"
+        assert run_git(repository, "rev-parse", "HEAD") == head
+        assert stage_calls == []
+        assert approvals.get_request(commit_approval.identifier).decision.request == commit_approval
+        persistence.initialize()
+        assert workflow_state.get_session(workflow_id).reviewed_content_fingerprint == approved_review_fingerprint
+        assert engine.resume(workflow_id).sprint.phase is SprintPhase.BLOCKED
+        assert stage_calls == []
+        return
+    if commit_case in {"lost-commit-response", "commit-mismatch", "commit-mode-mismatch"}:
         assert time.monotonic() - commit_started < 5
         assert completed.sprint.phase is SprintPhase.BLOCKED
         expected_code = "commit_outcome_unknown" if commit_case == "lost-commit-response" else "commit_result_mismatch"
@@ -377,8 +408,10 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         assert completed.commit_result is None
         actual_commit = run_git(repository, "rev-parse", "HEAD")
         assert actual_commit != head
-        expected_image = "new" if commit_case == "lost-commit-response" else "unreviewed"
+        expected_image = "unreviewed" if commit_case == "commit-mismatch" else "new"
         assert run_git(repository, "show", f"{actual_commit}:compose.production.yaml").endswith(f"image: atlas-core:{expected_image}")
+        if commit_case == "commit-mode-mismatch":
+            assert run_git(repository, "ls-tree", actual_commit, "--", "compose.production.yaml").startswith("100755 ")
         if commit_case == "lost-commit-response":
             assert hook_attempts.read_text() == "attempt\n"
         assert workflow_state.get_session(workflow_id).blocked_reason == expected_code
@@ -392,7 +425,7 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         assert implementation_runner.calls == 1
         assert verification_runner.calls == 1
         return
-    if commit_case == "staging-drift":
+    if commit_case in {"staging-drift", "staging-mode-drift"}:
         assert completed.sprint.phase is SprintPhase.BLOCKED
         assert completed.error_message == "commit_failed"
         assert completed.commit_result is None
@@ -405,6 +438,9 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         assert implementation_runner.calls == 1
         assert verification_runner.calls == 1
         return
+    if commit_case == "legacy-completed":
+        # Completed records remain historical evidence after upgrading review.
+        monkeypatch.setattr(GitInspector, "_build_reviewed_change_evidence", evidence_builder)
     assert completed.sprint.phase is SprintPhase.COMPLETED
 
     final_workflow = workflow_state.get_session(workflow_id)
@@ -449,6 +485,11 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     assert recovered is not None
     assert recovered.state is WorkflowSessionState.COMPLETED
     assert recovered.commit_result == final_workflow.commit_result
+    assert recovered.reviewed_content_fingerprint == approved_review_fingerprint
+    if commit_case == "legacy-completed":
+        assert engine.resume(workflow_id).sprint.phase is SprintPhase.COMPLETED
+        assert stage_calls == ["add"]
+        assert run_git(repository, "rev-parse", "HEAD") == completed.commit_result.commit_sha
     assert recovered.candidate_verification_evidence == final_workflow.candidate_verification_evidence
     assert recovered_candidates.get_session(intake.session_id) == planning_session
 

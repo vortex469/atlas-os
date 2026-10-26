@@ -188,7 +188,10 @@ class GitCommitter:
             entry = self._run_git(
                 "ls-tree", "-z", tree, "--", str(change.path)
             ).stdout
-            if change.deletion_marker == "deleted" and change.content_sha256 is None:
+            if (
+                change.deletion_marker == "deleted"
+                and change.content_sha256 is None and change.git_mode is None
+            ):
                 matches = not entry
             elif change.deletion_marker is None and change.content_sha256 is not None:
                 metadata, separator, path = entry.partition("\t")
@@ -197,7 +200,8 @@ class GitCommitter:
                     bool(separator)
                     and path == f"{change.path}\0"
                     and len(fields) == 3
-                    and fields[0] in {"100644", "100755"}
+                    and change.git_mode in {"100644", "100755"}
+                    and fields[0] == change.git_mode
                     and fields[1] == "blob"
                 )
                 if matches:

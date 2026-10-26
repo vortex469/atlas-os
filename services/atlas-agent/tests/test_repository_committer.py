@@ -16,6 +16,7 @@ from app.repository.exceptions import (
 from app.repository.inspector import GitInspector
 from app.repository.models import CommitRequest
 from app.repository.process import GitProcessResult
+from tests.legacy_review_evidence import version_one_fingerprint
 
 
 def run_git(
@@ -564,3 +565,110 @@ def test_failing_hook_remains_enabled_and_does_not_disclose_output_or_message(
     assert canary not in "".join(traceback.format_exception(error.value))
     assert (repository / ".git" / "fixture-pre-commit-ran").read_text() == "ran"
     assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
+
+
+@pytest.mark.parametrize("git_filemode", (True, False))
+@pytest.mark.parametrize("initial_executable", (True, False))
+def test_approved_mode_matches_git_filemode_policy(
+    tmp_path: Path, git_filemode: bool, initial_executable: bool,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    path = repository / "tracked.txt"
+    if initial_executable:
+        run_git(repository, "update-index", "--chmod=+x", "tracked.txt")
+        run_git(repository, "commit", "-m", "Executable baseline")
+        head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    run_git(repository, "config", "core.filemode", str(git_filemode).lower())
+    path.write_text("reviewed\n", encoding="utf-8")
+    # Deliberately disagree with the index to exercise both policy branches.
+    path.chmod(0o644 if initial_executable else 0o755)
+    request = make_request(repository, head)
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+    executable = not initial_executable if git_filemode else initial_executable
+    expected_mode = "100755" if executable else "100644"
+    assert evidence.changes[0].git_mode == expected_mode
+
+    result = GitCommitter(repository).commit(request, reviewed_evidence=evidence)
+
+    assert run_git(repository, "ls-tree", result.commit_sha, "--", "tracked.txt").stdout.split()[0] == expected_mode
+
+
+@pytest.mark.parametrize("when", ("before-add", "after-add", "before-commit"))
+def test_unreviewed_executable_flag_cannot_be_reported_as_approved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, when: str,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    run_git(repository, "config", "core.filemode", "true")
+    path = repository / "tracked.txt"
+    path.write_text("reviewed\n", encoding="utf-8")
+    path.chmod(0o644)
+    request = make_request(repository, head)
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+    assert evidence.changes[0].git_mode == "100644"
+    committer = GitCommitter(repository)
+    original = committer._run_git
+
+    def inject(*arguments: str):
+        if (when == "before-add" and arguments[0] == "add") or (
+            when == "before-commit" and arguments[0] == "commit"
+        ):
+            path.chmod(0o755)
+            if when == "before-commit":
+                run_git(repository, "add", "tracked.txt")
+        result = original(*arguments)
+        if when == "after-add" and arguments[0] == "add":
+            run_git(repository, "update-index", "--chmod=+x", "tracked.txt")
+        return result
+
+    monkeypatch.setattr(committer, "_run_git", inject)
+    with pytest.raises(RepositoryCommitError):
+        committer.commit(request, reviewed_evidence=evidence)
+
+    actual_head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    if when == "before-commit":
+        assert actual_head != head
+        assert run_git(repository, "ls-tree", actual_head, "--", "tracked.txt").stdout.startswith("100755 ")
+    else:
+        assert actual_head == head
+
+
+def test_evidence_without_an_approved_mode_is_refused_before_commit(tmp_path: Path) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    request = make_request(repository, head)
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+    old_evidence = replace(
+        evidence, fingerprint=version_one_fingerprint(evidence),
+        changes=tuple(replace(change, git_mode=None) for change in evidence.changes),
+    )
+    with pytest.raises(RepositoryCommitValidationError, match="Staged content differs"):
+        GitCommitter(repository).commit(request, reviewed_evidence=old_evidence)
+    assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
+
+
+@pytest.mark.parametrize("trust_filemode", (True, False))
+def test_new_executable_file_uses_approved_git_mode(tmp_path: Path, trust_filemode: bool) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    run_git(repository, "config", "core.filemode", str(trust_filemode).lower())
+    path = repository / "new.txt"
+    path.write_text("reviewed\n", encoding="utf-8")
+    path.chmod(0o755)
+    request = make_request(repository, head, paths=(Path("new.txt"),))
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+    expected_mode = "100755" if trust_filemode else "100644"
+    assert evidence.changes[0].git_mode == expected_mode
+
+    result = GitCommitter(repository).commit(request, reviewed_evidence=evidence)
+    assert run_git(repository, "ls-tree", result.commit_sha, "--", "new.txt").stdout.startswith(f"{expected_mode} ")

@@ -49,6 +49,7 @@ class ReviewedChange:
     content_sha256: str | None = None
     deletion_marker: str | None = None
     rename_source: Path | None = None
+    git_mode: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
