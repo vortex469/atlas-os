@@ -113,9 +113,11 @@ describe("WorkflowShellPage", () => {
     });
 
     it("renders from route state while still reconciling against server state", async () => {
+        const user = userEvent.setup();
         renderPage({ workflow: workflow() });
 
-        expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Prepare a workflow" })).toBeVisible();
+        expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
         expect(screen.getAllByText("Workflow created.").length).toBeGreaterThan(0);
         expect(screen.getByText("workflow-1")).toBeInTheDocument();
         expect(screen.getByText("Atlas Agent candidate planning")).toBeInTheDocument();
@@ -125,7 +127,7 @@ describe("WorkflowShellPage", () => {
         expect(screen.getByText("plan-fingerprint-1")).toBeInTheDocument();
         expect(screen.getByText("Pending")).toBeInTheDocument();
         expect(screen.getByText("candidate-plan-1")).toBeInTheDocument();
-        expect(screen.getByText("Not exposed by Atlas Agent API")).toBeInTheDocument();
+        expect(screen.queryByText("Not exposed by Atlas Agent API")).not.toBeInTheDocument();
         expect(screen.getByText("Workflow").closest("li")).toHaveAttribute("aria-current", "step");
         expect(screen.queryByText("Implementation ○")).not.toBeInTheDocument();
         expect(screen.queryByText("Verification ○")).not.toBeInTheDocument();
@@ -138,6 +140,15 @@ describe("WorkflowShellPage", () => {
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
             expected_candidate_fingerprint: "fingerprint-1",
         });
+        const disclosure = screen.getByText("Technical details", { exact: true });
+        expect(disclosure.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByText("plan-fingerprint-1")).not.toBeVisible();
+        const shellReads = mockedCreateCandidateWorkflowShell.mock.calls.length;
+        await user.click(disclosure);
+        expect(screen.getByText("plan-fingerprint-1")).toBeVisible();
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(shellReads);
+        expect(mockedCreateCandidateImplementationRequest).not.toHaveBeenCalled();
+        expect(mockedCreateSuccessorCandidatePlanningSession).not.toHaveBeenCalled();
     });
 
     it("reconciles stale location state against a blocked authoritative server response", async () => {
@@ -156,7 +167,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+        expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
         expect((await screen.findAllByText("Blocked")).length).toBeGreaterThan(0);
         expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
         expect(screen.getByText("Recovery: blocked workflow")).toBeInTheDocument();
@@ -179,7 +190,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+        expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
 
@@ -191,7 +202,7 @@ describe("WorkflowShellPage", () => {
     it("loads the workflow shell when opened directly from planning session URL", async () => {
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: /Workflow workflow-1/i })).toBeInTheDocument();
+        expect(await screen.findByText("workflow-1", { exact: true })).toBeInTheDocument();
         expect(mockedGetCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1");
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
             expected_candidate_fingerprint: "fingerprint-1",
@@ -259,7 +270,7 @@ describe("WorkflowShellPage", () => {
 		expect(screen.getByText("Failure code: repository_stale")).toBeInTheDocument();
 		expect(screen.getByText("Failure message: Trusted repository HEAD differs from the reviewed candidate plan.")).toBeInTheDocument();
 		expect(screen.getByText("Reason codes: repository_stale")).toBeInTheDocument();
-		expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+		expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 			expect(screen.getByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();
 			expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
@@ -347,7 +358,7 @@ describe("WorkflowShellPage", () => {
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
 
 			expect((await screen.findAllByRole("alert")).some((alert) => alert.textContent?.includes("Unable to create successor planning session: conflicting_active_session: No successor."))).toBe(true);
-			expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+			expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
 		});
 
 		it("does not navigate when successor call errors", async () => {
@@ -374,7 +385,7 @@ describe("WorkflowShellPage", () => {
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
 
 			expect((await screen.findAllByRole("alert")).some((alert) => alert.textContent === "Successor failed")).toBe(true);
-			expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+			expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
 		});
 
 		it("blocks duplicate successor creation submissions", async () => {
@@ -593,7 +604,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        expect(screen.getByRole("heading", { name: "Workflow not created" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Prepare a workflow" })).toBeInTheDocument();
         expect(screen.getByText("Stale candidate.")).toBeInTheDocument();
         expect(screen.getByText("Reason codes: stale")).toBeInTheDocument();
         expect(screen.getByText("Failure: candidate_stale - Candidate changed")).toBeInTheDocument();
@@ -609,8 +620,8 @@ describe("WorkflowShellPage", () => {
 
     it("ignores cached workflow data for a different planning session", async () => {
         renderPage({ workflow: workflow({ candidate_planning_session_id: "other-session", workflow_session_id: "other-workflow", candidate_fingerprint: "other-fingerprint" }) });
-        expect(screen.queryByRole("heading", { name: "Workflow other-workflow" })).not.toBeInTheDocument();
-        await screen.findByRole("heading", { name: "Workflow workflow-1" });
+        expect(screen.queryByText("other-workflow", { exact: true })).not.toBeInTheDocument();
+        await screen.findByText("workflow-1", { exact: true });
         expect(mockedGetCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1");
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", { expected_candidate_fingerprint: "fingerprint-1" });
     });
@@ -642,7 +653,7 @@ describe("WorkflowShellPage", () => {
         render(<RouterProvider router={router} />);
         await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
         await act(() => router.navigate("/candidate-planning/candidate-plan-2/workflow"));
-        await screen.findByRole("heading", { name: "Workflow workflow-candidate-plan-2" });
+        await screen.findByText("workflow-candidate-plan-2", { exact: true });
         await act(async () => resolveTranslation(implementationTranslationResponse({ workflow_session_id: "workflow-candidate-plan-1" })));
         expect(router.state.location.pathname).toBe("/candidate-planning/candidate-plan-2/workflow");
         expect(screen.queryByText("Wrong workflow navigation")).not.toBeInTheDocument();
@@ -678,7 +689,7 @@ describe("WorkflowShellPage", () => {
         render(<RouterProvider router={router} />);
         await user.click(await screen.findByRole("button", { name: /re-plan against current repository/i }));
         await act(() => router.navigate("/candidate-planning/candidate-plan-2/workflow"));
-        await screen.findByRole("heading", { name: "Workflow workflow-candidate-plan-2" });
+        await screen.findByText("workflow-candidate-plan-2", { exact: true });
         await act(async () => resolveSuccessor(planningSession({ session_id: "successor-session" })));
         expect(router.state.location.pathname).toBe("/candidate-planning/candidate-plan-2/workflow");
         expect(screen.queryByText("Wrong recovery navigation")).not.toBeInTheDocument();

@@ -269,7 +269,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow preparation</p>
                     <h1 className="mt-3 break-all text-3xl font-bold text-white">
-                        Workflow {workflow.workflow_session_id ?? "not created"}
+                        Prepare a workflow
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         Review this workflow and prepare its exact request for approval. Preparing a request does not run the change.
@@ -288,17 +288,19 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         {workflow.workflow_status ? formatLabel(workflow.workflow_status) : formatLabel(workflow.conversion_status)}
                     </span>
                 </div>
-                <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Workflow ID" value={workflow.workflow_session_id ?? "Not available"} />
-                    <Detail label="Workflow source" value="Atlas Agent candidate planning" />
-                    <Detail label="Workflow state" value={workflow.workflow_status ? formatLabel(workflow.workflow_status) : "Not available"} />
-                    <Detail label="Candidate ID" value={workflow.candidate_id} />
-                    <Detail label="Candidate fingerprint" value={workflow.candidate_fingerprint ?? "Not available"} />
-                    <Detail label="Plan fingerprint" value={workflow.candidate_plan_fingerprint ?? "Not available"} />
-                    <Detail label="Implementation approval status" value={workflow.implementation_approval_request_id ? "Pending" : "Not reported"} />
-                    <Detail label="Planning Session ID" value={workflow.candidate_planning_session_id} />
-                    <Detail label="Creation time" value="Not exposed by Atlas Agent API" />
-                </dl>
+                <details className="mt-5 rounded-lg border border-slate-800 p-3">
+                    <summary className="cursor-pointer text-sm text-slate-300">Technical details</summary>
+                    <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Workflow ID" value={workflow.workflow_session_id ?? "Not available"} />
+                        <Detail label="Workflow source" value="Atlas Agent candidate planning" />
+                        <Detail label="Workflow state" value={workflow.workflow_status ? formatLabel(workflow.workflow_status) : "Not available"} />
+                        <Detail label="Candidate ID" value={workflow.candidate_id} />
+                        <Detail label="Candidate fingerprint" value={workflow.candidate_fingerprint ?? "Not available"} />
+                        <Detail label="Plan fingerprint" value={workflow.candidate_plan_fingerprint ?? "Not available"} />
+                        <Detail label="Implementation approval status" value={workflow.implementation_approval_request_id ? "Pending" : "Not reported"} />
+                        <Detail label="Planning Session ID" value={workflow.candidate_planning_session_id} />
+                    </dl>
+                </details>
                 {canCreateImplementation && (
                     <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
                         <h2 className="text-base font-semibold text-emerald-200">Prepare exact request</h2>
