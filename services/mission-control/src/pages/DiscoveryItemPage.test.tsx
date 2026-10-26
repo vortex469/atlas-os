@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { act, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -321,9 +322,15 @@ describe("DiscoveryItemPage", () => {
         if (source === "catalog") mockedGetDiscoveryItem.mockResolvedValue({ ...entry(), item: { ...entry().item, id: "other" } });
         else mockedGetDiscoveryRelationships.mockResolvedValue({ ...relationships(), item_id: "other" });
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this item");
-        expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        if (source === "catalog") {
+            expect(await screen.findByRole("alert")).toHaveTextContent("does not match this item");
+            expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        } else {
+            expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+            expect(await screen.findByText("Item relationships unavailable. The catalog item is still shown.")).toBeInTheDocument();
+            expect(screen.queryByRole("heading", { name: "Outgoing relationships" })).not.toBeInTheDocument();
+        }
     });
 
     it.each(["compatibility", "evidence", "grounding", "plan"])("does not display unrelated %s evidence", async (source) => {
@@ -336,6 +343,31 @@ describe("DiscoveryItemPage", () => {
         const message = source === "compatibility" ? "Compatibility unavailable" : source === "evidence" ? "Dynamic evidence unavailable" : source === "grounding" ? "Image grounding is currently unavailable." : "Installation plan is currently unavailable.";
         expect(await screen.findByText(message)).toBeInTheDocument();
         expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
+    });
+
+    it("keeps the item readable while its relationships are pending", async () => {
+        const request = deferred<DiscoveryRelationshipCollection>();
+        mockedGetDiscoveryRelationships.mockReturnValueOnce(request.promise);
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(screen.getByText("Loading item relationships...")).toBeInTheDocument();
+        expect(screen.queryByText("No outgoing relationships.")).not.toBeInTheDocument();
+        await act(async () => request.resolve(relationships()));
+        expect(await screen.findByRole("heading", { name: "Outgoing relationships" })).toBeInTheDocument();
+    });
+
+    it("retries unavailable relationships without reloading the item or claiming an empty list", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryRelationships.mockRejectedValueOnce(new Error("private-relationship-canary"));
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        await screen.findByText("Item relationships unavailable. The catalog item is still shown.");
+        expect(document.body.textContent).not.toContain("private-relationship-canary");
+        expect(screen.queryByText("No outgoing relationships.")).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry item relationships" }));
+        expect(await screen.findByRole("heading", { name: "Outgoing relationships" })).toBeInTheDocument();
+        expect(mockedGetDiscoveryRelationships).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
     });
 
     it("does not report a missing item when its relationships read fails", async () => {
