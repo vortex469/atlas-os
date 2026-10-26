@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -126,6 +126,57 @@ describe("DiscoveryPage", () => {
         mockedGetDiscoveryMetadata.mockResolvedValue(metadata());
         mockedListDiscoveryItems.mockResolvedValue(page([entry()]));
         mockedSearchDiscoveryItems.mockResolvedValue(searchPage([entry()]));
+    });
+
+    it("hides old results after a failed search and retries submitted filters instead of draft edits", async () => {
+        const user = userEvent.setup();
+        mockedSearchDiscoveryItems.mockRejectedValueOnce(new Error("Search offline"));
+        renderPage();
+        await screen.findByText("Home Assistant");
+        await user.type(screen.getByLabelText("Keyword search"), "redis");
+        await user.click(screen.getByRole("button", { name: /^Search$/ }));
+        await screen.findByText("Search offline");
+        expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
+        expect(screen.queryByText("1 item found")).not.toBeInTheDocument();
+        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        await user.clear(screen.getByLabelText("Keyword search"));
+        await user.type(screen.getByLabelText("Keyword search"), "draft-change");
+        mockedSearchDiscoveryItems.mockResolvedValue(searchPage([entry({ item: { ...entry().item, id: "redis", name: "Redis" } })]));
+        await user.click(screen.getByRole("button", { name: "Retry catalog request" }));
+        expect(await screen.findByText("Redis")).toBeInTheDocument();
+        expect(mockedSearchDiscoveryItems).toHaveBeenLastCalledWith(expect.objectContaining({ q: "redis", offset: 0 }));
+        expect(screen.getByLabelText("Keyword search")).toHaveValue("draft-change");
+    });
+
+    it("retries the failed page offset instead of jumping back to the first page", async () => {
+        const user = userEvent.setup();
+        mockedListDiscoveryItems.mockResolvedValueOnce({ ...page([entry()]), total: 30, has_more: true })
+            .mockRejectedValueOnce(new Error("Next page offline"))
+            .mockResolvedValueOnce({ ...page([entry({ item: { ...entry().item, id: "redis", name: "Redis" } })]), total: 30, offset: 25 });
+        renderPage();
+        await screen.findByText("Home Assistant");
+        await user.click(screen.getByRole("button", { name: "Next Discovery results page" }));
+        await screen.findByText("Next page offline");
+        expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Next Discovery results page" })).toBeDisabled();
+        await user.click(screen.getByRole("button", { name: "Retry catalog request" }));
+        expect(await screen.findByText("Redis")).toBeInTheDocument();
+        expect(mockedListDiscoveryItems).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 25 }));
+    });
+
+    it("ignores an earlier request that finishes after a newer search", async () => {
+        const user = userEvent.setup();
+        let finish!: (value: DiscoveryCatalogPage) => void;
+        mockedListDiscoveryItems.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+        mockedSearchDiscoveryItems.mockResolvedValue(searchPage([entry({ item: { ...entry().item, id: "redis", name: "Redis" } })]));
+        renderPage();
+        await waitFor(() => expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1));
+        await user.type(screen.getByLabelText("Keyword search"), "redis");
+        fireEvent.submit(screen.getByRole("form", { name: "Search Discovery catalog" }));
+        await screen.findByText("Redis");
+        await act(async () => finish(page([entry()])));
+        expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
+        expect(screen.getByText("Redis")).toBeInTheDocument();
     });
 
     it("renders catalog status, disclaimer, and read-only item cards", async () => {
