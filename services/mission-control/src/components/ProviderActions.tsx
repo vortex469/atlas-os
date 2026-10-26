@@ -16,6 +16,7 @@ import type {
     ProviderActionParameters,
     ProviderActionResult,
 } from "../types/providerAction";
+import { Link } from "react-router-dom";
 import { SectionHeader } from "./SectionHeader";
 
 type ProviderActionsProps = {
@@ -67,6 +68,12 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
         string | null
     >(null);
     const [error, setError] = useState<string | null>(null);
+    const requestInFlight = useRef(false);
+    const outcomeUncertainRef = useRef(false);
+    const refreshInFlight = useRef(false);
+    const [outcomeUncertain, setOutcomeUncertain] = useState(false);
+    const [refreshError, setRefreshError] = useState<string | null>(null);
+    const [isRefreshingState, setIsRefreshingState] = useState(false);
     const [result, setResult] =
         useState<ProviderActionResult | null>(null);
     const [parameters, setParameters] = useState<
@@ -140,62 +147,51 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
         };
     }, [provider.id, provider.name]);
 
-    async function executeAction(
-        action: ProviderAction,
-    ): Promise<void> {
-        if (!action.enabled || runningActionId !== null) {
-            return;
+    async function refreshProviderState(): Promise<void> {
+        if (refreshInFlight.current) return;
+        refreshInFlight.current = true;
+        setIsRefreshingState(true);
+        setRefreshError(null);
+        try {
+            await onActionCompleted();
+        } catch {
+            if (active.current) setRefreshError("Could not refresh provider status.");
+        } finally {
+            refreshInFlight.current = false;
+            if (active.current) setIsRefreshingState(false);
         }
+    }
 
+    async function executeAction(action: ProviderAction): Promise<void> {
+        if (!action.enabled || requestInFlight.current || refreshInFlight.current || outcomeUncertainRef.current) return;
         let confirmed = false;
-
         if (action.requires_confirmation) {
             const confirmationMessage = action.destructive
                 ? `${action.label} is marked as destructive. Continue?`
                 : `${action.label} requires confirmation. Continue?`;
-
             confirmed = window.confirm(confirmationMessage);
-
-            if (!confirmed) {
+            if (!confirmed) return;
+        }
+        requestInFlight.current = true;
+        setRunningActionId(action.id);
+        setRefreshError(null);
+        setResult(null);
+        try {
+            let actionResult: ProviderActionResult;
+            try {
+                actionResult = await runProviderAction(provider.id, action.id, {
+                    confirmed, parameters: parameters[action.id] ?? {},
+                });
+            } catch {
+                outcomeUncertainRef.current = true;
+                if (active.current) setOutcomeUncertain(true);
                 return;
             }
-        }
-
-        setRunningActionId(action.id);
-        setError(null);
-        setResult(null);
-
-        try {
-            const actionParameters = parameters[action.id] ?? {};
-            const actionResult = await runProviderAction(
-                provider.id,
-                action.id,
-                {
-                    confirmed,
-                    parameters: actionParameters,
-                },
-            );
-
             if (!active.current) return;
-
             setResult(actionResult);
-
-            if (actionResult.success) {
-                await onActionCompleted();
-            }
-        } catch (requestError) {
-            if (!active.current) return;
-            console.error(
-                `Unable to run ${action.id} for ${provider.id}:`,
-                requestError,
-            );
-            setError(
-                getAtlasErrorMessage(
-                    requestError,
-                    `Atlas Core could not run ${action.label}.`,
-                ),
-            );
+            if (actionResult.success) await refreshProviderState();
         } finally {
+            requestInFlight.current = false;
             if (active.current) setRunningActionId(null);
         }
     }
@@ -218,6 +214,60 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                 />
             )}
 
+            {result && (
+                <div
+                    role="status"
+                    className={
+                        result.success
+                            ? "mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-5"
+                            : "mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-5"
+                    }
+                >
+                    <p
+                        className={
+                            result.success
+                                ? "font-semibold text-emerald-300"
+                                : "font-semibold text-red-300"
+                        }
+                    >
+                        {result.success
+                            ? "Action completed"
+                            : "Action failed"}
+                    </p>
+
+                    <p className="mt-1 text-sm text-slate-200">
+                        {result.message}
+                    </p>
+
+                    {result.warnings.length > 0 && (
+                        <ul className="mt-3 space-y-1 text-sm text-amber-200">
+                            {result.warnings.map(
+                                (warning, index) => (
+                                    <li
+                                        key={`${warning}-${index}`}
+                                    >
+                                        {warning}
+                                    </li>
+                                ),
+                            )}
+                        </ul>
+                    )}
+                </div>
+            )}
+            {outcomeUncertain && <div role="alert" className="mt-4 space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5">
+                <p className="font-semibold text-amber-200">Action outcome not confirmed</p>
+                <p className="text-sm text-slate-200">No matching action result was confirmed. Actions are paused on this page. Review action history and provider status before another attempt.</p>
+                <Link to="/operations" className="inline-flex text-sm font-medium text-blue-300">Review action history</Link>
+                <button type="button" onClick={() => void refreshProviderState()} disabled={isRefreshingState}
+                    className="ml-3 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 disabled:opacity-50">{isRefreshingState ? "Refreshing status..." : "Refresh provider status"}</button>
+            </div>}
+            {refreshError && <div className="mt-4 space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5">
+                <p role="alert" className="text-sm text-amber-200">{refreshError}</p>
+                {!outcomeUncertain && <button type="button" onClick={() => void refreshProviderState()} disabled={isRefreshingState}
+                    className="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 disabled:opacity-50">{isRefreshingState ? "Refreshing status..." : "Refresh provider status"}</button>}
+            </div>}
+
+
             {isLoading && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
                     <p className="text-sm text-slate-400">
@@ -232,7 +282,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Action unavailable
+                        Action list unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
                         {error}
@@ -242,7 +292,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                         onClick={() => void loadActions()}
                         className="mt-4 rounded-lg border border-red-400/30 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-300/50 hover:text-white"
                     >
-                        Try again
+                        Reload action list
                     </button>
                 </div>
             )}
@@ -296,6 +346,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                                 );
                             const isBlocked =
                                 runningActionId !== null ||
+                                isRefreshingState || outcomeUncertain ||
                                 !action.enabled ||
                                 hasMissingRequiredParameter;
 
@@ -461,46 +512,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     </div>
                 )}
 
-            {result && (
-                <div
-                    role="status"
-                    className={
-                        result.success
-                            ? "mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-5"
-                            : "mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-5"
-                    }
-                >
-                    <p
-                        className={
-                            result.success
-                                ? "font-semibold text-emerald-300"
-                                : "font-semibold text-red-300"
-                        }
-                    >
-                        {result.success
-                            ? "Action completed"
-                            : "Action failed"}
-                    </p>
 
-                    <p className="mt-1 text-sm text-slate-200">
-                        {result.message}
-                    </p>
-
-                    {result.warnings.length > 0 && (
-                        <ul className="mt-3 space-y-1 text-sm text-amber-200">
-                            {result.warnings.map(
-                                (warning, index) => (
-                                    <li
-                                        key={`${warning}-${index}`}
-                                    >
-                                        {warning}
-                                    </li>
-                                ),
-                            )}
-                        </ul>
-                    )}
-                </div>
-            )}
         </section>
     );
 }

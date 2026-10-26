@@ -35,6 +35,8 @@ import {
 
 import { DoctorResponseError, parseDoctorReport } from "./doctorResponse";
 
+import { parseProviderActionResult } from "./providerActionResponse";
+
 const ATLAS_API_BASE_URL =
     import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
 
@@ -78,7 +80,7 @@ export async function runProviderAction(
     actionId: string,
     request: ProviderActionRequest = {},
 ): Promise<ProviderActionResult> {
-    const response = await atlas.post<ProviderActionResult>(
+    const response = await atlas.post<unknown>(
         `/providers/${encodeURIComponent(
             providerId,
         )}/actions/${encodeURIComponent(actionId)}`,
@@ -88,7 +90,7 @@ export async function runProviderAction(
         },
     );
 
-    return response.data;
+    return parseProviderActionResult(response.data, providerId, actionId);
 }
 
 export async function getProviderActionHistory(
