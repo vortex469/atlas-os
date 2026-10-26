@@ -120,6 +120,12 @@ refreshes fail. Regression checks cover these cases without granting real
 execution authority. Deferred screens and capabilities remain outside this
 completion scope. Source validation does not establish production acceptance.
 
+Secondary screens load on demand. Navigation stays available while the next
+screen loads, and the previous screen's controls pause until navigation finishes.
+If a screen module cannot load, the recovery view offers a page reload and a
+return to Mission Control. Reload retries the module after the connection or
+asset availability is restored; it does not resubmit an operator action.
+
 The deferred v0.65 successor control-plane projection is absent. Mission
 Control has no client, route, nested view, or action surface for that
 unselected API; retained v0.64 GET-only evidence must not be promoted or

@@ -10,6 +10,7 @@ runtime, tag, or publish a release.
 | Surface | Required behavior | Current regression evidence |
 | --- | --- | --- |
 | Shared navigation | Working primary links, mobile drawer, keyboard focus, skip link, missing-page recovery | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` |
+| Screen loading | Secondary screens load on demand; pending navigation pauses the old page's controls while keeping navigation available; module failure offers reload and home recovery | `e2e/page-loading.spec.ts` covers delayed modules, leaving a pending screen, and direct-link failure/reload at phone and desktop widths |
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
 | Providers | Registry and detail links work; unavailable data differs from absence; forms and late responses stay with their provider | Provider page/component tests; provider registry and route-switch browser cases in `e2e/screen-recovery.spec.ts` |
@@ -42,44 +43,41 @@ No execution gate or approval contract is expanded.
 
 ## Validation snapshot — 2026-10-26
 
-Full UI component source checked at
-`b13b9c7aeba78060302612f15cca74b31a2b1679`; subsequent readiness constant
-extraction checked with the focused suite below:
+Current local screen-loading follow-up, based on `69819169`:
 
-- Full component suite: 2,562 passed, zero failed or skipped.
-- Latest browser suite: 63 passed against synthetic local backends, including
-  maintenance request-to-audit and successful readiness-review recovery.
-- Readiness component/parser/structural suite: 16 passed after the constant
-  extraction; the extracted values match the preceding committed values exactly.
-- Maintenance request page suite: 19 passed after locking pending selection,
-  clearing stale resources/results, and checking returned proposal identity,
-  target and action. The complete maintenance browser fixture uses Core's
-  resource-ID target contract.
-- UI lint and production build passed. The build retains its existing
-  large-chunk warning.
-- Workflow route suite: 72 passed after the additive audit DTO change. This is
-  focused Agent coverage, not a full Core/Agent release-gate result.
+- Full component suite: 2,577 passed, zero failed or skipped.
+- Full browser suite: 67 passed against synthetic local backends. This includes
+  repository/maintenance journeys, readiness recovery, delayed page loading,
+  leaving a pending page, and failed-module reload recovery at phone and desktop
+  widths. No real model, command, commit or provider action runs in these tests.
+- UI lint and production build passed, including TypeScript checks for browser
+  code. All generated JavaScript chunks are below the existing warning threshold.
+- The generated HTML initially requests 483,915 bytes of JavaScript across the
+  entry and shared HTTP-client files, compared with about 1.23 MB before screen
+  splitting. Secondary screen modules load on demand. These are build artifact
+  sizes, not measurements of load time on a real network.
+- Eight focused Core health/route/release tests and the Core Ruff gate passed.
+  Isolated probes establish overlap, a four-probe limit per request, complete
+  results, stable mapping/order and unchanged timeout/offline behavior.
 
 Reproduce UI checks from `services/mission-control` with `npm test --
 --maxWorkers=2`, `npm run test:e2e -- --workers=2`, `npm run lint`, and
 `npm run build`. Browser tests require the local test server and Chromium.
-The existing Quality gates workflow now includes that browser command after
-installing Chromium. It uploads browser failure screenshots and traces for seven
-days. A local isolated failure probe confirmed both files are produced; the
-changed workflow still requires its own CI result before a green-check claim.
-An additional fixture audit validated nine representative synthetic responses
-against native Core/Agent response models. It corrected omitted candidate effect
-kinds and audit preparation approval fields. Browser tests are now included in
-the TypeScript build so these required fields cannot silently disappear from
-typed fixtures. This schema check does not establish real backend integration.
-The development Agent proxy was also restored to match the production edge.
-Thirty-five focused proxy/Discovery tests and all 63 browser checks passed.
-Existing local Core/Agent health reads did not provide usable responses, so they
-do not establish service health or real integration acceptance.
-The bounded health change passes eight focused Core health/route/release tests.
-The tests use isolated probes to establish overlap, a four-probe limit, complete
-results, stable mapping/order and unchanged timeout/offline behavior; they do
-not contact inventory services or establish running-service acceptance.
+The development proxy regression binds isolated HTTP stubs; it contacts no
+running Atlas service. The Quality gates workflow also runs browser checks and
+preserves failure screenshots/traces for seven days. At preceding head
+`69819169`, UI CI passed 2,577 component tests and the then-current 63 browser
+checks, lint and build; Agent and container checks passed. Those results do not
+validate the later screen-loading change. Full CI for the new source remains
+required, including the unfinished Core gate.
+
+Nine representative synthetic responses were checked against native Core/Agent
+models during fixture review. This corrected candidate effect kinds and audit
+preparation approval fields; it does not establish real backend integration.
+A read-only inspection of existing services found Agent advertising only
+`/health` and `/v1/jobs/{job_id}/code`, without the current workflow audit schema.
+Core's OpenAPI read timed out after five seconds. These services cannot establish
+current-branch integration acceptance; neither service was restarted or changed.
 
 ## Acceptance status and remaining gaps
 

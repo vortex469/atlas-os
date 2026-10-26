@@ -132,7 +132,7 @@ function ReleaseFooter({ release }: { release: string | null }) {
     );
 }
 
-export function MainLayout() {
+export function MainLayout({ navigationPending = false }: { navigationPending?: boolean }) {
     const pageContentRef = useRef<HTMLDivElement>(null);
     const [release, setRelease] = useState<string | null>(null);
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -256,7 +256,7 @@ export function MainLayout() {
 
     return (
         <div className="mc-app-shell">
-            <a href="#mc-page-content" inert={mobileNavOpen}
+            <a href="#mc-page-content" inert={mobileNavOpen || navigationPending}
                 onClick={(event) => { event.preventDefault(); pageContentRef.current?.focus(); }}
                 className="mc-focusable sr-only fixed left-3 top-3 z-[100] rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-blue-200 focus:not-sr-only">
                 Skip to page content
@@ -377,7 +377,8 @@ export function MainLayout() {
                     </div>
                 </aside>
 
-                <div ref={pageContentRef} id="mc-page-content" tabIndex={-1} className="mc-main-content mc-focusable min-w-0">
+                {navigationPending && <p role="status" className="fixed right-4 top-16 z-50 rounded-lg border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200">Loading page...</p>}
+                <div ref={pageContentRef} id="mc-page-content" tabIndex={-1} inert={navigationPending} className="mc-main-content mc-focusable min-w-0">
                     <Outlet />
                 </div>
             </div>
