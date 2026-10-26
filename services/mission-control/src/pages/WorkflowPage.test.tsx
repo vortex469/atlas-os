@@ -14,8 +14,8 @@ import {
     submitWorkflowVerificationApproval,
 } from "../api/atlas-agent";
 import { WorkflowPage } from "./WorkflowPage";
-import type { WorkflowDetailResponse } from "../types/atlasAgent";
-import { operationalLifecycle } from "../test/operationalLifecycle";
+import type { WorkflowDetailResponse, WorkflowRecoveryDiagnostic } from "../types/atlasAgent";
+import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
 
 vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
@@ -175,6 +175,120 @@ function renderPage(path = "/workflows/workflow-123") {
 }
 
 describe("WorkflowPage", () => {
+    it("pauses maintenance status checks while an approval is pending", async () => {
+        vi.useFakeTimers();
+        const initial = workflow({ effect_kind: "operational_action" });
+        mockedGetWorkflowDetail.mockResolvedValueOnce(initial)
+            .mockResolvedValue(workflow({ effect_kind: "operational_action", implementation_approval_status: "approved" }));
+        mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123", terminal: false }));
+        let resolveApproval!: (value: { workflow_id: string; workflow_state: string; implementation_approval_status: string; message: null }) => void;
+        mockedSubmitWorkflowImplementationApproval.mockImplementationOnce(() => new Promise((resolve) => { resolveApproval = resolve; }));
+        const view = renderPage();
+        try {
+            await act(async () => {});
+            fireEvent.click(screen.getByRole("button", { name: "Approve Exact Action" }));
+            expect(screen.getByRole("button", { name: "Refresh" })).toBeDisabled();
+            await act(async () => vi.advanceTimersByTime(10_000));
+            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(1);
+            await act(async () => resolveApproval({ workflow_id: "workflow-123", workflow_state: "awaiting_implementation_approval", implementation_approval_status: "approved", message: null }));
+            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+            expect(screen.getByText("Action approved. Resume to run this action.")).toBeVisible();
+            expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+        } finally {
+            view.unmount();
+            vi.useRealTimers();
+        }
+    });
+
+    it("does not replace the displayed workflow until its companion reads have finished", async () => {
+        const initial = workflow({ effect_kind: "operational_action" });
+        mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockResolvedValue(workflow({ effect_kind: "operational_action", workflow_state: "completed" }));
+        renderPage();
+        await screen.findByRole("button", { name: "Approve Exact Action" });
+        let resolveDiagnostic!: (value: WorkflowRecoveryDiagnostic | null) => void;
+        mockedGetWorkflowRecoveryDiagnostic.mockImplementationOnce(() => new Promise((resolve) => { resolveDiagnostic = resolve; }));
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        await waitFor(() => expect(mockedGetWorkflowRecoveryDiagnostic).toHaveBeenCalledTimes(2));
+        expect(screen.getByRole("button", { name: "Approve Exact Action" })).toBeDisabled();
+        await act(async () => resolveDiagnostic(null));
+        expect(screen.queryByRole("button", { name: "Approve Exact Action" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Loading recovery diagnostic...")).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+    });
+
+    it.each(["lifecycle", "diagnostic"])("does not display %s evidence from another workflow", async (kind) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        if (kind === "lifecycle") mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle({ workflow_id: "different-workflow" }));
+        else mockedGetWorkflowRecoveryDiagnostic.mockResolvedValue(operationalDiagnostic());
+        renderPage();
+        const message = kind === "lifecycle" ? "The operational lifecycle response does not match this workflow." : "The recovery diagnostic response does not match this workflow.";
+        expect(await screen.findByText(message)).toBeVisible();
+        expect(screen.queryByText("different-workflow")).not.toBeInTheDocument();
+        expect(screen.queryByText("Loading recovery diagnostic...")).not.toBeInTheDocument();
+    });
+
+    it.each(["implementation", "verification", "commit"] as const)("disables %s approval while current status is being checked", async (stage) => {
+        const initial = stage === "implementation" ? workflow() : stage === "verification" ? workflowAwaitingVerification({ verification_approval_status: "pending" }) : workflowAwaitingCommit();
+        let resolveRead!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }));
+        renderPage();
+        const name = stage === "implementation" ? "Approve Implementation" : stage === "verification" ? "Approve Verification" : "Approve Commit";
+        const approve = await screen.findByRole("button", { name });
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
+        expect(approve).toBeDisabled();
+        fireEvent.click(approve);
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowVerificationApproval).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
+        await act(async () => resolveRead(initial));
+        expect(await screen.findByRole("button", { name })).toBeEnabled();
+    });
+
+    it.each(["implementation", "verification", "commit"] as const)("disables %s resume while current status is being checked", async (stage) => {
+        const initial = stage === "implementation" ? workflow({ implementation_approval_status: "approved" })
+            : stage === "verification" ? workflowAwaitingVerification({ verification_approval_status: "approved" })
+                : workflowAwaitingCommit({ commit_approval_status: "approved" });
+        let resolveRead!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }));
+        renderPage();
+        const name = `Resume Approved ${stage[0].toUpperCase()}${stage.slice(1)}`;
+        const resume = await screen.findByRole("button", { name });
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
+        expect(resume).toBeDisabled();
+        fireEvent.click(resume);
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+        await act(async () => resolveRead(initial));
+        expect(await screen.findByRole("button", { name })).toBeEnabled();
+    });
+
+    it("waits for a slow automatic read before checking again", async () => {
+        vi.useFakeTimers();
+        const running = workflow({ workflow_state: "executing", implementation_approval_status: "approved" });
+        let resolveRead!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockResolvedValueOnce(running)
+            .mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }))
+            .mockResolvedValue(workflowAwaitingVerification({ implementation_approval_status: "approved", verification_approval_status: "pending" }));
+        const view = renderPage();
+        try {
+            await act(async () => {});
+            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(1);
+            await act(async () => vi.advanceTimersByTime(5_000));
+            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+            await act(async () => vi.advanceTimersByTime(10_000));
+            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+            await act(async () => resolveRead(running));
+            await act(async () => vi.advanceTimersByTime(5_000));
+            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(3);
+            expect(screen.getByRole("button", { name: "Approve Verification" })).toBeEnabled();
+            expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+        } finally {
+            view.unmount();
+            vi.useRealTimers();
+        }
+    });
+
     it("does not announce resumable execution when the refreshed workflow still reports pending approval", async () => {
         mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
             workflow_id: "workflow-123", workflow_state: "awaiting_implementation_approval",
@@ -246,8 +360,8 @@ describe("WorkflowPage", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        mockedGetWorkflowDetail.mockResolvedValue(workflow());
-        mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle());
+        mockedGetWorkflowDetail.mockReset().mockResolvedValue(workflow());
+        mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
         mockedGetWorkflowRecoveryDiagnostic.mockResolvedValue(null);
         mockedGetWorkflowSupportBundle.mockResolvedValue(null);
         mockedResumeWorkflow.mockResolvedValue(undefined);
@@ -394,6 +508,8 @@ describe("WorkflowPage", () => {
 
         await waitFor(() => expect(mockedResumeWorkflow).toHaveBeenCalledTimes(1));
         expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Resuming..." })).toBeDisabled();
+        expect(screen.getByText("Resuming workflow...")).toBeVisible();
 
         resolveResume();
         await screen.findByText("Implementation");

@@ -163,6 +163,7 @@ export async function installRepositoryJourney(page: Page, reject = false) {
     let approved = false;
     const writes: JourneyWrite[] = [];
     const unexpected: string[] = [];
+    let nextReadGate: { started: () => void; released: Promise<void> } | null = null;
     await page.route("**/*", async (route) => {
         const request = route.request();
         const url = new URL(request.url());
@@ -213,9 +214,22 @@ export async function installRepositoryJourney(page: Page, reject = false) {
         if (isCore && path === `/execution-candidates/${journey.candidate}`) return route.fulfill({ json: candidate });
         if (isAgent && path === planningPath) return route.fulfill({ json: planningSession(planReady) });
         if (isAgent && path === `${planningPath}/plan` && planReady) return route.fulfill({ json: plan });
-        if (isAgent && path === `${workflowPath}/implementation-request` && implementationReady) return route.fulfill({ json: workflowDetail(phase, approved) });
+        if (isAgent && path === `${workflowPath}/implementation-request` && implementationReady) {
+            const snapshot = workflowDetail(phase, approved);
+            const gate = nextReadGate;
+            nextReadGate = null;
+            if (gate) { gate.started(); await gate.released; }
+            return route.fulfill({ json: snapshot });
+        }
         if (isAgent && path === `${workflowPath}/audit` && phase === "completed") return route.fulfill({ json: completedAudit() });
         return route.fulfill({ status: 404, json: { detail: "Optional information unavailable in browser fixture." } });
     });
-    return { writes, expectedWrites, unexpected };
+    return { writes, expectedWrites, unexpected, holdNextWorkflowRead: () => {
+        let release!: () => void;
+        let started!: () => void;
+        const released = new Promise<void>((resolve) => { release = resolve; });
+        const requested = new Promise<void>((resolve) => { started = resolve; });
+        nextReadGate = { started, released };
+        return { requested, release };
+    } };
 }

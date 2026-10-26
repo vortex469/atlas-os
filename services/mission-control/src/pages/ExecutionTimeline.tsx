@@ -3,10 +3,11 @@ import type { WorkflowDetailResponse, WorkflowExecutionSummary, WorkflowTimeline
 interface ExecutionTimelineProps {
     workflow: WorkflowDetailResponse;
     isRefreshing: boolean;
+    refreshDisabled?: boolean;
     onRefresh: () => void;
 }
 
-export function ExecutionTimeline({ workflow, isRefreshing, onRefresh }: ExecutionTimelineProps) {
+export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = false, onRefresh }: ExecutionTimelineProps) {
     const executionState = executionStateText(workflow);
 
     return (
@@ -16,7 +17,7 @@ export function ExecutionTimeline({ workflow, isRefreshing, onRefresh }: Executi
                     <h2 id="execution-timeline-heading" className="text-lg font-semibold text-white">Execution timeline</h2>
                     <p aria-live="polite" role="status" className="mt-1 text-sm text-slate-300">{executionState}</p>
                 </div>
-                <button type="button" onClick={onRefresh} disabled={isRefreshing} className="rounded-lg border border-blue-400 px-4 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="rounded-lg border border-blue-400 px-4 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60">
                     {isRefreshing ? "Refreshing..." : "Refresh"}
                 </button>
             </div>

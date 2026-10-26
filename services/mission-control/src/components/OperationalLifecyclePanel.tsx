@@ -5,6 +5,7 @@ interface OperationalLifecyclePanelProps {
     lifecycle: WorkflowOperationalLifecycle | null;
     isLoading: boolean;
     isRefreshing: boolean;
+    refreshDisabled?: boolean;
     error: string | null;
     onRefresh: () => void;
 }
@@ -19,7 +20,7 @@ function timestamp(value: string | null): string {
     return Number.isNaN(parsed.getTime()) ? "Unknown time" : parsed.toLocaleString();
 }
 
-export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, error, onRefresh }: OperationalLifecyclePanelProps) {
+export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, refreshDisabled = false, error, onRefresh }: OperationalLifecyclePanelProps) {
     if (isLoading) {
         return <section aria-label="Operational lifecycle"><p role="status" className="text-slate-300">Loading operational lifecycle...</p></section>;
     }
@@ -32,7 +33,7 @@ export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, 
         <section aria-labelledby="operational-lifecycle-heading" className="space-y-5 rounded-xl border border-cyan-500/30 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div><p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Operational workflow</p><h2 id="operational-lifecycle-heading" className="mt-2 text-xl font-semibold text-white">Operational lifecycle</h2></div>
-                <button type="button" onClick={onRefresh} disabled={isRefreshing} className="rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">{isRefreshing ? "Refreshing..." : "Refresh lifecycle"}</button>
+                <button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">{isRefreshing ? "Refreshing..." : "Refresh lifecycle"}</button>
             </div>
             <section aria-labelledby="outcome-heading" className="rounded-lg border border-slate-700 bg-slate-950/60 p-4">
                 <h3 id="outcome-heading" className="font-semibold text-white">{outcome.title}</h3>

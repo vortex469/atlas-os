@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import {
@@ -58,47 +58,62 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const [supportBundle, setSupportBundle] = useState<OperationalSupportBundle | null>(null);
     const [isDownloadingSupport, setIsDownloadingSupport] = useState(false);
     const [supportBundleError, setSupportBundleError] = useState<string | null>(null);
+    const readSequence = useRef(0);
+    const readPending = useRef(false);
+    const controlsBusy = isLoading || isRefreshing || isSubmitting || isSubmittingVerification || isSubmittingCommit || isResuming;
 
     const loadWorkflow = useCallback(async (mode: LoadMode = "initial") => {
+        const sequence = ++readSequence.current;
+        readPending.current = true;
         if (mode === "initial") setIsLoading(true);
         if (mode === "refresh") setIsRefreshing(true);
         setLoadError(null);
         try {
             const detail = await getWorkflowDetail(workflowId);
+            if (sequence !== readSequence.current) return;
             if (detail && detail.workflow_id !== workflowId) {
                 setWorkflow(null);
                 setLoadError("The returned workflow does not match this page. Try loading it again.");
                 return;
             }
-            setWorkflow(detail);
-            setLifecycleError(null);
-            setDiagnosticError(null);
+            let nextLifecycle: WorkflowOperationalLifecycle | null = null;
+            let nextDiagnostic: WorkflowRecoveryDiagnostic | null = null;
+            let nextLifecycleError: string | null = null;
+            let nextDiagnosticError: string | null = null;
             if (detail?.effect_kind === "operational_action") {
-                try {
-                    const lifecycle = await getWorkflowOperationalLifecycle(workflowId);
-                    setOperationalLifecycle(lifecycle);
-                    if (lifecycle === null) {
-                        setLifecycleError("The operational lifecycle is no longer available for this workflow.");
-                    }
-                } catch {
-                    setOperationalLifecycle(null);
-                    setLifecycleError("Mission Control could not read the operational lifecycle.");
+                const [lifecycleResult, diagnosticResult] = await Promise.allSettled([
+                    getWorkflowOperationalLifecycle(workflowId), getWorkflowRecoveryDiagnostic(workflowId),
+                ]);
+                if (sequence !== readSequence.current) return;
+                if (lifecycleResult.status === "rejected") {
+                    nextLifecycleError = "Mission Control could not read the operational lifecycle.";
+                } else if (lifecycleResult.value && lifecycleResult.value.workflow_id !== workflowId) {
+                    nextLifecycleError = "The operational lifecycle response does not match this workflow.";
+                } else {
+                    nextLifecycle = lifecycleResult.value;
+                    if (nextLifecycle === null) nextLifecycleError = "The operational lifecycle is no longer available for this workflow.";
                 }
-                try {
-                    setRecoveryDiagnostic(await getWorkflowRecoveryDiagnostic(workflowId));
-                } catch {
-                    setRecoveryDiagnostic(null);
-                    setDiagnosticError("Mission Control could not read the recovery diagnostic.");
+                if (diagnosticResult.status === "rejected") {
+                    nextDiagnosticError = "Mission Control could not read the recovery diagnostic.";
+                } else if (diagnosticResult.value && diagnosticResult.value.correlation?.workflow_id !== workflowId) {
+                    nextDiagnosticError = "The recovery diagnostic response does not match this workflow.";
+                } else {
+                    nextDiagnostic = diagnosticResult.value;
                 }
-            } else {
-                setOperationalLifecycle(null);
-                setRecoveryDiagnostic(null);
             }
+            setWorkflow(detail);
+            setOperationalLifecycle(nextLifecycle);
+            setRecoveryDiagnostic(nextDiagnostic);
+            setLifecycleError(nextLifecycleError);
+            setDiagnosticError(nextDiagnosticError);
         } catch (error) {
-            setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
+            if (sequence === readSequence.current) setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
         } finally {
-            if (mode === "initial") setIsLoading(false);
-            if (mode === "refresh") setIsRefreshing(false);
+            if (sequence === readSequence.current) {
+                readPending.current = false;
+                setIsLoading(false);
+                setIsRefreshing(false);
+            }
         }
     }, [workflowId]);
 
@@ -107,19 +122,20 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         void Promise.resolve().then(() => {
             if (!cancelled) void loadWorkflow();
         });
-        return () => { cancelled = true; };
+        return () => { cancelled = true; readSequence.current += 1; readPending.current = false; };
     }, [loadWorkflow]);
 
     useEffect(() => {
+        if (controlsBusy) return undefined;
         if (workflow?.workflow_state !== "executing" && operationalLifecycle?.terminal !== false) return undefined;
         const interval = window.setInterval(() => {
             void loadWorkflow("refresh");
         }, 5_000);
         return () => window.clearInterval(interval);
-    }, [loadWorkflow, operationalLifecycle?.terminal, workflow?.workflow_state]);
+    }, [controlsBusy, loadWorkflow, operationalLifecycle?.terminal, workflow?.workflow_state]);
 
     function refreshWorkflow() {
-        if (isRefreshing) return;
+        if (controlsBusy || readPending.current) return;
         void loadWorkflow("refresh");
     }
 
@@ -160,7 +176,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     }
 
     async function submitDecision(decision: WorkflowImplementationDecision) {
-        if (!workflow || workflow.workflow_state !== "awaiting_implementation_approval" || isSubmitting) return;
+        if (!workflow || workflow.workflow_state !== "awaiting_implementation_approval" || controlsBusy || readPending.current) return;
         setIsSubmitting(true);
         setApprovalError(null);
         try {
@@ -175,7 +191,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     }
 
     async function submitVerificationDecision(decision: WorkflowImplementationDecision) {
-        if (!workflow || workflow.workflow_state !== "awaiting_verification_approval" || isSubmittingVerification) return;
+        if (!workflow || workflow.workflow_state !== "awaiting_verification_approval" || controlsBusy || readPending.current) return;
         setIsSubmittingVerification(true);
         setVerificationApprovalError(null);
         try {
@@ -190,7 +206,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     }
 
     async function submitCommitDecision(decision: WorkflowImplementationDecision) {
-        if (!workflow || workflow.workflow_state !== "awaiting_commit_approval" || isSubmittingCommit) return;
+        if (!workflow || workflow.workflow_state !== "awaiting_commit_approval" || controlsBusy || readPending.current) return;
         setIsSubmittingCommit(true);
         setCommitApprovalError(null);
         try {
@@ -272,9 +288,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         && workflow.workflow_state === "blocked"
         && workflow.worker_reconciliation?.outcome === "unknown"
         && workflow.worker_reconciliation.can_check_result === true;
-    const canResume =
-        !isResuming
-        && (canResumeImplementation || canResumeVerification || canResumeCommit || canReconcileWorker);
+    const canResume = canResumeImplementation || canResumeVerification || canResumeCommit || canReconcileWorker;
 
     const resumeButtonLabel = canReconcileWorker
         ? "Check worker result"
@@ -287,7 +301,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 : "Resume";
 
     async function resumeWorkflowTransition() {
-        if (!workflow || !canResume) {
+        if (!workflow || !canResume || controlsBusy || readPending.current) {
             return;
         }
 
@@ -307,6 +321,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
+            {isRefreshing && <p role="status" className="rounded-lg border border-blue-400/30 bg-blue-400/5 p-4 text-sm text-blue-100">Checking current workflow status. Approval and resume controls are unavailable until this check finishes.</p>}
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow</p>
@@ -350,14 +365,15 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <>
                     <OperationalLifecyclePanel
                         lifecycle={operationalLifecycle}
-                        isLoading={operationalLifecycle === null && lifecycleError === null}
+                        isLoading={isRefreshing && operationalLifecycle === null && lifecycleError === null}
                         isRefreshing={isRefreshing}
+                        refreshDisabled={controlsBusy}
                         error={lifecycleError}
                         onRefresh={refreshWorkflow}
                     />
                     <OperationalRecoverySummary
                         diagnostic={recoveryDiagnostic}
-                        isLoading={recoveryDiagnostic === null && diagnosticError === null}
+                        isLoading={isRefreshing && recoveryDiagnostic === null && diagnosticError === null}
                         error={diagnosticError}
                         supportEvidenceAvailable={operationalLifecycle !== null}
                     />
@@ -373,7 +389,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 </>
             )}
 
-            <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} onRefresh={refreshWorkflow} />
+            <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} onRefresh={refreshWorkflow} />
 
             {isRepository && workflow.execution.output_capture?.some((item) => item.truncated) && (
                 <section aria-labelledby="output-capture-heading" className="rounded-xl border border-amber-500/50 p-5">
@@ -408,6 +424,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         workflow={workflow}
                         canDecideVerification={canDecideVerification}
                         isSubmittingVerification={isSubmittingVerification}
+                        actionsDisabled={controlsBusy}
                         verificationApprovalResult={verificationApprovalResult}
                         verificationApprovalError={verificationApprovalError}
                         onVerificationDecision={submitVerificationDecision}
@@ -417,6 +434,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         workflow={workflow}
                         canDecideCommit={canDecideCommit}
                         isSubmittingCommit={isSubmittingCommit}
+                        actionsDisabled={controlsBusy}
                         commitApprovalResult={commitApprovalResult}
                         commitApprovalError={commitApprovalError}
                         onCommitDecision={submitCommitDecision}
@@ -433,10 +451,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 </p>
                 {canDecide ? (
                     <div className="mt-4 flex flex-wrap gap-3">
-                        <button type="button" onClick={() => void submitDecision("approve")} disabled={isSubmitting} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">
+                        <button type="button" onClick={() => void submitDecision("approve")} disabled={controlsBusy} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">
                             {workflow.effect_kind === "operational_action" ? "Approve Exact Action" : "Approve Implementation"}
                         </button>
-                        <button type="button" onClick={() => void submitDecision("reject")} disabled={isSubmitting} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">
+                        <button type="button" onClick={() => void submitDecision("reject")} disabled={controlsBusy} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">
                             Reject
                         </button>
                     </div>
@@ -444,8 +462,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <p className="mt-4 text-sm text-slate-300">Approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
                 )}
                 {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">Submitting approval...</p>}
-                {approvalResult && approvalResult.implementation_approval_status === "approved" && canResumeImplementation && (
-                    <p role="status" className="mt-3 text-sm text-emerald-200">Implementation approved. Resume to run this change.</p>
+                {approvalResult && approvalResult.implementation_approval_status === "approved" && canResumeImplementation && !controlsBusy && (
+                    <p role="status" className="mt-3 text-sm text-emerald-200">{isOperational ? "Action approved. Resume to run this action." : "Implementation approved. Resume to run this change."}</p>
                 )}
                 {approvalResult && approvalResult.implementation_approval_status === "rejected" && (
                     <p role="status" className="mt-3 text-sm text-red-100">Approval rejected.</p>
@@ -461,7 +479,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         <button
                             type="button"
                             onClick={() => void resumeWorkflowTransition()}
-                            disabled={isResuming}
+                            disabled={controlsBusy}
                             className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-blue-950 transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {isResuming ? "Resuming..." : resumeButtonLabel}
@@ -512,6 +530,7 @@ function VerificationReviewSection({
     workflow,
     canDecideVerification,
     isSubmittingVerification,
+    actionsDisabled,
     verificationApprovalResult,
     verificationApprovalError,
     onVerificationDecision,
@@ -519,6 +538,7 @@ function VerificationReviewSection({
     workflow: WorkflowDetailResponse;
     canDecideVerification: boolean;
     isSubmittingVerification: boolean;
+    actionsDisabled: boolean;
     verificationApprovalResult: WorkflowVerificationApprovalResponse | null;
     verificationApprovalError: string | null;
     onVerificationDecision: (decision: WorkflowImplementationDecision) => Promise<void>;
@@ -579,14 +599,14 @@ function VerificationReviewSection({
                 <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and verification approval decision.</p>
                 {canDecideVerification ? (
                     <div className="mt-4 flex flex-wrap gap-3">
-                        <button type="button" onClick={() => void onVerificationDecision("approve")} disabled={isSubmittingVerification} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Verification</button>
-                        <button type="button" onClick={() => void onVerificationDecision("reject")} disabled={isSubmittingVerification} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Verification</button>
+                        <button type="button" onClick={() => void onVerificationDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Verification</button>
+                        <button type="button" onClick={() => void onVerificationDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Verification</button>
                     </div>
                 ) : (
                     <p className="mt-4 text-sm text-slate-300">Verification approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
                 )}
                 {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting verification approval...</p>}
-                {verificationApprovalResult?.verification_approval_status === "approved" && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
+                {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
                 {verificationApprovalResult?.verification_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Verification approval rejected.</p>}
                 {verificationApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(verificationApprovalError)}</p>}
             </section>
@@ -599,6 +619,7 @@ function CommitSection({
     workflow,
     canDecideCommit,
     isSubmittingCommit,
+    actionsDisabled,
     commitApprovalResult,
     commitApprovalError,
     onCommitDecision,
@@ -606,6 +627,7 @@ function CommitSection({
     workflow: WorkflowDetailResponse;
     canDecideCommit: boolean;
     isSubmittingCommit: boolean;
+    actionsDisabled: boolean;
     commitApprovalResult: WorkflowCommitApprovalResponse | null;
     commitApprovalError: string | null;
     onCommitDecision: (decision: WorkflowImplementationDecision) => Promise<void>;
@@ -646,14 +668,14 @@ function CommitSection({
                 <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and commit approval decision.</p>
                 {canDecideCommit ? (
                     <div className="mt-4 flex flex-wrap gap-3">
-                        <button type="button" onClick={() => void onCommitDecision("approve")} disabled={isSubmittingCommit} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Commit</button>
-                        <button type="button" onClick={() => void onCommitDecision("reject")} disabled={isSubmittingCommit} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Commit</button>
+                        <button type="button" onClick={() => void onCommitDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Commit</button>
+                        <button type="button" onClick={() => void onCommitDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Commit</button>
                     </div>
                 ) : (
                     <p className="mt-4 text-sm text-slate-300">Commit approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
                 )}
                 {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
-                {commitApprovalResult?.commit_approval_status === "approved" && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
+                {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
                 {commitApprovalResult?.commit_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Commit approval rejected.</p>}
                 {commitApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(commitApprovalError)}</p>}
             </section>

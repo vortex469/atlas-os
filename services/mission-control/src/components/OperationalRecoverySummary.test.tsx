@@ -2,21 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { WorkflowRecoveryDiagnostic } from "../types/atlasAgent";
+import { operationalDiagnostic as diagnostic } from "../test/operationalLifecycle";
 import { OperationalRecoverySummary } from "./OperationalRecoverySummary";
 
-function diagnostic(overrides: Partial<WorkflowRecoveryDiagnostic> = {}): WorkflowRecoveryDiagnostic {
-    return {
-        applicable: true,
-        diagnostic_status: "healthy",
-        consistency: "consistent",
-        correlation: { workflow_id: "workflow-1", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true },
-        dispatch_evidence: { barrier_crossed: true, provider_operation_captured: true, dispatch_result_known: true, transition_sequence_valid: true },
-        verification_evidence: { status: "succeeded", target_fingerprint_state: "unchanged", observed_state: "running", observed_health: "running", terminal_evidence: true },
-        controlled_reason: null,
-        safe_next_action: "none",
-        ...overrides,
-    };
-}
 
 describe("OperationalRecoverySummary", () => {
     it.each([

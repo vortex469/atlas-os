@@ -81,3 +81,24 @@ test("rejecting implementation leaves execution and later approvals unavailable 
     expect(fixture.writes).toEqual(fixture.expectedWrites);
     expect(fixture.unexpected).toEqual([]);
 });
+
+test("a pending workflow refresh disables decisions without submitting a request", async ({ page }) => {
+    const fixture = await installRepositoryJourney(page, true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/workflows/${journey.workflow}`);
+    await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeEnabled();
+    const read = fixture.holdNextWorkflowRead();
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
+    await read.requested;
+    await expect(page.getByText("Checking current workflow status. Approval and resume controls are unavailable until this check finishes.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Reject", exact: true })).toBeDisabled();
+    expect(fixture.writes).toEqual([]);
+    read.release();
+    await expect(page.getByRole("button", { name: "Reject", exact: true })).toBeEnabled();
+    await page.getByRole("button", { name: "Reject", exact: true }).click();
+    await expect(page.getByText("Approval rejected.", { exact: true })).toBeVisible();
+    expect(fixture.writes).toEqual(fixture.expectedWrites);
+    expect(fixture.unexpected).toEqual([]);
+    await fitsViewport(page);
+});
