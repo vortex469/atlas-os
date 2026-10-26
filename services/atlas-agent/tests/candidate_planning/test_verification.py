@@ -495,10 +495,10 @@ def test_gated_rc1_smoke_workflow_reaches_actual_verification(
     from tests.test_workflow_engine import make_review_report, make_reviewed_evidence
 
     engine._repository_inspector_factory.return_value.reviewed_change_evidence.return_value = (
-        make_reviewed_evidence(root)
+        make_reviewed_evidence(root, paths=(Path("compose.production.yaml"),), message="feat(agent): update compose stack candidate")
     )
     engine._repository_inspector_factory.return_value.reviewed_candidate_change_evidence.return_value = (
-        make_reviewed_evidence(root)
+        make_reviewed_evidence(root, paths=(Path("compose.production.yaml"),), message="feat(agent): update compose stack candidate")
     )
     engine._candidate_review_adapter.review.return_value = Mock(
         approved=True,

@@ -126,21 +126,37 @@ def make_commit_result(root: Path) -> CommitResult:
     )
 
 
-def make_reviewed_evidence(root: Path, *, fingerprint: str = "a" * 64) -> ReviewedChangeEvidence:
-    return ReviewedChangeEvidence(
+def make_reviewed_evidence(
+    root: Path,
+    *,
+    fingerprint: str | None = None,
+    paths: tuple[Path, ...] = (Path("app/workflow/engine.py"),),
+    message: str = "feat(agent): workflow automation",
+) -> ReviewedChangeEvidence:
+    from dataclasses import replace
+
+    from app.repository.evidence import reviewed_evidence_fingerprint
+
+    evidence = ReviewedChangeEvidence(
         repository_root=root.resolve(strict=False),
         expected_branch="feature/atlas-agent",
         expected_head="abc123",
-        reviewed_files=(Path("app/workflow/engine.py"),),
-        commit_message="feat(agent): workflow automation",
-        changes=(
+        reviewed_files=paths,
+        commit_message=message,
+        changes=tuple(
             ReviewedChange(
-                path=Path("app/workflow/engine.py"),
+                path=path,
                 status=" M",
                 content_sha256="b" * 64,
-            ),
+                git_mode="100644",
+            )
+            for path in paths
         ),
-        fingerprint=fingerprint,
+        fingerprint="",
+    )
+
+    return replace(
+        evidence, fingerprint=fingerprint or reviewed_evidence_fingerprint(evidence)
     )
 
 
@@ -2022,7 +2038,7 @@ def test_successful_review_pauses_with_commit_approval_evidence(
     assert request.commit_metadata.expected_branch == "feature/atlas-agent"
     assert request.commit_metadata.expected_head == "abc123"
     assert request.commit_metadata.reviewed_files == (Path("app/workflow/engine.py"),)
-    assert request.commit_metadata.reviewed_content_fingerprint == "a" * 64
+    assert request.commit_metadata.reviewed_content_fingerprint == make_reviewed_evidence(tmp_path).fingerprint
     session = state_store.get_session("workflow-a15-3")
     assert session.verification_report is result.verification_report
     assert session.review_report is result.review_report
@@ -2030,7 +2046,7 @@ def test_successful_review_pauses_with_commit_approval_evidence(
     assert session.reviewed_files == (Path("app/workflow/engine.py"),)
     assert session.expected_branch == "feature/atlas-agent"
     assert session.expected_head == "abc123"
-    assert session.reviewed_content_fingerprint == "a" * 64
+    assert session.reviewed_content_fingerprint == make_reviewed_evidence(tmp_path).fingerprint
     verifier.verify.assert_called_once()
     reviewer.review.assert_called_once()
     engine._repository_committer_factory.assert_not_called()

@@ -1647,7 +1647,7 @@ def save_commit_approval(container, workflow: WorkflowSession) -> None:
             expected_branch="feature/atlas-agent",
             expected_head="abc123",
             reviewed_files=(Path("compose.yaml"), Path("services/demo/Dockerfile")),
-            reviewed_content_fingerprint="a" * 64,
+            reviewed_content_fingerprint=workflow.reviewed_content_fingerprint,
             commit_message="feat(compose): update stack",
         ),
     )
@@ -1754,6 +1754,7 @@ def test_candidate_workflow_commit_request_is_read_only(tmp_path: Path, monkeypa
         "reviewed_files": ["compose.yaml", "services/demo/Dockerfile"],
         "reviewed_content_fingerprint": "a" * 64,
         "commit_approval_status": "pending",
+        "reviewed_changes": None,
     }
     assert body["commit_result"] == {
         "commit_sha": None,

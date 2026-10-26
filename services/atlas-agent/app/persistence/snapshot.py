@@ -57,7 +57,13 @@ from app.execution.worker_contracts import WorkerExecutionRequest, WorkerExecuti
 from app.model_providers.models import ModelResponse
 from app.persistence.patch_journal import PatchJournal
 from app.planning.models import ImplementationPlan, PlanRisk, RoadmapCheckpoint
-from app.repository.models import CommitRequest, CommitResult
+from app.repository.evidence import validate_reviewed_evidence
+from app.repository.models import (
+    CommitRequest,
+    CommitResult,
+    ReviewedChange,
+    ReviewedChangeEvidence,
+)
 from app.review.models import (
     ArchitectureAssessment,
     ReviewCategory,
@@ -583,6 +589,22 @@ class AgentStatePersistenceCoordinator:
         for identifier, session in workflow.sessions.items():
             if identifier != session.identifier:
                 raise StatePersistenceError("Workflow session key does not match identifier")
+            if session.reviewed_change_evidence is not None:
+                try:
+                    validate_reviewed_evidence(
+                        session.reviewed_change_evidence,
+                        session.commit_request,
+                        session.reviewed_content_fingerprint,
+                    )
+                    if (
+                        session.effect_kind is not WorkflowEffectKind.REPOSITORY_CHANGE
+                        or session.reviewed_files != session.reviewed_change_evidence.reviewed_files
+                        or session.expected_branch != session.reviewed_change_evidence.expected_branch
+                        or session.expected_head != session.reviewed_change_evidence.expected_head
+                    ):
+                        raise ValueError("Reviewed facts do not match workflow")
+                except ValueError as exc:
+                    raise StatePersistenceError(str(exc)) from exc
             purpose = _WAITING_PURPOSES.get(session.state)
             if (
                 session.state is WorkflowSessionState.AWAITING_APPROVAL
@@ -2213,6 +2235,7 @@ def _encode_workflow_session(session: WorkflowSession) -> dict[str, Any]:
         "request": _encode_workflow_request(session.request),
         "review_analysis": _encode_model_response(session.review_analysis),
         "review_report": _encode_review_report(session.review_report),
+        "reviewed_change_evidence": _encode_reviewed_evidence(session.reviewed_change_evidence),
         "reviewed_content_fingerprint": session.reviewed_content_fingerprint,
         "reviewed_files": [_path(path) for path in session.reviewed_files],
         "source": session.source.value,
@@ -2295,6 +2318,7 @@ def _decode_workflow_session(
         reviewed_files=_tuple_path(payload.get("reviewed_files", [])),
         expected_branch=payload.get("expected_branch"),
         expected_head=payload.get("expected_head"),
+        reviewed_change_evidence=_decode_reviewed_evidence(payload.get("reviewed_change_evidence")),
         reviewed_content_fingerprint=payload.get("reviewed_content_fingerprint"),
         blocked_reason=payload.get("blocked_reason"),
     )
@@ -2546,4 +2570,94 @@ def _decode_approval_result(
             _require_dict(payload, "decision"),
             legacy_shell_workflow_ids=legacy_shell_workflow_ids,
         )
+    )
+
+
+def _encode_reviewed_evidence(
+    evidence: ReviewedChangeEvidence | None,
+) -> dict[str, Any] | None:
+    if evidence is None:
+        return None
+    return {
+        "version": 2,
+        "repository_root": str(evidence.repository_root),
+        "expected_branch": evidence.expected_branch,
+        "expected_head": evidence.expected_head,
+        "reviewed_files": [str(path) for path in evidence.reviewed_files],
+        "commit_message": evidence.commit_message,
+        "fingerprint": evidence.fingerprint,
+        "changes": [
+            {
+                "path": str(change.path),
+                "status": change.status,
+                "content_sha256": change.content_sha256,
+                "git_mode": change.git_mode,
+                "deletion_marker": change.deletion_marker,
+                "rename_source": _path(change.rename_source),
+            }
+            for change in evidence.changes
+        ],
+    }
+
+
+def _nullable_string(payload: dict[str, Any], key: str) -> str | None:
+    value = payload[key]
+    if value is not None and not isinstance(value, str):
+        raise StatePersistenceError("Invalid reviewed facts string")
+    return value
+
+
+def _decode_reviewed_evidence(payload: Any) -> ReviewedChangeEvidence | None:
+    if payload is None:
+        return None
+    fields = frozenset(
+        {
+            "version",
+            "repository_root",
+            "expected_branch",
+            "expected_head",
+            "reviewed_files",
+            "commit_message",
+            "fingerprint",
+            "changes",
+        }
+    )
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != fields
+        or type(payload["version"]) is not int
+        or payload["version"] != 2
+    ):
+        raise StatePersistenceError("Invalid reviewed facts manifest")
+    if not isinstance(payload["changes"], list):
+        raise StatePersistenceError("Invalid reviewed changes")
+    changes = []
+    for item in payload["changes"]:
+        if not isinstance(item, dict) or set(item) != {
+            "path",
+            "status",
+            "content_sha256",
+            "git_mode",
+            "deletion_marker",
+            "rename_source",
+        }:
+            raise StatePersistenceError("Invalid reviewed file facts")
+        changes.append(
+            ReviewedChange(
+                path=_decode_path(item["path"]),
+                status=_require_str(item, "status"),
+                content_sha256=_nullable_string(item, "content_sha256"),
+                git_mode=_nullable_string(item, "git_mode"),
+                deletion_marker=_nullable_string(item, "deletion_marker"),
+                rename_source=_decode_optional_path(item["rename_source"]),
+            )
+        )
+    return ReviewedChangeEvidence(
+        repository_root=_decode_path(payload["repository_root"]),
+        expected_branch=_nullable_string(payload, "expected_branch"),
+        expected_head=_nullable_string(payload, "expected_head"),
+        reviewed_files=_tuple_path(payload["reviewed_files"]),
+        commit_message=_require_str(payload, "commit_message"),
+        fingerprint=_require_str(payload, "fingerprint"),
+        changes=tuple(changes),
     )

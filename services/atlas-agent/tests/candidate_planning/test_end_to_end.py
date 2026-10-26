@@ -167,12 +167,20 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
 ) -> None:
     repository = tmp_path / "repository"
     head = initialize_candidate_repository(repository)
+    artifact_builder = WorkflowEngine._reviewed_evidence_artifacts
     evidence_builder = GitInspector._build_reviewed_change_evidence
     if commit_case in {"legacy-review", "legacy-completed"}:
         def legacy_evidence(inspector, **kwargs):
             evidence = evidence_builder(inspector, **kwargs)
             return replace(evidence, fingerprint=version_one_fingerprint(evidence))
 
+        def legacy_artifacts(evidence, request):
+            return {"reviewed_files": evidence.reviewed_files,
+                    "expected_branch": evidence.expected_branch,
+                    "expected_head": evidence.expected_head,
+                    "reviewed_content_fingerprint": evidence.fingerprint}
+
+        monkeypatch.setattr(WorkflowEngine, "_reviewed_evidence_artifacts", staticmethod(legacy_artifacts))
         monkeypatch.setattr(GitInspector, "_build_reviewed_change_evidence", legacy_evidence)
     mock_now = datetime(2026, 8, 2, 0, 0, tzinfo=UTC)
     core = FakeCoreClient(core_response(fingerprint="a" * 64))
@@ -362,9 +370,19 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     commit_approval = commit_boundary.approval_request
     assert commit_approval is not None
     approved_review_fingerprint = commit_approval.commit_metadata.reviewed_content_fingerprint
+    saved_facts = workflow_state.get_session(workflow_id).reviewed_change_evidence
+    if commit_case.startswith("legacy-"):
+        assert saved_facts is None
+    else:
+        assert saved_facts is not None
+        assert saved_facts.fingerprint == approved_review_fingerprint
+        assert saved_facts.changes[0].git_mode == "100644"
+        persistence.initialize()
+        assert workflow_state.get_session(workflow_id).reviewed_change_evidence == saved_facts
     if commit_case == "legacy-review":
         # Upgrade after creating the old review: never rewrite its approval.
         monkeypatch.setattr(GitInspector, "_build_reviewed_change_evidence", evidence_builder)
+        monkeypatch.setattr(WorkflowEngine, "_reviewed_evidence_artifacts", staticmethod(artifact_builder))
     assert persistence.mutate_approval(
         lambda repository: repository.update_decision(
             commit_approval.identifier,
@@ -441,6 +459,7 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     if commit_case == "legacy-completed":
         # Completed records remain historical evidence after upgrading review.
         monkeypatch.setattr(GitInspector, "_build_reviewed_change_evidence", evidence_builder)
+        monkeypatch.setattr(WorkflowEngine, "_reviewed_evidence_artifacts", staticmethod(artifact_builder))
     assert completed.sprint.phase is SprintPhase.COMPLETED
 
     final_workflow = workflow_state.get_session(workflow_id)
@@ -484,6 +503,7 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     recovered = recovered_workflow.get_session(workflow_id)
     assert recovered is not None
     assert recovered.state is WorkflowSessionState.COMPLETED
+    assert recovered.reviewed_change_evidence == saved_facts
     assert recovered.commit_result == final_workflow.commit_result
     assert recovered.reviewed_content_fingerprint == approved_review_fingerprint
     if commit_case == "legacy-completed":

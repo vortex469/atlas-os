@@ -608,16 +608,39 @@ function CommitSection({
             <section aria-labelledby="commit-request-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="commit-request-heading" className="text-base font-semibold text-white">Commit Request</h3>
                 {request ? (
-                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                        <Detail label="Commit Request ID" value={request.commit_request_id} />
-                        <Detail label="Repository" value={request.repository ?? "Not available"} />
-                        <Detail label="Branch" value={request.branch ?? "Not available"} />
-                        <Detail label="Expected HEAD" value={request.expected_head ?? "Not available"} />
-                        <Detail label="Commit message" value={request.commit_message} />
-                        <Detail label="Reviewed files" value={request.reviewed_files.length > 0 ? request.reviewed_files.join(", ") : "None reported"} />
-                        <Detail label="Reviewed-content fingerprint" value={request.reviewed_content_fingerprint} />
-                        <Detail label="Commit approval status" value={formatLabel(request.commit_approval_status)} />
-                    </dl>
+                    <>
+                        <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                            <Detail label="Commit Request ID" value={request.commit_request_id} />
+                            <Detail label="Repository" value={request.repository ?? "Not available"} />
+                            <Detail label="Branch" value={request.branch ?? "Not available"} />
+                            <Detail label="Expected HEAD" value={request.expected_head ?? "Not available"} />
+                            <Detail label="Commit message" value={request.commit_message} />
+                            <Detail label="Reviewed files" value={request.reviewed_files.length > 0 ? request.reviewed_files.join(", ") : "None reported"} />
+                            <Detail label="Reviewed-content fingerprint" value={request.reviewed_content_fingerprint} />
+                            <Detail label="Commit approval status" value={formatLabel(request.commit_approval_status)} />
+                        </dl>
+                        <details className="mt-4 rounded border border-slate-800 p-3 text-sm">
+                            <summary className="cursor-pointer text-slate-200">Files in this review</summary>
+                            <p className="mt-3 text-slate-400">Saved when this review was created. The checkout may have changed since then. These are file facts, not the full text changes.</p>
+                            {request.reviewed_changes ? (
+                                <ul className="mt-3 space-y-3">
+                                    {request.reviewed_changes.map((file) => (
+                                        <li key={file.path} className="break-words">
+                                            <p className="font-medium text-slate-200">{file.path}</p>
+                                            <p className="text-slate-300">{formatLabel(file.change)} · {file.executable === null ? "No file remains" : file.executable ? "Executable file" : "Regular file"}</p>
+                                            {file.rename_source && <p className="text-slate-400">From {file.rename_source}</p>}
+                                            {file.content_sha256 && (
+                                                <details className="mt-1 text-xs text-slate-400">
+                                                    <summary className="cursor-pointer">Content fingerprint</summary>
+                                                    <p className="mt-1 break-all">{file.content_sha256}</p>
+                                                </details>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : <p className="mt-3 text-slate-300">File facts are unavailable for this request. Use the original reviewed evidence.</p>}
+                        </details>
+                    </>
                 ) : (
                     <p className="mt-3 text-sm text-slate-300">Commit request is not available for this workflow.</p>
                 )}
