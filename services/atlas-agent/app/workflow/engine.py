@@ -1951,7 +1951,7 @@ class WorkflowEngine:
         try:
             commit_result = self._repository_committer_factory(
                 commit_request.repository_root
-            ).commit(commit_request)
+            ).commit(commit_request, reviewed_evidence=current)
         except Exception:
             logger.exception("Workflow commit failed")
             self._block_claimed_session(
@@ -2072,6 +2072,15 @@ class WorkflowEngine:
                 session=session,
                 error_message=CandidateCommitFailureCode.COMMIT_APPROVAL_EVIDENCE_MISMATCH.value,
             )
+        reviewed_evidence = validation.reviewed_evidence
+        if (
+            reviewed_evidence is None
+            or reviewed_evidence.fingerprint != session.reviewed_content_fingerprint
+        ):
+            return self._block_candidate_commit_session(
+                session=session,
+                error_message=CandidateCommitFailureCode.REVIEWED_EVIDENCE_MISMATCH.value,
+            )
         if not self._transition_session(
             session.identifier,
             WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
@@ -2088,7 +2097,7 @@ class WorkflowEngine:
         try:
             commit_result = self._repository_committer_factory(
                 commit_request.repository_root
-            ).commit(commit_request)
+            ).commit(commit_request, reviewed_evidence=reviewed_evidence)
         except Exception:
             logger.exception("Candidate commit failed")
             self._transition_session(

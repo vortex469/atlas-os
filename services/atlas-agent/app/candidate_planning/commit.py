@@ -18,7 +18,12 @@ from app.candidate_planning.state import CandidatePlanningStateStore
 from app.core_client.exceptions import AtlasCoreClientError
 from app.repository.exceptions import RepositoryInspectionError
 from app.repository.inspector import GitInspector
-from app.repository.models import CommitRequest, CommitResult, RepositorySnapshot
+from app.repository.models import (
+    CommitRequest,
+    CommitResult,
+    RepositorySnapshot,
+    ReviewedChangeEvidence,
+)
 from app.review.models import ReviewStatus
 from app.verification.models import VerificationStatus
 from app.workflow.models import WorkflowSession, WorkflowSessionState, WorkflowSource
@@ -53,6 +58,7 @@ class CandidateCommitValidationResult:
     retryable: bool = False
     should_block: bool = False
     commit_request: CommitRequest | None = None
+    reviewed_evidence: ReviewedChangeEvidence | None = None
 
 
 class CandidateCommitValidator:
@@ -108,6 +114,7 @@ class CandidateCommitValidator:
         return CandidateCommitValidationResult(
             approved=True,
             commit_request=commit_request,
+            reviewed_evidence=repository.reviewed_evidence,
         )
 
     def validate_commit_result(
@@ -139,7 +146,7 @@ class CandidateCommitValidator:
             return _failure(CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH, should_block=True)
         if snapshot.branch != commit_request.expected_branch:
             return _failure(CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH, should_block=True)
-        if snapshot.head_commit is not None and snapshot.head_commit != commit_result.commit_sha:
+        if snapshot.head_commit != commit_result.commit_sha:
             return _failure(CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH, should_block=True)
         return CandidateCommitValidationResult(approved=True, commit_request=commit_request)
 
@@ -396,7 +403,7 @@ class CandidateCommitValidator:
             return _failure(CandidateCommitFailureCode.REVIEWED_EVIDENCE_MISMATCH, should_block=True)
         if evidence.fingerprint != workflow.reviewed_content_fingerprint:
             return _failure(CandidateCommitFailureCode.REVIEWED_EVIDENCE_MISMATCH, should_block=True)
-        return CandidateCommitValidationResult(approved=True)
+        return CandidateCommitValidationResult(approved=True, reviewed_evidence=evidence)
 
 
 def _snapshot_matches_commit(snapshot: RepositorySnapshot, request: CommitRequest) -> bool:

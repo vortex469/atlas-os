@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
 from app.approval.engine import ApprovalEngine
 from app.approval.models import (
     ApprovalDecision,
@@ -384,7 +385,10 @@ def test_candidate_commit_revalidates_reviewed_delta_over_baseline(
     assert FakeInspector.candidate_calls == 1
 
 
-def test_exact_candidate_commit_executes_once_and_persists_result(tmp_path: Path) -> None:
+@pytest.mark.parametrize("evidence_state", ("valid", "missing", "mismatched"))
+def test_exact_candidate_commit_requires_review_evidence_and_persists_result(
+    tmp_path: Path, evidence_state: str,
+) -> None:
     session = _commit_ready_workflow(tmp_path)
     state = WorkflowStateStore()
     state.create_session(session)
@@ -405,8 +409,21 @@ def test_exact_candidate_commit_executes_once_and_persists_result(tmp_path: Path
     )
     committer = Mock()
     committer.commit.return_value = commit_result
+    reviewed_evidence = FakeInspector(tmp_path).reviewed_change_evidence(
+        reviewed_files=session.commit_request.paths,
+        expected_branch=session.commit_request.expected_branch,
+        expected_head=session.commit_request.expected_head,
+        commit_message=session.commit_request.message,
+    )
+    if evidence_state == "missing":
+        reviewed_evidence = None
+    elif evidence_state == "mismatched":
+        reviewed_evidence = replace(reviewed_evidence, fingerprint="b" * 64)
     validator = FakeCandidateCommitValidator(
-        CandidateCommitValidationResult(approved=True, commit_request=session.commit_request)
+        CandidateCommitValidationResult(
+            approved=True, commit_request=session.commit_request,
+            reviewed_evidence=reviewed_evidence,
+        )
     )
     engine = WorkflowEngine(
         repository_inspector_factory=Mock(),
@@ -424,6 +441,15 @@ def test_exact_candidate_commit_executes_once_and_persists_result(tmp_path: Path
     result = engine.resume(session.identifier)
     repeated = engine.resume(session.identifier)
 
+    if evidence_state != "valid":
+        assert result.sprint.phase is SprintPhase.BLOCKED
+        assert result.error_message == "reviewed_evidence_mismatch"
+        assert repeated.sprint.phase is SprintPhase.BLOCKED
+        assert state.get_session(session.identifier).state is WorkflowSessionState.BLOCKED
+        committer.commit.assert_not_called()
+        assert validator.result_calls == 0
+        return
+
     assert result.sprint.phase is SprintPhase.COMPLETED
     assert result.commit_result == commit_result
     assert repeated.sprint.phase is SprintPhase.COMPLETED
@@ -431,6 +457,35 @@ def test_exact_candidate_commit_executes_once_and_persists_result(tmp_path: Path
     stored = state.get_session(session.identifier)
     assert stored.state is WorkflowSessionState.COMPLETED
     assert stored.commit_result == commit_result
-    committer.commit.assert_called_once_with(session.commit_request)
+    committer.commit.assert_called_once_with(
+        session.commit_request, reviewed_evidence=reviewed_evidence,
+    )
     assert validator.validate_calls == 1
     assert validator.result_calls == 1
+
+
+@pytest.mark.parametrize("observed_head", (None, "different-head", "def456"))
+def test_commit_result_requires_observed_exact_head(tmp_path: Path, observed_head: str | None) -> None:
+    session = _commit_ready_workflow(tmp_path)
+    request = session.commit_request
+    assert request is not None
+    inspector = Mock()
+    inspector.inspect.return_value = replace(
+        FakeInspector.snapshot, root=tmp_path,
+        branch=request.expected_branch, head_commit=observed_head,
+    )
+    validator = _validator(tmp_path)
+    validator._repository_inspector_factory = Mock(return_value=inspector)
+    result = validator.validate_commit_result(
+        workflow=session,
+        commit_result=CommitResult(
+            repository_root=tmp_path, branch=request.expected_branch,
+            parent_head=request.expected_head, commit_sha="def456",
+            message=request.message, committed_files=request.paths,
+        ),
+    )
+
+    assert result.approved is (observed_head == "def456")
+    if observed_head != "def456":
+        assert result.should_block
+        assert result.failure_code is CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH

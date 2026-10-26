@@ -2169,6 +2169,10 @@ def test_approved_commit_resume_does_not_replay_prior_stages(
     verifier.verify.assert_called_once()
     reviewer.review.assert_called_once()
     engine._repository_committer_factory.return_value.commit.assert_called_once()
+    assert (
+        engine._repository_committer_factory.return_value.commit.call_args.kwargs["reviewed_evidence"]
+        == make_reviewed_evidence(tmp_path)
+    )
 
 
 def test_concurrent_commit_resumes_call_committer_once(tmp_path: Path) -> None:
