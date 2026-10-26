@@ -1,4 +1,5 @@
 import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin
 
 import httpx
@@ -60,44 +61,47 @@ def build_service_url(service: dict) -> str | None:
     return urljoin(base_url, endpoint.lstrip("/"))
 
 
+HEALTH_CHECK_WORKERS = 4
+
+
+def _service_health(item: tuple[str, dict]) -> tuple[str, dict] | None:
+    service_id, service = item
+    url = build_service_url(service)
+    if url is None:
+        return None
+
+    result = check_service(
+        url=url,
+        expected_statuses=service.get("expected_status", [200]),
+        critical=service.get("critical", False),
+    )
+    status = result["status"]
+    return service.get("name", service_id), {
+        "provider_id": service_id.replace("_", "-"),
+        "status": status,
+        "latency_ms": result.get("latency_ms"),
+        "http_status": result.get("http_status"),
+        "message": (
+            None if status == "online"
+            else result.get("error", "Service returned an unexpected status.")
+        ),
+        "details": {
+            "url": result.get("url"),
+            "critical": result.get("critical", False),
+        },
+    }
+
+
 def get_health() -> dict:
     inventory = load_inventory()
     results = {}
-
-    for service_id, service in inventory.get("services", {}).items():
-        url = build_service_url(service)
-
-        if url is None:
-            continue
-
-        display_name = service.get("name", service_id)
-        critical = service.get("critical", False)
-        expected_statuses = service.get("expected_status", [200])
-
-        result = check_service(
-            url=url,
-            expected_statuses=expected_statuses,
-            critical=critical,
-        )
-        status = result["status"]
-
-        results[display_name] = {
-            "provider_id": service_id.replace("_", "-"),
-            "status": status,
-            "latency_ms": result.get("latency_ms"),
-            "http_status": result.get("http_status"),
-            "message": (
-                None
-                if status == "online"
-                else result.get(
-                    "error",
-                    "Service returned an unexpected status.",
-                )
-            ),
-            "details": {
-                "url": result.get("url"),
-                "critical": result.get("critical", False),
-            },
-        }
-
+    # Bound each request's fan-out and retain inventory order, even when probes
+    # finish out of order. Each probe keeps the existing HTTP timeout and rules.
+    with ThreadPoolExecutor(max_workers=HEALTH_CHECK_WORKERS) as probes:
+        for observation in probes.map(
+            _service_health, inventory.get("services", {}).items()
+        ):
+            if observation is not None:
+                name, result = observation
+                results[name] = result
     return results

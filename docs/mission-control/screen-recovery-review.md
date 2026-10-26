@@ -28,9 +28,14 @@ only the expected login, analysis, or ordered workflow requests and reject other
 mutations. Workflow fixtures simulate results: they run no model, verification
 command, Git commit, deployment, or provider action.
 
-The backend change is additive: workflow audit responses identify their
+Workflow audit responses now identify their
 `effect_kind`, allowing maintenance audits to display the existing read-only
-operational lifecycle. No execution gate or approval contract is expanded.
+operational lifecycle. Core health reads also probe at most four inventory
+services concurrently per request instead of waiting for each in sequence.
+Response fields, inventory order, status rules and each probe's existing HTTP
+timeout are preserved. This reduces serial waiting; it does not impose a total
+request deadline or guarantee that every inventory fits the UI timeout.
+No execution gate or approval contract is expanded.
 
 ## Validation snapshot — 2026-10-26
 
@@ -68,6 +73,10 @@ The development Agent proxy was also restored to match the production edge.
 Thirty-five focused proxy/Discovery tests and all 63 browser checks passed.
 Existing local Core/Agent health reads did not provide usable responses, so they
 do not establish service health or real integration acceptance.
+The bounded health change passes eight focused Core health/route/release tests.
+The tests use isolated probes to establish overlap, a four-probe limit, complete
+results, stable mapping/order and unchanged timeout/offline behavior; they do
+not contact inventory services or establish running-service acceptance.
 
 ## Acceptance status and remaining gaps
 
