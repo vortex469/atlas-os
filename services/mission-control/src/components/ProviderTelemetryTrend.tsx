@@ -14,12 +14,14 @@ type Props = {
     providerId: string;
     snapshots: IntelligenceTelemetrySnapshot[];
     performancePolicy?: PerformancePolicy | null;
+    unavailable?: boolean;
 };
 
 export function ProviderTelemetryTrend({
     providerId,
     snapshots,
     performancePolicy = null,
+    unavailable = false,
 }: Props) {
     const points = snapshots
         .flatMap((snapshot) => {
@@ -42,14 +44,16 @@ export function ProviderTelemetryTrend({
                 title="Intelligence History"
                 description="Provider-specific ACE finding-collection duration and outcomes."
             />
+            {unavailable && <p role="status" className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">{points.length > 0 ? "Collection history could not be refreshed. Showing the last reported history." : "Collection history could not be loaded. Use Refresh to try again."}</p>}
             {points.length === 0 ? (
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
+                !unavailable && <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
                     No intelligence collection history is available for
                     this provider yet.
                 </div>
             ) : (
                 <TrendChart
                     points={points}
+                    retained={unavailable}
                     performancePolicy={performancePolicy}
                 />
             )}
@@ -66,8 +70,10 @@ type Point = {
 function TrendChart({
     points,
     performancePolicy,
+    retained,
 }: {
     points: Point[];
+    retained: boolean;
     performancePolicy: PerformancePolicy | null;
 }) {
     const maximumDuration = Math.max(
@@ -120,7 +126,7 @@ function TrendChart({
                     }
                 />
                 <Metric
-                    label="Latest"
+                    label={retained ? "Last reported" : "Latest"}
                     value={status(latest.timing.status)}
                     warning={latest.timing.status !== "completed"}
                 />

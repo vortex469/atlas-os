@@ -40,7 +40,11 @@ reads without provider mutations. Diagnostics and recommendations from the
 same retained snapshot are labeled as last reported, including empty results;
 failed refreshes never claim there are no current findings. Successful refreshes
 clear these notices. `e2e/provider-advisories.spec.ts` covers both retained records
-and empty snapshots.
+and empty snapshots. Optional collection-history read failures are
+reported separately from provider health. A failed history read preserves prior
+points with a last-reported label, or shows an unavailable state when no points
+were loaded. A successful refresh restores the chart or a confirmed empty state.
+`e2e/provider-history.spec.ts` checks recovery without provider mutations.
 
 Paths in the table are relative to `services/mission-control`.
 

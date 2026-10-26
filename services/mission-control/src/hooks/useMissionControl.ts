@@ -28,6 +28,7 @@ type MissionControlState = {
     policies: AtlasPolicies | null;
     policyHealth: PolicyReloadHealth | null;
     telemetryHistory: IntelligenceTelemetrySnapshot[];
+    telemetryHistoryUnavailable: boolean;
     telemetryRetention: IntelligenceTelemetryRetentionSummary | null;
     lastUpdated: Date | null;
     error: string | null;
@@ -69,6 +70,7 @@ export function useMissionControl(): MissionControlState {
     const [telemetryHistory, setTelemetryHistory] = useState<
         IntelligenceTelemetrySnapshot[]
     >([]);
+    const [telemetryHistoryUnavailable, setTelemetryHistoryUnavailable] = useState(false);
     const [telemetryRetention, setTelemetryRetention] =
         useState<IntelligenceTelemetryRetentionSummary | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -133,6 +135,7 @@ export function useMissionControl(): MissionControlState {
                 setPolicies(policiesResponse.data);
             }
             setPolicyHealth(policyHealthResponse.data);
+            setTelemetryHistoryUnavailable(telemetryHistoryResponse === null);
             if (telemetryHistoryResponse !== null) {
                 setTelemetryHistory(
                     telemetryHistoryResponse.data,
@@ -185,6 +188,7 @@ export function useMissionControl(): MissionControlState {
         policies,
         policyHealth,
         telemetryHistory,
+        telemetryHistoryUnavailable,
         telemetryRetention,
         lastUpdated,
         error,

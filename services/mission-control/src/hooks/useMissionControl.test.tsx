@@ -204,6 +204,42 @@ describe("useMissionControl", () => {
         expect(get).toHaveBeenCalledTimes(7);
     });
 
+    it("reports optional history failures without losing provider data and recovers through reads", async () => {
+        let available = false;
+        let history = telemetryHistory;
+        vi.spyOn(atlas, "get").mockImplementation(async url => {
+            if (url === "/intelligence/telemetry/history" && !available) throw new Error("history unavailable");
+            const data: Record<string, unknown> = {
+                "/ace/summary": summary, "/health": health,
+                "/providers": [provider("proxmox", "Proxmox", "critical", "operations")],
+                "/policies": policies, "/policies/status": policyHealth,
+                "/intelligence/telemetry/history": history,
+                "/intelligence/telemetry/history/retention": telemetryRetention,
+            };
+            return { data: data[url!] };
+        });
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+        expect(result.current.telemetryHistoryUnavailable).toBe(true);
+        expect(result.current.error).toBeNull();
+        expect(result.current.providers).toHaveLength(1);
+        expect(result.current.telemetryHistory).toEqual([]);
+        available = true;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.telemetryHistoryUnavailable).toBe(false);
+        expect(result.current.telemetryHistory).toEqual(telemetryHistory);
+        available = false;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.telemetryHistoryUnavailable).toBe(true);
+        expect(result.current.telemetryHistory).toEqual(telemetryHistory);
+        expect(result.current.error).toBeNull();
+        available = true;
+        history = [];
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.telemetryHistoryUnavailable).toBe(false);
+        expect(result.current.telemetryHistory).toEqual([]);
+    });
+
     it("normalizes malformed health API data before publishing dashboard state", async () => {
         vi.spyOn(atlas, "get").mockImplementation(async (url) => {
             const data: Record<string, unknown> = {

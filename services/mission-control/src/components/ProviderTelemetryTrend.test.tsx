@@ -83,6 +83,22 @@ describe("ProviderTelemetryTrend", () => {
         expect(screen.queryByText("20 ms")).not.toBeInTheDocument();
     });
 
+    it("does not call a failed history read an empty history", () => {
+        render(<ProviderTelemetryTrend providerId="qdrant" snapshots={[]} unavailable />);
+        expect(screen.getByText("Collection history could not be loaded. Use Refresh to try again.")).toBeInTheDocument();
+        expect(screen.queryByText(/No intelligence collection history/)).not.toBeInTheDocument();
+    });
+
+    it("labels retained history until a successful read replaces it", () => {
+        const view = render(<ProviderTelemetryTrend providerId="qdrant" snapshots={snapshots} unavailable />);
+        expect(screen.getByText("Collection history could not be refreshed. Showing the last reported history.")).toBeInTheDocument();
+        expect(screen.getByText("Last reported")).toBeInTheDocument();
+        expect(screen.getByText("Timed out")).toBeInTheDocument();
+        view.rerender(<ProviderTelemetryTrend providerId="qdrant" snapshots={[]} />);
+        expect(screen.queryByText(/Showing the last reported/)).not.toBeInTheDocument();
+        expect(screen.getByText("No intelligence collection history is available for this provider yet.")).toBeInTheDocument();
+    });
+
     it("shows an empty state without provider history", () => {
         render(
             <ProviderTelemetryTrend
