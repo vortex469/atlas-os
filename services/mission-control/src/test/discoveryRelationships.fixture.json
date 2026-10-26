@@ -1,0 +1,156 @@
+{
+  "item_id": "frigate",
+  "incoming": [],
+  "outgoing": [
+    {
+      "source_item_id": "frigate",
+      "target": "target-depends_on",
+      "relationship": {
+        "type": "depends_on",
+        "target": "target-depends_on",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-provides",
+      "relationship": {
+        "type": "provides",
+        "target": "target-provides",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-consumes",
+      "relationship": {
+        "type": "consumes",
+        "target": "target-consumes",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-requires",
+      "relationship": {
+        "type": "requires",
+        "target": "target-requires",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-integrates_with",
+      "relationship": {
+        "type": "integrates_with",
+        "target": "target-integrates_with",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-conflicts_with",
+      "relationship": {
+        "type": "conflicts_with",
+        "target": "target-conflicts_with",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-runs_on",
+      "relationship": {
+        "type": "runs_on",
+        "target": "target-runs_on",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-deployed_by",
+      "relationship": {
+        "type": "deployed_by",
+        "target": "target-deployed_by",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-compatible_with",
+      "relationship": {
+        "type": "compatible_with",
+        "target": "target-compatible_with",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    },
+    {
+      "source_item_id": "frigate",
+      "target": "target-incompatible_with",
+      "relationship": {
+        "type": "incompatible_with",
+        "target": "target-incompatible_with",
+        "required": true,
+        "minimum_version": null,
+        "maximum_version": null,
+        "description": "",
+        "metadata": {}
+      },
+      "resolved_target_item_id": null,
+      "resolved": false
+    }
+  ]
+}

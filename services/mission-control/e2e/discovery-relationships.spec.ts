@@ -1,7 +1,7 @@
 import { expect, test, discoveryItemsPage } from "./mission-control-fixtures";
 
-for (const width of [320, 390, 1280]) {
-    test.describe(`Discovery relationship recovery at ${width}px`, () => {
+for (const width of [320, 390, 1280]) for (const outcome of ["unavailable", "malformed", "foreign"] as const) {
+    test.describe(`Discovery relationship recovery ${outcome} at ${width}px`, () => {
         test.use({ viewport: { width, height: 900 } });
         test("keeps the item visible and retries only its relationships", async ({ page, rejectedMutationRequests }) => {
             let itemReads = 0;
@@ -15,7 +15,11 @@ for (const width of [320, 390, 1280]) {
                 expect(route.request().method()).toBe("GET");
                 relationshipReads += 1;
                 return route.fulfill(relationshipReads === 1
-                    ? { status: 503, json: { detail: "private-relationship-canary" } }
+                    ? outcome === "unavailable"
+                        ? { status: 503, json: { detail: "private-relationship-canary" } }
+                        : outcome === "foreign"
+                            ? { json: { item_id: "foreign", incoming: [], outgoing: [] } }
+                            : { json: { item_id: "fixture-app", incoming: [], outgoing: [{ relationship: { type: {} }, target: "private-relationship-canary" }] } }
                     : { json: { item_id: "fixture-app", incoming: [], outgoing: [] } });
             });
             await page.goto("/discovery/items/fixture-app");
