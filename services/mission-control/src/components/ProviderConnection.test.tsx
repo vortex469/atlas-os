@@ -440,7 +440,7 @@ describe("ProviderConnection", () => {
         expect(screen.queryByText("Connection settings saved.")).not.toBeInTheDocument();
     });
 
-    it("preserves form values and redacts failed save errors", async () => {
+    it("preserves draft values and pauses writes when a save outcome is unconfirmed", async () => {
         const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
         mockedUpdateProviderConnection.mockRejectedValue(new Error("Save failed replacement-secret"));
         const user = userEvent.setup();
@@ -451,11 +451,71 @@ describe("ProviderConnection", () => {
         await user.type(screen.getByLabelText("Token Value"), "replacement-secret");
         await user.click(screen.getByRole("button", { name: "Save Connection" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Save failed [redacted]");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Save outcome not confirmed");
+        expect(screen.getByRole("button", { name: "Save Connection" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Test Connection" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Reload settings" })).toBeEnabled();
+        expect(document.body.textContent).not.toContain("Save failed");
         expect(screen.getByLabelText("Host")).toHaveValue("runtime.invalid");
         expect(screen.getByLabelText("Token Value")).toHaveValue("replacement-secret");
         expect(screen.queryByText("replacement-secret")).not.toBeInTheDocument();
         expect(JSON.stringify(consoleError.mock.calls)).not.toContain("replacement-secret");
+    });
+
+    it("keeps an uncertain save paused through a failed reload and recovers only through a successful read", async () => {
+        const user = userEvent.setup();
+        mockedUpdateProviderConnection.mockRejectedValueOnce(new Error("lost response"));
+        await renderConnection();
+        await user.type(screen.getByLabelText("Token Value"), "draft-secret");
+        await user.click(screen.getByRole("button", { name: "Save Connection" }));
+        await screen.findByText("Save outcome not confirmed");
+        mockedGetProviderConnection.mockRejectedValueOnce(new Error("Reload unavailable"));
+        await user.click(screen.getByRole("button", { name: "Reload settings" }));
+        await screen.findByText("Reload unavailable");
+        expect(screen.getByText("Save outcome not confirmed")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Save Connection" })).toBeDisabled();
+        mockedGetProviderConnection.mockResolvedValueOnce(proxmoxSchema());
+        await user.click(screen.getByRole("button", { name: "Reload settings" }));
+        await waitFor(() => expect(screen.getByRole("button", { name: "Save Connection" })).toBeEnabled());
+        expect(screen.queryByText("Save outcome not confirmed")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Token Value")).toHaveValue("");
+        expect(mockedUpdateProviderConnection).toHaveBeenCalledTimes(1);
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+    });
+
+    it("defers automatic settings reads while an uncertain save holds draft values", async () => {
+        const user = userEvent.setup();
+        mockedUpdateProviderConnection.mockRejectedValueOnce(new Error("lost response"));
+        const view = render(<ProviderConnection provider={provider} />);
+        await screen.findByLabelText("Host");
+        await user.clear(screen.getByLabelText("Host"));
+        await user.type(screen.getByLabelText("Host"), "draft.invalid");
+        await user.type(screen.getByLabelText("Token Value"), "draft-secret");
+        await user.click(screen.getByRole("button", { name: "Save Connection" }));
+        await screen.findByText("Save outcome not confirmed");
+        view.rerender(<ProviderConnection provider={{ ...provider, name: "Renamed provider" }} />);
+        await act(async () => { await Promise.resolve(); });
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(1);
+        expect(screen.getByLabelText("Host")).toHaveValue("draft.invalid");
+        expect(screen.getByLabelText("Token Value")).toHaveValue("draft-secret");
+        expect(screen.getByText("Save outcome not confirmed")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Test Connection" })).toBeDisabled();
+        expect(mockedUpdateProviderConnection).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not partially apply an unreadable saved schema or keep an old test result", async () => {
+        const user = userEvent.setup();
+        await renderConnection();
+        await user.click(screen.getByRole("button", { name: "Test Connection" }));
+        await screen.findByText("Connection OK.");
+        mockedUpdateProviderConnection.mockResolvedValueOnce({ provider_id: "proxmox",
+            connection_schema: { ...proxmoxSchema(), fields: null } as unknown as ProviderConnectionSchema,
+            updated_at: "2026-08-01T20:02:00Z", message: "Saved." });
+        await user.click(screen.getByRole("button", { name: "Save Connection" }));
+        expect(await screen.findByText("Save outcome not confirmed")).toBeInTheDocument();
+        expect(screen.queryByText("Connection settings saved.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Connection OK.")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Host")).toBeInTheDocument();
     });
 
     it("disables only connection controls while save is active", async () => {

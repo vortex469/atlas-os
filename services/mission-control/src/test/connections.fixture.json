@@ -1,0 +1,271 @@
+{
+  "schema": {
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "fields": [
+      {
+        "key": "string",
+        "label": "String",
+        "kind": "string",
+        "required": false,
+        "editable": true,
+        "secret": false,
+        "current_value": null,
+        "secret_state": null,
+        "source": null,
+        "help_text": "",
+        "options": [],
+        "validation": {}
+      },
+      {
+        "key": "host",
+        "label": "Host",
+        "kind": "host",
+        "required": false,
+        "editable": true,
+        "secret": false,
+        "current_value": null,
+        "secret_state": null,
+        "source": null,
+        "help_text": "",
+        "options": [],
+        "validation": {}
+      },
+      {
+        "key": "url",
+        "label": "Url",
+        "kind": "url",
+        "required": false,
+        "editable": true,
+        "secret": false,
+        "current_value": null,
+        "secret_state": null,
+        "source": null,
+        "help_text": "",
+        "options": [],
+        "validation": {}
+      },
+      {
+        "key": "port",
+        "label": "Port",
+        "kind": "port",
+        "required": false,
+        "editable": true,
+        "secret": false,
+        "current_value": 443,
+        "secret_state": null,
+        "source": null,
+        "help_text": "",
+        "options": [],
+        "validation": {}
+      },
+      {
+        "key": "boolean",
+        "label": "Boolean",
+        "kind": "boolean",
+        "required": false,
+        "editable": true,
+        "secret": false,
+        "current_value": true,
+        "secret_state": null,
+        "source": null,
+        "help_text": "",
+        "options": [],
+        "validation": {}
+      },
+      {
+        "key": "select",
+        "label": "Select",
+        "kind": "select",
+        "required": false,
+        "editable": true,
+        "secret": false,
+        "current_value": null,
+        "secret_state": null,
+        "source": null,
+        "help_text": "",
+        "options": [
+          {
+            "value": "fixture",
+            "label": "Fixture",
+            "description": ""
+          }
+        ],
+        "validation": {}
+      },
+      {
+        "key": "secret",
+        "label": "Secret",
+        "kind": "secret",
+        "required": false,
+        "editable": true,
+        "secret": true,
+        "current_value": null,
+        "secret_state": "missing",
+        "source": null,
+        "help_text": "",
+        "options": [],
+        "validation": {}
+      },
+      {
+        "key": "path",
+        "label": "Path",
+        "kind": "path",
+        "required": false,
+        "editable": true,
+        "secret": false,
+        "current_value": null,
+        "secret_state": null,
+        "source": null,
+        "help_text": "",
+        "options": [],
+        "validation": {}
+      }
+    ],
+    "editable": true,
+    "testable": true,
+    "updated_at": null,
+    "metadata": {}
+  },
+  "test": {
+    "provider_id": "proxmox",
+    "status": "success",
+    "message": "",
+    "tested_at": "2026-01-01T00:00:00Z",
+    "latency_ms": null,
+    "diagnostics": {}
+  },
+  "save": {
+    "provider_id": "proxmox",
+    "connection_schema": {
+      "provider_id": "proxmox",
+      "provider_name": "Proxmox",
+      "fields": [
+        {
+          "key": "string",
+          "label": "String",
+          "kind": "string",
+          "required": false,
+          "editable": true,
+          "secret": false,
+          "current_value": null,
+          "secret_state": null,
+          "source": null,
+          "help_text": "",
+          "options": [],
+          "validation": {}
+        },
+        {
+          "key": "host",
+          "label": "Host",
+          "kind": "host",
+          "required": false,
+          "editable": true,
+          "secret": false,
+          "current_value": null,
+          "secret_state": null,
+          "source": null,
+          "help_text": "",
+          "options": [],
+          "validation": {}
+        },
+        {
+          "key": "url",
+          "label": "Url",
+          "kind": "url",
+          "required": false,
+          "editable": true,
+          "secret": false,
+          "current_value": null,
+          "secret_state": null,
+          "source": null,
+          "help_text": "",
+          "options": [],
+          "validation": {}
+        },
+        {
+          "key": "port",
+          "label": "Port",
+          "kind": "port",
+          "required": false,
+          "editable": true,
+          "secret": false,
+          "current_value": 443,
+          "secret_state": null,
+          "source": null,
+          "help_text": "",
+          "options": [],
+          "validation": {}
+        },
+        {
+          "key": "boolean",
+          "label": "Boolean",
+          "kind": "boolean",
+          "required": false,
+          "editable": true,
+          "secret": false,
+          "current_value": true,
+          "secret_state": null,
+          "source": null,
+          "help_text": "",
+          "options": [],
+          "validation": {}
+        },
+        {
+          "key": "select",
+          "label": "Select",
+          "kind": "select",
+          "required": false,
+          "editable": true,
+          "secret": false,
+          "current_value": null,
+          "secret_state": null,
+          "source": null,
+          "help_text": "",
+          "options": [
+            {
+              "value": "fixture",
+              "label": "Fixture",
+              "description": ""
+            }
+          ],
+          "validation": {}
+        },
+        {
+          "key": "secret",
+          "label": "Secret",
+          "kind": "secret",
+          "required": false,
+          "editable": true,
+          "secret": true,
+          "current_value": null,
+          "secret_state": "missing",
+          "source": null,
+          "help_text": "",
+          "options": [],
+          "validation": {}
+        },
+        {
+          "key": "path",
+          "label": "Path",
+          "kind": "path",
+          "required": false,
+          "editable": true,
+          "secret": false,
+          "current_value": null,
+          "secret_state": null,
+          "source": null,
+          "help_text": "",
+          "options": [],
+          "validation": {}
+        }
+      ],
+      "editable": true,
+      "testable": true,
+      "updated_at": null,
+      "metadata": {}
+    },
+    "updated_at": "2026-01-01T00:00:00Z",
+    "message": ""
+  }
+}

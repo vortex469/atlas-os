@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseConnectionSave, parseConnectionSchema, parseConnectionTest } from "./connectionResponse";
 import type {
     ProviderConnectionSchema,
     TestProviderConnectionRequest,
@@ -10,33 +11,33 @@ import type {
 export async function getProviderConnection(
     providerId: string,
 ): Promise<ProviderConnectionSchema> {
-    const response = await atlas.get<ProviderConnectionSchema>(
+    const response = await atlas.get<unknown>(
         `/providers/${encodeURIComponent(providerId)}/connection`,
     );
 
-    return response.data;
+    return parseConnectionSchema(response.data, providerId);
 }
 
 export async function testProviderConnection(
     providerId: string,
     request: TestProviderConnectionRequest,
 ): Promise<TestProviderConnectionResult> {
-    const response = await atlas.post<TestProviderConnectionResult>(
+    const response = await atlas.post<unknown>(
         `/providers/${encodeURIComponent(providerId)}/connection/test`,
         request,
     );
 
-    return response.data;
+    return parseConnectionTest(response.data, providerId);
 }
 
 export async function updateProviderConnection(
     providerId: string,
     request: UpdateProviderConnectionRequest,
 ): Promise<UpdateProviderConnectionResult> {
-    const response = await atlas.put<UpdateProviderConnectionResult>(
+    const response = await atlas.put<unknown>(
         `/providers/${encodeURIComponent(providerId)}/connection`,
         request,
     );
 
-    return response.data;
+    return parseConnectionSave(response.data, providerId);
 }
