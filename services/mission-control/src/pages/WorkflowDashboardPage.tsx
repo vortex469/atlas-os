@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 import { getAtlasAgentErrorMessage, listWorkflows } from "../api/atlas-agent";
 import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
-import type { WorkflowListResponse, WorkflowSummary } from "../types/atlasAgent";
+import type { WorkflowListQuery, WorkflowListResponse, WorkflowSummary } from "../types/atlasAgent";
 import {
     WORKFLOW_STATES,
     formatWorkflowLabel,
@@ -37,6 +37,7 @@ const EMPTY_FILTERS: DashboardFilters = {
 
 const SUMMARY_GROUPS = [
     { key: "running", label: "Running" },
+    { key: "waiting_approval", label: "Waiting for approval" },
     { key: "waiting_implementation_approval", label: "Waiting for implementation approval" },
     { key: "waiting_verification_approval", label: "Waiting for verification approval" },
     { key: "waiting_commit_approval", label: "Waiting for commit approval" },
@@ -44,106 +45,114 @@ const SUMMARY_GROUPS = [
     { key: "completed", label: "Completed" },
 ];
 
+type DirectorySelection = { filters: DashboardFilters; offset: number };
+const INITIAL_SELECTION: DirectorySelection = { filters: EMPTY_FILTERS, offset: 0 };
+
 export function WorkflowDashboardPage() {
     const [workflowResponse, setWorkflowResponse] = useState<WorkflowListResponse | null>(null);
     const [draftFilters, setDraftFilters] = useState<DashboardFilters>(EMPTY_FILTERS);
-    const [filters, setFilters] = useState<DashboardFilters>(EMPTY_FILTERS);
-    const [pageIndex, setPageIndex] = useState(0);
+    const [selection, setSelection] = useState<DirectorySelection>(INITIAL_SELECTION);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [refreshError, setRefreshError] = useState<string | null>(null);
-    const pendingLoad = useRef(false);
+    const generation = useRef(0);
+    const pendingLoad = useRef<string | null>(null);
+    const currentSelection = useRef<DirectorySelection>(INITIAL_SELECTION);
     const hasLoadedResponse = useRef(false);
 
-    const loadDashboard = useCallback(async (mode: LoadMode = "initial") => {
-        if (pendingLoad.current) return;
-        pendingLoad.current = true;
-        if (mode === "initial") setIsLoading(true);
-        if (mode === "refresh") setIsRefreshing(true);
+    const loadDashboard = useCallback(async (next = currentSelection.current, mode: LoadMode = "initial") => {
+        const key = JSON.stringify(next);
+        if (pendingLoad.current === key) return;
+        const requestGeneration = ++generation.current;
+        pendingLoad.current = key;
+        currentSelection.current = next;
+        setSelection(next);
+        setIsLoading(mode === "initial");
+        setIsRefreshing(mode === "refresh");
         if (mode === "initial") setLoadError(null);
         setRefreshError(null);
 
         try {
-            const response = await listWorkflows({ limit: 200, offset: 0 });
-            setWorkflowResponse(response);
-            hasLoadedResponse.current = true;
-        } catch (error) {
-            const message = getAtlasAgentErrorMessage(error, "Atlas Agent unavailable.");
-            if (mode === "initial" || !hasLoadedResponse.current) {
-                setLoadError(message);
-            } else {
-                setRefreshError(message);
+            let requested = next;
+            // A deletion can empty the requested page. Correct the offset once;
+            // repeated churn produces a recoverable error rather than a loop.
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                const response = await listWorkflows(directoryQuery(requested));
+                if (requestGeneration !== generation.current) return;
+                validateDirectoryPage(response, requested);
+                if (requested.offset > 0 && requested.offset >= response.total) {
+                    if (attempt > 0) throw new Error("The workflow list changed while loading. Try again.");
+                    requested = { ...requested, offset: Math.max(0, Math.ceil(response.total / PAGE_SIZE) - 1) * PAGE_SIZE };
+                    currentSelection.current = requested;
+                    setSelection(requested);
+                    pendingLoad.current = JSON.stringify(requested);
+                    continue;
+                }
+                setWorkflowResponse(response);
+                hasLoadedResponse.current = true;
+                break;
             }
+        } catch (error) {
+            if (requestGeneration !== generation.current) return;
+            const message = getAtlasAgentErrorMessage(error, "Atlas Agent unavailable.");
+            if (mode === "initial" || !hasLoadedResponse.current) setLoadError(message);
+            else setRefreshError(message);
         } finally {
-            pendingLoad.current = false;
-            if (mode === "initial") setIsLoading(false);
-            if (mode === "refresh") setIsRefreshing(false);
+            if (requestGeneration === generation.current) {
+                pendingLoad.current = null;
+                setIsLoading(false);
+                setIsRefreshing(false);
+            }
         }
     }, []);
 
     useEffect(() => {
-        void Promise.resolve().then(() => loadDashboard());
+        let active = true;
+        void Promise.resolve().then(() => { if (active) void loadDashboard(); });
+        return () => { active = false; generation.current += 1; pendingLoad.current = null; };
     }, [loadDashboard]);
 
     const workflows = useMemo(() => workflowResponse?.items ?? [], [workflowResponse]);
-    const hasActiveWorkflow = workflows.some((workflow) => isActiveWorkflowState(workflow.workflow_state));
+    const stateCounts = workflowResponse?.state_counts;
+    const hasActiveWorkflow = stateCounts === undefined
+        ? workflows.some((workflow) => isActiveWorkflowState(workflow.workflow_state))
+        : Object.entries(stateCounts).some(([state, count]) => isActiveWorkflowState(state) && count > 0);
 
     useEffect(() => {
-        if (!hasActiveWorkflow) return undefined;
-        const interval = window.setInterval(() => {
-            void loadDashboard("refresh");
-        }, 5_000);
+        if (!hasActiveWorkflow || isLoading || loadError) return undefined;
+        const interval = window.setInterval(() => { void loadDashboard(currentSelection.current, "refresh"); }, 5_000);
         return () => window.clearInterval(interval);
-    }, [hasActiveWorkflow, loadDashboard]);
+    }, [hasActiveWorkflow, isLoading, loadError, loadDashboard]);
 
     const summaryCounts = useMemo(() => {
+        if (stateCounts === undefined) return null;
         const counts = new Map<string, number>();
-        for (const workflow of workflows) {
-            const group = workflowStatusGroup(workflow.workflow_state);
-            counts.set(group, (counts.get(group) ?? 0) + 1);
+        for (const [state, count] of Object.entries(stateCounts)) {
+            const group = workflowStatusGroup(state);
+            counts.set(group, (counts.get(group) ?? 0) + count);
         }
         return counts;
-    }, [workflows]);
-
-    const filteredWorkflows = useMemo(() => {
-        return workflows.filter((workflow) => {
-            if (filters.state && workflow.workflow_state !== filters.state) return false;
-            if (filters.source && workflow.workflow_source !== filters.source) return false;
-            if (filters.candidateId && !workflow.candidate_id?.toLowerCase().includes(filters.candidateId.toLowerCase())) return false;
-            if (filters.workflowId && !workflow.workflow_id.toLowerCase().includes(filters.workflowId.toLowerCase())) return false;
-            if (filters.actionRequired === "yes" && !workflowActionRequired(workflow.workflow_state)) return false;
-            if (filters.actionRequired === "no" && workflowActionRequired(workflow.workflow_state)) return false;
-            return true;
-        });
-    }, [filters, workflows]);
-
-    const totalPages = Math.max(1, Math.ceil(filteredWorkflows.length / PAGE_SIZE));
-    const currentPage = Math.min(pageIndex, totalPages - 1);
-    const visibleWorkflows = filteredWorkflows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+    }, [stateCounts]);
+    const matchingCount = workflowResponse?.total ?? 0;
+    const totalPages = Math.max(1, Math.ceil(matchingCount / PAGE_SIZE));
+    const currentPage = Math.floor((workflowResponse?.offset ?? 0) / PAGE_SIZE);
+    const hasFilters = Object.values(selection.filters).some(Boolean);
 
     function updateDraftFilter(name: keyof DashboardFilters, value: string) {
         setDraftFilters((current) => ({ ...current, [name]: value }));
     }
-
     function applyFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        setFilters(draftFilters);
-        setPageIndex(0);
+        void loadDashboard({ filters: { ...draftFilters, candidateId: draftFilters.candidateId.trim(), workflowId: draftFilters.workflowId.trim() }, offset: 0 });
     }
-
     function clearFilters() {
         setDraftFilters(EMPTY_FILTERS);
-        setFilters(EMPTY_FILTERS);
-        setPageIndex(0);
+        void loadDashboard(INITIAL_SELECTION);
     }
+    function refresh() { void loadDashboard(currentSelection.current, "refresh"); }
 
-    function refresh() {
-        if (pendingLoad.current || isRefreshing) return;
-        void loadDashboard("refresh");
-    }
-
-    if (isLoading) {
+    if (isLoading && workflowResponse === null) {
         return (
             <main className="mx-auto max-w-7xl p-8">
                 <p role="status" aria-live="polite" className="text-slate-300">Loading workflows...</p>
@@ -158,9 +167,10 @@ export function WorkflowDashboardPage() {
                     <h1 className="text-lg font-semibold text-red-100">Workflows unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError}</p>
                     <p className="mt-2 text-sm text-slate-300">Try loading your workflows again.</p>
-                    <button type="button" onClick={() => void loadDashboard()} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <button type="button" onClick={() => void loadDashboard(currentSelection.current)} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Try again
                     </button>
+                    {hasFilters && <button type="button" onClick={clearFilters} className="ml-3 rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-100">Clear filters</button>}
                 </section>
             </main>
         );
@@ -179,7 +189,7 @@ export function WorkflowDashboardPage() {
                 <button
                     type="button"
                     onClick={refresh}
-                    disabled={isRefreshing}
+                    disabled={isRefreshing || isLoading}
                     className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     Refresh
@@ -190,14 +200,18 @@ export function WorkflowDashboardPage() {
             {refreshError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">Refresh failed: {refreshError}</p>}
 
             <section aria-labelledby="workflow-counts-heading" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <h2 id="workflow-counts-heading" className="sr-only">Workflow summary counts</h2>
-                {SUMMARY_GROUPS.map((group) => (
+                <h2 id="workflow-counts-heading" className="text-sm font-semibold text-slate-300 md:col-span-2 xl:col-span-3">Totals for this search</h2>
+                {isLoading && <p role="status" className="text-sm text-slate-300">Loading matching workflow totals…</p>}
+                {!isLoading && SUMMARY_GROUPS.map((group) => (
                     <article key={group.key} className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                         <p className="text-sm text-slate-400">{group.label}</p>
-                        <p className="mt-2 text-2xl font-bold text-white">{summaryCounts.get(group.key) ?? 0}</p>
+                        <p className="mt-2 text-2xl font-bold text-white">{summaryCounts === null ? "Unavailable" : summaryCounts.get(group.key) ?? 0}</p>
                     </article>
                 ))}
+                {!isLoading && (summaryCounts?.get("unknown") ?? 0) > 0 && <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-4"><p className="text-sm text-slate-400">Other states</p><p className="mt-2 text-2xl font-bold text-white">{summaryCounts?.get("unknown")}</p></article>}
             </section>
+
+            {!isLoading && summaryCounts === null && <p role="status" className="text-sm text-slate-400">This Agent does not provide workflow totals. Paging and search are available; approval-state filtering requires an updated Agent.</p>}
 
             <section aria-labelledby="workflow-filters-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="workflow-filters-heading" className="text-lg font-semibold text-white">Filters</h2>
@@ -215,6 +229,7 @@ export function WorkflowDashboardPage() {
                             <option value="">Any source</option>
                             <option value="candidate">Candidate</option>
                             <option value="manual">Manual</option>
+                            <option value="roadmap">Roadmap</option>
                         </select>
                     </label>
                     <label className="text-sm text-slate-300">
@@ -226,11 +241,11 @@ export function WorkflowDashboardPage() {
                         <input value={draftFilters.workflowId} onChange={(event) => updateDraftFilter("workflowId", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
                     </label>
                     <label className="text-sm text-slate-300">
-                        Action required
-                        <select value={draftFilters.actionRequired} onChange={(event) => updateDraftFilter("actionRequired", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+                        Waiting for approval
+                        <select aria-label="Waiting for approval" value={draftFilters.actionRequired} onChange={(event) => updateDraftFilter("actionRequired", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
                             <option value="">Any</option>
-                            <option value="yes">Action required</option>
-                            <option value="no">No operator action</option>
+                            <option value="yes">Waiting for approval</option>
+                            <option value="no">Not waiting for approval</option>
                         </select>
                     </label>
                     <div className="flex items-end gap-3 xl:col-span-5">
@@ -243,24 +258,24 @@ export function WorkflowDashboardPage() {
             <section aria-labelledby="workflow-list-heading" className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 id="workflow-list-heading" className="text-xl font-semibold text-white">Workflow list</h2>
-                    <p className="text-sm text-slate-400">Showing {visibleWorkflows.length} of {filteredWorkflows.length} returned workflows</p>
+                    <p className="text-sm text-slate-400">{isLoading ? "Loading matching workflows…" : `Showing ${workflows.length} of ${matchingCount} matching workflows`}</p>
                 </div>
 
-                {workflows.length === 0 ? (
-                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows yet.</p>
-                ) : visibleWorkflows.length === 0 ? (
-                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows match the current filters.</p>
+                {isLoading ? (
+                    <p role="status" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">Loading workflow results…</p>
+                ) : workflows.length === 0 ? (
+                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">{hasFilters ? "No workflows match the current filters." : "No workflows yet."}</p>
                 ) : (
                     <div className="space-y-4">
-                        {visibleWorkflows.map((workflow) => <WorkflowCard key={workflow.workflow_id} workflow={workflow} />)}
+                        {workflows.map((workflow) => <WorkflowCard key={workflow.workflow_id} workflow={workflow} />)}
                     </div>
                 )}
 
-                {filteredWorkflows.length > PAGE_SIZE && (
+                {!isLoading && matchingCount > PAGE_SIZE && (
                     <nav aria-label="Workflow pagination" className="flex items-center gap-3">
-                        <button type="button" onClick={() => setPageIndex((page) => Math.max(0, page - 1))} disabled={currentPage === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                        <button type="button" onClick={() => void loadDashboard({ filters: selection.filters, offset: Math.max(0, selection.offset - PAGE_SIZE) })} disabled={isRefreshing || currentPage === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                         <span className="text-sm text-slate-400">Page {currentPage + 1} of {totalPages}</span>
-                        <button type="button" onClick={() => setPageIndex((page) => Math.min(totalPages - 1, page + 1))} disabled={currentPage >= totalPages - 1} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                        <button type="button" onClick={() => void loadDashboard({ filters: selection.filters, offset: selection.offset + PAGE_SIZE })} disabled={isRefreshing || currentPage >= totalPages - 1} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
                     </nav>
                 )}
             </section>
@@ -289,7 +304,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
                 <Detail label="Current State" value={formatWorkflowLabel(workflow.workflow_state)} />
                 <Detail label="Repository or Target" value={workflow.repository ?? workflow.target_id ?? "Not exposed"} />
                 <Detail label="Last Known Result" value={workflow.last_result_summary} />
-                <Detail label="Operator Action" value={actionRequired ? "Action required" : "No operator action required"} />
+                <Detail label="Approval state" value={actionRequired ? "Waiting for approval" : "Not waiting for approval"} />
             </dl>
             <div className="mt-4">
                 <h4 id={railId} className="mb-2 text-sm font-semibold text-slate-200">Mini workflow rail</h4>
@@ -306,4 +321,40 @@ function Detail({ label, value }: { label: string; value: string }) {
             <dd className="mt-1 break-all text-slate-200">{value}</dd>
         </div>
     );
+}
+
+
+function directoryQuery(selection: DirectorySelection): WorkflowListQuery {
+    const filters = selection.filters;
+    return {
+        state: filters.state || undefined, source: filters.source || undefined,
+        candidate_id: filters.candidateId || undefined, workflow_id: filters.workflowId || undefined,
+        waiting_for_approval: filters.actionRequired === "yes" ? true : filters.actionRequired === "no" ? false : undefined,
+        limit: PAGE_SIZE, offset: selection.offset,
+    };
+}
+
+function validateDirectoryPage(page: WorkflowListResponse, selection: DirectorySelection): void {
+    if (!page || !Array.isArray(page.items) || !Number.isSafeInteger(page.total) || page.total < 0
+        || page.limit !== PAGE_SIZE || page.offset !== selection.offset || page.items.length > PAGE_SIZE
+        || page.items.some((item) => !item || typeof item.workflow_id !== "string" || typeof item.workflow_state !== "string")
+        || new Set(page.items.map((item) => item.workflow_id)).size !== page.items.length
+        || (page.offset < page.total && page.items.length !== Math.min(PAGE_SIZE, page.total - page.offset))
+        || (page.offset >= page.total && page.items.length !== 0)) {
+        throw new Error("The Agent returned an inconsistent workflow page. Try again.");
+    }
+    if (page.state_counts === undefined) {
+        if (selection.filters.actionRequired) throw new Error("Approval-state filtering requires an updated Atlas Agent. Clear this filter or update the Agent.");
+        return;
+    }
+    if (page.state_counts === null || typeof page.state_counts !== "object" || Array.isArray(page.state_counts)
+        || Object.values(page.state_counts).some((count) => !Number.isSafeInteger(count) || count < 0)
+        || Object.values(page.state_counts).reduce((sum, count) => sum + count, 0) !== page.total) {
+        throw new Error("The Agent returned inconsistent workflow totals. Try again.");
+    }
+    const returnedCounts = new Map<string, number>();
+    for (const item of page.items) returnedCounts.set(item.workflow_state, (returnedCounts.get(item.workflow_state) ?? 0) + 1);
+    if ([...returnedCounts].some(([state, count]) => (page.state_counts?.[state] ?? 0) < count)) {
+        throw new Error("The Agent returned inconsistent workflow totals. Try again.");
+    }
 }
