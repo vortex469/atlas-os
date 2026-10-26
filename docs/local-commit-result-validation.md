@@ -33,8 +33,9 @@ They do not provide an atomic lock against external Git writers or establish a
 new hook policy. Existing exact approvals and reviewed-content preflight remain
 required. The approved content digest describes raw regular-file bytes; a Git
 clean filter or newline conversion that changes those bytes is refused rather
-than silently treating the transformed blob as approved. This does not add
-approval coverage for file modes, symlinks or submodules.
+than silently treating the transformed blob as approved. Git executable modes
+are bound by [review-manifest version 2](reviewed-git-modes.md); pending legacy
+approvals require a fresh review. Symlinks and submodules remain unsupported.
 The follow-up [bounded Git contract](bounded-local-git.md) covers process
 lifetime/output and explicit uncertain-result reporting. Automatic reconciliation
 or recovery execution remains out of scope. No execution, installation,

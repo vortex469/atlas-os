@@ -1,6 +1,8 @@
 """Tests for Git repository inspection."""
 
+import os
 import subprocess
+import time
 import traceback
 from pathlib import Path
 from uuid import uuid4
@@ -14,6 +16,7 @@ from app.repository.exceptions import (
     RepositoryInspectionError,
 )
 from app.repository.inspector import GitInspector
+from tests.legacy_review_evidence import version_one_fingerprint
 
 
 def run_git(repository: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
@@ -398,6 +401,88 @@ def test_reviewed_change_evidence_hashes_modified_deleted_renamed_and_untracked(
     assert by_path[Path("new.txt")].content_sha256 is not None
     assert by_path[Path("tracked.txt")].deletion_marker == "deleted"
     assert by_path[Path("renamed.txt")].rename_source == Path("delete.txt")
+    assert by_path[Path("new.txt")].git_mode == "100644"
+    assert by_path[Path("renamed.txt")].git_mode == "100644"
+    assert by_path[Path("tracked.txt")].git_mode is None
+
+
+@pytest.mark.parametrize("trust_filemode", (True, False))
+def test_review_fingerprint_binds_the_git_mode_not_ignored_permission_bits(
+    tmp_path: Path, trust_filemode: bool,
+) -> None:
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    run_git(repository, "config", "core.filemode", str(trust_filemode).lower())
+    head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    path = repository / "tracked.txt"
+    path.write_text("reviewed\n", encoding="utf-8")
+    path.chmod(0o644)
+
+    def evidence():
+        return GitInspector(repository).reviewed_change_evidence(
+            reviewed_files=(Path("tracked.txt"),), expected_branch="master",
+            expected_head=head, commit_message="Reviewed fixture",
+        )
+
+    before = evidence()
+    path.chmod(0o755)
+    after = evidence()
+
+    assert before.changes[0].git_mode == "100644"
+    assert after.changes[0].git_mode == ("100755" if trust_filemode else "100644")
+    assert (before.fingerprint != after.fingerprint) is trust_filemode
+    assert version_one_fingerprint(before) == version_one_fingerprint(after)
+    assert before.fingerprint != version_one_fingerprint(before)
+
+
+@pytest.mark.parametrize("dangling", (False, True))
+def test_review_evidence_refuses_symlink_instead_of_hashing_its_target(
+    tmp_path: Path, dangling: bool,
+) -> None:
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    target = tmp_path / "outside-fixture"
+    if not dangling:
+        target.write_text("synthetic target\n", encoding="utf-8")
+    path = repository / "tracked.txt"
+    path.unlink()
+    path.symlink_to(target)
+
+    with pytest.raises(RepositoryInspectionError, match="not a regular file"):
+        GitInspector(repository).reviewed_change_evidence(
+            reviewed_files=(Path("tracked.txt"),), expected_branch="master",
+            expected_head=head, commit_message="Reviewed fixture",
+        )
+
+
+@pytest.mark.parametrize("replacement", ("symlink", "fifo"))
+def test_file_replaced_during_review_is_refused_without_following_or_waiting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, replacement: str,
+) -> None:
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    head = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    path = repository / "tracked.txt"
+    path.write_text("reviewed\n", encoding="utf-8")
+    target = tmp_path / "outside-fixture"
+    target.write_text("synthetic target\n", encoding="utf-8")
+    original = os.open
+
+    def replace_before_open(filename, flags, *args, **kwargs):
+        if Path(filename) == path:
+            path.unlink()
+            if replacement == "symlink":
+                path.symlink_to(target)
+            else:
+                os.mkfifo(path)
+        return original(filename, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", replace_before_open)
+    started = time.monotonic()
+    with pytest.raises(RepositoryInspectionError):
+        GitInspector(repository).reviewed_change_evidence(
+            reviewed_files=(Path("tracked.txt"),), expected_branch="master",
+            expected_head=head, commit_message="Reviewed fixture",
+        )
+    assert time.monotonic() - started < 1
 
 
 def test_reviewed_change_evidence_rejects_unexpected_changed_paths(
