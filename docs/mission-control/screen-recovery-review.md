@@ -54,6 +54,10 @@ extraction checked with the focused suite below:
 Reproduce UI checks from `services/mission-control` with `npm test --
 --maxWorkers=2`, `npm run test:e2e -- --workers=2`, `npm run lint`, and
 `npm run build`. Browser tests require the local test server and Chromium.
+The existing Quality gates workflow now includes that browser command after
+installing Chromium. It uploads browser failure screenshots and traces for seven
+days. A local isolated failure probe confirmed both files are produced; the
+changed workflow still requires its own CI result before a green-check claim.
 
 ## Acceptance status and remaining gaps
 

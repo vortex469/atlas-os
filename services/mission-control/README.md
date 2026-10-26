@@ -150,6 +150,11 @@ npm run lint
 npm run build
 ```
 
+The existing Quality gates workflow also installs Chromium and runs the
+simulated browser journeys with two workers. Browser failures retain a screenshot
+and trace in a seven-day workflow artifact. The fixtures reject unexpected
+mutations; these checks do not exercise a real provider or deploy Atlas.
+
 
 The v0.57 interface prerequisite inventory is displayed beneath the exact v0.56
 runtime plan review. It reads Core collection/item evidence with credentials,
