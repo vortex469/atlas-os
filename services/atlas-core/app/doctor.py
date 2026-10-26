@@ -22,6 +22,17 @@ INFO = "i"
 WARN = "!"
 FAIL = "✗"
 
+_CONFIGURATION_FAILURE = (
+    "Configuration validation failed. Review Atlas configuration and inventory, "
+    "required credentials, and Docker access."
+)
+_CHECK_FAILURE = (
+    "Check unavailable. Review its configuration and access, then run Doctor again."
+)
+_DOCKER_UNAVAILABLE = (
+    "Docker status is unavailable. Review Docker connection settings and access."
+)
+
 
 class DoctorCheck(BaseModel):
     name: str
@@ -109,16 +120,16 @@ def run_diagnostics(
 
     try:
         configuration_check()
-    except Exception as error:  # noqa: BLE001 - fail-closed diagnosis aggregates any configuration error
+    except Exception:  # noqa: BLE001 - fail-closed diagnosis aggregates any configuration error
         configuration_ok = False
-        critical.append(str(error))
+        critical.append(_CONFIGURATION_FAILURE)
 
     for name, check in checks_to_run:
         try:
             results[name] = check()
             checks.append(DoctorCheck(name=name, passed=True))
-        except Exception as error:  # noqa: BLE001 - fail-closed diagnosis aggregates per-check errors
-            message = str(error)
+        except Exception:  # noqa: BLE001 - fail-closed diagnosis aggregates per-check errors
+            message = _CHECK_FAILURE
             checks.append(
                 DoctorCheck(
                     name=name,
@@ -131,6 +142,10 @@ def run_diagnostics(
     findings: list[Finding] = []
     docker = results.get("Docker")
     if isinstance(docker, dict):
+        if docker.get("status") == "offline":
+            # The finding keeps its existing classification; native transport
+            # errors must not enter the public Doctor report or its CLI output.
+            docker = {**docker, "error": _DOCKER_UNAVAILABLE}
         findings.extend(evaluate_docker(docker))
     home = results.get("Home Assistant")
     if isinstance(home, dict):
