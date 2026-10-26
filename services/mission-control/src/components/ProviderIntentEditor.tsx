@@ -13,13 +13,13 @@ const labels: Record<ProviderMonitoringExpectation, string> = {
 };
 
 const readOnlyReasons: Record<string, string> = {
-    not_activated: "Provider Intent authority is not activated.",
-    authority_unavailable: "Provider Intent authority is temporarily unavailable.",
-    store_migration_required: "Provider Intent editing is awaiting a store migration.",
-    store_unavailable: "Provider Intent storage is temporarily unavailable.",
+    not_activated: "Monitoring editing is not enabled.",
+    authority_unavailable: "Monitoring settings are temporarily unavailable.",
+    store_migration_required: "Monitoring editing is waiting for a required data update.",
+    store_unavailable: "Monitoring settings could not be loaded. Try again later.",
     resource_missing: "Missing resources cannot be edited.",
-    identity_unavailable: "Authoritative QEMU identity is unavailable.",
-    resource_type_unsupported: "Provider Intent editing is unsupported for this resource type.",
+    identity_unavailable: "This virtual machine’s identity could not be verified.",
+    resource_type_unsupported: "Monitoring settings cannot be edited for this resource type.",
 };
 
 function parseExpectationSelection(
@@ -96,12 +96,12 @@ function ProviderIntentEditorForm({
         <div className="min-w-0 space-y-2">
             {resource.replacement_detected && (
                 <p role="alert" className="text-xs text-amber-300">
-                    This resource incarnation changed. The previous expectation is historical only and does not apply to the current identity. Choose a new value explicitly.
+                    This resource’s identity changed. The previous setting no longer applies. Review the resource and choose a new value.
                 </p>
             )}
             {resource.legacy_review_available && resource.legacy_expectation && (
                 <p className="text-xs text-slate-400">
-                    Historical legacy expectation: {labels[resource.legacy_expectation]} — review context only; it will not be selected automatically.
+                    Earlier policy setting: {labels[resource.legacy_expectation]} — shown for reference; it is not selected automatically.
                 </p>
             )}
             {canEdit ? (
@@ -153,13 +153,13 @@ function ProviderIntentEditorForm({
             ) : (
                 <p className="text-xs text-slate-500">
                     {operatorState === "anonymous"
-                        ? "Sign in with Provider Intent permission to edit this public monitoring state."
+                        ? "Sign in with permission to edit monitoring expectations."
                         : operatorState === "loading"
                           ? "Checking whether you can edit monitoring expectations..."
                           : operatorState === "unavailable"
-                            ? "Editing is unavailable because operator capability could not be loaded."
+                            ? "Your editing permissions could not be checked."
                             : mutationResource?.mutation_readiness === "ready"
-                              ? "Your operator session does not permit Provider Intent updates."
+                              ? "You do not have permission to edit monitoring expectations."
                               : readOnlyReasons[mutationResource?.mutation_readiness ?? "authority_unavailable"]}
                 </p>
             )}
