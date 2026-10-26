@@ -192,10 +192,10 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("Not exposed by Atlas Agent API")).toBeInTheDocument();
         expect(screen.queryByText("Supported intent")).not.toBeInTheDocument();
         expect(screen.getByText("fingerprint-1")).toBeInTheDocument();
-        expect(screen.getByText("Execution Candidate ✔")).toBeInTheDocument();
-        expect(screen.getByText("Planning Session ✔")).toBeInTheDocument();
-        expect(screen.getByText("Candidate Plan ○")).toBeInTheDocument();
-        expect(screen.getAllByText("Disabled").length).toBeGreaterThan(0);
+        expect(screen.getByText("Proposal")).toBeInTheDocument();
+        expect(screen.getByText("Planning").closest("li")).toHaveAttribute("aria-current", "step");
+        expect(screen.getByText("Plan")).toBeInTheDocument();
+        expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|approve|create workflow|implementation|commit/i })).not.toBeInTheDocument();
     });
 
@@ -315,7 +315,7 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("Implementation approval pending")).toBeInTheDocument();
         expect(screen.getByText("Yes")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Open Workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
-        expect(screen.getByText("Workflow ✔")).toBeInTheDocument();
+        expect(screen.getByText("Workflow").closest("li")).toHaveAttribute("aria-current", "step");
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
 

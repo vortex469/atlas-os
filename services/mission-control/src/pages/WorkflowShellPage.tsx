@@ -1,3 +1,4 @@
+import { PlanningProgress } from "../components/PlanningProgress";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 
@@ -247,7 +248,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
     if (!workflow) {
         return (
             <main className="mx-auto max-w-6xl space-y-6 p-8">
-                <WorkflowRail />
+                <PlanningProgress current={null} />
                 <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <p className="font-semibold text-amber-200">Workflow summary unavailable</p>
                     <p className="mt-1 text-sm text-slate-300">
@@ -274,7 +275,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         Review this workflow and prepare its exact request for approval. Preparing a request does not run the change.
                     </p>
                 </div>
-                <WorkflowRail />
+                <PlanningProgress current="Workflow" />
             </header>
 
             <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -388,41 +389,6 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 )}
             </section>
         </main>
-    );
-}
-
-function WorkflowRail() {
-    const steps = [
-        "Execution Candidate",
-        "Planning Session",
-        "Candidate Plan",
-        "Workflow",
-        "Implementation",
-        "Verification",
-        "Review",
-        "Commit",
-    ];
-    const complete = new Set(["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow"]);
-
-    return (
-        <section aria-label="Read-only workflow rail" className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-            <ol className="grid gap-2 text-sm md:grid-cols-4 xl:grid-cols-8">
-                {steps.map((step) => {
-                    const isWorkflow = step === "Workflow";
-                    const isComplete = complete.has(step);
-                    return (
-                        <li key={step} className={[
-                            "rounded-lg border px-3 py-2",
-                            isWorkflow ? "border-blue-400 bg-blue-500/10 text-blue-200" : isComplete ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950/50 text-slate-500",
-                        ].join(" ")}
-                        >
-                            <span className="block font-medium">{step}{isComplete ? " ✔" : " ○"}</span>
-                            <span className="text-xs">{isComplete ? "Read-only" : "Disabled"}</span>
-                        </li>
-                    );
-                })}
-            </ol>
-        </section>
     );
 }
 

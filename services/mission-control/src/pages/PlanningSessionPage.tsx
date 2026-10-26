@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { PlanningProgress } from "../components/PlanningProgress";
 
 import {
     createCandidateWorkflowShell,
@@ -207,7 +208,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals.
                     </p>
                 </div>
-                <PlanningRail current={workflow ? "Workflow" : hasPlan ? "Candidate Plan" : "Planning Session"} />
+                <PlanningProgress current={workflow ? "Workflow" : hasPlan ? "Candidate Plan" : "Planning Session"} />
             </header>
 
             <section aria-labelledby="session-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -403,47 +404,6 @@ function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {
                 <ListPanel title="Evidence IDs" values={plan.evidence_ids} empty="No evidence IDs listed." />
             </section>
         </article>
-    );
-}
-
-function PlanningRail({ current }: { current: "Planning Session" | "Candidate Plan" | "Workflow" }) {
-    const steps = [
-        "Execution Candidate",
-        "Planning Session",
-        "Candidate Plan",
-        "Workflow",
-        "Implementation",
-        "Verification",
-        "Review",
-        "Commit",
-    ];
-    const complete = new Set(["Execution Candidate", "Planning Session"]);
-    if (current === "Candidate Plan" || current === "Workflow") {
-        complete.add("Candidate Plan");
-    }
-    if (current === "Workflow") {
-        complete.add("Workflow");
-    }
-
-    return (
-        <section aria-label="Read-only workflow rail" className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-            <ol className="grid gap-2 text-sm md:grid-cols-4 xl:grid-cols-8">
-                {steps.map((step) => {
-                    const isActive = step === current;
-                    const isDisabled = !complete.has(step);
-                    return (
-                        <li key={step} className={[
-                            "rounded-lg border px-3 py-2",
-                            isActive ? "border-blue-400 bg-blue-500/10 text-blue-200" : complete.has(step) ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-slate-800 bg-slate-950/50 text-slate-500",
-                        ].join(" ")}
-                        >
-                            <span className="block font-medium">{step}{complete.has(step) ? " ✔" : " ○"}</span>
-                            <span className="text-xs">{isDisabled ? "Disabled" : "Read-only"}</span>
-                        </li>
-                    );
-                })}
-            </ol>
-        </section>
     );
 }
 

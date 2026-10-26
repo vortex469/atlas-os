@@ -126,11 +126,11 @@ describe("WorkflowShellPage", () => {
         expect(screen.getByText("Pending")).toBeInTheDocument();
         expect(screen.getByText("candidate-plan-1")).toBeInTheDocument();
         expect(screen.getByText("Not exposed by Atlas Agent API")).toBeInTheDocument();
-        expect(screen.getByText("Workflow ✔")).toBeInTheDocument();
-        expect(screen.getByText("Implementation ○")).toBeInTheDocument();
-        expect(screen.getByText("Verification ○")).toBeInTheDocument();
-        expect(screen.getByText("Review ○")).toBeInTheDocument();
-        expect(screen.getByText("Commit ○")).toBeInTheDocument();
+        expect(screen.getByText("Workflow").closest("li")).toHaveAttribute("aria-current", "step");
+        expect(screen.queryByText("Implementation ○")).not.toBeInTheDocument();
+        expect(screen.queryByText("Verification ○")).not.toBeInTheDocument();
+        expect(screen.queryByText("Review ○")).not.toBeInTheDocument();
+        expect(screen.queryByText("Commit ○")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|execute|verify|review|commit/i })).not.toBeInTheDocument();
         expect(screen.queryByText(/argv|commands|execution metadata/i)).not.toBeInTheDocument();
         expect(await screen.findByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();

@@ -11,7 +11,7 @@ import { getExecutionCandidate } from "../api/executionCandidates";
 import type { CandidatePlanningResponse } from "../types/atlasAgent";
 import type { ExecutionCandidate } from "../types/executionCandidates";
 import { evidenceTimestamp } from "../utils/healthPresentation";
-import { WorkflowRail } from "./ExecutionCandidatesPage";
+import { PlanningProgress } from "../components/PlanningProgress";
 
 export function ExecutionCandidateDetailPage() {
     const { candidateId = "" } = useParams<{ candidateId: string }>();
@@ -126,7 +126,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                         Review this proposal before planning. Planning does not approve or apply a change.
                     </p>
                 </div>
-                <WorkflowRail activeStep="Planning Session" />
+                <PlanningProgress current="Execution Candidate" />
             </header>
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5" aria-labelledby="planning-action-heading">

@@ -80,7 +80,7 @@ describe("ExecutionCandidatesPage", () => {
             "href",
             "/execution-candidates/candidate-1",
         );
-        expect(screen.getByText("Planning Session")).toBeInTheDocument();
+        expect(screen.getByText("Planning")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
     });
 

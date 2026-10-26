@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { PlanningProgress } from "../components/PlanningProgress";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import { listExecutionCandidates } from "../api/executionCandidates";
@@ -139,7 +140,7 @@ export function ExecutionCandidatesPage() {
                         apply changes.
                     </p>
                 </div>
-                <WorkflowRail activeStep="Execution Candidate" />
+                <PlanningProgress current="Execution Candidate" />
             </header>
 
             {error && (
@@ -199,38 +200,6 @@ export function ExecutionCandidatesPage() {
                 </div>
             </section>
         </main>
-    );
-}
-
-export function WorkflowRail({ activeStep }: { activeStep: string }) {
-    const steps = [
-        "Execution Candidate",
-        "Planning Session",
-        "Candidate Plan",
-        "Workflow",
-        "Implementation",
-        "Verification",
-        "Review",
-        "Commit",
-    ];
-
-    return (
-        <section aria-label="Read-only workflow rail" className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-            <ol className="grid gap-2 text-sm md:grid-cols-4 xl:grid-cols-8">
-                {steps.map((step) => (
-                    <li key={step} className={[
-                        "rounded-lg border px-3 py-2",
-                        step === activeStep
-                            ? "border-blue-400 bg-blue-500/10 text-blue-200"
-                            : "border-slate-800 bg-slate-950/50 text-slate-500",
-                    ].join(" ")}
-                    >
-                        <span className="block font-medium">{step}</span>
-                        <span className="text-xs">{step === "Planning Session" ? "Actionable in P4.1" : "Read-only"}</span>
-                    </li>
-                ))}
-            </ol>
-        </section>
     );
 }
 

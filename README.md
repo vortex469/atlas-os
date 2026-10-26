@@ -64,6 +64,9 @@ repository implementation, review, and commit stages.
 Proposal searches display only the latest requested results. Previous cards are
 hidden during loading and after a failed search, so stale proposals are not
 presented as current results.
+Preparation screens use four plain steps: Proposal, Planning, Plan, and Workflow.
+This indicator shows the current screen; it does not report approval or execution
+status. The workflow displays its server-reported stages separately.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent
