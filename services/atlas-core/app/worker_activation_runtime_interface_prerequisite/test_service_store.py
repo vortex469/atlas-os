@@ -3,7 +3,10 @@
 import ast
 import faulthandler
 import os
+import pickle
+import queue
 import sqlite3
+import struct
 import sys
 import threading
 import time
@@ -789,7 +792,9 @@ def _process_create(path, facts, barrier, output):
     process_started = time.perf_counter()
     pid = os.getpid()
     stage = "startup"
-    faulthandler.dump_traceback_later(15, repeat=True)
+    # A child reproduced SIGSEGV while the periodic dump traversed live frames.
+    # Retain fatal-signal reporting; the parent owns timeout and progress checks.
+    faulthandler.enable(file=sys.stderr, all_threads=False)
     try:
         stage = "service_setup"
         stage_started = time.perf_counter()
@@ -865,7 +870,6 @@ def _process_create(path, facts, barrier, output):
             pass
         raise
     finally:
-        faulthandler.cancel_dump_traceback_later()
         output.close()
 
 
@@ -878,6 +882,166 @@ def _report_independent_processes(processes):
             file=sys.stderr,
             flush=True,
         )
+
+
+def _receive_independent_results(processes, pipes, *, deadline, cleanup_grace_seconds=10):
+    """Collect child replies within one budget, before expensive model parsing."""
+
+    for _, sender in pipes:
+        sender.close()
+    completed = queue.Queue()
+
+    def receive(index, receiver):
+        try:
+            raw = receiver.recv()
+        except (EOFError, OSError, ValueError, TypeError, pickle.UnpicklingError):
+            completed.put((index, None, True))
+        else:
+            completed.put((index, raw, False))
+
+    # poll() only covers the first readable byte, not a complete framed reply.
+    # Reader threads let the parent enforce the same deadline for partial frames.
+    readers = [
+        threading.Thread(target=receive, args=(index, receiver), daemon=True)
+        for index, (receiver, _) in enumerate(pipes)
+    ]
+    try:
+        for reader in readers:
+            reader.start()
+        replies = [None] * len(pipes)
+        for _ in pipes:
+            try:
+                index, raw, failed = completed.get(timeout=max(0, deadline - time.monotonic()))
+            except queue.Empty:
+                _report_independent_processes(processes)
+                pytest.fail("evidence process did not return")
+            if failed:
+                _report_independent_processes(processes)
+                pytest.fail("evidence process closed its pipe without evidence")
+            if not isinstance(raw, str) or raw.startswith("__child_failure__"):
+                _report_independent_processes(processes)
+                pytest.fail("evidence process returned failure or malformed evidence")
+            replies[index] = raw
+        for process in processes:
+            process.join(timeout=max(0, deadline - time.monotonic()))
+            if process.is_alive() or process.exitcode != 0:
+                _report_independent_processes(processes)
+                pytest.fail("evidence process did not exit successfully")
+        return replies
+    finally:
+        if any(reader.is_alive() for reader in readers):
+            _stop_independent_processes(processes, grace_seconds=cleanup_grace_seconds)
+        for reader in readers:
+            if reader.ident is not None:
+                reader.join(timeout=1)
+            assert not reader.is_alive(), "evidence reader survived cleanup"
+
+
+def _stop_independent_processes(processes, *, grace_seconds=10):
+    for process in processes:
+        if process.is_alive():
+            process.terminate()
+    deadline = time.monotonic() + grace_seconds
+    for process in processes:
+        if process.pid is None:
+            continue
+        process.join(timeout=max(0, deadline - time.monotonic()))
+        if process.is_alive():
+            process.kill()
+            process.join(timeout=1)
+        assert not process.is_alive(), "evidence process survived cleanup"
+
+
+def _ipc_fixture_child(output, ready, outcome):
+    if outcome == "partial_reply":
+        os.write(output.fileno(), struct.pack("!i", 4096) + b"partial")
+        ready.set()
+        time.sleep(30)
+        return
+    if outcome == "ignore_termination":
+        import signal
+
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    ready.set()
+    if outcome in {"timeout", "ignore_termination"}:
+        time.sleep(30)
+    elif outcome == "malformed":
+        output.send({"unexpected": "fixture"})
+    elif outcome == "failure":
+        output.send("__child_failure__fixture")
+    elif outcome in {"success", "nonzero_exit"}:
+        output.send("fixture-evidence")
+        if outcome == "nonzero_exit":
+            os._exit(3)
+    output.close()
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    ("success", "eof", "malformed", "failure", "nonzero_exit", "timeout", "ignore_termination", "partial_reply"),
+)
+def test_independent_process_harness_refuses_failed_or_incomplete_children(outcome):
+    from multiprocessing import get_context
+
+    context = get_context("spawn")
+    receiver, sender = context.Pipe(duplex=False)
+    ready = context.Event()
+    process = context.Process(target=_ipc_fixture_child, args=(sender, ready, outcome))
+    process.start()
+    try:
+        assert ready.wait(timeout=20), "fixture child did not become ready"
+        if outcome == "success":
+            assert _receive_independent_results(
+                [process], [(receiver, sender)], deadline=time.monotonic() + 2
+            ) == ["fixture-evidence"]
+        else:
+            with pytest.raises(pytest.fail.Exception, match="evidence process"):
+                _receive_independent_results(
+                    [process], [(receiver, sender)], deadline=time.monotonic() + 0.2,
+                    cleanup_grace_seconds=0.1,
+                )
+    finally:
+        _stop_independent_processes([process], grace_seconds=0.1)
+        receiver.close()
+        sender.close()
+    assert not process.is_alive()
+
+
+def _delayed_ipc_fixture(output, ready, release, delay):
+    ready.set()
+    release.wait(timeout=20)
+    time.sleep(delay)
+    output.send("fixture-evidence")
+    output.close()
+
+
+def test_independent_process_harness_uses_one_reply_deadline():
+    from multiprocessing import get_context
+
+    context = get_context("spawn")
+    release = context.Event()
+    ready = [context.Event(), context.Event()]
+    pipes = [context.Pipe(duplex=False) for _ in range(2)]
+    processes = [
+        context.Process(target=_delayed_ipc_fixture, args=(sender, event, release, delay))
+        for (_, sender), event, delay in zip(pipes, ready, (0.3, 0.7), strict=True)
+    ]
+    try:
+        for process in processes:
+            process.start()
+        assert all(event.wait(timeout=20) for event in ready)
+        started = time.monotonic()
+        release.set()
+        with pytest.raises(pytest.fail.Exception, match="evidence process did not return"):
+            _receive_independent_results(
+                processes, pipes, deadline=started + 0.5, cleanup_grace_seconds=0.1
+            )
+        assert time.monotonic() - started < 3
+    finally:
+        _stop_independent_processes(processes, grace_seconds=0.1)
+        for receiver, sender in pipes:
+            receiver.close()
+            sender.close()
 
 
 def test_independent_processes_share_permanent_reservation(tmp_path, facts):
@@ -899,22 +1063,15 @@ def test_independent_processes_share_permanent_reservation(tmp_path, facts):
         for _, sender in pipes
     ]
     try:
+        # Full recursive contract validation can exceed one minute on loaded
+        # CI runners. This is a test harness budget, not a product latency SLO.
+        # Keep it finite and shared across startup, replies and child joins.
+        deadline = time.monotonic() + 180
         for process in processes:
             process.start()
         results = []
-        for receiver, sender in pipes:
-            sender.close()
-            if not receiver.poll(60):
-                _report_independent_processes(processes)
-                pytest.fail("evidence process did not return")
-            try:
-                raw = receiver.recv()
-            except EOFError:
-                _report_independent_processes(processes)
-                pytest.fail("evidence process closed its pipe without evidence")
-            if raw.startswith("__child_failure__"):
-                _report_independent_processes(processes)
-                pytest.fail(f"evidence process failed: {raw}")
+        replies = _receive_independent_results(processes, pipes, deadline=deadline)
+        for raw in replies:
             try:
                 result = c.WorkerActivationRuntimeInterfacePrerequisiteResultV1.model_validate_json(
                     raw
@@ -925,9 +1082,6 @@ def test_independent_processes_share_permanent_reservation(tmp_path, facts):
                 )
                 assert result.error_code in {"append_indeterminate", "unavailable"}
             results.append(result)
-        for process in processes:
-            process.join(timeout=10)
-            assert process.exitcode == 0
         successes = [
             r
             for r in results
@@ -941,10 +1095,7 @@ def test_independent_processes_share_permanent_reservation(tmp_path, facts):
         )
         assert counts(reopened) == (1, 1, 0)
     finally:
-        for process in processes:
-            if process.is_alive():
-                process.terminate()
-                process.join(timeout=10)
+        _stop_independent_processes(processes)
         for receiver, sender in pipes:
             receiver.close()
             sender.close()
