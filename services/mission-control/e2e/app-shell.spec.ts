@@ -127,3 +127,20 @@ test.describe("Atlas Core unavailable", () => {
         await expect(page.getByText("Release unavailable", { exact: true })).toBeVisible();
     });
 });
+
+for (const width of [390, 1280]) {
+    test(`keyboard users can skip navigation at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto("/providers?view=all");
+        await expect(page.getByRole("heading", { name: "Providers", exact: true })).toBeVisible();
+        await page.keyboard.press("Tab");
+        const skip = page.getByRole("link", { name: "Skip to page content" });
+        await expect(skip).toBeFocused();
+        await expect(skip).toBeInViewport();
+        await page.keyboard.press("Enter");
+        await expect(page.locator("#mc-page-content")).toBeFocused();
+        await expect(page).toHaveURL(/\/providers\?view=all$/);
+        await page.keyboard.press("Tab");
+        expect(await page.evaluate(() => Boolean(document.activeElement?.closest("#mc-page-content")))).toBe(true);
+    });
+}

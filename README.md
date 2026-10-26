@@ -69,6 +69,8 @@ This indicator shows the current screen; it does not report approval or executio
 status. The workflow displays its server-reported stages separately.
 Workflow preparation uses plain-language next steps, with technical request
 details available in an optional disclosure beside any preparation error.
+Keyboard users can use “Skip to page content” to bypass the repeated header and
+navigation without changing the current URL.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent

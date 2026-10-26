@@ -62,6 +62,17 @@ describe("MainLayout", () => {
     });
 
     describe("desktop shell rendering", () => {
+        it("lets keyboard users skip navigation without changing the route", async () => {
+            const user = userEvent.setup();
+            renderAt();
+            await screen.findByText("Foundry");
+            await user.tab();
+            const skip = screen.getByRole("link", { name: "Skip to page content" });
+            expect(skip).toHaveFocus();
+            await user.keyboard("{Enter}");
+            expect(screen.getByText("Dashboard content").closest("#mc-page-content")).toHaveFocus();
+        });
+
         it("renders branding, the primary content region, and the release", async () => {
             renderAt();
 
