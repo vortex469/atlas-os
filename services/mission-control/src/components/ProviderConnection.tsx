@@ -45,6 +45,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
 
         setBusyMode("loading");
         setError(null);
+        setTestResult(null);
 
         try {
             const nextSchema = await getProviderConnection(provider.id);
@@ -128,6 +129,8 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         field: ProviderConnectionField,
         value: string | number | boolean,
     ): void {
+        setTestResult(null);
+        setError(null);
         if (field.secret) {
             setSecretValues((current) => ({
                 ...current,

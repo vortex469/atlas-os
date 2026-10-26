@@ -285,6 +285,41 @@ describe("ProviderConnection", () => {
         expect(screen.getByLabelText("Host")).toHaveValue("candidate.invalid");
     });
 
+    it.each(["Host", "Token Value"])("invalidates test results when %s changes without revealing the tested secret", async (label) => {
+        mockedTestProviderConnection.mockResolvedValue({
+            provider_id: "proxmox", status: "failure", message: "Bad token previous-test-secret",
+            tested_at: "2026-10-26T00:00:00Z", latency_ms: null,
+            diagnostics: { error: "previous-test-secret rejected" },
+        });
+        const user = userEvent.setup();
+        await renderConnection();
+        await user.type(screen.getByLabelText("Token Value"), "previous-test-secret");
+        await user.click(screen.getByRole("button", { name: "Test Connection" }));
+        await screen.findByText(/Test failure/);
+        expect(document.body.textContent).not.toContain("previous-test-secret");
+        await user.clear(screen.getByLabelText(label));
+        expect(screen.queryByText(/Test failure/)).not.toBeInTheDocument();
+        expect(document.body.textContent).not.toContain("previous-test-secret");
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(1);
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
+    it("clears the test result as soon as settings are reloaded", async () => {
+        const user = userEvent.setup();
+        await renderConnection();
+        await user.click(screen.getByRole("button", { name: "Test Connection" }));
+        await screen.findByText(/Test success/);
+        let rejectRead!: (reason: Error) => void;
+        mockedGetProviderConnection.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
+        await user.click(screen.getByRole("button", { name: "Reload Schema" }));
+        expect(screen.queryByText(/Test success/)).not.toBeInTheDocument();
+        await act(async () => { rejectRead(new Error("Settings unavailable")); });
+        expect(await screen.findByRole("alert")).toHaveTextContent("Settings unavailable");
+        expect(screen.queryByText(/Test success/)).not.toBeInTheDocument();
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(1);
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
     it("saves only editable values and entered secret replacements", async () => {
         const user = userEvent.setup();
         await renderConnection();
