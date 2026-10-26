@@ -179,6 +179,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                                     </span>
                                 )}
                             </div>
+                            <p className="mt-3 text-sm text-slate-400">{entry.provider_name}</p>
                             <p className="mt-3 text-sm text-slate-300">
                                 {entry.message}
                             </p>
@@ -191,65 +192,65 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                         </time>
                     </div>
 
-                    <dl className="mt-6 grid gap-5 border-t border-slate-800 pt-6 text-sm sm:grid-cols-2">
-                        <div>
-                            <dt className="text-slate-500">Audit ID</dt>
-                            <dd className="mt-1 break-all font-mono text-slate-200">
-                                {entry.id}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt className="text-slate-500">
-                                Request ID
-                            </dt>
-                            <dd className="mt-1 break-all font-mono text-slate-200">
-                                {entry.request_id ?? "Unavailable"}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt className="text-slate-500">Provider</dt>
-                            <dd className="mt-1 text-slate-200">
-                                {entry.provider_name}{" "}
-                                <span className="font-mono text-slate-500">
-                                    ({entry.provider_id})
-                                </span>
-                            </dd>
-                        </div>
-                        <div>
-                            <dt className="text-slate-500">Action ID</dt>
-                            <dd className="mt-1 font-mono text-slate-200">
-                                {entry.action_id}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt className="text-slate-500">Started</dt>
-                            <dd className="mt-1 text-slate-200">
-                                {formatTimestamp(entry.started_at)}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt className="text-slate-500">Completed</dt>
-                            <dd className="mt-1 text-slate-200">
-                                {formatTimestamp(entry.completed_at)}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt className="text-slate-500">Duration</dt>
-                            <dd className="mt-1 text-slate-200">
-                                {entry.duration_ms.toFixed(2)} ms
-                            </dd>
-                        </div>
-                        <div>
-                            <dt className="text-slate-500">
-                                Parameter names
-                            </dt>
-                            <dd className="mt-1 text-slate-200">
-                                {entry.parameter_names.length > 0
-                                    ? entry.parameter_names.join(", ")
-                                    : "None"}
-                            </dd>
-                        </div>
-                    </dl>
+                    <details className="mt-6 border-t border-slate-800 pt-4">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <dl className="mt-4 grid gap-5 text-sm sm:grid-cols-2">
+                            <div>
+                                <dt className="text-slate-500">Audit ID</dt>
+                                <dd className="mt-1 break-all font-mono text-slate-200">
+                                    {entry.id}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-slate-500">
+                                    Request ID
+                                </dt>
+                                <dd className="mt-1 break-all font-mono text-slate-200">
+                                    {entry.request_id ?? "Unavailable"}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-slate-500">Provider ID</dt>
+                                <dd className="mt-1 break-all font-mono text-slate-200">
+                                    {entry.provider_id}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-slate-500">Action ID</dt>
+                                <dd className="mt-1 font-mono text-slate-200">
+                                    {entry.action_id}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-slate-500">Started</dt>
+                                <dd className="mt-1 text-slate-200">
+                                    {formatTimestamp(entry.started_at)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-slate-500">Completed</dt>
+                                <dd className="mt-1 text-slate-200">
+                                    {formatTimestamp(entry.completed_at)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-slate-500">Duration</dt>
+                                <dd className="mt-1 text-slate-200">
+                                    {entry.duration_ms.toFixed(2)} ms
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-slate-500">
+                                    Parameter names
+                                </dt>
+                                <dd className="mt-1 text-slate-200">
+                                    {entry.parameter_names.length > 0
+                                        ? entry.parameter_names.join(", ")
+                                        : "None"}
+                                </dd>
+                            </div>
+                        </dl>
+                    </details>
                 </article>
             )}
         </main>
