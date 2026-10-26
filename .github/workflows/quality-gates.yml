@@ -148,8 +148,13 @@ jobs:
         working-directory: services/mission-control
         run: npm run test:e2e -- --workers=2 --output="$RUNNER_TEMP/mission-control-browser-results"
 
+      - name: Test built Mission Control navigation
+        id: built-browser-tests
+        working-directory: services/mission-control
+        run: npm run test:e2e:built -- --workers=2 --output="$RUNNER_TEMP/mission-control-browser-results/built"
+
       - name: Preserve browser failure evidence
-        if: failure() && steps.browser-tests.outcome == 'failure'
+        if: failure() && (steps.browser-tests.outcome == 'failure' || steps.built-browser-tests.outcome == 'failure')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mission-control-browser-failures

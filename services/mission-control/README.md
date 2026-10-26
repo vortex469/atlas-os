@@ -161,10 +161,16 @@ Validate with:
 npm test
 npm run lint
 npm run build
+npm run test:e2e -- --workers=2
+npm run test:e2e:built -- --workers=2
 ```
 
 The existing Quality gates workflow also installs Chromium and runs the
-simulated browser journeys with two workers. Browser failures retain a screenshot
+simulated browser journeys with two workers. It then reuses 17 read-only shell
+and navigation checks against generated assets through a temporary local preview.
+Run the build before the built-asset checks. This preview checks frontend assets,
+not production Nginx routing or a running Atlas backend.
+Browser failures retain a screenshot
 and trace in a seven-day workflow artifact. The fixtures reject unexpected
 mutations; these checks do not exercise a real provider or deploy Atlas.
 The build type-checks the browser tests as well as the application. Candidate
