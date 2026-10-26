@@ -55,6 +55,30 @@ describe("OperationalHistoryPage", () => {
         });
     });
 
+    it("keeps missing reports in the unavailable filter without claiming a network failure", async () => {
+        mockedDiagnostic.mockResolvedValue(null);
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        expect(await screen.findByText(/Restart service · Status unavailable/)).toBeInTheDocument();
+        fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "unavailable" } });
+        expect(screen.getByRole("link", { name: "Open workflow" })).toBeInTheDocument();
+        expect(screen.queryByText("An unavailable report does not mean maintenance failed.")).not.toBeInTheDocument();
+        expect(mockedList).toHaveBeenCalledTimes(1);
+        expect(mockedDiagnostic).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not classify missing completion evidence as in progress or finished", async () => {
+        mockedLifecycle.mockResolvedValue(null);
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        await screen.findByRole("link", { name: "Open workflow" });
+        for (const value of ["non_terminal", "terminal"]) {
+            fireEvent.change(screen.getByRole("combobox", { name: "Completion" }), { target: { value } });
+            expect(screen.getByText("No requests on this page match your filters.")).toBeInTheDocument();
+        }
+        fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+        expect(screen.getByRole("link", { name: "Open workflow" })).toBeInTheDocument();
+        expect(mockedLifecycle).toHaveBeenCalledTimes(1);
+    });
+
     it("loads bounded operational workflows and links to lifecycle detail", async () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
@@ -69,7 +93,7 @@ describe("OperationalHistoryPage", () => {
         mockedDiagnostic.mockRejectedValue(new Error("native secret exception"));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
-        expect(await screen.findByText("A diagnostic network failure is not an operational failure.")).toBeInTheDocument();
+        expect(await screen.findByText("An unavailable report does not mean maintenance failed.")).toBeInTheDocument();
         expect(document.body.textContent).not.toContain("native secret exception");
     });
 
@@ -169,6 +193,6 @@ describe("maintenance history recovery", () => {
         await screen.findByText("unreadable-target");
         fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "unavailable" } });
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/history-unreadable");
-        expect(screen.getByText("A diagnostic network failure is not an operational failure.")).toBeInTheDocument();
+        expect(screen.getByText("An unavailable report does not mean maintenance failed.")).toBeInTheDocument();
     });
 });

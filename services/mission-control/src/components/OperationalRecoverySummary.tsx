@@ -19,7 +19,7 @@ const SEVERITY_STYLES: Record<RecoverySeverity, string> = {
 
 export function OperationalRecoverySummary({ diagnostic, isLoading = false, error = null, supportEvidenceAvailable, compact = false }: OperationalRecoverySummaryProps) {
     if (isLoading) return <section aria-label="Recovery summary"><p role="status" className="text-sm text-slate-300">Loading recovery diagnostic...</p></section>;
-    if (error) return <section aria-label="Recovery summary" className="rounded-lg border border-slate-600 bg-slate-800/60 p-4"><h3 className="font-semibold text-white">Recovery diagnostic unavailable</h3><p className="mt-2 text-sm text-slate-300">{error}</p><p className="mt-2 text-sm text-cyan-200">A diagnostic network failure is not an operational failure.</p></section>;
+    if (error) return <section aria-label="Recovery summary" className="rounded-lg border border-slate-600 bg-slate-800/60 p-4"><h3 className="font-semibold text-white">Recovery diagnostic unavailable</h3><p className="mt-2 text-sm text-slate-300">{error}</p><p className="mt-2 text-sm text-cyan-200">An unavailable report does not mean maintenance failed.</p></section>;
     if (!diagnostic?.applicable) return null;
 
     const presentation = recoveryPresentation(diagnostic);

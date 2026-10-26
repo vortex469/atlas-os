@@ -41,7 +41,7 @@ describe("OperationalRecoverySummary", () => {
 
     it("keeps a diagnostic fetch failure distinct from an operational failure", () => {
         render(<OperationalRecoverySummary diagnostic={null} error="Mission Control could not read the recovery diagnostic." supportEvidenceAvailable={false} />);
-        expect(screen.getByText("A diagnostic network failure is not an operational failure.")).toBeInTheDocument();
+        expect(screen.getByText("An unavailable report does not mean maintenance failed.")).toBeInTheDocument();
     });
 
     it("renders no forbidden secret or provider-native fields", () => {

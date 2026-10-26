@@ -230,7 +230,7 @@ test("maintenance history keeps unavailable requests findable and details option
     await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
     await page.getByRole("combobox", { name: "Status", exact: true }).selectOption("unavailable");
     await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
-    await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
+    await expect(page.getByText("An unavailable report does not mean maintenance failed.")).toBeVisible();
     await expect(page.getByText("Workflow State", { exact: true })).toBeHidden();
     await page.getByText("Workflow details", { exact: true }).click();
     await expect(page.getByText("Workflow State", { exact: true })).toBeVisible();

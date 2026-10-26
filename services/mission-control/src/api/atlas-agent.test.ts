@@ -13,6 +13,8 @@ vi.mock("axios", () => ({
     },
 }));
 
+import { operationalDiagnostic } from "../test/operationalLifecycle";
+
 import {
     getAgentInfo,
     getReviewReport,
@@ -138,13 +140,71 @@ describe("Atlas Agent optional summary endpoints", () => {
     });
 
     it("reads a workflow-scoped recovery diagnostic contract", async () => {
-        const diagnostic = { applicable: true, diagnostic_status: "healthy" };
+        const diagnostic = operationalDiagnostic();
+        diagnostic.correlation.workflow_id = "workflow/one";
         mockGet.mockResolvedValueOnce({ data: diagnostic });
 
         await expect(getWorkflowRecoveryDiagnostic("workflow/one")).resolves.toBe(diagnostic);
         expect(mockGet).toHaveBeenCalledWith(
             "/api/v1/agent/workflows/workflow%2Fone/recovery-diagnostic",
         );
+    });
+
+    it.each([
+        ["missing report", null],
+        ["partial healthy report", { applicable: true, diagnostic_status: "healthy" }],
+        ["foreign request", { correlation: { ...operationalDiagnostic().correlation, workflow_id: "foreign" } }],
+        ["unknown status", { diagnostic_status: "perfect" }],
+        ["unknown consistency", { consistency: "perfect" }],
+        ["unknown reason", { controlled_reason: "secret exception" }],
+        ["unknown next action", { safe_next_action: "retry_operation" }],
+        ["missing verification", { verification_evidence: null }],
+        ["invalid dispatch", { dispatch_evidence: { ...operationalDiagnostic().dispatch_evidence, barrier_crossed: "true" } }],
+        ["missing correlation fact", { correlation: { workflow_id: "workflow-1" } }],
+        ["invalid verification", { verification_evidence: { ...operationalDiagnostic().verification_evidence, terminal_evidence: "true" } }],
+    ])("rejects %s without exposing response contents", async (_name, patch) => {
+        const data = patch === null || _name === "partial healthy report" ? patch : { ...operationalDiagnostic(), ...patch };
+        mockGet.mockResolvedValueOnce({ data });
+        await expect(getWorkflowRecoveryDiagnostic("workflow-1")).rejects.toThrow(
+            "Maintenance status report is incomplete or does not match this request.",
+        );
+        expect(mockGet).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["healthy", "pending", "attention_required", "recovery_in_progress", "outcome_uncertain", "unavailable"] as const)("accepts a complete %s report", async (diagnostic_status) => {
+        const data = operationalDiagnostic({ diagnostic_status });
+        mockGet.mockResolvedValueOnce({ data });
+        await expect(getWorkflowRecoveryDiagnostic("workflow-1")).resolves.toEqual(data);
+    });
+
+    it.each([
+        "applicable", "diagnostic_status", "consistency", "controlled_reason", "safe_next_action",
+        "correlation.request_id", "correlation.request_digest_match", "correlation.agent_record_present", "correlation.core_record_present",
+        "dispatch_evidence.barrier_crossed", "dispatch_evidence.provider_operation_captured", "dispatch_evidence.dispatch_result_known", "dispatch_evidence.transition_sequence_valid",
+        "verification_evidence.status", "verification_evidence.target_fingerprint_state", "verification_evidence.observed_state", "verification_evidence.observed_health", "verification_evidence.terminal_evidence",
+    ])("rejects a report missing required field %s", async (path) => {
+        const data = operationalDiagnostic();
+        const parts = path.split(".");
+        const parent = parts.length === 1 ? data : data[parts[0] as keyof typeof data];
+        delete (parent as Record<string, unknown>)[parts.at(-1)!];
+        mockGet.mockResolvedValueOnce({ data });
+        await expect(getWorkflowRecoveryDiagnostic("workflow-1")).rejects.toThrow("Maintenance status report is incomplete");
+    });
+
+    it("accepts nullable evidence and non-applicable reports without inventing facts", async () => {
+        const data = operationalDiagnostic({ applicable: false, diagnostic_status: "unavailable", controlled_reason: "not_applicable",
+            correlation: { workflow_id: "workflow-1", request_id: null, request_digest_match: null, agent_record_present: false, core_record_present: false },
+            dispatch_evidence: { barrier_crossed: false, provider_operation_captured: false, dispatch_result_known: false, transition_sequence_valid: null },
+            verification_evidence: { status: null, target_fingerprint_state: "not_applicable", observed_state: null, observed_health: null, terminal_evidence: false },
+        });
+        mockGet.mockResolvedValueOnce({ data: { ...data, future_metadata: "ignored additive response field" } });
+        await expect(getWorkflowRecoveryDiagnostic("workflow-1")).resolves.toMatchObject(data);
+    });
+
+    it("preserves missing reports and service failures as distinct outcomes", async () => {
+        mockGet.mockRejectedValueOnce(axiosError(404)).mockRejectedValueOnce(axiosError(503));
+        await expect(getWorkflowRecoveryDiagnostic("workflow-1")).resolves.toBeNull();
+        await expect(getWorkflowRecoveryDiagnostic("workflow-1")).rejects.toBeInstanceOf(Error);
     });
 
     it("reads a workflow-scoped support bundle contract", async () => {

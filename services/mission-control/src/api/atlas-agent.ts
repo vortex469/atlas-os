@@ -360,14 +360,46 @@ export async function getWorkflowOperationalLifecycle(
     }
 }
 
+function parseRecoveryDiagnostic(value: unknown, workflowId: string): WorkflowRecoveryDiagnostic {
+    const malformed = () => new Error("Maintenance status report is incomplete or does not match this request.");
+    const member = (item: unknown, allowed: readonly string[]) => typeof item === "string" && allowed.includes(item);
+    const nullableString = (item: unknown) => item === null || typeof item === "string";
+    const nullableBoolean = (item: unknown) => item === null || typeof item === "boolean";
+    if (!isRecord(value) || Array.isArray(value)
+        || !isRecord(value.correlation) || !isRecord(value.dispatch_evidence) || !isRecord(value.verification_evidence)) throw malformed();
+    const correlation = value.correlation;
+    const dispatch = value.dispatch_evidence;
+    const verification = value.verification_evidence;
+    if (typeof value.applicable !== "boolean"
+        || !member(value.diagnostic_status, ["healthy", "pending", "attention_required", "recovery_in_progress", "outcome_uncertain", "unavailable"])
+        || !member(value.consistency, ["consistent", "agent_only", "core_unavailable", "immutable_mismatch", "transition_mismatch", "terminal_mismatch"])
+        || correlation.workflow_id !== workflowId
+        || !nullableString(correlation.request_id)
+        || !nullableBoolean(correlation.request_digest_match)
+        || typeof correlation.agent_record_present !== "boolean"
+        || typeof correlation.core_record_present !== "boolean"
+        || typeof dispatch.barrier_crossed !== "boolean"
+        || typeof dispatch.provider_operation_captured !== "boolean"
+        || typeof dispatch.dispatch_result_known !== "boolean"
+        || !nullableBoolean(dispatch.transition_sequence_valid)
+        || !nullableString(verification.status)
+        || !member(verification.target_fingerprint_state, ["unchanged", "replaced", "unavailable", "not_applicable"])
+        || !nullableString(verification.observed_state)
+        || !nullableString(verification.observed_health)
+        || typeof verification.terminal_evidence !== "boolean"
+        || !(value.controlled_reason === null || member(value.controlled_reason, ["not_applicable", "core_unavailable", "missing_core_record", "immutable_request_mismatch", "invalid_transition_sequence", "dispatch_outcome_unknown", "dispatch_failed", "verification_pending", "verification_failed", "target_replaced", "terminal_state_disagreement"]))
+        || !member(value.safe_next_action, ["none", "wait_for_verification", "restore_core_availability", "inspect_target_read_only", "preserve_evidence", "operator_review_required", "new_request_only_after_terminal"])) throw malformed();
+    return value as unknown as WorkflowRecoveryDiagnostic;
+}
+
 export async function getWorkflowRecoveryDiagnostic(
     workflowId: string,
 ): Promise<WorkflowRecoveryDiagnostic | null> {
     try {
-        const response = await atlasAgent.get<WorkflowRecoveryDiagnostic>(
+        const response = await atlasAgent.get<unknown>(
             `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/recovery-diagnostic`,
         );
-        return response.data;
+        return parseRecoveryDiagnostic(response.data, workflowId);
     } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) return null;
         throw error;
