@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from pathlib import Path
@@ -91,10 +92,13 @@ class WorkerPatchApplier:
         return PatchApplicationOutcome(actual, digest, tuple(sorted(baseline.items())))
 
     @classmethod
-    def capture_baseline(cls, repository_root: Path) -> tuple[tuple[str, str], ...]:
+    def capture_baseline(
+        cls, repository_root: Path, *,
+        read_git: Callable[[tuple[str, ...]], bytes] | None = None,
+    ) -> tuple[tuple[str, str], ...]:
         """Capture canonical dirty-checkout evidence before a worker patch."""
 
-        return tuple(sorted(cls._status(repository_root).items()))
+        return tuple(sorted(cls._status(repository_root, read_git=read_git).items()))
 
     @staticmethod
     def _validate_paths(paths: tuple[str, ...], approved: set[str]) -> None:
@@ -104,15 +108,19 @@ class WorkerPatchApplier:
                 raise PatchApplicationError("patch_out_of_scope")
 
     @staticmethod
-    def _status(repository_root: Path) -> dict[str, str]:
-        result = subprocess.run(
-            ["git", "status", "--porcelain=v1", "-z"],
-            cwd=repository_root,
-            capture_output=True,
-            text=False,
-            check=True,
-        )
-        records = result.stdout.decode("utf-8").split("\0")
+    def _status(
+        repository_root: Path, *,
+        read_git: Callable[[tuple[str, ...]], bytes] | None = None,
+    ) -> dict[str, str]:
+        def read(arguments: tuple[str, ...]) -> bytes:
+            if read_git is not None:
+                return read_git(arguments)
+            return subprocess.run(
+                ["git", *arguments], cwd=repository_root, capture_output=True,
+                text=False, check=True,
+            ).stdout
+
+        records = read(("status", "--porcelain=v1", "-z")).decode("utf-8").split("\0")
         status: dict[str, str] = {}
         for record in records:
             if not record:
@@ -122,13 +130,7 @@ class WorkerPatchApplier:
             candidate = repository_root / path
             if candidate.is_file():
                 file_digest = hashlib.sha256(candidate.read_bytes()).hexdigest()
-            staged = subprocess.run(
-                ["git", "diff", "--cached", "--binary", "--", path],
-                cwd=repository_root,
-                capture_output=True,
-                text=False,
-                check=True,
-            ).stdout
+            staged = read(("diff", "--cached", "--binary", "--", path))
             status[path] = record[:3] + ":" + hashlib.sha256(
                 file_digest.encode() + staged
             ).hexdigest()

@@ -41,6 +41,10 @@ from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import AgentStatePersistenceCoordinator
 from app.planning.advisor import PlanningAdvisor
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
+from app.repository.exceptions import (
+    RepositoryCommitOutcomeUnknownError,
+    RepositoryCommitResultMismatchError,
+)
 from app.repository.models import (
     CommitResult,
     RepositorySnapshot,
@@ -1825,12 +1829,19 @@ def test_no_committable_change_blocks_before_verification(
     verification_engine.verify.assert_not_called()
 
 
+@pytest.mark.parametrize("failure_kind", ("failed", "unknown", "mismatch"))
 def test_commit_failure_blocks_and_preserves_completed_artifacts(
     tmp_path: Path,
+    failure_kind: str,
 ) -> None:
     engine, state_store, approval_repository, _, _, _, _, _ = make_resume_engine(
         tmp_path,
-        commit_error=RuntimeError("git identity missing"),
+        commit_error=(
+            RepositoryCommitOutcomeUnknownError("fixture uncertain outcome")
+            if failure_kind == "unknown" else
+            RepositoryCommitResultMismatchError("fixture conflicting outcome")
+            if failure_kind == "mismatch" else RuntimeError("git identity missing")
+        ),
     )
 
     _, commit_boundary = approve_verification_and_resume(engine, approval_repository)
@@ -1846,7 +1857,14 @@ def test_commit_failure_blocks_and_preserves_completed_artifacts(
     )
     result = engine.resume("workflow-a15-3")
 
-    assert result.error_message == "Workflow commit failed"
+    if failure_kind != "failed":
+        expected_code = "commit_outcome_unknown" if failure_kind == "unknown" else "commit_result_mismatch"
+        assert result.error_message == expected_code
+        assert state_store.get_session("workflow-a15-3").blocked_reason == expected_code
+        assert engine.resume("workflow-a15-3").sprint.phase is SprintPhase.BLOCKED
+        engine._repository_committer_factory.return_value.commit.assert_called_once()
+    else:
+        assert result.error_message == "Workflow commit failed"
     assert result.execution_result is not None
     assert result.verification_report is not None
     assert result.review_report is not None

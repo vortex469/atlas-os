@@ -95,7 +95,7 @@ _ENV_DIGEST_LENGTH = 64
 _INTERRUPTION_REASONS = {
     WorkflowSessionState.EXECUTING: "implementation interrupted by process restart",
     WorkflowSessionState.VERIFYING: "verification or review interrupted by process restart",
-    WorkflowSessionState.COMMITTING: "commit interrupted by process restart",
+    WorkflowSessionState.COMMITTING: "commit_outcome_unknown",
 }
 _WAITING_PURPOSES = {
     WorkflowSessionState.AWAITING_APPROVAL: ApprovalPurpose.IMPLEMENTATION,

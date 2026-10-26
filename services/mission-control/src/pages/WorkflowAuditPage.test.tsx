@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -224,6 +224,27 @@ describe("WorkflowAuditPage", () => {
 
         expect(await screen.findByText("Blocked reason")).toBeInTheDocument();
         expect(screen.getByText("Blocked: safety gate open failed due to policy")).toBeInTheDocument();
+    });
+
+    it.each([
+        ["commit_outcome_unknown", "Git may have created a local commit. Inspect the repository before recovery; do not repeat the commit."],
+        ["commit interrupted by process restart", "Git may have created a local commit. Inspect the repository before recovery; do not repeat the commit."],
+        ["commit_result_mismatch", "The observed local commit does not match the approved change. Inspect the repository before recovery; do not repeat the commit."],
+        ["commit_failed", "The local commit could not be completed safely. Inspect the repository before recovery."],
+    ])("explains %s without offering another commit", async (reason, message) => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({
+            workflow_state: "blocked", blocked_reason: reason,
+            timeline: audit().timeline.map((stage) => stage.name === "commit" ? { ...stage, status: "unknown" } : stage),
+            commit: { ...audit().commit, status: "unknown", commit_sha: null, committed_files: [] },
+        }));
+        renderAuditPage();
+
+        expect(await screen.findByText(message)).toBeInTheDocument();
+        const commitSection = screen.getByRole("heading", { name: "Commit Result" }).closest("section");
+        expect(commitSection).not.toBeNull();
+        expect(within(commitSection!).getByText("Status: Outcome unknown")).toBeInTheDocument();
+        expect(screen.queryByText(reason, { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /retry|resume|commit|approve|execute/i })).not.toBeInTheDocument();
     });
 
     it("renders overall audit status and chain state from workflow_state", async () => {

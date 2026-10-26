@@ -58,6 +58,10 @@ from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.committer import GitCommitter
+from app.repository.exceptions import (
+    RepositoryCommitOutcomeUnknownError,
+    RepositoryCommitResultMismatchError,
+)
 from app.repository.inspector import GitInspector
 from app.repository.models import CommitRequest, RepositorySnapshot
 from app.review.advisor import ReviewAdvisor
@@ -1952,6 +1956,33 @@ class WorkflowEngine:
             commit_result = self._repository_committer_factory(
                 commit_request.repository_root
             ).commit(commit_request, reviewed_evidence=current)
+        except RepositoryCommitResultMismatchError:
+            self._transition_session(
+                workflow_id, WorkflowSessionState.COMMITTING,
+                WorkflowSessionState.BLOCKED,
+                blocked_reason=CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH.value,
+            )
+            return self._blocked_session_result(
+                session=session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
+                error_message=CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH.value,
+            )
+        except RepositoryCommitOutcomeUnknownError:
+            logger.warning("Workflow local commit outcome is unknown")
+            self._transition_session(
+                workflow_id, WorkflowSessionState.COMMITTING,
+                WorkflowSessionState.BLOCKED,
+                blocked_reason=CandidateCommitFailureCode.COMMIT_OUTCOME_UNKNOWN.value,
+            )
+            return self._blocked_session_result(
+                session=session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
+                error_message=CandidateCommitFailureCode.COMMIT_OUTCOME_UNKNOWN.value,
+            )
         except Exception:
             logger.exception("Workflow commit failed")
             self._block_claimed_session(
@@ -2098,6 +2129,33 @@ class WorkflowEngine:
             commit_result = self._repository_committer_factory(
                 commit_request.repository_root
             ).commit(commit_request, reviewed_evidence=reviewed_evidence)
+        except RepositoryCommitResultMismatchError:
+            self._transition_session(
+                session.identifier, WorkflowSessionState.COMMITTING,
+                WorkflowSessionState.BLOCKED,
+                blocked_reason=CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH.value,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
+                error_message=CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH.value,
+            )
+        except RepositoryCommitOutcomeUnknownError:
+            logger.warning("Candidate local commit outcome is unknown")
+            self._transition_session(
+                session.identifier, WorkflowSessionState.COMMITTING,
+                WorkflowSessionState.BLOCKED,
+                blocked_reason=CandidateCommitFailureCode.COMMIT_OUTCOME_UNKNOWN.value,
+            )
+            return self._blocked_session_result(
+                session=claimed_session,
+                execution_result=session.execution_result,
+                verification_report=session.verification_report,
+                review_report=session.review_report,
+                error_message=CandidateCommitFailureCode.COMMIT_OUTCOME_UNKNOWN.value,
+            )
         except Exception:
             logger.exception("Candidate commit failed")
             self._transition_session(

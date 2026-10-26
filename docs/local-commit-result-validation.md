@@ -35,9 +35,10 @@ required. The approved content digest describes raw regular-file bytes; a Git
 clean filter or newline conversion that changes those bytes is refused rather
 than silently treating the transformed blob as approved. This does not add
 approval coverage for file modes, symlinks or submodules.
-Bounded Git process lifetime/output and richer uncertain-outcome recovery remain
-separate work. No execution, installation, deployment, or publication authority
-is added.
+The follow-up [bounded Git contract](bounded-local-git.md) covers process
+lifetime/output and explicit uncertain-result reporting. Automatic reconciliation
+or recovery execution remains out of scope. No execution, installation,
+deployment, or publication authority is added.
 
 Regression tests cover branch/parent/index-content drift immediately before
 commit, preservation of later unstaged edits, HEAD movement during metadata

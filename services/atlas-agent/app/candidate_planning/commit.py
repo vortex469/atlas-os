@@ -45,6 +45,7 @@ class CandidateCommitFailureCode(StrEnum):
     REVIEW_EVIDENCE_MISMATCH = "review_evidence_mismatch"
     CORE_UNAVAILABLE = "core_unavailable"
     COMMIT_FAILED = "commit_failed"
+    COMMIT_OUTCOME_UNKNOWN = "commit_outcome_unknown"
     COMMIT_RESULT_MISMATCH = "commit_result_mismatch"
     PERSISTENCE_FAILED = "persistence_failed"
 

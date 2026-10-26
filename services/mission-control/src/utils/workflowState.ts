@@ -50,6 +50,20 @@ export const WORKFLOW_STATES = [
 const EMPTY_VALUE = "Not exposed";
 const NOT_AVAILABLE_VALUE = "Not available";
 
+export function formatWorkflowBlockedReason(reason: string): string {
+    switch (reason) {
+        case "commit_outcome_unknown":
+        case "commit interrupted by process restart":
+            return "Git may have created a local commit. Inspect the repository before recovery; do not repeat the commit.";
+        case "commit_result_mismatch":
+            return "The observed local commit does not match the approved change. Inspect the repository before recovery; do not repeat the commit.";
+        case "commit_failed":
+            return "The local commit could not be completed safely. Inspect the repository before recovery.";
+        default:
+            return reason;
+    }
+}
+
 export function formatWorkflowValue(value: string | null | undefined, fallback: string = EMPTY_VALUE): string {
     return value === null || value === undefined || value === "" ? fallback : value;
 }
