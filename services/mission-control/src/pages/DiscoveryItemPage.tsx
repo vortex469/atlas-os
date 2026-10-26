@@ -74,7 +74,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const [proposalsLoading, setProposalsLoading] = useState(true);
     const [proposalsError, setProposalsError] = useState<string | null>(null);
     const compatibilityRequestId = useRef(0);
-    const compatibilityLoadHandle = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+    const compatibilityLoadHandle = useRef<number | null>(null);
 
     const loadCompatibility = useCallback(() => {
         const requestId = ++compatibilityRequestId.current;

@@ -10,6 +10,7 @@ runtime, tag, or publish a release.
 | Surface | Required behavior | Current regression evidence |
 | --- | --- | --- |
 | Shared navigation | Working primary links, mobile drawer, keyboard focus, skip link, missing-page recovery | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` |
+| Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
 | Providers | Registry and detail links work; unavailable data differs from absence; forms and late responses stay with their provider | Provider page/component tests; provider registry and route-switch browser cases in `e2e/screen-recovery.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
@@ -63,6 +64,10 @@ against native Core/Agent response models. It corrected omitted candidate effect
 kinds and audit preparation approval fields. Browser tests are now included in
 the TypeScript build so these required fields cannot silently disappear from
 typed fixtures. This schema check does not establish real backend integration.
+The development Agent proxy was also restored to match the production edge.
+Thirty-five focused proxy/Discovery tests and all 63 browser checks passed.
+Existing local Core/Agent health reads did not provide usable responses, so they
+do not establish service health or real integration acceptance.
 
 ## Acceptance status and remaining gaps
 

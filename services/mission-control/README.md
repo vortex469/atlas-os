@@ -142,7 +142,14 @@ npm ci
 npm run dev
 ```
 
-The development server proxies `/api/v1` to Atlas Core at `http://127.0.0.1:8643`. Validate with:
+The development server proxies `/api/v1` to Atlas Core at
+`http://127.0.0.1:8643` and `/agent-api` to Atlas Agent at
+`http://127.0.0.1:8090`, removing the Agent prefix as the production edge does.
+Both proxies strip caller-supplied identity headers and preserve session cookies,
+origin and CSRF headers; backends still authenticate and authorize requests.
+Core and Agent must already be running for real integration; the proxy does not
+start either service. The proxy regression test uses ephemeral local HTTP stubs.
+Validate with:
 
 ```bash
 npm test
