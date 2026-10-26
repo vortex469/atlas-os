@@ -125,9 +125,13 @@ Control has no client, route, nested view, or action surface for that
 unselected API; retained v0.64 GET-only evidence must not be promoted or
 relabeled as v0.65.
 
-P0 through P5 and production acceptance are complete. Atlas v0.15.0 is released
-as `atlas-v0.15.0` at
-`850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`.
+Historical release reference: Atlas v0.15.0 was recorded as `atlas-v0.15.0`
+at `850480ce6c5f86a5bf4a783e33f7e08a7f29a2ab`. This historical reference does
+not establish acceptance of the current branch.
+
+The [screen recovery review](../../docs/mission-control/screen-recovery-review.md)
+maps the current operator outcomes to regression checks and identifies the
+remaining acceptance gaps.
 
 ## Development
 
@@ -153,5 +157,6 @@ preserves immutable review lineage, and displays Core-reported expiry. All
 runtime prerequisites remain incomplete. Advanced evidence stays collapsed;
 there are no create/start controls, polling, browser persistence or new routes.
 
-P4 UI test/build/lint validation is pending: this worktree could not install npm
-dependencies because registry DNS returned `EAI_AGAIN`.
+An earlier v0.57 worktree recorded a dependency-install failure (`EAI_AGAIN`).
+That historical environment note is not the validation status of the current
+branch; see the screen recovery review above for the current review scope.
