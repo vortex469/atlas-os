@@ -5,6 +5,7 @@ import { PlanningProgress } from "../components/PlanningProgress";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import { listExecutionCandidates } from "../api/executionCandidates";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import type {
     ExecutionCandidate,
     ExecutionCandidateListQuery,
@@ -52,6 +53,12 @@ type CandidateResult = {
     hasMore: boolean;
 };
 
+type CandidateLoadFailure = {
+    message: string;
+    filters: FilterState;
+    offset: number;
+};
+
 export function ExecutionCandidatesPage() {
     const [filters, setFilters] = useState<FilterState>(emptyFilters);
     const [submittedFilters, setSubmittedFilters] = useState<FilterState>(emptyFilters);
@@ -62,7 +69,7 @@ export function ExecutionCandidatesPage() {
         hasMore: false,
     });
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<CandidateLoadFailure | null>(null);
 
     const requestGeneration = useRef(0);
 
@@ -83,12 +90,14 @@ export function ExecutionCandidatesPage() {
         } catch (requestError) {
             if (generation !== requestGeneration.current) return;
             console.error("Unable to load change proposals:", requestError);
-            setError(
-                getAtlasErrorMessage(
+            setError({
+                message: getAtlasErrorMessage(
                     requestError,
                     "Mission Control could not load change proposals.",
                 ),
-            );
+                filters: nextFilters,
+                offset,
+            });
         } finally {
             if (generation === requestGeneration.current) setIsLoading(false);
         }
@@ -141,14 +150,16 @@ export function ExecutionCandidatesPage() {
             {error && (
                 <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <p className="font-semibold text-red-300">Change proposals unavailable</p>
-                    <p className="mt-1 text-sm text-red-200/80">{error}</p>
+                    <p className="mt-1 text-sm text-red-200/80">{error.message}</p>
+                    <button type="button" onClick={() => void loadCandidates(error.filters, error.offset)} disabled={isLoading} className="mt-3 rounded-lg border border-red-400/40 px-3 py-2 text-sm font-semibold text-red-100 disabled:opacity-50">Try again</button>
                 </div>
             )}
 
-            <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-200">Filter proposals{hasActiveFilters ? " (filters applied)" : ""}</summary>
                 <form
                     aria-label="Filter change proposals"
-                    className="grid gap-4 lg:grid-cols-[repeat(5,1fr)_auto]"
+                    className="mt-4 grid gap-4 lg:grid-cols-[repeat(5,1fr)_auto]"
                     onSubmit={submitFilters}
                 >
                     <SelectFilter label="Status" value={filters.status} options={statusOptions} onChange={(value) => setFilters((current) => ({ ...current, status: value }))} />
@@ -165,7 +176,7 @@ export function ExecutionCandidatesPage() {
                         </button>
                     </div>
                 </form>
-            </section>
+            </details>
 
             <section aria-label="Change proposal results" className="space-y-4">
                 <div className="flex items-center justify-between gap-4 text-sm text-slate-400">
@@ -199,29 +210,36 @@ export function ExecutionCandidatesPage() {
 }
 
 function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
+    const title = formatLabel(candidate.execution_intent).trim() || "Change proposal";
     return (
         <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <Link to={`/execution-candidates/${encodeURIComponent(candidate.id)}`} className="break-all text-lg font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                        {candidate.id}
+                    <Link to={`/execution-candidates/${encodeURIComponent(candidate.id)}`} aria-label={`${title} for ${candidate.target_id}`} className="break-words text-lg font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        {title}
                     </Link>
                     <p className="mt-1 text-sm text-slate-400">
-                        Target: <span className="text-slate-200">{candidate.target_id}</span> ({candidate.target_type})
+                        Target: <span className="text-slate-200">{candidate.target_id}</span>
                     </p>
                 </div>
                 <StatusBadge status={candidate.status} />
             </div>
-            <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <Field label="Category" value={formatLabel(candidate.execution_category)} />
-                <Field label="Intent" value={formatLabel(candidate.execution_intent)} />
-                <Field label="Approval level" value={formatLabel(candidate.required_approval_level)} />
-                <Field label="Source" value={candidate.source_subsystem} />
+            <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                <Field label="Required approval" value={formatLabel(candidate.required_approval_level)} />
                 <Field label="Compatibility" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
-                <Field label="Evidence" value={`${candidate.evidence_ids.length} reference${candidate.evidence_ids.length === 1 ? "" : "s"}`} />
-                <Field label="Created" value={formatTimestamp(candidate.created_at)} />
-                <Field label="Expires" value={candidate.expires_at ? formatTimestamp(candidate.expires_at) : "No expiry"} />
+                <Field label="Expires" value={formatExpiry(candidate.expires_at)} />
             </dl>
+            <details className="mt-4 rounded-lg border border-slate-800 p-3">
+                <summary className="cursor-pointer text-sm text-slate-300">Technical details</summary>
+                <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                    <Field label="Proposal ID" value={candidate.id} />
+                    <Field label="Target type" value={candidate.target_type} />
+                    <Field label="Category" value={formatLabel(candidate.execution_category)} />
+                    <Field label="Source" value={candidate.source_subsystem} />
+                    <Field label="Evidence" value={`${candidate.evidence_ids.length} reference${candidate.evidence_ids.length === 1 ? "" : "s"}`} />
+                    <Field label="Created" value={formatTimestamp(candidate.created_at)} />
+                </dl>
+            </details>
         </article>
     );
 }
@@ -297,4 +315,11 @@ function formatLabel(value: string): string {
 function formatTimestamp(value: string): string {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+
+function formatExpiry(value: string | null | undefined): string {
+    if (value === null || value === undefined) return "No expiry";
+    const parsed = evidenceTimestamp(value);
+    return parsed === null ? "Unverified expiry" : new Date(parsed).toLocaleString();
 }
