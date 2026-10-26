@@ -27,6 +27,7 @@ export function ProviderPage() {
         providers,
         policies,
         telemetryHistory,
+        telemetryHistoryUnavailable,
         lastUpdated,
         error,
         isLoading,
@@ -259,6 +260,7 @@ export function ProviderPage() {
                     <ProviderTelemetryTrend
                         providerId={provider.id}
                         snapshots={telemetryHistory}
+                        unavailable={Boolean(error || telemetryHistoryUnavailable)}
                         performancePolicy={policies?.intelligence.providers[provider.id] ?? null}
                     />
 
