@@ -179,6 +179,20 @@ describe("DiscoveryPage", () => {
         expect(screen.getByText("Redis")).toBeInTheDocument();
     });
 
+    it("does not let an older summary overwrite a later catalog read", async () => {
+        const user = userEvent.setup();
+        let finish!: (value: DiscoveryMetadata) => void;
+        mockedGetDiscoveryMetadata.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+        renderPage();
+        await screen.findByText("Home Assistant");
+        await user.type(screen.getByLabelText("Keyword search"), "redis");
+        await user.click(screen.getByRole("button", { name: /^Search$/ }));
+        await screen.findByText("Catalog loaded");
+        await act(async () => finish(metadata({ entry_count: 999 })));
+        expect(screen.queryByText("999")).not.toBeInTheDocument();
+        expect(screen.getByText("2")).toBeInTheDocument();
+    });
+
     it("renders catalog status, disclaimer, and read-only item cards", async () => {
         renderPage();
 
@@ -300,13 +314,30 @@ describe("DiscoveryPage", () => {
         expect(screen.getByText("Catalog empty")).toBeInTheDocument();
     });
 
-    it("shows a recoverable unavailable state", async () => {
-        mockedGetDiscoveryMetadata.mockRejectedValue(new Error("Catalog unavailable"));
-
+    it("keeps items visible when the summary fails and retries only the summary", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryMetadata.mockRejectedValueOnce(new Error("private-summary-error"));
         renderPage();
-
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         const alert = await screen.findByRole("alert");
-        expect(within(alert).getByText("Discovery catalog unavailable")).toBeInTheDocument();
-        expect(within(alert).getByText("Catalog unavailable")).toBeInTheDocument();
+        expect(within(alert).getByText("Catalog summary unavailable. Item results are shown separately.")).toBeInTheDocument();
+        expect(document.body.textContent).not.toContain("private-summary-error");
+        expect(screen.queryByText("Discovery catalog unavailable")).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry catalog summary" }));
+        expect(await screen.findByText("Catalog loaded")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(2);
+        expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows items and allows searching while the catalog summary is still pending", async () => {
+        let finish!: (value: DiscoveryMetadata) => void;
+        mockedGetDiscoveryMetadata.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+        renderPage();
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /^Search$/ })).toBeEnabled();
+        expect(screen.getByText("Loading catalog summary")).toBeInTheDocument();
+        await act(async () => finish(metadata()));
+        expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
     });
 });
