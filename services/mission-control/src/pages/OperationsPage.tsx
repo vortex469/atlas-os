@@ -74,6 +74,10 @@ export function OperationsPage() {
     >([]);
     const [summary, setSummary] =
         useState<ProviderActionHistorySummary | null>(null);
+    const [summaryLoading, setSummaryLoading] = useState(true);
+    const [providersUnavailable, setProvidersUnavailable] = useState(false);
+    const [readAttempt, setReadAttempt] = useState(0);
+    const [operationError, setOperationError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [isPruning, setIsPruning] = useState(false);
@@ -111,24 +115,30 @@ export function OperationsPage() {
         setError(null);
         setEntries([]);
         setSummary(null);
+        setSummaryLoading(true);
+        setProviders([]);
+        setProvidersUnavailable(false);
+
+        // These optional reads must not delay or conceal the action records.
+        void getProviderActionHistorySummary().then((value) => {
+            if (requestSequence.current === requestId) setSummary(value);
+        }).catch(() => {
+            // A missing retention policy disables cleanup, not history reads.
+        }).finally(() => {
+            if (requestSequence.current === requestId) setSummaryLoading(false);
+        });
+        void getProviderActionHistoryProviders().then((value) => {
+            if (requestSequence.current === requestId) setProviders(value);
+        }).catch(() => {
+            if (requestSequence.current === requestId) setProvidersUnavailable(true);
+        });
 
         try {
-            const [
-                historyPage,
-                historySummary,
-                historyProviders,
-            ] = await Promise.all([
-                getProviderActionHistory(historyQuery),
-                getProviderActionHistorySummary(),
-                getProviderActionHistoryProviders(),
-            ]);
-
+            const historyPage = await getProviderActionHistory(historyQuery);
             if (requestSequence.current === requestId) {
                 setEntries(historyPage.items);
                 setTotal(historyPage.total);
                 setHasMore(historyPage.has_more);
-                setSummary(historySummary);
-                setProviders(historyProviders);
             }
         } catch (requestError) {
             if (requestSequence.current !== requestId) {
@@ -155,7 +165,7 @@ export function OperationsPage() {
     const exportHistory = useCallback(
         async (format: ActionHistoryExportFormat) => {
             setIsExporting(true);
-            setError(null);
+            setOperationError(null);
             setOperationMessage(null);
 
             try {
@@ -181,7 +191,7 @@ export function OperationsPage() {
                     "Unable to export provider action history:",
                     requestError,
                 );
-                setError(
+                setOperationError(
                     getAtlasErrorMessage(
                         requestError,
                         "Mission Control could not export action history.",
@@ -195,7 +205,8 @@ export function OperationsPage() {
     );
 
     const pruneHistory = useCallback(async () => {
-        const retentionDays = summary?.retention_days ?? 90;
+        if (!summary || isLoading || error) return;
+        const retentionDays = summary.retention_days;
         const confirmed = window.confirm(
             `Delete audit entries older than ${retentionDays} days?`,
         );
@@ -205,7 +216,7 @@ export function OperationsPage() {
         }
 
         setIsPruning(true);
-        setError(null);
+        setOperationError(null);
         setOperationMessage(null);
 
         try {
@@ -217,17 +228,14 @@ export function OperationsPage() {
                         : "entries"
                 } pruned.`,
             );
-            if (offset === 0) {
-                await loadHistory();
-            } else {
-                setOffset(0);
-            }
+            setOffset(0);
+            setReadAttempt((attempt) => attempt + 1);
         } catch (requestError) {
             console.error(
                 "Unable to prune provider action history:",
                 requestError,
             );
-            setError(
+            setOperationError(
                 getAtlasErrorMessage(
                     requestError,
                     "Mission Control could not prune action history.",
@@ -236,7 +244,7 @@ export function OperationsPage() {
         } finally {
             setIsPruning(false);
         }
-    }, [loadHistory, offset, summary?.retention_days]);
+    }, [error, isLoading, summary]);
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -247,10 +255,21 @@ export function OperationsPage() {
             window.clearTimeout(timeoutId);
             requestSequence.current += 1;
         };
-    }, [loadHistory]);
+    }, [loadHistory, readAttempt]);
+
+    function clearFilters() {
+        setFilter("all");
+        setProviderId("all");
+        setSearchInput("");
+        setSearch("");
+        setCompletedFrom("");
+        setCompletedTo("");
+        setOffset(0);
+    }
+    const hasFilters = filter !== "all" || providerId !== "all" || Boolean(search || completedFrom || completedTo);
 
     return (
-        <main className="mx-auto max-w-7xl space-y-6 p-8">
+        <main className="mx-auto max-w-7xl space-y-6 p-4 [overflow-wrap:anywhere] sm:p-6">
             <header className="flex flex-col justify-between gap-4 border-b border-slate-800 pb-6 sm:flex-row sm:items-end">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">
@@ -260,8 +279,7 @@ export function OperationsPage() {
                         Action History
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
-                        Recent provider operations, outcomes, and request
-                        correlation from Atlas Core.
+                        Recorded provider actions and their results from Atlas Core.
                     </p>
                 </div>
 
@@ -294,6 +312,7 @@ export function OperationsPage() {
                                 setFilter(value);
                                 setOffset(0);
                             }}
+                            aria-pressed={filter === value}
                             className={
                                 filter === value
                                     ? "rounded-md bg-slate-700 px-3 py-2 text-sm font-medium text-white"
@@ -310,7 +329,11 @@ export function OperationsPage() {
                 </p>
             </div>
 
-            <section className="grid gap-4 rounded-lg border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 xl:grid-cols-5">
+            <details className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+                <summary className="cursor-pointer text-sm font-medium text-slate-200">Search and filters</summary>
+                <p className="mt-3 text-sm text-slate-400">Dates use UTC. Results below show the current search.</p>
+                {providersUnavailable && <p role="status" className="mt-3 text-sm text-amber-200">Provider choices are unavailable. Existing filters still apply. Refresh history to try again.</p>}
+                <section className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 <form
                     className="sm:col-span-2 xl:col-span-1"
                     onSubmit={(event) => {
@@ -363,6 +386,7 @@ export function OperationsPage() {
                         className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
                     >
                         <option value="all">All providers</option>
+                        {providerId !== "all" && !providers.some((provider) => provider.id === providerId) && <option value={providerId}>Selected provider ({providerId})</option>}
                         {providers.map((provider) => (
                             <option
                                 key={provider.id}
@@ -417,15 +441,7 @@ export function OperationsPage() {
                 <div className="flex items-end">
                     <button
                         type="button"
-                        onClick={() => {
-                            setFilter("all");
-                            setProviderId("all");
-                            setSearchInput("");
-                            setSearch("");
-                            setCompletedFrom("");
-                            setCompletedTo("");
-                            setOffset(0);
-                        }}
+                        onClick={clearFilters}
                         disabled={
                             filter === "all" &&
                             providerId === "all" &&
@@ -439,66 +455,13 @@ export function OperationsPage() {
                         Clear filters
                     </button>
                 </div>
-            </section>
+                </section>
+            </details>
 
-            <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
-                <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-                    <div>
-                        <h2 className="font-semibold text-slate-100">
-                            Audit administration
-                        </h2>
-                        <p className="mt-1 text-sm text-slate-400">
-                            {summary
-                                ? `${summary.entry_count} of ${summary.max_entries} entries retained for ${summary.retention_days} days.`
-                                : isLoading ? "Loading retention policy..." : "Retention policy unavailable."}
-                        </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={() =>
-                                void exportHistory("json")
-                            }
-                            disabled={isExporting}
-                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            Export JSON
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                void exportHistory("csv")
-                            }
-                            disabled={isExporting}
-                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            Export CSV
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => void pruneHistory()}
-                            disabled={isPruning || !summary}
-                            className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {isPruning
-                                ? "Pruning..."
-                                : "Prune expired"}
-                        </button>
-                    </div>
-                </div>
-
-                {operationMessage && (
-                    <p
-                        role="status"
-                        className="mt-4 text-sm text-emerald-300"
-                    >
-                        {operationMessage}
-                    </p>
-                )}
-            </section>
-
-            <AtlasDoctorPanel />
+            {hasFilters && <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+                <p role="status">Filters are active.</p>
+                <button type="button" onClick={clearFilters} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200">Show all actions</button>
+            </div>}
 
             {error && (
                 <div
@@ -523,12 +486,14 @@ export function OperationsPage() {
             {!error && !isLoading && entries.length === 0 && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-8">
                     <p className="font-semibold text-slate-200">
-                        No actions recorded
+                        {offset > 0 ? "No actions on this page" : hasFilters ? "No matching actions" : "No actions recorded"}
                     </p>
                     <p className="mt-2 text-sm text-slate-500">
-                        Provider actions executed through Atlas Core will
-                        appear here.
+                        {offset > 0 ? "The history may have changed. Go back to an earlier page."
+                            : hasFilters ? "Try a different search or clear the filters."
+                            : "Provider actions executed through Atlas Core will appear here."}
                     </p>
+                    {offset > 0 && <button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} className="mt-3 mr-3 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200">Previous page</button>}
                 </div>
             )}
 
@@ -564,6 +529,7 @@ export function OperationsPage() {
                                             </span>
                                         )}
                                     </div>
+                                    <p className="mt-2 text-sm text-slate-400">{entry.provider_name}</p>
                                     <p className="mt-2 text-sm text-slate-300">
                                         {entry.message}
                                     </p>
@@ -585,7 +551,9 @@ export function OperationsPage() {
                                 </time>
                             </div>
 
-                            <dl className="mt-4 grid gap-3 border-t border-slate-800 pt-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                            <details className="mt-4 border-t border-slate-800 pt-3">
+                                <summary className="cursor-pointer text-sm text-slate-300">Technical details</summary>
+                                <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
                                 <div>
                                     <dt className="text-slate-500">
                                         Provider
@@ -620,7 +588,8 @@ export function OperationsPage() {
                                         {entry.request_id ?? "Unavailable"}
                                     </dd>
                                 </div>
-                            </dl>
+                                </dl>
+                            </details>
                             </article>
                         ))}
                     </div>
@@ -667,6 +636,72 @@ export function OperationsPage() {
                     </nav>
                 </>
             )}
+            <details className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+                <summary className="cursor-pointer text-sm font-medium text-slate-200">Export and cleanup</summary>
+                <section className="mt-4">
+                <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                    <div>
+                        <h2 className="font-semibold text-slate-100">
+                            History tools
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-400">
+                            {summary
+                                ? `${summary.entry_count} of ${summary.max_entries} entries retained for ${summary.retention_days} days.`
+                                : summaryLoading ? "Loading retention policy..." : "Retention policy unavailable."}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() =>
+                                void exportHistory("json")
+                            }
+                            disabled={isExporting}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Export JSON
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                void exportHistory("csv")
+                            }
+                            disabled={isExporting}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Export CSV
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void pruneHistory()}
+                            disabled={isPruning || !summary || isLoading || error !== null}
+                            className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isPruning
+                                ? "Pruning..."
+                                : "Prune expired"}
+                        </button>
+                    </div>
+                </div>
+
+                {operationError && <p role="alert" className="mt-4 text-sm text-red-200">{operationError}</p>}
+                {operationMessage && (
+                    <p
+                        role="status"
+                        className="mt-4 text-sm text-emerald-300"
+                    >
+                        {operationMessage}
+                    </p>
+                )}
+                </section>
+            </details>
+
+            <details className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+                <summary className="cursor-pointer text-sm font-medium text-slate-200">Check Atlas health</summary>
+                <div className="mt-4"><AtlasDoctorPanel /></div>
+            </details>
+
         </main>
     );
 }
