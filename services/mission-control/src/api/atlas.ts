@@ -25,6 +25,14 @@ import type {
     ProviderActionPruneResult,
 } from "../types/actionHistory";
 
+import {
+    ActionHistoryResponseError,
+    parseActionHistoryEntry,
+    parseActionHistoryPage,
+    parseActionHistoryProviders,
+    parseActionHistorySummary,
+} from "./actionHistoryResponse";
+
 const ATLAS_API_BASE_URL =
     import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
 
@@ -84,7 +92,7 @@ export async function runProviderAction(
 export async function getProviderActionHistory(
     options: ActionHistoryQuery = {},
 ): Promise<ProviderActionHistoryPage> {
-    const response = await atlas.get<ProviderActionHistoryPage>(
+    const response = await atlas.get<unknown>(
         "/ops/actions/page",
         {
             params: {
@@ -99,7 +107,7 @@ export async function getProviderActionHistory(
         },
     );
 
-    return response.data;
+    return parseActionHistoryPage(response.data, options);
 }
 
 export async function getAtlasDoctorReport(): Promise<DoctorReport> {
@@ -150,20 +158,20 @@ export async function pruneIntelligenceTelemetryHistory(): Promise<IntelligenceT
 export async function getProviderActionHistoryEntry(
     entryId: string,
 ): Promise<ProviderActionAuditEntry> {
-    const response = await atlas.get<ProviderActionAuditEntry>(
+    const response = await atlas.get<unknown>(
         `/ops/actions/${encodeURIComponent(entryId)}`,
     );
 
-    return response.data;
+    return parseActionHistoryEntry(response.data, entryId);
 }
 
 export async function getProviderActionHistorySummary(): Promise<ProviderActionHistorySummary> {
     const response =
-        await atlas.get<ProviderActionHistorySummary>(
+        await atlas.get<unknown>(
             "/ops/actions/summary",
         );
 
-    return response.data;
+    return parseActionHistorySummary(response.data);
 }
 
 export async function exportProviderActionHistory(
@@ -189,11 +197,9 @@ export async function exportProviderActionHistory(
 }
 
 export async function getProviderActionHistoryProviders(): Promise<ProviderActionHistoryProvider[]> {
-    const response = await atlas.get<
-        ProviderActionHistoryProvider[]
-    >("/ops/actions/providers");
+    const response = await atlas.get<unknown>("/ops/actions/providers");
 
-    return response.data;
+    return parseActionHistoryProviders(response.data);
 }
 
 export async function pruneProviderActionHistory(): Promise<ProviderActionPruneResult> {
@@ -210,6 +216,7 @@ export function getAtlasErrorMessage(
     error: unknown,
     fallback: string,
 ): string {
+    if (error instanceof ActionHistoryResponseError) return error.message;
     if (!axios.isAxiosError<AtlasAPIError>(error)) {
         return fallback;
     }

@@ -1,0 +1,57 @@
+{
+  "entry": {
+    "id": "audit-contract-fixture",
+    "provider_id": "fixture",
+    "provider_name": "Example provider",
+    "action_id": "restart-service",
+    "action_label": "Restart fixture service",
+    "status": "succeeded",
+    "success": true,
+    "message": "Synthetic fixture result.",
+    "confirmed": true,
+    "destructive": false,
+    "parameter_names": [],
+    "request_id": null,
+    "started_at": "2026-10-01T12:00:00Z",
+    "completed_at": "2026-10-01T12:00:01Z",
+    "duration_ms": 1000.0
+  },
+  "page": {
+    "items": [
+      {
+        "id": "audit-contract-fixture",
+        "provider_id": "fixture",
+        "provider_name": "Example provider",
+        "action_id": "restart-service",
+        "action_label": "Restart fixture service",
+        "status": "succeeded",
+        "success": true,
+        "message": "Synthetic fixture result.",
+        "confirmed": true,
+        "destructive": false,
+        "parameter_names": [],
+        "request_id": null,
+        "started_at": "2026-10-01T12:00:00Z",
+        "completed_at": "2026-10-01T12:00:01Z",
+        "duration_ms": 1000.0
+      }
+    ],
+    "total": 1,
+    "offset": 0,
+    "limit": 25,
+    "has_more": false
+  },
+  "summary": {
+    "entry_count": 1,
+    "max_entries": 5000,
+    "retention_days": 90,
+    "oldest_entry_at": "2026-10-01T12:00:01Z",
+    "newest_entry_at": "2026-10-01T12:00:01Z"
+  },
+  "providers": [
+    {
+      "id": "fixture",
+      "name": "Example provider"
+    }
+  ]
+}
