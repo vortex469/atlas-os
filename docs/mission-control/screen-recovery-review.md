@@ -26,6 +26,13 @@ runtime, tag, or publish a release.
 | Forge | Edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts` |
 | Installation readiness | Owner evidence loads after read-only recovery, remains bound to the current record, and grants no installation authority | Readiness component/parser/structural tests; `e2e/readiness-review.spec.ts` and invalid-review browser recovery case |
 
+Provider detail follow-up: health status and its message remain visible while
+latency, HTTP status, priority, version, workspace, capabilities and endpoint are
+collapsed under **Technical details**. Native disclosure controls support Enter
+and Space. `e2e/provider-overview.spec.ts` checks healthy and offline views at
+320, 390 and 1280 pixels, including keeping the monitoring heading in the initial
+900-pixel viewport. Opening details sends no mutation requests.
+
 Paths in the table are relative to `services/mission-control`.
 
 The default browser fixture rejects mutations. Separate synthetic fixtures allow
