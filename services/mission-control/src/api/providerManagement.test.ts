@@ -25,7 +25,6 @@ describe("provider management API", () => {
     });
 
     it("sends only the bounded mutation body with CSRF and cookies", async () => {
-        vi.mocked(atlas.put).mockResolvedValue({ data: { outcome: "created" } });
         const request = {
             request_id: `provider-intent-mutation-${"a".repeat(32)}`,
             expected_management_fingerprint: `provider-management-fingerprint-v1:${"b".repeat(64)}`,
@@ -33,6 +32,11 @@ describe("provider management API", () => {
             expected_record_version: 0,
             acknowledge_monitoring_suppression: false,
         };
+        vi.mocked(atlas.put).mockResolvedValue({ data: {
+            outcome: "created", request_id: request.request_id, provider_id: "proxmox", resource_type: "qemu", resource_id: "110",
+            management_fingerprint: request.expected_management_fingerprint, expectation: request.expectation,
+            record_version: 1, superseded_previous_incarnation: false,
+        } });
         await putProviderMonitoringIntent("proxmox", "qemu", "110", request, "csrf");
         expect(atlas.put).toHaveBeenCalledWith(
             "/providers/proxmox/management/resources/qemu/110/monitoring-intent",

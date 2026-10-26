@@ -8,7 +8,7 @@ const nonce = "12345678-1234-1234-1234-123456789abc";
 
 // One exact synthetic policy PUT; recovery must use GET only, never replay it.
 for (const width of [320, 390, 1280]) {
-    for (const outcome of ["lost", "post-commit-audit"] as const) {
+    for (const outcome of ["lost", "post-commit-audit", "malformed", "foreign"] as const) {
         test.describe(`Uncertain monitoring save ${outcome} at ${width}px`, () => {
             test.use({ viewport: { width, height: 900 } });
             test("checks current state after a failed read without replaying the save", async ({ page, baseURL }) => {
@@ -45,7 +45,13 @@ for (const width of [320, 390, 1280]) {
                         expected_management_fingerprint: management.resources[0].management_fingerprint, expectation: "running",
                         expected_record_version: 0, acknowledge_monitoring_suppression: false });
                     writes += 1;
-                    return outcome === "lost" ? route.abort("failed") : route.fulfill({ status: 503, json: { detail: "security_audit_unavailable" } });
+                    if (outcome === "lost") return route.abort("failed");
+                    if (outcome === "post-commit-audit") return route.fulfill({ status: 503, json: { detail: "security_audit_unavailable" } });
+                    return route.fulfill({ status: 201, json: outcome === "malformed" ? { outcome: "created", debug: "private-fixture-canary" } : {
+                        outcome: "created", request_id: `provider-intent-mutation-${"d".repeat(32)}`, provider_id: "proxmox", resource_type: "qemu",
+                        resource_id: "110", management_fingerprint: management.resources[0].management_fingerprint, expectation: "running",
+                        record_version: 1, superseded_previous_incarnation: false,
+                    } });
                 });
                 await page.goto("/providers/proxmox");
                 const row = page.getByTestId("resource-row-qemu-110");
@@ -53,6 +59,7 @@ for (const width of [320, 390, 1280]) {
                 await row.getByRole("button", { name: "Save", exact: true }).click();
                 const warning = page.getByText("Save outcome not confirmed. Check monitoring state before saving again.", { exact: true });
                 await expect(warning).toBeVisible();
+                await expect(page.getByText("private-fixture-canary", { exact: false })).toHaveCount(0);
                 await expect(row.getByText("Unsaved change. Save to apply it.", { exact: true })).toHaveCount(0);
                 await expect(row.getByRole("combobox")).toBeDisabled();
                 await expect(row.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
