@@ -175,6 +175,19 @@ function renderPage(path = "/workflows/workflow-123") {
 }
 
 describe("WorkflowPage", () => {
+    it("does not announce resumable execution when the refreshed workflow still reports pending approval", async () => {
+        mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
+            workflow_id: "workflow-123", workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "approved", message: null,
+        });
+        renderPage();
+        fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
+        await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
+        expect(screen.queryByText("Implementation approved. Resume to run this change.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
     it("loads once under Strict Mode without submitting any action", async () => {
         render(<StrictMode><MemoryRouter initialEntries={["/workflows/workflow-123"]}><Routes>
             <Route path="/workflows/:workflowId" element={<WorkflowPage />} />
@@ -346,9 +359,8 @@ describe("WorkflowPage", () => {
     });
 
     it("does not call resume automatically after approving implementation", async () => {
-        mockedGetWorkflowDetail.mockResolvedValue(workflow({
-            workflow_state: "awaiting_implementation_approval",
-        }));
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflow())
+            .mockResolvedValue(workflow({ implementation_approval_status: "approved" }));
         mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_implementation_approval",
@@ -359,7 +371,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
-        await screen.findByText("Implementation approved. Execution is now available.");
+        await screen.findByText("Implementation approved. Resume to run this change.");
 
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
     });
@@ -506,6 +518,8 @@ describe("WorkflowPage", () => {
     });
 
     it("submits approve with only workflow id and decision", async () => {
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflow())
+            .mockResolvedValue(workflow({ implementation_approval_status: "approved" }));
         mockedSubmitWorkflowImplementationApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_execution",
@@ -516,7 +530,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
 
-        await screen.findByText("Implementation approved. Execution is now available.");
+        await screen.findByText("Implementation approved. Resume to run this change.");
         expect(mockedSubmitWorkflowImplementationApproval).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowImplementationApproval).toHaveBeenCalledWith("workflow-123", "approve");
         expect(JSON.stringify(mockedSubmitWorkflowImplementationApproval.mock.calls[0])).not.toMatch(/argv|command|repository|working_directory|implementation_request|candidate_snapshot/);
@@ -538,6 +552,8 @@ describe("WorkflowPage", () => {
     });
 
     it("shows pending state and blocks duplicate submissions", async () => {
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflow())
+            .mockResolvedValue(workflow({ implementation_approval_status: "approved" }));
         let resolveApproval: (value: Awaited<ReturnType<typeof submitWorkflowImplementationApproval>>) => void = () => undefined;
         mockedSubmitWorkflowImplementationApproval.mockReturnValue(new Promise((resolve) => {
             resolveApproval = resolve;
@@ -556,7 +572,7 @@ describe("WorkflowPage", () => {
             implementation_approval_status: "approved",
             message: null,
         });
-        await screen.findByText("Implementation approved. Execution is now available.");
+        await screen.findByText("Implementation approved. Resume to run this change.");
     });
 
     it("hides approval controls outside awaiting implementation approval", async () => {
@@ -585,7 +601,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
 
-        await screen.findByText("Implementation approved. Execution is now available.");
+        await screen.findByText("Implementation approved. Resume to run this change.");
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
     });
@@ -707,7 +723,8 @@ describe("WorkflowPage", () => {
     });
 
     it("submits verification approval with only workflow id and decision", async () => {
-        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_verification_approval" }));
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflow({ workflow_state: "awaiting_verification_approval" }))
+            .mockResolvedValue(workflow({ workflow_state: "awaiting_verification_approval", verification_approval_status: "approved" }));
         mockedSubmitWorkflowVerificationApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_verification_approval",
@@ -718,7 +735,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Verification" }));
 
-        await screen.findByText("Verification approved. Verification is now available.");
+        await screen.findByText("Verification approved. Resume to run the checks.");
         expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledWith("workflow-123", "approve");
         expect(JSON.stringify(mockedSubmitWorkflowVerificationApproval.mock.calls[0])).not.toMatch(/command|check|evidence|changed|review|commit/);
@@ -741,7 +758,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Verification" }));
 
-        await screen.findByText("Verification approved. Verification is now available.");
+        await screen.findByText("Verification approved. Resume to run the checks.");
         expect(screen.queryByRole("button", { name: "Approve Verification" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject Verification" })).not.toBeInTheDocument();
     });
@@ -786,7 +803,8 @@ describe("WorkflowPage", () => {
     });
 
     it("submits commit approval with only workflow id and decision", async () => {
-        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflowAwaitingCommit())
+            .mockResolvedValue(workflowAwaitingCommit({ commit_approval_status: "approved" }));
         mockedSubmitWorkflowCommitApproval.mockResolvedValue({
             workflow_id: "workflow-123",
             workflow_state: "awaiting_commit_approval",
@@ -797,7 +815,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Commit" }));
 
-        await screen.findByText("Commit approved. Workflow may now complete through the existing backend resume path.");
+        await screen.findByText("Commit approved. Resume to finish the local commit.");
         expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledWith("workflow-123", "approve");
         expect(JSON.stringify(mockedSubmitWorkflowCommitApproval.mock.calls[0])).not.toMatch(/message|path|sha|fingerprint|evidence|repository|push|tag/);
@@ -817,7 +835,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Commit" }));
 
-        await screen.findByText("Commit approved. Workflow may now complete through the existing backend resume path.");
+        await screen.findByText("Commit approved. Resume to finish the local commit.");
         expect(screen.queryByRole("button", { name: "Approve Commit" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject Commit" })).not.toBeInTheDocument();
     });

@@ -92,6 +92,16 @@ submitted actions remain associated with their original provider and its
 recorded action history. Confirmation and backend permission checks remain
 in their existing controls.
 
+Browser acceptance covers the repository-change journey from a current
+proposal through planning, implementation approval, verification approval,
+local commit approval and the completed audit. A separate synthetic backend
+fixture accepts only the exact ordered request paths and bodies expected by
+that journey. Each approval requires a separate Resume step; rejection remains
+blocked after reload. Current-stage prompts follow the refreshed server state
+and disappear when the workflow advances. These tests run no model, command,
+verification tool, Git operation or provider action and do not establish
+production acceptance.
+
 Mission Control completion requires the supported operator journey to have
 working navigation, useful empty and unavailable states, recovery controls,
 and readable layouts on desktop and mobile. Proposal, planning, workflow and

@@ -1,0 +1,221 @@
+import { isDeepStrictEqual } from "node:util";
+import type { Page } from "@playwright/test";
+import type { ExecutionCandidate } from "../src/types/executionCandidates";
+import type {
+    CandidatePlanApiResponse, CandidatePlanningResponse, CandidateWorkflowResponse,
+    WorkflowAuditResponse, WorkflowDetailResponse,
+} from "../src/types/atlasAgent";
+
+// Synthetic public DTOs only. Every API request is intercepted, and writes
+// must match the next exact request in this simulated operator journey.
+export const journey = {
+    candidate: `candidate-browser-journey-${"a".repeat(64)}`, session: `planning-browser-journey-${"b".repeat(64)}`,
+    workflow: `workflow-browser-journey-${"c".repeat(64)}`, plan: `plan-browser-journey-${"d".repeat(64)}`,
+    candidateFingerprint: "candidate-fingerprint-browser-journey",
+    planFingerprint: "plan-fingerprint-browser-journey",
+    head: "1".repeat(40), commit: "2".repeat(40),
+    repository: "/workspace/browser-fixture", file: "compose.production.yaml",
+};
+const observedAt = "2026-01-01T12:00:00Z";
+type Phase = "implementation" | "verification" | "commit" | "completed" | "rejected";
+type JourneyWrite = { path: string; body: unknown };
+
+const candidate: ExecutionCandidate = {
+    id: journey.candidate, source_recommendation_id: "recommendation-browser-journey",
+    source_subsystem: "ace", recommendation_class: "maintenance", target_id: "fixture-service",
+    target_type: "service", execution_category: "update", execution_intent: "update-compose-stack",
+    status: "eligible", required_approval_level: "standard", rationale: "Review a simulated repository change.",
+    constraints: [], evidence_ids: [], compatibility_assessment_id: null,
+    compatibility_status: "compatible", relationship_ids: [], created_at: observedAt,
+    expires_at: "2999-01-01T12:00:00Z",
+};
+const plan: CandidatePlanApiResponse = {
+    identifier: journey.plan, session_id: journey.session, candidate_id: journey.candidate,
+    candidate_fingerprint: journey.candidateFingerprint, title: "Update fixture compose configuration",
+    objective: "Review one simulated repository edit.", assumptions: [],
+    constraints: ["Separate exact approval for implementation, verification and commit."],
+    proposed_steps: ["Edit the compose file.", "Verify configuration.", "Review and commit locally."],
+    likely_affected_components: ["fixture-service"], likely_affected_files: [journey.file],
+    verification_strategy: ["Check the compose configuration."], rollback_considerations: ["Restore the prior file."],
+    unresolved_questions: [], evidence_ids: [], created_at: observedAt,
+    repository_branch: "fixture-branch", repository_head: journey.head,
+    revalidated_candidate_fingerprint: journey.candidateFingerprint,
+};
+function planningSession(ready: boolean): CandidatePlanningResponse {
+    return {
+        session_id: journey.session, candidate_id: journey.candidate,
+        status: ready ? "plan_ready" : "ready_for_planning", planning_allowed: true,
+        intake_status: "accepted_for_planning", intake_reason_codes: [],
+        candidate_fingerprint: journey.candidateFingerprint, unsupported_reason: null,
+        plan: ready ? plan : null, planning_failure: null,
+    };
+}
+const shell: CandidateWorkflowResponse = {
+    candidate_planning_session_id: journey.session, candidate_id: journey.candidate,
+    candidate_fingerprint: journey.candidateFingerprint, candidate_plan_id: journey.plan,
+    candidate_plan_fingerprint: journey.planFingerprint, workflow_session_id: journey.workflow,
+    workflow_status: "awaiting_approval", implementation_approval_request_id: "approval-browser-implementation",
+    conversion_status: "workflow_created", core_revalidation_status: "accepted_for_planning",
+    reason_codes: [], failure: null,
+};
+
+function workflowDetail(phase: Phase, approved: boolean): WorkflowDetailResponse {
+    const implemented = ["verification", "commit", "completed"].includes(phase);
+    const verified = ["commit", "completed"].includes(phase);
+    const completed = phase === "completed";
+    const workflowState = phase === "rejected" ? "blocked" : completed ? "completed" : `awaiting_${phase}_approval`;
+    const approval = phase === "rejected" ? "rejected" : approved ? "approved" : "pending";
+    const labels = ["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow", "Implementation Approval", "Execution", "Verification", "Review", "Commit"];
+    const currentIndex = phase === "implementation" || phase === "rejected" ? 4 : phase === "verification" ? 6 : 8;
+    return {
+        workflow_id: journey.workflow, workflow_source: "candidate", effect_kind: "repository_change",
+        workflow_state: workflowState, planning_session_id: journey.session, candidate_id: journey.candidate,
+        candidate_fingerprint: journey.candidateFingerprint, plan_fingerprint: journey.planFingerprint,
+        implementation_approval_status: implemented ? "approved" : approval,
+        verification_approval_status: verified ? "approved" : phase === "verification" ? approval : "not_requested",
+        commit_approval_status: completed ? "approved" : phase === "commit" ? approval : "not_requested",
+        repository: journey.repository, working_directory: journey.repository,
+        translator_version: "fixture-translator-v1", affected_files: [journey.file],
+        implementation_request: { immutable_request_id: "implementation-browser-journey", tool: "fixture-editor",
+            repository: journey.repository, working_directory: journey.repository,
+            affected_files: [journey.file], translator_version: "fixture-translator-v1" },
+        operational_action_request: null, operational_execution: null, approval_presentations: [],
+        timeline: labels.map((name, index) => ({ name, status: completed || index < currentIndex ? "completed" : index === currentIndex ? "current" : "waiting" })),
+        execution: { execution_status: implemented ? "succeeded" : null, started_at: implemented ? observedAt : null,
+            completed_at: implemented ? observedAt : null, result: implemented ? "Simulated file edit completed." : null,
+            changed_files_count: implemented ? 1 : 0, tool: implemented ? "fixture-editor" : null,
+            working_directory: journey.repository, repository: journey.repository,
+            changed_files: implemented ? [journey.file] : [], execution_request_id: implemented ? "execution-browser-journey" : null },
+        verification_plan: { verification_plan_id: implemented ? "verification-browser-journey" : null,
+            verifier_version: implemented ? "fixture-verifier-v1" : null,
+            changed_files_digest: implemented ? "browser-changed-files-digest" : null,
+            verification_check_ids: implemented ? ["compose-config"] : [], command_backed_checks: implemented ? ["compose-config"] : [],
+            working_directory: journey.repository, repository: journey.repository,
+            verification_status: verified ? "passed" : implemented ? "awaiting_verification_approval" : "not_reached" },
+        verification_evidence: { verification_status: verified ? "passed" : null, completed_time: verified ? observedAt : null,
+            executed_checks: verified ? ["compose-config"] : [], check_results: verified ? [{ identifier: "compose-config", status: "passed", return_code: 0 }] : [],
+            repository_head: verified ? journey.head : null, changed_files_digest: verified ? "browser-changed-files-digest" : null },
+        review: { review_result: verified ? "approved" : null, review_status: verified ? "approved" : null,
+            approved: verified ? true : null, evidence_summary: verified ? "Simulated review passed." : null,
+            changed_files: verified ? [journey.file] : [], review_fingerprint: verified ? "review-browser-fingerprint" : null,
+            model_assisted_review: "Disabled" },
+        commit_request: verified ? { commit_request_id: "commit-request-browser-journey", repository: journey.repository,
+            branch: "fixture-branch", expected_head: journey.head, commit_message: "test: update fixture compose configuration",
+            reviewed_files: [journey.file], reviewed_content_fingerprint: "review-browser-fingerprint",
+            commit_approval_status: completed || approved ? "approved" : "pending" } : null,
+        commit_result: { commit_sha: completed ? journey.commit : null,
+            commit_message: completed ? "test: update fixture compose configuration" : null,
+            committed_files: completed ? [journey.file] : [], completion_time: completed ? observedAt : null },
+    };
+}
+
+function completedAudit(): WorkflowAuditResponse {
+    return {
+        workflow_id: journey.workflow, workflow_state: "completed", workflow_source: "candidate",
+        validation: { valid: true, failure_code: null, failure_stage: null },
+        timeline: (["candidate", "planning", "plan", "workflow", "implementation", "approvals", "execution", "verification", "review", "commit"] as const).map((name) => ({ name, status: "completed" as const })),
+        candidate: { status: "completed", candidate_id: journey.candidate, candidate_fingerprint: journey.candidateFingerprint,
+            source_recommendation_id: candidate.source_recommendation_id, target_id: candidate.target_id, target_type: candidate.target_type },
+        planning: { status: "completed", planning_session_id: journey.session, planning_state: "plan_ready", planning_status: "plan_ready",
+            created_at: observedAt, planning_completed_at: observedAt, candidate_plan_id: journey.plan, candidate_plan_fingerprint: journey.planFingerprint },
+        plan: { status: "completed", plan_id: journey.plan, candidate_plan_fingerprint: journey.planFingerprint, likely_affected_files: [journey.file] },
+        workflow: { status: "completed", workflow_id: journey.workflow, workflow_state: "completed", workflow_source: "candidate" },
+        implementation: { status: "completed", implementation_request_id: "implementation-browser-journey", execution_intent: "update-compose-stack",
+            tool: "fixture-editor", repository_root: journey.repository, repository_head: journey.head, repository_branch: "fixture-branch",
+            working_directory: journey.repository, affected_files: [journey.file], translator_version: "fixture-translator-v1" },
+        approvals: { status: "completed", implementation: { status: "approved", approval_id: "approval-browser-implementation" },
+            verification: { status: "approved", approval_id: "approval-browser-verification" }, commit: { status: "approved", approval_id: "approval-browser-commit" } },
+        execution: { status: "completed", execution_request_id: "execution-browser-journey", execution_status: "succeeded", changed_files_count: 1,
+            changed_files: [journey.file], tool: "fixture-editor", repository: journey.repository },
+        verification: { status: "completed", verification_plan_id: "verification-browser-journey", verification_evidence_id: "verification-evidence-browser",
+            verification_status: "passed", changed_files_digest: "browser-changed-files-digest", verification_check_ids: ["compose-config"],
+            repository_head: journey.head, verification_started_at: observedAt, verification_completed_at: observedAt },
+        review: { status: "completed", review_result_id: "review-result-browser", review_report_id: "review-report-browser", review_status: "approved",
+            reviewed_content_fingerprint: "review-browser-fingerprint", changed_files: [journey.file] },
+        commit: { status: "completed", commit_request_id: "commit-request-browser-journey", reviewed_files: [journey.file],
+            reviewed_content_fingerprint: "review-browser-fingerprint", expected_branch: "fixture-branch", expected_head: journey.head,
+            commit_message: "test: update fixture compose configuration", commit_sha: journey.commit, committed_files: [journey.file] },
+    };
+}
+
+export async function installRepositoryJourney(page: Page, reject = false) {
+    const planningPath = `/candidate-planning/${journey.session}`;
+    const workflowPath = `/api/v1/agent/workflows/${journey.workflow}`;
+    const expectedWrites: JourneyWrite[] = reject ? [
+        { path: `${workflowPath}/implementation-approval`, body: { workflow_id: journey.workflow, decision: "reject" } },
+    ] : [
+        { path: "/candidate-planning", body: { candidate_id: journey.candidate } },
+        { path: `${planningPath}/plan`, body: null },
+        { path: `${planningPath}/workflow`, body: null },
+        { path: `${planningPath}/workflow`, body: { expected_candidate_fingerprint: journey.candidateFingerprint } },
+        { path: `${planningPath}/implementation`, body: { expected_candidate_fingerprint: journey.candidateFingerprint, expected_plan_fingerprint: journey.planFingerprint } },
+        { path: `${workflowPath}/implementation-approval`, body: { workflow_id: journey.workflow, decision: "approve" } },
+        { path: `${workflowPath}/resume`, body: null },
+        { path: `${workflowPath}/verification-approval`, body: { workflow_id: journey.workflow, decision: "approve" } },
+        { path: `${workflowPath}/resume`, body: null },
+        { path: `${workflowPath}/commit-approval`, body: { workflow_id: journey.workflow, decision: "approve" } },
+        { path: `${workflowPath}/resume`, body: null },
+    ];
+    let index = 0;
+    let planReady = false;
+    let implementationReady = reject;
+    let phase: Phase = "implementation";
+    let approved = false;
+    const writes: JourneyWrite[] = [];
+    const unexpected: string[] = [];
+    await page.route("**/*", async (route) => {
+        const request = route.request();
+        const url = new URL(request.url());
+        if (url.origin !== "http://127.0.0.1:5173") {
+            unexpected.push(`External request: ${url.origin}`);
+            return route.abort();
+        }
+        const isAgent = url.pathname === "/agent-api" || url.pathname.startsWith("/agent-api/");
+        const isCore = url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/");
+        if (!isAgent && !isCore) {
+            if (request.method() !== "GET") {
+                unexpected.push(`${request.method()} ${url.pathname}`);
+                return route.abort();
+            }
+            return route.continue();
+        }
+        const path = isAgent ? url.pathname.slice("/agent-api".length) : url.pathname.slice("/api/v1".length);
+        if (request.method() !== "GET") {
+            const body: unknown = request.postData() ? request.postDataJSON() : null;
+            const expected = expectedWrites[index];
+            if (!isAgent || request.method() !== "POST" || !expected || expected.path !== path || !isDeepStrictEqual(body, expected.body)) {
+                unexpected.push(`${request.method()} ${path}`);
+                return route.fulfill({ status: 409, json: { detail: "Request was outside the exact simulated journey." } });
+            }
+            writes.push({ path, body }); index += 1;
+            if (reject) {
+                phase = "rejected";
+                return route.fulfill({ json: { workflow_id: journey.workflow, workflow_state: "blocked", implementation_approval_status: "rejected", message: "Rejected in browser fixture." } });
+            }
+            if (path === "/candidate-planning") return route.fulfill({ json: planningSession(false) });
+            if (path === `${planningPath}/plan`) { planReady = true; return route.fulfill({ json: planningSession(true) }); }
+            if (path === `${planningPath}/workflow`) return route.fulfill({ json: shell });
+            if (path === `${planningPath}/implementation`) {
+                implementationReady = true;
+                return route.fulfill({ json: { candidate_planning_session_id: journey.session, workflow_session_id: journey.workflow,
+                    translation_status: "implementation_ready", implementation_request_id: "implementation-browser-journey",
+                    exact_approval_request_id: "approval-browser-implementation", candidate_fingerprint: journey.candidateFingerprint,
+                    plan_fingerprint: journey.planFingerprint, repository_head: journey.head, translator_version: "fixture-translator-v1", reason_codes: [], failure: null } });
+            }
+            if (path.endsWith("/resume")) {
+                phase = phase === "implementation" ? "verification" : phase === "verification" ? "commit" : "completed";
+                approved = false;
+                return route.fulfill({ status: 204 });
+            }
+            approved = true;
+            return route.fulfill({ json: { workflow_id: journey.workflow, workflow_state: `awaiting_${phase}_approval`, [`${phase}_approval_status`]: "approved", message: "Approved in browser fixture." } });
+        }
+        if (isCore && path === `/execution-candidates/${journey.candidate}`) return route.fulfill({ json: candidate });
+        if (isAgent && path === planningPath) return route.fulfill({ json: planningSession(planReady) });
+        if (isAgent && path === `${planningPath}/plan` && planReady) return route.fulfill({ json: plan });
+        if (isAgent && path === `${workflowPath}/implementation-request` && implementationReady) return route.fulfill({ json: workflowDetail(phase, approved) });
+        if (isAgent && path === `${workflowPath}/audit` && phase === "completed") return route.fulfill({ json: completedAudit() });
+        return route.fulfill({ status: 404, json: { detail: "Optional information unavailable in browser fixture." } });
+    });
+    return { writes, expectedWrites, unexpected };
+}

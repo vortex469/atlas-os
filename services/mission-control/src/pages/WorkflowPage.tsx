@@ -429,7 +429,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     {workflow.effect_kind === "operational_action" ? "Operational action approval" : "Implementation approval"}
                 </h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    These controls submit only the workflow ID and approval decision to Atlas Agent. They do not execute or mutate the implementation request.
+                    Approve or reject the exact request shown above. Approval does not run the change; use Resume afterward to advance an approved stage.
                 </p>
                 {canDecide ? (
                     <div className="mt-4 flex flex-wrap gap-3">
@@ -444,8 +444,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <p className="mt-4 text-sm text-slate-300">Approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
                 )}
                 {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">Submitting approval...</p>}
-                {approvalResult && approvalResult.implementation_approval_status === "approved" && (
-                    <p role="status" className="mt-3 text-sm text-emerald-200">Implementation approved. Execution is now available.</p>
+                {approvalResult && approvalResult.implementation_approval_status === "approved" && canResumeImplementation && (
+                    <p role="status" className="mt-3 text-sm text-emerald-200">Implementation approved. Resume to run this change.</p>
                 )}
                 {approvalResult && approvalResult.implementation_approval_status === "rejected" && (
                     <p role="status" className="mt-3 text-sm text-red-100">Approval rejected.</p>
@@ -531,7 +531,7 @@ function VerificationReviewSection({
         <section aria-labelledby="verification-review-heading" className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div>
                 <h2 id="verification-review-heading" className="text-lg font-semibold text-white">Verification and review</h2>
-                <p className="mt-2 text-sm text-slate-400">Read-only verification and deterministic review state from Atlas Agent. Mission Control does not edit checks, regenerate plans, run verification manually, create commit approval, or commit.</p>
+                <p className="mt-2 text-sm text-slate-400">Review the proposed checks and their recorded results. Verification needs its own approval and a separate Resume step.</p>
             </div>
 
             <section aria-labelledby="verification-plan-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
@@ -586,7 +586,7 @@ function VerificationReviewSection({
                     <p className="mt-4 text-sm text-slate-300">Verification approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
                 )}
                 {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting verification approval...</p>}
-                {verificationApprovalResult?.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Verification is now available.</p>}
+                {verificationApprovalResult?.verification_approval_status === "approved" && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
                 {verificationApprovalResult?.verification_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Verification approval rejected.</p>}
                 {verificationApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(verificationApprovalError)}</p>}
             </section>
@@ -653,7 +653,7 @@ function CommitSection({
                     <p className="mt-4 text-sm text-slate-300">Commit approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
                 )}
                 {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
-                {commitApprovalResult?.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Workflow may now complete through the existing backend resume path.</p>}
+                {commitApprovalResult?.commit_approval_status === "approved" && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
                 {commitApprovalResult?.commit_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Commit approval rejected.</p>}
                 {commitApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(commitApprovalError)}</p>}
             </section>
