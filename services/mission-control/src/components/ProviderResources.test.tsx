@@ -232,6 +232,39 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.stubGlobal("crypto", { randomUUID: () => "12345678-1234-1234-1234-123456789abc" });
     });
 
+    it.each(["inventory", "management"] as const)("waits for the %s read before declaring an empty resource list", async (pending) => {
+        let finish!: () => void;
+        vi.mocked(getProviderResources).mockResolvedValue({ ...inventory, resources: [] });
+        vi.mocked(getProviderManagement).mockResolvedValue({ ...publicManagement(), resources: [] });
+        if (pending === "inventory") vi.mocked(getProviderResources).mockImplementationOnce(() => new Promise((resolve) => {
+            finish = () => resolve({ ...inventory, resources: [] });
+        }));
+        else vi.mocked(getProviderManagement).mockImplementationOnce(() => new Promise((resolve) => {
+            finish = () => resolve({ ...publicManagement(), resources: [] });
+        }));
+        render(<ProviderResources provider={provider} />);
+        await waitFor(() => expect(getProviderManagement).toHaveBeenCalled());
+        await act(async () => { await Promise.resolve(); });
+        expect(screen.getByRole("status")).toHaveTextContent("Loading observed resources and monitoring state...");
+        expect(screen.queryByText("No provider resources are available.")).not.toBeInTheDocument();
+        await act(async () => finish());
+        expect(await screen.findByText("No provider resources are available.")).toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+        expect(refreshProviderResources).not.toHaveBeenCalled();
+    });
+
+    it.each(["inventory", "management"] as const)("does not describe an unavailable %s read as an empty list", async (failed) => {
+        vi.mocked(getProviderResources).mockResolvedValue({ ...inventory, resources: [] });
+        vi.mocked(getProviderManagement).mockResolvedValue({ ...publicManagement(), resources: [] });
+        if (failed === "inventory") vi.mocked(getProviderResources).mockRejectedValueOnce(new Error("offline"));
+        else vi.mocked(getProviderManagement).mockRejectedValueOnce(new Error("offline"));
+        render(<ProviderResources provider={provider} />);
+        expect(await screen.findByText("Resource list unavailable. Refresh resources to try again.")).toBeInTheDocument();
+        expect(screen.queryByText("No provider resources are available.")).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+        expect(refreshProviderResources).not.toHaveBeenCalled();
+    });
+
     it("saves through only the P3b API and reloads server projections", async () => {
         const user = userEvent.setup();
         await renderResources();
