@@ -33,9 +33,15 @@ for (const width of [320, 390, 1280]) for (const authenticated of [false, true])
                 await expect(card.getByRole("checkbox")).toBeVisible();
                 await expect(card.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
             } else {
-                await expect(card).toContainText("Sign in with Provider Intent permission");
+                await expect(card).toContainText("Sign in with permission to edit monitoring expectations");
                 await expect(card.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
             }
+            const wrappedLabels = await card.locator("dt").evaluateAll(elements => elements.filter(element => {
+                const text = document.createRange();
+                text.selectNodeContents(element);
+                return text.getBoundingClientRect().height > Number.parseFloat(getComputedStyle(element).lineHeight) + 1;
+            }).map(element => element.textContent));
+            expect(wrappedLabels).toEqual([]);
             const bounds = await card.evaluate(element => {
                 const parent = element.getBoundingClientRect();
                 return { viewport: document.documentElement.clientWidth, right: Math.max(parent.right,

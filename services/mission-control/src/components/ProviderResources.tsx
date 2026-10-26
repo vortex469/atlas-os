@@ -58,7 +58,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const loadManagement = useCallback(async (): Promise<boolean> => {
         setManagementLoading(true); setManagementError(null);
         try { setManagement(await getProviderManagement(provider.id)); return true; }
-        catch (error) { setManagementError(getAtlasErrorMessage(error, "Provider Intent authority could not be read.")); return false; }
+        catch (error) { setManagementError(getAtlasErrorMessage(error, "Monitoring settings could not be loaded.")); return false; }
         finally { setManagementLoading(false); }
     }, [provider.id]);
 
@@ -124,7 +124,7 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
         } catch (error) {
             if (!active.current || readId !== operatorReadId.current) return false;
             if (isAxiosError(error) && error.response?.status === 401) session.invalidate();
-            setOperator(null); setOperatorError("Operator edit readiness could not be loaded. Public monitoring state remains available."); return false;
+            setOperator(null); setOperatorError("Could not check editing permissions. Resource details remain available."); return false;
         } finally { if (active.current && readId === operatorReadId.current) setOperatorLoading(false); }
     }, [provider.id, session]);
 
@@ -227,7 +227,7 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
                 committed = true; invalidateReviewed(key);
                 const [publicReloaded, operatorReloaded, suggestionsReloaded] = await Promise.all([loadManagement(), loadOperator(), loadSuggestions()]);
                 if (suggestionsReloaded) clearReviewed(key);
-                if (!publicReloaded || !operatorReloaded) setRowErrors((current) => ({ ...current, [key]: "Provider Intent was saved, but refreshed server state could not be loaded." }));
+                if (!publicReloaded || !operatorReloaded) setRowErrors((current) => ({ ...current, [key]: "The monitoring expectation was saved, but the latest settings could not be loaded." }));
                 else setRowStatuses((current) => ({ ...current, [key]: suggestionsReloaded ? "Monitoring expectation saved and confirmed by Atlas Core." : "Monitoring expectation saved and confirmed. Advisory suggestions could not be refreshed." }));
             } catch (error) {
                 if (!active.current) return;
@@ -243,13 +243,13 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
                 }
                 let message = "Atlas Core could not save the monitoring expectation.";
                 if (status === 401) { session.invalidate(); message = "Operator session expired. Sign in again."; }
-                else if (status === 403) message = "Your operator session does not permit Provider Intent updates.";
-                else if (status === 409 && detail === "cas_conflict") message = "Provider Intent changed. Review the current state and make a fresh decision.";
+                else if (status === 403) message = "You do not have permission to edit monitoring expectations.";
+                else if (status === 409 && detail === "cas_conflict") message = "The monitoring setting changed. Review the latest value and choose again.";
                 else if (status === 409 && detail === "fingerprint_mismatch") message = "The resource identity changed. Review the replacement before saving.";
                 else if (status === 409 && detail === "request_conflict") message = "This save request is stale. Start a new Save action.";
-                else if (status === 429) message = "Provider Intent saves are rate limited. Wait before trying again.";
-                else if (status === 422) message = "The Provider Intent request is invalid. Review the current state and choose again.";
-                else if (status === 503) message = "Provider Intent editing is temporarily unavailable or awaiting migration.";
+                else if (status === 429) message = "Too many monitoring saves. Wait before trying again.";
+                else if (status === 422) message = "This monitoring save request is invalid. Review the current state and choose again.";
+                else if (status === 503) message = "Monitoring editing is temporarily unavailable or waiting for a data update.";
                 setRowErrors((current) => ({ ...current, [key]: message }));
                 if (status === 409 && (detail === "cas_conflict" || detail === "fingerprint_mismatch")) { invalidateReviewed(key); await Promise.all([loadManagement(), loadOperator(), loadSuggestions()]); }
             }
@@ -332,9 +332,9 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
     return (
         <article className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/70 p-5 [overflow-wrap:anywhere]" data-testid={`resource-row-${resourceType}-${resourceId}`}>
             <div className="grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-4">
-                <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm uppercase text-slate-400">{resourceType} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex min-w-0 gap-2"><dt>{column.label}:</dt><dd className="min-w-0">{column.render(observed)}</dd></div>)}</dl>}</section>
-                <FactSection title="Observed state" value={observedState} detail="Live provider inventory; not monitoring policy." />
-                <FactSection title="Identity" value={presentation.identity} detail={resource.inconsistent ? "Inventory and management coordinates disagree." : "Provider identity assurance; no native identity is displayed."} />
+                <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm uppercase text-slate-400">{resourceType} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex min-w-0 gap-2"><dt className="shrink-0">{column.label}:</dt><dd className="min-w-0">{column.render(observed)}</dd></div>)}</dl>}</section>
+                <FactSection title="Observed state" value={observedState} detail="Reported by the provider; your monitoring setting is separate." />
+                <FactSection title="Identity" value={presentation.identity} detail={resource.inconsistent ? "Resource details do not match the monitoring record." : "Whether Atlas can verify this resource’s identity."} />
                 <section aria-label={`Monitoring for ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Monitoring expectation</p><p className="mt-2 font-semibold text-slate-100">{presentation.expectation}</p><p className="mt-2 text-sm text-slate-300">{presentation.status}</p></section>
             </div>
             {displayedSuggestion && <ProviderIntentSuggestionCard suggestion={displayedSuggestion} stale={suggestionStale} reviewed={reviewedCurrentSuggestion} onReview={() => onReview(displayedSuggestion)} />}

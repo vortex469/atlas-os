@@ -108,10 +108,10 @@ export function monitoringPresentation(
         return {
             identity: "Unavailable",
             expectation: "Monitoring unavailable",
-            status: "Monitoring unavailable — Provider Intent authority could not be read",
+            status: "Monitoring unavailable — monitoring settings could not be loaded",
         };
     }
-    const identity = formatLabel(managed.identity_assurance);
+    const identity = managed.identity_assurance === "authoritative" ? "Verified" : formatLabel(managed.identity_assurance);
     const expectation = managed.expectation === "ignored"
         ? "Ignored"
         : managed.expectation
@@ -136,11 +136,11 @@ export function monitoringPresentation(
     const statuses: Record<string, string> = {
         no_active_intent: "Needs Review — monitoring expectation not configured",
         legacy_unbound_evidence: "Needs Review — historical expectation available for review",
-        incarnation_mismatch: "Needs Review — resource incarnation changed",
-        identity_unavailable: "Needs Review — authoritative identity unavailable",
-        authority_store_unavailable: "Monitoring unavailable — Provider Intent authority could not be read",
-        resource_missing: "Resource missing — retained expectation does not describe a current live identity",
-        resource_type_unsupported: "Unsupported for identity-bound monitoring",
+        incarnation_mismatch: "Needs Review — resource identity changed",
+        identity_unavailable: "Needs Review — resource identity could not be verified",
+        authority_store_unavailable: "Monitoring unavailable — monitoring settings could not be loaded",
+        resource_missing: "Resource missing — the saved setting is kept for reference",
+        resource_type_unsupported: "Monitoring settings are not supported for this resource type",
     };
     return {
         identity,

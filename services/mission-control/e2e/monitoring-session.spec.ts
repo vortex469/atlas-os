@@ -52,7 +52,7 @@ for (const width of [320, 390, 1280]) {
             const row = page.getByTestId("resource-row-qemu-110");
             await expect(row.getByRole("heading", { name: resource.display_name, exact: true })).toBeVisible();
             await expect(row.getByText("Checking whether you can edit monitoring expectations...", { exact: true })).toBeVisible();
-            await expect(row.getByText(/operator capability could not be loaded/i)).toHaveCount(0);
+            await expect(row.getByText(/Your editing permissions could not be checked/i)).toHaveCount(0);
             await expect(row.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
             hold = false;
             release();
@@ -65,7 +65,7 @@ for (const width of [320, 390, 1280]) {
             await page.getByRole("button", { name: "Refresh resources", exact: true }).click();
             await expect.poll(() => held).toBeGreaterThan(0);
             await row.getByRole("button", { name: "Save", exact: true }).click();
-            await expect(row.getByText("Sign in with Provider Intent permission to edit this public monitoring state.", { exact: true })).toBeVisible();
+            await expect(row.getByText("Sign in with permission to edit monitoring expectations.", { exact: true })).toBeVisible();
             await expect(row.getByRole("combobox")).toHaveCount(0);
             const response = page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/management/operator") && response.status() === 200);
             release();
