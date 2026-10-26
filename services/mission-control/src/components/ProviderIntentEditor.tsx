@@ -44,6 +44,7 @@ type ProviderIntentEditorProps = {
     blocked?: boolean;
     initialSelection?: ProviderMonitoringExpectation;
     requireExplicitSelection?: boolean;
+    onDraftChange?: () => void;
     onSave: (
         expectation: ProviderMonitoringExpectation,
         acknowledgeSuppression: boolean,
@@ -76,6 +77,7 @@ function ProviderIntentEditorForm({
     initialSelection,
     requireExplicitSelection = false,
     onSave,
+    onDraftChange,
 }: ProviderIntentEditorProps) {
     const configured = resource.intent_status === "configured";
     const [selected, setSelected] = useState<ProviderMonitoringExpectation | "">(
@@ -115,6 +117,7 @@ function ProviderIntentEditorForm({
                                     parseExpectationSelection(event.target.value),
                                 );
                                 setAcknowledged(false);
+                                onDraftChange?.();
                             }}
                             className="mt-1 block max-w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                         >
@@ -124,6 +127,9 @@ function ProviderIntentEditorForm({
                             ))}
                         </select>
                     </label>
+                    {!saving && selected !== "" && (!configured || selected !== resource.expectation) && (
+                        <p className="text-xs text-amber-200">Unsaved change. Save to apply it.</p>
+                    )}
                     {selected === "ignored" && (
                         <label className="flex gap-2 text-xs text-amber-200">
                             <input
