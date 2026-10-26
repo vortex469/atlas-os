@@ -35,6 +35,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         hasConnectionCapability ? "loading" : null,
     );
     const [error, setError] = useState<string | null>(null);
+    const [saveConfirmed, setSaveConfirmed] = useState(false);
     const [testResult, setTestResult] =
         useState<TestProviderConnectionResult | null>(null);
 
@@ -43,6 +44,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             return;
         }
 
+        setSaveConfirmed(false);
         setBusyMode("loading");
         setError(null);
         setTestResult(null);
@@ -129,6 +131,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         field: ProviderConnectionField,
         value: string | number | boolean,
     ): void {
+        setSaveConfirmed(false);
         setTestResult(null);
         setError(null);
         if (field.secret) {
@@ -197,6 +200,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             return;
         }
 
+        setSaveConfirmed(false);
         setBusyMode("saving");
         setError(null);
 
@@ -206,6 +210,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                 values: requestValues(schema, formValues, secretValues),
             });
             setSchema(result.connection_schema);
+            setSaveConfirmed(true);
             setFormValues(initialFormValues(result.connection_schema));
             setSecretValues({});
             setTestResult(null);
@@ -263,13 +268,13 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                         disabled={isBusy}
                         className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Reload Schema
+                        Reload settings
                     </button>
                 </div>
 
                 {busyMode === "loading" && (
                     <p className="mt-6 text-sm text-slate-400">
-                        Loading connection schema...
+                        Loading connection settings...
                     </p>
                 )}
 
@@ -280,6 +285,12 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                     >
                         {error}
                     </div>
+                )}
+
+                {saveConfirmed && (
+                    <p role="status" className="mt-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+                        Connection settings saved.
+                    </p>
                 )}
 
                 {schema && (
