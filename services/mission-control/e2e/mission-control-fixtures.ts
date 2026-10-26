@@ -384,8 +384,12 @@ async function mockAgent(route: Route) {
             return json(route, { detail: "Not published in browser fixture." }, 404);
         case "/api/v1/agent/approval/pending":
             return json(route, []);
-        case "/api/v1/agent/workflows":
-            return json(route, workflowPage);
+        case "/api/v1/agent/workflows": {
+            const limit = Number(url.searchParams.get("limit") ?? 200);
+            const offset = Number(url.searchParams.get("offset") ?? 0);
+            return json(route, { ...workflowPage, items: workflows.slice(offset, offset + limit), limit, offset,
+                state_counts: { awaiting_implementation_approval: workflows.length } });
+        }
         case "/api/v1/agent/workflows/workflow-browser-baseline/operational-lifecycle":
         case "/api/v1/agent/workflows/workflow-browser-baseline/recovery-diagnostic":
             return json(route, { detail: "Not needed by baseline browser route coverage." }, 404);

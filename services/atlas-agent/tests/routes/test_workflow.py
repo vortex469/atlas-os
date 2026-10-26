@@ -1517,6 +1517,52 @@ def test_list_workflows_filters_and_paginates(tmp_path: Path, monkeypatch: pytes
     assert body["items"][0]["workflow_id"] == "workflow-123"
 
 
+
+def test_workflow_directory_counts_all_matches_beyond_first_page_without_execution(tmp_path, monkeypatch):
+    client, container, engine, orchestrator = make_client(tmp_path, monkeypatch)
+    base = candidate_workflow_session(tmp_path)
+    for index in range(215):
+        container.workflow_state.create_session(replace(
+            base, identifier=f"workflow-{index:03}",
+            state=WorkflowSessionState.COMPLETED if index < 210 else WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+        ))
+    before = container.workflow_state.export_snapshot()
+    result = client.get("/api/v1/agent/workflows", params={"limit": 10, "offset": 200})
+    assert result.status_code == 200
+    body = result.json()
+    assert len(body["items"]) == 10
+    assert body["total"] == 215
+    assert body["state_counts"] == {"completed": 210, "awaiting_commit_approval": 5}
+    assert body["items"][0]["workflow_id"] == "workflow-200"
+    found = client.get("/api/v1/agent/workflows", params={"workflow_id": "workflow-214", "waiting_for_approval": True})
+    assert found.json()["total"] == 1
+    assert found.json()["items"][0]["workflow_id"] == "workflow-214"
+    assert found.json()["state_counts"] == {"awaiting_commit_approval": 1}
+    non_waiting = client.get("/api/v1/agent/workflows", params={"waiting_for_approval": False, "limit": 1})
+    assert non_waiting.json()["total"] == 210
+    assert non_waiting.json()["state_counts"] == {"completed": 210}
+    assert container.workflow_state.export_snapshot() == before
+    engine.resume.assert_not_called()
+    orchestrator.run.assert_not_awaited()
+
+
+@pytest.mark.parametrize("state", [
+    WorkflowSessionState.AWAITING_APPROVAL,
+    WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+    WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+    WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+])
+def test_workflow_directory_approval_filter_is_a_state_hint_and_never_approval(tmp_path, monkeypatch, state):
+    client, container, engine, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(candidate_workflow_session(tmp_path), state=state)
+    container.workflow_state.create_session(workflow)
+    response = client.get("/api/v1/agent/workflows", params={"waiting_for_approval": True})
+    assert response.status_code == 200
+    assert response.json()["state_counts"] == {state.value: 1}
+    assert response.json()["total"] == 1
+    assert container.approval_repository.export_snapshot() == {}
+    engine.resume.assert_not_called()
+
 def test_candidate_workflow_implementation_approval_accepts_only_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client, container, _, _ = make_client(tmp_path, monkeypatch)
     workflow = candidate_workflow_session(tmp_path)

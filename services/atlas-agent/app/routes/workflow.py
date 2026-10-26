@@ -1,6 +1,7 @@
 """Workflow execution routes for Atlas Agent."""
 
 import asyncio
+from collections import Counter
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -611,6 +612,7 @@ class WorkflowListResponse(BaseModel):
     """Paginated list of read-only workflow summaries."""
 
     items: list[WorkflowSummaryResponse]
+    state_counts: dict[str, int]
     total: int
     limit: int
     offset: int
@@ -1745,7 +1747,16 @@ def _workflow_summary_matches(
     candidate_id: str | None,
     workflow_id: str | None,
     effect_kind: str | None,
+    waiting_for_approval: bool | None,
 ) -> bool:
+    is_waiting_for_approval = item.workflow_state in {
+        WorkflowSessionState.AWAITING_APPROVAL,
+        WorkflowSessionState.AWAITING_IMPLEMENTATION_APPROVAL,
+        WorkflowSessionState.AWAITING_VERIFICATION_APPROVAL,
+        WorkflowSessionState.AWAITING_COMMIT_APPROVAL,
+    }
+    if waiting_for_approval is not None and is_waiting_for_approval != waiting_for_approval:
+        return False
     if state and item.workflow_state != state:
         return False
     if source and item.workflow_source != source:
@@ -1902,6 +1913,7 @@ async def list_workflows(
     candidate_id: str | None = None,
     workflow_id: str | None = None,
     effect_kind: str | None = None,
+    waiting_for_approval: bool | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> WorkflowListResponse:
@@ -1924,11 +1936,13 @@ async def list_workflows(
             candidate_id=candidate_id,
             workflow_id=workflow_id,
             effect_kind=effect_kind,
+            waiting_for_approval=waiting_for_approval,
         )
     ]
     filtered.sort(key=lambda item: item.workflow_id)
     return WorkflowListResponse(
         items=filtered[offset : offset + limit],
+        state_counts=dict(Counter(item.workflow_state for item in filtered)),
         total=len(filtered),
         limit=limit,
         offset=offset,

@@ -742,12 +742,14 @@ export interface WorkflowSummary {
 
 export interface WorkflowListResponse {
     items: WorkflowSummary[];
+    state_counts?: Record<string, number>;
     total: number;
     limit: number;
     offset: number;
 }
 
 export interface WorkflowListQuery {
+    waiting_for_approval?: boolean;
     state?: string;
     source?: string;
     candidate_id?: string;

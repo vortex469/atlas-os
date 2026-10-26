@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { StrictMode } from "react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -6,188 +7,223 @@ import { listWorkflows } from "../api/atlas-agent";
 import type { WorkflowListResponse, WorkflowSummary } from "../types/atlasAgent";
 import { WorkflowDashboardPage } from "./WorkflowDashboardPage";
 
-vi.mock("../api/atlas-agent", async () => {
-    const actual = await vi.importActual<typeof import("../api/atlas-agent")>("../api/atlas-agent");
-    return {
-        ...actual,
-        listWorkflows: vi.fn(),
-    };
-});
-
-const timeline = [
-    { name: "Execution Candidate", status: "completed" },
-    { name: "Planning Session", status: "completed" },
-    { name: "Candidate Plan", status: "completed" },
-    { name: "Workflow", status: "completed" },
-    { name: "Implementation Approval", status: "current" },
-    { name: "Execution", status: "waiting" },
-    { name: "Verification", status: "waiting" },
-    { name: "Review", status: "waiting" },
-    { name: "Commit", status: "waiting" },
-];
+vi.mock("../api/atlas-agent", async () => ({
+    ...await vi.importActual<typeof import("../api/atlas-agent")>("../api/atlas-agent"),
+    listWorkflows: vi.fn(),
+}));
+const list = vi.mocked(listWorkflows);
 
 function workflow(overrides: Partial<WorkflowSummary> = {}): WorkflowSummary {
     return {
-        workflow_id: "workflow-123",
-        workflow_source: "candidate",
-        workflow_state: "awaiting_implementation_approval",
-        effect_kind: "repository_change",
-        execution_intent: "update-compose-stack",
-        candidate_id: "candidate-123",
-        planning_session_id: "planning-123",
-        repository: "/repo",
-        target_id: "compose-stack-1",
-        last_result_summary: "No result yet",
-        timeline,
+        workflow_id: "workflow-123", workflow_source: "candidate", workflow_state: "awaiting_implementation_approval",
+        effect_kind: "repository_change", execution_intent: "update-compose-stack", candidate_id: "candidate-123",
+        planning_session_id: "planning-123", repository: "/repo", target_id: "compose-stack-1",
+        last_result_summary: "No result yet", timeline: [{ name: "Implementation Approval", status: "current" }],
         ...overrides,
     };
 }
-
-function response(items: WorkflowSummary[]): WorkflowListResponse {
-    return {
-        items,
-        total: items.length,
-        limit: 200,
-        offset: 0,
-    };
+function response(items: WorkflowSummary[], overrides: Partial<WorkflowListResponse> = {}): WorkflowListResponse {
+    const state_counts: Record<string, number> = {};
+    for (const item of items) state_counts[item.workflow_state] = (state_counts[item.workflow_state] ?? 0) + 1;
+    return { items, state_counts, total: items.length, limit: 10, offset: 0, ...overrides };
 }
-
 function renderDashboard() {
-    return render(
-        <MemoryRouter>
-            <WorkflowDashboardPage />
-        </MemoryRouter>,
-    );
+    return render(<MemoryRouter><WorkflowDashboardPage /></MemoryRouter>);
+}
+function search(id: string) {
+    fireEvent.change(screen.getByLabelText("Workflow ID search"), { target: { value: id } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
 }
 
 describe("WorkflowDashboardPage", () => {
-    beforeEach(() => {
-        vi.useRealTimers();
-        vi.mocked(listWorkflows).mockReset();
-    });
+    beforeEach(() => { vi.useRealTimers(); list.mockReset(); });
 
-    it("loads workflow summaries, summary counts, rails, and detail links", async () => {
-        vi.mocked(listWorkflows).mockResolvedValue(response([
-            workflow(),
-            workflow({ workflow_id: "workflow-running", workflow_state: "executing", last_result_summary: "Execution running" }),
-            workflow({ workflow_id: "workflow-verification", workflow_state: "awaiting_verification_approval" }),
-            workflow({ workflow_id: "workflow-commit", workflow_state: "awaiting_commit_approval" }),
-            workflow({ workflow_id: "workflow-blocked", workflow_state: "blocked", last_result_summary: "Blocked: stale candidate" }),
-            workflow({ workflow_id: "workflow-completed", workflow_state: "completed", last_result_summary: "Commit completed" }),
-        ]));
-
+    it("loads summaries, full matching counts, rails and detail links without mutation controls", async () => {
+        list.mockResolvedValue(response([workflow()], { total: 215, state_counts: { awaiting_implementation_approval: 1, completed: 214 }, items: [workflow(), ...Array.from({ length: 9 }, (_, i) => workflow({ workflow_id: `completed-${i}`, workflow_state: "completed" }))] }));
         renderDashboard();
-
-        expect(await screen.findByText("workflow-123")).toBeInTheDocument();
-        expect(screen.getByText("Execution running")).toBeInTheDocument();
-        expect(screen.getByText("Blocked: stale candidate")).toBeInTheDocument();
-        expect(screen.getByText("Commit completed")).toBeInTheDocument();
-        expect(screen.getAllByRole("link", { name: /Open Workflow/i })[0]).toHaveAttribute("href", "/workflows/workflow-123");
-        expect(screen.getAllByText("Running")[0]).toBeInTheDocument();
-        expect(screen.getByText("Waiting for implementation approval")).toBeInTheDocument();
-        expect(screen.getByText("Waiting for verification approval")).toBeInTheDocument();
-        expect(screen.getByText("Waiting for commit approval")).toBeInTheDocument();
-        expect(screen.getAllByText("Blocked").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Mini workflow rail")[0]).toBeInTheDocument();
-    });
-
-    it("filters by state, source, candidate ID, workflow ID, and action required", async () => {
-        vi.mocked(listWorkflows).mockResolvedValue(response([
-            workflow(),
-            workflow({ workflow_id: "workflow-999", workflow_state: "completed", candidate_id: "candidate-999" }),
-        ]));
-
-        renderDashboard();
-
         await screen.findByText("workflow-123");
+        expect(list).toHaveBeenCalledWith(expect.objectContaining({ limit: 10, offset: 0 }));
+        expect(screen.getByText("Showing 10 of 215 matching workflows")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Totals for this search" })).toBeVisible();
+        const completed = screen.getByText("Completed", { selector: "p" }).closest("article")!;
+        expect(within(completed).getByText("214")).toBeVisible();
+        expect(screen.getAllByRole("link", { name: "Open Workflow" })[0]).toHaveAttribute("href", "/workflows/workflow-123");
+        const main = screen.getByRole("main");
+        expect(within(main).queryByRole("button", { name: /Approve|Reject|Execute|Resume|Commit/i })).not.toBeInTheDocument();
+        expect(screen.getAllByText("Mini workflow rail").length).toBe(10);
+    });
+
+    it("sends all submitted filters to the server and resets the offset", async () => {
+        list.mockResolvedValue(response([workflow()]));
+        renderDashboard(); await screen.findByText("workflow-123");
         fireEvent.change(screen.getByLabelText("State"), { target: { value: "awaiting_implementation_approval" } });
         fireEvent.change(screen.getByLabelText("Source"), { target: { value: "candidate" } });
-        fireEvent.change(screen.getByLabelText("Candidate ID"), { target: { value: "candidate-123" } });
-        fireEvent.change(screen.getByLabelText("Workflow ID search"), { target: { value: "workflow-123" } });
-        fireEvent.change(screen.getByLabelText("Action required"), { target: { value: "yes" } });
-        fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
-
-        expect(screen.getByText("workflow-123")).toBeInTheDocument();
-        expect(screen.queryByText("workflow-999")).not.toBeInTheDocument();
-    });
-
-    it("supports pagination when more returned workflows exist", async () => {
-        const items = Array.from({ length: 11 }, (_, index) => workflow({ workflow_id: `workflow-${index}` }));
-        vi.mocked(listWorkflows).mockResolvedValue(response(items));
-
-        renderDashboard();
-
-        expect(await screen.findByText("workflow-0")).toBeInTheDocument();
-        expect(screen.queryByText("workflow-10")).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: /Next/i }));
-
-        expect(screen.getByText("workflow-10")).toBeInTheDocument();
-    });
-
-    it("refreshes manually and blocks overlapping refresh requests", async () => {
-        vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]));
-        let resolveRefresh: (value: WorkflowListResponse) => void = () => undefined;
-        vi.mocked(listWorkflows).mockImplementationOnce(() => new Promise((resolve) => {
-            resolveRefresh = resolve;
-        }));
-
-        renderDashboard();
-
+        fireEvent.change(screen.getByLabelText("Candidate ID"), { target: { value: " candidate-123 " } });
+        fireEvent.change(screen.getByLabelText("Waiting for approval"), { target: { value: "yes" } });
+        search(" workflow-123 ");
         await screen.findByText("workflow-123");
-        fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
-        fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
-
-        expect(listWorkflows).toHaveBeenCalledTimes(2);
-        expect(screen.getByText("Refreshing workflows...")).toBeInTheDocument();
-        resolveRefresh(response([workflow({ workflow_id: "workflow-refreshed" })]));
-        expect(await screen.findByText("workflow-refreshed")).toBeInTheDocument();
+        expect(list).toHaveBeenLastCalledWith({ state: "awaiting_implementation_approval", source: "candidate", candidate_id: "candidate-123", workflow_id: "workflow-123", waiting_for_approval: true, limit: 10, offset: 0 });
     });
 
-    it("renders empty, filtered empty, and Agent unavailable states", async () => {
-        vi.mocked(listWorkflows).mockResolvedValueOnce(response([]));
-        renderDashboard();
-        expect(await screen.findByText("No workflows yet.")).toBeInTheDocument();
-
-        vi.mocked(listWorkflows).mockReset();
-        vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]));
-        renderDashboard();
-        await screen.findByText("workflow-123");
-        fireEvent.change(screen.getAllByLabelText("Workflow ID search")[1], { target: { value: "missing" } });
-        fireEvent.click(screen.getAllByRole("button", { name: /Apply filters/i })[1]);
-        expect(screen.getByText("No workflows match the current filters.")).toBeInTheDocument();
-
-        vi.mocked(listWorkflows).mockReset();
-        vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
-        renderDashboard();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
+    it("can page and search beyond the first 200 records", async () => {
+        const all = Array.from({ length: 215 }, (_, i) => workflow({ workflow_id: `workflow-${String(i).padStart(3, "0")}`, workflow_state: "completed" }));
+        list.mockImplementation(async (query = {}) => {
+            const matching = all.filter((item) => !query.workflow_id || item.workflow_id.includes(query.workflow_id));
+            const offset = query.offset ?? 0;
+            return response(matching.slice(offset, offset + 10), { total: matching.length, offset, state_counts: { completed: matching.length } });
+        });
+        renderDashboard(); await screen.findByText("workflow-000");
+        fireEvent.click(screen.getByRole("button", { name: "Next" }));
+        await screen.findByText("workflow-010");
+        expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 10, offset: 10 }));
+        search("workflow-214");
+        expect(await screen.findByText("workflow-214")).toBeVisible();
+        expect(screen.getByText("Showing 1 of 1 matching workflows")).toBeVisible();
+        expect(screen.queryByText("workflow-000")).not.toBeInTheDocument();
     });
 
-    it("lets an operator retry an initial failure without reloading the page", async () => {
-        vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
-        let resolveRetry!: (value: WorkflowListResponse) => void;
-        vi.mocked(listWorkflows).mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve; }));
-        renderDashboard();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
-        fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-        expect(screen.getByRole("status")).toHaveTextContent("Loading workflows");
-        expect(listWorkflows).toHaveBeenCalledTimes(2);
-        resolveRetry(response([workflow({ workflow_state: "completed" })]));
-        expect(await screen.findByText("workflow-123")).toBeInTheDocument();
+    it("blocks overlapping refreshes of the same query", async () => {
+        list.mockResolvedValueOnce(response([workflow()]));
+        let resolve!: (value: WorkflowListResponse) => void;
+        list.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
+        renderDashboard(); await screen.findByText("workflow-123");
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        expect(list).toHaveBeenCalledTimes(2);
+        await act(async () => resolve(response([workflow({ workflow_id: "refreshed" })])));
+        expect(screen.getByText("refreshed")).toBeVisible();
+    });
+
+    it.each(["success", "failure"])("lets a new search supersede an older refresh and ignores its late %s", async (outcome) => {
+        list.mockResolvedValueOnce(response([workflow()]));
+        let resolveOld!: (value: WorkflowListResponse) => void;
+        let rejectOld!: (reason: Error) => void;
+        list.mockImplementationOnce(() => new Promise((done, reject) => { resolveOld = done; rejectOld = reject; }))
+            .mockResolvedValueOnce(response([workflow({ workflow_id: "new-query" })]));
+        renderDashboard(); await screen.findByText("workflow-123");
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        search("new-query");
+        await screen.findByText("new-query");
+        await act(async () => {
+            if (outcome === "failure") rejectOld(new Error("Old refresh failed"));
+            else resolveOld(response([workflow({ workflow_id: "old-refresh" })]));
+        });
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.queryByText("old-refresh")).not.toBeInTheDocument();
+        expect(screen.getByText("new-query")).toBeVisible();
     });
 
-    it("does not expose approval, execution, resume, or commit controls", async () => {
-        vi.mocked(listWorkflows).mockResolvedValue(response([workflow()]));
+    it.each(["success", "failure"])("keeps search available and ignores a superseded slow query's %s", async (outcome) => {
+        list.mockResolvedValueOnce(response([workflow()]));
+        let resolveOld!: (value: WorkflowListResponse) => void;
+        let rejectOld!: (error: Error) => void;
+        list.mockImplementationOnce(() => new Promise((resolve, reject) => { resolveOld = resolve; rejectOld = reject; }))
+            .mockResolvedValueOnce(response([workflow({ workflow_id: "latest-query" })]));
+        renderDashboard(); await screen.findByText("workflow-123");
+        search("slow-query");
+        expect(screen.getByLabelText("Workflow ID search")).toBeVisible();
+        expect(screen.queryByText("workflow-123")).not.toBeInTheDocument();
+        expect(screen.queryByText("Showing 1 of 1 matching workflows")).not.toBeInTheDocument();
+        search("latest-query");
+        expect(await screen.findByText("latest-query")).toBeVisible();
+        await act(async () => {
+            if (outcome === "success") resolveOld(response([workflow({ workflow_id: "slow-query" })]));
+            else rejectOld(new Error("Superseded query failed"));
+        });
+        expect(screen.queryByText("slow-query", { selector: "h3" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByText("latest-query")).toBeVisible();
+    });
 
-        renderDashboard();
+    it("retries an initial outage without reloading", async () => {
+        list.mockRejectedValueOnce(new Error("Atlas Agent unavailable")).mockResolvedValueOnce(response([workflow()]));
+        renderDashboard(); await screen.findByRole("alert");
+        fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+        expect(await screen.findByText("workflow-123")).toBeVisible();
+        expect(list).toHaveBeenCalledTimes(2);
+    });
 
-        await screen.findByText("workflow-123");
-        const main = screen.getByRole("main");
-        expect(within(main).queryByRole("button", { name: /Approve/i })).not.toBeInTheDocument();
-        expect(within(main).queryByRole("button", { name: /Reject/i })).not.toBeInTheDocument();
-        expect(within(main).queryByRole("button", { name: /Execute/i })).not.toBeInTheDocument();
-        expect(within(main).queryByRole("button", { name: /Resume/i })).not.toBeInTheDocument();
-        expect(within(main).queryByRole("button", { name: /Commit/i })).not.toBeInTheDocument();
+    it("distinguishes an empty directory from no server-side filter matches", async () => {
+        list.mockResolvedValue(response([])); renderDashboard();
+        expect(await screen.findByText("No workflows yet.")).toBeVisible();
+        search("missing");
+        expect(await screen.findByText("No workflows match the current filters.")).toBeVisible();
+    });
+
+    it("does not invent global counts for an older Agent", async () => {
+        list.mockResolvedValue(response([workflow()], { state_counts: undefined }));
+        renderDashboard(); await screen.findByText("workflow-123");
+        expect(screen.getAllByText("Unavailable")).toHaveLength(7);
+        expect(screen.getByRole("status")).toHaveTextContent("does not provide workflow totals");
+    });
+
+    it("refuses unsupported approval filtering and offers a working clear action", async () => {
+        list.mockResolvedValue(response([workflow()], { state_counts: undefined }));
+        renderDashboard(); await screen.findByText("workflow-123");
+        fireEvent.change(screen.getByLabelText("Waiting for approval"), { target: { value: "yes" } });
+        fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("requires an updated Atlas Agent");
+        fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+        expect(await screen.findByText("workflow-123")).toBeVisible();
+        expect(list.mock.lastCall![0]?.waiting_for_approval).toBeUndefined();
+    });
+
+    it("corrects a page emptied by deletion with one bounded read", async () => {
+        const first = Array.from({ length: 10 }, (_, i) => workflow({ workflow_id: `workflow-${i}`, workflow_state: "completed" }));
+        list.mockResolvedValueOnce(response(first, { total: 11, state_counts: { completed: 11 } }))
+            .mockResolvedValueOnce(response([], { total: 1, offset: 10, state_counts: { completed: 1 } }))
+            .mockResolvedValueOnce(response([workflow({ workflow_id: "last-survivor", workflow_state: "completed" })]));
+        renderDashboard(); await screen.findByText("workflow-0");
+        fireEvent.click(screen.getByRole("button", { name: "Next" }));
+        expect(await screen.findByText("last-survivor")).toBeVisible();
+        expect(list).toHaveBeenCalledTimes(3);
+        expect(list.mock.calls.slice(1).map(([query]) => query?.offset)).toEqual([10, 0]);
+    });
+
+    it("bounds recovery when records keep disappearing between reads", async () => {
+        const items = Array.from({ length: 10 }, (_, i) => workflow({ workflow_id: `workflow-${i}`, workflow_state: "completed" }));
+        list.mockResolvedValueOnce(response(items, { total: 30, state_counts: { completed: 30 } }))
+            .mockResolvedValueOnce(response(items, { total: 30, offset: 10, state_counts: { completed: 30 } }))
+            .mockResolvedValueOnce(response([], { total: 15, offset: 20, state_counts: { completed: 15 } }))
+            .mockResolvedValueOnce(response([], { total: 5, offset: 10, state_counts: { completed: 5 } }));
+        renderDashboard(); await screen.findByText("workflow-0");
+        fireEvent.click(screen.getByRole("button", { name: "Next" }));
+        await screen.findByText("Page 2 of 3");
+        fireEvent.click(screen.getByRole("button", { name: "Next" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("workflow list changed while loading");
+        expect(list.mock.calls.map(([query]) => query?.offset)).toEqual([0, 10, 20, 10]);
+    });
+
+    it.each([
+        response([workflow()], { state_counts: { completed: 1 } }),
+        response([workflow()], { total: 2 }),
+        response([workflow()], { offset: 10 }),
+        response([workflow()], { state_counts: { awaiting_implementation_approval: -1 } }),
+    ])("refuses inconsistent pagination or aggregate data", async (invalid) => {
+        list.mockResolvedValue(invalid); renderDashboard();
+        expect(await screen.findByRole("alert")).toHaveTextContent(/inconsistent workflow/);
+        expect(screen.queryByText("workflow-123")).not.toBeInTheDocument();
+    });
+
+    it("refreshes when an active workflow is off-page and stops after unmount", async () => {
+        vi.useFakeTimers();
+        const items = Array.from({ length: 10 }, (_, i) => workflow({ workflow_id: `completed-${i}`, workflow_state: "completed" }));
+        list.mockResolvedValue(response(items, { total: 11, state_counts: { completed: 10, executing: 1 } }));
+        const view = renderDashboard();
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+        expect(list).toHaveBeenCalledTimes(1);
+        await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
+        expect(list).toHaveBeenCalledTimes(2);
+        view.unmount();
+        await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+        expect(list).toHaveBeenCalledTimes(2);
+        vi.useRealTimers();
+    });
+
+    it("loads once under Strict Mode replay", async () => {
+        list.mockResolvedValue(response([]));
+        render(<StrictMode><MemoryRouter><WorkflowDashboardPage /></MemoryRouter></StrictMode>);
+        await screen.findByText("No workflows yet.");
+        expect(list).toHaveBeenCalledTimes(1);
     });
 });
