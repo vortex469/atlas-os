@@ -14,7 +14,7 @@ from app.execution.models import ExecutionResult, ExecutionStatus
 from app.execution.worker_contracts import WorkerExecutionRequest
 from app.model_providers.models import ModelResponse
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
-from app.repository.models import CommitRequest, CommitResult
+from app.repository.models import CommitRequest, CommitResult, ReviewedChangeEvidence
 from app.review.models import ArchitectureAssessment, ReviewReport, TestEvidence
 from app.verification.models import VerificationCheck, VerificationReport
 
@@ -194,6 +194,7 @@ class WorkflowSession:
     expected_branch: str | None = None
     expected_head: str | None = None
     reviewed_content_fingerprint: str | None = None
+    reviewed_change_evidence: ReviewedChangeEvidence | None = None
     blocked_reason: str | None = None
 
     @property

@@ -58,12 +58,17 @@ from app.planning.advisor import PlanningAdvisor
 from app.planning.engine import PlanningEngine
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
 from app.repository.committer import GitCommitter
+from app.repository.evidence import validate_reviewed_evidence
 from app.repository.exceptions import (
     RepositoryCommitOutcomeUnknownError,
     RepositoryCommitResultMismatchError,
 )
 from app.repository.inspector import GitInspector
-from app.repository.models import CommitRequest, RepositorySnapshot
+from app.repository.models import (
+    CommitRequest,
+    RepositorySnapshot,
+    ReviewedChangeEvidence,
+)
 from app.review.advisor import ReviewAdvisor
 from app.review.engine import ReviewEngine
 from app.review.models import ReviewRequest, ReviewStatus
@@ -1281,6 +1286,7 @@ class WorkflowEngine:
                     expected_head=commit_request.expected_head,
                     commit_message=commit_request.message,
                 )
+            reviewed_artifacts = self._reviewed_evidence_artifacts(evidence, commit_request)
             review_result = self._candidate_review_adapter.review(
                 workflow=session,
                 verification_plan=verification_plan,
@@ -1337,10 +1343,7 @@ class WorkflowEngine:
             "review_report": review_report,
             "candidate_review_result": review_result.candidate_review_result,
             "commit_request": commit_request,
-            "reviewed_files": evidence.reviewed_files,
-            "expected_branch": evidence.expected_branch,
-            "expected_head": evidence.expected_head,
-            "reviewed_content_fingerprint": evidence.fingerprint,
+            **reviewed_artifacts,
         }
         try:
             if self._state_persistence is None:
@@ -1804,10 +1807,7 @@ class WorkflowEngine:
                 "review_report": review_report,
                 "review_analysis": review_analysis,
                 "commit_request": commit_request,
-                "reviewed_files": evidence.reviewed_files,
-                "expected_branch": evidence.expected_branch,
-                "expected_head": evidence.expected_head,
-                "reviewed_content_fingerprint": evidence.fingerprint,
+                **self._reviewed_evidence_artifacts(evidence, commit_request),
             }
             if self._state_persistence is None:
                 self._approval_repository.save_request(commit_approval)
@@ -1869,6 +1869,20 @@ class WorkflowEngine:
             verification_report=verification_report,
             review_report=review_report,
         )
+
+    @staticmethod
+    def _reviewed_evidence_artifacts(
+        evidence: ReviewedChangeEvidence,
+        request: CommitRequest,
+    ) -> dict[str, object]:
+        validate_reviewed_evidence(evidence, request, evidence.fingerprint)
+        return {
+            "reviewed_files": evidence.reviewed_files,
+            "expected_branch": evidence.expected_branch,
+            "expected_head": evidence.expected_head,
+            "reviewed_content_fingerprint": evidence.fingerprint,
+            "reviewed_change_evidence": evidence,
+        }
 
     def _resume_commit(self, session: WorkflowSession) -> WorkflowResult:
         if session.source is WorkflowSource.CANDIDATE:

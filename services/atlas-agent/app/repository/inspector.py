@@ -1,12 +1,13 @@
 """Git repository inspector implementation."""
 
-import json
 import os
 import stat
 import subprocess
+from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
 
+from app.repository.evidence import reviewed_evidence_fingerprint
 from app.repository.exceptions import (
     InvalidRepositoryError,
     RepositoryInspectionError,
@@ -212,43 +213,16 @@ class GitInspector:
             self._reviewed_change(records[path], root, trust_filemode=trust_filemode)
             for path in expected_paths
         )
-        manifest = {
-            "version": 2,
-            "repository_root": str(root),
-            "expected_branch": expected_branch,
-            "expected_head": expected_head,
-            "reviewed_files": [str(path) for path in expected_paths],
-            "commit_message": commit_message,
-            "changes": [
-                {
-                    "path": str(change.path),
-                    "status": change.status,
-                    "content_sha256": change.content_sha256,
-                    "git_mode": change.git_mode,
-                    "deletion_marker": change.deletion_marker,
-                    "rename_source": (
-                        str(change.rename_source)
-                        if change.rename_source is not None
-                        else None
-                    ),
-                }
-                for change in changes
-            ],
-        }
-        payload = json.dumps(
-            manifest,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-        return ReviewedChangeEvidence(
+        evidence = ReviewedChangeEvidence(
             repository_root=root,
             expected_branch=expected_branch,
             expected_head=expected_head,
             reviewed_files=expected_paths,
             commit_message=commit_message,
             changes=changes,
-            fingerprint=sha256(payload).hexdigest(),
+            fingerprint="",
         )
+        return replace(evidence, fingerprint=reviewed_evidence_fingerprint(evidence))
 
     def _run_git(
         self,

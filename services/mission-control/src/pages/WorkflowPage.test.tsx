@@ -728,6 +728,41 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     });
 
+    it("keeps saved file facts collapsed and opening them does not approve or execute", async () => {
+        const detail = workflowAwaitingCommit();
+        detail.commit_request!.reviewed_changes = [
+            { path: "tools/check.sh", change: "added", executable: true, content_sha256: "b".repeat(64), rename_source: null },
+            { path: "config.yaml", change: "modified", executable: false, content_sha256: "c".repeat(64), rename_source: null },
+            { path: "old.txt", change: "deleted", executable: null, content_sha256: null, rename_source: null },
+        ];
+        mockedGetWorkflowDetail.mockResolvedValue(detail);
+        renderPage();
+        const summary = await screen.findByText("Files in this review");
+        const disclosure = summary.closest("details")!;
+        expect(disclosure).not.toHaveAttribute("open");
+        fireEvent.click(summary);
+        expect(disclosure).toHaveAttribute("open");
+        expect(screen.getByText("tools/check.sh")).toBeVisible();
+        expect(screen.getByText("Added · Executable file")).toBeVisible();
+        for (const summary of screen.getAllByText("Content fingerprint", { exact: true })) {
+            expect(summary.closest("details")).not.toHaveAttribute("open");
+        }
+        expect(screen.getByText("Modified · Regular file")).toBeVisible();
+        expect(screen.getByText("Deleted · No file remains")).toBeVisible();
+        expect(screen.getByText(/Saved when this review was created/)).toBeVisible();
+        expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("explains missing file facts for an older review", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
+        renderPage();
+        fireEvent.click(await screen.findByText("Files in this review"));
+        expect(screen.getByText("File facts are unavailable for this request. Use the original reviewed evidence.")).toBeVisible();
+        expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
     it("submits commit approval with only workflow id and decision", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
         mockedSubmitWorkflowCommitApproval.mockResolvedValue({

@@ -454,6 +454,13 @@ export interface WorkflowCommitRequestSummary {
     reviewed_files: string[];
     reviewed_content_fingerprint: string;
     commit_approval_status: string;
+    reviewed_changes?: Array<{
+        path: string;
+        change: "added" | "modified" | "deleted" | "renamed" | "copied" | "type_changed" | "unmerged";
+        executable: boolean | null;
+        content_sha256: string | null;
+        rename_source: string | null;
+    }> | null;
 }
 
 export interface WorkflowCommitResultSummary {

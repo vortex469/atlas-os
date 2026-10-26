@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,7 +36,8 @@ from app.execution.models import EnvironmentVariable, ExecutionResult
 from app.model_providers.models import ModelResponse
 from app.persistence.snapshot import StatePersistenceError
 from app.planning.models import ImplementationPlan, RoadmapCheckpoint
-from app.repository.models import CommitResult
+from app.repository.evidence import validate_reviewed_evidence
+from app.repository.models import CommitRequest, CommitResult
 from app.review.models import (
     ArchitectureAssessment,
     ReviewReport,
@@ -322,6 +324,14 @@ class WorkflowReviewResponse(BaseModel):
     model_assisted_review: str
 
 
+class WorkflowReviewedFileResponse(BaseModel):
+    path: str
+    change: Literal["added", "modified", "deleted", "renamed", "copied", "type_changed", "unmerged"]
+    executable: bool | None
+    content_sha256: str | None
+    rename_source: str | None
+
+
 class WorkflowCommitRequestResponse(BaseModel):
     commit_request_id: str
     repository: str | None
@@ -331,6 +341,7 @@ class WorkflowCommitRequestResponse(BaseModel):
     reviewed_files: list[str]
     reviewed_content_fingerprint: str
     commit_approval_status: str
+    reviewed_changes: list[WorkflowReviewedFileResponse] | None = None
 
 
 class WorkflowCommitResultResponse(BaseModel):
@@ -976,7 +987,71 @@ def _workflow_commit_request(
         reviewed_files=[str(path) for path in metadata.reviewed_files],
         reviewed_content_fingerprint=metadata.reviewed_content_fingerprint,
         commit_approval_status=approval.decision.status.value,
+        reviewed_changes=_saved_reviewed_files(workflow, approval_request),
     )
+
+
+def _saved_reviewed_files(
+    workflow, approval_request
+) -> list[WorkflowReviewedFileResponse] | None:
+    evidence = workflow.reviewed_change_evidence
+    metadata = approval_request.commit_metadata
+    if (
+        evidence is None
+        or metadata is None
+        or workflow.effect_kind is not WorkflowEffectKind.REPOSITORY_CHANGE
+        or approval_request.workflow_id != workflow.identifier
+        or approval_request.purpose is not ApprovalPurpose.COMMIT
+        or approval_request.requested_working_directory is None
+    ):
+        return None
+    approved_request = CommitRequest(
+        repository_root=approval_request.requested_working_directory,
+        expected_branch=metadata.expected_branch,
+        expected_head=metadata.expected_head,
+        paths=metadata.reviewed_files,
+        message=metadata.commit_message,
+    )
+    try:
+        validate_reviewed_evidence(
+            evidence, workflow.commit_request, workflow.reviewed_content_fingerprint
+        )
+        validate_reviewed_evidence(
+            evidence, approved_request, metadata.reviewed_content_fingerprint
+        )
+    except ValueError:
+        return None
+    files = []
+    for change in evidence.changes:
+        kind = "modified"
+        for marker, label in (
+            ("U", "unmerged"),
+            ("D", "deleted"),
+            ("R", "renamed"),
+            ("C", "copied"),
+            ("T", "type_changed"),
+            ("A", "added"),
+            ("?", "added"),
+        ):
+            if marker in change.status:
+                kind = label
+                break
+        if change.deletion_marker == "deleted":
+            kind = "deleted"
+        files.append(
+            WorkflowReviewedFileResponse(
+                path=str(change.path),
+                change=kind,
+                executable=None
+                if change.git_mode is None
+                else change.git_mode == "100755",
+                content_sha256=change.content_sha256,
+                rename_source=str(change.rename_source)
+                if change.rename_source is not None
+                else None,
+            )
+        )
+    return files
 
 
 def _workflow_commit_result(workflow) -> WorkflowCommitResultResponse:
