@@ -127,7 +127,7 @@ function ProviderIntentEditorForm({
                             ))}
                         </select>
                     </label>
-                    {!saving && selected !== "" && (!configured || selected !== resource.expectation) && (
+                    {!saving && !blocked && selected !== "" && (!configured || selected !== resource.expectation) && (
                         <p className="text-xs text-amber-200">Unsaved change. Save to apply it.</p>
                     )}
                     {selected === "ignored" && (

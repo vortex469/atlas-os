@@ -101,6 +101,10 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
     const [suggestionError, setSuggestionError] = useState<string | null>(null);
     const [updatingCoordinate, setUpdatingCoordinate] = useState<Coordinate | null>(null);
     const saveInFlight = useRef(false);
+    const uncertainSave = useRef<Coordinate | null>(null);
+    const [uncertainCoordinate, setUncertainCoordinate] = useState<Coordinate | null>(null);
+    const [checkingMonitoring, setCheckingMonitoring] = useState(false);
+    const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
     const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
     const [rowStatuses, setRowStatuses] = useState<Record<string, string>>({});
     const [decisionRevisions, setDecisionRevisions] = useState<Record<string, number>>({});
@@ -168,11 +172,30 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
         revise(key);
     }
 
+    async function checkMonitoringState(): Promise<void> {
+        const key = uncertainSave.current;
+        if (!active.current || key === null || saveInFlight.current) return;
+        saveInFlight.current = true;
+        setCheckingMonitoring(true);
+        try {
+            const [publicReloaded, operatorReloaded] = await Promise.all([loadManagement(), loadOperator()]);
+            if (!active.current || !publicReloaded || !operatorReloaded) return;
+            clearReviewed(key);
+            uncertainSave.current = null;
+            setUncertainCoordinate(null);
+            setRecoveryNotice("Current monitoring state reloaded. Review it before saving again.");
+        } finally {
+            saveInFlight.current = false;
+            if (active.current) setCheckingMonitoring(false);
+        }
+    }
+
     async function saveProviderIntent(publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, selected: ProviderMonitoringExpectation, acknowledgeSuppression: boolean): Promise<void> {
         const key = managementCoordinate(publicResource);
-        if (!active.current || !operatorResource.management_fingerprint || !session.csrfToken || saveInFlight.current) return;
+        if (!active.current || !operatorResource.management_fingerprint || !session.csrfToken || saveInFlight.current || uncertainSave.current !== null) return;
         saveInFlight.current = true;
         setUpdatingCoordinate(key);
+        setRecoveryNotice(null);
         try {
             if (reviewedSuggestion && (
                 reviewedSuggestion.provider_id !== publicResource.provider_id
@@ -211,6 +234,13 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
                 if (committed) return;
                 const status = isAxiosError(error) ? error.response?.status : undefined;
                 const detail = isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail : undefined;
+                const knownRejection = [401, 403, 404, 409, 413, 415, 422, 429].includes(status ?? 0)
+                    || (status === 503 && ["mutation_not_activated", "store_migration_required", "store_unavailable", "provider_read_unavailable"].includes(detail ?? ""));
+                if (!knownRejection) {
+                    uncertainSave.current = key;
+                    setUncertainCoordinate(key);
+                    return;
+                }
                 let message = "Atlas Core could not save the monitoring expectation.";
                 if (status === 401) { session.invalidate(); message = "Operator session expired. Sign in again."; }
                 else if (status === 403) message = "Your operator session does not permit Provider Intent updates.";
@@ -243,13 +273,18 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
         <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 shadow-lg shadow-slate-950/30">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div><SectionHeader title="Resources and monitoring" description="Observed provider facts, identity assurance, and monitoring policy are shown separately." /><p className="mt-2 text-xs text-slate-500">Observed inventory refreshed: {refreshedAt}</p></div>
-                <button type="button" onClick={() => { if (active.current && !saveInFlight.current) void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()]); }} disabled={updatingCoordinate !== null || inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? "Refreshing..." : "Refresh resources"}</button>
+                <button type="button" onClick={() => { if (active.current && !saveInFlight.current && uncertainSave.current === null) void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()]); }} disabled={uncertainCoordinate !== null || checkingMonitoring || updatingCoordinate !== null || inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? "Refreshing..." : "Refresh resources"}</button>
             </div>
             <div className="mt-4 space-y-2">
                 {inventoryError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{inventoryError}</p>}
                 {managementError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">Monitoring unavailable — {managementError} Observed inventory remains visible.</p>}
                 {operatorError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{operatorError}</p>}
                 {suggestionError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{suggestionError}</p>}
+                {uncertainCoordinate !== null && <div role="alert" className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+                    <p>Save outcome not confirmed. Check monitoring state before saving again.</p>
+                    <button type="button" disabled={checkingMonitoring} onClick={() => void checkMonitoringState()} className="rounded-lg border border-amber-500/40 px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50">{checkingMonitoring ? "Checking monitoring state..." : "Check monitoring state"}</button>
+                </div>}
+                {recoveryNotice && <p role="status" className="text-sm text-blue-200">{recoveryNotice}</p>}
                 {updatingCoordinate !== null && <p role="status" className="text-sm text-blue-200">Monitoring update in progress. Other saves are temporarily paused.</p>}
                 {composition.error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">Resource coordinates could not be composed safely. Monitoring and editing are unavailable.</p>}
             </div>
@@ -262,7 +297,7 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
                             : "No provider resources are available."}
                 </p>
             ) : (
-                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} onDraftChange={() => setRowStatuses((current) => ({ ...current, [resource.coordinate]: "" }))} metadataColumns={metadataColumns} operatorEpoch={operatorEpoch} managementUnavailable={management === null} operatorState={session.authenticated ? (operator ? "available" : operatorLoading ? "loading" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} blocked={updatingCoordinate !== null && updatingCoordinate !== resource.coordinate} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
+                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} onDraftChange={() => setRowStatuses((current) => ({ ...current, [resource.coordinate]: "" }))} metadataColumns={metadataColumns} operatorEpoch={operatorEpoch} managementUnavailable={management === null} operatorState={session.authenticated ? (operator ? "available" : operatorLoading ? "loading" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} blocked={uncertainCoordinate !== null || (updatingCoordinate !== null && updatingCoordinate !== resource.coordinate)} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
             )}
         </section>
     );
