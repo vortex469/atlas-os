@@ -99,6 +99,14 @@ describe("ProviderTelemetryTrend", () => {
         expect(screen.getByText("No intelligence collection history is available for this provider yet.")).toBeInTheDocument();
     });
 
+    it("does not compare history with an unconfirmed performance threshold", () => {
+        render(<ProviderTelemetryTrend providerId="qdrant" snapshots={snapshots} performancePolicy={{ maximum_collection_duration_ms: 50, severity: "critical" }} thresholdUnavailable />);
+        expect(screen.getByText("Performance threshold could not be checked. Threshold comparisons are unavailable.")).toBeInTheDocument();
+        expect(screen.queryByText("Over threshold")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Policy threshold 50 ms")).not.toBeInTheDocument();
+        expect(screen.getByRole("img", { name: "Qdrant intelligence duration trend" })).toBeInTheDocument();
+    });
+
     it("shows an empty state without provider history", () => {
         render(
             <ProviderTelemetryTrend

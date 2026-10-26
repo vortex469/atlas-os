@@ -120,6 +120,19 @@ describe("ProviderPolicyDetails", () => {
         ).toBeInTheDocument();
     });
 
+    it("labels retained settings without claiming they are currently enforced", () => {
+        render(<ProviderPolicyDetails providerId="docker" policies={policies} unavailable />);
+        expect(screen.getByText("Policy settings could not be refreshed. Showing the last reported settings.")).toBeInTheDocument();
+        expect(screen.getByText("atlas: running")).toBeInTheDocument();
+        expect(screen.queryByText(/currently enforced/i)).not.toBeInTheDocument();
+    });
+
+    it("does not call an unavailable provider policy unconfigured", () => {
+        render(<ProviderPolicyDetails providerId="ollama" policies={policies} unavailable />);
+        expect(screen.getByText("No provider-specific policy was reported in the last successful refresh.")).toBeInTheDocument();
+        expect(screen.queryByText("No provider-specific operational policy is configured.")).not.toBeInTheDocument();
+    });
+
     it("supports existing provider policies and empty policy states", () => {
         const { rerender } = render(
             <ProviderPolicyDetails

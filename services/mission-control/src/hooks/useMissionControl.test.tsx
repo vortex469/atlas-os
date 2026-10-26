@@ -240,6 +240,38 @@ describe("useMissionControl", () => {
         expect(result.current.telemetryHistory).toEqual([]);
     });
 
+    it("reports optional policy failures while retaining settings and recovers without losing provider health", async () => {
+        let available = false;
+        vi.spyOn(atlas, "get").mockImplementation(async url => {
+            if (url === "/policies" && !available) throw new Error("policies unavailable");
+            const data: Record<string, unknown> = {
+                "/ace/summary": summary, "/health": health,
+                "/providers": [provider("proxmox", "Proxmox", "critical", "operations")],
+                "/policies": policies, "/policies/status": policyHealth,
+                "/intelligence/telemetry/history": telemetryHistory,
+                "/intelligence/telemetry/history/retention": telemetryRetention,
+            };
+            return { data: data[url!] };
+        });
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+        expect(result.current.policiesUnavailable).toBe(true);
+        expect(result.current.policies).toBeNull();
+        expect(result.current.error).toBeNull();
+        available = true;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.policiesUnavailable).toBe(false);
+        expect(result.current.policies).toEqual(policies);
+        available = false;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.policiesUnavailable).toBe(true);
+        expect(result.current.policies).toEqual(policies);
+        expect(result.current.error).toBeNull();
+        available = true;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.policiesUnavailable).toBe(false);
+    });
+
     it("normalizes malformed health API data before publishing dashboard state", async () => {
         vi.spyOn(atlas, "get").mockImplementation(async (url) => {
             const data: Record<string, unknown> = {

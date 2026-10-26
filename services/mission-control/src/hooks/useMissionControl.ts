@@ -26,6 +26,7 @@ type MissionControlState = {
     health: AtlasHealth | null;
     providers: Provider[];
     policies: AtlasPolicies | null;
+    policiesUnavailable: boolean;
     policyHealth: PolicyReloadHealth | null;
     telemetryHistory: IntelligenceTelemetrySnapshot[];
     telemetryHistoryUnavailable: boolean;
@@ -65,6 +66,7 @@ export function useMissionControl(): MissionControlState {
     const [policies, setPolicies] = useState<AtlasPolicies | null>(
         null,
     );
+    const [policiesUnavailable, setPoliciesUnavailable] = useState(false);
     const [policyHealth, setPolicyHealth] =
         useState<PolicyReloadHealth | null>(null);
     const [telemetryHistory, setTelemetryHistory] = useState<
@@ -131,6 +133,7 @@ export function useMissionControl(): MissionControlState {
             setSummary(summaryResponse.data);
             setHealth(normalizeAtlasHealth(healthResponse.data));
             setProviders(nextProviders);
+            setPoliciesUnavailable(policiesResponse === null);
             if (policiesResponse !== null) {
                 setPolicies(policiesResponse.data);
             }
@@ -186,6 +189,7 @@ export function useMissionControl(): MissionControlState {
         health,
         providers,
         policies,
+        policiesUnavailable,
         policyHealth,
         telemetryHistory,
         telemetryHistoryUnavailable,
