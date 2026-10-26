@@ -1,11 +1,27 @@
 import { expect, test } from "@playwright/test";
-import { installMaintenanceJourney, journey } from "./repository-journey-fixture";
+import { journey } from "./repository-journey-fixture";
+import { installMaintenanceRequestJourney } from "./maintenance-request-journey-fixture";
 
 for (const width of [390, 1280]) {
-    test(`maintenance planning keeps approval and execution separate at ${width}px`, async ({ page }) => {
-        const fixture = await installMaintenanceJourney(page);
+    test(`maintenance request through audit keeps approval and execution separate at ${width}px`, async ({ page }) => {
+        const fixture = await installMaintenanceRequestJourney(page);
         await page.setViewportSize({ width, height: 844 });
-        await page.goto(`/execution-candidates/${journey.candidate}`);
+        await page.goto("/operations/request");
+        await page.getByLabel("Operator ID").fill("browser-operator");
+        await page.getByLabel("Password").fill("fixture-only-password");
+        await page.getByRole("button", { name: "Sign in", exact: true }).click();
+        const target = page.getByRole("radio", { name: /Browser fixture VM/ });
+        await expect(target).not.toBeChecked();
+        await expect(page.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        expect(fixture.entryWrites).toHaveLength(1);
+        expect(fixture.writes).toHaveLength(0);
+        await target.check();
+        await page.getByRole("button", { name: "Request restart candidate" }).click();
+        await expect(page.getByRole("heading", { name: "Maintenance candidate ready" })).toBeVisible();
+        expect(fixture.entryWrites).toEqual(fixture.expectedEntryWrites);
+        expect(fixture.writes).toHaveLength(0);
+        await page.getByRole("link", { name: "Continue to candidate planning" }).click();
+        await expect(page).toHaveURL(new RegExp(`/execution-candidates/${journey.candidate}$`));
         const progress = page.getByRole("region", { name: "Planning progress" });
         await expect(progress.locator('[aria-current="step"]')).toHaveText("ProposalCurrent step");
         await expect(progress.getByRole("listitem")).toHaveCount(4);
@@ -42,5 +58,6 @@ for (const width of [390, 1280]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(fixture.writes).toEqual(fixture.expectedWrites);
         expect(fixture.unexpected).toEqual([]);
+        expect(fixture.entryUnexpected).toEqual([]);
     });
 }

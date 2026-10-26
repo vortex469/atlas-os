@@ -15,7 +15,7 @@ runtime, tag, or publish a release.
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
 | Proposals and planning | Only current search results and matching proposal/plan identities appear; preparation has four simple steps | Proposal/planning page tests; proposal recovery browser cases; both workflow journey specs |
 | Repository workflow | Each exact approval and resume remains separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
-| Maintenance workflow | Operational plan is displayed; exact target and verification rules precede action approval; a separate run precedes lifecycle outcome | `e2e/maintenance-journey.spec.ts`; planning and workflow component tests |
+| Maintenance workflow | Explicit target selection and exact request submission return a proposal; operational plan and exact verification rules precede action approval; a separate run precedes lifecycle outcome and audit | `e2e/maintenance-journey.spec.ts`; planning and workflow component tests |
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
 | Forge | Edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts` |
 | Installation readiness | Review evidence remains bound to the current record and optional details remain collapsed | Readiness component and structural tests; invalid-review browser recovery case |
@@ -46,13 +46,14 @@ Reproduce UI checks from `services/mission-control` with `npm test --
 --maxWorkers=2`, `npm run test:e2e -- --workers=2`, `npm run lint`, and
 `npm run build`. Browser tests require the local test server and Chromium.
 
-## Remaining acceptance gaps
+## Acceptance status and remaining gaps
 
-- The maintenance browser coverage currently joins two separately tested
-  segments: Discovery/sign-in/target selection and proposal/planning/exact
-  approval/run/audit. One browser journey does not yet cover maintenance request
-  submission through the returned proposal. Component tests cover that request
-  boundary; a combined synthetic journey is still needed.
+- Maintenance request submission through the returned proposal, planning, exact
+  approval, separate run and audit is now covered by one synthetic browser
+  journey at 390px and 1280px. The fixture checks ordered request bodies,
+  target fingerprint, expiry and CSRF, and rejects other mutations. The separate
+  Discovery sign-in test still proves that advisory context cannot preselect or
+  request maintenance. These checks do not establish real provider acceptance.
 - The installation readiness browser case proves rejection and recovery for an
   invalid response, not a complete successful review journey. It does not prove
   installation execution and must not be described as doing so.

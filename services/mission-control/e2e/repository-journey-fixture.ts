@@ -31,6 +31,11 @@ const candidate: ExecutionCandidate = {
     compatibility_status: "compatible", relationship_ids: [], created_at: observedAt,
     expires_at: "2999-01-01T12:00:00Z",
 };
+export const maintenanceCandidate: ExecutionCandidate = {
+    ...candidate, source_subsystem: "operator-intent", execution_category: "restart", execution_intent: "restart-service",
+    target_id: "proxmox/qemu/110", target_type: "qemu", rationale: "Review a simulated service restart.",
+    expires_at: "2026-10-26T00:15:00.000Z",
+};
 const plan: CandidatePlanApiResponse = {
     identifier: journey.plan, session_id: journey.session, candidate_id: journey.candidate,
     candidate_fingerprint: journey.candidateFingerprint, title: "Update fixture compose configuration",
@@ -224,7 +229,7 @@ export async function installRepositoryJourney(page: Page, reject = false, optio
             return route.fulfill({ json: { workflow_id: journey.workflow, workflow_state: `awaiting_${phase}_approval`, [`${phase}_approval_status`]: "approved", message: "Approved in browser fixture." } });
         }
         if (isCore && path === `/execution-candidates/${journey.candidate}`) return route.fulfill({ json: maintenance
-            ? { ...candidate, source_subsystem: "operator-intent", execution_category: "restart", execution_intent: "restart-service", target_id: "proxmox/qemu/110", target_type: "qemu", rationale: "Review a simulated service restart." }
+            ? maintenanceCandidate
             : candidate });
         if (isAgent && path === planningPath) return route.fulfill({ json: sessionResponse(planReady) });
         if (isAgent && path === `${planningPath}/plan`) {
