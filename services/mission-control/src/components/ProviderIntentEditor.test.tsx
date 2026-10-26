@@ -63,6 +63,54 @@ function renderEditor(value = resource(), onSave = vi.fn(), mutationValue: Manag
 }
 
 describe("ProviderIntentEditor", () => {
+    it.each(["anonymous", "unavailable"] as const)("discards cached grants and draft acknowledgement when operator state becomes %s", async operatorState => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const props = { resource: resource(), mutationResource: mutation(), saving: false, onSave };
+        const view = render(<ProviderIntentEditor {...props} operatorState="available" />);
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        await user.click(screen.getByRole("checkbox"));
+        view.rerender(<ProviderIntentEditor {...props} operatorState={operatorState} />);
+        expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+        view.rerender(<ProviderIntentEditor {...props} operatorState="available" />);
+        expect(screen.getByRole("combobox")).toHaveValue("");
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        expect(screen.getByRole("checkbox")).not.toBeChecked();
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("requires a fresh choice and acknowledgement when the operator session changes", async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const props = { resource: resource(), mutationResource: mutation(), operatorState: "available" as const, saving: false, onSave };
+        const view = render(<ProviderIntentEditor {...props} operatorEpoch="operator-a" />);
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        await user.click(screen.getByRole("checkbox"));
+        view.rerender(<ProviderIntentEditor {...props} operatorEpoch="operator-b" />);
+        expect(screen.getByRole("combobox")).toHaveValue("");
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        expect(screen.getByRole("checkbox")).not.toBeChecked();
+        expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("requires fresh acknowledgement after caller edit permission is lost and restored", async () => {
+        const user = userEvent.setup();
+        const onSave = vi.fn();
+        const props = { resource: resource(), operatorState: "available" as const, operatorEpoch: "same-session", saving: false, onSave };
+        const view = render(<ProviderIntentEditor {...props} mutationResource={mutation()} />);
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        await user.click(screen.getByRole("checkbox"));
+        view.rerender(<ProviderIntentEditor {...props} mutationResource={mutation({ caller_can_mutate: false })} />);
+        expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+        view.rerender(<ProviderIntentEditor {...props} mutationResource={mutation()} />);
+        expect(screen.getByRole("combobox")).toHaveValue("");
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        expect(screen.getByRole("checkbox")).not.toBeChecked();
+        expect(onSave).not.toHaveBeenCalled();
+    });
+
     it("requires an explicit Needs Review choice and Save", async () => {
         const user = userEvent.setup();
         const save = renderEditor();

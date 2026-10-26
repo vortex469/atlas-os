@@ -329,6 +329,72 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(putProviderMonitoringIntent).toHaveBeenLastCalledWith("proxmox", "qemu", "111", expect.objectContaining({ expected_management_fingerprint: replacementFingerprint }), "csrf");
     });
 
+    function operatorSession(operatorId: string) {
+        const current = vi.mocked(useOperatorSession).getMockImplementation()!();
+        return { ...current, principal: { operator_id: operatorId, authenticated_at: "2026-01-01T00:00:00Z", permissions: ["provider_intent:update"], auth_method: "core_session" as const } };
+    }
+
+    it("keeps a previous operator's late ready response out of the current operator's view", async () => {
+        let finish!: (value: ProviderManagementV3) => void;
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({ caller_can_mutate: false }))
+            .mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+        vi.mocked(useOperatorSession).mockReturnValue(operatorSession("operator-a"));
+        const view = render(<ProviderResources provider={provider} />);
+        await screen.findByText("Frigate");
+        await waitFor(() => expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(1));
+        vi.mocked(useOperatorSession).mockReturnValue(operatorSession("operator-b"));
+        view.rerender(<ProviderResources provider={provider} />);
+        await screen.findByText(/does not permit Provider Intent updates/);
+        await act(async () => finish(management()));
+        expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^Save$/ })).not.toBeInTheDocument();
+        expect(screen.getByText("Frigate")).toBeInTheDocument();
+        expect(getProviderResources).toHaveBeenCalledTimes(1);
+        expect(getProviderManagement).toHaveBeenCalledTimes(1);
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it.each(["operator", "suggestions"] as const)("ignores a previous session's late 401 from %s", async source => {
+        let reject!: (error: Error) => void;
+        const pending = new Promise<never>((_, fail) => { reject = fail; });
+        if (source === "operator") vi.mocked(getAuthenticatedProviderManagement).mockReturnValueOnce(pending);
+        else vi.mocked(getProviderMonitoringIntentSuggestions).mockReturnValueOnce(pending);
+        vi.mocked(useOperatorSession).mockReturnValue(operatorSession("operator-a"));
+        const view = render(<ProviderResources provider={provider} />);
+        await screen.findByText("Frigate");
+        await waitFor(() => expect(getProviderMonitoringIntentSuggestions).toHaveBeenCalledTimes(1));
+        vi.mocked(useOperatorSession).mockReturnValue(operatorSession("operator-b"));
+        view.rerender(<ProviderResources provider={provider} />);
+        await waitFor(() => expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(getProviderMonitoringIntentSuggestions).toHaveBeenCalledTimes(2));
+        await screen.findByRole("combobox");
+        await act(async () => reject(httpError(401, "old_session_expired")));
+        expect(invalidate).not.toHaveBeenCalled();
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("ignores a previous operator's late save response without expiring the current session", async () => {
+        const user = userEvent.setup();
+        let reject!: (error: Error) => void;
+        vi.mocked(putProviderMonitoringIntent).mockReturnValueOnce(new Promise((_, fail) => { reject = fail; }));
+        vi.mocked(useOperatorSession).mockReturnValue(operatorSession("operator-a"));
+        const view = render(<ProviderResources provider={provider} />);
+        await user.selectOptions(await screen.findByRole("combobox"), "ignored");
+        await user.click(screen.getByRole("checkbox"));
+        await user.click(screen.getByRole("button", { name: /^Save$/ }));
+        vi.mocked(useOperatorSession).mockReturnValue(operatorSession("operator-b"));
+        view.rerender(<ProviderResources provider={provider} />);
+        await waitFor(() => expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(2));
+        await screen.findByRole("combobox");
+        await act(async () => reject(httpError(401, "old_session_expired")));
+        expect(invalidate).not.toHaveBeenCalled();
+        expect(screen.getByRole("combobox")).toHaveValue("");
+        expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+        expect(screen.queryByText("Operator session expired. Sign in again.")).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+    });
+
     it("saves through only the P3b API and reloads server projections", async () => {
         const user = userEvent.setup();
         await renderResources();

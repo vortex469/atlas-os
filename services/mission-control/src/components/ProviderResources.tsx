@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { isAxiosError } from "axios";
 
 import { getAtlasErrorMessage } from "../api/atlas";
@@ -44,24 +44,10 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const supported = provider.capabilities.includes("resources");
     const [inventory, setInventory] = useState<ProviderResourceCollection | null>(null);
     const [management, setManagement] = useState<ProviderManagementV2 | null>(null);
-    const [operator, setOperator] = useState<ProviderManagementV3 | null>(null);
-    const [suggestions, setSuggestions] = useState<ProviderMonitoringIntentSuggestionV1[]>([]);
     const [inventoryLoading, setInventoryLoading] = useState(supported);
     const [managementLoading, setManagementLoading] = useState(supported);
-    const [operatorLoading, setOperatorLoading] = useState(false);
     const [inventoryError, setInventoryError] = useState<string | null>(null);
     const [managementError, setManagementError] = useState<string | null>(null);
-    const [operatorError, setOperatorError] = useState<string | null>(null);
-    const [suggestionError, setSuggestionError] = useState<string | null>(null);
-    const [updatingCoordinate, setUpdatingCoordinate] = useState<Coordinate | null>(null);
-    const saveInFlight = useRef(false);
-    const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
-    const [rowStatuses, setRowStatuses] = useState<Record<string, string>>({});
-    const [decisionRevisions, setDecisionRevisions] = useState<Record<string, number>>({});
-    const [reviewedSuggestions, setReviewedSuggestions] = useState<Record<string, ProviderMonitoringIntentSuggestionV1>>({});
-    const [invalidatedReviews, setInvalidatedReviews] = useState<Record<string, boolean>>({});
-    const metadataColumns = useMemo(() => metadataColumnsByProvider[provider.id] ?? [], [provider.id]);
-
     const loadInventory = useCallback(async (refresh = false): Promise<boolean> => {
         setInventoryLoading(true); setInventoryError(null);
         try { setInventory(refresh ? await refreshProviderResources(provider.id) : await getProviderResources(provider.id)); return true; }
@@ -76,21 +62,79 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         finally { setManagementLoading(false); }
     }, [provider.id]);
 
+    useEffect(() => { if (supported) void Promise.resolve().then(() => Promise.all([loadInventory(), loadManagement()])); }, [loadInventory, loadManagement, supported]);
+    if (!supported) return null;
+    // Public principal metadata identifies the session; CSRF secrets never enter a key.
+    const operatorEpoch = session.authenticated ? JSON.stringify(session.principal) : "anonymous";
+    return <SessionResourcePanel key={operatorEpoch} provider={provider} session={session} operatorEpoch={operatorEpoch}
+        inventory={inventory} management={management} inventoryLoading={inventoryLoading} managementLoading={managementLoading}
+        inventoryError={inventoryError} managementError={managementError} loadInventory={loadInventory} loadManagement={loadManagement} />;
+}
+
+type SessionResourceProps = ProviderResourcesProps & {
+    session: ReturnType<typeof useOperatorSession>;
+    operatorEpoch: string;
+    inventory: ProviderResourceCollection | null;
+    management: ProviderManagementV2 | null;
+    inventoryLoading: boolean;
+    managementLoading: boolean;
+    inventoryError: string | null;
+    managementError: string | null;
+    loadInventory: (refresh?: boolean) => Promise<boolean>;
+    loadManagement: () => Promise<boolean>;
+};
+
+function SessionResourcePanel({ provider, session, operatorEpoch, inventory, management, inventoryLoading,
+    managementLoading, inventoryError, managementError, loadInventory, loadManagement }: SessionResourceProps) {
+    const active = useRef(true);
+    const operatorReadId = useRef(0);
+    const suggestionReadId = useRef(0);
+    useLayoutEffect(() => {
+        active.current = true;
+        return () => { active.current = false; };
+    }, []);
+    const supported = provider.capabilities.includes("resources");
+    const [operator, setOperator] = useState<ProviderManagementV3 | null>(null);
+    const [suggestions, setSuggestions] = useState<ProviderMonitoringIntentSuggestionV1[]>([]);
+    const [operatorLoading, setOperatorLoading] = useState(false);
+    const [operatorError, setOperatorError] = useState<string | null>(null);
+    const [suggestionError, setSuggestionError] = useState<string | null>(null);
+    const [updatingCoordinate, setUpdatingCoordinate] = useState<Coordinate | null>(null);
+    const saveInFlight = useRef(false);
+    const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+    const [rowStatuses, setRowStatuses] = useState<Record<string, string>>({});
+    const [decisionRevisions, setDecisionRevisions] = useState<Record<string, number>>({});
+    const [reviewedSuggestions, setReviewedSuggestions] = useState<Record<string, ProviderMonitoringIntentSuggestionV1>>({});
+    const [invalidatedReviews, setInvalidatedReviews] = useState<Record<string, boolean>>({});
+    const metadataColumns = useMemo(() => metadataColumnsByProvider[provider.id] ?? [], [provider.id]);
+
     const loadOperator = useCallback(async (): Promise<boolean> => {
+        if (!active.current) return false;
+        const readId = ++operatorReadId.current;
         if (!session.authenticated) { setOperator(null); setOperatorError(null); setOperatorLoading(false); return true; }
         setOperatorLoading(true); setOperatorError(null);
-        try { setOperator(await getAuthenticatedProviderManagement(provider.id)); return true; }
-        catch (error) {
+        try {
+            const value = await getAuthenticatedProviderManagement(provider.id);
+            if (!active.current || readId !== operatorReadId.current) return false;
+            setOperator(value); return true;
+        } catch (error) {
+            if (!active.current || readId !== operatorReadId.current) return false;
             if (isAxiosError(error) && error.response?.status === 401) session.invalidate();
             setOperator(null); setOperatorError("Operator edit readiness could not be loaded. Public monitoring state remains available."); return false;
-        } finally { setOperatorLoading(false); }
+        } finally { if (active.current && readId === operatorReadId.current) setOperatorLoading(false); }
     }, [provider.id, session]);
 
     const loadSuggestions = useCallback(async (): Promise<boolean> => {
+        if (!active.current) return false;
+        const readId = ++suggestionReadId.current;
         if (!session.authenticated) { setSuggestions([]); setSuggestionError(null); return true; }
         setSuggestionError(null);
-        try { setSuggestions(await getProviderMonitoringIntentSuggestions(provider.id)); return true; }
-        catch (error) {
+        try {
+            const value = await getProviderMonitoringIntentSuggestions(provider.id);
+            if (!active.current || readId !== suggestionReadId.current) return false;
+            setSuggestions(value); return true;
+        } catch (error) {
+            if (!active.current || readId !== suggestionReadId.current) return false;
             if (isAxiosError(error) && error.response?.status === 401) session.invalidate();
             setSuggestions([]);
             setSuggestionError("Advisory monitoring suggestions could not be loaded. Current monitoring state remains authoritative.");
@@ -98,7 +142,6 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         }
     }, [provider.id, session]);
 
-    useEffect(() => { if (supported) void Promise.resolve().then(() => Promise.all([loadInventory(), loadManagement()])); }, [loadInventory, loadManagement, supported]);
     useEffect(() => { if (supported) void Promise.resolve().then(loadOperator); }, [loadOperator, supported]);
     useEffect(() => { if (supported) void Promise.resolve().then(loadSuggestions); }, [loadSuggestions, supported]);
 
@@ -127,7 +170,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
 
     async function saveProviderIntent(publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, selected: ProviderMonitoringExpectation, acknowledgeSuppression: boolean): Promise<void> {
         const key = managementCoordinate(publicResource);
-        if (!operatorResource.management_fingerprint || !session.csrfToken || saveInFlight.current) return;
+        if (!active.current || !operatorResource.management_fingerprint || !session.csrfToken || saveInFlight.current) return;
         saveInFlight.current = true;
         setUpdatingCoordinate(key);
         try {
@@ -157,12 +200,14 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
                     expected_record_version: publicResource.replacement_detected ? 0 : publicResource.record_version ?? 0,
                     acknowledge_monitoring_suppression: acknowledgeSuppression,
                 }, session.csrfToken);
+                if (!active.current) return;
                 committed = true; invalidateReviewed(key);
                 const [publicReloaded, operatorReloaded, suggestionsReloaded] = await Promise.all([loadManagement(), loadOperator(), loadSuggestions()]);
                 if (suggestionsReloaded) clearReviewed(key);
                 if (!publicReloaded || !operatorReloaded) setRowErrors((current) => ({ ...current, [key]: "Provider Intent was saved, but refreshed server state could not be loaded." }));
                 else setRowStatuses((current) => ({ ...current, [key]: suggestionsReloaded ? "Monitoring expectation saved and confirmed by Atlas Core." : "Monitoring expectation saved and confirmed. Advisory suggestions could not be refreshed." }));
             } catch (error) {
+                if (!active.current) return;
                 if (committed) return;
                 const status = isAxiosError(error) ? error.response?.status : undefined;
                 const detail = isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail : undefined;
@@ -180,7 +225,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
             }
         } finally {
             saveInFlight.current = false;
-            setUpdatingCoordinate(null);
+            if (active.current) setUpdatingCoordinate(null);
         }
     }
 
@@ -198,7 +243,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 shadow-lg shadow-slate-950/30">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div><SectionHeader title="Resources and monitoring" description="Observed provider facts, identity assurance, and monitoring policy are shown separately." /><p className="mt-2 text-xs text-slate-500">Observed inventory refreshed: {refreshedAt}</p></div>
-                <button type="button" onClick={() => { if (!saveInFlight.current) void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()]); }} disabled={updatingCoordinate !== null || inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? "Refreshing..." : "Refresh resources"}</button>
+                <button type="button" onClick={() => { if (active.current && !saveInFlight.current) void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()]); }} disabled={updatingCoordinate !== null || inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? "Refreshing..." : "Refresh resources"}</button>
             </div>
             <div className="mt-4 space-y-2">
                 {inventoryError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{inventoryError}</p>}
@@ -217,13 +262,13 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
                             : "No provider resources are available."}
                 </p>
             ) : (
-                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} metadataColumns={metadataColumns} managementUnavailable={management === null} operatorState={session.authenticated ? (operator ? "available" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} blocked={updatingCoordinate !== null && updatingCoordinate !== resource.coordinate} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
+                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} metadataColumns={metadataColumns} operatorEpoch={operatorEpoch} managementUnavailable={management === null} operatorState={session.authenticated ? (operator ? "available" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} blocked={updatingCoordinate !== null && updatingCoordinate !== resource.coordinate} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
             )}
         </section>
     );
 }
 
-function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalidated, onReview, metadataColumns, managementUnavailable, operatorState, saving, blocked, decisionRevision, error, status, onSave }: { resource: ComposedResource; suggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewInvalidated: boolean; onReview: (suggestion: ProviderMonitoringIntentSuggestionV1) => void; metadataColumns: MetadataColumn[]; managementUnavailable: boolean; operatorState: "anonymous" | "available" | "unavailable"; saving: boolean; blocked: boolean; decisionRevision: number; error: string | null; status: string | null; onSave: (publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, expectation: ProviderMonitoringExpectation, acknowledge: boolean) => Promise<void> }) {
+function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalidated, onReview, metadataColumns, operatorEpoch, managementUnavailable, operatorState, saving, blocked, decisionRevision, error, status, onSave }: { resource: ComposedResource; suggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewInvalidated: boolean; onReview: (suggestion: ProviderMonitoringIntentSuggestionV1) => void; metadataColumns: MetadataColumn[]; operatorEpoch: string; managementUnavailable: boolean; operatorState: "anonymous" | "available" | "unavailable"; saving: boolean; blocked: boolean; decisionRevision: number; error: string | null; status: string | null; onSave: (publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, expectation: ProviderMonitoringExpectation, acknowledge: boolean) => Promise<void> }) {
     const observed = resource.inventory;
     const managed = resource.inconsistent ? null : resource.management;
     const displayName = observed?.display_name ?? managed?.display_name ?? "Unknown resource";
@@ -258,7 +303,7 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
                 <section aria-label={`Monitoring for ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Monitoring expectation</p><p className="mt-2 font-semibold text-slate-100">{presentation.expectation}</p><p className="mt-2 text-sm text-slate-300">{presentation.status}</p></section>
             </div>
             {displayedSuggestion && <ProviderIntentSuggestionCard suggestion={displayedSuggestion} stale={suggestionStale} reviewed={reviewedCurrentSuggestion} onReview={() => onReview(displayedSuggestion)} />}
-            {managed?.provider_id === "proxmox" && managed.resource_type === "qemu" && <div className="mt-5 border-t border-slate-800 pt-4"><ProviderIntentEditor key={`${resource.coordinate}:${managed.management_fingerprint}:${managed.record_version}:${decisionRevision}`} resource={managed} mutationResource={resource.operator} operatorState={operatorState} saving={saving} blocked={blocked} initialSelection={reviewedCurrentSuggestion ? reviewedSuggestion.suggested_expectation : undefined} requireExplicitSelection={reviewedSuggestion !== null && !reviewedCurrentSuggestion} onSave={async (expectation, acknowledge) => { if (resource.operator) await onSave(managed, resource.operator, reviewedCurrentSuggestion ? reviewedSuggestion : null, expectation, acknowledge); }} /></div>}
+            {managed?.provider_id === "proxmox" && managed.resource_type === "qemu" && <div className="mt-5 border-t border-slate-800 pt-4"><ProviderIntentEditor key={`${resource.coordinate}:${managed.management_fingerprint}:${managed.record_version}:${decisionRevision}`} resource={managed} mutationResource={resource.operator} operatorState={operatorState} operatorEpoch={operatorEpoch} saving={saving} blocked={blocked} initialSelection={reviewedCurrentSuggestion ? reviewedSuggestion.suggested_expectation : undefined} requireExplicitSelection={reviewedSuggestion !== null && !reviewedCurrentSuggestion} onSave={async (expectation, acknowledge) => { if (resource.operator) await onSave(managed, resource.operator, reviewedCurrentSuggestion ? reviewedSuggestion : null, expectation, acknowledge); }} /></div>}
             {error && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
             {status && <p role="status" className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{status}</p>}
         </article>
