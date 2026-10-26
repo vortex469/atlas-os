@@ -1,5 +1,6 @@
 {
   "workflow_id": "candidate-workflow-1",
+  "effect_kind": "repository_change",
   "workflow_state": "blocked",
   "workflow_source": "candidate",
   "blocked_reason": "commit_outcome_unknown",

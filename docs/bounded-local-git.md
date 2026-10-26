@@ -71,3 +71,17 @@ paths, response loss and persisted-approval restart. Twenty-five independent
 process tests cover bounds, shared deadline, owned child cleanup and sanitized
 errors. UI, browser and GitHub validation are recorded separately in the PR;
 none constitutes running-service or production acceptance.
+
+On the repair branch, all 2,425 UI component tests and the two new phone/desktop
+browser cases passed. Its older UI base still reproduces ten existing browser
+failures and the old lint/chunk warnings. Combined locally with Mission Control
+PR #39, all 2,582 UI component tests, 69 development-browser journeys, 44 built-app
+journeys and 1,222 Agent tests passed; lint/build passed without those warnings.
+The native-projected browser fixture includes the combined audit contract's
+repository effect kind. The maintained guarded repository checker passed 89
+approval/journey/recovery/audit checks with a verified stable source digest.
+
+The local integration required preserving both sets of imports and the existing
+maintenance-audit component while adding the unknown stage normalizer. That
+integration branch is a validation checkout, not a merge into main. The repair
+is stacked on PR #40 and must be reviewed alongside the screen fixes in PR #39.
