@@ -397,7 +397,7 @@ async function mockAgent(route: Route) {
     }
 }
 
-async function installMissionControlMocks(
+export async function installMissionControlMocks(
     page: Page,
     mode: MockMode,
     rejectedMutationRequests: string[],

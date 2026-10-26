@@ -1,5 +1,6 @@
 import {
     act,
+    fireEvent,
     render,
     screen,
     waitFor,
@@ -7,6 +8,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode } from "react";
+import { MemoryRouter } from "react-router-dom";
 
 import {
     getProviderActions,
@@ -67,10 +69,15 @@ function renderActions(
         <ProviderActions
             provider={{ id: "ollama", name: "Ollama" }}
             onActionCompleted={onActionCompleted}
-        />,
+        />, { wrapper: MemoryRouter },
     );
 
     return onActionCompleted;
+}
+
+function actionResult(patch: Partial<ProviderActionResult> = {}): ProviderActionResult {
+    return { provider_id: "ollama", action_id: "run-diagnostics", status: "succeeded", success: true,
+        message: "Diagnostics completed.", data: {}, warnings: [], ...patch };
 }
 
 describe("ProviderActions", () => {
@@ -78,7 +85,7 @@ describe("ProviderActions", () => {
         mockedGetProviderActions.mockResolvedValue([unloadAction]);
         const user = userEvent.setup();
         const completed = vi.fn();
-        const view = render(<ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={completed} />);
+        const view = render(<ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={completed} />, { wrapper: MemoryRouter });
         await user.type(await screen.findByLabelText(/model/i), "old-provider-model");
         let resolveNext!: (value: ProviderAction[]) => void;
         mockedGetProviderActions.mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
@@ -96,7 +103,7 @@ describe("ProviderActions", () => {
         let resolveAction!: (value: ProviderActionResult) => void;
         mockedRunProviderAction.mockImplementationOnce(() => new Promise((resolve) => { resolveAction = resolve; }));
         const completed = vi.fn();
-        const view = render(<ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={completed} />);
+        const view = render(<ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={completed} />, { wrapper: MemoryRouter });
         const user = userEvent.setup();
         await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
         view.rerender(<ProviderActions provider={{ id: "other", name: "Other" }} onActionCompleted={completed} />);
@@ -108,7 +115,7 @@ describe("ProviderActions", () => {
     });
 
     it("reads the action catalog once under Strict Mode without running an action", async () => {
-        render(<StrictMode><ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={vi.fn()} /></StrictMode>);
+        render(<StrictMode><ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={vi.fn()} /></StrictMode>, { wrapper: MemoryRouter });
         await screen.findByRole("button", { name: "Run Diagnostics" });
         expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
         expect(mockedRunProviderAction).not.toHaveBeenCalled();
@@ -206,7 +213,7 @@ describe("ProviderActions", () => {
         expect(mockedRunProviderAction).not.toHaveBeenCalled();
     });
 
-    it("shows API failures without refreshing state", async () => {
+    it("shows an unknown outcome without replaying or refreshing automatically", async () => {
         const user = userEvent.setup();
         const onActionCompleted = renderActions();
         mockedRunProviderAction.mockRejectedValue(
@@ -220,8 +227,125 @@ describe("ProviderActions", () => {
         );
 
         expect(
-            await screen.findByText("Provider unavailable."),
+            await screen.findByText("Action outcome not confirmed"),
         ).toBeInTheDocument();
         expect(onActionCompleted).not.toHaveBeenCalled();
     });
+    it("preserves a confirmed action result when its follow-up refresh rejects", async () => {
+        const user = userEvent.setup();
+        const completed = vi.fn().mockRejectedValueOnce(new Error("private refresh canary")).mockResolvedValue(undefined);
+        mockedRunProviderAction.mockResolvedValueOnce(actionResult());
+        renderActions(completed);
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        expect(await screen.findByText("Could not refresh provider status.")).toBeVisible();
+        expect(screen.getByText("Action completed")).toBeVisible();
+        expect(screen.getByText("Diagnostics completed.")).toBeVisible();
+        expect(screen.queryByText("Action list unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("private refresh canary")).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Refresh provider status" }));
+        await waitFor(() => expect(completed).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(screen.queryByText(/Could not refresh provider status/)).not.toBeInTheDocument());
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+        expect(screen.getByText("Action completed")).toBeVisible();
+    });
+
+    it("pauses actions after a lost response and does not resolve it from a status refresh", async () => {
+        const user = userEvent.setup();
+        const completed = renderActions();
+        mockedRunProviderAction.mockRejectedValueOnce(new Error("private action response canary"));
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        expect(await screen.findByText("Action outcome not confirmed")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(screen.getByRole("link", { name: "Review action history" })).toHaveAttribute("href", "/operations");
+        expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Action failed")).not.toBeInTheDocument();
+        expect(screen.queryByText("private action response canary")).not.toBeInTheDocument();
+        expect(completed).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: "Refresh provider status" }));
+        await waitFor(() => expect(completed).toHaveBeenCalledTimes(1));
+        expect(screen.getByText("Action outcome not confirmed")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps an uncertain outcome separate from a failed status read", async () => {
+        const user = userEvent.setup();
+        const completed = vi.fn().mockRejectedValue(new Error("private status canary"));
+        mockedRunProviderAction.mockRejectedValueOnce(new Error("lost response"));
+        renderActions(completed);
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        await screen.findByText("Action outcome not confirmed");
+        await user.click(screen.getByRole("button", { name: "Refresh provider status" }));
+        expect(await screen.findByText(/Could not refresh provider status/)).toBeVisible();
+        expect(screen.getByText("Action outcome not confirmed")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows a reported failure without turning it into an unknown transport outcome", async () => {
+        const user = userEvent.setup();
+        const completed = renderActions();
+        mockedRunProviderAction.mockResolvedValueOnce(actionResult({ status: "failed", success: false, message: "Core reported a failed result." }));
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        expect(await screen.findByText("Action failed")).toBeVisible();
+        expect(screen.getByText("Core reported a failed result.")).toBeVisible();
+        expect(screen.queryByText("Action outcome not confirmed")).not.toBeInTheDocument();
+        expect(completed).not.toHaveBeenCalled();
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+    });
+
+    it("submits once when clicks arrive before React renders the running state", async () => {
+        let finish!: (value: ProviderActionResult) => void;
+        mockedRunProviderAction.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+        renderActions();
+        const button = await screen.findByRole("button", { name: "Run Diagnostics" });
+        act(() => { fireEvent.click(button); fireEvent.click(button); });
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+        await act(async () => { finish(actionResult()); });
+        expect(screen.getByText("Action completed")).toBeVisible();
+    });
+
+    it("reads a failed catalog again without running an action", async () => {
+        const user = userEvent.setup();
+        mockedGetProviderActions.mockRejectedValueOnce(new Error("catalog unavailable")).mockResolvedValue([diagnosticsAction]);
+        renderActions();
+        expect(await screen.findByText("Action list unavailable")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Reload action list" }));
+        expect(await screen.findByRole("button", { name: "Run Diagnostics" })).toBeEnabled();
+        expect(mockedRunProviderAction).not.toHaveBeenCalled();
+        expect(mockedGetProviderActions).toHaveBeenCalledTimes(2);
+    });
+
+    it("latches uncertainty before a stale event handler can submit again", async () => {
+        let reject!: (error: Error) => void;
+        mockedRunProviderAction.mockReturnValueOnce(new Promise((_, fail) => { reject = fail; }));
+        renderActions();
+        const button = await screen.findByRole("button", { name: "Run Diagnostics" });
+        fireEvent.click(button);
+        await act(async () => {
+            reject(new Error("lost response"));
+            await Promise.resolve(); await Promise.resolve();
+            fireEvent.click(button);
+        });
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+        expect(screen.getByText("Action outcome not confirmed")).toBeVisible();
+    });
+
+    it("does not overlap explicit status refreshes or submit while one is pending", async () => {
+        const user = userEvent.setup();
+        let finish!: () => void;
+        const completed = vi.fn().mockRejectedValueOnce(new Error("read failed"))
+            .mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+        mockedRunProviderAction.mockResolvedValueOnce(actionResult());
+        renderActions(completed);
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        const retry = await screen.findByRole("button", { name: "Refresh provider status" });
+        act(() => { fireEvent.click(retry); fireEvent.click(retry); });
+        expect(completed).toHaveBeenCalledTimes(2);
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+        await act(async () => finish());
+        expect(screen.getByText("Action completed")).toBeVisible();
+    });
+
 });
