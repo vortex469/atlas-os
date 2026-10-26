@@ -73,6 +73,24 @@ export function DiscoveryPage() {
     const [error, setError] = useState<string | null>(null);
     const requestGeneration = useRef(0);
     const lastAttempt = useRef({ filters: emptyFilters, offset: 0 });
+    const summaryGeneration = useRef(0);
+    const [summaryLoading, setSummaryLoading] = useState(true);
+    const [summaryError, setSummaryError] = useState(false);
+
+    const loadSummary = useCallback(async () => {
+        const generation = ++summaryGeneration.current;
+        setSummaryLoading(true);
+        setSummaryError(false);
+        setMetadata(null);
+        try {
+            const nextMetadata = await getDiscoveryMetadata();
+            if (generation === summaryGeneration.current) setMetadata(nextMetadata);
+        } catch {
+            if (generation === summaryGeneration.current) setSummaryError(true);
+        } finally {
+            if (generation === summaryGeneration.current) setSummaryLoading(false);
+        }
+    }, []);
 
     const loadCatalog = useCallback(
         async (nextFilters: FilterState, offset: number) => {
@@ -82,13 +100,10 @@ export function DiscoveryPage() {
             setError(null);
 
             try {
-                const [nextMetadata, page] = await Promise.all([
-                    getDiscoveryMetadata(),
-                    fetchDiscoveryPage(nextFilters, offset),
-                ]);
+                void loadSummary();
+                const page = await fetchDiscoveryPage(nextFilters, offset);
 
                 if (generation !== requestGeneration.current) return;
-                setMetadata(nextMetadata);
                 setResult({
                     entries: page.entries,
                     total: page.total,
@@ -108,7 +123,7 @@ export function DiscoveryPage() {
                 if (generation === requestGeneration.current) setIsLoading(false);
             }
         },
-        [],
+        [loadSummary],
     );
 
     useEffect(() => {
@@ -119,6 +134,7 @@ export function DiscoveryPage() {
         return () => {
             cancelled = true;
             requestGeneration.current += 1;
+            summaryGeneration.current += 1;
         };
     }, [loadCatalog]);
 
@@ -163,7 +179,15 @@ export function DiscoveryPage() {
                     </p>
                 </div>
 
-                <DiscoveryStatus metadata={metadata} isLoading={isLoading} />
+                <DiscoveryStatus metadata={metadata} isLoading={summaryLoading} />
+                {summaryError && (
+                    <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+                        <p>Catalog summary unavailable. Item results are shown separately.</p>
+                        <button type="button" onClick={() => void loadSummary()} className="mt-3 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-100">
+                            Retry catalog summary
+                        </button>
+                    </div>
+                )}
             </header>
 
             {error && (
@@ -383,7 +407,7 @@ function DiscoveryStatus({
                 : "Catalog empty"
             : "Catalog unavailable"
         : isLoading
-          ? "Loading catalog"
+          ? "Loading catalog summary"
           : "Catalog status unknown";
 
     return (
