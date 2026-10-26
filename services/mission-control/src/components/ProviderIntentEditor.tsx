@@ -40,6 +40,7 @@ export function ProviderIntentEditor({
     mutationResource,
     operatorState,
     saving,
+    blocked = false,
     initialSelection,
     requireExplicitSelection = false,
     onSave,
@@ -48,6 +49,7 @@ export function ProviderIntentEditor({
     mutationResource: ManagedProviderResourceV3 | null;
     operatorState: "anonymous" | "available" | "unavailable";
     saving: boolean;
+    blocked?: boolean;
     initialSelection?: ProviderMonitoringExpectation;
     requireExplicitSelection?: boolean;
     onSave: (
@@ -96,7 +98,7 @@ export function ProviderIntentEditor({
                         <select
                             aria-label={`Monitoring expectation for ${resource.display_name}`}
                             value={selected}
-                            disabled={saving}
+                            disabled={saving || blocked}
                             onChange={(event) => {
                                 setSelected(
                                     parseExpectationSelection(event.target.value),
@@ -116,7 +118,7 @@ export function ProviderIntentEditor({
                             <input
                                 type="checkbox"
                                 checked={acknowledged}
-                                disabled={saving}
+                                disabled={saving || blocked}
                                 onChange={(event) => setAcknowledged(event.target.checked)}
                             />
                             I understand monitoring findings for this expectation will be suppressed.
@@ -124,7 +126,7 @@ export function ProviderIntentEditor({
                     )}
                     <button
                         type="button"
-                        disabled={!canSave || saving}
+                        disabled={!canSave || saving || blocked}
                         onClick={() => selected && void onSave(selected, acknowledged)}
                         className="rounded-lg border border-blue-500/50 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-200 disabled:cursor-not-allowed disabled:opacity-40"
                     >

@@ -265,6 +265,70 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(refreshProviderResources).not.toHaveBeenCalled();
     });
 
+    function twoResourceReads() {
+        const observed = { ...inventory, summary: { ...inventory.summary, total: 2, needs_review: 2, by_type: { qemu: 2 }, by_state: { running: 2 } }, resources: [inventory.resources[0], { ...inventory.resources[0], resource_id: "111", display_name: "Backup", metadata: { vmid: 111, node: "vorex469" } }] };
+        const secondPublic = { ...publicManagement().resources[0], resource_id: "111", display_name: "Backup", management_fingerprint: replacementFingerprint };
+        const secondOperator = { ...management().resources[0], resource_id: "111", display_name: "Backup", management_fingerprint: replacementFingerprint };
+        const publicState = { ...publicManagement(), resources: [publicManagement().resources[0], secondPublic] };
+        const operatorState = { ...management(), resources: [management().resources[0], secondOperator] };
+        vi.mocked(getProviderResources).mockResolvedValue(observed);
+        vi.mocked(getProviderManagement).mockResolvedValue(publicState);
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(operatorState);
+        return { publicState, operatorState };
+    }
+
+    async function chooseBoth() {
+        const user = userEvent.setup();
+        render(<ProviderResources provider={provider} />);
+        await user.selectOptions(await screen.findByLabelText("Monitoring expectation for Frigate"), "running");
+        await user.selectOptions(screen.getByLabelText("Monitoring expectation for Backup"), "running");
+        return user;
+    }
+
+    it("admits one monitoring save across rows during batched clicks", async () => {
+        twoResourceReads();
+        vi.mocked(putProviderMonitoringIntent).mockReturnValue(new Promise(() => {}));
+        await chooseBoth();
+        const first = within(screen.getByTestId("resource-row-qemu-110")).getByRole("button", { name: /^Save$/ });
+        const second = within(screen.getByTestId("resource-row-qemu-111")).getByRole("button", { name: /^Save$/ });
+        act(() => { first.click(); second.click(); first.click(); });
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+        expect(putProviderMonitoringIntent).toHaveBeenCalledWith("proxmox", "qemu", "110", expect.objectContaining({ expectation: "running", expected_management_fingerprint: fingerprint }), "csrf");
+        expect(second).toBeDisabled();
+        expect(screen.getByRole("button", { name: /^Refresh/ })).toBeDisabled();
+    });
+
+    it("keeps other rows blocked while the completed save refreshes public monitoring state", async () => {
+        const { publicState, operatorState } = twoResourceReads();
+        const savedOperator = management({ intent_status: "configured", intent_reason: "matching_active_intent", expectation: "running", record_version: 1 });
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValueOnce(operatorState)
+            .mockResolvedValue({ ...operatorState, resources: [savedOperator.resources[0], operatorState.resources[1]] });
+        let finish!: (value: ProviderManagementV2) => void;
+        vi.mocked(getProviderManagement).mockResolvedValueOnce(publicState)
+            .mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+        const user = await chooseBoth();
+        await user.click(within(screen.getByTestId("resource-row-qemu-110")).getByRole("button", { name: /^Save$/ }));
+        await waitFor(() => expect(getProviderManagement).toHaveBeenCalledTimes(2));
+        expect(within(screen.getByTestId("resource-row-qemu-111")).getByRole("button", { name: /^Save$/ })).toBeDisabled();
+        expect(screen.getByRole("button", { name: /^Refresh/ })).toBeDisabled();
+        const saved = publicManagement({ intent_status: "configured", intent_reason: "matching_active_intent", expectation: "running", record_version: 1 });
+        await act(async () => finish({ ...publicState, resources: [saved.resources[0], publicState.resources[1]] }));
+        await waitFor(() => expect(within(screen.getByTestId("resource-row-qemu-111")).getByRole("button", { name: /^Save$/ })).toBeEnabled());
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it("releases the monitoring save guard after a rejection without automatic replay", async () => {
+        twoResourceReads();
+        vi.mocked(putProviderMonitoringIntent).mockRejectedValueOnce(httpError(503, "store_unavailable"))
+            .mockRejectedValueOnce(httpError(503, "store_unavailable"));
+        const user = await chooseBoth();
+        await user.click(within(screen.getByTestId("resource-row-qemu-110")).getByRole("button", { name: /^Save$/ }));
+        await screen.findByText("Provider Intent editing is temporarily unavailable or awaiting migration.");
+        await user.click(within(screen.getByTestId("resource-row-qemu-111")).getByRole("button", { name: /^Save$/ }));
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(2);
+        expect(putProviderMonitoringIntent).toHaveBeenLastCalledWith("proxmox", "qemu", "111", expect.objectContaining({ expected_management_fingerprint: replacementFingerprint }), "csrf");
+    });
+
     it("saves through only the P3b API and reloads server projections", async () => {
         const user = userEvent.setup();
         await renderResources();
