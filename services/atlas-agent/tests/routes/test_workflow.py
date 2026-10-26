@@ -7,8 +7,6 @@ from threading import Barrier, Thread
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from asgi_test_client import ASGITestClient as TestClient
-
 from app.approval.models import (
     ApprovalDecision,
     ApprovalPurpose,
@@ -53,6 +51,7 @@ from app.workflow.models import (
     WorkflowSource,
 )
 from app.workflow.orchestrator import WorkflowOrchestrator
+from asgi_test_client import ASGITestClient as TestClient
 
 
 def request_body(repository: Path) -> dict:
