@@ -25,6 +25,7 @@ export function AtlasDoctorPanel() {
     async function runDoctor() {
         setIsRunning(true);
         setError(null);
+        setReport(null);
 
         try {
             setReport(await getAtlasDoctorReport());
@@ -74,6 +75,8 @@ export function AtlasDoctorPanel() {
                     {isRunning ? "Running Doctor..." : "Run Doctor"}
                 </button>
             </div>
+
+            {isRunning && <p role="status" className="mt-4 text-sm text-slate-300">Checking the latest health...</p>}
 
             {error && (
                 <p role="alert" className="mt-4 text-sm text-red-300">
