@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 
@@ -71,9 +71,13 @@ export function DiscoveryPage() {
     });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const requestGeneration = useRef(0);
+    const lastAttempt = useRef({ filters: emptyFilters, offset: 0 });
 
     const loadCatalog = useCallback(
         async (nextFilters: FilterState, offset: number) => {
+            const generation = ++requestGeneration.current;
+            lastAttempt.current = { filters: nextFilters, offset };
             setIsLoading(true);
             setError(null);
 
@@ -83,6 +87,7 @@ export function DiscoveryPage() {
                     fetchDiscoveryPage(nextFilters, offset),
                 ]);
 
+                if (generation !== requestGeneration.current) return;
                 setMetadata(nextMetadata);
                 setResult({
                     entries: page.entries,
@@ -91,6 +96,7 @@ export function DiscoveryPage() {
                     hasMore: page.has_more,
                 });
             } catch (requestError) {
+                if (generation !== requestGeneration.current) return;
                 console.error("Unable to load Discovery catalog:", requestError);
                 setError(
                     getAtlasErrorMessage(
@@ -99,7 +105,7 @@ export function DiscoveryPage() {
                     ),
                 );
             } finally {
-                setIsLoading(false);
+                if (generation === requestGeneration.current) setIsLoading(false);
             }
         },
         [],
@@ -107,45 +113,14 @@ export function DiscoveryPage() {
 
     useEffect(() => {
         let cancelled = false;
-
-        Promise.all([
-            getDiscoveryMetadata(),
-            fetchDiscoveryPage(emptyFilters, 0),
-        ])
-            .then(([nextMetadata, page]) => {
-                if (cancelled) {
-                    return;
-                }
-                setMetadata(nextMetadata);
-                setResult({
-                    entries: page.entries,
-                    total: page.total,
-                    offset: page.offset,
-                    hasMore: page.has_more,
-                });
-            })
-            .catch((requestError: unknown) => {
-                if (cancelled) {
-                    return;
-                }
-                console.error("Unable to load Discovery catalog:", requestError);
-                setError(
-                    getAtlasErrorMessage(
-                        requestError,
-                        "Mission Control could not load Discovery Center.",
-                    ),
-                );
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            });
-
+        void Promise.resolve().then(() => {
+            if (!cancelled) void loadCatalog(emptyFilters, 0);
+        });
         return () => {
             cancelled = true;
+            requestGeneration.current += 1;
         };
-    }, []);
+    }, [loadCatalog]);
 
     const isSearchMode = submittedFilters.query.trim().length > 0;
     function submitFilters(event: FormEvent<HTMLFormElement>) {
@@ -200,6 +175,10 @@ export function DiscoveryPage() {
                         Discovery catalog unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">{error}</p>
+                    <button type="button" onClick={() => void loadCatalog(lastAttempt.current.filters, lastAttempt.current.offset)}
+                        className="mt-3 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-100">
+                        Retry catalog request
+                    </button>
                 </div>
             )}
 
@@ -298,7 +277,7 @@ export function DiscoveryPage() {
                             {isSearchMode ? "Search results" : "Catalog items"}
                         </h2>
                         <p className="mt-1 text-sm text-slate-500">
-                            {result.total} item{result.total === 1 ? "" : "s"} found
+                            {isLoading ? "Loading results..." : error ? "Results unavailable" : `${result.total} item${result.total === 1 ? "" : "s"} found`}
                         </p>
                     </div>
 
@@ -306,7 +285,7 @@ export function DiscoveryPage() {
                         <button
                             type="button"
                             onClick={goToPreviousPage}
-                            disabled={isLoading || result.offset === 0}
+                            disabled={isLoading || error !== null || result.offset === 0}
                             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Previous Discovery results page"
                         >
@@ -315,7 +294,7 @@ export function DiscoveryPage() {
                         <button
                             type="button"
                             onClick={goToNextPage}
-                            disabled={isLoading || !result.hasMore}
+                            disabled={isLoading || error !== null || !result.hasMore}
                             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Next Discovery results page"
                         >
@@ -328,7 +307,7 @@ export function DiscoveryPage() {
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
                         Loading Discovery catalog…
                     </div>
-                ) : result.entries.length === 0 && !error ? (
+                ) : error ? null : result.entries.length === 0 ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">
                             {metadata?.catalog_loaded && metadata.entry_count === 0
