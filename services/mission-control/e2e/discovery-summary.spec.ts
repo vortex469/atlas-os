@@ -1,7 +1,7 @@
 import { expect, test } from "./mission-control-fixtures";
 
-for (const width of [320, 390, 1280]) {
-    test.describe(`Independent Discovery summary at ${width}px`, () => {
+for (const width of [320, 390, 1280]) for (const outcome of ["unavailable", "malformed"] as const) {
+    test.describe(`Independent Discovery summary ${outcome} at ${width}px`, () => {
         test.use({ viewport: { width, height: 900 } });
         test("keeps items readable and retries only the unavailable summary", async ({ page, rejectedMutationRequests }) => {
             let summaryReads = 0;
@@ -11,7 +11,9 @@ for (const width of [320, 390, 1280]) {
                 expect(route.request().method()).toBe("GET");
                 summaryReads += 1;
                 return route.fulfill(summaryReads === 1
-                    ? { status: 503, json: { detail: "private-summary-canary" } }
+                    ? outcome === "unavailable"
+                        ? { status: 503, json: { detail: "private-summary-canary" } }
+                        : { json: { catalog_loaded: "true", entry_count: { private: "private-summary-canary" }, schema_version: [] } }
                     : { json: { catalog_loaded: true, entry_count: 1, schema_version: 1 } });
             });
             await page.goto("/discovery");
