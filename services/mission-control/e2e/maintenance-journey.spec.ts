@@ -28,6 +28,12 @@ for (const width of [390, 1280]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(fixture.repositoryPlanReads).toBe(0);
         expect(fixture.writes).toEqual(fixture.expectedWrites);
+        await page.getByRole("link", { name: "Open Audit", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Maintenance audit", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Commit Request", exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(fixture.writes).toEqual(fixture.expectedWrites);
         expect(fixture.unexpected).toEqual([]);
     });
 }

@@ -3,9 +3,11 @@ import { Link, useParams } from "react-router-dom";
 import {
     getAtlasAgentErrorMessage,
     getWorkflowAudit,
+    getWorkflowOperationalLifecycle,
 } from "../api/atlas-agent";
-import type { WorkflowAuditResponse, WorkflowAuditStageName, WorkflowAuditStageStatus } from "../types/atlasAgent";
-import { useCallback, useEffect, useState } from "react";
+import type { WorkflowAuditResponse, WorkflowAuditStageName, WorkflowAuditStageStatus, WorkflowOperationalLifecycle } from "../types/atlasAgent";
+import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePanel";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AuditStageDefinition {
     stage: WorkflowAuditStageName;
@@ -235,6 +237,8 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     const timeline = audit.timeline;
     const overallLifecycleLabel = formatStatusLabel(audit.workflow_state);
 
+    if (audit.effect_kind === "operational_action") return <MaintenanceAudit audit={audit} />;
+
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
@@ -315,6 +319,48 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             </Link>
         </main>
     );
+}
+
+function MaintenanceAudit({ audit }: { audit: WorkflowAuditResponse }) {
+    const [lifecycle, setLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const generation = useRef(0);
+    const load = useCallback(async () => {
+        const attempt = ++generation.current;
+        setLoading(true);
+        setError(null);
+        try {
+            const result = await getWorkflowOperationalLifecycle(audit.workflow_id);
+            if (attempt !== generation.current) return;
+            if (!result || result.workflow_id !== audit.workflow_id || !result.applicable) {
+                setLifecycle(null);
+                setError("Matching maintenance evidence is unavailable. Refresh to check again.");
+            } else setLifecycle(result);
+        } catch {
+            if (attempt === generation.current) setError("Could not load maintenance evidence. Refresh to check again.");
+        } finally { if (attempt === generation.current) setLoading(false); }
+    }, [audit.workflow_id]);
+    useEffect(() => {
+        let active = true;
+        void Promise.resolve().then(() => { if (active) void load(); });
+        return () => { active = false; generation.current += 1; };
+    }, [load]);
+    return <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <header>
+            <h1 className="break-all text-3xl font-bold text-white">Maintenance audit</h1>
+            <p className="mt-3 text-sm text-slate-300">Review recorded approvals, dispatch and verification. This page only reads information.</p>
+            <Link to={`/workflows/${encodeURIComponent(audit.workflow_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Back to workflow</Link>
+        </header>
+        <section aria-label="Audit validation" className="rounded-xl border border-slate-800 p-5 text-slate-300">
+            <p>Workflow state: {formatStatusLabel(audit.workflow_state)}</p>
+            <p>Audit validation: {audit.validation.valid ? "Valid" : "Invalid"}</p>
+            {audit.blocked_reason && <p>Blocked reason: {audit.blocked_reason}</p>}
+            {audit.validation.failure_code && <p role="alert">Inconsistent audit: {audit.validation.failure_code}</p>}
+        </section>
+        <OperationalLifecyclePanel lifecycle={lifecycle} isLoading={loading && !lifecycle} isRefreshing={loading} error={error} onRefresh={() => void load()} />
+        {error && <button type="button" disabled={loading} onClick={() => void load()} className="mc-control mc-focusable px-4 py-2 text-sm">Refresh maintenance evidence</button>}
+    </main>;
 }
 
 function normalizeStageStatus(status: string | undefined): "completed" | "current" | "not_reached" | "missing" | "inconsistent" {

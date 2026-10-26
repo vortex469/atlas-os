@@ -59,6 +59,8 @@ browser tests simulate this journey without contacting a provider or enabling
 execution; these checks do not establish production acceptance.
 Maintenance history displays lifecycle and recovery details only when their
 workflow identifiers match the request listed on the card.
+Maintenance audits show their read-only operational lifecycle rather than
+repository implementation, review, and commit stages.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent

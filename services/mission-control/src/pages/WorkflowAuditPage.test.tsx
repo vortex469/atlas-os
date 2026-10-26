@@ -3,13 +3,15 @@ import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getWorkflowAudit } from "../api/atlas-agent";
+import { getWorkflowAudit, getWorkflowOperationalLifecycle } from "../api/atlas-agent";
+import { operationalLifecycle } from "../test/operationalLifecycle";
 import type { WorkflowAuditResponse } from "../types/atlasAgent";
 import { WorkflowAuditPage } from "./WorkflowAuditPage";
 
 vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowAudit: vi.fn(),
+    getWorkflowOperationalLifecycle: vi.fn(),
 }));
 
 const mockedGetWorkflowAudit = vi.mocked(getWorkflowAudit);
@@ -197,6 +199,29 @@ describe("WorkflowAuditPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetWorkflowAudit.mockResolvedValue(audit());
+        vi.mocked(getWorkflowOperationalLifecycle).mockReset();
+    });
+
+    it("shows maintenance lifecycle instead of repository artifacts", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({ effect_kind: "operational_action" }));
+        vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
+        renderAuditPage();
+        expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Maintenance audit" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Commit Request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Implementation Request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /approve|run|resume/i })).not.toBeInTheDocument();
+    });
+
+    it("rejects foreign maintenance evidence and permits a read-only refresh", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({ effect_kind: "operational_action" }));
+        vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValueOnce(operationalLifecycle({ target_label: "Foreign target" }))
+            .mockResolvedValueOnce(operationalLifecycle({ workflow_id: "workflow-123" }));
+        renderAuditPage();
+        expect(await screen.findByText("Matching maintenance evidence is unavailable. Refresh to check again.")).toBeInTheDocument();
+        expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Refresh maintenance evidence" }));
+        expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
     });
 
     it("renders completed audit chain", async () => {

@@ -265,7 +265,9 @@ export async function installRepositoryJourney(page: Page, reject = false, optio
             applicable: phase === "completed", correlation: { workflow_id: journey.workflow, request_id: actionRequest.request_id,
                 request_digest_match: true, agent_record_present: phase === "completed", core_record_present: phase === "completed" },
         }) });
-        if (isAgent && path === `${workflowPath}/audit` && phase === "completed") return route.fulfill({ json: completedAudit() });
+        if (isAgent && path === `${workflowPath}/audit` && phase === "completed") return route.fulfill({ json: {
+            ...completedAudit(), effect_kind: maintenance ? "operational_action" : "repository_change",
+        } });
         return route.fulfill({ status: 404, json: { detail: "Optional information unavailable in browser fixture." } });
     });
     return { writes, expectedWrites, unexpected, get repositoryPlanReads() { return repositoryPlanReads; }, holdNextWorkflowRead: () => {

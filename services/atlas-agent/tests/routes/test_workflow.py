@@ -7,6 +7,8 @@ from threading import Barrier, Thread
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from asgi_test_client import ASGITestClient as TestClient
+
 from app.approval.models import (
     ApprovalDecision,
     ApprovalPurpose,
@@ -51,7 +53,6 @@ from app.workflow.models import (
     WorkflowSource,
 )
 from app.workflow.orchestrator import WorkflowOrchestrator
-from asgi_test_client import ASGITestClient as TestClient
 
 
 def request_body(repository: Path) -> dict:
@@ -1131,6 +1132,7 @@ def test_candidate_workflow_audit_endpoint_returns_machine_readable_chain(tmp_pa
     assert response.status_code == 200
     body = response.json()
     assert body["workflow_id"] == "workflow-123"
+    assert body["effect_kind"] == "repository_change"
     assert body["workflow_state"] == "awaiting_implementation_approval"
     # An awaiting implementation approval is a valid partial candidate chain.
     assert body["validation"]["valid"] is True
@@ -1152,6 +1154,23 @@ def test_candidate_workflow_audit_endpoint_returns_machine_readable_chain(tmp_pa
     assert body["implementation"]["tool"] == "docker-compose"
     assert body["planning"]["planning_state"] == "plan_ready"
     assert body["planning"]["planning_status"] == "plan_ready"
+
+
+def test_operational_audit_classifies_incomplete_evidence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    original = candidate_workflow_session(tmp_path)
+    workflow = replace(
+        original,
+        effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION,
+        candidate_metadata=replace(original.candidate_metadata, effect_kind=WorkflowEffectKind.OPERATIONAL_ACTION),
+        candidate_implementation_request=None,
+    )
+    container.candidate_planning_state.create_session(candidate_planning_session_for_workflow(tmp_path))
+    container.workflow_state.create_session(workflow)
+    response = client.get("/api/v1/agent/workflows/workflow-123/audit")
+    assert response.status_code == 200
+    assert response.json()["effect_kind"] == "operational_action"
+    assert response.json()["validation"]["valid"] is False
 
 
 def test_candidate_workflow_audit_includes_blocked_reason(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
