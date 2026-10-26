@@ -362,6 +362,74 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
     });
 
+    it.each(["lost", "post-commit-audit"] as const)("pauses an uncertain %s save until a successful read-only check", async kind => {
+        const user = userEvent.setup();
+        vi.mocked(putProviderMonitoringIntent).mockRejectedValueOnce(kind === "lost" ? new Error("private transport detail") : httpError(503, "security_audit_unavailable"));
+        await renderResources();
+        await user.selectOptions(screen.getByRole("combobox"), "running");
+        await user.click(screen.getByRole("button", { name: /^Save$/ }));
+        await screen.findByText("Save outcome not confirmed. Check monitoring state before saving again.");
+        expect(screen.queryByText("Unsaved change. Save to apply it.")).not.toBeInTheDocument();
+        expect(screen.queryByText(/could not save the monitoring expectation/i)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled();
+        expect(screen.getByRole("combobox")).toBeDisabled();
+        expect(screen.getByRole("button", { name: /^Refresh resources$/ })).toBeDisabled();
+        vi.mocked(getProviderManagement).mockRejectedValueOnce(new Error("read failed"));
+        await user.click(screen.getByRole("button", { name: /^Check monitoring state$/ }));
+        await waitFor(() => expect(getProviderManagement).toHaveBeenCalledTimes(2));
+        expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled();
+        const saved = { intent_status: "configured" as const, intent_reason: "matching_active_intent" as const, expectation: "stopped" as const, record_version: 2 };
+        vi.mocked(getProviderManagement).mockResolvedValue(publicManagement(saved));
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management(saved));
+        await user.click(screen.getByRole("button", { name: /^Check monitoring state$/ }));
+        await screen.findByText("Current monitoring state reloaded. Review it before saving again.");
+        expect(screen.getByRole("combobox")).toHaveValue("stopped");
+        expect(screen.getByRole("combobox")).toBeEnabled();
+        expect(screen.queryByText("Save outcome not confirmed. Check monitoring state before saving again.")).not.toBeInTheDocument();
+        expect(screen.queryByText(/saved and confirmed/i)).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+        expect(refreshProviderResources).not.toHaveBeenCalled();
+    });
+
+    it("requires fresh suppression acknowledgement after checking an uncertain save", async () => {
+        vi.mocked(putProviderMonitoringIntent).mockRejectedValueOnce(new Error("response lost"));
+        const user = userEvent.setup();
+        await renderResources();
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        await user.click(screen.getByRole("checkbox"));
+        await user.click(screen.getByRole("button", { name: /^Save$/ }));
+        await screen.findByText("Save outcome not confirmed. Check monitoring state before saving again.");
+        const saved = { intent_status: "configured" as const, intent_reason: "matching_active_intent" as const, expectation: "ignored" as const, record_version: 1 };
+        vi.mocked(getProviderManagement).mockResolvedValue(publicManagement(saved));
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management(saved));
+        await user.click(screen.getByRole("button", { name: /^Check monitoring state$/ }));
+        await screen.findByText("Current monitoring state reloaded. Review it before saving again.");
+        expect(screen.getByRole("combobox")).toHaveValue("ignored");
+        expect(screen.getByRole("checkbox")).not.toBeChecked();
+        expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled();
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it("blocks every resource while an uncertain save is being checked and admits only one check", async () => {
+        twoResourceReads();
+        vi.mocked(putProviderMonitoringIntent).mockRejectedValueOnce(new Error("response lost"));
+        const user = await chooseBoth();
+        await user.click(within(screen.getByTestId("resource-row-qemu-110")).getByRole("button", { name: /^Save$/ }));
+        await screen.findByText("Save outcome not confirmed. Check monitoring state before saving again.");
+        for (const button of screen.getAllByRole("button", { name: /^Save$/ })) expect(button).toBeDisabled();
+        let finish!: (value: ProviderManagementV2) => void;
+        vi.mocked(getProviderManagement).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+        const check = screen.getByRole("button", { name: /^Check monitoring state$/ });
+        act(() => { check.click(); check.click(); });
+        await waitFor(() => expect(getProviderManagement).toHaveBeenCalledTimes(2));
+        expect(screen.getByRole("button", { name: /^Checking monitoring state/ })).toBeDisabled();
+        await act(async () => finish(publicManagement()));
+        await screen.findByText("Current monitoring state reloaded. Review it before saving again.");
+        expect(getProviderManagement).toHaveBeenCalledTimes(2);
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+        expect(refreshProviderResources).not.toHaveBeenCalled();
+    });
+
     function operatorSession(operatorId: string) {
         const current = vi.mocked(useOperatorSession).getMockImplementation()!();
         return { ...current, principal: { operator_id: operatorId, authenticated_at: "2026-01-01T00:00:00Z", permissions: ["provider_intent:update"], auth_method: "core_session" as const } };
