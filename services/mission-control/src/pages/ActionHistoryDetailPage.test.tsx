@@ -1,15 +1,20 @@
 import {
+    act,
     render,
     screen,
     waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+    createMemoryRouter,
+    RouterProvider,
     MemoryRouter,
     Route,
     Routes,
 } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
+import type { ProviderActionAuditEntry } from "../types/actionHistory";
 
 import { getProviderActionHistoryEntry } from "../api/atlas";
 import { ActionHistoryDetailPage } from "./ActionHistoryDetailPage";
@@ -25,6 +30,16 @@ vi.mock("../api/atlas", () => ({
 const mockedGetProviderActionHistoryEntry = vi.mocked(
     getProviderActionHistoryEntry,
 );
+
+function auditEntry(id = "audit-1"): ProviderActionAuditEntry {
+    return {
+        id, provider_id: "ollama", provider_name: "Ollama", action_id: "unload-model",
+        action_label: "Unload Model", status: "succeeded", success: true,
+        message: "Model unloaded.", confirmed: true, destructive: false,
+        parameter_names: ["model"], request_id: "request-123",
+        started_at: "2026-07-25T17:00:00Z", completed_at: "2026-07-25T17:00:01Z", duration_ms: 12.5,
+    };
+}
 
 function renderPage(path = "/operations/actions/audit-1") {
     return render(
@@ -42,23 +57,47 @@ function renderPage(path = "/operations/actions/audit-1") {
 describe("ActionHistoryDetailPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockedGetProviderActionHistoryEntry.mockResolvedValue({
-            id: "audit-1",
-            provider_id: "ollama",
-            provider_name: "Ollama",
-            action_id: "unload-model",
-            action_label: "Unload Model",
-            status: "succeeded",
-            success: true,
-            message: "Model unloaded.",
-            confirmed: true,
-            destructive: false,
-            parameter_names: ["model"],
-            request_id: "request-123",
-            started_at: "2026-07-25T17:00:00Z",
-            completed_at: "2026-07-25T17:00:01Z",
-            duration_ms: 12.5,
-        });
+        mockedGetProviderActionHistoryEntry.mockResolvedValue(auditEntry());
+    });
+
+    it("refuses an action record for a different audit link", async () => {
+        mockedGetProviderActionHistoryEntry.mockResolvedValue(auditEntry("other"));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this audit link");
+        expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
+    });
+
+    it("loads once under Strict Mode and retries an unavailable read", async () => {
+        mockedGetProviderActionHistoryEntry.mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue(auditEntry());
+        render(<StrictMode><MemoryRouter initialEntries={["/operations/actions/audit-1"]}><Routes>
+            <Route path="/operations/actions/:auditId" element={<ActionHistoryDetailPage />} />
+        </Routes></MemoryRouter></StrictMode>);
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: "Try again" }));
+        expect(await screen.findByText("Model unloaded.")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears the old record and handles a late previous read after navigation", async () => {
+        let resolveNext!: (value: ProviderActionAuditEntry) => void;
+        let resolveCurrent!: (value: ProviderActionAuditEntry) => void;
+        mockedGetProviderActionHistoryEntry.mockResolvedValueOnce(auditEntry())
+            .mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }))
+            .mockImplementationOnce(() => new Promise((resolve) => { resolveCurrent = resolve; }));
+        const router = createMemoryRouter([{ path: "/operations/actions/:auditId", element: <ActionHistoryDetailPage /> }], { initialEntries: ["/operations/actions/audit-1"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByText("Model unloaded.");
+        await act(() => router.navigate("/operations/actions/audit-2"));
+        expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
+        expect(screen.getByText("Loading audit details...")).toBeInTheDocument();
+        await waitFor(() => expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledWith("audit-2"));
+        await act(() => router.navigate("/operations/actions/audit-3"));
+        await waitFor(() => expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledWith("audit-3"));
+        await act(async () => resolveCurrent({ ...auditEntry("audit-3"), message: "Current action result" }));
+        await act(async () => resolveNext(auditEntry("audit-2")));
+        expect(screen.getByText("Current action result")).toBeInTheDocument();
+        expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
     });
 
     it("loads a directly linked audit entry", async () => {

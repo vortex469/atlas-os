@@ -21,10 +21,11 @@ describe("v0.34 installation readiness review release boundary", () => {
         expect(candidateContext).not.toMatch(/readiness-review[^\n]*(?:button|onClick|post|put|patch|delete)/i);
     });
 
-    it("keeps readiness read-only while allowing only the v0.35 evidence confirmation", () => {
+    it("keeps readiness read-only with manual reload and the v0.35 evidence confirmation", () => {
         expect(page).not.toMatch(/<(?:form|input|select|textarea)\b/i);
         expect(page).not.toMatch(/setInterval|setTimeout|useMutation|atlas\.(?:post|put|patch|delete)/i);
-        expect(page.match(/<button\b/g)).toHaveLength(3);
+        expect(page.match(/<button\b/g)).toHaveLength(4);
+        expect(page).toContain("Reload review");
         expect(page).toContain("Review permission evidence statement");
         expect(page).toContain("Record permission evidence");
         for (const label of [

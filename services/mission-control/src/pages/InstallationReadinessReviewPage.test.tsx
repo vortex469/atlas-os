@@ -1,5 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
+import { StrictMode } from "react";
+import type { InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getInstallationReadinessReview } from "../api/installationReadinessReview";
@@ -35,6 +37,50 @@ function renderPage(path = `/installation/candidate-records/${uuid4}/readiness-r
 }
 
 describe("InstallationReadinessReviewPage", () => {
+    it.each(["review", "audit_evidence"] as const)("refuses a mismatched %s candidate identity before reading permission evidence", async (field) => {
+        const response = structuredClone(readinessGatedFixture);
+        response[field].candidate_record_id = "00000000-0000-4000-8000-000000000002";
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(response);
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Review unavailable");
+        expect(listExecutionPermissionGrants).not.toHaveBeenCalled();
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+        expect(screen.queryByText("operator-a")).not.toBeInTheDocument();
+    });
+
+    it("retries only the review read and avoids duplicate initial reads under Strict Mode", async () => {
+        vi.mocked(getInstallationReadinessReview).mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue(readinessGatedFixture);
+        render(<StrictMode><MemoryRouter initialEntries={[`/installation/candidate-records/${uuid4}/readiness-review`]}><Routes>
+            <Route path="/installation/candidate-records/:candidateRecordId/readiness-review" element={<InstallationReadinessReviewPage />} />
+        </Routes></MemoryRouter></StrictMode>);
+        fireEvent.click(await screen.findByRole("button", { name: "Reload review" }));
+        await screen.findByRole("heading", { name: /Readiness gated/ });
+        expect(getInstallationReadinessReview).toHaveBeenCalledTimes(2);
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+    });
+
+    it("clears the previous candidate's review and permission confirmation when navigating", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
+        let resolveNext!: (value: InstallationReadinessReviewResponseV1) => void;
+        vi.mocked(getInstallationReadinessReview).mockResolvedValueOnce(readinessGatedFixture)
+            .mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        const router = createMemoryRouter([{ path: "/installation/candidate-records/:candidateRecordId/readiness-review", element: <InstallationReadinessReviewPage /> }], { initialEntries: [`/installation/candidate-records/${uuid4}/readiness-review`] });
+        render(<RouterProvider router={router} />);
+        fireEvent.click(await screen.findByRole("button", { name: "Review permission evidence statement" }));
+        expect(screen.getByLabelText("Permission evidence confirmation")).toBeInTheDocument();
+        const nextId = "00000000-0000-4000-8000-000000000002";
+        await act(() => router.navigate(`/installation/candidate-records/${nextId}/readiness-review`));
+        expect(screen.queryByLabelText("Permission evidence confirmation")).not.toBeInTheDocument();
+        expect(screen.queryByText("operator-a")).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading installation readiness review");
+        const next = structuredClone(readinessGatedFixture);
+        next.review.candidate_record_id = nextId; next.audit_evidence.candidate_record_id = nextId;
+        await act(async () => resolveNext(next));
+        await screen.findByRole("button", { name: "Review permission evidence statement" });
+        expect(screen.queryByLabelText("Permission evidence confirmation")).not.toBeInTheDocument();
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => { vi.resetAllMocks(); session.value = { authenticated: false, principal: null, csrfToken: null }; vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ admissions: [], evidence_only: true, execution_start_allowed: false, runner_binding_allowed: false, execution_authorized: false, installation_allowed: false, dispatch_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listRunnerBindingPlans).mockResolvedValue({ schema: "runner-binding-plan-collection-v1", plans: [], evidence_only: true, execution_authorized: false, mutation_allowed: false }); });
 
     it("renders loading then the readiness-gated evidence, linkage, audit, and authority boundary", async () => {

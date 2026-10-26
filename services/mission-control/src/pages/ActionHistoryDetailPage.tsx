@@ -25,11 +25,16 @@ function statusClasses(status: ActionHistoryStatus): string {
 }
 
 export function ActionHistoryDetailPage() {
-    const { auditId } = useParams();
+    const { auditId = "" } = useParams();
+    return <ActionHistoryDetail key={auditId} auditId={auditId} />;
+}
+
+function ActionHistoryDetail({ auditId }: { auditId: string }) {
     const [entry, setEntry] =
         useState<ProviderActionAuditEntry | null>(null);
     const [isLoading, setIsLoading] = useState(Boolean(auditId));
     const [error, setError] = useState<string | null>(null);
+    const [readAttempt, setReadAttempt] = useState(0);
     const [copyMessage, setCopyMessage] = useState<string | null>(
         null,
     );
@@ -43,32 +48,39 @@ export function ActionHistoryDetailPage() {
             };
         }
 
-        getProviderActionHistoryEntry(auditId)
-            .then((result) => {
-                if (active) {
-                    setEntry(result);
-                }
-            })
-            .catch((requestError: unknown) => {
-                if (active) {
-                    setError(
-                        getAtlasErrorMessage(
-                            requestError,
-                            "Mission Control could not load this audit entry.",
-                        ),
-                    );
-                }
-            })
-            .finally(() => {
-                if (active) {
-                    setIsLoading(false);
-                }
-            });
+        void Promise.resolve().then(() => {
+            if (!active) return;
+            return getProviderActionHistoryEntry(auditId)
+                .then((result) => {
+                    if (active) {
+                        if (result.id !== auditId) {
+                            setError("The returned record does not match this audit link. Try again.");
+                            return;
+                        }
+                        setEntry(result);
+                    }
+                })
+                .catch((requestError: unknown) => {
+                    if (active) {
+                        setError(
+                            getAtlasErrorMessage(
+                                requestError,
+                                "Mission Control could not load this audit entry.",
+                            ),
+                        );
+                    }
+                })
+                .finally(() => {
+                    if (active) {
+                        setIsLoading(false);
+                    }
+                });
+        });
 
         return () => {
             active = false;
         };
-    }, [auditId]);
+    }, [auditId, readAttempt]);
 
     const copyLink = useCallback(async () => {
         try {
@@ -87,7 +99,7 @@ export function ActionHistoryDetailPage() {
         : "The audit entry ID is missing from this URL.";
 
     return (
-        <div className="space-y-6">
+        <main className="mx-auto max-w-6xl space-y-6 p-4 [overflow-wrap:anywhere] sm:p-6">
             <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                 <div>
                     <Link
@@ -100,8 +112,7 @@ export function ActionHistoryDetailPage() {
                         Audit details
                     </h1>
                     <p className="mt-1 text-sm text-slate-400">
-                        A permanent, shareable view of this provider
-                        action record.
+                        Recorded result of a provider action. Older records may expire under the history retention policy.
                     </p>
                 </div>
                 <button
@@ -136,10 +147,13 @@ export function ActionHistoryDetailPage() {
                     <p className="mt-1 text-sm text-red-200/80">
                         {displayedError}
                     </p>
+                    {auditId && <button type="button" onClick={() => {
+                        setEntry(null); setError(null); setIsLoading(true); setReadAttempt((attempt) => attempt + 1);
+                    }} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>}
                 </div>
             )}
 
-            {entry && !isLoading && (
+            {entry && !isLoading && !displayedError && (
                 <article className="rounded-lg border border-slate-800 bg-slate-900 p-6">
                     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                         <div>
@@ -238,6 +252,6 @@ export function ActionHistoryDetailPage() {
                     </dl>
                 </article>
             )}
-        </div>
+        </main>
     );
 }

@@ -20,19 +20,34 @@ const BLOCKER_LABELS: Record<string, string> = {
 
 export function InstallationReadinessReviewPage() {
     const { candidateRecordId = "" } = useParams<{ candidateRecordId: string }>();
+    return <InstallationReadinessReview key={candidateRecordId} candidateRecordId={candidateRecordId} />;
+}
+
+function InstallationReadinessReview({ candidateRecordId }: { candidateRecordId: string }) {
     const [response, setResponse] = useState<InstallationReadinessReviewResponseV1 | null>(null);
     const [loading, setLoading] = useState(candidateRecordId.length > 0);
     const [error, setError] = useState(false);
+    const [readAttempt, setReadAttempt] = useState(0);
 
     useEffect(() => {
         if (!candidateRecordId) return;
         let current = true;
-        getInstallationReadinessReview(candidateRecordId)
-            .then((value) => { if (current) setResponse(value); })
-            .catch(() => { if (current) setError(true); })
-            .finally(() => { if (current) setLoading(false); });
+        void Promise.resolve().then(() => {
+            if (!current) return;
+            return getInstallationReadinessReview(candidateRecordId)
+                .then((value) => {
+                    if (!current) return;
+                    if (value.review.candidate_record_id !== candidateRecordId.toLowerCase() || value.audit_evidence.candidate_record_id !== candidateRecordId.toLowerCase()) {
+                        setError(true);
+                        return;
+                    }
+                    setResponse(value);
+                })
+                .catch(() => { if (current) setError(true); })
+                .finally(() => { if (current) setLoading(false); });
+        });
         return () => { current = false; };
-    }, [candidateRecordId]);
+    }, [candidateRecordId, readAttempt]);
 
     return <main className="mx-auto max-w-6xl p-6 text-slate-200">
         <Link to="/discovery" className="text-sm text-blue-300">← Discovery</Link>
@@ -45,6 +60,9 @@ export function InstallationReadinessReviewPage() {
             <h2 className="font-semibold text-red-200">Review unavailable</h2>
             <p className="mt-1 text-sm">Installation readiness review is unavailable.</p>
             <p className="mt-1 text-xs text-slate-400">No candidate, operator, evidence, endpoint, credential, or internal source detail is disclosed.</p>
+            <button type="button" onClick={() => {
+                setResponse(null); setError(false); setLoading(true); setReadAttempt((attempt) => attempt + 1);
+            }} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload review</button>
         </section>}
         {!loading && !error && response && <Review response={response} />}
     </main>;

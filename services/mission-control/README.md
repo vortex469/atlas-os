@@ -77,6 +77,13 @@ Approval waits use workflow-stage labels rather than degraded-health badges.
 Stale approval requirements remain explicitly last-known, and workflow stage
 update times remain unknown when the source does not supply them.
 
+Provider-action audit details and installation readiness reviews reset when
+their record URL changes and reject responses for another record. Read-only
+retry controls recover failed reads without submitting permission evidence or
+starting work. Changing readiness candidates also clears any open evidence
+confirmation. Provider-action history links remain shareable while records
+are retained; they do not promise permanent storage.
+
 Mission Control completion requires the supported operator journey to have
 working navigation, useful empty and unavailable states, recovery controls,
 and readable layouts on desktop and mobile. Proposal, planning, workflow and

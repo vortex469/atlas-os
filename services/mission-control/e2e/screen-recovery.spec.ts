@@ -1,5 +1,43 @@
 import { executionCandidates, expect, test } from "./mission-control-fixtures";
 
+test("action history recovers a read without showing another record", async ({ page }) => {
+    let reads = 0;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route("**/api/v1/ops/actions/record-recovery", (route) => {
+        reads += 1;
+        return reads === 1
+            ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
+            : route.fulfill({ json: { id: "other-record" } });
+    });
+    await page.goto("/operations/actions/record-recovery");
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("alert")).toContainText("does not match this audit link");
+    await expect(page.getByRole("heading", { name: "Audit details" })).toBeVisible();
+    expect(reads).toBe(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole("link", { name: "← Back to Operations" }).click();
+    await expect(page.getByRole("heading", { name: "Action History", exact: true })).toBeVisible();
+});
+
+test("readiness reload stays redacted for invalid review data", async ({ page }) => {
+    const requestedId = "00000000-0000-4000-8000-000000000002";
+    let reads = 0;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route(`**/api/v1/installation/candidate-records/${requestedId}/readiness-review`, (route) => {
+        reads += 1;
+        return reads === 1
+            ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
+            : route.fulfill({ json: { review: { candidate_record_id: "other-candidate", operator_id: "private-review-canary" } } });
+    });
+    await page.goto(`/installation/candidate-records/${requestedId}/readiness-review`);
+    await page.getByRole("button", { name: "Reload review" }).click();
+    await expect(page.getByRole("heading", { name: "Review unavailable" })).toBeVisible();
+    await expect(page.getByText("private-review-canary", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Review permission evidence statement" })).toHaveCount(0);
+    expect(reads).toBe(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test("audit recovery refuses another workflow without losing navigation", async ({ page }) => {
     let reads = 0;
     await page.setViewportSize({ width: 390, height: 844 });
