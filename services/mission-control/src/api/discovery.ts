@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseDiscoveryRelationships } from "./discoveryRelationshipsResponse";
 import type {
     DiscoveryCatalogEntry,
     DiscoveryCatalogPage,
@@ -101,14 +102,14 @@ export async function getDiscoveryRelationships(
     itemId: string,
     relationshipType?: DiscoveryRelationshipType,
 ): Promise<DiscoveryRelationshipCollection> {
-    const response = await atlas.get<DiscoveryRelationshipCollection>(
+    const response = await atlas.get<unknown>(
         `/discovery/items/${encodeURIComponent(itemId)}/relationships`,
         {
             params: relationshipType ? { type: relationshipType } : undefined,
         },
     );
 
-    return response.data;
+    return parseDiscoveryRelationships(response.data, itemId);
 }
 
 export async function getDiscoveryCompatibility(
