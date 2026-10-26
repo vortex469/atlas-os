@@ -139,7 +139,7 @@ class CandidateCommitValidator:
             return _failure(CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH, should_block=True)
         if snapshot.branch != commit_request.expected_branch:
             return _failure(CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH, should_block=True)
-        if snapshot.head_commit is not None and snapshot.head_commit != commit_result.commit_sha:
+        if snapshot.head_commit != commit_result.commit_sha:
             return _failure(CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH, should_block=True)
         return CandidateCommitValidationResult(approved=True, commit_request=commit_request)
 

@@ -4,7 +4,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from app.repository.committer import GitCommitter
 from app.repository.exceptions import (
     RepositoryCommitError,
@@ -119,6 +118,9 @@ def test_commits_rename_using_inspector_destination_path(tmp_path: Path) -> None
     )
 
     assert result.committed_files == (Path("renamed.txt"),)
+    assert run_git(repository, "ls-tree", "--name-only", result.commit_sha).stdout.splitlines() == [
+        "delete.txt", "renamed.txt",
+    ]
 
 
 def test_rejects_logs_path_without_staging_it(tmp_path: Path) -> None:
@@ -257,4 +259,138 @@ def test_commit_command_failure_is_a_domain_error(
     with pytest.raises(RepositoryCommitError, match="commit failed"):
         committer.commit(make_request(repository, head))
 
+    assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
+
+
+@pytest.mark.parametrize("drift", ("branch", "parent", "content"))
+def test_rejects_commit_time_identity_or_content_drift(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    drift: str,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    run_git(repository, "branch", "other")
+    alternate_parent = run_git(
+        repository, "commit-tree", f"{head}^{{tree}}", "-p", head,
+        "-m", "Concurrent parent",
+    ).stdout.strip()
+    (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    committer = GitCommitter(repository)
+    original_run = committer._run_git
+
+    def change_before_commit(*arguments: str) -> subprocess.CompletedProcess[str]:
+        if arguments[0] == "commit":
+            if drift == "branch":
+                run_git(repository, "symbolic-ref", "HEAD", "refs/heads/other")
+            elif drift == "parent":
+                run_git(repository, "update-ref", "HEAD", alternate_parent, head)
+            else:
+                (repository / "tracked.txt").write_text(
+                    "unreviewed\n", encoding="utf-8"
+                )
+                run_git(repository, "add", "tracked.txt")
+        return original_run(*arguments)
+
+    monkeypatch.setattr(committer, "_run_git", change_before_commit)
+
+    with pytest.raises(RepositoryCommitError, match="does not match"):
+        committer.commit(make_request(repository, head))
+
+    # A commit can already exist: refusal must not reset, amend, or replay it.
+    created = run_git(repository, "rev-parse", "HEAD").stdout.strip()
+    assert created != head
+    if drift == "parent":
+        assert run_git(repository, "rev-parse", f"{created}^").stdout.strip() == alternate_parent
+    if drift == "content":
+        assert run_git(repository, "show", f"{created}:tracked.txt").stdout == "unreviewed\n"
+
+
+def test_commits_staged_content_without_restaging_later_worktree_edits(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    committer = GitCommitter(repository)
+    original_run = committer._run_git
+
+    def edit_before_commit(*arguments: str) -> subprocess.CompletedProcess[str]:
+        if arguments[0] == "commit":
+            (repository / "tracked.txt").write_text("later edit\n", encoding="utf-8")
+        return original_run(*arguments)
+
+    monkeypatch.setattr(committer, "_run_git", edit_before_commit)
+    result = committer.commit(make_request(repository, head))
+
+    assert run_git(repository, "show", f"{result.commit_sha}:tracked.txt").stdout == "reviewed\n"
+    assert (repository / "tracked.txt").read_text(encoding="utf-8") == "later edit\n"
+    assert GitInspector(repository).inspect().modified_files == ("tracked.txt",)
+
+
+def test_refuses_head_movement_during_metadata_reads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    committer = GitCommitter(repository)
+    original_run = committer._run_git
+    observed_commits: list[str] = []
+
+    def move_after_observation(*arguments: str) -> subprocess.CompletedProcess[str]:
+        result = original_run(*arguments)
+        if arguments == ("rev-parse", "HEAD"):
+            created = result.stdout.strip()
+            observed_commits.append(created)
+            run_git(repository, "update-ref", "HEAD", head, created)
+        elif arguments[0] in {"show", "log", "diff-tree"}:
+            assert arguments[-1] == observed_commits[0]
+        return result
+
+    monkeypatch.setattr(committer, "_run_git", move_after_observation)
+
+    with pytest.raises(RepositoryCommitError, match="does not match"):
+        committer.commit(make_request(repository, head))
+
+    assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
+    assert run_git(repository, "show", f"{observed_commits[0]}:tracked.txt").stdout == "reviewed\n"
+
+
+def test_commits_first_file_without_inventing_a_parent(tmp_path: Path) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    run_git(repository, "init", "-b", "feature/atlas-agent")
+    run_git(repository, "config", "user.name", "Atlas Tests")
+    run_git(repository, "config", "user.email", "atlas-tests@example.invalid")
+    (repository / "first.txt").write_text("first\n", encoding="utf-8")
+    result = GitCommitter(repository).commit(CommitRequest(
+        repository_root=repository,
+        expected_branch="feature/atlas-agent", expected_head=None,
+        paths=(Path("first.txt"),), message="Initial reviewed commit",
+    ))
+
+    assert result.parent_head is None
+    assert run_git(repository, "show", "-s", "--format=%P", result.commit_sha).stdout.strip() == ""
+
+
+def test_refuses_identity_drift_while_staging_without_creating_commit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    run_git(repository, "branch", "other")
+    (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    committer = GitCommitter(repository)
+    original_run = committer._run_git
+
+    def change_after_staging(*arguments: str) -> subprocess.CompletedProcess[str]:
+        result = original_run(*arguments)
+        if arguments[0] == "add":
+            run_git(repository, "symbolic-ref", "HEAD", "refs/heads/other")
+        assert arguments[0] != "commit"
+        return result
+
+    monkeypatch.setattr(committer, "_run_git", change_after_staging)
+    with pytest.raises(RepositoryCommitValidationError, match="identity changed"):
+        committer.commit(make_request(repository, head))
     assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head

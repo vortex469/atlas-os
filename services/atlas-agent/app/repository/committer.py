@@ -50,22 +50,34 @@ class GitCommitter:
             raise RepositoryCommitValidationError(
                 "Staged files do not match the reviewed commit paths"
             )
+        if (
+            staged.branch != request.expected_branch
+            or staged.head_commit != request.expected_head
+        ):
+            raise RepositoryCommitValidationError(
+                "Repository identity changed while staging the reviewed paths"
+            )
+        staged_tree = self._run_git("write-tree").stdout.strip()
 
         self._run_git(
             "commit",
-            "--only",
             "-m",
             message,
-            "--",
-            *(str(path) for path in paths),
         )
 
         commit_sha = self._run_git("rev-parse", "HEAD").stdout.strip()
+        parents = self._run_git(
+            "show", "-s", "--format=%P", commit_sha
+        ).stdout.strip().split()
+        expected_parents = [request.expected_head] if request.expected_head else []
+        committed_tree = self._run_git(
+            "show", "-s", "--format=%T", commit_sha
+        ).stdout.strip()
         committed_message = self._run_git(
             "log",
             "-1",
             "--format=%s",
-            "HEAD",
+            commit_sha,
         ).stdout.rstrip("\n")
         committed_files = tuple(
             sorted(
@@ -78,21 +90,29 @@ class GitCommitter:
                     "-r",
                     "-M",
                     "-z",
-                    "HEAD",
+                    commit_sha,
                 ).stdout.split("\0")
                 if path
             )
         )
 
-        if committed_message != message or committed_files != paths:
+        after = self._inspector.inspect()
+        if (
+            parents != expected_parents
+            or committed_tree != staged_tree
+            or after.branch != request.expected_branch
+            or after.head_commit != commit_sha
+            or committed_message != message
+            or committed_files != paths
+        ):
             raise RepositoryCommitError(
-                "Created commit metadata does not match the reviewed request"
+                "Created commit metadata or content does not match the reviewed request"
             )
 
         return CommitResult(
             repository_root=self.repository_root,
-            branch=request.expected_branch,
-            parent_head=request.expected_head,
+            branch=after.branch,
+            parent_head=parents[0] if parents else None,
             commit_sha=commit_sha,
             message=committed_message,
             committed_files=committed_files,
