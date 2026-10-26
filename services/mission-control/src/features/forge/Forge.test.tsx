@@ -85,4 +85,30 @@ describe("Forge analysis freshness", () => {
         expect(screen.getByRole("alert")).toHaveTextContent("Deployment name is required");
         expect(analyze).not.toHaveBeenCalled();
     });
+
+    it.each(["high", "critical"] as const)("does not hide %s plan risk behind low analysis risk", async (risk) => {
+        const result = analysis("Risk review");
+        result.result.planning.proposal.risk = risk;
+        analyze.mockResolvedValue(result);
+        render(<Forge />);
+        submit();
+        expect(await screen.findByText(`Highest reported risk: ${risk}`)).toBeInTheDocument();
+        expect(screen.queryByText("Ready for Review")).not.toBeInTheDocument();
+        expect(screen.queryByText("Deployment Blocked")).not.toBeInTheDocument();
+    });
+
+    it("keeps higher analysis risk visible and distinguishes the planner flag from permission", async () => {
+        const result = analysis("Risk review");
+        result.result.analysis.plan.risk = "critical";
+        result.result.planning.proposal.approval_required = false;
+        analyze.mockResolvedValue(result);
+        render(<Forge />);
+        submit();
+        await screen.findByText("Highest reported risk: critical");
+        expect(screen.getByText("Planner does not request approval")).toBeInTheDocument();
+        expect(screen.getByText("This is a proposed plan. Workflow permissions and exact approvals are checked separately.")).toBeInTheDocument();
+        expect(screen.getAllByText("Not estimated").length).toBeGreaterThan(0);
+        expect(screen.queryByText("0 minutes")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /approve|execute|deploy now/i })).not.toBeInTheDocument();
+    });
 });

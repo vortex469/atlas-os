@@ -34,7 +34,8 @@ for (const width of [390, 1280]) {
                     id: "fixture-plan", name: body.reference, source: "compose", components: [], risk: "low", requires_approval: true,
                 } },
                 planning: { planner: "fixture", elapsed_ms: 1, warnings: [], proposal: {
-                    id: "fixture-proposal", summary: "Review this simulated analysis.", steps: [], risk: "low", approval_required: true,
+                    id: "fixture-proposal", summary: "Review this simulated analysis.", steps: [],
+                    risk: body.reference === "current-analysis" ? "critical" : "low", approval_required: false,
                     rollback_supported: false, estimated_duration_minutes: null,
                 } },
             } } });
@@ -54,6 +55,10 @@ for (const width of [390, 1280]) {
         unavailable = false;
         await page.getByRole("button", { name: "Analyze Deployment" }).click();
         await expect(page.getByText("current-analysis", { exact: true }).first()).toBeVisible();
+        await expect(page.getByText("Highest reported risk: critical", { exact: true })).toBeVisible();
+        await expect(page.getByText("Planner does not request approval", { exact: true })).toBeVisible();
+        await expect(page.getByText("Not estimated", { exact: true }).first()).toBeVisible();
+        await expect(page.getByText("0 minutes", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("alert")).toHaveCount(0);
         await expect(page.getByRole("button", { name: /approve|execute|deploy now/i })).toHaveCount(0);
         expect(reads).toBe(3);

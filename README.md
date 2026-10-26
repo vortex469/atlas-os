@@ -74,6 +74,9 @@ navigation without changing the current URL.
 Forge clears previous analysis when the name or Compose document changes and
 ignores responses for older inputs. Analysis errors are announced in the editor;
 an analysis result does not execute a deployment.
+Forge's summary shows the highest risk reported by its analyzer or planner and
+keeps unknown durations distinct from zero. Planner approval flags describe the
+proposal; workflow authorization remains separate.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent
