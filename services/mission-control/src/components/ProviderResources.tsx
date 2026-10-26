@@ -200,7 +200,15 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
                 {suggestionError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{suggestionError}</p>}
                 {composition.error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">Resource coordinates could not be composed safely. Monitoring and editing are unavailable.</p>}
             </div>
-            {inventoryLoading && inventory === null && managementLoading && management === null ? <p role="status" className="mt-6 text-sm text-slate-400">Loading observed resources and monitoring state...</p> : composition.resources.length === 0 ? <p className="mt-6 text-sm text-slate-400">No provider resources are available.</p> : (
+            {composition.resources.length === 0 ? (
+                <p role="status" className="mt-6 text-sm text-slate-400">
+                    {inventoryLoading || managementLoading
+                        ? "Loading observed resources and monitoring state..."
+                        : composition.error || inventoryError || managementError || inventory === null || management === null
+                            ? "Resource list unavailable. Refresh resources to try again."
+                            : "No provider resources are available."}
+                </p>
+            ) : (
                 <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} metadataColumns={metadataColumns} managementUnavailable={management === null} operatorState={session.authenticated ? (operator ? "available" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
             )}
         </section>
