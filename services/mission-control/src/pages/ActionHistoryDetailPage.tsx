@@ -106,7 +106,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                         to="/operations"
                         className="text-sm font-medium text-blue-400 transition hover:text-blue-300"
                     >
-                        ← Back to Operations
+                        ← Back to action history
                     </Link>
                     <h1 className="mt-3 text-2xl font-bold text-slate-100">
                         Audit details

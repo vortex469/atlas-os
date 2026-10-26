@@ -117,7 +117,7 @@ describe("ActionHistoryDetailPage", () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole("link", {
-                name: "← Back to Operations",
+                name: "← Back to action history",
             }),
         ).toHaveAttribute("href", "/operations");
     });

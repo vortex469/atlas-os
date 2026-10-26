@@ -36,18 +36,18 @@ export const primaryNavigationItems: NavigationItem[] = [
         end: true,
     },
     {
-        label: "Operations",
+        label: "Action history",
         path: "/operations",
         enabled: true,
     },
     {
-        label: "Operational History",
+        label: "Maintenance history",
         path: "/operations/history",
         enabled: true,
         shortLabel: "History",
     },
     {
-        label: "Maintenance",
+        label: "Request maintenance",
         path: "/operations/request",
         enabled: true,
     },
@@ -57,10 +57,10 @@ export const primaryNavigationItems: NavigationItem[] = [
         enabled: true,
     },
     {
-        label: "Execution Candidates",
+        label: "Change proposals",
         path: "/execution-candidates",
         enabled: true,
-        shortLabel: "Candidates",
+        shortLabel: "Proposals",
     },
     {
         label: "Workflows",
@@ -90,7 +90,7 @@ export const disabledNavigationItems: NavigationItem[] = [
  * Returns the most specific enabled destination that owns the given path.
  * Used to surface the current route/page context in the shell header.
  * Longest prefix wins, so `/operations/history` resolves to
- * Operational History rather than its Operations parent.
+ * Maintenance history rather than its Action history parent.
  */
 export function navigationItemForPath(
     items: NavigationItem[],

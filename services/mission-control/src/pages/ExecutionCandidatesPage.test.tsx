@@ -111,7 +111,7 @@ describe("ExecutionCandidatesPage", () => {
         fireEvent.click(screen.getByRole("button", { name: "Clear" }));
         await act(async () => rejectOld(new Error("Old search failed")));
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-        expect(screen.getByText("Loading execution candidates…")).toBeInTheDocument();
+        expect(screen.getByText("Loading change proposals…")).toBeInTheDocument();
         await act(async () => resolveLatest(page([candidate({ id: "latest-candidate" })])));
         expect(screen.getByText("latest-candidate")).toBeInTheDocument();
     });
@@ -124,7 +124,7 @@ describe("ExecutionCandidatesPage", () => {
         await screen.findByRole("alert");
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Next execution candidates page" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
     });
 
     it("does not let the initial read overwrite a submitted search", async () => {
@@ -169,7 +169,7 @@ describe("ExecutionCandidatesPage", () => {
             }),
         );
 
-        await user.click(screen.getByRole("button", { name: "Next execution candidates page" }));
+        await user.click(screen.getByRole("button", { name: "Next change proposals page" }));
         await waitFor(() =>
             expect(mockedListExecutionCandidates).toHaveBeenLastCalledWith({
                 status: "eligible",
@@ -188,12 +188,12 @@ describe("ExecutionCandidatesPage", () => {
         mockedListExecutionCandidates.mockResolvedValueOnce(page([]));
 
         renderPage();
-        expect(await screen.findByText("No current execution candidates.")).toBeInTheDocument();
+        expect(await screen.findByText("No current change proposals.")).toBeInTheDocument();
 
         mockedListExecutionCandidates.mockResolvedValueOnce(page([]));
         await user.selectOptions(screen.getByLabelText("Status"), "not_eligible");
         await user.click(screen.getByRole("button", { name: "Search" }));
-        expect(await screen.findByText("No execution candidates match these filters.")).toBeInTheDocument();
+        expect(await screen.findByText("No change proposals match these filters.")).toBeInTheDocument();
 
         mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Core unavailable"));
         await user.click(screen.getByRole("button", { name: "Clear" }));

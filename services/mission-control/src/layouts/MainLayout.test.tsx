@@ -28,6 +28,7 @@ function renderAt(
             <Routes>
                 <Route path="/" element={<MainLayout />}>
                     <Route index element={page} />
+                    <Route path="operations/actions/:auditId" element={<p>Audit detail</p>} />
                     {primaryNavigationItems.filter(
                         (item) => item.path !== "/",
                     ).map((item) => (
@@ -137,8 +138,9 @@ describe("MainLayout", () => {
         it.each([
             ["", ["/"]],
             ["/operations", ["/operations"]],
-            ["/operations/history", ["/operations", "/operations/history"]],
-            ["/operations/request", ["/operations", "/operations/request"]],
+            ["/operations/history", ["/operations/history"]],
+            ["/operations/request", ["/operations/request"]],
+            ["/operations/actions/audit-1", ["/operations"]],
             ["/discovery", ["/discovery"]],
             ["/execution-candidates", ["/execution-candidates"]],
             ["/workflows", ["/workflows"]],
@@ -158,8 +160,8 @@ describe("MainLayout", () => {
                 const activeHrefs = links
                     .filter((link) => link.getAttribute("aria-current") === "page")
                     .map((link) => link.getAttribute("href"));
-                // Parent sections stay active on child routes (NavLink
-                // prefix matching); the leaf destination is always active.
+                // Only the most specific destination is current. Audit details
+                // still belong to Action history, rather than a separate menu.
                 expect(activeHrefs).toEqual(expectedActiveHrefs);
             },
         );
@@ -168,7 +170,7 @@ describe("MainLayout", () => {
     describe("current route context", () => {
         it.each([
             ["/", "Mission Control"],
-            ["/operations", "Operations"],
+            ["/operations", "Action history"],
             ["/discovery", "Discovery"],
             ["/forge", "Forge"],
         ])("surfaces the context label for %s", (initialPath, label) => {
@@ -331,11 +333,11 @@ describe("MainLayout", () => {
         it("preserves the exact enabled destination set", () => {
             expect(enabledLabels).toEqual([
                 "Mission Control",
-                "Operations",
-                "Operational History",
-                "Maintenance",
+                "Action history",
+                "Maintenance history",
+                "Request maintenance",
                 "Discovery",
-                "Execution Candidates",
+                "Change proposals",
                 "Workflows",
                 "Forge",
             ]);

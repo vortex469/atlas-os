@@ -34,6 +34,8 @@ type NavigationListProps = {
 
 function NavigationList({ onNavigate }: NavigationListProps) {
     const enabledItems = primaryNavigationItems.filter((item) => item.enabled);
+    const { pathname } = useLocation();
+    const owner = navigationItemForPath(enabledItems, pathname)?.path;
 
     return (
         <ul
@@ -46,7 +48,7 @@ function NavigationList({ onNavigate }: NavigationListProps) {
                 <li key={item.path}>
                     <NavLink
                         to={item.path}
-                        end={item.end}
+                        end={item.end || owner !== item.path}
                         onClick={onNavigate}
                         className={({ isActive }) =>
                             [

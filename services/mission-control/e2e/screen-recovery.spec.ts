@@ -46,7 +46,7 @@ test("action history recovers a read without showing another record", async ({ p
     await expect(page.getByRole("heading", { name: "Audit details" })).toBeVisible();
     expect(reads).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.getByRole("link", { name: "← Back to Operations" }).click();
+    await page.getByRole("link", { name: "← Back to action history" }).click();
     await expect(page.getByRole("heading", { name: "Action History", exact: true })).toBeVisible();
 });
 

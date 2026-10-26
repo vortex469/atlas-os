@@ -120,6 +120,12 @@ refreshes fail. Regression checks cover these cases without granting real
 execution authority. Deferred screens and capabilities remain outside this
 completion scope. Source validation does not establish production acceptance.
 
+The menu separates Action history (recorded provider actions), Maintenance
+history (past maintenance requests), Request maintenance (start a request), and
+Change proposals (review proposed work). Existing addresses remain valid. Only
+the destination that owns the current page is highlighted; audit details remain
+under Action history.
+
 Secondary screens load on demand. Navigation stays available while the next
 screen loads, and the previous screen's controls pause until navigation finishes.
 If a screen module cannot load, the recovery view offers a page reload and a

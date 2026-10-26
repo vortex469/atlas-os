@@ -82,11 +82,11 @@ export function ExecutionCandidatesPage() {
             });
         } catch (requestError) {
             if (generation !== requestGeneration.current) return;
-            console.error("Unable to load execution candidates:", requestError);
+            console.error("Unable to load change proposals:", requestError);
             setError(
                 getAtlasErrorMessage(
                     requestError,
-                    "Mission Control could not load execution candidates.",
+                    "Mission Control could not load change proposals.",
                 ),
             );
         } finally {
@@ -127,9 +127,6 @@ export function ExecutionCandidatesPage() {
         <main className="mx-auto max-w-7xl space-y-8 p-8">
             <header className="space-y-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
-                        Execution Candidates
-                    </p>
                     <h1 className="mt-3 text-3xl font-bold text-white">
                         Change proposals
                     </h1>
@@ -143,14 +140,14 @@ export function ExecutionCandidatesPage() {
 
             {error && (
                 <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
-                    <p className="font-semibold text-red-300">Execution candidates unavailable</p>
+                    <p className="font-semibold text-red-300">Change proposals unavailable</p>
                     <p className="mt-1 text-sm text-red-200/80">{error}</p>
                 </div>
             )}
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <form
-                    aria-label="Filter execution candidates"
+                    aria-label="Filter change proposals"
                     className="grid gap-4 lg:grid-cols-[repeat(5,1fr)_auto]"
                     onSubmit={submitFilters}
                 >
@@ -170,14 +167,14 @@ export function ExecutionCandidatesPage() {
                 </form>
             </section>
 
-            <section aria-label="Execution candidate results" className="space-y-4">
+            <section aria-label="Change proposal results" className="space-y-4">
                 <div className="flex items-center justify-between gap-4 text-sm text-slate-400">
-                    <p>{isLoading ? "Loading execution candidates…" : error ? "Results unavailable" : `${result.total} candidate${result.total === 1 ? "" : "s"}`}</p>
+                    <p>{isLoading ? "Loading change proposals…" : error ? "Results unavailable" : `${result.total} proposal${result.total === 1 ? "" : "s"}`}</p>
                     <div className="flex gap-2">
-                        <button type="button" aria-label="Previous execution candidates page" onClick={goToPreviousPage} disabled={isLoading || Boolean(error) || result.offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
+                        <button type="button" aria-label="Previous change proposals page" onClick={goToPreviousPage} disabled={isLoading || Boolean(error) || result.offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
                             Previous
                         </button>
-                        <button type="button" aria-label="Next execution candidates page" onClick={goToNextPage} disabled={isLoading || Boolean(error) || !result.hasMore} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
+                        <button type="button" aria-label="Next change proposals page" onClick={goToNextPage} disabled={isLoading || Boolean(error) || !result.hasMore} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
                             Next
                         </button>
                     </div>
@@ -186,8 +183,8 @@ export function ExecutionCandidatesPage() {
                 {!isLoading && !error && result.candidates.length === 0 && (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
                         {hasActiveFilters
-                            ? "No execution candidates match these filters."
-                            : "No current execution candidates."}
+                            ? "No change proposals match these filters."
+                            : "No current change proposals."}
                     </div>
                 )}
 

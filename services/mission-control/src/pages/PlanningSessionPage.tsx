@@ -184,7 +184,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     if (error || session === null) {
         return (
             <main className="mx-auto max-w-6xl space-y-6 p-8">
-                <Link to="/execution-candidates" className="text-sm text-blue-300">← Execution Candidates</Link>
+                <Link to="/execution-candidates" className="text-sm text-blue-300">← Change proposals</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-xl font-semibold text-red-100">{error ? "Planning unavailable" : "Planning session not found"}</h1>
                     <p className="mt-2 text-sm text-slate-300">{error ?? "Planning session was not found."}</p>

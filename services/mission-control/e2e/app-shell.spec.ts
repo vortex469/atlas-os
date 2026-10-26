@@ -9,11 +9,11 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByText("Mission Control command center", { exact: true })).toHaveCount(1);
 
     await expect(page.getByRole("link", { name: "Mission Control", exact: true })).toHaveAttribute("href", "/");
-    await expect(page.getByRole("link", { name: "Operations", exact: true })).toHaveAttribute("href", "/operations");
-    await expect(page.getByRole("link", { name: "Operational History", exact: true })).toHaveAttribute("href", "/operations/history");
-    await expect(page.getByRole("link", { name: "Maintenance", exact: true })).toHaveAttribute("href", "/operations/request");
+    await expect(page.getByRole("link", { name: "Action history", exact: true })).toHaveAttribute("href", "/operations");
+    await expect(page.getByRole("link", { name: "Maintenance history", exact: true })).toHaveAttribute("href", "/operations/history");
+    await expect(page.getByRole("link", { name: "Request maintenance", exact: true })).toHaveAttribute("href", "/operations/request");
     await expect(page.getByRole("link", { name: "Discovery", exact: true })).toHaveAttribute("href", "/discovery");
-    await expect(page.getByRole("link", { name: "Execution Candidates", exact: true })).toHaveAttribute("href", "/execution-candidates");
+    await expect(page.getByRole("link", { name: "Change proposals", exact: true })).toHaveAttribute("href", "/execution-candidates");
     await expect(page.getByRole("link", { name: "Workflows", exact: true })).toHaveAttribute("href", "/workflows");
     await expect(page.getByRole("link", { name: "Forge", exact: true })).toHaveAttribute("href", "/forge");
 
@@ -51,11 +51,11 @@ test.describe("Mobile navigation", () => {
         await expect(dialog).toBeVisible();
         for (const label of [
             "Mission Control",
-            "Operations",
-            "Operational History",
-            "Maintenance",
+            "Action history",
+            "Maintenance history",
+            "Request maintenance",
             "Discovery",
-            "Execution Candidates",
+            "Change proposals",
             "Workflows",
             "Forge",
         ]) {

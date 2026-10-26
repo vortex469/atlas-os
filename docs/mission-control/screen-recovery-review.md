@@ -9,7 +9,7 @@ runtime, tag, or publish a release.
 
 | Surface | Required behavior | Current regression evidence |
 | --- | --- | --- |
-| Shared navigation | Working primary links, mobile drawer, keyboard focus, skip link, missing-page recovery | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` |
+| Shared navigation | Plain menu labels distinguish action history, maintenance history, request creation and proposals; only the owning destination is highlighted; links, mobile drawer, focus, skip link and missing-page recovery work | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` includes maintenance/action-detail ownership |
 | Screen loading | Secondary screens load on demand; pending navigation pauses the old page's controls while keeping navigation available; module failure offers reload and home recovery | `e2e/page-loading.spec.ts` covers delayed modules, leaving a pending screen, and direct-link failure/reload at phone and desktop widths |
 | Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` reuses 42 compatible browser cases against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
@@ -44,9 +44,9 @@ No execution gate or approval contract is expanded.
 
 ## Validation snapshot — 2026-10-26
 
-At `b7dcf36f`, before expanding built-asset journey coverage:
+Plain-navigation follow-up, based on `cb63ceb3`:
 
-- Full component suite: 2,577 passed, zero failed or skipped.
+- Full component suite: 2,578 passed, zero failed or skipped.
 - Full browser suite: 67 passed against synthetic local backends. This includes
   repository/maintenance journeys, readiness recovery, delayed page loading,
   leaving a pending page, and failed-module reload recovery at phone and desktop
@@ -63,6 +63,12 @@ At `b7dcf36f`, before expanding built-asset journey coverage:
   completed latest-head CI gate or release acceptance record. Eight focused
   health/route/release tests and the Core Ruff gate also passed locally.
 
+The navigation follow-up also passes 106 focused layout/history/proposal/planning
+tests, all 67 development-browser checks and all 42 built-app journeys, UI lint
+and build. The menu highlights only its owning destination; action audit details
+retain Action history ownership. Both phone and desktop built-preview captures
+passed. These are simulated source checks, not operator acceptance.
+
 The diagnostic canary test checks that a tested secret cannot appear in rendered
 field names or values. The expanded built-asset follow-up passes all 42 compatible
 journeys against a completed build, including repository and maintenance exact
@@ -78,10 +84,10 @@ the local test server and Chromium.
 The development proxy regression binds isolated HTTP stubs; it contacts no
 running Atlas service. The Quality gates workflow also runs browser checks and
 preserves failure screenshots/traces for seven days, including built-preview
-failures. At preceding head `b7dcf36f`, UI CI passed 2,577 component tests, all
-67 development-server checks and 17 built-asset shell/navigation checks, lint and
-build; Agent and container checks passed. Full CI for the expanded test
-configuration remains required, including the unfinished latest-head Core gate.
+failures. At preceding head `cb63ceb3`, UI CI passed 2,577 component tests, all
+67 development-server checks and 42 built-app journeys, lint and build; Agent and
+container checks passed. Full CI for the navigation follow-up remains required.
+The preceding Core gate has passed shards 1 and 3; shards 0 and 2 remain active.
 
 Nine representative synthetic responses were checked against native Core/Agent
 models during fixture review. This corrected candidate effect kinds and audit

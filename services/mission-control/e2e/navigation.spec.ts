@@ -9,21 +9,21 @@ const routes = [
         },
     },
     {
-        label: "Operations",
+        label: "Action history",
         path: "/operations",
         assertion: async (page) => {
             await expect(page.getByRole("heading", { name: "Action History" })).toBeVisible();
         },
     },
     {
-        label: "Operational History",
+        label: "Maintenance history",
         path: "/operations/history",
         assertion: async (page) => {
-            await expect(page.getByRole("heading", { name: "Operational workflow history" })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Maintenance history" })).toBeVisible();
         },
     },
     {
-        label: "Maintenance",
+        label: "Request maintenance",
         path: "/operations/request",
         expectedPath: "/operator/login",
         assertion: async (page) => {
@@ -39,7 +39,7 @@ const routes = [
         },
     },
     {
-        label: "Execution Candidates",
+        label: "Change proposals",
         path: "/execution-candidates",
         assertion: async (page) => {
             await expect(page.getByRole("heading", { name: "Change proposals" })).toBeVisible();
