@@ -5,8 +5,7 @@ Quality run 40287727227 failed only Core shard 1 at
 alive and progressed through recursive contract validation beyond the parent's
 60-second pipe wait. Other Core shards, Agent, UI and container checks passed.
 An earlier attempt on run 40280294414 also recorded a child SIGSEGV (-11); its
-rerun passed. The cause of that native crash remains unproven. This repair does
-not claim to fix it or erase either original failure.
+rerun passed. Both original failures remain recorded.
 
 A controlled reproduction used the cached Python 3.12.13 image
 `72b4d5968da5dd01a2e46a3ffd321823ec1213c4d7403083db8605c3580ea7a2`,
@@ -28,6 +27,27 @@ header and then stops; `Connection.poll()` alone only covers initial readiness.
 Timeout/error cleanup terminates owned children, kills termination-resistant
 children after bounded grace, joins readers and checks that none survive.
 EOF, crashes, malformed replies and incomplete evidence remain failures.
+
+## Periodic diagnostic isolation
+
+The combined local check subsequently reproduced SIGSEGV during the child’s
+15-second periodic stack dump: the traceback stopped mid-frame after `File`.
+Disabling only that periodic child diagnostic in a temporary bootstrap passed
+all ten selected checks in 67.34 seconds. The fixture now keeps fatal-signal
+reporting for the current child thread, but no periodic live-frame sampling.
+The parent deadline, stage timing, exit checks and complete evidence validation
+remain active. This avoids the observed diagnostic path; it does not assert a
+particular interpreter-version root cause or a production interpreter fix.
+
+Related upstream reports describe crashes while traversing live frames:
+[CPython #116008](https://github.com/python/cpython/issues/116008) and
+[CPython #131580](https://github.com/python/cpython/issues/131580). They are
+context for this defensive test-only change, not proof that Atlas encountered
+the same version-specific bug.
+
+Three final half-CPU runs of all ten selected checks passed in 152.13, 151.60
+and 152.27 seconds. Further CI outcomes are recorded in the PR. Any actual child
+crash, EOF, malformed or incomplete reply still fails the test.
 
 The original test still uses independently spawned interpreters and SQLite
 connections. It still reparses the full result contracts and requires exactly

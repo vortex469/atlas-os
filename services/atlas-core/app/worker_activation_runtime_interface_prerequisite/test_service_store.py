@@ -792,7 +792,9 @@ def _process_create(path, facts, barrier, output):
     process_started = time.perf_counter()
     pid = os.getpid()
     stage = "startup"
-    faulthandler.dump_traceback_later(15, repeat=True)
+    # A child reproduced SIGSEGV while the periodic dump traversed live frames.
+    # Retain fatal-signal reporting; the parent owns timeout and progress checks.
+    faulthandler.enable(file=sys.stderr, all_threads=False)
     try:
         stage = "service_setup"
         stage_started = time.perf_counter()
@@ -868,7 +870,6 @@ def _process_create(path, facts, barrier, output):
             pass
         raise
     finally:
-        faulthandler.cancel_dump_traceback_later()
         output.close()
 
 
