@@ -36,7 +36,11 @@ retained provider health unknown and labels its status/message as last reported.
 Successful reads restore the normalized current health state. Provider health uses
 the shared health-state mapping; unrecognized codes do not imply success.
 `e2e/provider-health-recovery.spec.ts` verifies failed-refresh recovery through
-reads without provider mutations.
+reads without provider mutations. Diagnostics and recommendations from the
+same retained snapshot are labeled as last reported, including empty results;
+failed refreshes never claim there are no current findings. Successful refreshes
+clear these notices. `e2e/provider-advisories.spec.ts` covers both retained records
+and empty snapshots.
 
 Paths in the table are relative to `services/mission-control`.
 
