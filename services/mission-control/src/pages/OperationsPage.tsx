@@ -109,6 +109,8 @@ export function OperationsPage() {
         requestSequence.current = requestId;
         setIsLoading(true);
         setError(null);
+        setEntries([]);
+        setSummary(null);
 
         try {
             const [
@@ -243,6 +245,7 @@ export function OperationsPage() {
 
         return () => {
             window.clearTimeout(timeoutId);
+            requestSequence.current += 1;
         };
     }, [loadHistory]);
 
@@ -447,7 +450,7 @@ export function OperationsPage() {
                         <p className="mt-1 text-sm text-slate-400">
                             {summary
                                 ? `${summary.entry_count} of ${summary.max_entries} entries retained for ${summary.retention_days} days.`
-                                : "Loading retention policy..."}
+                                : isLoading ? "Loading retention policy..." : "Retention policy unavailable."}
                         </p>
                     </div>
 
@@ -529,7 +532,7 @@ export function OperationsPage() {
                 </div>
             )}
 
-            {entries.length > 0 && (
+            {!error && !isLoading && entries.length > 0 && (
                 <>
                     <div className="space-y-3">
                         {entries.map((entry) => (

@@ -1,4 +1,5 @@
 import {
+    act,
     render,
     screen,
     waitFor,
@@ -150,6 +151,40 @@ describe("OperationsPage", () => {
                 completedTo: undefined,
             }),
         );
+    });
+
+    it("hides previous results and retention policy while a filtered read fails", async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText("Unload Model");
+        let rejectRead!: (reason: Error) => void;
+        mockedGetProviderActionHistory.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
+        await user.click(screen.getByRole("button", { name: "Failed" }));
+        await waitFor(() => expect(screen.queryByText("Unload Model")).not.toBeInTheDocument());
+        expect(screen.getByRole("button", { name: "Prune expired" })).toBeDisabled();
+        expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
+        await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
+        expect(await screen.findByRole("alert")).toHaveTextContent("Filtered history unavailable");
+        expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
+        expect(screen.getByText("Retention policy unavailable.")).toBeInTheDocument();
+    });
+
+    it("ignores a slow filtered response after a newer filter has loaded", async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText("Unload Model");
+        const originalPage = await mockedGetProviderActionHistory.mock.results[0].value;
+        let resolveRead!: (value: Awaited<ReturnType<typeof getProviderActionHistory>>) => void;
+        mockedGetProviderActionHistory.mockReturnValueOnce(new Promise((resolve) => { resolveRead = resolve; }));
+        await user.click(screen.getByRole("button", { name: "Failed" }));
+        await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(2));
+        mockedGetProviderActionHistory.mockResolvedValueOnce({ items: [], total: 0, offset: 0, limit: 25, has_more: false });
+        await user.click(screen.getByRole("button", { name: "Succeeded" }));
+        await screen.findByText("No actions recorded");
+        await act(async () => { resolveRead(originalPage); });
+        expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
+        expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
+        expect(screen.getByText("No actions recorded")).toBeInTheDocument();
     });
 
     it("downloads a sanitized history export", async () => {
