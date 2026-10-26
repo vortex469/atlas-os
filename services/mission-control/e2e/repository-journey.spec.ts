@@ -19,9 +19,9 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Plan details", { exact: true })).toBeVisible();
         await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
         await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
-        await expect(page.getByRole("button", { name: "Create Implementation Request", exact: true })).toBeEnabled();
+        await expect(page.getByRole("button", { name: "Prepare exact request", exact: true })).toBeEnabled();
         await fitsViewport(page);
-        await page.getByRole("button", { name: "Create Implementation Request", exact: true }).click();
+        await page.getByRole("button", { name: "Prepare exact request", exact: true }).click();
 
         await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeVisible();
         await fitsViewport(page);

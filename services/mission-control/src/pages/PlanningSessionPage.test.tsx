@@ -13,7 +13,9 @@ import type {
     CandidatePlanApiResponse,
     CandidatePlanningResponse,
     CandidateWorkflowResponse,
+    OperationalCandidatePlanApiResponse,
 } from "../types/atlasAgent";
+import { operationalPlan } from "../test/operationalPlanning";
 import { PlanningSessionPage } from "./PlanningSessionPage";
 
 vi.mock("../api/atlas-agent", () => ({
@@ -100,6 +102,79 @@ function renderPage(path = "/candidate-planning/candidate-plan-1") {
 }
 
 describe("PlanningSessionPage", () => {
+    it("renders the existing maintenance plan without requesting a repository plan", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan() }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Maintenance plan" });
+        expect(screen.getByText("proxmox/qemu/110")).toBeVisible();
+        expect(screen.getByText("Temporary service interruption.")).toBeVisible();
+        expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
+        expect(screen.getByRole("link", { name: "Review original proposal" })).toHaveAttribute("href", "/execution-candidates/candidate-1");
+        expect(screen.queryByText("Supported intent")).not.toBeInTheDocument();
+        expect(screen.queryByText("update-compose-stack")).not.toBeInTheDocument();
+        expect(screen.queryByText("Affected repository")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Create Workflow" })).toBeEnabled();
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
+    it("displays a generated maintenance plan without falling back to the repository endpoint", async () => {
+        mockedGenerateCandidatePlan.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan() }));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
+        await screen.findByRole("heading", { name: "Maintenance plan" });
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+        expect(mockedGenerateCandidatePlan).toHaveBeenCalledExactlyOnceWith("candidate-plan-1");
+        await user.click(screen.getByRole("button", { name: "Create Workflow" }));
+        await screen.findByRole("link", { name: "Open Workflow" });
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledExactlyOnceWith("candidate-plan-1");
+    });
+
+    it("keeps maintenance review read-only when planning is unavailable", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", planning_allowed: false, operational_plan: operationalPlan() }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Maintenance plan" });
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["session", { session_id: "different-session" }],
+        ["candidate", { candidate_id: "different-candidate" }],
+        ["effect", { effect_kind: "repository_change" }],
+        ["verification identity", { verification: { ...operationalPlan().verification, identity_fingerprint: "different-target" } }],
+        ["starting state", { verification: { ...operationalPlan().verification, pre_state: "stopped" } }],
+        ["missing verification", { verification: null }],
+        ["malformed considerations", { failure_considerations: null }],
+    ])("refuses an invalid maintenance plan %s without creating a workflow", async (_name, override) => {
+        const untrusted = { ...operationalPlan(), ...override } as OperationalCandidatePlanApiResponse;
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", operational_plan: untrusted }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this planning session or target");
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+    });
+
+    it("refuses conflicting repository and maintenance plans", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan(), operational_plan: operationalPlan() }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("conflicting plan types");
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+    });
+
+    it("refuses mismatched maintenance verification returned by generation", async () => {
+        mockedGenerateCandidatePlan.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan({ verification: { ...operationalPlan().verification, identity_fingerprint: "different-target" } }) }));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this planning session or target");
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+    });
+
     beforeEach(() => {
         vi.resetAllMocks();
         mockedGetCandidatePlanningSession.mockResolvedValue(session());
@@ -115,7 +190,7 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("candidate-1")).toBeInTheDocument();
         expect(screen.getAllByText("Ready For Planning").length).toBeGreaterThan(0);
         expect(screen.getByText("Not exposed by Atlas Agent API")).toBeInTheDocument();
-        expect(screen.getByText("update-compose-stack")).toBeInTheDocument();
+        expect(screen.queryByText("Supported intent")).not.toBeInTheDocument();
         expect(screen.getByText("fingerprint-1")).toBeInTheDocument();
         expect(screen.getByText("Execution Candidate ✔")).toBeInTheDocument();
         expect(screen.getByText("Planning Session ✔")).toBeInTheDocument();

@@ -12,9 +12,8 @@ import type {
     CandidatePlanApiResponse,
     CandidatePlanningResponse,
     CandidateWorkflowResponse,
+    OperationalCandidatePlanApiResponse,
 } from "../types/atlasAgent";
-
-const SUPPORTED_INTENT = "update-compose-stack";
 
 export function PlanningSessionPage() {
     const { sessionId = "" } = useParams<{ sessionId: string }>();
@@ -24,6 +23,7 @@ export function PlanningSessionPage() {
 function PlanningSession({ sessionId }: { sessionId: string }) {
     const [session, setSession] = useState<CandidatePlanningResponse | null>(null);
     const [plan, setPlan] = useState<CandidatePlanApiResponse | null>(null);
+    const [operationalPlan, setOperationalPlan] = useState<OperationalCandidatePlanApiResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -31,6 +31,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(null);
     const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
     const [workflowError, setWorkflowError] = useState<string | null>(null);
+    const hasPlan = Boolean(plan || operationalPlan);
 
     useEffect(() => {
         let cancelled = false;
@@ -45,18 +46,28 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     return;
                 }
                 let loadedPlan = nextSession?.plan ?? null;
-                if (!loadedPlan && nextSession?.status === "plan_ready") loadedPlan = await getCandidatePlan(sessionId);
+                const loadedOperationalPlan = nextSession?.operational_plan ?? null;
+                if (loadedPlan && loadedOperationalPlan) {
+                    setError("The planning response contains conflicting plan types. Reload to check again.");
+                    return;
+                }
+                if (loadedOperationalPlan !== null && (!nextSession || !validOperationalPlan(loadedOperationalPlan, nextSession))) {
+                    setError("The maintenance plan does not match this planning session or target.");
+                    return;
+                }
+                if (!loadedPlan && !loadedOperationalPlan && nextSession?.status === "plan_ready") loadedPlan = await getCandidatePlan(sessionId);
                 if (cancelled) return;
                 if (loadedPlan && (!nextSession || loadedPlan.session_id !== sessionId || loadedPlan.candidate_id !== nextSession.candidate_id)) {
                     setError("The returned plan does not match this planning session.");
                     return;
                 }
-                if (nextSession?.status === "plan_ready" && loadedPlan === null) {
+                if (nextSession?.status === "plan_ready" && loadedPlan === null && loadedOperationalPlan === null) {
                     setError("The saved plan could not be loaded. Reload to check again.");
                     return;
                 }
                 setSession(nextSession);
                 setPlan(loadedPlan);
+                setOperationalPlan(loadedOperationalPlan);
             })
             .catch((requestError: unknown) => {
                 if (cancelled) {
@@ -98,16 +109,26 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 return;
             }
             setSession(response);
-            const generatedPlan = response.plan ?? await getCandidatePlan(sessionId);
+            const generatedOperationalPlan = response.operational_plan ?? null;
+            if (response.plan && generatedOperationalPlan) {
+                setGenerateError("The planning response contains conflicting plan types. Reload to check again.");
+                return;
+            }
+            if (generatedOperationalPlan !== null && !validOperationalPlan(generatedOperationalPlan, response)) {
+                setGenerateError("The maintenance plan does not match this planning session or target.");
+                return;
+            }
+            const generatedPlan = response.plan ?? (generatedOperationalPlan ? null : await getCandidatePlan(sessionId));
             if (generatedPlan && (generatedPlan.session_id !== sessionId || generatedPlan.candidate_id !== session.candidate_id)) {
                 setGenerateError("The returned plan does not match this planning session.");
                 return;
             }
-            if (response.status === "plan_ready" && generatedPlan === null) {
+            if (response.status === "plan_ready" && generatedPlan === null && generatedOperationalPlan === null) {
                 setGenerateError("The generated plan could not be loaded. Reload to check again.");
                 return;
             }
             setPlan(generatedPlan);
+            setOperationalPlan(generatedOperationalPlan);
         } catch (requestError) {
             console.error(`Unable to generate plan for ${sessionId}:`, requestError);
             setGenerateError(
@@ -186,7 +207,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals.
                     </p>
                 </div>
-                <PlanningRail current={workflow ? "Workflow" : plan ? "Candidate Plan" : "Planning Session"} />
+                <PlanningRail current={workflow ? "Workflow" : hasPlan ? "Candidate Plan" : "Planning Session"} />
             </header>
 
             <section aria-labelledby="session-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -219,9 +240,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     <Detail label="Candidate ID" value={session.candidate_id} />
                     <Detail label="Planning status" value={formatLabel(session.status)} />
                     <Detail label="Created time" value="Not exposed by Atlas Agent API" />
-                    <Detail label="Supported intent" value={SUPPORTED_INTENT} />
                     <Detail label="Candidate fingerprint" value={session.candidate_fingerprint ?? "Not available"} />
                 </dl>
+                <Link to={`/execution-candidates/${encodeURIComponent(session.candidate_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Review original proposal</Link>
             </section>
 
             <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -229,7 +250,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 <p className="mt-2 text-sm text-slate-400">
                     Generate a plan to review. This does not apply changes or grant approval.
                 </p>
-                {session.status === "ready_for_planning" && session.planning_allowed === true && !plan && (
+                {session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button type="button" onClick={generatePlan} disabled={isGenerating} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                             {isGenerating ? "Generating plan..." : "Generate Plan"}
@@ -237,7 +258,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         {isGenerating && <p className="text-sm text-slate-400">Generating plan...</p>}
                     </div>
                 )}
-                {(session.status !== "ready_for_planning" || session.planning_allowed !== true) && !plan && (
+                {(session.status !== "ready_for_planning" || session.planning_allowed !== true) && !hasPlan && (
                     <p className="mt-4 text-sm text-slate-400">{nonReadyMessage(session)}</p>
                 )}
                 {generateError && (
@@ -248,9 +269,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     </div>
                 )}
                 {plan && <PlanViewer plan={plan} />}
+                {operationalPlan && <MaintenancePlanViewer plan={operationalPlan} />}
             </section>
 
-            {plan && (
+            {hasPlan && (
                 <section aria-labelledby="workflow-shell-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                     <h2 id="workflow-shell-heading" className="text-lg font-semibold text-white">Workflow shell</h2>
                     <p className="mt-2 text-sm text-slate-400">
@@ -309,6 +331,56 @@ function workflowMessage(workflow: CandidateWorkflowResponse): string {
     if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable.";
     if (workflow.failure?.code === "persistence_failed") return "Persistence failure.";
     return "Workflow creation did not complete.";
+}
+
+function validOperationalPlan(plan: OperationalCandidatePlanApiResponse, session: CandidatePlanningResponse): boolean {
+    if (!plan || typeof plan !== "object" || plan.effect_kind !== "operational_action"
+        || plan.session_id !== session.session_id || plan.candidate_id !== session.candidate_id) return false;
+    const fields = [plan.identifier, plan.candidate_fingerprint, plan.execution_intent, plan.provider_id,
+        plan.resource_id, plan.resource_type, plan.target_fingerprint, plan.expected_pre_state,
+        plan.intended_action, plan.disruption_scope, plan.created_at, plan.revalidated_candidate_fingerprint,
+        plan.verification?.pre_state, plan.verification?.expected_post_state,
+        plan.verification?.identity_fingerprint, plan.verification?.health_requirement, plan.verification?.unknown_outcome_policy];
+    return fields.every((value) => typeof value === "string" && value.trim().length > 0)
+        && (plan.target_version === null || typeof plan.target_version === "string")
+        && plan.verification.identity_fingerprint === plan.target_fingerprint
+        && plan.verification.pre_state === plan.expected_pre_state
+        && Array.isArray(plan.failure_considerations) && plan.failure_considerations.every((value) => typeof value === "string")
+        && Array.isArray(plan.evidence_ids) && plan.evidence_ids.every((value) => typeof value === "string");
+}
+
+function MaintenancePlanViewer({ plan }: { plan: OperationalCandidatePlanApiResponse }) {
+    return <article className="mt-5 space-y-5 rounded-xl border border-blue-400/30 bg-blue-400/5 p-5">
+        <h3 className="text-xl font-bold text-white">Maintenance plan</h3>
+        <p className="text-sm text-slate-300">Review this plan before creating a workflow. This does not restart anything; the action still needs a separate exact approval.</p>
+        <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <Detail label="Action" value={formatLabel(plan.intended_action)} />
+            <Detail label="Target" value={`${plan.provider_id}/${plan.resource_type}/${plan.resource_id}`} />
+            <Detail label="Expected starting state" value={plan.expected_pre_state} />
+            <Detail label="Expected disruption" value={plan.disruption_scope} />
+        </dl>
+        <section aria-labelledby="maintenance-verification-heading">
+            <h4 id="maintenance-verification-heading" className="font-semibold text-white">Verification after the action</h4>
+            <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
+                <Detail label="Expected outcome" value={plan.verification.expected_post_state} />
+                <Detail label="Health check" value={plan.verification.health_requirement} />
+                <Detail label="Uncertain outcome" value={plan.verification.unknown_outcome_policy} />
+            </dl>
+        </section>
+        <ListPanel title="Failure considerations" values={plan.failure_considerations} empty="No failure considerations supplied." />
+        <details>
+            <summary className="mc-focusable cursor-pointer text-sm text-blue-300">Plan references</summary>
+            <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
+                <Detail label="Plan ID" value={plan.identifier} />
+                <Detail label="Execution intent" value={plan.execution_intent} />
+                <Detail label="Target fingerprint" value={plan.target_fingerprint} />
+                <Detail label="Target version" value={plan.target_version ?? "Not supplied"} />
+                <Detail label="Candidate fingerprint" value={plan.candidate_fingerprint} />
+                <Detail label="Created time" value={plan.created_at} />
+            </dl>
+            <ListPanel title="Evidence IDs" values={plan.evidence_ids} empty="No evidence IDs listed." />
+        </details>
+    </article>;
 }
 
 function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {

@@ -16,6 +16,7 @@ import {
 import { WorkflowPage } from "./WorkflowPage";
 import type { WorkflowDetailResponse, WorkflowRecoveryDiagnostic } from "../types/atlasAgent";
 import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
+import { operationalActionRequest } from "../test/operationalPlanning";
 
 vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
@@ -39,7 +40,7 @@ const mockedSubmitWorkflowImplementationApproval = vi.mocked(submitWorkflowImple
 const mockedSubmitWorkflowVerificationApproval = vi.mocked(submitWorkflowVerificationApproval);
 
 function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDetailResponse {
-    return {
+    const response: WorkflowDetailResponse = {
         workflow_id: "workflow-123",
         workflow_source: "candidate",
         effect_kind: "repository_change",
@@ -125,6 +126,18 @@ function workflow(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDeta
         commit_approval_status: "not_requested",
         ...overrides,
     };
+    if (response.effect_kind === "operational_action") {
+        if (!Object.hasOwn(overrides, "operational_action_request")) response.operational_action_request = operationalActionRequest();
+        if (!Object.hasOwn(overrides, "approval_presentations")) {
+            const pending = response.implementation_approval_status === "pending";
+            const actionable = pending && response.workflow_state === "awaiting_implementation_approval";
+            response.approval_presentations = [{ approval_id: "approval-action-123", purpose: "operational_action",
+                decision_status: pending ? "pending" : response.implementation_approval_status === "approved" ? "approved" : "rejected",
+                presentation_state: pending ? actionable ? "actionable" : "historical" : "resolved", actionable,
+                reason: "Synthetic server approval presentation." }];
+        }
+    }
+    return response;
 }
 
 function workflowAwaitingCommit(overrides: Partial<WorkflowDetailResponse> = {}): WorkflowDetailResponse {
@@ -175,6 +188,48 @@ function renderPage(path = "/workflows/workflow-123") {
 }
 
 describe("WorkflowPage", () => {
+    it("shows the exact maintenance request before offering action approval", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Exact action request" });
+        expect(screen.getByText("Temporary service interruption.")).toBeVisible();
+        expect(screen.getByText("2999-01-01T12:00:00Z")).toBeVisible();
+        expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
+        expect(screen.getByRole("button", { name: "Approve Exact Action" })).toBeEnabled();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+    });
+
+    it.each(["missing", "invalid", "unselected authority"])("does not offer approval when exact maintenance request is %s", async (kind) => {
+        const request = kind === "missing" ? null : kind === "invalid"
+            ? operationalActionRequest({ verification: { ...operationalActionRequest().verification, pre_state: "different-state" } })
+            : { ...operationalActionRequest(), execution_enabled: true } as unknown as WorkflowDetailResponse["operational_action_request"];
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action", operational_action_request: request }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Exact action request unavailable" });
+        expect(screen.queryByRole("button", { name: "Approve Exact Action" })).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+    });
+
+    it.each(["expired", "historical", "superseded", "preparation-only"])("does not inherit exact action approval from %s presentation", async (kind) => {
+        const presentations: WorkflowDetailResponse["approval_presentations"] = [{ approval_id: "other-approval",
+            purpose: kind === "preparation-only" ? "candidate_workflow_shell" : "operational_action", decision_status: "pending",
+            presentation_state: kind === "preparation-only" ? "actionable" : kind as "expired" | "historical" | "superseded",
+            actionable: kind === "preparation-only", reason: "Not a current exact action decision." }];
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action", approval_presentations: presentations }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Exact action request" });
+        expect(screen.queryByRole("button", { name: "Approve Exact Action" })).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+    });
+
+    it("requires a reviewable exact request before resuming an approved maintenance stage", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action", operational_action_request: null, implementation_approval_status: "approved" }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Exact action request unavailable" });
+        expect(screen.queryByRole("button", { name: "Run approved action" })).not.toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
     it("pauses maintenance status checks while an approval is pending", async () => {
         vi.useFakeTimers();
         const initial = workflow({ effect_kind: "operational_action" });
@@ -192,7 +247,7 @@ describe("WorkflowPage", () => {
             expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(1);
             await act(async () => resolveApproval({ workflow_id: "workflow-123", workflow_state: "awaiting_implementation_approval", implementation_approval_status: "approved", message: null }));
             expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
-            expect(screen.getByText("Action approved. Resume to run this action.")).toBeVisible();
+            expect(screen.getByText("Action approved. Run it when you are ready.")).toBeVisible();
             expect(mockedResumeWorkflow).not.toHaveBeenCalled();
         } finally {
             view.unmount();
@@ -740,7 +795,7 @@ describe("WorkflowPage", () => {
     it("presents operational action approval without repository-only controls", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({
             effect_kind: "operational_action",
-            operational_action_request: { request_id: "action-request-123" },
+            operational_action_request: operationalActionRequest(),
         }));
         renderPage();
 

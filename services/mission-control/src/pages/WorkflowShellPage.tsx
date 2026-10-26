@@ -271,7 +271,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         Workflow {workflow.workflow_session_id ?? "not created"}
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Read-only workflow shell summary from Atlas Agent. Mission Control does not execute changes, verify changes, review changes, or commit code from this page.
+                        Review this workflow and prepare its exact request for approval. Preparing a request does not run the change.
                     </p>
                 </div>
                 <WorkflowRail />
@@ -300,9 +300,9 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 </dl>
                 {canCreateImplementation && (
                     <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
-                        <h2 className="text-base font-semibold text-emerald-200">Create implementation request</h2>
+                        <h2 className="text-base font-semibold text-emerald-200">Prepare exact request</h2>
                         <p className="mt-2 text-sm text-slate-300">
-                            Translate the approval-gated shell into the immutable implementation request required for execution approval.
+                            Prepare the exact request from this plan. You will review and approve it separately before running the change.
                         </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                     <button
@@ -311,9 +311,9 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         disabled={isCreatingImplementation || isLoadingWorkflow}
                         className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {isCreatingImplementation ? "Creating implementation request..." : "Create Implementation Request"}
+                        {isCreatingImplementation ? "Preparing exact request..." : "Prepare exact request"}
                     </button>
-                            {isCreatingImplementation && <p className="text-sm text-slate-200">Creating implementation request...</p>}
+                            {isCreatingImplementation && <p className="text-sm text-slate-200">Preparing exact request...</p>}
                         </div>
                     </div>
                 )}

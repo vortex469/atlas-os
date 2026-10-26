@@ -1,6 +1,8 @@
 import { isDeepStrictEqual } from "node:util";
 import type { Page } from "@playwright/test";
 import type { ExecutionCandidate } from "../src/types/executionCandidates";
+import { operationalPlan, operationalActionRequest } from "../src/test/operationalPlanning";
+import { operationalLifecycle, operationalDiagnostic } from "../src/test/operationalLifecycle";
 import type {
     CandidatePlanApiResponse, CandidatePlanningResponse, CandidateWorkflowResponse,
     WorkflowAuditResponse, WorkflowDetailResponse,
@@ -138,7 +140,15 @@ function completedAudit(): WorkflowAuditResponse {
     };
 }
 
-export async function installRepositoryJourney(page: Page, reject = false) {
+export async function installRepositoryJourney(page: Page, reject = false, options: { maintenance?: boolean } = {}) {
+    const maintenance = options.maintenance === true;
+    const maintenancePlan = operationalPlan({ identifier: journey.plan, session_id: journey.session,
+        candidate_id: journey.candidate, candidate_fingerprint: journey.candidateFingerprint,
+        revalidated_candidate_fingerprint: journey.candidateFingerprint });
+    const actionRequest = operationalActionRequest({ request_id: "action-request-browser-journey" });
+    const sessionResponse = (ready: boolean): CandidatePlanningResponse => maintenance
+        ? { ...planningSession(ready), plan: null, operational_plan: ready ? maintenancePlan : null }
+        : planningSession(ready);
     const planningPath = `/candidate-planning/${journey.session}`;
     const workflowPath = `/api/v1/agent/workflows/${journey.workflow}`;
     const expectedWrites: JourneyWrite[] = reject ? [
@@ -156,11 +166,13 @@ export async function installRepositoryJourney(page: Page, reject = false) {
         { path: `${workflowPath}/commit-approval`, body: { workflow_id: journey.workflow, decision: "approve" } },
         { path: `${workflowPath}/resume`, body: null },
     ];
+    if (maintenance && !reject) expectedWrites.splice(7);
     let index = 0;
     let planReady = false;
     let implementationReady = reject;
     let phase: Phase = "implementation";
     let approved = false;
+    let repositoryPlanReads = 0;
     const writes: JourneyWrite[] = [];
     const unexpected: string[] = [];
     let nextReadGate: { started: () => void; released: Promise<void> } | null = null;
@@ -193,38 +205,70 @@ export async function installRepositoryJourney(page: Page, reject = false) {
                 phase = "rejected";
                 return route.fulfill({ json: { workflow_id: journey.workflow, workflow_state: "blocked", implementation_approval_status: "rejected", message: "Rejected in browser fixture." } });
             }
-            if (path === "/candidate-planning") return route.fulfill({ json: planningSession(false) });
-            if (path === `${planningPath}/plan`) { planReady = true; return route.fulfill({ json: planningSession(true) }); }
+            if (path === "/candidate-planning") return route.fulfill({ json: sessionResponse(false) });
+            if (path === `${planningPath}/plan`) { planReady = true; return route.fulfill({ json: sessionResponse(true) }); }
             if (path === `${planningPath}/workflow`) return route.fulfill({ json: shell });
             if (path === `${planningPath}/implementation`) {
                 implementationReady = true;
                 return route.fulfill({ json: { candidate_planning_session_id: journey.session, workflow_session_id: journey.workflow,
                     translation_status: "implementation_ready", implementation_request_id: "implementation-browser-journey",
                     exact_approval_request_id: "approval-browser-implementation", candidate_fingerprint: journey.candidateFingerprint,
-                    plan_fingerprint: journey.planFingerprint, repository_head: journey.head, translator_version: "fixture-translator-v1", reason_codes: [], failure: null } });
+                    plan_fingerprint: journey.planFingerprint, repository_head: maintenance ? null : journey.head, translator_version: "fixture-translator-v1", reason_codes: [], failure: null } });
             }
             if (path.endsWith("/resume")) {
-                phase = phase === "implementation" ? "verification" : phase === "verification" ? "commit" : "completed";
+                phase = maintenance ? "completed" : phase === "implementation" ? "verification" : phase === "verification" ? "commit" : "completed";
                 approved = false;
                 return route.fulfill({ status: 204 });
             }
             approved = true;
             return route.fulfill({ json: { workflow_id: journey.workflow, workflow_state: `awaiting_${phase}_approval`, [`${phase}_approval_status`]: "approved", message: "Approved in browser fixture." } });
         }
-        if (isCore && path === `/execution-candidates/${journey.candidate}`) return route.fulfill({ json: candidate });
-        if (isAgent && path === planningPath) return route.fulfill({ json: planningSession(planReady) });
-        if (isAgent && path === `${planningPath}/plan` && planReady) return route.fulfill({ json: plan });
+        if (isCore && path === `/execution-candidates/${journey.candidate}`) return route.fulfill({ json: maintenance
+            ? { ...candidate, source_subsystem: "operator-intent", execution_category: "restart", execution_intent: "restart-service", target_id: "proxmox/qemu/110", target_type: "qemu", rationale: "Review a simulated service restart." }
+            : candidate });
+        if (isAgent && path === planningPath) return route.fulfill({ json: sessionResponse(planReady) });
+        if (isAgent && path === `${planningPath}/plan`) {
+            repositoryPlanReads += 1;
+            if (!maintenance && planReady) return route.fulfill({ json: plan });
+            return route.fulfill({ status: 404, json: { detail: "Repository plan not found." } });
+        }
         if (isAgent && path === `${workflowPath}/implementation-request` && implementationReady) {
-            const snapshot = workflowDetail(phase, approved);
+            const snapshot = maintenance ? maintenanceWorkflow(phase, approved, actionRequest) : workflowDetail(phase, approved);
             const gate = nextReadGate;
             nextReadGate = null;
             if (gate) { gate.started(); await gate.released; }
             return route.fulfill({ json: snapshot });
         }
+        if (isAgent && maintenance && path === `${workflowPath}/operational-lifecycle`) {
+            const complete = phase === "completed";
+            return route.fulfill({ json: operationalLifecycle({
+                workflow_id: journey.workflow, workflow_state: complete ? "completed" : "awaiting_implementation_approval",
+                candidate_id: journey.candidate, planning_session_id: journey.session,
+                candidate_fingerprint: journey.candidateFingerprint, plan_fingerprint: journey.planFingerprint,
+                availability: complete ? "complete" : "agent_only", consistency_status: complete ? "consistent" : "agent_only",
+                agent_execution_stage: complete ? "verified" : "not_started", core_record_state: complete ? "verified" : null,
+                action_request_id: actionRequest.request_id, request_digest: actionRequest.request_digest,
+                target_fingerprint: actionRequest.target_fingerprint, observed_target_fingerprint: complete ? actionRequest.target_fingerprint : null,
+                target_version: actionRequest.target_version, disruption_scope: actionRequest.disruption_scope,
+                request_created_at: actionRequest.generated_at, request_expires_at: actionRequest.expires_at,
+                action_approval: { approval_id: "approval-browser-implementation", decision_status: complete || approved ? "approved" : "pending",
+                    presentation_state: complete || approved ? "resolved" : "actionable", actionable: !complete && !approved, expires_at: actionRequest.expires_at },
+                barrier_crossed: complete, barrier_crossing_count: complete ? 1 : 0,
+                provider_operation_captured: complete, provider_operation_capture_count: complete ? 1 : 0,
+                dispatch_status: complete ? "succeeded" : null, provider_operation_reference: complete ? "fixture-operation-reference" : null,
+                transitions: complete ? [{ sequence: 1, state: "verified", occurred_at: observedAt }] : [],
+                verification_status: complete ? "succeeded" : null, observed_state: complete ? "running" : null,
+                observed_health: complete ? "healthy" : null, terminal: complete,
+            }) });
+        }
+        if (isAgent && maintenance && path === `${workflowPath}/recovery-diagnostic`) return route.fulfill({ json: operationalDiagnostic({
+            applicable: phase === "completed", correlation: { workflow_id: journey.workflow, request_id: actionRequest.request_id,
+                request_digest_match: true, agent_record_present: phase === "completed", core_record_present: phase === "completed" },
+        }) });
         if (isAgent && path === `${workflowPath}/audit` && phase === "completed") return route.fulfill({ json: completedAudit() });
         return route.fulfill({ status: 404, json: { detail: "Optional information unavailable in browser fixture." } });
     });
-    return { writes, expectedWrites, unexpected, holdNextWorkflowRead: () => {
+    return { writes, expectedWrites, unexpected, get repositoryPlanReads() { return repositoryPlanReads; }, holdNextWorkflowRead: () => {
         let release!: () => void;
         let started!: () => void;
         const released = new Promise<void>((resolve) => { release = resolve; });
@@ -232,4 +276,32 @@ export async function installRepositoryJourney(page: Page, reject = false) {
         nextReadGate = { started, released };
         return { requested, release };
     } };
+}
+
+function maintenanceWorkflow(phase: Phase, approved: boolean, request: ReturnType<typeof operationalActionRequest>): WorkflowDetailResponse {
+    const complete = phase === "completed";
+    return {
+        ...workflowDetail(phase, approved), effect_kind: "operational_action",
+        repository: null, working_directory: null, affected_files: [], implementation_request: null,
+        operational_action_request: request, verification_approval_status: "not_requested", commit_approval_status: "not_requested",
+        approval_presentations: [
+            { approval_id: "approval-browser-preparation", purpose: "candidate_workflow_shell", decision_status: "approved", presentation_state: "resolved", actionable: false, reason: "Preparation is recorded." },
+            { approval_id: "approval-browser-implementation", purpose: "operational_action", decision_status: complete || approved ? "approved" : "pending",
+                presentation_state: complete || approved ? "resolved" : "actionable", actionable: !complete && !approved, reason: "Exact action approval is separate from preparation." },
+        ],
+        timeline: ["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow", "Operational Action Approval", "Execution", "Verification"].map((name, index) => ({
+            name, status: complete || index < 4 || (index === 4 && approved) ? "completed" : index === 4 ? "current" : "waiting",
+        })),
+        execution: { execution_status: null, started_at: null, completed_at: null, result: null, changed_files_count: 0,
+            tool: null, working_directory: null, repository: null, changed_files: [], execution_request_id: null },
+        verification_plan: { verification_plan_id: null, verifier_version: null, changed_files_digest: null, verification_check_ids: [],
+            command_backed_checks: [], working_directory: null, repository: null, verification_status: "not_applicable" },
+        verification_evidence: { verification_status: null, completed_time: null, executed_checks: [], check_results: [], repository_head: null, changed_files_digest: null },
+        review: { review_result: null, review_status: null, approved: null, evidence_summary: null, changed_files: [], review_fingerprint: null, model_assisted_review: "Not applicable" },
+        commit_request: null, commit_result: { commit_sha: null, commit_message: null, committed_files: [], completion_time: null },
+    };
+}
+
+export function installMaintenanceJourney(page: Page) {
+    return installRepositoryJourney(page, false, { maintenance: true });
 }

@@ -51,6 +51,13 @@ candidate evidence, approval and execution-admission records, queue and worker
 evidence, and review surfaces. Its installation workflow panels are evidence and
 review surfaces; authoritative validation remains server-side.
 
+Maintenance proposals use their own plan and exact-action review screens. The
+operator can review the target, expected disruption, expiry, and verification
+rules before a separate exact-action approval and run step. Approval controls
+require the server's current actionable approval presentation. Phone and desktop
+browser tests simulate this journey without contacting a provider or enabling
+execution; these checks do not establish production acceptance.
+
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent
 remains exactly `update-compose-stack`.

@@ -28,7 +28,9 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
                 ))}
             </ol>
 
-            <ExecutionSection execution={workflow.execution} workflowState={workflow.workflow_state} approvalStatus={workflow.implementation_approval_status} />
+            {workflow.effect_kind === "operational_action"
+                ? <p className="mt-5 text-sm text-slate-300">Dispatch and verification results are shown in the operational lifecycle.</p>
+                : <ExecutionSection execution={workflow.execution} workflowState={workflow.workflow_state} approvalStatus={workflow.implementation_approval_status} />}
         </section>
     );
 }
@@ -72,6 +74,13 @@ function ExecutionSection({ execution, workflowState, approvalStatus }: { execut
 }
 
 function executionStateText(workflow: WorkflowDetailResponse): string {
+    if (workflow.effect_kind === "operational_action") {
+        if (workflow.workflow_state === "completed") return "Maintenance workflow completed. Review the recorded operational outcome.";
+        if (workflow.workflow_state === "blocked") return "Maintenance workflow is blocked. Review the operational lifecycle.";
+        if (workflow.implementation_approval_status === "rejected") return "Exact action approval was rejected.";
+        if (workflow.workflow_state === "awaiting_implementation_approval" && workflow.implementation_approval_status !== "approved") return "Waiting for exact action approval.";
+        return "Check the operational lifecycle for dispatch and verification results.";
+    }
     const execution = workflow.execution;
     if (execution.execution_status === "unknown") return "Worker outcome unknown. Check the original result; do not resubmit.";
     if (workflow.workflow_state === "executing") return "Execution running...";

@@ -25,7 +25,9 @@ import type {
     WorkflowOperationalLifecycle,
     WorkflowRecoveryDiagnostic,
     OperationalSupportBundle,
+    WorkflowOperationalActionRequestSummary,
 } from "../types/atlasAgent";
+import { operationalRequest } from "../utils/operationalRequest";
 import { fallbackWorkflowRailStages, workflowRailStages } from "../utils/workflowState";
 
 type LoadMode = "initial" | "refresh";
@@ -176,7 +178,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     }
 
     async function submitDecision(decision: WorkflowImplementationDecision) {
-        if (!workflow || workflow.workflow_state !== "awaiting_implementation_approval" || controlsBusy || readPending.current) return;
+        if (!workflow || !canDecide || controlsBusy || readPending.current) return;
         setIsSubmitting(true);
         setApprovalError(null);
         try {
@@ -256,9 +258,15 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     const isOperational = workflow.effect_kind === "operational_action";
     const isRepository = !isOperational;
+    const actionRequest = isOperational ? operationalRequest(workflow.operational_action_request) : null;
+    const operationalApprovalReady = !isOperational || (actionRequest !== null
+        && Array.isArray(workflow.approval_presentations) && workflow.approval_presentations.some((approval) =>
+            approval?.purpose === "operational_action" && approval.decision_status === "pending"
+            && approval.presentation_state === "actionable" && approval.actionable === true));
     const canDecide =
         workflow.workflow_state === "awaiting_implementation_approval"
-        && workflow.implementation_approval_status === "pending";
+        && workflow.implementation_approval_status === "pending"
+        && operationalApprovalReady;
     const canDecideVerification =
         isRepository
         &&
@@ -272,7 +280,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     const canResumeImplementation =
         workflow.workflow_state === "awaiting_implementation_approval"
-        && workflow.implementation_approval_status === "approved";
+        && workflow.implementation_approval_status === "approved"
+        && (!isOperational || actionRequest !== null);
     const canResumeVerification =
         isRepository
         &&
@@ -293,7 +302,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const resumeButtonLabel = canReconcileWorker
         ? "Check worker result"
         : canResumeImplementation
-        ? "Resume Approved Implementation"
+        ? isOperational ? "Run approved action" : "Resume Approved Implementation"
         : canResumeVerification
             ? "Resume Approved Verification"
             : canResumeCommit
@@ -363,6 +372,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
             {isOperational && (
                 <>
+                    <OperationalActionRequestSection request={actionRequest} />
                     <OperationalLifecyclePanel
                         lifecycle={operationalLifecycle}
                         isLoading={isRefreshing && operationalLifecycle === null && lifecycleError === null}
@@ -459,11 +469,15 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         </button>
                     </div>
                 ) : (
-                    <p className="mt-4 text-sm text-slate-300">Approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
+                    <p className="mt-4 text-sm text-slate-300">{isOperational && workflow.implementation_approval_status === "approved"
+                        ? "Exact action approval is recorded."
+                        : isOperational && workflow.workflow_state === "awaiting_implementation_approval" && !operationalApprovalReady
+                        ? "Exact action approval is unavailable. Refresh to check the request and its approval status."
+                        : `Approval controls are unavailable because this workflow is ${formatLabel(workflow.workflow_state)}.`}</p>
                 )}
                 {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">Submitting approval...</p>}
                 {approvalResult && approvalResult.implementation_approval_status === "approved" && canResumeImplementation && !controlsBusy && (
-                    <p role="status" className="mt-3 text-sm text-emerald-200">{isOperational ? "Action approved. Resume to run this action." : "Implementation approved. Resume to run this change."}</p>
+                    <p role="status" className="mt-3 text-sm text-emerald-200">{isOperational ? "Action approved. Run it when you are ready." : "Implementation approved. Resume to run this change."}</p>
                 )}
                 {approvalResult && approvalResult.implementation_approval_status === "rejected" && (
                     <p role="status" className="mt-3 text-sm text-red-100">Approval rejected.</p>
@@ -473,8 +487,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
             {canResume && (
                 <section aria-labelledby="resume-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">{canReconcileWorker ? "Check original worker result" : "Resume approved stage"}</h2>
-                    <p className="mt-2 text-sm text-slate-400">{canReconcileWorker ? "This checks the original request once. It will not run the change again. A recovered change still requires separate verification and commit approvals." : "Use this to advance execution after an approval decision."}</p>
+                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">{canReconcileWorker ? "Check original worker result" : isOperational ? "Run approved maintenance" : "Resume approved stage"}</h2>
+                    <p className="mt-2 text-sm text-slate-400">{canReconcileWorker ? "This checks the original request once. It will not run the change again. A recovered change still requires separate verification and commit approvals." : isOperational ? "Submit the approved maintenance request. Atlas checks its execution permissions before acting." : "Use this to advance execution after an approval decision."}</p>
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button
                             type="button"
@@ -482,10 +496,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                             disabled={controlsBusy}
                             className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-blue-950 transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {isResuming ? "Resuming..." : resumeButtonLabel}
+                            {isResuming ? isOperational ? "Submitting..." : "Resuming..." : resumeButtonLabel}
                         </button>
                     </div>
-                    {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">Resuming workflow...</p>}
+                    {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting the approved action..." : "Resuming workflow..."}</p>}
                     {resumeError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(resumeError)}</p>}
                 </section>
             )}
@@ -501,6 +515,37 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             </Link>
         </main>
     );
+}
+
+function OperationalActionRequestSection({ request }: { request: WorkflowOperationalActionRequestSummary | null }) {
+    if (!request) return <section role="alert" className="rounded-xl border border-amber-400/30 p-5">
+        <h2 className="font-semibold text-amber-200">Exact action request unavailable</h2>
+        <p className="mt-2 text-sm text-slate-300">Refresh this workflow before reviewing or approving the action.</p>
+    </section>;
+    return <section aria-labelledby="exact-action-heading" className="space-y-4 rounded-xl border border-cyan-400/30 bg-slate-900/70 p-5">
+        <h2 id="exact-action-heading" className="text-lg font-semibold text-white">Exact action request</h2>
+        <p className="text-sm text-slate-300">Review this exact target and its verification rules. Approval and running the action are separate steps.</p>
+        <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <Detail label="Action" value={formatLabel(request.intended_action)} />
+            <Detail label="Target" value={`${request.provider_id}/${request.resource_type}/${request.resource_id}`} />
+            <Detail label="Expected starting state" value={request.expected_pre_state} />
+            <Detail label="Expected disruption" value={request.disruption_scope} />
+            <Detail label="Request expires" value={request.expires_at} />
+            <Detail label="Expected outcome" value={request.verification.expected_post_state} />
+            <Detail label="Health check" value={request.verification.health_requirement} />
+            <Detail label="Uncertain outcome" value={request.verification.unknown_outcome_policy} />
+        </dl>
+        <details>
+            <summary className="mc-focusable cursor-pointer text-sm text-cyan-200">Request references</summary>
+            <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
+                <Detail label="Request ID" value={request.request_id} />
+                <Detail label="Request digest" value={request.request_digest} />
+                <Detail label="Target fingerprint" value={request.target_fingerprint} />
+                <Detail label="Target version" value={request.target_version ?? "Not supplied"} />
+                <Detail label="Generated time" value={request.generated_at} />
+            </dl>
+        </details>
+    </section>;
 }
 
 function ImplementationRequestSection({ workflow }: { workflow: WorkflowDetailResponse }) {
