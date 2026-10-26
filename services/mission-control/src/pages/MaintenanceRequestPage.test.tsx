@@ -77,6 +77,7 @@ function createdCandidate(): OperatorIntentCreationResponse {
             outcome: "created",
             candidate_id: "candidate-operator-intent-110",
             candidate: {
+                effect_kind: "operational_action",
                 id: "candidate-operator-intent-110",
                 source_recommendation_id: "operator-intent-record-1",
                 source_subsystem: "operator-intent",
@@ -321,6 +322,7 @@ describe("MaintenanceRequestPage", () => {
             outcome: "created",
             candidate_id: "candidate-expired",
             candidate: {
+                effect_kind: "operational_action",
                 id: "candidate-expired",
                 source_recommendation_id: "operator-intent-record-1",
                 source_subsystem: "operator-intent",

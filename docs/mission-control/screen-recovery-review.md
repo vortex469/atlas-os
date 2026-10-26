@@ -58,6 +58,11 @@ The existing Quality gates workflow now includes that browser command after
 installing Chromium. It uploads browser failure screenshots and traces for seven
 days. A local isolated failure probe confirmed both files are produced; the
 changed workflow still requires its own CI result before a green-check claim.
+An additional fixture audit validated nine representative synthetic responses
+against native Core/Agent response models. It corrected omitted candidate effect
+kinds and audit preparation approval fields. Browser tests are now included in
+the TypeScript build so these required fields cannot silently disappear from
+typed fixtures. This schema check does not establish real backend integration.
 
 ## Acceptance status and remaining gaps
 

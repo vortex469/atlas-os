@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { expect, test as base } from "@playwright/test";
 import type { Page, Route } from "@playwright/test";
+import type { ExecutionCandidate } from "../src/types/executionCandidates";
 
 type MockMode = "available" | "core-unavailable";
 
@@ -148,9 +149,9 @@ const workflowPage = {
     offset: 0,
 };
 
-export const executionCandidates = [
+export const executionCandidates: ExecutionCandidate[] = [
     {
-        id: "candidate-browser-baseline",
+        id: "candidate-browser-baseline", effect_kind: "repository_change",
         source_recommendation_id: "recommendation-1",
         source_subsystem: "ace",
         recommendation_class: "maintenance",
@@ -172,6 +173,7 @@ export const executionCandidates = [
     },
     {
         id: "candidate-not-eligible",
+        effect_kind: "repository_change",
         source_recommendation_id: "recommendation-2",
         source_subsystem: "ace",
         recommendation_class: "maintenance",
@@ -191,6 +193,7 @@ export const executionCandidates = [
     },
     {
         id: "candidate-expired",
+        effect_kind: "repository_change",
         source_recommendation_id: "recommendation-3",
         source_subsystem: "ace",
         recommendation_class: "maintenance",

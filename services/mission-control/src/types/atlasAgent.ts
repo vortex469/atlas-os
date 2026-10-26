@@ -363,6 +363,7 @@ export interface WorkflowAuditApproval {
 
 export interface WorkflowAuditApprovals {
     status: string;
+    shell: WorkflowAuditApproval;
     implementation: WorkflowAuditApproval;
     verification: WorkflowAuditApproval;
     commit: WorkflowAuditApproval;
@@ -413,7 +414,7 @@ export interface WorkflowAuditCommit {
 
 export interface WorkflowAuditResponse {
     workflow_id: string;
-    effect_kind?: "repository_change" | "operational_action";
+    effect_kind: "repository_change" | "operational_action";
     workflow_state: string;
     workflow_source: string;
     blocked_reason?: string | null;

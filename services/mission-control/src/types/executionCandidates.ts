@@ -14,6 +14,7 @@ export type ExecutionConstraint = "service_disruption" | "requires_backup" | str
 
 export type ExecutionCandidate = {
     id: string;
+    effect_kind: "repository_change" | "operational_action";
     source_recommendation_id: string;
     source_subsystem: string;
     recommendation_class: string;

@@ -154,6 +154,9 @@ The existing Quality gates workflow also installs Chromium and runs the
 simulated browser journeys with two workers. Browser failures retain a screenshot
 and trace in a seven-day workflow artifact. The fixtures reject unexpected
 mutations; these checks do not exercise a real provider or deploy Atlas.
+The build type-checks the browser tests as well as the application. Candidate
+fixtures include the backend-required effect kind, and audit fixtures keep the
+workflow-preparation approval separate from implementation approval.
 
 
 The v0.57 interface prerequisite inventory is displayed beneath the exact v0.56

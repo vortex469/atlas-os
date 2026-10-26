@@ -23,6 +23,7 @@ type Phase = "implementation" | "verification" | "commit" | "completed" | "rejec
 type JourneyWrite = { path: string; body: unknown };
 
 const candidate: ExecutionCandidate = {
+    effect_kind: "repository_change",
     id: journey.candidate, source_recommendation_id: "recommendation-browser-journey",
     source_subsystem: "ace", recommendation_class: "maintenance", target_id: "fixture-service",
     target_type: "service", execution_category: "update", execution_intent: "update-compose-stack",
@@ -33,6 +34,7 @@ const candidate: ExecutionCandidate = {
 };
 export const maintenanceCandidate: ExecutionCandidate = {
     ...candidate, source_subsystem: "operator-intent", execution_category: "restart", execution_intent: "restart-service",
+    effect_kind: "operational_action",
     target_id: "110", target_type: "qemu", rationale: "Review a simulated service restart.",
     expires_at: "2026-10-26T00:15:00.000Z",
 };
@@ -118,6 +120,7 @@ function workflowDetail(phase: Phase, approved: boolean): WorkflowDetailResponse
 
 function completedAudit(): WorkflowAuditResponse {
     return {
+        effect_kind: "repository_change",
         workflow_id: journey.workflow, workflow_state: "completed", workflow_source: "candidate",
         validation: { valid: true, failure_code: null, failure_stage: null },
         timeline: (["candidate", "planning", "plan", "workflow", "implementation", "approvals", "execution", "verification", "review", "commit"] as const).map((name) => ({ name, status: "completed" as const })),
@@ -130,7 +133,7 @@ function completedAudit(): WorkflowAuditResponse {
         implementation: { status: "completed", implementation_request_id: "implementation-browser-journey", execution_intent: "update-compose-stack",
             tool: "fixture-editor", repository_root: journey.repository, repository_head: journey.head, repository_branch: "fixture-branch",
             working_directory: journey.repository, affected_files: [journey.file], translator_version: "fixture-translator-v1" },
-        approvals: { status: "completed", implementation: { status: "approved", approval_id: "approval-browser-implementation" },
+        approvals: { status: "completed", shell: { status: "approved", approval_id: "approval-browser-preparation" }, implementation: { status: "approved", approval_id: "approval-browser-implementation" },
             verification: { status: "approved", approval_id: "approval-browser-verification" }, commit: { status: "approved", approval_id: "approval-browser-commit" } },
         execution: { status: "completed", execution_request_id: "execution-browser-journey", execution_status: "succeeded", changed_files_count: 1,
             changed_files: [journey.file], tool: "fixture-editor", repository: journey.repository },

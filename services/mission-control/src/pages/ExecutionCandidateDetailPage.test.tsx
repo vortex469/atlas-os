@@ -29,6 +29,7 @@ const mockedCreateCandidatePlanningSession = vi.mocked(createCandidatePlanningSe
 
 function candidate(overrides: Partial<ExecutionCandidate> = {}): ExecutionCandidate {
     return {
+        effect_kind: "repository_change",
         id: "candidate-1",
         source_recommendation_id: "finding-1",
         source_subsystem: "orion",

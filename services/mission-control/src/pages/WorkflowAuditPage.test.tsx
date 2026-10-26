@@ -18,6 +18,7 @@ const mockedGetWorkflowAudit = vi.mocked(getWorkflowAudit);
 
 function audit(overrides: Partial<WorkflowAuditResponse> = {}): WorkflowAuditResponse {
     return {
+        effect_kind: "repository_change",
         workflow_id: "workflow-123",
         workflow_state: "completed",
         workflow_source: "candidate",
@@ -81,6 +82,7 @@ function audit(overrides: Partial<WorkflowAuditResponse> = {}): WorkflowAuditRes
             translator_version: "translator-v1",
         },
         approvals: {
+            shell: { status: "approved", approval_id: "approval-preparation-123" },
             status: "completed",
             implementation: {
                 status: "approved",
