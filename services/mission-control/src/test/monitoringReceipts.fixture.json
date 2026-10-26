@@ -1,0 +1,62 @@
+{
+  "created": {
+    "request": {
+      "request_id": "provider-intent-mutation-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected_management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectation": "running",
+      "expected_record_version": 0,
+      "acknowledge_monitoring_suppression": false
+    },
+    "result": {
+      "outcome": "created",
+      "request_id": "provider-intent-mutation-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "provider_id": "proxmox",
+      "resource_type": "qemu",
+      "resource_id": "110",
+      "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectation": "running",
+      "record_version": 1,
+      "superseded_previous_incarnation": false
+    }
+  },
+  "updated": {
+    "request": {
+      "request_id": "provider-intent-mutation-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected_management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectation": "stopped",
+      "expected_record_version": 4,
+      "acknowledge_monitoring_suppression": false
+    },
+    "result": {
+      "outcome": "updated",
+      "request_id": "provider-intent-mutation-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "provider_id": "proxmox",
+      "resource_type": "qemu",
+      "resource_id": "110",
+      "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectation": "stopped",
+      "record_version": 5,
+      "superseded_previous_incarnation": false
+    }
+  },
+  "rebound": {
+    "request": {
+      "request_id": "provider-intent-mutation-cccccccccccccccccccccccccccccccc",
+      "expected_management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectation": "ignored",
+      "expected_record_version": 0,
+      "acknowledge_monitoring_suppression": true
+    },
+    "result": {
+      "outcome": "rebound",
+      "request_id": "provider-intent-mutation-cccccccccccccccccccccccccccccccc",
+      "provider_id": "proxmox",
+      "resource_type": "qemu",
+      "resource_id": "110",
+      "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectation": "ignored",
+      "record_version": 1,
+      "superseded_previous_incarnation": true
+    }
+  }
+}

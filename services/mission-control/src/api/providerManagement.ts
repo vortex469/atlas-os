@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseMonitoringReceipt } from "./monitoringReceipt";
 import type {
     ProviderIntentMutationRequest,
     ProviderIntentMutationResult,
@@ -212,13 +213,14 @@ export async function putProviderMonitoringIntent(
     request: ProviderIntentMutationRequest,
     csrfToken: string,
 ): Promise<ProviderIntentMutationResult> {
-    const response = await atlas.put<ProviderIntentMutationResult>(
+    const submittedRequest = { ...request };
+    const response = await atlas.put<unknown>(
         `/providers/${encodeURIComponent(providerId)}/management/resources/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}/monitoring-intent`,
-        request,
+        submittedRequest,
         {
             withCredentials: true,
             headers: { "X-Atlas-CSRF-Token": csrfToken },
         },
     );
-    return response.data;
+    return parseMonitoringReceipt(response.data, providerId, resourceType, resourceId, submittedRequest);
 }
