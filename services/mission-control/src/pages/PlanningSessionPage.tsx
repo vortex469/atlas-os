@@ -199,10 +199,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
-                        Candidate Planning
+                        Change planning
                     </p>
                     <h1 className="mt-3 break-all text-3xl font-bold text-white">
-                        Planning Session {session.session_id ?? sessionId}
+                        Plan this change
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals.
@@ -236,13 +236,15 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         </Link>
                     </p>
                 )}
-                <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Planning Session ID" value={session.session_id ?? sessionId} />
-                    <Detail label="Candidate ID" value={session.candidate_id} />
-                    <Detail label="Planning status" value={formatLabel(session.status)} />
-                    <Detail label="Created time" value="Not exposed by Atlas Agent API" />
-                    <Detail label="Candidate fingerprint" value={session.candidate_fingerprint ?? "Not available"} />
-                </dl>
+                <details className="mt-5 rounded-lg border border-slate-800 p-3">
+                    <summary className="cursor-pointer text-sm text-slate-300">Technical details</summary>
+                    <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Planning Session ID" value={session.session_id ?? sessionId} />
+                        <Detail label="Candidate ID" value={session.candidate_id} />
+                        <Detail label="Planning status" value={formatLabel(session.status)} />
+                        <Detail label="Candidate fingerprint" value={session.candidate_fingerprint ?? "Not available"} />
+                    </dl>
+                </details>
                 <Link to={`/execution-candidates/${encodeURIComponent(session.candidate_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Review original proposal</Link>
             </section>
 

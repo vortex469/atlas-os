@@ -184,12 +184,14 @@ describe("PlanningSessionPage", () => {
     });
 
     it("renders planning session metadata, workflow rail, and no execution controls", async () => {
+        const user = userEvent.setup();
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: /Planning Session candidate-plan-1/i })).toBeInTheDocument();
+        expect(await screen.findByText("candidate-plan-1", { exact: true })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Plan this change" })).toBeVisible();
         expect(screen.getByText("candidate-1")).toBeInTheDocument();
         expect(screen.getAllByText("Ready For Planning").length).toBeGreaterThan(0);
-        expect(screen.getByText("Not exposed by Atlas Agent API")).toBeInTheDocument();
+        expect(screen.queryByText("Not exposed by Atlas Agent API")).not.toBeInTheDocument();
         expect(screen.queryByText("Supported intent")).not.toBeInTheDocument();
         expect(screen.getByText("fingerprint-1")).toBeInTheDocument();
         expect(screen.getByText("Proposal")).toBeInTheDocument();
@@ -197,6 +199,14 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("Plan")).toBeInTheDocument();
         expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|approve|create workflow|implementation|commit/i })).not.toBeInTheDocument();
+        const disclosure = screen.getByText("Technical details", { exact: true });
+        expect(disclosure.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByText("fingerprint-1")).not.toBeVisible();
+        expect(screen.getByRole("button", { name: "Generate Plan" })).toBeVisible();
+        await user.click(disclosure);
+        expect(screen.getByText("fingerprint-1")).toBeVisible();
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
     });
 
     it("renders lineage links for successor sessions and predecessor metadata", async () => {
@@ -375,12 +385,12 @@ describe("PlanningSessionPage", () => {
             ? Promise.resolve(session()) : new Promise((resolve) => { resolveNext = resolve; }));
         const router = createMemoryRouter([{ path: "/candidate-planning/:sessionId", element: <PlanningSessionPage /> }], { initialEntries: ["/candidate-planning/candidate-plan-1"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "Planning Session candidate-plan-1" });
+        await screen.findByText("candidate-plan-1", { exact: true });
         await act(() => router.navigate("/candidate-planning/candidate-plan-2"));
-        expect(screen.queryByRole("heading", { name: "Planning Session candidate-plan-1" })).not.toBeInTheDocument();
+        expect(screen.queryByText("candidate-plan-1", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         resolveNext(session({ session_id: "candidate-plan-2" }));
-        expect(await screen.findByRole("heading", { name: "Planning Session candidate-plan-2" })).toBeInTheDocument();
+        expect(await screen.findByText("candidate-plan-2", { exact: true })).toBeInTheDocument();
     });
 
     it("does not attach a late generated plan to the next session", async () => {
@@ -392,7 +402,7 @@ describe("PlanningSessionPage", () => {
         render(<RouterProvider router={router} />);
         await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
         await act(() => router.navigate("/candidate-planning/candidate-plan-2"));
-        await screen.findByRole("heading", { name: "Planning Session candidate-plan-2" });
+        await screen.findByText("candidate-plan-2", { exact: true });
         await act(async () => resolvePlan(session({ status: "plan_ready", plan: plan() })));
         expect(screen.queryByText("Update Home Assistant compose stack")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Generate Plan" })).toBeEnabled();
@@ -435,7 +445,7 @@ describe("PlanningSessionPage", () => {
     it("does not offer generation when planning is explicitly disallowed", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ planning_allowed: false }));
         renderPage();
-        await screen.findByRole("heading", { name: "Planning Session candidate-plan-1" });
+        await screen.findByText("candidate-plan-1", { exact: true });
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
     });
