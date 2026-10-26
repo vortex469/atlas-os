@@ -1,8 +1,11 @@
 import type { Provider } from "../types/provider";
-import { StatusBadge } from "./StatusBadge";
+import { healthState } from "../utils/healthPresentation";
+import { HealthStatusBadge } from "./health/HealthStatusPrimitive";
+import type { HealthState } from "./health/HealthStatusPrimitive";
 
 type ProviderOverviewProps = {
     provider: Provider;
+    stale?: boolean;
 };
 
 function formatLabel(value: string): string {
@@ -19,7 +22,9 @@ function formatLabel(value: string): string {
 
 export function ProviderOverview({
     provider,
+    stale = false,
 }: ProviderOverviewProps) {
+    const state = healthState(provider.health.status);
     const endpoint =
         typeof provider.health.details.url === "string"
             ? provider.health.details.url
@@ -43,14 +48,13 @@ export function ProviderOverview({
                     </p>
                 </div>
 
-                <StatusBadge status={provider.health.status} />
+                <HealthStatusBadge state={state.toLowerCase() as HealthState} isStale={stale} />
             </div>
 
-            {provider.health.message && (
-                <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
-                    <p className="text-sm text-amber-200">
-                        {provider.health.message}
-                    </p>
+            {(stale || provider.health.message) && (
+                <div className="mt-6 space-y-2 rounded-lg border border-slate-700 bg-slate-950/50 p-4 text-sm text-slate-300">
+                    {stale && <p>Current provider health could not be refreshed. Last reported status: {state}.</p>}
+                    {provider.health.message && <p>{stale ? `Last reported message: ${provider.health.message}` : provider.health.message}</p>}
                 </div>
             )}
 
@@ -61,7 +65,7 @@ export function ProviderOverview({
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                     <div>
                         <dt className="text-xs uppercase tracking-wider text-slate-500">
-                            Status
+                            Source status
                         </dt>
 
                         <dd className="mt-2 text-base font-semibold capitalize text-slate-100">
