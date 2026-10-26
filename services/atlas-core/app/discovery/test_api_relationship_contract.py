@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.discovery.api_models import (
+    DiscoveryMetadataResponse,
     DiscoveryRelationshipCollectionResponse,
     DiscoveryRelationshipReferenceResponse,
     DiscoveryRelationshipResponse,
@@ -28,4 +29,14 @@ def test_mission_control_relationship_fixture_matches_public_dto_defaults() -> N
             for kind in DiscoveryRelationshipType
         ),
     )
+    assert parsed.model_dump(mode="json") == expected.model_dump(mode="json")
+
+
+def test_mission_control_metadata_fixture_matches_public_dto_defaults() -> None:
+    fixture = (
+        Path(__file__).resolve().parents[4]
+        / "services/mission-control/src/test/discoveryMetadata.fixture.json"
+    )
+    parsed = DiscoveryMetadataResponse.model_validate_json(fixture.read_text())
+    expected = DiscoveryMetadataResponse(catalog_loaded=True, entry_count=2)
     assert parsed.model_dump(mode="json") == expected.model_dump(mode="json")

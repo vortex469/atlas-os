@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseDiscoveryMetadata } from "./discoveryMetadataResponse";
 import { parseDiscoveryRelationships } from "./discoveryRelationshipsResponse";
 import type {
     DiscoveryCatalogEntry,
@@ -20,9 +21,9 @@ import type { InstallationPlan } from "../types/installationPlan";
 const DEFAULT_LIMIT = 25;
 
 export async function getDiscoveryMetadata(): Promise<DiscoveryMetadata> {
-    const response = await atlas.get<DiscoveryMetadata>("/discovery");
+    const response = await atlas.get<unknown>("/discovery");
 
-    return response.data;
+    return parseDiscoveryMetadata(response.data);
 }
 
 export async function listDiscoveryProposals(limit = 50): Promise<DiscoveryProposalPage> {
