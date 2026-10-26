@@ -12,7 +12,7 @@ type MissionControlFixtures = {
 
 const isoNow = "2026-09-06T12:00:00.000Z";
 
-const aceSummary = {
+export const aceSummary = {
     score: 92,
     status: "healthy",
     summary: "Baseline browser fixture: Atlas presentation data loaded.",

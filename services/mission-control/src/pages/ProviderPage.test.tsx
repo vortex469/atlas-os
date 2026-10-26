@@ -78,6 +78,30 @@ describe("ProviderPage authority layout", () => {
         }
     });
 
+    it.each([false, true])("labels retained advisory results after a failed refresh (records: %s)", (records) => {
+        const current = vi.mocked(useMissionControl).getMockImplementation()!();
+        const findings = records ? [{ id: "reported-finding", severity: "warning", category: "state_mismatch", source: "proxmox", component: "proxmox", title: "Reported provider issue", message: "Reported provider evidence", recommendation: null, metric: {}, details: {}, affects_health: false, score_penalty: 0 }] : [];
+        const recommendations = records ? [{ title: "Review provider issue", reason: "Review the reported evidence", priority: "low", confidence: 0.9, estimated_effort: "low", component: "proxmox" }] : [];
+        vi.mocked(useMissionControl).mockReturnValue({ ...current, error: "Refresh failed", summary: { ...current.summary!, findings, recommendations } });
+        const view = render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+        expect(screen.queryByText(/no current findings/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/no current recommendations/i)).not.toBeInTheDocument();
+        expect(screen.getByText("Diagnostics could not be refreshed. Showing the last reported findings.")).toBeInTheDocument();
+        expect(screen.getByText("Recommendations could not be refreshed. Showing the last reported recommendations.")).toBeInTheDocument();
+        if (records) {
+            expect(screen.getByRole("heading", { name: "Reported provider issue" })).toBeInTheDocument();
+            expect(screen.getByRole("heading", { name: "Review provider issue" })).toBeInTheDocument();
+        } else {
+            expect(screen.getByText("No findings were reported in the last successful refresh.")).toBeInTheDocument();
+            expect(screen.getByText("No recommendations were reported in the last successful refresh.")).toBeInTheDocument();
+        }
+        vi.mocked(useMissionControl).mockReturnValue({ ...current, error: null });
+        view.rerender(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+        expect(screen.queryByText(/Showing the last reported/)).not.toBeInTheDocument();
+        expect(screen.getByText("No diagnostic findings were reported for this provider.")).toBeInTheDocument();
+        expect(screen.getByText("No recommendations were reported for this provider.")).toBeInTheDocument();
+    });
+
     it("states that monitoring is policy-only and maintenance is a separate workflow", () => {
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
         expect(screen.getByText(/Monitoring expectations describe monitoring policy/)).toHaveTextContent("do not start, stop, restart, or remediate resources");

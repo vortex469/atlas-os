@@ -186,6 +186,8 @@ export function ProviderPage() {
                             description="Read-only advisory findings from observed provider and monitoring evidence. Findings do not authorize policy mutation or execution."
                         />
 
+                        {error && <p role="status" className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">Diagnostics could not be refreshed. Showing the last reported findings.</p>}
+
                         {relatedFindings.length > 0 ? (
                             <div className="grid gap-4 xl:grid-cols-2">
                                 {relatedFindings.map((finding) => (
@@ -208,8 +210,7 @@ export function ProviderPage() {
                             </div>
                         ) : (
                             <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                                ACE has no current findings for this
-                                provider.
+                                {error ? "No findings were reported in the last successful refresh." : "No diagnostic findings were reported for this provider."}
                             </div>
                         )}
                     </section>
@@ -219,6 +220,8 @@ export function ProviderPage() {
                             title="Advisory recommendations"
                             description="Suggested operator review only. Recommendations do not apply monitoring policy or authorize provider or operational execution."
                         />
+
+                        {error && <p role="status" className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">Recommendations could not be refreshed. Showing the last reported recommendations.</p>}
 
                         {relatedRecommendations.length > 0 ? (
                             <div className="grid gap-4 lg:grid-cols-2">
@@ -233,7 +236,7 @@ export function ProviderPage() {
                             </div>
                         ) : (
                             <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                                ACE has no current recommendations for this provider.
+                                {error ? "No recommendations were reported in the last successful refresh." : "No recommendations were reported for this provider."}
                             </div>
                         )}
                     </section>
