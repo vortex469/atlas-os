@@ -71,6 +71,9 @@ Workflow preparation uses plain-language next steps, with technical request
 details available in an optional disclosure beside any preparation error.
 Keyboard users can use “Skip to page content” to bypass the repeated header and
 navigation without changing the current URL.
+Forge clears previous analysis when the name or Compose document changes and
+ignores responses for older inputs. Analysis errors are announced in the editor;
+an analysis result does not execute a deployment.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent

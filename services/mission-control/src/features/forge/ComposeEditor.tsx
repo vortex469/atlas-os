@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { analyzeCompose } from "../../api/atlas";
 import type { DeploymentAnalysisResponse } from "./types";
@@ -12,7 +12,7 @@ const defaultCompose = `services:
 
 type ComposeEditorProps = {
     onAnalysis: (
-        result: DeploymentAnalysisResponse,
+        result: DeploymentAnalysisResponse | null,
     ) => void;
 };
 
@@ -24,13 +24,31 @@ export function ComposeEditor({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    async function handleAnalyze() {
+    const requestGeneration = useRef(0);
+    useEffect(() => () => { requestGeneration.current += 1; }, []);
+
+    function inputChanged() {
+        requestGeneration.current += 1;
+        setLoading(false);
         setError(null);
+        onAnalysis(null);
+    }
+
+    async function handleAnalyze() {
+        if (loading) return;
+        const generation = ++requestGeneration.current;
+        setError(null);
+        onAnalysis(null);
 
         const normalizedReference = reference.trim();
 
         if (!normalizedReference) {
             setError("Deployment name is required.");
+            return;
+        }
+
+        if (!compose.trim()) {
+            setError("Add a Compose document to analyze.");
             return;
         }
 
@@ -42,8 +60,9 @@ export function ComposeEditor({
                 normalizedReference,
             );
 
-            onAnalysis(result);
+            if (generation === requestGeneration.current) onAnalysis(result);
         } catch (caughtError) {
+            if (generation !== requestGeneration.current) return;
             const message =
                 caughtError instanceof Error
                     ? caughtError.message
@@ -51,7 +70,7 @@ export function ComposeEditor({
 
             setError(message);
         } finally {
-            setLoading(false);
+            if (generation === requestGeneration.current) setLoading(false);
         }
     }
 
@@ -76,28 +95,33 @@ export function ComposeEditor({
                 <input
                     type="text"
                     value={reference}
-                    onChange={(event) =>
-                        setReference(event.target.value)
-                    }
+                    onChange={(event) => {
+                        inputChanged();
+                        setReference(event.target.value);
+                    }}
                     placeholder="nginx-demo"
                     className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-blue-500"
                 />
             </label>
 
-            <textarea
+            <label htmlFor="forge-compose" className="mb-2 block text-sm font-medium text-slate-300">Compose document</label>
+            <textarea id="forge-compose"
                 value={compose}
-                onChange={(event) =>
-                    setCompose(event.target.value)
-                }
+                onChange={(event) => {
+                    inputChanged();
+                    setCompose(event.target.value);
+                }}
                 spellCheck={false}
                 className="min-h-80 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-200 outline-none transition focus:border-blue-500"
             />
 
             {error && (
-                <p className="mt-3 text-sm text-red-300">
+                <p role="alert" className="mt-3 text-sm text-red-300">
                     {error}
                 </p>
             )}
+
+            {loading && <p role="status" className="mt-3 text-sm text-blue-200">Analyzing the current document…</p>}
 
             <div className="mt-4 flex justify-end">
                 <button
