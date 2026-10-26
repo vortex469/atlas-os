@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +10,7 @@ import {
 } from "../api/operatorIntent";
 import { getDiscoveryProposal } from "../api/discovery";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
-import type { OperatorIntentResource } from "../types/operatorIntent";
+import type { OperatorIntentCreationResponse, OperatorIntentResource } from "../types/operatorIntent";
 import { MaintenanceRequestPage } from "./MaintenanceRequestPage";
 
 vi.mock("../api/operatorIntent", () => ({
@@ -72,6 +72,31 @@ function LoginDestination() {
     return <><p>Login destination</p><output data-testid="login-context">{JSON.stringify(useLocation().state)}</output></>;
 }
 
+function createdCandidate(): OperatorIntentCreationResponse {
+    return {
+            outcome: "created",
+            candidate_id: "candidate-operator-intent-110",
+            candidate: {
+                id: "candidate-operator-intent-110",
+                source_recommendation_id: "operator-intent-record-1",
+                source_subsystem: "operator-intent",
+                recommendation_class: "restart-service",
+                target_id: "110",
+                target_type: "qemu",
+                execution_category: "restart",
+                execution_intent: "restart-service",
+                status: "eligible",
+                required_approval_level: "standard",
+                rationale: "Bounded maintenance.",
+                constraints: ["service-disruption"],
+                evidence_ids: [],
+                relationship_ids: [],
+                created_at: "2026-08-14T00:00:00Z",
+                expires_at: "2999-08-14T00:15:00Z",
+            },
+        };
+}
+
 describe("MaintenanceRequestPage", () => {
     beforeEach(() => {
         vi.resetAllMocks();
@@ -102,28 +127,7 @@ describe("MaintenanceRequestPage", () => {
             generated_at: "2026-08-14T00:00:00Z",
             resources: [requestable, unavailable],
         });
-        vi.mocked(requestRestartServiceIntent).mockResolvedValue({
-            outcome: "created",
-            candidate_id: "candidate-operator-intent-110",
-            candidate: {
-                id: "candidate-operator-intent-110",
-                source_recommendation_id: "operator-intent-record-1",
-                source_subsystem: "operator-intent",
-                recommendation_class: "restart-service",
-                target_id: "110",
-                target_type: "qemu",
-                execution_category: "restart",
-                execution_intent: "restart-service",
-                status: "eligible",
-                required_approval_level: "standard",
-                rationale: "Bounded maintenance.",
-                constraints: ["service-disruption"],
-                evidence_ids: [],
-                relationship_ids: [],
-                created_at: "2026-08-14T00:00:00Z",
-                expires_at: "2999-08-14T00:15:00Z",
-            },
-        });
+        vi.mocked(requestRestartServiceIntent).mockResolvedValue(createdCandidate());
     });
 
     it("renders fixed semantics and disables non-requestable resources", async () => {
@@ -185,6 +189,71 @@ describe("MaintenanceRequestPage", () => {
         expect(getCapabilityResources).toHaveBeenCalledWith("restart-service--proxmox--qemu");
     });
 
+    it("locks target selection and refresh while the exact request is pending", async () => {
+        let resolve!: (value: OperatorIntentCreationResponse) => void;
+        vi.mocked(requestRestartServiceIntent).mockImplementation(() => new Promise((done) => { resolve = done; }));
+        renderPage();
+        const target = await screen.findByRole("radio", { name: /Frigate/i });
+        fireEvent.click(target);
+        fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        expect(target).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Requesting candidate…" })).toBeDisabled();
+        await act(async () => resolve(createdCandidate()));
+        expect(screen.getByRole("link", { name: "Continue to candidate planning" })).toBeInTheDocument();
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears the old proposal and requires reselection when refreshing resources", async () => {
+        renderPage();
+        const target = await screen.findByRole("radio", { name: /Frigate/i });
+        fireEvent.click(target);
+        fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        await screen.findByRole("link", { name: "Continue to candidate planning" });
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        await waitFor(() => expect(getCapabilityResources).toHaveBeenCalledTimes(2));
+        expect(await screen.findByRole("radio", { name: /Frigate/i })).not.toBeChecked();
+        expect(screen.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+    });
+
+    it.each(["candidate_id", "target_id", "execution_intent"])("refuses a proposal with a mismatched %s", async (field) => {
+        const response = createdCandidate();
+        if (field === "candidate_id") response.candidate_id = "foreign-candidate";
+        else if (field === "target_id") response.candidate.target_id = "999";
+        else response.candidate.execution_intent = "update-compose-stack";
+        vi.mocked(requestRestartServiceIntent).mockResolvedValue(response);
+        renderPage();
+        fireEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
+        fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this maintenance request");
+        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+    });
+
+    it("clears the previous proposal when another resource is selected", async () => {
+        vi.mocked(getCapabilityResources).mockResolvedValue({ execution_intent: "restart-service", provider_id: "proxmox", resource_type: "qemu",
+            generated_at: "2026-08-14T00:00:00Z", resources: [requestable, { ...requestable, resource_id: "111", display_name: "Other VM" }] });
+        renderPage();
+        fireEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
+        fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        await screen.findByRole("link", { name: "Continue to candidate planning" });
+        fireEvent.click(screen.getByRole("radio", { name: /Other VM/ }));
+        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        expect(screen.queryByText(/Candidate ID:/)).not.toBeInTheDocument();
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not offer the previous resource list when refreshing fails", async () => {
+        renderPage();
+        await screen.findByRole("radio", { name: /Frigate/i });
+        vi.mocked(getOperationalCapabilities).mockRejectedValueOnce(new Error("Unavailable"));
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
+    });
+
     it("ignores malformed proposal route state and never posts automatically", async () => {
         renderPage({ proposalId: "../../tampered", targetHint: "111" });
         await screen.findByText("Frigate");
@@ -244,7 +313,7 @@ describe("MaintenanceRequestPage", () => {
         await user.click(screen.getByRole("button", { name: "Request restart candidate" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("resource changed");
         expect(getCapabilityResources).toHaveBeenCalledTimes(2);
-        expect(radio).not.toBeChecked();
+        expect(await screen.findByRole("radio", { name: /Frigate/i })).not.toBeChecked();
     });
 
     it("does not hand an expired candidate to planning", async () => {

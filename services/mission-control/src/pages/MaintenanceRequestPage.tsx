@@ -1,5 +1,5 @@
 import { isAxiosError } from "axios";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 
@@ -50,11 +50,21 @@ export function MaintenanceRequestPage() {
     const [proposalError, setProposalError] = useState<string | null>(null);
     const proposalId = proposalIdFromState(location.state);
 
+    const selectorGeneration = useRef(0);
+    const submissionGeneration = useRef(0);
+
     const loadResources = useCallback(async () => {
+        const generation = ++selectorGeneration.current;
+        setSelectedId(null);
+        setResources([]);
+        setCapability(null);
+        setResult(null);
+        setResultExpired(false);
         setLoading(true);
         setError(null);
         try {
             const capabilities = await getOperationalCapabilities();
+            if (generation !== selectorGeneration.current) return;
             const selectedCapability = capabilities.capabilities.find(
                 (item) => item.production_enabled && item.selector_available,
             ) ?? null;
@@ -65,14 +75,16 @@ export function MaintenanceRequestPage() {
                 return;
             }
             const response = await getCapabilityResources(selectedCapability.selector_id);
+            if (generation !== selectorGeneration.current) return;
             setCapability(selectedCapability);
             setResources(response.resources);
         } catch (requestError) {
+            if (generation !== selectorGeneration.current) return;
             const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
             if (status === 401) session.invalidate();
             setError(errorMessage(status));
         } finally {
-            setLoading(false);
+            if (generation === selectorGeneration.current) setLoading(false);
         }
     }, [session]);
 
@@ -81,7 +93,7 @@ export function MaintenanceRequestPage() {
         if (session.authenticated) {
             queueMicrotask(() => { if (!cancelled) void loadResources(); });
         }
-        return () => { cancelled = true; };
+        return () => { cancelled = true; selectorGeneration.current += 1; submissionGeneration.current += 1; };
     }, [session.authenticated, loadResources]);
 
     useEffect(() => {
@@ -114,7 +126,8 @@ export function MaintenanceRequestPage() {
     const permitted = session.principal?.permissions.includes(OPERATIONAL_INTENT_CREATE) ?? false;
     const selected = resources.find((resource) => resource.resource_id === selectedId) ?? null;
     async function submit() {
-        if (!selected?.requestable || !selected.operational_target_fingerprint || !session.csrfToken || submitting) return;
+        if (!selected?.requestable || !selected.operational_target_fingerprint || !session.csrfToken || !permitted || loading || submitting) return;
+        const generation = ++submissionGeneration.current;
         setSubmitting(true);
         setError(null);
         setResult(null);
@@ -125,6 +138,15 @@ export function MaintenanceRequestPage() {
                 selected.operational_target_fingerprint,
                 session.csrfToken,
             );
+            if (generation !== submissionGeneration.current) return;
+            if (!response.candidate_id || response.candidate_id !== response.candidate?.id
+                || response.candidate.target_id !== selected.resource_id
+                || response.candidate.target_type !== selected.resource_type
+                || response.candidate.execution_intent !== "restart-service"
+                || response.candidate.source_subsystem !== "operator-intent") {
+                setError("The returned proposal does not match this maintenance request. Refresh the resource list before continuing.");
+                return;
+            }
             setResult(response);
             setResultExpired(
                 response.candidate.expires_at !== null
@@ -132,6 +154,7 @@ export function MaintenanceRequestPage() {
                 && new Date(response.candidate.expires_at).getTime() <= Date.now()
             );
         } catch (requestError) {
+            if (generation !== submissionGeneration.current) return;
             const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
             if (status === 401) session.invalidate();
             if (status === 409) {
@@ -140,7 +163,7 @@ export function MaintenanceRequestPage() {
             }
             setError(errorMessage(status));
         } finally {
-            setSubmitting(false);
+            if (generation === submissionGeneration.current) setSubmitting(false);
         }
     }
 
@@ -168,18 +191,18 @@ export function MaintenanceRequestPage() {
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your operator session lacks maintenance permission.</p>}
             {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
             <section className="space-y-3" aria-label="Authoritative Proxmox resources">
-                <div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-white">Select one exact resource</h2><button type="button" onClick={() => void loadResources()} disabled={loading} className="text-sm font-semibold text-blue-300">Refresh</button></div>
+                <div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-white">Select one exact resource</h2><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Refreshing authoritative resources…</p>}
                 {resources.map((resource) => (
                     <label key={resource.resource_id} className={`block rounded-xl border p-4 ${resource.requestable ? "border-slate-700 bg-slate-900/70" : "border-slate-800 bg-slate-900/30 text-slate-500"}`}>
                         <span className="flex gap-3">
-                            <input type="radio" name="resource" checked={selectedId === resource.resource_id} disabled={!resource.requestable || !permitted} onChange={() => setSelectedId(resource.resource_id)} />
+                            <input type="radio" name="resource" checked={selectedId === resource.resource_id} disabled={!resource.requestable || !permitted || loading || submitting} onChange={() => { setSelectedId(resource.resource_id); setResult(null); setResultExpired(false); setError(null); }} />
                             <span><strong className="text-slate-100">{resource.display_name}</strong><span className="ml-2 text-sm">VMID {resource.resource_id}</span><span className="ml-2 text-sm">{resource.node}</span><span className="ml-2 text-sm">{resource.current_state}</span>{!resource.requestable && <span className="mt-1 block text-sm">Unavailable: {resource.reason?.replaceAll("_", " ") ?? "unknown"}</span>}</span>
                         </span>
                     </label>
                 ))}
             </section>
-            <button type="button" onClick={() => void submit()} disabled={!selected?.requestable || submitting || !permitted} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700">
+            <button type="button" onClick={() => void submit()} disabled={!selected?.requestable || loading || submitting || !permitted} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700">
                 {submitting ? "Requesting candidate…" : "Request restart candidate"}
             </button>
             {result && <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5"><h2 className="text-lg font-semibold text-emerald-200">Maintenance candidate ready</h2><p className="mt-2 break-all text-sm text-slate-200">Candidate ID: {result.candidate_id}</p><p className="mt-1 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p><p className="mt-1 text-sm text-slate-300">Status: {result.candidate.status}</p><p className="mt-1 text-sm text-slate-300">Expires: {result.candidate.expires_at ?? "Not reported"}</p><p className="mt-1 text-sm text-amber-200">Expected disruption: brief service interruption</p>{resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This candidate has expired. Request a new maintenance candidate.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Continue to candidate planning</Link>}</section>}

@@ -77,6 +77,9 @@ an analysis result does not execute a deployment.
 Forge's summary shows the highest risk reported by its analyzer or planner and
 keeps unknown durations distinct from zero. Planner approval flags describe the
 proposal; workflow authorization remains separate.
+Maintenance selection is locked while a request is submitted. Refreshing clears
+the previous selection and result, and the returned proposal must match the
+requested resource and action before planning is offered.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent

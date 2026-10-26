@@ -33,7 +33,7 @@ const candidate: ExecutionCandidate = {
 };
 export const maintenanceCandidate: ExecutionCandidate = {
     ...candidate, source_subsystem: "operator-intent", execution_category: "restart", execution_intent: "restart-service",
-    target_id: "proxmox/qemu/110", target_type: "qemu", rationale: "Review a simulated service restart.",
+    target_id: "110", target_type: "qemu", rationale: "Review a simulated service restart.",
     expires_at: "2026-10-26T00:15:00.000Z",
 };
 const plan: CandidatePlanApiResponse = {

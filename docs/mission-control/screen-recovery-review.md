@@ -42,6 +42,10 @@ extraction checked with the focused suite below:
   maintenance request-to-audit and successful readiness-review recovery.
 - Readiness component/parser/structural suite: 16 passed after the constant
   extraction; the extracted values match the preceding committed values exactly.
+- Maintenance request page suite: 19 passed after locking pending selection,
+  clearing stale resources/results, and checking returned proposal identity,
+  target and action. The complete maintenance browser fixture uses Core's
+  resource-ID target contract.
 - UI lint and production build passed. The build retains its existing
   large-chunk warning.
 - Workflow route suite: 72 passed after the additive audit DTO change. This is
