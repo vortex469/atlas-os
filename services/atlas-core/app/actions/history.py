@@ -339,22 +339,38 @@ class ProviderActionHistory:
         completed_to: datetime | None = None,
         search: str | None = None,
     ) -> ProviderActionHistoryPage:
-        items = self.list(
-            limit=limit,
-            offset=offset,
+        where_clause, parameters = self._query_parts(
             provider_id=provider_id,
             status=status,
             completed_from=completed_from,
             completed_to=completed_to,
             search=search,
         )
-        total = self.count(
-            provider_id=provider_id,
-            status=status,
-            completed_from=completed_from,
-            completed_to=completed_to,
-            search=search,
-        )
+        # Prune once and read both facts in the same SQLite transaction. Separate
+        # list/count calls can cross a retention boundary or a concurrent append.
+        with self._lock, self._connection:
+            self._prune()
+            rows = self._connection.execute(
+                f"""
+                SELECT *
+                FROM provider_action_history
+                {where_clause}
+                ORDER BY completed_at DESC, rowid DESC
+                LIMIT ? OFFSET ?
+                """,
+                [*parameters, limit, offset],
+            ).fetchall()
+            total = int(
+                self._connection.execute(
+                    f"""
+                    SELECT COUNT(*) AS entry_count
+                    FROM provider_action_history
+                    {where_clause}
+                    """,
+                    parameters,
+                ).fetchone()["entry_count"],
+            )
+        items = [self._entry_from_row(row) for row in rows]
 
         return ProviderActionHistoryPage(
             items=items,
