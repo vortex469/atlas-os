@@ -33,6 +33,8 @@ import {
     parseActionHistorySummary,
 } from "./actionHistoryResponse";
 
+import { DoctorResponseError, parseDoctorReport } from "./doctorResponse";
+
 const ATLAS_API_BASE_URL =
     import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
 
@@ -111,9 +113,9 @@ export async function getProviderActionHistory(
 }
 
 export async function getAtlasDoctorReport(): Promise<DoctorReport> {
-    const response = await atlas.get<DoctorReport>("/ops/doctor");
+    const response = await atlas.get<unknown>("/ops/doctor");
 
-    return response.data;
+    return parseDoctorReport(response.data);
 }
 
 export async function exportIntelligenceTelemetryHistory(
@@ -216,7 +218,7 @@ export function getAtlasErrorMessage(
     error: unknown,
     fallback: string,
 ): string {
-    if (error instanceof ActionHistoryResponseError) return error.message;
+    if (error instanceof ActionHistoryResponseError || error instanceof DoctorResponseError) return error.message;
     if (!axios.isAxiosError<AtlasAPIError>(error)) {
         return fallback;
     }
