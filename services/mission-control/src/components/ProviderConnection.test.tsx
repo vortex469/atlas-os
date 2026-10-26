@@ -313,7 +313,7 @@ describe("ProviderConnection", () => {
         await screen.findByText(/Test success/);
         let rejectRead!: (reason: Error) => void;
         mockedGetProviderConnection.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
-        await user.click(screen.getByRole("button", { name: "Reload Schema" }));
+        await user.click(screen.getByRole("button", { name: "Reload settings" }));
         expect(screen.queryByText(/Test success/)).not.toBeInTheDocument();
         await act(async () => { rejectRead(new Error("Settings unavailable")); });
         expect(await screen.findByRole("alert")).toHaveTextContent("Settings unavailable");
@@ -349,6 +349,9 @@ describe("ProviderConnection", () => {
         expect(screen.getByLabelText("Host")).toHaveValue("runtime.invalid");
         expect(screen.getByLabelText("Token Value")).toHaveValue("");
         expect(screen.queryByText("replacement-secret")).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Connection settings saved.");
+        await user.type(screen.getByLabelText("Host"), ".edited");
+        expect(screen.queryByText("Connection settings saved.")).not.toBeInTheDocument();
     });
 
     it("omits untouched secrets from save", async () => {
@@ -364,6 +367,10 @@ describe("ProviderConnection", () => {
         expect(values).not.toHaveProperty("user");
         expect(values).not.toHaveProperty("token_name");
         expect(values).not.toHaveProperty("token_value");
+        expect(screen.getByText("Connection settings saved.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Reload settings" }));
+        await waitFor(() => expect(mockedGetProviderConnection).toHaveBeenCalledTimes(2));
+        expect(screen.queryByText("Connection settings saved.")).not.toBeInTheDocument();
     });
 
     it("preserves form values and redacts failed save errors", async () => {
