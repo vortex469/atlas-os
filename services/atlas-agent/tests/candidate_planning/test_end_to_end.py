@@ -153,9 +153,12 @@ class FakeComposeWorkerClient:
 
 
 @pytest.mark.parametrize("backend", ["local", "worker", "worker-lost-response", "worker-lost-response-reload"])
+@pytest.mark.parametrize("staging_drift", [False, True])
 def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     tmp_path: Path,
     backend: str,
+    staging_drift: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = tmp_path / "repository"
     head = initialize_candidate_repository(repository)
@@ -190,6 +193,25 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     )
     verification_runner = FakeVerificationRunner()
     review_engine = ReviewEngine()
+    stage_calls: list[str] = []
+
+    def committer_factory(root: Path) -> GitCommitter:
+        committer = GitCommitter(root)
+        original_run = committer._run_git
+
+        def inject_staging_drift(*arguments: str) -> subprocess.CompletedProcess[str]:
+            if arguments[0] == "add":
+                stage_calls.append("add")
+                if staging_drift:
+                    (root / "compose.production.yaml").write_text(
+                        "services:\n  atlas-core:\n    image: atlas-core:unreviewed\n",
+                        encoding="utf-8",
+                    )
+            return original_run(*arguments)
+
+        monkeypatch.setattr(committer, "_run_git", inject_staging_drift)
+        return committer
+
     engine = WorkflowEngine(
         repository_inspector_factory=GitInspector,
         planning_engine=Mock(spec=PlanningEngine),
@@ -199,7 +221,7 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         approval_engine=ApprovalEngine(),
         approval_repository=approvals,
         state_store=workflow_state,
-        repository_committer_factory=GitCommitter,
+        repository_committer_factory=committer_factory,
         state_persistence=persistence,
         candidate_execution_validator=CandidateExecutionValidator(
             core_client=core,
@@ -316,15 +338,33 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
 
     commit_approval = commit_boundary.approval_request
     assert commit_approval is not None
-    assert approvals.update_decision(
-        commit_approval.identifier,
-        ApprovalDecision(
-            request=commit_approval,
-            status=ApprovalStatus.APPROVED,
-            reviewer="tester",
-        ),
+    assert persistence.mutate_approval(
+        lambda repository: repository.update_decision(
+            commit_approval.identifier,
+            ApprovalDecision(
+                request=commit_approval,
+                status=ApprovalStatus.APPROVED,
+                reviewer="tester",
+            ),
+        )
     )
+    # Reviewed evidence is rebuilt against the persisted original approval;
+    # carrying it to staging must not require a new approval or snapshot schema.
+    persistence.initialize()
     completed = engine.resume(workflow_id)
+    if staging_drift:
+        assert completed.sprint.phase is SprintPhase.BLOCKED
+        assert completed.error_message == "commit_failed"
+        assert completed.commit_result is None
+        assert run_git(repository, "rev-parse", "HEAD") == head
+        assert stage_calls == ["add"]
+        persistence.initialize()
+        assert workflow_state.get_session(workflow_id).state is WorkflowSessionState.BLOCKED
+        assert engine.resume(workflow_id).sprint.phase is SprintPhase.BLOCKED
+        assert stage_calls == ["add"]
+        assert implementation_runner.calls == 1
+        assert verification_runner.calls == 1
+        return
     assert completed.sprint.phase is SprintPhase.COMPLETED
 
     final_workflow = workflow_state.get_session(workflow_id)

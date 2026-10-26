@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+from hashlib import sha256
 from pathlib import Path
 
 from app.repository.exceptions import (
@@ -10,7 +11,7 @@ from app.repository.exceptions import (
     RepositoryCommitValidationError,
 )
 from app.repository.inspector import GitInspector
-from app.repository.models import CommitRequest, CommitResult
+from app.repository.models import CommitRequest, CommitResult, ReviewedChangeEvidence
 
 _DENIED_COMMIT_PATH_PARTS = frozenset({".git", "jcode", "logs"})
 
@@ -22,11 +23,27 @@ class GitCommitter:
         self.repository_root = repository_root.resolve(strict=False)
         self._inspector = GitInspector(self.repository_root)
 
-    def commit(self, request: CommitRequest) -> CommitResult:
+    def commit(
+        self,
+        request: CommitRequest,
+        *,
+        reviewed_evidence: ReviewedChangeEvidence | None = None,
+    ) -> CommitResult:
         """Validate, stage, commit, and verify one explicit path set."""
 
         paths = self._normalize_paths(request)
         message = self._normalize_message(request.message)
+        if reviewed_evidence is not None and not (
+            reviewed_evidence.repository_root.resolve(strict=False) == self.repository_root
+            and reviewed_evidence.expected_branch == request.expected_branch
+            and reviewed_evidence.expected_head == request.expected_head
+            and reviewed_evidence.reviewed_files == paths
+            and reviewed_evidence.commit_message == message
+            and tuple(change.path for change in reviewed_evidence.changes) == paths
+        ):
+            raise RepositoryCommitValidationError(
+                "Reviewed evidence does not match the commit request"
+            )
         before = self._inspector.inspect()
 
         if before.root != self.repository_root:
@@ -58,6 +75,8 @@ class GitCommitter:
                 "Repository identity changed while staging the reviewed paths"
             )
         staged_tree = self._run_git("write-tree").stdout.strip()
+        if reviewed_evidence is not None:
+            self._validate_reviewed_tree(staged_tree, reviewed_evidence)
 
         self._run_git(
             "commit",
@@ -117,6 +136,51 @@ class GitCommitter:
             message=committed_message,
             committed_files=committed_files,
         )
+
+    def _validate_reviewed_tree(
+        self, tree: str, evidence: ReviewedChangeEvidence
+    ) -> None:
+        """Compare staged blob bytes with evidence already bound to approval."""
+
+        for change in evidence.changes:
+            entry = self._run_git(
+                "ls-tree", "-z", tree, "--", str(change.path)
+            ).stdout
+            if change.deletion_marker == "deleted" and change.content_sha256 is None:
+                matches = not entry
+            elif change.deletion_marker is None and change.content_sha256 is not None:
+                metadata, separator, path = entry.partition("\t")
+                fields = metadata.split()
+                matches = (
+                    bool(separator)
+                    and path == f"{change.path}\0"
+                    and len(fields) == 3
+                    and fields[0] in {"100644", "100755"}
+                    and fields[1] == "blob"
+                )
+                if matches:
+                    matches = self._blob_digest(fields[2]) == change.content_sha256
+            else:
+                matches = False
+            if not matches:
+                raise RepositoryCommitValidationError(
+                    "Staged content differs from the approved review evidence"
+                )
+
+    def _blob_digest(self, object_id: str) -> str:
+        # Binary output preserves CRLF, non-UTF-8 bytes and terminal newlines.
+        try:
+            result = subprocess.run(
+                ["git", "cat-file", "blob", object_id],
+                cwd=self.repository_root,
+                check=False,
+                capture_output=True,
+            )
+        except OSError as exc:
+            raise RepositoryCommitError("Unable to read staged Git blob") from exc
+        if result.returncode != 0:
+            raise RepositoryCommitError("Unable to read staged Git blob")
+        return sha256(result.stdout).hexdigest()
 
     def _normalize_paths(self, request: CommitRequest) -> tuple[Path, ...]:
         request_root = request.repository_root.resolve(strict=False)

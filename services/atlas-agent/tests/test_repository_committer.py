@@ -1,6 +1,7 @@
 """Tests for explicit local Git commit orchestration."""
 
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -311,6 +312,11 @@ def test_commits_staged_content_without_restaging_later_worktree_edits(
 ) -> None:
     repository, head = initialize_repository(tmp_path / "repository")
     (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    request = make_request(repository, head)
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
     committer = GitCommitter(repository)
     original_run = committer._run_git
 
@@ -320,7 +326,7 @@ def test_commits_staged_content_without_restaging_later_worktree_edits(
         return original_run(*arguments)
 
     monkeypatch.setattr(committer, "_run_git", edit_before_commit)
-    result = committer.commit(make_request(repository, head))
+    result = committer.commit(request, reviewed_evidence=evidence)
 
     assert run_git(repository, "show", f"{result.commit_sha}:tracked.txt").stdout == "reviewed\n"
     assert (repository / "tracked.txt").read_text(encoding="utf-8") == "later edit\n"
@@ -393,4 +399,141 @@ def test_refuses_identity_drift_while_staging_without_creating_commit(
     monkeypatch.setattr(committer, "_run_git", change_after_staging)
     with pytest.raises(RepositoryCommitValidationError, match="identity changed"):
         committer.commit(make_request(repository, head))
+    assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
+
+
+@pytest.mark.parametrize("kind", ("edit", "new", "delete", "rename", "binary"))
+def test_commits_content_bound_to_review_evidence(tmp_path: Path, kind: str) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    path = Path("tracked.txt")
+    if kind == "new":
+        path = Path("new.txt")
+    elif kind == "rename":
+        path = Path("renamed.txt")
+        run_git(repository, "mv", "tracked.txt", str(path))
+    if kind == "delete":
+        (repository / path).unlink()
+    elif kind != "rename":
+        (repository / path).write_bytes(b"\xff\x00\r\nreviewed\r\n" if kind == "binary" else b"reviewed\n")
+    request = make_request(repository, head, paths=(path,))
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+
+    result = GitCommitter(repository).commit(request, reviewed_evidence=evidence)
+
+    assert result.parent_head == head
+    assert result.committed_files == (path,)
+
+
+@pytest.mark.parametrize("drift", ("before-add", "after-add", "deleted-appears", "file-disappears"))
+def test_refuses_staged_bytes_that_differ_from_approved_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    drift: str,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    path = repository / "tracked.txt"
+    if drift == "deleted-appears":
+        path.unlink()
+    else:
+        path.write_text("reviewed\n", encoding="utf-8")
+    request = make_request(repository, head)
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+    committer = GitCommitter(repository)
+    original_run = committer._run_git
+
+    def inject(*arguments: str) -> subprocess.CompletedProcess[str]:
+        if arguments[0] == "add" and drift != "after-add":
+            if drift == "file-disappears":
+                path.unlink()
+            else:
+                path.write_text("unreviewed\n", encoding="utf-8")
+        result = original_run(*arguments)
+        if arguments[0] == "add" and drift == "after-add":
+            path.write_text("unreviewed\n", encoding="utf-8")
+            run_git(repository, "add", "tracked.txt")
+        assert arguments[0] != "commit"
+        return result
+
+    monkeypatch.setattr(committer, "_run_git", inject)
+    with pytest.raises(RepositoryCommitValidationError, match="Staged content differs"):
+        committer.commit(request, reviewed_evidence=evidence)
+    assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
+
+
+@pytest.mark.parametrize("mismatch", ("branch", "head", "message", "paths", "changes", "root"))
+def test_refuses_review_evidence_for_another_request_before_staging(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mismatch: str,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    request = make_request(repository, head)
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+    fields = {
+        "branch": {"expected_branch": "other"},
+        "head": {"expected_head": "other"},
+        "message": {"commit_message": "Other message"},
+        "paths": {"reviewed_files": (Path("other.txt"),)},
+        "changes": {"changes": ()},
+        "root": {"repository_root": tmp_path},
+    }
+    committer = GitCommitter(repository)
+    calls = []
+    monkeypatch.setattr(committer, "_run_git", lambda *args: calls.append(args))
+    with pytest.raises(RepositoryCommitValidationError, match="Reviewed evidence does not match"):
+        committer.commit(request, reviewed_evidence=replace(evidence, **fields[mismatch]))
+    assert calls == []
+    assert GitInspector(repository).inspect().staged_files == ()
+
+
+def test_refuses_git_newline_conversion_of_reviewed_raw_bytes(tmp_path: Path) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    run_git(repository, "config", "core.autocrlf", "true")
+    (repository / "tracked.txt").write_bytes(b"reviewed\r\n")
+    request = make_request(repository, head)
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+
+    with pytest.raises(RepositoryCommitValidationError, match="Staged content differs"):
+        GitCommitter(repository).commit(request, reviewed_evidence=evidence)
+
+    assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
+
+
+def test_staged_blob_read_failure_refuses_commit_without_disclosing_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    request = make_request(repository, head)
+    evidence = GitInspector(repository).reviewed_change_evidence(
+        reviewed_files=request.paths, expected_branch=request.expected_branch,
+        expected_head=head, commit_message=request.message,
+    )
+    committer = GitCommitter(repository)
+    original_run = subprocess.run
+    canary = b"synthetic-sensitive-blob-output"
+
+    def fail_blob(argv, **kwargs):
+        if argv[:3] == ["git", "cat-file", "blob"]:
+            return subprocess.CompletedProcess(argv, 1, stdout=canary, stderr=canary)
+        return original_run(argv, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", fail_blob)
+    with pytest.raises(RepositoryCommitError, match="Unable to read staged Git blob") as error:
+        committer.commit(request, reviewed_evidence=evidence)
+
+    assert canary.decode() not in str(error.value)
     assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
