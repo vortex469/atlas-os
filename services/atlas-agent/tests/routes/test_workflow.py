@@ -558,6 +558,26 @@ def test_resume_maps_domain_failures_to_deterministic_statuses(
     }
 
 
+def test_unknown_local_commit_has_controlled_status_and_no_repeat_guidance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _, workflow_engine, _ = make_client(tmp_path, monkeypatch)
+    workflow_engine.resume.return_value = workflow_result(
+        tmp_path, phase=SprintPhase.BLOCKED,
+        error_message="commit_outcome_unknown",
+    )
+
+    response = client.post("/api/v1/agent/workflows/workflow-a16/resume")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "commit_outcome_unknown",
+        "message": "Git may have created a local commit. Inspect the repository "
+        "before recovery; do not repeat the commit.",
+    }
+    workflow_engine.resume.assert_called_once_with("workflow-a16")
+
+
 @pytest.mark.parametrize("operation", ("start", "resume"))
 def test_unexpected_failure_returns_sanitized_500(
     tmp_path: Path,
@@ -1170,6 +1190,40 @@ def test_candidate_workflow_audit_includes_blocked_reason(tmp_path: Path, monkey
     assert response.status_code == 200
     body = response.json()
     assert body["blocked_reason"] == "Blocked: safety policy failed"
+
+
+@pytest.mark.parametrize("reason", ("commit_outcome_unknown", "commit interrupted by process restart", "commit_result_mismatch"))
+def test_commit_uncertainty_is_not_projected_as_an_unreached_or_completed_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reason: str,
+) -> None:
+    from tests.candidate_planning.test_audit import (
+        _approvals,
+        _planning_session_with_plan,
+    )
+    from tests.candidate_planning.test_commit import _commit_ready_workflow
+
+    client, container, _, _ = make_client(tmp_path, monkeypatch)
+    workflow = replace(
+        _commit_ready_workflow(tmp_path), state=WorkflowSessionState.BLOCKED,
+        blocked_reason=reason,
+    )
+    container.workflow_state.create_session(workflow)
+    container.candidate_planning_state.create_session(_planning_session_with_plan(tmp_path, workflow))
+    approvals = _approvals(workflow)
+    for result in (approvals.implementation, approvals.verification, approvals.commit):
+        container.approval_repository.save_request(result.decision.request)
+        container.approval_repository.update_decision(result.decision.request.identifier, result.decision)
+
+    response = client.get(f"/api/v1/agent/workflows/{workflow.identifier}/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workflow_state"] == "blocked"
+    assert body["validation"]["valid"] is True
+    expected_status = "invalid" if reason == "commit_result_mismatch" else "unknown"
+    assert body["commit"]["status"] == expected_status
+    assert body["commit"]["commit_sha"] is None
+    assert next(stage for stage in body["timeline"] if stage["name"] == "commit")["status"] == expected_status
 
 
 def test_candidate_audit_workflow_state_is_authoritative_in_response(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import subprocess
-from hashlib import sha256
 from pathlib import Path
 
 from app.repository.exceptions import (
     RepositoryCommitError,
+    RepositoryCommitOutcomeUnknownError,
+    RepositoryCommitResultMismatchError,
     RepositoryCommitValidationError,
 )
 from app.repository.inspector import GitInspector
 from app.repository.models import CommitRequest, CommitResult, ReviewedChangeEvidence
+from app.repository.process import (
+    COMMIT_TIMEOUT_SECONDS,
+    GitProcessBudget,
+    GitProcessError,
+    GitProcessRunner,
+)
 
 _DENIED_COMMIT_PATH_PARTS = frozenset({".git", "jcode", "logs"})
 
@@ -21,7 +28,9 @@ class GitCommitter:
 
     def __init__(self, repository_root: Path) -> None:
         self.repository_root = repository_root.resolve(strict=False)
-        self._inspector = GitInspector(self.repository_root)
+        self._process_runner = GitProcessRunner()
+        self._process_budget: GitProcessBudget | None = None
+        GitInspector(self.repository_root, process_runner=self._process_runner)
 
     def commit(
         self,
@@ -30,6 +39,22 @@ class GitCommitter:
         reviewed_evidence: ReviewedChangeEvidence | None = None,
     ) -> CommitResult:
         """Validate, stage, commit, and verify one explicit path set."""
+
+        self._process_budget = GitProcessBudget(COMMIT_TIMEOUT_SECONDS)
+        try:
+            inspector = GitInspector(
+                self.repository_root, process_runner=self._process_runner,
+                process_budget=self._process_budget,
+            )
+            return self._commit(request, reviewed_evidence, inspector)
+        finally:
+            self._process_budget = None
+
+    def _commit(
+        self, request: CommitRequest,
+        reviewed_evidence: ReviewedChangeEvidence | None,
+        inspector: GitInspector,
+    ) -> CommitResult:
 
         paths = self._normalize_paths(request)
         message = self._normalize_message(request.message)
@@ -44,7 +69,7 @@ class GitCommitter:
             raise RepositoryCommitValidationError(
                 "Reviewed evidence does not match the commit request"
             )
-        before = self._inspector.inspect()
+        before = inspector.inspect()
 
         if before.root != self.repository_root:
             raise RepositoryCommitValidationError(
@@ -61,7 +86,7 @@ class GitCommitter:
 
         self._run_git("add", "-A", "--", *(str(path) for path in paths))
 
-        staged = self._inspector.inspect()
+        staged = inspector.inspect()
         staged_paths = tuple(sorted(Path(path) for path in staged.staged_files))
         if staged_paths != paths:
             raise RepositoryCommitValidationError(
@@ -77,6 +102,23 @@ class GitCommitter:
         staged_tree = self._run_git("write-tree").stdout.strip()
         if reviewed_evidence is not None:
             self._validate_reviewed_tree(staged_tree, reviewed_evidence)
+
+        try:
+            return self._create_commit(request, paths, message, staged_tree, inspector)
+        except RepositoryCommitResultMismatchError:
+            raise
+        # After the commit starts, even an unexpected adapter failure must not
+        # imply that no commit exists or make another attempt safe.
+        except Exception:  # noqa: BLE001
+            raise RepositoryCommitOutcomeUnknownError(
+                "Local commit outcome is unknown; inspect the repository before recovery. "
+                "Do not repeat the commit."
+            ) from None
+
+    def _create_commit(
+        self, request: CommitRequest, paths: tuple[Path, ...], message: str,
+        staged_tree: str, inspector: GitInspector,
+    ) -> CommitResult:
 
         self._run_git(
             "commit",
@@ -115,7 +157,7 @@ class GitCommitter:
             )
         )
 
-        after = self._inspector.inspect()
+        after = inspector.inspect()
         if (
             parents != expected_parents
             or committed_tree != staged_tree
@@ -124,7 +166,7 @@ class GitCommitter:
             or committed_message != message
             or committed_files != paths
         ):
-            raise RepositoryCommitError(
+            raise RepositoryCommitResultMismatchError(
                 "Created commit metadata or content does not match the reviewed request"
             )
 
@@ -168,19 +210,17 @@ class GitCommitter:
                 )
 
     def _blob_digest(self, object_id: str) -> str:
-        # Binary output preserves CRLF, non-UTF-8 bytes and terminal newlines.
+        # Stream raw bytes into a digest without retaining the blob in memory.
         try:
-            result = subprocess.run(
-                ["git", "cat-file", "blob", object_id],
-                cwd=self.repository_root,
-                check=False,
-                capture_output=True,
+            result = self._process_runner.run(
+                ("cat-file", "blob", object_id), cwd=self.repository_root,
+                budget=self._process_budget, digest_stdout=True,
             )
-        except OSError as exc:
-            raise RepositoryCommitError("Unable to read staged Git blob") from exc
-        if result.returncode != 0:
+        except GitProcessError:
+            raise RepositoryCommitError("Unable to read staged Git blob") from None
+        if result.returncode != 0 or result.stdout_digest is None:
             raise RepositoryCommitError("Unable to read staged Git blob")
-        return sha256(result.stdout).hexdigest()
+        return result.stdout_digest
 
     def _normalize_paths(self, request: CommitRequest) -> tuple[Path, ...]:
         request_root = request.repository_root.resolve(strict=False)
@@ -249,26 +289,20 @@ class GitCommitter:
 
     def _run_git(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         try:
-            result = subprocess.run(
-                ["git", *arguments],
-                cwd=self.repository_root,
-                check=False,
-                capture_output=True,
-                text=True,
+            result = self._process_runner.run(
+                arguments, cwd=self.repository_root, budget=self._process_budget,
             )
-        except OSError as exc:
+        except GitProcessError as exc:
             raise RepositoryCommitError(
-                f"Unable to execute Git in {self.repository_root}: {exc}"
-            ) from exc
+                f"Unable to execute Git: {exc}"
+            ) from None
 
         if result.returncode != 0:
-            detail = result.stderr.strip() or result.stdout.strip()
-            message = (
-                f"Git command failed with exit code {result.returncode}: "
-                f"git {' '.join(arguments)}"
+            raise RepositoryCommitError(
+                f"Git command failed with exit code {result.returncode}"
             )
-            if detail:
-                message = f"{message}: {detail}"
-            raise RepositoryCommitError(message)
-
-        return result
+        try:
+            stdout = result.stdout.decode("utf-8")
+        except UnicodeError:
+            raise RepositoryCommitError("Git metadata is not valid UTF-8") from None
+        return subprocess.CompletedProcess(["git", *arguments], result.returncode, stdout, "")

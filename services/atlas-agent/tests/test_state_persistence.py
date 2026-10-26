@@ -1232,6 +1232,8 @@ def test_workflow_recovery_state_matrix(
     recovered_session = recovered_state.get_session(stored_session.identifier)
     assert recovered_session is not None
     assert recovered_session.state is expected_state
+    if state is WorkflowSessionState.COMMITTING:
+        assert recovered_session.blocked_reason == "commit_outcome_unknown"
     if expected_state is state and _approval_for_recovery_state(stored_session, state, tmp_path) is not None:
         assert recovered_approvals.get_request(
             _approval_for_recovery_state(stored_session, state, tmp_path).identifier

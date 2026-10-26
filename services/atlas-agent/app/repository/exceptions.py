@@ -15,3 +15,11 @@ class RepositoryCommitError(Exception):
 
 class RepositoryCommitValidationError(RepositoryCommitError):
     """Raised when a requested repository commit is unsafe."""
+
+
+class RepositoryCommitOutcomeUnknownError(RepositoryCommitError):
+    """A commit was attempted but its completion cannot be established."""
+
+
+class RepositoryCommitResultMismatchError(RepositoryCommitError):
+    """An observed commit conflicts with the reviewed request."""

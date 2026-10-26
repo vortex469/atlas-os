@@ -1,17 +1,21 @@
 """Tests for explicit local Git commit orchestration."""
 
 import subprocess
+import traceback
 from dataclasses import replace
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from app.repository.committer import GitCommitter
 from app.repository.exceptions import (
     RepositoryCommitError,
+    RepositoryCommitOutcomeUnknownError,
     RepositoryCommitValidationError,
 )
 from app.repository.inspector import GitInspector
 from app.repository.models import CommitRequest
+from app.repository.process import GitProcessResult
 
 
 def run_git(
@@ -257,7 +261,7 @@ def test_commit_command_failure_is_a_domain_error(
 
     monkeypatch.setattr(committer, "_run_git", fail_commit)
 
-    with pytest.raises(RepositoryCommitError, match="commit failed"):
+    with pytest.raises(RepositoryCommitOutcomeUnknownError, match="outcome is unknown"):
         committer.commit(make_request(repository, head))
 
     assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
@@ -523,17 +527,40 @@ def test_staged_blob_read_failure_refuses_commit_without_disclosing_output(
         expected_head=head, commit_message=request.message,
     )
     committer = GitCommitter(repository)
-    original_run = subprocess.run
+    original_run = committer._process_runner.run
     canary = b"synthetic-sensitive-blob-output"
 
-    def fail_blob(argv, **kwargs):
-        if argv[:3] == ["git", "cat-file", "blob"]:
-            return subprocess.CompletedProcess(argv, 1, stdout=canary, stderr=canary)
-        return original_run(argv, **kwargs)
+    def fail_blob(arguments, **kwargs):
+        if arguments[:2] == ("cat-file", "blob"):
+            return GitProcessResult(1, stdout=canary, stderr=canary)
+        return original_run(arguments, **kwargs)
 
-    monkeypatch.setattr(subprocess, "run", fail_blob)
+    monkeypatch.setattr(committer._process_runner, "run", fail_blob)
     with pytest.raises(RepositoryCommitError, match="Unable to read staged Git blob") as error:
         committer.commit(request, reviewed_evidence=evidence)
 
     assert canary.decode() not in str(error.value)
+    assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head
+
+
+def test_failing_hook_remains_enabled_and_does_not_disclose_output_or_message(
+    tmp_path: Path,
+) -> None:
+    repository, head = initialize_repository(tmp_path / "repository")
+    (repository / "tracked.txt").write_text("reviewed\n", encoding="utf-8")
+    canary = uuid4().hex
+    hook = repository / ".git" / "hooks" / "pre-commit"
+    hook.write_text(
+        f"#!/bin/sh\nprintf '%s' '{canary}'\nprintf '%s' '{canary}' >&2\n"
+        "printf 'ran' > .git/fixture-pre-commit-ran\nexit 1\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o700)
+    request = make_request(repository, head, message=f"Fixture {canary}")
+
+    with pytest.raises(RepositoryCommitOutcomeUnknownError) as error:
+        GitCommitter(repository).commit(request)
+
+    assert canary not in "".join(traceback.format_exception(error.value))
+    assert (repository / ".git" / "fixture-pre-commit-ran").read_text() == "ran"
     assert run_git(repository, "rev-parse", "HEAD").stdout.strip() == head

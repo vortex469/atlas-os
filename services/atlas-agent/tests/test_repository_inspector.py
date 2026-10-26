@@ -1,7 +1,9 @@
 """Tests for Git repository inspection."""
 
 import subprocess
+import traceback
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from app.config.settings import Settings
@@ -237,10 +239,20 @@ def test_unexpected_git_execution_failure_raises_domain_error(
     def fail_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         raise FileNotFoundError("git unavailable")
 
-    monkeypatch.setattr(subprocess, "run", fail_run)
+    monkeypatch.setattr(subprocess, "Popen", fail_run)
 
     with pytest.raises(RepositoryInspectionError, match="Unable to execute Git"):
         inspector.inspect()
+
+
+def test_failed_git_metadata_does_not_disclose_output_or_arguments(tmp_path: Path) -> None:
+    repository = initialize_repository(tmp_path / "repository", with_commit=True)
+    inspector = GitInspector(repository)
+    canary = uuid4().hex
+    arguments = ("-c", f"alias.fixture=!printf '{canary}'; exit 1", "fixture")
+    with pytest.raises(RepositoryInspectionError, match="exit code 1") as error:
+        inspector._run_git(*arguments)
+    assert canary not in "".join(traceback.format_exception(error.value))
 
 
 def test_settings_default_to_atlas_repository_root(

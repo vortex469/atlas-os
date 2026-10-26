@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+import time
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -153,11 +154,11 @@ class FakeComposeWorkerClient:
 
 
 @pytest.mark.parametrize("backend", ["local", "worker", "worker-lost-response", "worker-lost-response-reload"])
-@pytest.mark.parametrize("staging_drift", [False, True])
+@pytest.mark.parametrize("commit_case", ["success", "staging-drift", "lost-commit-response", "commit-mismatch"])
 def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     tmp_path: Path,
     backend: str,
-    staging_drift: bool,
+    commit_case: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = tmp_path / "repository"
@@ -202,11 +203,17 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
         def inject_staging_drift(*arguments: str) -> subprocess.CompletedProcess[str]:
             if arguments[0] == "add":
                 stage_calls.append("add")
-                if staging_drift:
+                if commit_case == "staging-drift":
                     (root / "compose.production.yaml").write_text(
                         "services:\n  atlas-core:\n    image: atlas-core:unreviewed\n",
                         encoding="utf-8",
                     )
+            if arguments[0] == "commit" and commit_case == "commit-mismatch":
+                (root / "compose.production.yaml").write_text(
+                    "services:\n  atlas-core:\n    image: atlas-core:unreviewed\n",
+                    encoding="utf-8",
+                )
+                run_git(root, "add", "compose.production.yaml")
             return original_run(*arguments)
 
         monkeypatch.setattr(committer, "_run_git", inject_staging_drift)
@@ -351,8 +358,41 @@ def test_complete_candidate_workflow_e2e_persists_audit_chain_and_local_commit(
     # Reviewed evidence is rebuilt against the persisted original approval;
     # carrying it to staging must not require a new approval or snapshot schema.
     persistence.initialize()
+    hook_attempts = repository / ".git" / "fixture-post-commit-attempts"
+    if commit_case == "lost-commit-response":
+        hook = repository / ".git" / "hooks" / "post-commit"
+        hook.write_text(
+            "#!/bin/sh\nprintf 'attempt\\n' >> .git/fixture-post-commit-attempts\nsleep 30\n",
+            encoding="utf-8",
+        )
+        hook.chmod(0o700)
+        monkeypatch.setattr("app.repository.committer.COMMIT_TIMEOUT_SECONDS", 2.0)
+    commit_started = time.monotonic()
     completed = engine.resume(workflow_id)
-    if staging_drift:
+    if commit_case in {"lost-commit-response", "commit-mismatch"}:
+        assert time.monotonic() - commit_started < 5
+        assert completed.sprint.phase is SprintPhase.BLOCKED
+        expected_code = "commit_outcome_unknown" if commit_case == "lost-commit-response" else "commit_result_mismatch"
+        assert completed.error_message == expected_code
+        assert completed.commit_result is None
+        actual_commit = run_git(repository, "rev-parse", "HEAD")
+        assert actual_commit != head
+        expected_image = "new" if commit_case == "lost-commit-response" else "unreviewed"
+        assert run_git(repository, "show", f"{actual_commit}:compose.production.yaml").endswith(f"image: atlas-core:{expected_image}")
+        if commit_case == "lost-commit-response":
+            assert hook_attempts.read_text() == "attempt\n"
+        assert workflow_state.get_session(workflow_id).blocked_reason == expected_code
+        persistence.initialize()
+        assert workflow_state.get_session(workflow_id).blocked_reason == expected_code
+        assert engine.resume(workflow_id).sprint.phase is SprintPhase.BLOCKED
+        assert run_git(repository, "rev-parse", "HEAD") == actual_commit
+        if commit_case == "lost-commit-response":
+            assert hook_attempts.read_text() == "attempt\n"
+        assert stage_calls == ["add"]
+        assert implementation_runner.calls == 1
+        assert verification_runner.calls == 1
+        return
+    if commit_case == "staging-drift":
         assert completed.sprint.phase is SprintPhase.BLOCKED
         assert completed.error_message == "commit_failed"
         assert completed.commit_result is None

@@ -14,12 +14,17 @@ from app.repository.models import (
     ReviewedChange,
     ReviewedChangeEvidence,
 )
+from app.repository.process import GitProcessBudget, GitProcessError, GitProcessRunner
 
 
 class GitInspector:
     """Inspect a Git repository without modifying it."""
 
-    def __init__(self, repository_root: Path) -> None:
+    def __init__(
+        self, repository_root: Path, *,
+        process_runner: GitProcessRunner | None = None,
+        process_budget: GitProcessBudget | None = None,
+    ) -> None:
         """Initialize and validate a repository path."""
 
         candidate = repository_root.expanduser()
@@ -35,6 +40,8 @@ class GitInspector:
             )
 
         self.repository_root = candidate.resolve()
+        self._process_runner = process_runner if process_runner is not None else GitProcessRunner()
+        self._process_budget = process_budget
 
         result = self._run_git(
             "rev-parse",
@@ -153,7 +160,8 @@ class GitInspector:
         current = {
             Path(path): status
             for path, status in WorkerPatchApplier.capture_baseline(
-                self.repository_root
+                self.repository_root,
+                read_git=lambda arguments: self._run_git(*arguments).stdout.encode("utf-8"),
             )
         }
         if current != expected_post:
@@ -246,30 +254,23 @@ class GitInspector:
         """Run one Git command inside the configured repository."""
 
         try:
-            result = subprocess.run(
-                ["git", *arguments],
-                cwd=self.repository_root,
-                check=False,
-                capture_output=True,
-                text=True,
+            result = self._process_runner.run(
+                arguments, cwd=self.repository_root, budget=self._process_budget,
             )
-        except OSError as exc:
+        except GitProcessError as exc:
             raise RepositoryInspectionError(
-                f"Unable to execute Git in {self.repository_root}: {exc}"
-            ) from exc
+                f"Unable to execute Git: {exc}"
+            ) from None
 
         if check and result.returncode != 0:
-            detail = result.stderr.strip() or result.stdout.strip()
-            message = (
-                f"Git command failed with exit code {result.returncode}: "
-                f"git {' '.join(arguments)}"
+            raise RepositoryInspectionError(
+                f"Git command failed with exit code {result.returncode}"
             )
-            if detail:
-                message = f"{message}: {detail}"
-
-            raise RepositoryInspectionError(message)
-
-        return result
+        try:
+            stdout = result.stdout.decode("utf-8")
+        except UnicodeError:
+            raise RepositoryInspectionError("Git metadata is not valid UTF-8") from None
+        return subprocess.CompletedProcess(["git", *arguments], result.returncode, stdout, "")
 
     def _get_branch(self) -> str | None:
         """Return the current branch or None for detached HEAD."""

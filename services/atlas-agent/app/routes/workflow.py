@@ -774,6 +774,24 @@ def _validate_repository_root_boundary(
 def _raise_for_failure(result: WorkflowResult) -> None:
     if result.error_message is None:
         return
+    if result.error_message == CandidateCommitFailureCode.COMMIT_OUTCOME_UNKNOWN.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": CandidateCommitFailureCode.COMMIT_OUTCOME_UNKNOWN.value,
+                "message": "Git may have created a local commit. Inspect the repository "
+                "before recovery; do not repeat the commit.",
+            },
+        )
+    if result.error_message == CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH.value:
+        raise HTTPException(
+            status_code=status.HTTP_424_FAILED_DEPENDENCY,
+            detail={
+                "code": CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH.value,
+                "message": "The observed local commit does not match the approved change. "
+                "Inspect the repository before recovery; do not repeat the commit.",
+            },
+        )
     if result.error_message == "worker_outcome_unknown":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -1017,6 +1035,8 @@ def _audit_stage_rank_for_state(
     if state in {WorkflowSessionState.AWAITING_APPROVAL, WorkflowSessionState.PLANNED}:
         return _AUDIT_STAGE_RANK["workflow"]
     if state is WorkflowSessionState.BLOCKED:
+        if _commit_failure_status(workflow) is not None:
+            return _AUDIT_STAGE_RANK["commit"]
         if workflow.commit_result is not None:
             return _AUDIT_STAGE_RANK["commit"]
         if workflow.candidate_review_result is not None or workflow.review_report is not None:
@@ -1035,6 +1055,19 @@ def _audit_stage_rank_for_state(
             return _AUDIT_STAGE_RANK["implementation"]
         return _AUDIT_STAGE_RANK["workflow"]
     return _AUDIT_STAGE_RANK["workflow"]
+
+
+def _commit_failure_status(workflow) -> str | None:
+    if workflow.state is not WorkflowSessionState.BLOCKED:
+        return None
+    if workflow.blocked_reason in {
+        CandidateCommitFailureCode.COMMIT_OUTCOME_UNKNOWN.value,
+        "commit interrupted by process restart",
+    }:
+        return "unknown"
+    if workflow.blocked_reason == CandidateCommitFailureCode.COMMIT_RESULT_MISMATCH.value:
+        return "invalid"
+    return None
 
 
 def _section_status(rank: int, current_rank: int, has_value: bool) -> str:
@@ -1198,6 +1231,13 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
         has_commit=has_commit,
         failure_stage=failed_stage,
     )
+    commit_failure_status = _commit_failure_status(workflow)
+    if commit_failure_status is not None:
+        timeline = [
+            section.model_copy(update={"status": commit_failure_status})
+            if section.name == "commit" else section
+            for section in timeline
+        ]
 
     changed_files = [str(path) for path in workflow.changed_files]
 
@@ -1317,7 +1357,9 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
             changed_files=changed_files,
         ),
         commit=WorkflowAuditCommitResponse(
-            status=_section_status(_AUDIT_STAGE_RANK["commit"], current_rank, has_commit),
+            status=(commit_failure_status if commit_failure_status is not None else _section_status(
+                _AUDIT_STAGE_RANK["commit"], current_rank, has_commit
+            )),
             commit_request_id=(
                 f"approval-commit-{workflow.identifier}"
                 if commit_request is not None

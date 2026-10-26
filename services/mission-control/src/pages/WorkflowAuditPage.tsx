@@ -5,6 +5,7 @@ import {
     getWorkflowAudit,
 } from "../api/atlas-agent";
 import type { WorkflowAuditResponse, WorkflowAuditStageName, WorkflowAuditStageStatus } from "../types/atlasAgent";
+import { formatWorkflowBlockedReason } from "../utils/workflowState";
 import { useCallback, useEffect, useState } from "react";
 
 interface AuditStageDefinition {
@@ -240,7 +241,7 @@ export function WorkflowAuditPage() {
                     <Detail label="Workflow ID" value={audit.workflow_id} />
                     <Detail label="Workflow State" value={formatStatusLabel(audit.workflow_state)} />
                     <Detail label="Workflow Source" value={audit.workflow_source} />
-                    {audit.blocked_reason ? <Detail label="Blocked reason" value={audit.blocked_reason} /> : null}
+                    {audit.blocked_reason ? <Detail label="Blocked reason" value={formatWorkflowBlockedReason(audit.blocked_reason)} /> : null}
                     <Detail label="Overall audit status" value={overallLifecycleLabel} />
                     <Detail label="Audit validation" value={audit.validation.valid ? "Valid" : "Invalid"} />
                     <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
@@ -306,7 +307,8 @@ export function WorkflowAuditPage() {
     );
 }
 
-function normalizeStageStatus(status: string | undefined): "completed" | "current" | "not_reached" | "missing" | "inconsistent" {
+function normalizeStageStatus(status: string | undefined): "completed" | "current" | "not_reached" | "missing" | "inconsistent" | "unknown" {
+    if (status === "unknown") return "unknown";
     if (status === undefined || status === "not_reached") {
         return "not_reached";
     }
@@ -354,15 +356,16 @@ function Detail({ label, value }: { label: string; value: string }) {
     );
 }
 
-function timelineClass(status: "completed" | "current" | "not_reached" | "missing" | "inconsistent") {
+function timelineClass(status: "completed" | "current" | "not_reached" | "missing" | "inconsistent" | "unknown") {
     if (status === "completed") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
     if (status === "current") return "border-blue-400 bg-blue-500/10 text-blue-200";
-    if (status === "inconsistent") return "border-amber-500/30 bg-amber-500/10 text-amber-100";
+    if (status === "inconsistent" || status === "unknown") return "border-amber-500/30 bg-amber-500/10 text-amber-100";
     if (status === "missing") return "border-red-500/30 bg-red-500/10 text-red-100";
     return "border-slate-800 bg-slate-950/50 text-slate-500";
 }
 
 function formatStatusLabel(value: string): string {
+    if (value === "unknown") return "Outcome unknown";
     return value
         .replaceAll("_", " ")
         .replaceAll("-", " ")
