@@ -85,8 +85,8 @@ export function OperationalHistoryPage() {
 
     const visibleItems = items.filter(({ workflow, lifecycle, diagnostic, diagnosticUnavailable }) =>
         (diagnosticFilter === "all" || diagnostic?.diagnostic_status === diagnosticFilter
-            || (diagnosticFilter === "unavailable" && diagnosticUnavailable))
-        && (terminalFilter === "all" || (terminalFilter === "terminal") === lifecycle?.terminal)
+            || (diagnosticFilter === "unavailable" && (diagnosticUnavailable || diagnostic === null)))
+        && (terminalFilter === "all" || (typeof lifecycle?.terminal === "boolean" && (terminalFilter === "terminal") === lifecycle.terminal))
         && (intentFilter === "all" || workflow.execution_intent === intentFilter)
         && (providerFilter === "all" || lifecycle?.provider_id === providerFilter)
         && (resourceTypeFilter === "all" || lifecycle?.resource_type === resourceTypeFilter));
