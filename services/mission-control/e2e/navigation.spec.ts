@@ -43,7 +43,7 @@ const routes = [
         path: "/execution-candidates",
         assertion: async (page) => {
             await expect(page.getByRole("heading", { name: "Change proposals" })).toBeVisible();
-            await expect(page.getByText("candidate-browser-baseline")).toBeVisible();
+            await expect(page.locator('a[href="/execution-candidates/candidate-browser-baseline"]')).toBeVisible();
         },
     },
     {

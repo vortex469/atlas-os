@@ -55,12 +55,14 @@ function page(candidates: ExecutionCandidate[], overrides: Partial<ExecutionCand
     };
 }
 
-function renderPage() {
-    return render(
+function renderPage(openFilters = true) {
+    const view = render(
         <MemoryRouter>
             <ExecutionCandidatesPage />
         </MemoryRouter>,
     );
+    if (openFilters) fireEvent.click(screen.getByText("Filter proposals", { exact: true }));
+    return view;
 }
 
 describe("ExecutionCandidatesPage", () => {
@@ -70,19 +72,33 @@ describe("ExecutionCandidatesPage", () => {
     });
 
     it("renders candidate cards, workflow rail, and no execution controls", async () => {
-        renderPage();
+        renderPage(false);
 
         expect(await screen.findByText("candidate-1")).toBeInTheDocument();
         expect(screen.getByText("Eligible for planning consideration")).toBeInTheDocument();
         expect(screen.getByText("stack-home-assistant")).toBeInTheDocument();
         expect(screen.getByText("Update Compose Stack")).toBeInTheDocument();
         expect(screen.getByText("2 references")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "candidate-1" })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "Update Compose Stack for stack-home-assistant" })).toHaveAttribute(
             "href",
             "/execution-candidates/candidate-1",
         );
         expect(screen.getByText("Planning")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
+        expect(screen.getByText("Filter proposals", { exact: true }).closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByText("Technical details", { exact: true }).closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByText("candidate-1")).not.toBeVisible();
+        expect(screen.getByText("Compatible With Warnings")).toBeVisible();
+        expect(screen.getByText("Standard")).toBeVisible();
+        expect(screen.getByText("No expiry")).toBeVisible();
+    });
+
+    it.each(["", "2999-02-30T00:00:00Z"])("keeps malformed expiry %s visible as unverified", async (expires_at) => {
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate({ expires_at })]));
+        renderPage(false);
+        expect(await screen.findByText("Unverified expiry")).toBeVisible();
+        expect(screen.queryByText("No expiry")).not.toBeInTheDocument();
+        expect(screen.getByText("Technical details").closest("details")).not.toHaveAttribute("open");
     });
 
     it("keeps newer search results when an older search completes later", async () => {
@@ -125,6 +141,29 @@ describe("ExecutionCandidatesPage", () => {
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
+    });
+
+    it("retries the failed page with its submitted filters, ignoring unsent edits", async () => {
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate()], { total: 50, has_more: true }));
+        renderPage();
+        await screen.findByText("candidate-1");
+        fireEvent.change(screen.getByLabelText("Source subsystem"), { target: { value: "orion" } });
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate({ id: "filtered-candidate" })], { total: 50, has_more: true }));
+        fireEvent.click(screen.getByRole("button", { name: "Search" }));
+        await screen.findByText("filtered-candidate");
+        mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Read failed"));
+        fireEvent.click(screen.getByRole("button", { name: "Next change proposals page" }));
+        await screen.findByRole("alert");
+        const failedQuery = mockedListExecutionCandidates.mock.lastCall![0];
+        expect(failedQuery).toMatchObject({ sourceSubsystem: "orion", offset: 25 });
+        fireEvent.change(screen.getByLabelText("Source subsystem"), { target: { value: "unsent-edit" } });
+        expect(mockedListExecutionCandidates).toHaveBeenCalledTimes(3);
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate({ id: "recovered-candidate" })], { total: 50, offset: 25 }));
+        fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+        await screen.findByText("recovered-candidate");
+        expect(mockedListExecutionCandidates).toHaveBeenLastCalledWith(failedQuery);
+        expect(mockedListExecutionCandidates).toHaveBeenCalledTimes(4);
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
     it("does not let the initial read overwrite a submitted search", async () => {

@@ -87,9 +87,10 @@ describe("ExecutionCandidateDetailPage", () => {
     });
 
     it("renders all public candidate fields and boundary wording", async () => {
+        const user = userEvent.setup();
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "candidate-1" })).toBeInTheDocument();
+        expect(await screen.findByText("candidate-1", { exact: true })).toBeInTheDocument();
         expect(screen.getByText("finding-1")).toBeInTheDocument();
         expect(screen.getByText("orion")).toBeInTheDocument();
         expect(screen.getByText("update-compose-stack")).toBeInTheDocument();
@@ -107,13 +108,24 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.getByText("relationship-1")).toBeInTheDocument();
         expect(screen.getByText(/Planning does not approve or apply a change/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Update Compose Stack", level: 1 })).toBeVisible();
+        expect(screen.getByText("Standard")).toBeVisible();
+        expect(screen.getByText("Compatible With Warnings")).toBeVisible();
+        expect(screen.getByText("service_disruption")).toBeVisible();
+        const disclosure = screen.getByText("Technical details", { exact: true });
+        expect(disclosure.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByText("candidate-1", { exact: true })).not.toBeVisible();
+        await user.click(disclosure);
+        expect(screen.getByText("candidate-1", { exact: true })).toBeVisible();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(1);
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
     });
 
     it("submits only candidate_id and displays planning session success", async () => {
         const user = userEvent.setup();
         renderPage();
 
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByText("candidate-1", { exact: true });
         await user.click(screen.getByRole("button", { name: "Start planning" }));
 
         await waitFor(() =>
@@ -136,7 +148,7 @@ describe("ExecutionCandidateDetailPage", () => {
         );
 
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByText("candidate-1", { exact: true });
         const button = screen.getByRole("button", { name: "Start planning" });
         await user.dblClick(button);
 
@@ -163,7 +175,7 @@ describe("ExecutionCandidateDetailPage", () => {
     it("handles unsupported, rejected, stale, Core unavailable, Agent unavailable, and persistence failures", async () => {
         const user = userEvent.setup();
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByText("candidate-1", { exact: true });
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({
             session_id: null,
@@ -201,12 +213,12 @@ describe("ExecutionCandidateDetailPage", () => {
             ? Promise.resolve(candidate()) : new Promise((resolve) => { resolveNext = resolve; }));
         const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/candidate-1"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByText("candidate-1", { exact: true });
         await act(() => router.navigate("/execution-candidates/candidate-2"));
-        expect(screen.queryByRole("heading", { name: "candidate-1" })).not.toBeInTheDocument();
+        expect(screen.queryByText("candidate-1", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Start planning" })).not.toBeInTheDocument();
         resolveNext(candidate({ id: "candidate-2" }));
-        expect(await screen.findByRole("heading", { name: "candidate-2" })).toBeInTheDocument();
+        expect(await screen.findByText("candidate-2", { exact: true })).toBeInTheDocument();
     });
 
     it("recovers when navigating from a missing proposal to a valid one", async () => {
@@ -214,9 +226,9 @@ describe("ExecutionCandidateDetailPage", () => {
             .mockResolvedValueOnce(candidate({ id: "candidate-2" }));
         const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/missing"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "Execution candidate not found" });
+        await screen.findByRole("heading", { name: "Change proposal not found" });
         await act(() => router.navigate("/execution-candidates/candidate-2"));
-        expect(await screen.findByRole("heading", { name: "candidate-2" })).toBeInTheDocument();
+        expect(await screen.findByText("candidate-2", { exact: true })).toBeInTheDocument();
     });
 
     it("does not apply a late planning response to a different proposal", async () => {
@@ -227,10 +239,10 @@ describe("ExecutionCandidateDetailPage", () => {
             .mockResolvedValueOnce(planningResponse({ candidate_id: "candidate-2", session_id: "candidate-plan-2" }));
         const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/candidate-1"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByText("candidate-1", { exact: true });
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         await act(() => router.navigate("/execution-candidates/candidate-2"));
-        await screen.findByRole("heading", { name: "candidate-2" });
+        await screen.findByText("candidate-2", { exact: true });
         await act(async () => resolvePlanning(planningResponse()));
         expect(screen.queryByText("Planning session ID: candidate-plan-1")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Start planning" }));
@@ -250,7 +262,7 @@ describe("ExecutionCandidateDetailPage", () => {
         const user = userEvent.setup();
         mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse({ candidate_id: "different-candidate" }));
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByText("candidate-1", { exact: true });
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("The planning response did not match this proposal.");
         expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
@@ -259,7 +271,7 @@ describe("ExecutionCandidateDetailPage", () => {
     it.each(["not-a-time", "2999-02-30T00:00:00Z", "2999-01-01T00:00:00", ""])("keeps planning disabled for an unverified expiry: %j", async (expires_at) => {
         mockedGetExecutionCandidate.mockResolvedValue(candidate({ expires_at }));
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByText("candidate-1", { exact: true });
         expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
         expect(screen.getByText("Unverified expiry")).toBeInTheDocument();
     });
@@ -267,7 +279,7 @@ describe("ExecutionCandidateDetailPage", () => {
     it.each([null, undefined])("preserves planning eligibility when expiry is optional: %j", async (expires_at) => {
         mockedGetExecutionCandidate.mockResolvedValue(candidate({ expires_at }));
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByText("candidate-1", { exact: true });
         expect(screen.getByRole("button", { name: "Start planning" })).toBeEnabled();
     });
 
@@ -277,7 +289,7 @@ describe("ExecutionCandidateDetailPage", () => {
         }));
         renderPage();
         expect(await screen.findByRole("alert")).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Execution candidate not found" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Change proposal not found" })).not.toBeInTheDocument();
     });
 
 });

@@ -279,7 +279,8 @@ for (const expires_at of [null, "2999-02-30T00:00:00Z"]) {
         const proposal = { ...executionCandidates[0], expires_at };
         await page.route("**/api/v1/execution-candidates/*", (route) => route.fulfill({ json: proposal }));
         await page.goto(`/execution-candidates/${proposal.id}`);
-        await expect(page.getByRole("heading", { name: proposal.id, exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true, level: 1 })).toBeVisible();
+        await expect(page.getByText(proposal.id, { exact: true })).toHaveCount(1);
         await expect(page.getByText("Review this proposal before planning. Planning does not approve or apply a change.")).toBeVisible();
         const planning = page.getByRole("button", { name: "Start planning", exact: true });
         if (expires_at === null) await expect(planning).toBeEnabled();
@@ -298,7 +299,7 @@ test("a proposal with the wrong response identity cannot offer planning", async 
     await page.goto(`/execution-candidates/${executionCandidates[0].id}`);
     await expect(page.getByRole("alert")).toContainText("The returned proposal does not match this page.");
     await expect(page.getByRole("button", { name: "Start planning" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "other-proposal" })).toHaveCount(0);
+    await expect(page.getByText("other-proposal", { exact: true })).toHaveCount(0);
 });
 
 test("a missing proposal is distinct from a service outage", async ({ page }) => {
@@ -306,7 +307,7 @@ test("a missing proposal is distinct from a service outage", async ({ page }) =>
         status: 404, json: { detail: "PRIVATE_BACKEND_DETAIL" },
     }));
     await page.goto("/execution-candidates/missing-proposal");
-    await expect(page.getByRole("heading", { name: "Execution candidate not found" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Change proposal not found" })).toBeVisible();
     await expect(page.getByText("PRIVATE_BACKEND_DETAIL")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Start planning" })).toHaveCount(0);
 });

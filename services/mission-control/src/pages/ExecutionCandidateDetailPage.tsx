@@ -44,7 +44,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 console.error(`Unable to load execution candidate ${candidateId}:`, requestError);
                 const message = getAtlasErrorMessage(
                     requestError,
-                    "Mission Control could not load this execution candidate.",
+                    "Mission Control could not load this change proposal.",
                 );
                 if (isAxiosError(requestError) && requestError.response?.status === 404) {
                     setNotFound(true);
@@ -96,15 +96,15 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     }
 
     if (isLoading) {
-        return <PageFrame><p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">Loading execution candidate…</p></PageFrame>;
+        return <PageFrame><p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">Loading change proposal…</p></PageFrame>;
     }
 
     if (notFound) {
-        return <PageFrame><section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6"><h1 className="text-2xl font-bold text-white">Execution candidate not found</h1><p className="mt-2 text-sm text-slate-400">Atlas Core could not find a current candidate for {candidateId}.</p></section></PageFrame>;
+        return <PageFrame><section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6"><h1 className="text-2xl font-bold text-white">Change proposal not found</h1><p className="mt-2 text-sm text-slate-400">Atlas Core could not find a current proposal for {candidateId}.</p></section></PageFrame>;
     }
 
     if (error || candidate === null) {
-        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Execution candidate unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Mission Control could not load this execution candidate."}</p></div></PageFrame>;
+        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Change proposal unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Mission Control could not load this change proposal."}</p></div></PageFrame>;
     }
 
     return (
@@ -114,18 +114,23 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     ← Change proposals
                 </Link>
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Execution Candidate</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Change proposal</p>
                     <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <h1 className="break-all text-3xl font-bold text-white">{candidate.id}</h1>
+                            <h1 className="break-all text-3xl font-bold text-white">{formatLabel(candidate.execution_intent).trim() || "Change proposal"}</h1>
                             <p className="mt-2 text-sm text-slate-400">{statusText(candidate.status)}</p>
                         </div>
-                        <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{formatLabel(candidate.execution_intent)}</span>
+                        <p className="text-sm text-slate-300">Target: {candidate.target_id}</p>
                     </div>
                     <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">
                         Review this proposal before planning. Planning does not approve or apply a change.
                     </p>
                 </div>
+                <dl className="grid gap-4 text-sm md:grid-cols-3">
+                    <DetailField label="Required approval" value={formatLabel(candidate.required_approval_level)} />
+                    <DetailField label="Compatibility" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
+                    <DetailField label="Expires" value={formatExpiry(candidate.expires_at)} />
+                </dl>
                 <PlanningProgress current="Execution Candidate" />
             </header>
 
@@ -144,32 +149,32 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">Planning unavailable</p><p className="mt-1 text-sm text-red-200/80">{planningError}</p></div>}
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-2" aria-label="Execution candidate details">
-                <InfoPanel title="Immutable identity">
-                    <DetailField label="Candidate ID" value={candidate.id} />
-                    <DetailField label="Created" value={formatTimestamp(candidate.created_at)} />
-                    <DetailField label="Expires" value={formatExpiry(candidate.expires_at)} />
-                </InfoPanel>
-                <InfoPanel title="Source recommendation">
-                    <DetailField label="Source recommendation ID" value={candidate.source_recommendation_id} />
-                    <DetailField label="Source subsystem" value={candidate.source_subsystem} />
-                    <DetailField label="Recommendation class" value={candidate.recommendation_class} />
-                    <DetailField label="Catalog item ID" value={candidate.catalog_item_id ?? "Not linked"} />
-                </InfoPanel>
-                <InfoPanel title="Target and classification">
-                    <DetailField label="Target ID" value={candidate.target_id} />
-                    <DetailField label="Target type" value={candidate.target_type} />
-                    <DetailField label="Execution category" value={formatLabel(candidate.execution_category)} />
-                    <DetailField label="Execution intent" value={formatLabel(candidate.execution_intent)} />
-                    <DetailField label="Status" value={statusText(candidate.status)} />
-                    <DetailField label="Required approval level" value={formatLabel(candidate.required_approval_level)} />
-                </InfoPanel>
-                <InfoPanel title="Compatibility and relationships">
-                    <DetailField label="Compatibility assessment ID" value={candidate.compatibility_assessment_id ?? "Not reported"} />
-                    <DetailField label="Compatibility status" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
-                    <ListField label="Relationship IDs" values={candidate.relationship_ids} empty="No relationship IDs." />
-                </InfoPanel>
-            </section>
+            <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-300">Technical details</summary>
+                <section className="mt-4 grid gap-4 lg:grid-cols-2" aria-label="Proposal technical details">
+                    <InfoPanel title="Immutable identity">
+                        <DetailField label="Candidate ID" value={candidate.id} />
+                        <DetailField label="Created" value={formatTimestamp(candidate.created_at)} />
+                    </InfoPanel>
+                    <InfoPanel title="Source recommendation">
+                        <DetailField label="Source recommendation ID" value={candidate.source_recommendation_id} />
+                        <DetailField label="Source subsystem" value={candidate.source_subsystem} />
+                        <DetailField label="Recommendation class" value={candidate.recommendation_class} />
+                        <DetailField label="Catalog item ID" value={candidate.catalog_item_id ?? "Not linked"} />
+                    </InfoPanel>
+                    <InfoPanel title="Target and classification">
+                        <DetailField label="Target ID" value={candidate.target_id} />
+                        <DetailField label="Target type" value={candidate.target_type} />
+                        <DetailField label="Execution category" value={formatLabel(candidate.execution_category)} />
+                        <DetailField label="Execution intent" value={formatLabel(candidate.execution_intent)} />
+                        <DetailField label="Status" value={statusText(candidate.status)} />
+                    </InfoPanel>
+                    <InfoPanel title="Compatibility and relationships">
+                        <DetailField label="Compatibility assessment ID" value={candidate.compatibility_assessment_id ?? "Not reported"} />
+                        <ListField label="Relationship IDs" values={candidate.relationship_ids} empty="No relationship IDs." />
+                    </InfoPanel>
+                </section>
+            </details>
 
             <InfoPanel title="Rationale">
                 <p className="text-sm leading-6 text-slate-300">{candidate.rationale}</p>
