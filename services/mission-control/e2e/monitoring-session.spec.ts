@@ -24,10 +24,10 @@ for (const width of [320, 390, 1280]) {
             await page.route("**/api/v1/providers/proxmox/resources", route => route.fulfill({ json: inventory }));
             await page.route("**/api/v1/providers/proxmox/management", route => route.fulfill({ json: management }));
             await page.route("**/api/v1/providers/proxmox/management/operator/monitoring-suggestions", route => route.fulfill({ json: [] }));
-            let hold = false;
+            let hold = true;
             let held = 0;
             let release!: () => void;
-            const pending = new Promise<void>(resolve => { release = resolve; });
+            let pending = new Promise<void>(resolve => { release = resolve; });
             await page.route("**/api/v1/providers/proxmox/management/operator", async route => {
                 if (hold) { held += 1; await pending; }
                 return route.fulfill({ json: operatorManagement() });
@@ -50,6 +50,15 @@ for (const width of [320, 390, 1280]) {
             });
             await page.goto("/providers/proxmox");
             const row = page.getByTestId("resource-row-qemu-110");
+            await expect(row.getByRole("heading", { name: resource.display_name, exact: true })).toBeVisible();
+            await expect(row.getByText("Checking whether you can edit monitoring expectations...", { exact: true })).toBeVisible();
+            await expect(row.getByText(/operator capability could not be loaded/i)).toHaveCount(0);
+            await expect(row.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+            hold = false;
+            release();
+            await expect(row.getByRole("combobox")).toBeVisible();
+            pending = new Promise<void>(resolve => { release = resolve; });
+            held = 0;
             await row.getByRole("combobox").selectOption("ignored");
             await row.getByRole("checkbox").check();
             hold = true;

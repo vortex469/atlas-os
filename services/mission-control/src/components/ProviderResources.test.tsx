@@ -329,6 +329,20 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(putProviderMonitoringIntent).toHaveBeenLastCalledWith("proxmox", "qemu", "111", expect.objectContaining({ expected_management_fingerprint: replacementFingerprint }), "csrf");
     });
 
+    it("shows a permissions check while the first private read is pending", async () => {
+        let finish!: (value: ProviderManagementV3) => void;
+        vi.mocked(getAuthenticatedProviderManagement).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+        render(<ProviderResources provider={provider} />);
+        await screen.findByText("Frigate");
+        expect(screen.getByText("Checking whether you can edit monitoring expectations...")).toBeInTheDocument();
+        expect(screen.queryByText(/operator capability could not be loaded/i)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^Save$/ })).not.toBeInTheDocument();
+        await act(async () => finish(management()));
+        expect(await screen.findByRole("button", { name: /^Save$/ })).toBeInTheDocument();
+        expect(screen.queryByText("Checking whether you can edit monitoring expectations...")).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
     function operatorSession(operatorId: string) {
         const current = vi.mocked(useOperatorSession).getMockImplementation()!();
         return { ...current, principal: { operator_id: operatorId, authenticated_at: "2026-01-01T00:00:00Z", permissions: ["provider_intent:update"], auth_method: "core_session" as const } };

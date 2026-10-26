@@ -39,7 +39,7 @@ type ProviderIntentEditorProps = {
     resource: ManagedProviderResourceV2;
     mutationResource: ManagedProviderResourceV3 | null;
     operatorEpoch?: string;
-    operatorState: "anonymous" | "available" | "unavailable";
+    operatorState: "anonymous" | "loading" | "available" | "unavailable";
     saving: boolean;
     blocked?: boolean;
     initialSelection?: ProviderMonitoringExpectation;
@@ -148,11 +148,13 @@ function ProviderIntentEditorForm({
                 <p className="text-xs text-slate-500">
                     {operatorState === "anonymous"
                         ? "Sign in with Provider Intent permission to edit this public monitoring state."
-                        : operatorState === "unavailable"
-                          ? "Editing is unavailable because operator capability could not be loaded."
-                          : mutationResource?.mutation_readiness === "ready"
-                            ? "Your operator session does not permit Provider Intent updates."
-                            : readOnlyReasons[mutationResource?.mutation_readiness ?? "authority_unavailable"]}
+                        : operatorState === "loading"
+                          ? "Checking whether you can edit monitoring expectations..."
+                          : operatorState === "unavailable"
+                            ? "Editing is unavailable because operator capability could not be loaded."
+                            : mutationResource?.mutation_readiness === "ready"
+                              ? "Your operator session does not permit Provider Intent updates."
+                              : readOnlyReasons[mutationResource?.mutation_readiness ?? "authority_unavailable"]}
                 </p>
             )}
         </div>
