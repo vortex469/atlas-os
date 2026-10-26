@@ -235,11 +235,11 @@ export function ProviderPolicyDetails({
                     {unavailable ? "No provider-specific policy was reported in the last successful refresh." : "No provider-specific operational policy is configured."}
                 </div>
             ) : (
-                <dl className="grid gap-px overflow-hidden rounded-lg border border-slate-800 bg-slate-800 sm:grid-cols-2">
-                    {details.map((detail) => (
+                <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-slate-800 bg-slate-800 sm:grid-cols-2">
+                    {details.map((detail, index) => (
                         <div
                             key={detail.label}
-                            className="bg-slate-900 p-5"
+                            className={`min-w-0 bg-slate-900 p-5${details.length % 2 !== 0 && index === details.length - 1 ? " sm:col-span-2" : ""}`}
                         >
                             <dt className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
                                 {detail.label}

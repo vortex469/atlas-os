@@ -48,7 +48,11 @@ were loaded. A successful refresh restores the chart or a confirmed empty state.
 retained settings, show an unavailable state before any settings are loaded, and
 suspend chart threshold comparisons until settings refresh successfully. This
 changes display behavior only; backend policy enforcement is unchanged.
-`e2e/provider-policies.spec.ts` checks these independent read states.
+`e2e/provider-policies.spec.ts` checks these independent read states. Reference-panel
+layout uses complete final rows for odd setting counts, wraps long values within
+the panel, and places history metrics two across on narrow screens.
+`e2e/provider-panel-layout.spec.ts` checks one/three-setting layouts and long
+container names at 320, 390 and 1280 pixels.
 
 Paths in the table are relative to `services/mission-control`.
 

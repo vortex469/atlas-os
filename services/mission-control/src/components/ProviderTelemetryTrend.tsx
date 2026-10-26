@@ -108,7 +108,7 @@ function TrendChart({
 
     return (
         <div className="rounded-lg border border-slate-800 bg-slate-900 p-5">
-            <div className="grid gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <Metric label="Snapshots" value={String(points.length)} />
                 <Metric label="Average" value={duration(average)} />
                 <Metric
