@@ -483,15 +483,21 @@ describe("ProviderConnection", () => {
         expect(mockedTestProviderConnection).not.toHaveBeenCalled();
     });
 
-    it("does not let an automatic settings read clear an uncertain save", async () => {
+    it("defers automatic settings reads while an uncertain save holds draft values", async () => {
         const user = userEvent.setup();
         mockedUpdateProviderConnection.mockRejectedValueOnce(new Error("lost response"));
         const view = render(<ProviderConnection provider={provider} />);
         await screen.findByLabelText("Host");
+        await user.clear(screen.getByLabelText("Host"));
+        await user.type(screen.getByLabelText("Host"), "draft.invalid");
+        await user.type(screen.getByLabelText("Token Value"), "draft-secret");
         await user.click(screen.getByRole("button", { name: "Save Connection" }));
         await screen.findByText("Save outcome not confirmed");
         view.rerender(<ProviderConnection provider={{ ...provider, name: "Renamed provider" }} />);
-        await waitFor(() => expect(mockedGetProviderConnection).toHaveBeenCalledTimes(2));
+        await act(async () => { await Promise.resolve(); });
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(1);
+        expect(screen.getByLabelText("Host")).toHaveValue("draft.invalid");
+        expect(screen.getByLabelText("Token Value")).toHaveValue("draft-secret");
         expect(screen.getByText("Save outcome not confirmed")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Test Connection" })).toBeDisabled();
         expect(mockedUpdateProviderConnection).toHaveBeenCalledTimes(1);

@@ -48,7 +48,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         useState<TestProviderConnectionResult | null>(null);
 
     const loadConnection = useCallback(async (recoverSave = false) => {
-        if (!active.current || !hasConnectionCapability || requestInFlight.current) {
+        if (!active.current || !hasConnectionCapability || requestInFlight.current || (saveUncertainRef.current && !recoverSave)) {
             return;
         }
 

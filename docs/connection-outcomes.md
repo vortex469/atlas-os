@@ -16,7 +16,7 @@ live testing pause. Previous live-test results are cleared when saving starts.
 Reload settings is the recovery action. A failed reload keeps the pause. An
 explicit successful reload replaces draft values with the current server schema,
 clears secret replacements and restores only the controls that schema permits.
-An automatic read after a provider-label change cannot clear the pause. No read
+Automatic settings reads defer while the save is uncertain, preserving drafts. No read
 replays the save, and no request is retried automatically. The operator still
 confirms each later save or live test using the existing confirmation prompts.
 
