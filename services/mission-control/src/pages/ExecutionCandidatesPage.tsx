@@ -131,13 +131,11 @@ export function ExecutionCandidatesPage() {
                         Execution Candidates
                     </p>
                     <h1 className="mt-3 text-3xl font-bold text-white">
-                        Candidate planning intake
+                        Change proposals
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Browse current execution candidates from Atlas Core. This view is
-                        read-only except for asking Atlas Agent to create or reuse a
-                        planning-only session. It does not execute, approve, install, or
-                        apply changes.
+                        Find a proposal and open it to review or start planning. Planning
+                        and approval are separate steps.
                     </p>
                 </div>
                 <PlanningProgress current="Execution Candidate" />

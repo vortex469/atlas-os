@@ -42,7 +42,7 @@ const routes = [
         label: "Execution Candidates",
         path: "/execution-candidates",
         assertion: async (page) => {
-            await expect(page.getByRole("heading", { name: "Candidate planning intake" })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Change proposals" })).toBeVisible();
             await expect(page.getByText("candidate-browser-baseline")).toBeVisible();
         },
     },

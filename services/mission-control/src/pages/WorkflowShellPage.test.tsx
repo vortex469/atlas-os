@@ -206,7 +206,7 @@ describe("WorkflowShellPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText(/Loading workflow shell/i)).toBeInTheDocument();
+        expect(await screen.findByText(/Loading workflow summary/i)).toBeInTheDocument();
         resolveSession(planningSession());
     });
 
@@ -503,7 +503,7 @@ describe("WorkflowShellPage", () => {
 
 		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
 
-		expect(await screen.findByText("Implementation request did not include a complete translation contract. Please retry after refreshing the workflow shell.")).toBeInTheDocument();
+		expect(await screen.findByText("The exact request is incomplete. Reload this workflow before preparing the request again.")).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 	});
 
@@ -524,7 +524,7 @@ describe("WorkflowShellPage", () => {
 
 		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
 
-		expect(await screen.findByText("Implementation request did not include a complete translation contract. Please retry after refreshing the workflow shell.")).toBeInTheDocument();
+		expect(await screen.findByText("The exact request is incomplete. Reload this workflow before preparing the request again.")).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 	});
 

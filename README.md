@@ -67,6 +67,8 @@ presented as current results.
 Preparation screens use four plain steps: Proposal, Planning, Plan, and Workflow.
 This indicator shows the current screen; it does not report approval or execution
 status. The workflow displays its server-reported stages separately.
+Workflow preparation uses plain-language next steps, with technical request
+details available in an optional disclosure beside any preparation error.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent

@@ -163,7 +163,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             setWorkflowError(
                 getAtlasAgentErrorMessage(
                     requestError,
-                    "Atlas Agent could not create a workflow shell.",
+                    "Atlas Agent could not create this workflow.",
                 ),
             );
         } finally {
@@ -275,7 +275,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
 
             {hasPlan && (
                 <section aria-labelledby="workflow-shell-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                    <h2 id="workflow-shell-heading" className="text-lg font-semibold text-white">Workflow shell</h2>
+                    <h2 id="workflow-shell-heading" className="text-lg font-semibold text-white">Create a workflow</h2>
                     <p className="mt-2 text-sm text-slate-400">
                         Create a workflow from this plan. You will approve any later changes separately.
                     </p>

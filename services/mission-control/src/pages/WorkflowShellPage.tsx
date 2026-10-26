@@ -89,7 +89,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 setWorkflowLoadError(
                     getAtlasAgentErrorMessage(
                         error,
-                        "Mission Control could not load this workflow shell summary.",
+                        "Mission Control could not load this workflow summary.",
                     ),
                 );
             } finally {
@@ -182,13 +182,13 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 );
             } else {
                 setImplementationError(
-                    "Implementation request did not include a complete translation contract. Please retry after refreshing the workflow shell.",
+                    "The exact request is incomplete. Reload this workflow before preparing the request again.",
                 );
             }
         } catch (error) {
             if (generation !== viewGeneration.current) return;
             setImplementationError(
-                getAtlasAgentErrorMessage(error, "Candidate implementation request could not be created."),
+                getAtlasAgentErrorMessage(error, "The exact request could not be prepared."),
             );
         } finally {
             if (generation === viewGeneration.current) setIsCreatingImplementation(false);
@@ -239,7 +239,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
         return (
             <main className="mx-auto max-w-6xl p-8">
                 <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
-                    Loading workflow shell…
+                    Loading workflow summary…
                 </p>
             </main>
         );
@@ -253,7 +253,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                     <p className="font-semibold text-amber-200">Workflow summary unavailable</p>
                     <p className="mt-1 text-sm text-slate-300">
                         {workflowLoadError
-                            ?? "Mission Control can display the workflow shell summary returned by Create Workflow. Return to the planning session and create or reopen the workflow from that response."}
+                            ?? "Return to the planning session to create or reopen this workflow."}
                     </p>
                     <Link to={`/candidate-planning/${encodeURIComponent(sessionId)}`} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Back to planning session
@@ -267,7 +267,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow Shell</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow preparation</p>
                     <h1 className="mt-3 break-all text-3xl font-bold text-white">
                         Workflow {workflow.workflow_session_id ?? "not created"}
                     </h1>
@@ -344,15 +344,16 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                     </div>
                 )}
                 {workflow.workflow_status === "awaiting_implementation_approval" && (
-                    <p className="mt-4 text-sm text-slate-300">Implementation request has already been created.</p>
+                    <p className="mt-4 text-sm text-slate-300">The exact request has already been prepared.</p>
                 )}
                 {implementationResult && isSuccessfulImplementationResponse(implementationResult) && (
                     <p className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                        Implementation request is ready. Redirecting to execution workflow.
+                        The exact request is ready. Opening the workflow for review and approval.
                     </p>
                 )}
                 {implementationResult && (
-                    <div role="status" className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+                    <details className="mt-2 rounded-lg border border-slate-700 p-4 text-sm text-slate-300">
+                        <summary className="mc-focusable cursor-pointer font-semibold">Request details</summary>
                         <p>Translation status: {implementationResult.translation_status}</p>
                         {implementationResult.failure ? (
                             <>
@@ -363,7 +364,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         {implementationResult.reason_codes.length > 0 && (
                             <p>Reason codes: {implementationResult.reason_codes.join(", ")}</p>
                         )}
-                    </div>
+                    </details>
                 )}
                 {implementationResult && implementationResult.failure?.code === "repository_stale" && (
                     <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
