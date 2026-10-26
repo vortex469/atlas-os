@@ -96,9 +96,12 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <Link to={item.to}>{item.label || "Inspect condition"}</Link>
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
                 {"workflowState" in item ? <>
-                    <p className={item.state === "blocked" ? "text-red-300" : "text-mc-text-secondary"}>{item.stale ? "Last-known workflow stage" : "Workflow stage"}: {formatWorkflowLabel(safeText(item.workflowState))}</p>
+                    {item.state === "blocked" && <p className="text-red-300">{item.stale ? "Last-known workflow blocked; current state unknown." : "Workflow blocked"}</p>}
                     {item.reason && <p>{item.reason}</p>}
-                    <p className="text-xs text-mc-text-muted">Stage update time is not supplied.</p>
+                    <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Workflow details</summary>
+                        <p>{item.stale ? "Last-known workflow stage" : "Workflow stage"}: {formatWorkflowLabel(safeText(item.workflowState))}</p>
+                        <p className="text-xs text-mc-text-muted">Stage update time is not supplied.</p>
+                    </details>
                 </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />}
                 {item.stale && <p>Last-known condition; current state unknown.</p>}
             </li>)}</ul>

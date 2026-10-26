@@ -80,6 +80,8 @@ proposal; workflow authorization remains separate.
 Maintenance selection is locked while a request is submitted. Refreshing clears
 the previous selection and result, and the returned proposal must match the
 requested resource and action before planning is offered.
+Dashboard attention keeps decisions, blockages and their reasons visible, with
+workflow stage metadata and health interpretation guidance available on demand.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent

@@ -16,7 +16,10 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
     return (
         <section aria-label="System health" className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
             <h3 className="font-semibold text-mc-text-primary">System health</h3>
-            <p>Source-reported health from Atlas Core. No combined health score is calculated here. Timestamped evidence older than 60 seconds is marked stale.</p>
+            <p>Health reported by Atlas Core.</p>
+            <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
+                <p>No combined health score is calculated here. Timestamped evidence older than 60 seconds is marked stale.</p>
+            </details>
             {sources.map(source => (
                 <article key={source.title} aria-label={source.title} className="min-w-0 space-y-1">
                     <h4 className="font-semibold">{source.title}</h4>

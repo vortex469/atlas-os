@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { Overview } from "./MissionControl";
@@ -11,6 +11,8 @@ describe("MC overview evidence", () => {
         show({ workflows: { data: { items: [{ workflow_id: 'review-me', workflow_state, last_result_summary: 'Review the exact request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByText('Human action required')).toBeVisible();
+        expect(attention.getByText(/^Workflow stage: Awaiting/)).not.toBeVisible();
+        fireEvent.click(attention.getByText('Workflow details'));
         expect(attention.getByText(/^Workflow stage: Awaiting/)).toBeVisible();
         expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
         expect(attention.getByRole('link', { name: 'review-me' })).toHaveAttribute('href', '/workflows/review-me');
@@ -20,7 +22,7 @@ describe("MC overview evidence", () => {
         show({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: 'old-review', workflow_state: 'awaiting_implementation_approval', last_result_summary: 'Previous review request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByText('Last-known human action required; current requirement unknown.')).toBeVisible();
-        expect(attention.getByText(/^Last-known workflow stage:/)).toBeVisible();
+        expect(attention.getByText(/^Last-known workflow stage:/)).not.toBeVisible();
         expect(attention.queryByText('Human action required', { exact: true })).not.toBeInTheDocument();
         expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
     });
@@ -226,7 +228,7 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(worker.getByText(/current execution state unknown/)).toBeInTheDocument();
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
     expect(attention.getAllByRole('link', { name: 'blocked/1' })).toHaveLength(1);
-    expect(attention.getByText('Last-known workflow stage: Blocked')).toBeVisible();
+    expect(attention.getByText('Last-known workflow blocked; current state unknown.')).toBeVisible();
     expect(attention.getByText('Last-known condition; current state unknown.')).toBeVisible();
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);

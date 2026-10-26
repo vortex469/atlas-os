@@ -65,7 +65,10 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     const gridBox = await grid.boundingBox();
     expect(attentionBox!.y + attentionBox!.height).toBeLessThanOrEqual(gridBox!.y);
     await expect(attention.getByText('Human action required', { exact: true })).toBeVisible();
+    await expect(attention.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeHidden();
+    await attention.getByText('Workflow details', { exact: true }).click();
     await expect(attention.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeVisible();
+    await attention.getByText('Workflow details', { exact: true }).click();
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
     const runtime = page.getByRole('region', { name: 'Local AI / Runtime' });
     await expect(runtime.getByText('Local AI availability is unknown; locality is not reported.')).toBeVisible();
