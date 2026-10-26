@@ -78,7 +78,7 @@ export function ProviderIntentEditor({
         && (selected !== "ignored" || acknowledged);
 
     return (
-        <div className="min-w-64 space-y-2">
+        <div className="min-w-0 space-y-2">
             {resource.replacement_detected && (
                 <p role="alert" className="text-xs text-amber-300">
                     This resource incarnation changed. The previous expectation is historical only and does not apply to the current identity. Choose a new value explicitly.
@@ -103,7 +103,7 @@ export function ProviderIntentEditor({
                                 );
                                 setAcknowledged(false);
                             }}
-                            className="mt-1 block rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                            className="mt-1 block max-w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                         >
                             {(!configured || requireExplicitSelection) && <option value="">Choose explicitly</option>}
                             {Object.entries(labels).map(([value, label]) => (
