@@ -8,7 +8,7 @@ import {
     getWorkflowRecoveryDiagnostic,
     listWorkflows,
 } from "../api/atlas-agent";
-import { operationalLifecycle } from "../test/operationalLifecycle";
+import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
 import { OperationalHistoryPage } from "./OperationalHistoryPage";
 
 vi.mock("../api/atlas-agent", () => ({
@@ -71,6 +71,33 @@ describe("OperationalHistoryPage", () => {
 
         expect(await screen.findByText("A diagnostic network failure is not an operational failure.")).toBeInTheDocument();
         expect(document.body.textContent).not.toContain("native secret exception");
+    });
+
+    it("does not show another workflow's target or successful outcome", async () => {
+        mockedLifecycle.mockResolvedValue(operationalLifecycle({ workflow_id: "foreign-workflow", target_label: "Foreign target" }));
+        mockedDiagnostic.mockResolvedValue(operationalDiagnostic({ correlation: { workflow_id: "foreign-workflow", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true } }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        expect(await screen.findByText(/Restart service · Status unavailable/)).toBeInTheDocument();
+        expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Healthy" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
+    });
+
+    it("keeps matching lifecycle details when a diagnostic belongs to another workflow", async () => {
+        mockedDiagnostic.mockResolvedValue(operationalDiagnostic());
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        expect(await screen.findByText("proxmox/qemu/110")).toBeInTheDocument();
+        expect(screen.getByText(/Restart service · Status unavailable/)).toBeInTheDocument();
+        expect(screen.getByText("Could not load the latest status for this request.")).toBeInTheDocument();
+    });
+
+    it("keeps a matching diagnostic when lifecycle details belong to another workflow", async () => {
+        mockedLifecycle.mockResolvedValue(operationalLifecycle({ workflow_id: "foreign-workflow", target_label: "Foreign target" }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        await screen.findByRole("link", { name: "Open workflow" });
+        expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
+        expect(screen.getByText(/Restart service · Healthy/)).toBeInTheDocument();
     });
 
     it("filters only the bounded current page by controlled diagnostic status", async () => {

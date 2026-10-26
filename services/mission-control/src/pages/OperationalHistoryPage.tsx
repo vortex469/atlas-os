@@ -61,7 +61,10 @@ export function OperationalHistoryPage() {
                             .then((value) => ({ value, unavailable: false }))
                             .catch(() => ({ value: null, unavailable: true })),
                     ]);
-                    return { lifecycle, diagnostic: diagnostic.value, diagnosticUnavailable: diagnostic.unavailable };
+                    const matchingLifecycle = lifecycle?.workflow_id === workflow.workflow_id ? lifecycle : null;
+                    const matchingDiagnostic = diagnostic.value?.correlation?.workflow_id === workflow.workflow_id ? diagnostic.value : null;
+                    return { lifecycle: matchingLifecycle, diagnostic: matchingDiagnostic,
+                        diagnosticUnavailable: diagnostic.unavailable || (diagnostic.value !== null && matchingDiagnostic === null) };
                 }),
             );
             if (generation !== requestGeneration.current) return;
