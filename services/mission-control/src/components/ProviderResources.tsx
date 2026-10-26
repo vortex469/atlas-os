@@ -242,9 +242,9 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
         && displayedSuggestion?.suggestion_id === reviewedSuggestion.suggestion_id
         && !suggestionStale;
     return (
-        <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5" data-testid={`resource-row-${resourceType}-${resourceId}`}>
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm uppercase text-slate-400">{resourceType} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex gap-2"><dt>{column.label}:</dt><dd>{column.render(observed)}</dd></div>)}</dl>}</section>
+        <article className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/70 p-5 [overflow-wrap:anywhere]" data-testid={`resource-row-${resourceType}-${resourceId}`}>
+            <div className="grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm uppercase text-slate-400">{resourceType} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex min-w-0 gap-2"><dt>{column.label}:</dt><dd className="min-w-0">{column.render(observed)}</dd></div>)}</dl>}</section>
                 <FactSection title="Observed state" value={observedState} detail="Live provider inventory; not monitoring policy." />
                 <FactSection title="Identity" value={presentation.identity} detail={resource.inconsistent ? "Inventory and management coordinates disagree." : "Provider identity assurance; no native identity is displayed."} />
                 <section aria-label={`Monitoring for ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Monitoring expectation</p><p className="mt-2 font-semibold text-slate-100">{presentation.expectation}</p><p className="mt-2 text-sm text-slate-300">{presentation.status}</p></section>
