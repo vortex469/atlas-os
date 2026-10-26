@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -183,6 +183,24 @@ async function renderResources() {
 }
 
 describe("ProviderResources Provider Intent flow", () => {
+    it("clears the previous provider's monitoring selection before the next inventory arrives", async () => {
+        const user = userEvent.setup();
+        const view = render(<ProviderResources provider={provider} />);
+        await user.selectOptions(await screen.findByLabelText(/monitoring expectation/i), "running");
+        let resolveInventory!: (value: ProviderResourceCollection) => void;
+        vi.mocked(getProviderResources).mockImplementationOnce(() => new Promise((resolve) => { resolveInventory = resolve; }));
+        vi.mocked(getProviderManagement).mockResolvedValue({ ...publicManagement(), provider_id: "docker", resources: [] });
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue({ ...management(), provider_id: "docker", resources: [] });
+        view.rerender(<ProviderResources provider={{ ...provider, id: "docker", name: "Docker" }} />);
+        expect(screen.queryByText("Frigate")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/monitoring expectation/i)).not.toBeInTheDocument();
+        await waitFor(() => expect(getProviderResources).toHaveBeenCalledWith("docker"));
+        await act(async () => resolveInventory({ ...inventory, provider_id: "docker", provider_name: "Docker", resources: [] }));
+        expect(await screen.findByText("No provider resources are available.")).toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+        expect(refreshProviderResources).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(useOperatorSession).mockReturnValue({

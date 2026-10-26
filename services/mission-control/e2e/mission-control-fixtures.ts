@@ -56,7 +56,7 @@ const health = {
     },
 };
 
-const providers = [
+export const providers = [
     {
         id: "proxmox",
         name: "Proxmox",

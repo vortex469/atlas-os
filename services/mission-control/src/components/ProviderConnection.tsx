@@ -23,6 +23,10 @@ type FormValues = Record<string, string | number | boolean>;
 type BusyMode = "loading" | "testing" | "saving" | null;
 
 export function ProviderConnection({ provider }: ProviderConnectionProps) {
+    return <ProviderConnectionPanel key={provider.id} provider={provider} />;
+}
+
+function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     const hasConnectionCapability = provider.capabilities.includes("connection");
     const [schema, setSchema] = useState<ProviderConnectionSchema | null>(null);
     const [formValues, setFormValues] = useState<FormValues>({});
@@ -70,35 +74,38 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
 
         let cancelled = false;
 
-        getProviderConnection(provider.id)
-            .then((nextSchema) => {
-                if (cancelled) {
-                    return;
-                }
-                setSchema(nextSchema);
-                setFormValues(initialFormValues(nextSchema));
-                setSecretValues({});
-            })
-            .catch((requestError: unknown) => {
-                if (cancelled) {
-                    return;
-                }
-                console.error(
-                    `Unable to load connection for ${provider.id}:`,
-                    requestError,
-                );
-                setError(
-                    getAtlasErrorMessage(
+        void Promise.resolve().then(() => {
+            if (cancelled) return;
+            return getProviderConnection(provider.id)
+                .then((nextSchema) => {
+                    if (cancelled) {
+                        return;
+                    }
+                    setSchema(nextSchema);
+                    setFormValues(initialFormValues(nextSchema));
+                    setSecretValues({});
+                })
+                .catch((requestError: unknown) => {
+                    if (cancelled) {
+                        return;
+                    }
+                    console.error(
+                        `Unable to load connection for ${provider.id}:`,
                         requestError,
-                        `Mission Control could not load the connection schema for ${provider.name}.`,
-                    ),
-                );
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setBusyMode(null);
-                }
-            });
+                    );
+                    setError(
+                        getAtlasErrorMessage(
+                            requestError,
+                            `Mission Control could not load the connection schema for ${provider.name}.`,
+                        ),
+                    );
+                })
+                .finally(() => {
+                    if (!cancelled) {
+                        setBusyMode(null);
+                    }
+                });
+        });
 
         return () => {
             cancelled = true;

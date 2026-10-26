@@ -84,6 +84,14 @@ starting work. Changing readiness candidates also clears any open evidence
 confirmation. Provider-action history links remain shareable while records
 are retained; they do not promise permanent storage.
 
+Provider action, connection and monitoring panels reset when the provider
+changes. Previous action parameters, connection form values and secrets, and
+monitoring selections cannot appear under the next provider. Late action
+results do not populate or refresh a different provider's panel. Previously
+submitted actions remain associated with their original provider and its
+recorded action history. Confirmation and backend permission checks remain
+in their existing controls.
+
 Mission Control completion requires the supported operator journey to have
 working navigation, useful empty and unavailable states, recovery controls,
 and readable layouts on desktop and mobile. Proposal, planning, workflow and

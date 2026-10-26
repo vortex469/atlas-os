@@ -1,16 +1,18 @@
 import {
+    act,
     render,
     screen,
     waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 
 import {
     getProviderActions,
     runProviderAction,
 } from "../api/atlas";
-import type { ProviderAction } from "../types/providerAction";
+import type { ProviderAction, ProviderActionResult } from "../types/providerAction";
 import { ProviderActions } from "./ProviderActions";
 
 vi.mock("../api/atlas", () => ({
@@ -72,6 +74,46 @@ function renderActions(
 }
 
 describe("ProviderActions", () => {
+    it("clears parameters immediately when switching providers", async () => {
+        mockedGetProviderActions.mockResolvedValue([unloadAction]);
+        const user = userEvent.setup();
+        const completed = vi.fn();
+        const view = render(<ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={completed} />);
+        await user.type(await screen.findByLabelText(/model/i), "old-provider-model");
+        let resolveNext!: (value: ProviderAction[]) => void;
+        mockedGetProviderActions.mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        view.rerender(<ProviderActions provider={{ id: "other", name: "Other" }} onActionCompleted={completed} />);
+        expect(screen.queryByLabelText(/model/i)).not.toBeInTheDocument();
+        expect(screen.getByText("Loading provider actions...")).toBeInTheDocument();
+        await waitFor(() => expect(mockedGetProviderActions).toHaveBeenCalledWith("other"));
+        await act(async () => resolveNext([unloadAction]));
+        expect(await screen.findByLabelText(/model/i)).toHaveValue("");
+        expect(screen.getByRole("button", { name: "Unload Model" })).toBeDisabled();
+        expect(mockedRunProviderAction).not.toHaveBeenCalled();
+    });
+
+    it("does not attach a previous provider's action result or refresh the new provider", async () => {
+        let resolveAction!: (value: ProviderActionResult) => void;
+        mockedRunProviderAction.mockImplementationOnce(() => new Promise((resolve) => { resolveAction = resolve; }));
+        const completed = vi.fn();
+        const view = render(<ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={completed} />);
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        view.rerender(<ProviderActions provider={{ id: "other", name: "Other" }} onActionCompleted={completed} />);
+        await screen.findByRole("button", { name: "Run Diagnostics" });
+        await act(async () => resolveAction({ provider_id: "ollama", action_id: "run-diagnostics", status: "succeeded", success: true, message: "Old provider result", data: {}, warnings: [] }));
+        expect(screen.queryByText("Old provider result")).not.toBeInTheDocument();
+        expect(completed).not.toHaveBeenCalled();
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+    });
+
+    it("reads the action catalog once under Strict Mode without running an action", async () => {
+        render(<StrictMode><ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={vi.fn()} /></StrictMode>);
+        await screen.findByRole("button", { name: "Run Diagnostics" });
+        expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
+        expect(mockedRunProviderAction).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetProviderActions.mockResolvedValue([
@@ -115,11 +157,11 @@ describe("ProviderActions", () => {
         ).toBeInTheDocument();
     });
 
-    it("labels existing provider actions as compatibility mechanisms", async () => {
+    it("keeps provider actions separate from monitoring policy and maintenance", async () => {
         renderActions();
-        expect(await screen.findByRole("heading", { name: "Compatibility actions" })).toBeInTheDocument();
-        expect(screen.getByText(/Monitoring expectations do not invoke these actions/i)).toBeInTheDocument();
-        expect(screen.getByText(/operational maintenance is a separate workflow/i)).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Provider actions" })).toBeInTheDocument();
+        expect(screen.getByText(/Monitoring policy does not run these actions/i)).toBeInTheDocument();
+        expect(screen.getByText(/Service maintenance uses a separate approval workflow/i)).toBeInTheDocument();
     });
 
     it("requires advertised parameters before execution", async () => {

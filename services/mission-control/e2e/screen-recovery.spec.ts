@@ -1,4 +1,35 @@
-import { executionCandidates, expect, test } from "./mission-control-fixtures";
+import { executionCandidates, expect, providers, test } from "./mission-control-fixtures";
+
+test("switching provider routes clears action parameters before the next catalog arrives", async ({ page }) => {
+    const action = { id: "review-model", label: "Review model", description: "Mock action for form isolation.",
+        icon: "info", requires_confirmation: true, destructive: false, enabled: true,
+        parameters: { model: { type: "string", required: true } } };
+    let releaseNext!: () => void;
+    const nextCatalog = new Promise<void>((resolve) => { releaseNext = resolve; });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route("**/api/v1/providers", (route) => route.fulfill({ json: [providers[0], { ...providers[0], id: "ollama", name: "Ollama" }] }));
+    await page.route("**/api/v1/providers/proxmox/actions", (route) => route.fulfill({ json: [action] }));
+    await page.route("**/api/v1/providers/ollama/actions", async (route) => {
+        await nextCatalog;
+        await route.fulfill({ json: [action] });
+    });
+    await page.goto("/providers/proxmox");
+    await page.getByLabel(/model/i).fill("previous-provider-value");
+    // Exercise the app's public router without reloading the document, so this
+    // covers a parameter change while the provider page remains mounted.
+    await page.evaluate(async () => {
+        const modulePath = "/src/app/router.tsx";
+        const { router } = await import(modulePath);
+        await router.navigate("/providers/ollama");
+    });
+    await expect(page.getByText("Loading provider actions...")).toBeVisible();
+    await expect(page.getByLabel(/model/i)).toHaveCount(0);
+    releaseNext();
+    await expect(page.getByLabel(/model/i)).toHaveValue("");
+    await expect(page.getByRole("button", { name: "Review model", exact: true })).toBeDisabled();
+    await expect(page.getByRole("heading", { name: "Provider actions", exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
 
 test("action history recovers a read without showing another record", async ({ page }) => {
     let reads = 0;

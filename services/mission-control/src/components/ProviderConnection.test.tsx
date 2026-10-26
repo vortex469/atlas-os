@@ -1,10 +1,12 @@
 import {
+    act,
     render,
     screen,
     waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 
 import {
     getProviderConnection,
@@ -142,6 +144,35 @@ async function renderConnection(
 }
 
 describe("ProviderConnection", () => {
+    it("clears form and secret values immediately when the provider changes", async () => {
+        const first = { ...provider, capabilities: ["connection"] };
+        const next = { ...first, id: "other", name: "Other" };
+        const user = userEvent.setup();
+        const view = render(<ProviderConnection provider={first} />);
+        await user.clear(await screen.findByLabelText("Host"));
+        await user.type(screen.getByLabelText("Host"), "previous.example.invalid");
+        await user.type(screen.getByLabelText("Token Value"), "fixture-only-secret");
+        let resolveNext!: (value: ProviderConnectionSchema) => void;
+        mockedGetProviderConnection.mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        view.rerender(<ProviderConnection provider={next} />);
+        expect(screen.queryByLabelText("Host")).not.toBeInTheDocument();
+        expect(screen.queryByDisplayValue("fixture-only-secret")).not.toBeInTheDocument();
+        await waitFor(() => expect(mockedGetProviderConnection).toHaveBeenCalledWith("other"));
+        await act(async () => resolveNext(proxmoxSchema({ provider_id: "other", provider_name: "Other" })));
+        expect(await screen.findByLabelText("Host")).toHaveValue("10.10.50.10");
+        expect(screen.getByLabelText("Token Value")).toHaveValue("");
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
+    it("reads the connection schema once under Strict Mode", async () => {
+        render(<StrictMode><ProviderConnection provider={{ ...provider, capabilities: ["connection"] }} /></StrictMode>);
+        await screen.findByLabelText("Host");
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(1);
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetProviderConnection.mockResolvedValue(proxmoxSchema());

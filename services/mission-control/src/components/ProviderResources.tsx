@@ -36,6 +36,10 @@ function managementCoordinate(resource: Pick<ManagedProviderResourceV2, "provide
 }
 
 export function ProviderResources({ provider }: ProviderResourcesProps) {
+    return <ProviderResourcePanel key={provider.id} provider={provider} />;
+}
+
+function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const session = useOperatorSession();
     const supported = provider.capabilities.includes("resources");
     const [inventory, setInventory] = useState<ProviderResourceCollection | null>(null);

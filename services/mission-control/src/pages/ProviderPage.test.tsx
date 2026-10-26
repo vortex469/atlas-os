@@ -8,7 +8,7 @@ import { ProviderPage } from "./ProviderPage";
 vi.mock("../hooks/useMissionControl", () => ({ useMissionControl: vi.fn() }));
 vi.mock("../components/ProviderOverview", () => ({ ProviderOverview: () => <section><h2>Provider overview</h2></section> }));
 vi.mock("../components/ProviderResources", () => ({ ProviderResources: () => <section><h2>Resources and monitoring</h2></section> }));
-vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Compatibility actions</h2></section> }));
+vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Provider actions</h2></section> }));
 vi.mock("../components/ProviderConnection", () => ({ ProviderConnection: () => <section><h2>Connection</h2></section> }));
 vi.mock("../components/ProviderTelemetryTrend", () => ({ ProviderTelemetryTrend: () => <section><h2>Telemetry</h2></section> }));
 vi.mock("../components/ProviderPolicyDetails", () => ({ ProviderPolicyDetails: () => <section><h2>Legacy policy evidence</h2></section> }));
@@ -67,7 +67,7 @@ describe("ProviderPage authority layout", () => {
             position("Resources and monitoring"),
             position("Diagnostics"),
             position("Advisory recommendations"),
-            position("Compatibility actions"),
+            position("Provider actions"),
             position("Operational maintenance"),
             position("Connection"),
             position("Telemetry"),

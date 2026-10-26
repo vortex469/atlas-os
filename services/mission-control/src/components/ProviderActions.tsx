@@ -1,6 +1,7 @@
 import {
     useCallback,
     useEffect,
+    useRef,
     useState,
 } from "react";
 
@@ -49,6 +50,15 @@ export function ProviderActions({
     onActionCompleted,
     compact = false,
 }: ProviderActionsProps) {
+    return <ProviderActionPanel key={provider.id} provider={provider} onActionCompleted={onActionCompleted} compact={compact} />;
+}
+
+function ProviderActionPanel({ provider, onActionCompleted, compact = false }: ProviderActionsProps) {
+    const active = useRef(true);
+    useEffect(() => {
+        active.current = true;
+        return () => { active.current = false; };
+    }, []);
     const [actions, setActions] = useState<ProviderAction[]>(
         [],
     );
@@ -91,36 +101,39 @@ export function ProviderActions({
     useEffect(() => {
         let cancelled = false;
 
-        getProviderActions(provider.id)
-            .then((providerActions) => {
-                if (cancelled) {
-                    return;
-                }
+        void Promise.resolve().then(() => {
+            if (cancelled) return;
+            return getProviderActions(provider.id)
+                .then((providerActions) => {
+                    if (cancelled) {
+                        return;
+                    }
 
-                setActions(providerActions);
-                setError(null);
-            })
-            .catch((requestError: unknown) => {
-                if (cancelled) {
-                    return;
-                }
+                    setActions(providerActions);
+                    setError(null);
+                })
+                .catch((requestError: unknown) => {
+                    if (cancelled) {
+                        return;
+                    }
 
-                console.error(
-                    `Unable to load actions for ${provider.id}:`,
-                    requestError,
-                );
-                setError(
-                    getAtlasErrorMessage(
+                    console.error(
+                        `Unable to load actions for ${provider.id}:`,
                         requestError,
-                        `Mission Control could not load actions for ${provider.name}.`,
-                    ),
-                );
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            });
+                    );
+                    setError(
+                        getAtlasErrorMessage(
+                            requestError,
+                            `Mission Control could not load actions for ${provider.name}.`,
+                        ),
+                    );
+                })
+                .finally(() => {
+                    if (!cancelled) {
+                        setIsLoading(false);
+                    }
+                });
+        });
 
         return () => {
             cancelled = true;
@@ -163,12 +176,15 @@ export function ProviderActions({
                 },
             );
 
+            if (!active.current) return;
+
             setResult(actionResult);
 
             if (actionResult.success) {
                 await onActionCompleted();
             }
         } catch (requestError) {
+            if (!active.current) return;
             console.error(
                 `Unable to run ${action.id} for ${provider.id}:`,
                 requestError,
@@ -180,7 +196,7 @@ export function ProviderActions({
                 ),
             );
         } finally {
-            setRunningActionId(null);
+            if (active.current) setRunningActionId(null);
         }
     }
 
@@ -189,16 +205,16 @@ export function ProviderActions({
             {compact ? (
                 <div className="mb-3">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                        Compatibility actions
+                        Provider actions
                     </h3>
                     <p className="mt-1 text-xs text-slate-500">
-                        Existing provider-specific mechanisms, separate from monitoring policy and operational maintenance.
+                        Monitoring policy does not run these actions. Service maintenance uses a separate approval workflow.
                     </p>
                 </div>
             ) : (
                 <SectionHeader
-                    title="Compatibility actions"
-                    description="Existing provider-specific action mechanisms. Monitoring expectations do not invoke these actions, and hardened operational maintenance is a separate workflow."
+                    title="Provider actions"
+                    description="Monitoring policy does not run these actions. Service maintenance uses a separate approval workflow."
                 />
             )}
 
