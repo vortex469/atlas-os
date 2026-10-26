@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 
@@ -63,12 +63,16 @@ export function ExecutionCandidatesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const requestGeneration = useRef(0);
+
     const loadCandidates = useCallback(async (nextFilters: FilterState, offset: number) => {
+        const generation = ++requestGeneration.current;
         setIsLoading(true);
         setError(null);
 
         try {
             const page = await listExecutionCandidates(toCandidateQuery(nextFilters, offset));
+            if (generation !== requestGeneration.current) return;
             setResult({
                 candidates: page.candidates,
                 total: page.total,
@@ -76,6 +80,7 @@ export function ExecutionCandidatesPage() {
                 hasMore: page.has_more,
             });
         } catch (requestError) {
+            if (generation !== requestGeneration.current) return;
             console.error("Unable to load execution candidates:", requestError);
             setError(
                 getAtlasErrorMessage(
@@ -84,47 +89,15 @@ export function ExecutionCandidatesPage() {
                 ),
             );
         } finally {
-            setIsLoading(false);
+            if (generation === requestGeneration.current) setIsLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        let cancelled = false;
-
-        listExecutionCandidates(toCandidateQuery(emptyFilters, 0))
-            .then((page) => {
-                if (cancelled) {
-                    return;
-                }
-                setResult({
-                    candidates: page.candidates,
-                    total: page.total,
-                    offset: page.offset,
-                    hasMore: page.has_more,
-                });
-            })
-            .catch((requestError: unknown) => {
-                if (cancelled) {
-                    return;
-                }
-                console.error("Unable to load execution candidates:", requestError);
-                setError(
-                    getAtlasErrorMessage(
-                        requestError,
-                        "Mission Control could not load execution candidates.",
-                    ),
-                );
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+        let active = true;
+        void Promise.resolve().then(() => { if (active) void loadCandidates(emptyFilters, 0); });
+        return () => { active = false; requestGeneration.current += 1; };
+    }, [loadCandidates]);
 
     function submitFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -200,12 +173,12 @@ export function ExecutionCandidatesPage() {
 
             <section aria-label="Execution candidate results" className="space-y-4">
                 <div className="flex items-center justify-between gap-4 text-sm text-slate-400">
-                    <p>{isLoading ? "Loading execution candidates…" : `${result.total} candidate${result.total === 1 ? "" : "s"}`}</p>
+                    <p>{isLoading ? "Loading execution candidates…" : error ? "Results unavailable" : `${result.total} candidate${result.total === 1 ? "" : "s"}`}</p>
                     <div className="flex gap-2">
-                        <button type="button" aria-label="Previous execution candidates page" onClick={goToPreviousPage} disabled={isLoading || result.offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
+                        <button type="button" aria-label="Previous execution candidates page" onClick={goToPreviousPage} disabled={isLoading || Boolean(error) || result.offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
                             Previous
                         </button>
-                        <button type="button" aria-label="Next execution candidates page" onClick={goToNextPage} disabled={isLoading || !result.hasMore} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
+                        <button type="button" aria-label="Next execution candidates page" onClick={goToNextPage} disabled={isLoading || Boolean(error) || !result.hasMore} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
                             Next
                         </button>
                     </div>
@@ -220,7 +193,7 @@ export function ExecutionCandidatesPage() {
                 )}
 
                 <div className="grid gap-4">
-                    {result.candidates.map((candidate) => (
+                    {!isLoading && !error && result.candidates.map((candidate) => (
                         <CandidateCard key={candidate.id} candidate={candidate} />
                     ))}
                 </div>

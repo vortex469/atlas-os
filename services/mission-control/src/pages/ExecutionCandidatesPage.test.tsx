@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -82,6 +82,61 @@ describe("ExecutionCandidatesPage", () => {
         );
         expect(screen.getByText("Planning Session")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
+    });
+
+    it("keeps newer search results when an older search completes later", async () => {
+        renderPage();
+        await screen.findByText("candidate-1");
+        let resolveOld!: (value: ExecutionCandidatePage) => void;
+        mockedListExecutionCandidates.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; }))
+            .mockResolvedValueOnce(page([candidate({ id: "latest-candidate" })]));
+        fireEvent.click(screen.getByRole("button", { name: "Search" }));
+        expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+        await screen.findByText("latest-candidate");
+        await act(async () => resolveOld(page([candidate({ id: "older-candidate" })])));
+        expect(screen.getByText("latest-candidate")).toBeInTheDocument();
+        expect(screen.queryByText("older-candidate")).not.toBeInTheDocument();
+    });
+
+    it("ignores an older failure while the latest search is still loading", async () => {
+        renderPage();
+        await screen.findByText("candidate-1");
+        let rejectOld!: (error: Error) => void;
+        let resolveLatest!: (value: ExecutionCandidatePage) => void;
+        mockedListExecutionCandidates.mockImplementationOnce(() => new Promise((_, reject) => { rejectOld = reject; }))
+            .mockImplementationOnce(() => new Promise((resolve) => { resolveLatest = resolve; }));
+        fireEvent.click(screen.getByRole("button", { name: "Search" }));
+        fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+        await act(async () => rejectOld(new Error("Old search failed")));
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByText("Loading execution candidates…")).toBeInTheDocument();
+        await act(async () => resolveLatest(page([candidate({ id: "latest-candidate" })])));
+        expect(screen.getByText("latest-candidate")).toBeInTheDocument();
+    });
+
+    it("hides previous cards after the current search fails", async () => {
+        renderPage();
+        await screen.findByText("candidate-1");
+        mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Current search failed"));
+        fireEvent.click(screen.getByRole("button", { name: "Search" }));
+        await screen.findByRole("alert");
+        expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
+        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Next execution candidates page" })).toBeDisabled();
+    });
+
+    it("does not let the initial read overwrite a submitted search", async () => {
+        let resolveInitial!: (value: ExecutionCandidatePage) => void;
+        mockedListExecutionCandidates.mockImplementationOnce(() => new Promise((resolve) => { resolveInitial = resolve; }))
+            .mockResolvedValueOnce(page([candidate({ id: "searched-candidate" })]));
+        renderPage();
+        await waitFor(() => expect(mockedListExecutionCandidates).toHaveBeenCalledTimes(1));
+        fireEvent.click(screen.getByRole("button", { name: "Search" }));
+        await screen.findByText("searched-candidate");
+        await act(async () => resolveInitial(page([candidate({ id: "initial-candidate" })])));
+        expect(screen.getByText("searched-candidate")).toBeInTheDocument();
+        expect(screen.queryByText("initial-candidate")).not.toBeInTheDocument();
     });
 
     it("sends filters and supports pagination", async () => {

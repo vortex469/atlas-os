@@ -61,6 +61,9 @@ Maintenance history displays lifecycle and recovery details only when their
 workflow identifiers match the request listed on the card.
 Maintenance audits show their read-only operational lifecycle rather than
 repository implementation, review, and commit stages.
+Proposal searches display only the latest requested results. Previous cards are
+hidden during loading and after a failed search, so stale proposals are not
+presented as current results.
 
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent
