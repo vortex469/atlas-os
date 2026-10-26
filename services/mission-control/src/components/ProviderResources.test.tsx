@@ -343,6 +343,25 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
 
+    it("distinguishes an edited draft from the last confirmed save", async () => {
+        const saved = { intent_status: "configured" as const, intent_reason: "matching_active_intent" as const, expectation: "running" as const, record_version: 1 };
+        vi.mocked(getProviderManagement).mockResolvedValueOnce(publicManagement()).mockResolvedValue(publicManagement(saved));
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValueOnce(management()).mockResolvedValue(management(saved));
+        const user = userEvent.setup();
+        await renderResources();
+        await user.selectOptions(screen.getByRole("combobox"), "running");
+        await user.click(screen.getByRole("button", { name: /^Save$/ }));
+        await screen.findByText("Monitoring expectation saved and confirmed by Atlas Core.");
+        await user.selectOptions(screen.getByRole("combobox"), "stopped");
+        expect(screen.queryByText("Monitoring expectation saved and confirmed by Atlas Core.")).not.toBeInTheDocument();
+        expect(screen.getByText("Unsaved change. Save to apply it.")).toBeInTheDocument();
+        expect(screen.getByRole("combobox")).toHaveValue("stopped");
+        await user.selectOptions(screen.getByRole("combobox"), "running");
+        expect(screen.queryByText("Unsaved change. Save to apply it.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Monitoring expectation saved and confirmed by Atlas Core.")).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
+    });
+
     function operatorSession(operatorId: string) {
         const current = vi.mocked(useOperatorSession).getMockImplementation()!();
         return { ...current, principal: { operator_id: operatorId, authenticated_at: "2026-01-01T00:00:00Z", permissions: ["provider_intent:update"], auth_method: "core_session" as const } };

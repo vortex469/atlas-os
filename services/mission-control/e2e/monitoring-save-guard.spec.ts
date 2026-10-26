@@ -68,6 +68,12 @@ for (const width of [320, 390, 1280]) {
             expect(writes).toBe(1);
             release();
             await expect(other.getByRole("button", { name: "Save", exact: true })).toBeEnabled();
+            await expect(first.getByText("Monitoring expectation saved and confirmed by Atlas Core.", { exact: true })).toBeVisible();
+            await first.getByRole("combobox").selectOption("stopped");
+            await expect(first.getByText("Monitoring expectation saved and confirmed by Atlas Core.", { exact: true })).toHaveCount(0);
+            await expect(first.getByText("Unsaved change. Save to apply it.", { exact: true })).toBeVisible();
+            await first.getByRole("combobox").selectOption("running");
+            await expect(first.getByText("Unsaved change. Save to apply it.", { exact: true })).toHaveCount(0);
             expect(writes).toBe(1);
             expect(mutations).toEqual([`PUT ${origin}/api/v1/providers/proxmox/management/resources/qemu/110/monitoring-intent`]);
         });
