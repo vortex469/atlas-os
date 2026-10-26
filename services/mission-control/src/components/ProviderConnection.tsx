@@ -42,10 +42,12 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     );
     const [error, setError] = useState<string | null>(null);
     const [saveConfirmed, setSaveConfirmed] = useState(false);
+    const [saveUncertain, setSaveUncertain] = useState(false);
+    const saveUncertainRef = useRef(false);
     const [testResult, setTestResult] =
         useState<TestProviderConnectionResult | null>(null);
 
-    const loadConnection = useCallback(async () => {
+    const loadConnection = useCallback(async (recoverSave = false) => {
         if (!active.current || !hasConnectionCapability || requestInFlight.current) {
             return;
         }
@@ -59,8 +61,13 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         try {
             const nextSchema = await getProviderConnection(provider.id);
             if (!active.current) return;
+            const nextValues = initialFormValues(nextSchema);
             setSchema(nextSchema);
-            setFormValues(initialFormValues(nextSchema));
+            setFormValues(nextValues);
+            if (recoverSave) {
+                saveUncertainRef.current = false;
+                setSaveUncertain(false);
+            }
             setSecretValues({});
         } catch (requestError) {
             if (!active.current) return;
@@ -71,7 +78,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             setError(
                 getAtlasErrorMessage(
                     requestError,
-                    `Mission Control could not load the connection schema for ${provider.name}.`,
+                    `Mission Control could not load the connection settings for ${provider.name}.`,
                 ),
             );
         } finally {
@@ -93,7 +100,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         [schema],
     );
     const canSave = Boolean(schema?.editable && editableFields.length > 0);
-    const statusLabel = connectionStatus(schema);
+    const statusLabel = saveUncertain ? "unverified" : connectionStatus(schema);
     const isBusy = busyMode !== null;
 
     if (!hasConnectionCapability) {
@@ -122,7 +129,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     }
 
     async function runTest(): Promise<void> {
-        if (!active.current || !schema || !schema.testable || requestInFlight.current) {
+        if (!active.current || !schema || !schema.testable || requestInFlight.current || saveUncertainRef.current) {
             return;
         }
 
@@ -166,7 +173,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     }
 
     async function saveConnection(): Promise<void> {
-        if (!active.current || !schema || !canSave || requestInFlight.current) {
+        if (!active.current || !schema || !canSave || requestInFlight.current || saveUncertainRef.current) {
             return;
         }
 
@@ -181,6 +188,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         setSaveConfirmed(false);
         setBusyMode("saving");
         setError(null);
+        setTestResult(null);
 
         try {
             const result = await updateProviderConnection(provider.id, {
@@ -188,25 +196,16 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                 values: requestValues(schema, formValues, secretValues),
             });
             if (!active.current) return;
+            const nextValues = initialFormValues(result.connection_schema);
             setSchema(result.connection_schema);
+            setFormValues(nextValues);
             setSaveConfirmed(true);
-            setFormValues(initialFormValues(result.connection_schema));
             setSecretValues({});
             setTestResult(null);
-        } catch (requestError) {
+        } catch {
             if (!active.current) return;
-            const message = sanitizeMessage(
-                getAtlasErrorMessage(
-                    requestError,
-                    "Atlas Core could not save this provider connection.",
-                ),
-                secretValues,
-            );
-            console.error(
-                `Unable to save connection for ${provider.id}:`,
-                message,
-            );
-            setError(message);
+            saveUncertainRef.current = true;
+            setSaveUncertain(true);
         } finally {
             requestInFlight.current = false;
             if (active.current) setBusyMode(null);
@@ -245,7 +244,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
 
                     <button
                         type="button"
-                        onClick={() => void loadConnection()}
+                        onClick={() => void loadConnection(true)}
                         disabled={isBusy}
                         className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -268,6 +267,13 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                     </div>
                 )}
 
+                {saveUncertain && (
+                    <div role="alert" className="mt-6 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+                        <p className="font-semibold">Save outcome not confirmed</p>
+                        <p className="mt-1">Settings may have been saved. Reload settings to check the stored values before saving or testing again. Reloading replaces unsaved edits.</p>
+                    </div>
+                )}
+
                 {saveConfirmed && (
                     <p role="status" className="mt-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
                         Connection settings saved.
@@ -283,7 +289,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                                     field={field}
                                     value={formValues[field.key]}
                                     secretValue={secretValues[field.key] ?? ""}
-                                    disabled={isBusy || !field.editable}
+                                    disabled={isBusy || saveUncertain || !field.editable}
                                     onChange={(value) => updateFormField(field, value)}
                                 />
                             ))}
@@ -301,7 +307,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                                 <button
                                     type="button"
                                     onClick={() => void runTest()}
-                                    disabled={isBusy}
+                                    disabled={isBusy || saveUncertain}
                                     className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-200 transition hover:border-blue-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {busyMode === "testing" ? "Testing..." : "Test Connection"}
@@ -312,7 +318,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                                 <button
                                     type="button"
                                     onClick={() => void saveConnection()}
-                                    disabled={isBusy}
+                                    disabled={isBusy || saveUncertain}
                                     className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {busyMode === "saving" ? "Saving..." : "Save Connection"}
