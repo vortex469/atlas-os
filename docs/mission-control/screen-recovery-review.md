@@ -18,7 +18,7 @@ runtime, tag, or publish a release.
 | Maintenance workflow | Explicit target selection and exact request submission return a proposal; operational plan and exact verification rules precede action approval; a separate run precedes lifecycle outcome and audit | `e2e/maintenance-journey.spec.ts`; planning and workflow component tests |
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
 | Forge | Edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts` |
-| Installation readiness | Review evidence remains bound to the current record and optional details remain collapsed | Readiness component and structural tests; invalid-review browser recovery case |
+| Installation readiness | Owner evidence loads after read-only recovery, remains bound to the current record, and grants no installation authority | Readiness component/parser/structural tests; `e2e/readiness-review.spec.ts` and invalid-review browser recovery case |
 
 Paths in the table are relative to `services/mission-control`.
 
@@ -33,10 +33,15 @@ operational lifecycle. No execution gate or approval contract is expanded.
 
 ## Validation snapshot — 2026-10-26
 
-UI source checked at `b13b9c7aeba78060302612f15cca74b31a2b1679`:
+Full UI component source checked at
+`b13b9c7aeba78060302612f15cca74b31a2b1679`; subsequent readiness constant
+extraction checked with the focused suite below:
 
 - Full component suite: 2,562 passed, zero failed or skipped.
-- Browser suite: 61 passed against synthetic local backends.
+- Latest browser suite: 63 passed against synthetic local backends, including
+  maintenance request-to-audit and successful readiness-review recovery.
+- Readiness component/parser/structural suite: 16 passed after the constant
+  extraction; the extracted values match the preceding committed values exactly.
 - UI lint and production build passed. The build retains its existing
   large-chunk warning.
 - Workflow route suite: 72 passed after the additive audit DTO change. This is
@@ -54,9 +59,14 @@ Reproduce UI checks from `services/mission-control` with `npm test --
   target fingerprint, expiry and CSRF, and rejects other mutations. The separate
   Discovery sign-in test still proves that advisory context cannot preselect or
   request maintenance. These checks do not establish real provider acceptance.
-- The installation readiness browser case proves rejection and recovery for an
-  invalid response, not a complete successful review journey. It does not prove
-  installation execution and must not be described as doing so.
+- The installation readiness browser cases now cover both invalid-response
+  rejection and successful review loading after an outage at 390px and 1280px.
+  A restored synthetic owner session with no grant permission sees the evidence
+  chain without mutation controls. The shared browser fixture rejects every
+  mutation. Sixteen focused component/parser/boundary tests also pass after
+  extracting unchanged evidence constants into a dependency-free module. These
+  checks prove evidence presentation, not installation execution or real
+  authenticated backend acceptance.
 - Operator visual acceptance of the running interface, real backend integration,
   running-image parity, and production acceptance have not been established by
   these simulated checks.
