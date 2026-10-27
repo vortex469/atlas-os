@@ -81,6 +81,8 @@ describe("MainLayout", () => {
             expect(screen.getAllByText("Mission Control 2.0").length).toBeGreaterThan(0);
             expect(screen.getByText("Dashboard content")).toBeInTheDocument();
             expect(await screen.findByText("Foundry")).toBeInTheDocument();
+            expect(screen.getAllByText("Version reported")).toHaveLength(2);
+            expect(screen.queryByText("Release available")).not.toBeInTheDocument();
             expect(atlas.get).toHaveBeenCalledWith("");
         });
 
@@ -314,18 +316,19 @@ describe("MainLayout", () => {
             vi.mocked(atlas.get).mockRejectedValue(new Error("boom"));
             renderAt();
 
-            expect(await screen.findByText("Release unavailable")).toBeInTheDocument();
-            expect(screen.getAllByText("Release unavailable").length).toBeGreaterThan(0);
-            // The release badge degrades to the Task 3 unavailable treatment.
+            expect(await screen.findByText("Version not reported")).toBeInTheDocument();
+            expect(screen.getAllByText("Version not reported").length).toBeGreaterThan(0);
+            expect(screen.getAllByText("Version unknown")).toHaveLength(2);
+            // Missing version metadata is not a subsystem health decision.
             const badges = document.querySelectorAll(".mc-status-badge");
-            expect(Array.from(badges).some((badge) => badge.getAttribute("data-mc-status") === "disabled")).toBe(true);
+            expect(Array.from(badges).some((badge) => badge.getAttribute("data-mc-status") === "neutral")).toBe(true);
         });
 
         it.each([undefined, null, "", "   ", 42])("handles invalid release %s", async (release) => {
             vi.mocked(atlas.get).mockResolvedValue({ data: { release } });
             renderAt();
 
-            expect(await screen.findByText("Release unavailable")).toBeInTheDocument();
+            expect(await screen.findByText("Version not reported")).toBeInTheDocument();
         });
     });
 

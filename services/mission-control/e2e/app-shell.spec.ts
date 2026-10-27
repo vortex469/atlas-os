@@ -6,6 +6,8 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByText("Mission Control 2.0").first()).toBeVisible();
     await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
     await expect(page.getByText("browser-regression-baseline")).toBeVisible();
+    await expect(page.getByText("Version reported", { exact: true })).toHaveCount(2);
+    await expect(page.getByText("Release available", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Mission Control command center", { exact: true })).toHaveCount(1);
 
     await expect(page.getByRole("link", { name: "Mission Control", exact: true })).toHaveAttribute("href", "/");
@@ -124,7 +126,7 @@ test.describe("Atlas Core unavailable", () => {
         await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Evidence unavailable.");
         await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Unknown");
         await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
-        await expect(page.getByText("Release unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByText("Version not reported", { exact: true })).toBeVisible();
     });
 });
 

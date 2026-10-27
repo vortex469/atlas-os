@@ -17,14 +17,14 @@ import { StatusBadge } from "../components/StatusBadge";
  * - Compact mobile top bar with an openable navigation drawer that never
  *   consumes desktop-sidebar width at narrow viewports.
  * - Shared branding header with the current route/page context and the
- *   Atlas Core release status.
+ *   reported Atlas Core version.
  * - A single `NavigationList` renders both the desktop sidebar and the
  *   mobile drawer from the shared metadata in `app/navigation.ts`, so the
  *   two surfaces cannot drift apart.
  *
  * Presentation-only: no authority, admission, or execution semantics are
  * decided here. The release value comes from the existing authoritative
- * Atlas Core API and degrades to "Release unavailable" when it is missing.
+ * Atlas Core API and degrades to "Version not reported" when it is missing.
  */
 
 type NavigationListProps = {
@@ -125,10 +125,10 @@ function ReleaseFooter({ release }: { release: string | null }) {
                 <span className="text-xs font-semibold uppercase tracking-wider text-mc-text-muted">
                     Atlas Core
                 </span>
-                <StatusBadge status={release ? "Release available" : "unavailable"} />
+                <StatusBadge status={release ? "Version reported" : "Version unknown"} />
             </div>
             <p className="mt-2 truncate text-xs text-mc-text-secondary">
-                {release ?? "Release unavailable"}
+                {release ?? "Version not reported"}
             </p>
         </div>
     );
@@ -302,7 +302,7 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
 
                     <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex sm:gap-3">
                         <StatusBadge
-                            status={release ? "Release available" : "unavailable"}
+                            status={release ? "Version reported" : "Version unknown"}
                         />
                     </div>
                 </div>
