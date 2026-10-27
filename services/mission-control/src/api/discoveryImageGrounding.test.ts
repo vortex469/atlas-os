@@ -20,7 +20,7 @@ describe("getDiscoveryImageGrounding", () => {
         };
         vi.mocked(atlas.get).mockResolvedValue({ data });
 
-        await expect(getDiscoveryImageGrounding("item/id")).resolves.toBe(data);
+        await expect(getDiscoveryImageGrounding("item/id")).resolves.toEqual(data);
         expect(atlas.get).toHaveBeenCalledWith("/discovery/items/item%2Fid/image-grounding");
         expect(Object.keys(atlas)).toEqual(["get"]);
     });

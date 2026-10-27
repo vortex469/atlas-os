@@ -4,7 +4,7 @@ import type {
     DiscoveryImageGroundingStatus,
 } from "../../types/discovery";
 
-export type ImageGroundingErrorKind = "not_found" | "source_unavailable" | "unavailable";
+export type ImageGroundingErrorKind = "not_found" | "source_unavailable" | "unavailable" | "unreadable";
 
 const STATUS_COPY: Record<DiscoveryImageGroundingStatus, { label: string; detail: string }> = {
     grounded: {
@@ -96,7 +96,9 @@ export function DiscoveryImageGroundingPanel({
 }
 
 function UnavailableState({ kind }: { kind: ImageGroundingErrorKind }) {
-    const copy = kind === "not_found"
+    const copy = kind === "unreadable"
+        ? "The image evidence could not be read. Reload the page to try again."
+        : kind === "not_found"
         ? "Item grounding projection unavailable or not found."
         : kind === "source_unavailable"
           ? "Image grounding is currently unavailable due to a local source or read failure."

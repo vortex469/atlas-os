@@ -101,6 +101,7 @@ describe("DiscoveryImageGroundingPanel", () => {
         ["not_found", "Item grounding projection unavailable or not found."],
         ["source_unavailable", "Image grounding is currently unavailable due to a local source or read failure."],
         ["unavailable", "Image grounding is currently unavailable."],
+        ["unreadable", "The image evidence could not be read. Reload the page to try again."],
     ] as const)("renders bounded %s errors without backend details", (errorKind, copy) => {
         render(<DiscoveryImageGroundingPanel projection={null} isLoading={false} errorKind={errorKind} />);
         expect(screen.getByRole("status")).toHaveTextContent(copy);

@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseDiscoveryImageGrounding } from "./discoveryImageGroundingResponse";
 import { parseDiscoveryEvidence } from "./discoveryEvidenceResponse";
 import { parseDiscoveryCompatibility } from "./discoveryCompatibilityResponse";
 import { parseDiscoveryItem } from "./discoveryItemResponse";
@@ -89,11 +90,11 @@ export async function getDiscoveryItemEvidence(
 export async function getDiscoveryImageGrounding(
     itemId: string,
 ): Promise<DiscoveryImageGroundingProjection> {
-    const response = await atlas.get<DiscoveryImageGroundingProjection>(
+    const response = await atlas.get<unknown>(
         `/discovery/items/${encodeURIComponent(itemId)}/image-grounding`,
     );
 
-    return response.data;
+    return parseDiscoveryImageGrounding(response.data, itemId);
 }
 
 export async function getDiscoveryInstallationPlan(itemId: string): Promise<InstallationPlan> {
