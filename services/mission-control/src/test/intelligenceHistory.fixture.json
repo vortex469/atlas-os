@@ -1,0 +1,62 @@
+[
+  {
+    "id": "snapshot-completed",
+    "collected_at": "2026-01-01T12:00:00Z",
+    "telemetry": {
+      "provider_collection_duration_ms": 37.25,
+      "provider_timeout_seconds": 3.0,
+      "providers": [
+        {
+          "provider_id": "proxmox",
+          "provider_name": "Proxmox",
+          "status": "completed",
+          "duration_ms": 21.25,
+          "finding_count": 2
+        }
+      ]
+    }
+  },
+  {
+    "id": "snapshot-timed_out",
+    "collected_at": "2026-01-01T12:01:00Z",
+    "telemetry": {
+      "provider_collection_duration_ms": 37.25,
+      "provider_timeout_seconds": 3.0,
+      "providers": [
+        {
+          "provider_id": "proxmox",
+          "provider_name": "Proxmox",
+          "status": "timed_out",
+          "duration_ms": 21.25,
+          "finding_count": 2
+        }
+      ]
+    }
+  },
+  {
+    "id": "snapshot-failed",
+    "collected_at": "2026-01-01T12:02:00Z",
+    "telemetry": {
+      "provider_collection_duration_ms": 37.25,
+      "provider_timeout_seconds": 3.0,
+      "providers": [
+        {
+          "provider_id": "proxmox",
+          "provider_name": "Proxmox",
+          "status": "failed",
+          "duration_ms": 21.25,
+          "finding_count": 2
+        }
+      ]
+    }
+  },
+  {
+    "id": "native-defaults",
+    "collected_at": "2026-01-01T12:00:00",
+    "telemetry": {
+      "provider_collection_duration_ms": 0.0,
+      "provider_timeout_seconds": 0.0,
+      "providers": []
+    }
+  }
+]

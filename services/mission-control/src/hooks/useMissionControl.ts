@@ -7,6 +7,7 @@ import {
 
 import { normalizeAtlasHealth, normalizeServiceHealth } from "../utils/healthPresentation";
 import { atlas } from "../api/atlas";
+import { parseIntelligenceHistory } from "../api/intelligenceHistoryResponse";
 import type {
     AceSummary,
     IntelligenceTelemetrySnapshot,
@@ -114,10 +115,11 @@ export function useMissionControl(): MissionControlState {
                     .catch(() => null),
                 atlas.get<PolicyReloadHealth>("/policies/status"),
                 atlas
-                    .get<IntelligenceTelemetrySnapshot[]>(
+                    .get<unknown>(
                         "/intelligence/telemetry/history",
                         { params: { limit: 30 } },
                     )
+                    .then(response => ({ data: parseIntelligenceHistory(response.data) }))
                     .catch(() => null),
                 atlas
                     .get<IntelligenceTelemetryRetentionSummary>(

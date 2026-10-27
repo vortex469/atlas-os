@@ -107,6 +107,15 @@ describe("ProviderTelemetryTrend", () => {
         expect(screen.getByRole("img", { name: "Qdrant intelligence duration trend" })).toBeInTheDocument();
     });
 
+    it("keeps the average finite for large finite durations", () => {
+        const large = snapshots.map(snapshot => ({ ...snapshot, telemetry: { ...snapshot.telemetry,
+            providers: snapshot.telemetry.providers.map(timing => ({ ...timing, duration_ms: 1e308 })),
+        } }));
+        render(<ProviderTelemetryTrend providerId="qdrant" snapshots={large} />);
+        expect(screen.queryByText(/Infinity|NaN/)).not.toBeInTheDocument();
+        expect(screen.getByText("Average").nextElementSibling).toHaveTextContent("1e+305 s");
+    });
+
     it("shows an empty state without provider history", () => {
         render(
             <ProviderTelemetryTrend

@@ -272,6 +272,36 @@ describe("useMissionControl", () => {
         expect(result.current.policiesUnavailable).toBe(false);
     });
 
+    it.each([
+        { name: "null", value: null },
+        { name: "object", value: { items: [] } },
+        { name: "invalid snapshot", value: [{ id: "bad", collected_at: "2026-02-30T12:00:00Z", telemetry: {} }] },
+    ])("isolates a malformed $name history response and retains the last valid history", async ({ value }) => {
+        let body: unknown = telemetryHistory;
+        vi.spyOn(atlas, "get").mockImplementation(async url => {
+            const data: Record<string, unknown> = {
+                "/ace/summary": summary, "/health": health,
+                "/providers": [provider("proxmox", "Proxmox", "critical", "operations")],
+                "/policies": policies, "/policies/status": policyHealth,
+                "/intelligence/telemetry/history": body,
+                "/intelligence/telemetry/history/retention": telemetryRetention,
+            };
+            return { data: data[url!] };
+        });
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+        body = value;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.telemetryHistoryUnavailable).toBe(true);
+        expect(result.current.telemetryHistory).toEqual(telemetryHistory);
+        expect(result.current.providers).toHaveLength(1);
+        expect(result.current.error).toBeNull();
+        body = [];
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.telemetryHistoryUnavailable).toBe(false);
+        expect(result.current.telemetryHistory).toEqual([]);
+    });
+
     it("normalizes malformed health API data before publishing dashboard state", async () => {
         vi.spyOn(atlas, "get").mockImplementation(async (url) => {
             const data: Record<string, unknown> = {
