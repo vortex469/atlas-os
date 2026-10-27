@@ -329,6 +329,37 @@ describe("useMissionControl", () => {
         expect(result.current.policies).toEqual(policies);
     });
 
+    it.each([
+        { name: "null findings", value: { ...summary, findings: null } },
+        { name: "invalid finding", value: { ...summary, findings: [{ source: { private: "PRIVATE-SUMMARY-CANARY" } }] } },
+        { name: "invalid recommendation", value: { ...summary, recommendations: [{ priority: null }] } },
+    ])("rejects $name before publishing and retains the last coherent snapshot", async ({ value }) => {
+        let body: unknown = summary;
+        let healthy = true;
+        vi.spyOn(console, "error").mockImplementation(() => undefined);
+        vi.spyOn(atlas, "get").mockImplementation(async url => ({ data: ({
+            "/ace/summary": body, "/health": health,
+            "/providers": [provider("proxmox", "Proxmox", "critical", "operations")].map(p => ({ ...p, health: { ...p.health, status: healthy ? "healthy" : "offline" } })),
+            "/policies": policies, "/policies/status": policyHealth,
+            "/intelligence/telemetry/history": telemetryHistory,
+            "/intelligence/telemetry/history/retention": telemetryRetention,
+        } as Record<string, unknown>)[url!] }));
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+        const lastUpdated = result.current.lastUpdated;
+        body = value;
+        healthy = false;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.error).not.toBeNull();
+        expect(result.current.summary).toEqual(summary);
+        expect(result.current.providers[0].health.status).toBe("healthy");
+        expect(result.current.lastUpdated).toEqual(lastUpdated);
+        body = summary;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.error).toBeNull();
+        expect(result.current.providers[0].health.status).toBe("offline");
+    });
+
     it("normalizes malformed health API data before publishing dashboard state", async () => {
         vi.spyOn(atlas, "get").mockImplementation(async (url) => {
             const data: Record<string, unknown> = {

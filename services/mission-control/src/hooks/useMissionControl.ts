@@ -7,6 +7,7 @@ import {
 
 import { normalizeAtlasHealth, normalizeServiceHealth } from "../utils/healthPresentation";
 import { atlas } from "../api/atlas";
+import { parseAceSummary } from "../api/aceSummaryResponse";
 import { parsePolicies } from "../api/policiesResponse";
 import { parseIntelligenceHistory } from "../api/intelligenceHistoryResponse";
 import type {
@@ -108,7 +109,7 @@ export function useMissionControl(): MissionControlState {
                 telemetryHistoryResponse,
                 telemetryRetentionResponse,
             ] = await Promise.all([
-                atlas.get<AceSummary>("/ace/summary"),
+                atlas.get<unknown>("/ace/summary").then(response => ({ data: parseAceSummary(response.data) })),
                 atlas.get<AtlasHealth>("/health"),
                 atlas.get<Provider[]>("/providers"),
                 atlas

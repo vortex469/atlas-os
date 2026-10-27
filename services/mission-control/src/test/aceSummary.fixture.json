@@ -1,0 +1,93 @@
+[
+  {
+    "score": 100,
+    "status": "healthy",
+    "summary": "No findings reported.",
+    "findings": [],
+    "assessments": [],
+    "recommendations": [],
+    "telemetry": {
+      "provider_collection_duration_ms": 0.0,
+      "provider_timeout_seconds": 0.0,
+      "providers": []
+    }
+  },
+  {
+    "score": 120,
+    "status": "future_status",
+    "summary": "Provider evidence reported.",
+    "findings": [
+      {
+        "id": "reported-finding",
+        "severity": "future_severity",
+        "category": "availability",
+        "source": "proxmox",
+        "title": "Reported issue",
+        "message": "Review the reported evidence.",
+        "recommendation": null,
+        "component": null,
+        "metric": {},
+        "details": {
+          "unavailable_entities": [
+            {
+              "name": {
+                "nested": "not a display string"
+              }
+            },
+            {
+              "entity_id": "sensor.power",
+              "state": "unknown"
+            }
+          ]
+        },
+        "affects_health": false,
+        "score_penalty": -1
+      }
+    ],
+    "assessments": [
+      {
+        "title": "Review evidence",
+        "priority": "future_priority",
+        "component": null,
+        "details": {}
+      }
+    ],
+    "recommendations": [
+      {
+        "title": "Review provider issue",
+        "reason": "Reported evidence requires review.",
+        "priority": "future_priority",
+        "confidence": 1.25,
+        "estimated_effort": "operator review",
+        "component": "proxmox"
+      }
+    ],
+    "telemetry": {
+      "provider_collection_duration_ms": 10.0,
+      "provider_timeout_seconds": 3.0,
+      "providers": [
+        {
+          "provider_id": "proxmox",
+          "provider_name": "Proxmox",
+          "status": "completed",
+          "duration_ms": 2.5,
+          "finding_count": 1
+        },
+        {
+          "provider_id": "proxmox",
+          "provider_name": "Proxmox",
+          "status": "timed_out",
+          "duration_ms": 2.5,
+          "finding_count": 1
+        },
+        {
+          "provider_id": "proxmox",
+          "provider_name": "Proxmox",
+          "status": "failed",
+          "duration_ms": 2.5,
+          "finding_count": 1
+        }
+      ]
+    }
+  }
+]
