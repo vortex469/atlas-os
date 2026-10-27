@@ -55,6 +55,24 @@ describe("OperationalHistoryPage", () => {
         });
     });
 
+    it.each(["2026-02-30T00:00:00Z", "2026-08-16T00:00:00", "2026-08-16", "2099-01-01T00:00:00Z"])("keeps unconfirmed history time %s unknown", async (timestamp) => {
+        mockedLifecycle.mockResolvedValue(operationalLifecycle({ request_created_at: timestamp, verification_completed_at: timestamp }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        expect(await screen.findByText("Requested: Unknown time")).toBeVisible();
+        fireEvent.click(screen.getByText("Workflow details", { exact: true }));
+        expect(screen.getByText("Result recorded", { exact: true }).parentElement).toHaveTextContent("Unknown time");
+        expect(mockedList).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["2024-02-29T12:00:00.123456Z", "2026-08-16T14:00:00+02:00"])("preserves valid timezone-aware history time %s", async (timestamp) => {
+        mockedLifecycle.mockResolvedValue(operationalLifecycle({ request_created_at: timestamp, verification_completed_at: timestamp }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        const formatted = new Date(timestamp).toLocaleString();
+        expect(await screen.findByText(`Requested: ${formatted}`)).toBeVisible();
+        fireEvent.click(screen.getByText("Workflow details", { exact: true }));
+        expect(screen.getByText("Result recorded", { exact: true }).parentElement).toHaveTextContent(formatted);
+    });
+
     it("keeps missing reports in the unavailable filter without claiming a network failure", async () => {
         mockedDiagnostic.mockResolvedValue(null);
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
