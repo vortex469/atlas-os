@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 
 import {
     getAtlasErrorMessage,
@@ -11,11 +12,8 @@ import type {
 } from "../types/actionHistory";
 
 function formatTimestamp(timestamp: string): string {
-    const date = new Date(timestamp);
-
-    return Number.isNaN(date.getTime())
-        ? "Unknown time"
-        : date.toLocaleString();
+    const parsed = evidenceTimestamp(timestamp);
+    return parsed === null || parsed > Date.now() ? "Unknown time" : new Date(parsed).toLocaleString();
 }
 
 function statusClasses(status: ActionHistoryStatus): string {
