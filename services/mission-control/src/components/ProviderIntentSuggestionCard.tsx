@@ -3,18 +3,22 @@ import type { ProviderMonitoringIntentSuggestionV1 } from "../types/providerMana
 export function ProviderIntentSuggestionCard({
     suggestion,
     stale,
+    unavailable = false,
     reviewed,
     onReview,
 }: {
     suggestion: ProviderMonitoringIntentSuggestionV1;
     stale: boolean;
+    unavailable?: boolean;
     reviewed: boolean;
     onReview: () => void;
 }) {
     return (
         <article aria-labelledby={`suggestion-${suggestion.suggestion_id}`} className="mt-4 rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4">
             <h4 id={`suggestion-${suggestion.suggestion_id}`} className="text-sm font-semibold text-cyan-100">Advisory suggestion</h4>
-            {stale ? (
+            {unavailable ? (
+                <p role="status" className="mt-2 text-sm text-amber-200">Current monitoring settings could not be checked. Reload them before reviewing this suggestion.</p>
+            ) : stale ? (
                 <p role="alert" className="mt-2 text-sm text-amber-200">
                     This suggestion was created for a different resource incarnation or monitoring state and can no longer be applied.
                 </p>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { isAxiosError } from "axios";
 
 import { getAtlasErrorMessage } from "../api/atlas";
@@ -44,6 +44,8 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const supported = provider.capabilities.includes("resources");
     const [inventory, setInventory] = useState<ProviderResourceCollection | null>(null);
     const [management, setManagement] = useState<ProviderManagementV2 | null>(null);
+    const managementReadRef = useRef<ProviderManagementV2 | null>(null);
+    const managementReadId = useRef(0);
     const [inventoryLoading, setInventoryLoading] = useState(supported);
     const [managementLoading, setManagementLoading] = useState(supported);
     const [inventoryError, setInventoryError] = useState<string | null>(null);
@@ -56,10 +58,18 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     }, [provider.id, provider.name]);
 
     const loadManagement = useCallback(async (): Promise<boolean> => {
+        const readId = ++managementReadId.current;
+        managementReadRef.current = null;
         setManagementLoading(true); setManagementError(null);
-        try { setManagement(await getProviderManagement(provider.id)); return true; }
-        catch (error) { setManagementError(getAtlasErrorMessage(error, "Monitoring settings could not be loaded.")); return false; }
-        finally { setManagementLoading(false); }
+        try {
+            const value = await getProviderManagement(provider.id);
+            if (readId !== managementReadId.current) return false;
+            managementReadRef.current = value;
+            setManagement(value); return true;
+        } catch (error) {
+            if (readId !== managementReadId.current) return false;
+            setManagementError(getAtlasErrorMessage(error, "Monitoring settings could not be loaded.")); return false;
+        } finally { if (readId === managementReadId.current) setManagementLoading(false); }
     }, [provider.id]);
 
     useEffect(() => { if (supported) void Promise.resolve().then(() => Promise.all([loadInventory(), loadManagement()])); }, [loadInventory, loadManagement, supported]);
@@ -67,7 +77,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     // Public principal metadata identifies the session; CSRF secrets never enter a key.
     const operatorEpoch = session.authenticated ? JSON.stringify(session.principal) : "anonymous";
     return <SessionResourcePanel key={operatorEpoch} provider={provider} session={session} operatorEpoch={operatorEpoch}
-        inventory={inventory} management={management} inventoryLoading={inventoryLoading} managementLoading={managementLoading}
+        inventory={inventory} management={management} managementReadRef={managementReadRef} inventoryLoading={inventoryLoading} managementLoading={managementLoading}
         inventoryError={inventoryError} managementError={managementError} loadInventory={loadInventory} loadManagement={loadManagement} />;
 }
 
@@ -76,6 +86,7 @@ type SessionResourceProps = ProviderResourcesProps & {
     operatorEpoch: string;
     inventory: ProviderResourceCollection | null;
     management: ProviderManagementV2 | null;
+    managementReadRef: RefObject<ProviderManagementV2 | null>;
     inventoryLoading: boolean;
     managementLoading: boolean;
     inventoryError: string | null;
@@ -84,7 +95,7 @@ type SessionResourceProps = ProviderResourcesProps & {
     loadManagement: () => Promise<boolean>;
 };
 
-function SessionResourcePanel({ provider, session, operatorEpoch, inventory, management, inventoryLoading,
+function SessionResourcePanel({ provider, session, operatorEpoch, inventory, management, managementReadRef, inventoryLoading,
     managementLoading, inventoryError, managementError, loadInventory, loadManagement }: SessionResourceProps) {
     const active = useRef(true);
     const operatorReadId = useRef(0);
@@ -192,7 +203,9 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
 
     async function saveProviderIntent(publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, selected: ProviderMonitoringExpectation, acknowledgeSuppression: boolean): Promise<void> {
         const key = managementCoordinate(publicResource);
-        if (!active.current || !operatorResource.management_fingerprint || !session.csrfToken || saveInFlight.current || uncertainSave.current !== null) return;
+        if (!active.current || managementReadRef.current === null || managementReadRef.current !== management
+            || !managementReadRef.current.resources.includes(publicResource)
+            || !operatorResource.management_fingerprint || !session.csrfToken || saveInFlight.current || uncertainSave.current !== null) return;
         saveInFlight.current = true;
         setUpdatingCoordinate(key);
         setRecoveryNotice(null);
@@ -297,13 +310,13 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
                             : "No provider resources are available."}
                 </p>
             ) : (
-                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} onDraftChange={() => setRowStatuses((current) => ({ ...current, [resource.coordinate]: "" }))} metadataColumns={metadataColumns} observationUnavailable={inventoryLoading || Boolean(inventoryError) || inventory === null} operatorEpoch={operatorEpoch} managementUnavailable={management === null} operatorState={session.authenticated ? (operator ? "available" : operatorLoading ? "loading" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} blocked={uncertainCoordinate !== null || (updatingCoordinate !== null && updatingCoordinate !== resource.coordinate)} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
+                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} onDraftChange={() => setRowStatuses((current) => ({ ...current, [resource.coordinate]: "" }))} metadataColumns={metadataColumns} observationUnavailable={inventoryLoading || Boolean(inventoryError) || inventory === null} operatorEpoch={operatorEpoch} managementUnavailable={management === null} managementReadUnavailable={managementLoading || Boolean(managementError)} managementReadFailed={Boolean(managementError)} operatorState={session.authenticated ? (operator ? "available" : operatorLoading ? "loading" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} blocked={uncertainCoordinate !== null || (updatingCoordinate !== null && updatingCoordinate !== resource.coordinate)} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
             )}
         </section>
     );
 }
 
-function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalidated, onReview, onDraftChange, metadataColumns, observationUnavailable, operatorEpoch, managementUnavailable, operatorState, saving, blocked, decisionRevision, error, status, onSave }: { resource: ComposedResource; suggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewInvalidated: boolean; onReview: (suggestion: ProviderMonitoringIntentSuggestionV1) => void; onDraftChange: () => void; metadataColumns: MetadataColumn[]; observationUnavailable: boolean; operatorEpoch: string; managementUnavailable: boolean; operatorState: "anonymous" | "loading" | "available" | "unavailable"; saving: boolean; blocked: boolean; decisionRevision: number; error: string | null; status: string | null; onSave: (publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, expectation: ProviderMonitoringExpectation, acknowledge: boolean) => Promise<void> }) {
+function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalidated, onReview, onDraftChange, metadataColumns, observationUnavailable, operatorEpoch, managementUnavailable, managementReadUnavailable, managementReadFailed, operatorState, saving, blocked, decisionRevision, error, status, onSave }: { resource: ComposedResource; suggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewInvalidated: boolean; onReview: (suggestion: ProviderMonitoringIntentSuggestionV1) => void; onDraftChange: () => void; metadataColumns: MetadataColumn[]; observationUnavailable: boolean; operatorEpoch: string; managementUnavailable: boolean; managementReadUnavailable: boolean; managementReadFailed: boolean; operatorState: "anonymous" | "loading" | "available" | "unavailable"; saving: boolean; blocked: boolean; decisionRevision: number; error: string | null; status: string | null; onSave: (publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, expectation: ProviderMonitoringExpectation, acknowledge: boolean) => Promise<void> }) {
     const observed = resource.inventory;
     const managed = resource.inconsistent ? null : resource.management;
     const displayName = observed?.display_name ?? managed?.display_name ?? "Unknown resource";
@@ -313,7 +326,8 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
         ? "Missing"
         : formatLabel(observed?.current_state ?? "Unavailable");
     const observedState = observationUnavailable ? observed ? `Last reported: ${reportedState}` : "Unavailable" : reportedState;
-    const presentation = monitoringPresentation(managed, observationUnavailable ? null : observed?.current_state ?? null, managementUnavailable || resource.inconsistent);
+    const presentation = monitoringPresentation(managed, observationUnavailable || managementReadUnavailable ? null : observed?.current_state ?? null, managementUnavailable || resource.inconsistent);
+    const retainedManagement = managed !== null && managementReadUnavailable;
     const displayedSuggestion = suggestion ?? reviewedSuggestion;
     const suggestionStale = displayedSuggestion !== null && (
         (reviewInvalidated && displayedSuggestion.suggestion_id === reviewedSuggestion?.suggestion_id)
@@ -335,11 +349,11 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
             <div className="grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-4">
                 <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm uppercase text-slate-400">{resourceType} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex min-w-0 gap-2"><dt className="shrink-0">{column.label}:</dt><dd className="min-w-0">{column.render(observed)}</dd></div>)}</dl>}</section>
                 <FactSection title="Observed state" value={observedState} detail={observationUnavailable ? observed ? "Current observation unavailable; the value above is last reported." : "No current provider observation is available." : "Reported by the provider; your monitoring setting is separate."} />
-                <FactSection title="Identity" value={presentation.identity} detail={resource.inconsistent ? "Resource details do not match the monitoring record." : "Whether Atlas can verify this resource’s identity."} />
-                <section aria-label={`Monitoring for ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Monitoring expectation</p><p className="mt-2 font-semibold text-slate-100">{presentation.expectation}</p><p className="mt-2 text-sm text-slate-300">{presentation.status}</p></section>
+                <FactSection title="Identity" value={retainedManagement ? `Last reported: ${presentation.identity}` : presentation.identity} detail={retainedManagement ? "Current identity information could not be refreshed." : resource.inconsistent ? "Resource details do not match the monitoring record." : "Whether Atlas can verify this resource’s identity."} />
+                <section aria-label={`Monitoring for ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Monitoring expectation</p><p className="mt-2 font-semibold text-slate-100">{retainedManagement ? `Last reported: ${presentation.expectation}` : presentation.expectation}</p><p className="mt-2 text-sm text-slate-300">{retainedManagement ? "Current monitoring settings could not be checked." : presentation.status}</p></section>
             </div>
-            {displayedSuggestion && <ProviderIntentSuggestionCard suggestion={displayedSuggestion} stale={suggestionStale} reviewed={reviewedCurrentSuggestion} onReview={() => onReview(displayedSuggestion)} />}
-            {managed?.provider_id === "proxmox" && managed.resource_type === "qemu" && <div className="mt-5 border-t border-slate-800 pt-4"><ProviderIntentEditor key={`${resource.coordinate}:${managed.management_fingerprint}:${managed.record_version}:${decisionRevision}`} resource={managed} mutationResource={resource.operator} operatorState={operatorState} operatorEpoch={operatorEpoch} onDraftChange={onDraftChange} saving={saving} blocked={blocked} initialSelection={reviewedCurrentSuggestion ? reviewedSuggestion.suggested_expectation : undefined} requireExplicitSelection={reviewedSuggestion !== null && !reviewedCurrentSuggestion} onSave={async (expectation, acknowledge) => { if (resource.operator) await onSave(managed, resource.operator, reviewedCurrentSuggestion ? reviewedSuggestion : null, expectation, acknowledge); }} /></div>}
+            {displayedSuggestion && <ProviderIntentSuggestionCard suggestion={displayedSuggestion} unavailable={managementReadUnavailable || managementUnavailable} stale={suggestionStale} reviewed={reviewedCurrentSuggestion} onReview={() => onReview(displayedSuggestion)} />}
+            {managed?.provider_id === "proxmox" && managed.resource_type === "qemu" && <div className="mt-5 border-t border-slate-800 pt-4"><ProviderIntentEditor key={`${resource.coordinate}:${managed.management_fingerprint}:${managed.record_version}:${decisionRevision}:${managementReadFailed}`} resource={managed} mutationResource={resource.operator} operatorState={operatorState} operatorEpoch={operatorEpoch} onDraftChange={onDraftChange} saving={saving} blocked={blocked || managementReadUnavailable} initialSelection={reviewedCurrentSuggestion ? reviewedSuggestion.suggested_expectation : undefined} requireExplicitSelection={reviewedSuggestion !== null && !reviewedCurrentSuggestion} onSave={async (expectation, acknowledge) => { if (resource.operator) await onSave(managed, resource.operator, reviewedCurrentSuggestion ? reviewedSuggestion : null, expectation, acknowledge); }} /></div>}
             {error && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
             {status && <p role="status" className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">{status}</p>}
         </article>
