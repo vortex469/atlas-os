@@ -184,7 +184,7 @@ export function MaintenanceRequestPage() {
                 </section>
             )}
             <section className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 sm:grid-cols-3">
-                <FixedField label="Action" value={capability?.label ?? "Loading capability"} />
+                <FixedField label="Action" value={capability?.label ?? (loading ? "Loading capability" : "Maintenance unavailable")} />
                 <FixedField label="Provider" value={descriptorLabel(capability?.provider_id)} />
                 <FixedField label="Resource type" value={descriptorLabel(capability?.resource_type)} />
             </section>
@@ -193,6 +193,7 @@ export function MaintenanceRequestPage() {
             <section className="space-y-3" aria-label="Authoritative Proxmox resources">
                 <div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-white">Select one exact resource</h2><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Refreshing authoritative resources…</p>}
+                {!loading && capability && resources.length === 0 && <p role="status" className="text-sm text-slate-400">No resources were returned. Choose Refresh to check again.</p>}
                 {resources.map((resource) => (
                     <label key={resource.resource_id} className={`block rounded-xl border p-4 ${resource.requestable ? "border-slate-700 bg-slate-900/70" : "border-slate-800 bg-slate-900/30 text-slate-500"}`}>
                         <span className="flex gap-3">

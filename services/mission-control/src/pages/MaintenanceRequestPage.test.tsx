@@ -131,6 +131,38 @@ describe("MaintenanceRequestPage", () => {
         vi.mocked(requestRestartServiceIntent).mockResolvedValue(createdCandidate());
     });
 
+    it("explains an empty selector and recovers only after Refresh", async () => {
+        vi.mocked(getCapabilityResources).mockResolvedValueOnce({
+            execution_intent: "restart-service", provider_id: "proxmox", resource_type: "qemu",
+            generated_at: "2026-08-14T00:00:00Z", resources: [],
+        });
+        renderPage();
+        expect(await screen.findByText("No resources were returned. Choose Refresh to check again.")).toBeInTheDocument();
+        expect(screen.queryByText("Loading capability")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        expect(getCapabilityResources).toHaveBeenCalledTimes(1);
+        await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        expect(await screen.findByText("Frigate")).toBeInTheDocument();
+        expect(screen.queryByText("No resources were returned. Choose Refresh to check again.")).not.toBeInTheDocument();
+        expect(getCapabilityResources).toHaveBeenCalledTimes(2);
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
+    });
+
+    it.each(["missing", "failed"])("ends capability loading when lookup is %s", async (mode) => {
+        if (mode === "missing") vi.mocked(getOperationalCapabilities).mockResolvedValueOnce({ capabilities: [] });
+        else vi.mocked(getOperationalCapabilities).mockRejectedValueOnce(new Error("offline"));
+        renderPage();
+        expect(await screen.findByText("Maintenance unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Loading capability")).not.toBeInTheDocument();
+        expect(screen.queryByText("No resources were returned. Choose Refresh to check again.")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        expect(getCapabilityResources).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        expect(await screen.findByText("Frigate")).toBeInTheDocument();
+        expect(screen.queryByText("Maintenance unavailable")).not.toBeInTheDocument();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
+    });
+
     it("renders fixed semantics and disables non-requestable resources", async () => {
         renderPage();
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
