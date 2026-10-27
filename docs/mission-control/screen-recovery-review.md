@@ -554,3 +554,9 @@ omitted metadata, empty timelines, extra response fields and future string state
 remain readable. Initial retry and refresh recovery use the existing GET only;
 no response fields are merged or reconstructed, and counts stay paired with the
 validated page. Tests cover both entry paths, exact read counts and zero writes.
+
+Unrecognized workflow states remain inspectable but show Unknown — open workflow
+to review for approval state. They do not imply that no approval is needed. Known
+state labels, Other states counts, retained-data qualifiers and workflow links
+are unchanged. Existing compatibility and browser recovery checks cover the
+unknown fallback as well as recognized approval waits.

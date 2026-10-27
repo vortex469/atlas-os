@@ -294,6 +294,9 @@ export function WorkflowDashboardPage() {
 
 function WorkflowCard({ workflow, retained }: { workflow: WorkflowSummary; retained: boolean }) {
     const actionRequired = workflowActionRequired(workflow.workflow_state);
+    const approvalLabel = WORKFLOW_STATES.some(state => state === workflow.workflow_state)
+        ? actionRequired ? "Waiting for approval" : "Not waiting for approval"
+        : "Unknown — open workflow to review";
     const railId = `workflow-rail-${workflow.workflow_id}`;
     return (
         <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -310,7 +313,7 @@ function WorkflowCard({ workflow, retained }: { workflow: WorkflowSummary; retai
                 <Detail label={retained ? "Last loaded state" : "Current State"} value={formatWorkflowLabel(workflow.workflow_state)} />
                 <Detail label="Repository or Target" value={workflow.repository ?? workflow.target_id ?? "Not exposed"} />
                 <Detail label="Last Known Result" value={workflow.last_result_summary} />
-                <Detail label={retained ? "Last loaded approval state" : "Approval state"} value={actionRequired ? "Waiting for approval" : "Not waiting for approval"} />
+                <Detail label={retained ? "Last loaded approval state" : "Approval state"} value={approvalLabel} />
             </dl>
             <details className="mt-4 rounded-lg border border-slate-800 p-3">
                 <summary className="cursor-pointer text-sm text-blue-300 focus-visible:outline-2">Workflow details</summary>

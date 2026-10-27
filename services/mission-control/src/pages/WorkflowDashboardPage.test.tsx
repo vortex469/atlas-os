@@ -240,6 +240,7 @@ describe("WorkflowDashboardPage", () => {
         const card = within(heading.closest("article")!);
         expect(card.getByText("/repo")).toBeVisible();
         expect(card.getByText("No result yet")).toBeVisible();
+        expect(card.getByText(workflow_state === "awaiting_implementation_approval" ? "Waiting for approval" : "Not waiting for approval")).toBeVisible();
         expect(card.getByRole("link", {name: "Open Workflow"})).toHaveAttribute("href", "/workflows/workflow-123");
         expect(card.getByText("candidate-123")).not.toBeVisible();
         expect(card.getByText("planning-123")).not.toBeVisible();
@@ -338,6 +339,9 @@ describe("WorkflowDashboardPage", () => {
         renderDashboard();
         expect(await screen.findByRole("heading", {name: "workflow-123"})).toBeVisible();
         expect(screen.getByText("Other states")).toBeVisible();
+        const card = within(screen.getByRole("heading", {name: "workflow-123"}).closest("article")!);
+        expect(card.getByText("Unknown — open workflow to review")).toBeVisible();
+        expect(card.queryByText("Not waiting for approval")).not.toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(screen.queryByText("not-a-public-field")).not.toBeInTheDocument();
     });
