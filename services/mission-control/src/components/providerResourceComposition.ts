@@ -128,9 +128,11 @@ export function monitoringPresentation(
         return {
             identity,
             expectation,
-            status: observedState !== null && managed.expectation === observedState
-                ? "Configured — matches observed state"
-                : "Configured — does not match observed state",
+            status: observedState === null || observedState === "unknown"
+                ? "Configured — observed state unavailable"
+                : managed.expectation === observedState
+                    ? "Configured — matches observed state"
+                    : "Configured — does not match observed state",
         };
     }
     const statuses: Record<string, string> = {
