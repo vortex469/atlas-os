@@ -38,7 +38,7 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false }: {
             {state === "Unknown" && !message && <p className="text-mc-text-muted">No recognized health evidence.</p>}
             <p className="text-xs text-mc-text-muted">
                 {validTime ? <>{isStale ? "Last checked" : "Current evidence · Checked"} <time dateTime={timestamp!}>{new Date(parsed).toISOString()}</time></>
-                    : "Evidence age unknown · No valid source timestamp"}
+                    : "Update time unknown"}
             </p>
         </div>
     );
