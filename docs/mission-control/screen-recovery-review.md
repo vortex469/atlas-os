@@ -183,3 +183,13 @@ integers; no additional native enum or range restrictions are invented.
 Entity-detail renderers read only string labels from the open details dictionary,
 ignore non-object rows and use existing unknown labels for unreadable fields.
 Neither this advisory evidence nor its recovery authorizes any mutation.
+
+Advisory cards keep the issue title, reported message/reason and severity/priority
+visible. Secondary finding and recommendation metadata lives in closed native
+disclosures with keyboard access. Headers, badges and entity rows wrap inside the
+card, including long native string values; entity names and identifiers remain
+readable instead of being truncated. Finding entity expansion still shows the
+initial five rows and can reveal or collapse the complete list. Browser checks
+cover closed/open metadata, Enter/Space interaction, text and viewport bounds,
+and six-entity expansion at 320/390/1280 pixels. This presentation change leaves
+advisory data, permissions, reads and execution boundaries intact.
