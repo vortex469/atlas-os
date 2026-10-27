@@ -35,6 +35,36 @@ function isReadableProposal(candidate: ExecutionCandidate): boolean {
         && lists.every(value => Array.isArray(value) && value.every(item => typeof item === "string"));
 }
 
+function safePlanningReference(value: unknown): string | null {
+    if (typeof value !== "string" || !value || value.trim() !== value || value === "." || value === ".."
+        || Array.from(value).some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) return null;
+    try {
+        encodeURIComponent(value);
+        return value;
+    } catch {
+        return null;
+    }
+}
+
+function isReadablePlanningResult(response: CandidatePlanningResponse): boolean {
+    const failure = response.planning_failure;
+    const readableFailure = failure === null || (typeof failure === "object" && !Array.isArray(failure)
+        && typeof failure?.code === "string" && typeof failure?.message === "string");
+    // Missing or legacy workflow references retain the existing Browse workflows fallback.
+    // A string must still be encodable before the workflow link helper can use it.
+    try {
+        if (typeof response.workflow_session_id === "string") encodeURIComponent(response.workflow_session_id);
+    } catch {
+        return false;
+    }
+    return [response.status, response.intake_status].every(value => typeof value === "string" && value.trim().length > 0)
+        && typeof response.planning_allowed === "boolean"
+        && (response.session_id === null || safePlanningReference(response.session_id) !== null)
+        && Array.isArray(response.intake_reason_codes) && response.intake_reason_codes.every(value => typeof value === "string")
+        && (response.unsupported_reason === null || response.unsupported_reason === undefined || typeof response.unsupported_reason === "string")
+        && readableFailure;
+}
+
 function CandidateDetail({ candidateId }: { candidateId: string }) {
     const [candidate, setCandidate] = useState<ExecutionCandidate | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +72,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     const [notFound, setNotFound] = useState(false);
     const [planningResponse, setPlanningResponse] = useState<CandidatePlanningResponse | null>(null);
     const [planningError, setPlanningError] = useState<string | null>(null);
+    const [planningReviewSessionId, setPlanningReviewSessionId] = useState<string | null>(null);
     const [isPlanningPending, setIsPlanningPending] = useState(false);
     const [readRevision, setReadRevision] = useState(0);
     const readPending = useRef(true);
@@ -96,6 +127,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
         setNotFound(false);
         setPlanningResponse(null);
         setPlanningError(null);
+        setPlanningReviewSessionId(null);
         setReadRevision(revision => revision + 1);
     }
 
@@ -125,6 +157,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
         planningPending.current = true;
         setIsPlanningPending(true);
         setPlanningError(null);
+        setPlanningReviewSessionId(null);
         setPlanningResponse(null);
 
         try {
@@ -133,6 +166,11 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
             });
             if (!response || response.candidate_id !== candidate.id) {
                 setPlanningError("The planning response did not match this proposal. No planning result was opened.");
+                return;
+            }
+            if (!isReadablePlanningResult(response)) {
+                setPlanningReviewSessionId(safePlanningReference(response.session_id));
+                setPlanningError("The planning response could not be read. A session may have been saved. Refresh the proposal before trying again.");
                 return;
             }
             setPlanningResponse(response);
@@ -209,7 +247,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     {(!actionState.enabled || isPlanningPending) && <p className="text-sm text-slate-400">{isPlanningPending ? "Planning request is already pending." : actionState.reason}</p>}
                 </div>
                 {planningResponse && <PlanningResult response={planningResponse} />}
-                {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">Planning unavailable</p><p className="mt-1 text-sm text-red-200/80">{planningError}</p></div>}
+                {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">Planning unavailable</p><p className="mt-1 text-sm text-red-200/80">{planningError}</p>{planningReviewSessionId && <Link to={`/candidate-planning/${encodeURIComponent(planningReviewSessionId)}`} className="mt-3 inline-flex text-sm font-semibold text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Review planning details</Link>}</div>}
             </section>
 
             <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
