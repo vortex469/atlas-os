@@ -33,6 +33,37 @@ function isReadableRepositoryPlan(plan: CandidatePlanApiResponse): boolean {
         && references.every(value => value === null || value === undefined || typeof value === "string");
 }
 
+function isPlanningRouteReference(value: unknown): boolean {
+    if (typeof value !== "string" || !value || value.trim() !== value || value === "." || value === ".."
+        || Array.from(value).some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) return false;
+    try {
+        encodeURIComponent(value);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function isReadablePlanningSession(session: CandidatePlanningResponse): boolean {
+    if (!session || typeof session !== "object" || Array.isArray(session)) return false;
+    const optional = [session.candidate_fingerprint, session.predecessor_session_id, session.unsupported_reason];
+    const failure = session.planning_failure;
+    const readableFailure = failure === null || (typeof failure === "object" && !Array.isArray(failure)
+        && typeof failure?.code === "string" && typeof failure?.message === "string");
+    // Retain Browse workflows for legacy unusable references; avoid URI encoding failures.
+    try {
+        if (typeof session.workflow_session_id === "string") encodeURIComponent(session.workflow_session_id);
+    } catch {
+        return false;
+    }
+    return typeof session.status === "string" && session.status.trim().length > 0
+        && typeof session.planning_allowed === "boolean" && isPlanningRouteReference(session.candidate_id)
+        && optional.every(value => value === null || value === undefined || typeof value === "string")
+        && (session.successor_session_id === null || session.successor_session_id === undefined
+            || session.successor_session_id === "" || isPlanningRouteReference(session.successor_session_id))
+        && readableFailure;
+}
+
 function PlanningSession({ sessionId }: { sessionId: string }) {
     const [session, setSession] = useState<CandidatePlanningResponse | null>(null);
     const [plan, setPlan] = useState<CandidatePlanApiResponse | null>(null);
@@ -72,6 +103,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 }
                 if (nextSession && nextSession.session_id !== sessionId) {
                     setError("The returned planning session does not match this page.");
+                    return;
+                }
+                if (nextSession !== null && !isReadablePlanningSession(nextSession)) {
+                    setError("The planning session response is incomplete or unreadable.");
                     return;
                 }
                 let loadedPlan = nextSession?.plan ?? null;
@@ -140,6 +175,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             const response = await generateCandidatePlan(sessionId);
             if (!response || response.session_id !== sessionId || response.candidate_id !== session.candidate_id) {
                 setGenerateError("The planning response did not match this session. No plan was opened.");
+                return;
+            }
+            if (!isReadablePlanningSession(response)) {
+                setGenerateError("The planning session response is incomplete or unreadable.");
                 return;
             }
             setSession(response);

@@ -111,7 +111,65 @@ const unreadablePlans: [string, unknown][] = [
     ["non-object", false],
 ];
 
+const unreadableSessions: [string, object][] = [
+    ["status", { status: {} }], ["blank status", { status: " " }],
+    ["planning flag", { planning_allowed: "true" }], ["fingerprint", { candidate_fingerprint: {} }],
+    ["predecessor", { predecessor_session_id: {} }], ["successor", { successor_session_id: {} }],
+    ["successor traversal", { successor_session_id: ".." }], ["successor Unicode", { successor_session_id: "\ud800" }],
+    ["successor whitespace", { successor_session_id: " leading" }], ["successor control", { successor_session_id: "bad\u0000id" }],
+    ["unsupported reason", { unsupported_reason: {} }], ["missing failure", { planning_failure: undefined }],
+    ["failure", { planning_failure: {} }], ["failure message", { planning_failure: { code: "failed", message: {} } }],
+    ["failure code", { planning_failure: { code: {}, message: "failed" } }],
+    ["workflow Unicode", { workflow_session_id: "\ud800" }],
+];
+
 describe("PlanningSessionPage", () => {
+    for (const source of ["saved", "generated"] as const) {
+        it.each(unreadableSessions)(`recovers unreadable ${source} session %s using only a new read`, async (_field, fields) => {
+            const untrusted = session({ status: "plan_ready", ...fields } as Partial<CandidatePlanningResponse>);
+            if (source === "saved") mockedGetCandidatePlanningSession.mockResolvedValueOnce(untrusted);
+            else mockedGenerateCandidatePlan.mockResolvedValueOnce(untrusted);
+            const user = userEvent.setup();
+            renderPage();
+            if (source === "generated") await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
+            expect(await screen.findByRole("alert")).toHaveTextContent("The planning session response is incomplete or unreadable.");
+            expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+            expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+            expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+            await user.click(screen.getByRole("button", { name: source === "saved" ? "Try again" : "Check saved planning" }));
+            await screen.findByRole("button", { name: "Generate Plan" });
+            expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+            expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(source === "saved" ? 0 : 1);
+        });
+    }
+
+    it.each([{}, "", "..", "\ud800", "bad\u0000id"])("does not use an unreadable proposal reference: %j", async candidate_id => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ candidate_id } as unknown as Partial<CandidatePlanningResponse>));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("The planning session response is incomplete or unreadable.");
+        expect(screen.queryByRole("link", { name: "Review original proposal" })).not.toBeInTheDocument();
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-object planning session through the read recovery view", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(false as unknown as CandidatePlanningResponse);
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("The planning session response is incomplete or unreadable.");
+        expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+    });
+
+    it.each(["", "next/é"])("accepts readable future session labels and optional lineage: %j", async successor_session_id => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "future_state", planning_allowed: false,
+            candidate_id: "proposal/é", successor_session_id, predecessor_session_id: "previous", candidate_fingerprint: null,
+            intake_status: {}, intake_reason_codes: null, future_metadata: { extra: true } } as unknown as Partial<CandidatePlanningResponse>));
+        renderPage();
+        expect(await screen.findByRole("link", { name: "Review original proposal" })).toHaveAttribute("href", "/execution-candidates/proposal%2F%C3%A9");
+        if (successor_session_id) expect(screen.getByRole("link", { name: successor_session_id })).toHaveAttribute("href", "/candidate-planning/next%2F%C3%A9");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
     for (const source of ["embedded", "generated"] as const) {
         it.each(unreadablePlans)(`recovers from unreadable ${source} plan %s without creating a workflow`, async (_field, override) => {
             const untrusted = (override === false ? false : { ...plan(), ...override as object }) as unknown as CandidatePlanApiResponse;
