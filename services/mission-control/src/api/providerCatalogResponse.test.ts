@@ -8,6 +8,8 @@ describe("provider detail catalog response", () => {
     it("reads the complete native model including defaults and open native strings", () => {
         expect(parseProviderCatalog(fixture)).toEqual(fixture);
         expect(parseProviderCatalog([])).toEqual([]);
+        const futureProvider = { ...provider, id: "future-provider-2", name: "  Future provider ✓  " };
+        expect(parseProviderCatalog([futureProvider])[0]).toEqual(futureProvider);
     });
     it("projects known fields without sharing mutable capability or detail dictionaries", () => {
         const source = { ...fixture[1], private: "PRIVATE-CATALOG-CANARY", capabilities: ["resources"], health: { ...fixture[1].health, private: "PRIVATE-CATALOG-CANARY" } };
@@ -26,6 +28,8 @@ describe("provider detail catalog response", () => {
         { name: "null provider", value: [null] }, { name: "array provider", value: [[]] },
         ...["id", "name", "workspace", "priority", "version", "description", "icon"].map(field => ({ name: `invalid ${field}`, value: [{ ...provider, [field]: { private: "PRIVATE-CATALOG-CANARY" } }] })),
         { name: "missing name", value: [{ ...provider, name: undefined }] },
+        ...["", " ", "a/b", "..", "UPPER", "provider\n", "\ud800"].map(id => ({ name: `invalid identity ${JSON.stringify(id)}`, value: [{ ...provider, id }] })),
+        ...["", " \t\n"].map(name => ({ name: `blank name ${JSON.stringify(name)}`, value: [{ ...provider, name }] })),
         { name: "missing capabilities", value: [{ ...provider, capabilities: undefined }] },
         { name: "null capabilities", value: [{ ...provider, capabilities: null }] },
         { name: "string capabilities", value: [{ ...provider, capabilities: "resources" }] },

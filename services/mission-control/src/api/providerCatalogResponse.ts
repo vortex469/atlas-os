@@ -23,13 +23,15 @@ export function parseProviderCatalog(value: unknown): Provider[] {
     return value.map(entry => {
         const row = object(entry);
         const id = string(row.id);
-        // Core's registry rejects duplicate IDs; detail views must not choose an ambiguous entry.
-        if (ids.has(id)) throw new ProviderCatalogResponseError();
+        const name = string(row.name);
+        // Core IDs are URL-safe slugs; detail views need an unambiguous, readable identity.
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || id.trim() !== id
+            || !name.trim() || ids.has(id)) throw new ProviderCatalogResponseError();
         ids.add(id);
         if (!Array.isArray(row.capabilities) || row.capabilities.some(item => typeof item !== "string")) throw new ProviderCatalogResponseError();
         const health = normalizeServiceHealth(row.health);
         return {
-            id, name: string(row.name), workspace: string(row.workspace), priority: string(row.priority),
+            id, name, workspace: string(row.workspace), priority: string(row.priority),
             version: string(row.version), description: string(row.description), icon: string(row.icon),
             capabilities: [...row.capabilities] as string[],
             health: {
