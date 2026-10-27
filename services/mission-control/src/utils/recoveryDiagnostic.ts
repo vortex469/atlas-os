@@ -46,7 +46,7 @@ export function recoveryPresentation(diagnostic: WorkflowRecoveryDiagnostic): Re
     const status = STATUS_PRESENTATION[diagnostic.diagnostic_status];
     return {
         ...status,
-        reason: diagnostic.controlled_reason ? REASON_TEXT[diagnostic.controlled_reason] : "No controlled recovery concern is recorded.",
+        reason: diagnostic.controlled_reason ? REASON_TEXT[diagnostic.controlled_reason] : "No recovery reason was reported.",
         safeNextAction: SAFE_ACTION_TEXT[diagnostic.safe_next_action],
     };
 }

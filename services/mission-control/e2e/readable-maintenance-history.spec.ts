@@ -24,7 +24,11 @@ for (const width of [320, 390, 1280]) for (const mode of ['paging', 'metadata', 
             expect(url.pathname).toBe('/agent-api/api/v1/agent/workflows/history-readable/recovery-diagnostic');
             reads.diagnostic++;
             const diagnostic = operationalDiagnostic();
-            return route.fulfill({ json: { ...diagnostic, correlation: { ...diagnostic.correlation, workflow_id: workflow.workflow_id } } });
+            const mismatch = mode === 'lifecycle' && reads.diagnostic > 1;
+            return route.fulfill({ json: { ...diagnostic,
+                ...(mismatch ? { diagnostic_status: 'attention_required', consistency: 'immutable_mismatch', controlled_reason: 'immutable_request_mismatch', safe_next_action: 'operator_review_required' } : {}),
+                correlation: { ...diagnostic.correlation, workflow_id: workflow.workflow_id, request_digest_match: mismatch ? false : diagnostic.correlation.request_digest_match },
+            } });
         });
         await page.goto('/operations/history');
         const refresh = page.getByRole('button', { name: 'Refresh history', exact: true });
@@ -49,7 +53,13 @@ for (const width of [320, 390, 1280]) for (const mode of ['paging', 'metadata', 
             await refresh.click();
         }
         await expect(page.getByRole('heading', { name: 'Updated readable target', exact: true })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'Healthy', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: mode === 'lifecycle' ? 'Attention required' : 'Healthy', exact: true })).toBeVisible();
+        if (mode === 'lifecycle') {
+            const recovery = page.getByRole('region', { name: 'Recovery summary', exact: true });
+            await expect(recovery.getByText('immutable mismatch', { exact: true })).toBeVisible();
+            await expect(recovery.getByText('Agent and Core do not agree on the immutable operational request.', { exact: true })).toBeVisible();
+            await expect(recovery.getByText('Safe next action:', { exact: true }).locator('..')).toContainText('Operator review is required before any new maintenance request.');
+        }
         await expect(page.getByRole('alert')).toHaveCount(0);
         expect(reads).toEqual({ list: mode === 'lifecycle' ? 2 : 4, lifecycle: 2, diagnostic: 2 });
         expect(rejectedMutationRequests).toEqual([]);

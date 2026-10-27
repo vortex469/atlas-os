@@ -23,6 +23,16 @@ for (const width of [320, 390, 1280]) {
         });
         await page.goto('/operations/history');
         await expect(page.getByRole('heading', { name: 'Filter target', exact: true })).toBeVisible();
+        const recovery = page.getByRole('region', { name: 'Recovery summary', exact: true });
+        await expect(recovery.getByRole('heading', { name: 'Healthy', exact: true })).toBeVisible();
+        await expect(recovery.getByText('No recovery reason was reported.', { exact: true })).toHaveCount(0);
+        await expect(recovery.getByText('Safe next action:', { exact: true }).locator('..')).toContainText('No recovery action is required.');
+        await expect(recovery.getByText('consistent', { exact: true })).toHaveCount(0);
+        await expect(recovery.getByText(/Read-only guidance only/)).toHaveCount(0);
+        const workflowDetails = page.getByText('Workflow details', { exact: true });
+        await workflowDetails.click();
+        await expect(page.getByText('Consistency', { exact: true }).locator('..')).toContainText('consistent');
+        await workflowDetails.click();
         const filters = page.getByRole('region', { name: 'Operational history filters', exact: true });
         const applied = page.getByRole('status', { name: 'Applied history filters', exact: true });
         await expect(filters.getByRole('combobox', { name: 'Status', exact: true })).toBeVisible();
@@ -52,7 +62,7 @@ for (const width of [320, 390, 1280]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         if (width !== 320) {
             await page.evaluate(() => scrollTo(0, 0));
-            await page.screenshot({ path: `/tmp/atlas-history-filters-${width}.png`, fullPage: true });
+            await page.screenshot({ path: `/tmp/atlas-compact-maintenance-results-${width}.png`, fullPage: true });
         }
     });
 }

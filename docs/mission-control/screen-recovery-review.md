@@ -647,3 +647,12 @@ when that section is closed and identifies the displayed page, including a
 last-loaded page during refresh recovery. One Clear filters control resets all
 five choices whenever a filter is active. All filtering stays local, using the
 same predicate and clear handler, with no extra reads or writes.
+
+Compact maintenance result cards keep the reported status, supplied explanation
+and next step visible. Routine consistent metadata remains in Workflow details;
+non-consistent report badges stay visible in the summary. Compact cards omit the
+repeated technical footer and the empty explanation for a healthy report. Other
+missing explanations say No recovery reason was reported, without implying that
+no problem exists. Full workflow summaries retain their detailed fields and
+footer. Diagnostic mappings, retained-result qualification and approval controls
+are unchanged.
