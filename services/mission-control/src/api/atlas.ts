@@ -1,5 +1,4 @@
 import axios from "axios";
-import { parse } from "yaml";
 
 import type { DeploymentAnalysisResponse } from "../features/forge/types";
 import type { DoctorReport } from "../types/doctor";
@@ -37,6 +36,8 @@ import { DoctorResponseError, parseDoctorReport } from "./doctorResponse";
 
 import { parseProviderActionList } from "./providerActionListResponse";
 import { parseProviderActionResult } from "./providerActionResponse";
+import { parseDeploymentAnalysisResponse } from "./deploymentAnalysisResponse";
+import { parseComposeDocument } from "./composeDocument";
 
 const ATLAS_API_BASE_URL =
     import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
@@ -54,16 +55,16 @@ export async function analyzeCompose(
     reference: string,
 ): Promise<DeploymentAnalysisResponse> {
     const response =
-        await atlas.post<DeploymentAnalysisResponse>(
+        await atlas.post<unknown>(
             "/analysis/deployments",
             {
                 source: "compose",
                 reference,
-                document: parse(compose),
+                document: parseComposeDocument(compose),
             },
         );
 
-    return response.data;
+    return parseDeploymentAnalysisResponse(response.data);
 }
 
 export async function getProviderActions(

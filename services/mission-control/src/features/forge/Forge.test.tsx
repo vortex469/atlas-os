@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { analyzeCompose } from "../../api/atlas";
 import { Forge } from "./Forge";
@@ -112,6 +112,8 @@ describe("Forge analysis freshness", () => {
         render(<Forge />);
         submit();
         await screen.findByText("Highest reported risk: critical");
+        const analysisSection = screen.getByRole("heading", { name: "Analysis", level: 2 }).closest("section")!;
+        expect(within(analysisSection).getByText("critical", { exact: true })).toHaveClass("text-red-300");
         expect(screen.getByText("Planner does not request approval")).toBeInTheDocument();
         expect(screen.getByText("This is a proposed plan. Workflow permissions and exact approvals are checked separately.")).toBeInTheDocument();
         expect(screen.getAllByText("Not estimated").length).toBeGreaterThan(0);
