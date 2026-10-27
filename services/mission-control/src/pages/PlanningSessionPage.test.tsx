@@ -101,7 +101,59 @@ function renderPage(path = "/candidate-planning/candidate-plan-1") {
     );
 }
 
+const unreadablePlans: [string, unknown][] = [
+    ["title", { title: {} }], ["objective", { objective: [] }],
+    ["assumptions", { assumptions: null }], ["constraints", { constraints: {} }],
+    ["steps", { proposed_steps: [{}] }], ["files", { likely_affected_files: [null] }],
+    ["verification", { verification_strategy: undefined }], ["rollback", { rollback_considerations: [42] }],
+    ["questions", { unresolved_questions: "none" }], ["evidence", { evidence_ids: [{}] }],
+    ["branch", { repository_branch: {} }], ["commit", { repository_head: [] }],
+    ["non-object", false],
+];
+
 describe("PlanningSessionPage", () => {
+    for (const source of ["embedded", "generated"] as const) {
+        it.each(unreadablePlans)(`recovers from unreadable ${source} plan %s without creating a workflow`, async (_field, override) => {
+            const untrusted = (override === false ? false : { ...plan(), ...override as object }) as unknown as CandidatePlanApiResponse;
+            const response = session({ status: "plan_ready", plan: untrusted });
+            if (source === "embedded") mockedGetCandidatePlanningSession.mockResolvedValueOnce(response);
+            else mockedGenerateCandidatePlan.mockResolvedValueOnce(response);
+            const user = userEvent.setup();
+            renderPage();
+            if (source === "generated") await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
+            expect(await screen.findByRole("alert")).toHaveTextContent("The repository plan response is incomplete or unreadable.");
+            expect(screen.queryByText("Generate a plan to review. This does not apply changes or grant approval.")).not.toBeInTheDocument();
+            expect(screen.queryByText("Plan is ready.")).not.toBeInTheDocument();
+            expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+            expect(screen.queryByText("Plan details")).not.toBeInTheDocument();
+            expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+            expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+            await user.click(screen.getByRole("button", { name: source === "embedded" ? "Try again" : "Check saved planning" }));
+            await screen.findByRole("button", { name: "Generate Plan" });
+            expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+            expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(source === "embedded" ? 0 : 1);
+        });
+    }
+
+    it.each([false, { ...plan(), proposed_steps: null }])("rejects an unreadable separately loaded repository plan: %j", async untrusted => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready" }));
+        mockedGetCandidatePlan.mockResolvedValue(untrusted as unknown as CandidatePlanApiResponse);
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("The repository plan response is incomplete or unreadable.");
+        expect(mockedGetCandidatePlan).toHaveBeenCalledExactlyOnceWith("candidate-plan-1");
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+    });
+
+    it("accepts readable plans with richer unused metadata", async () => {
+        const compatible = { ...plan(), identifier: { future: true }, likely_affected_components: [{}], created_at: {}, future_metadata: { extra: true } } as unknown as CandidatePlanApiResponse;
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: compatible }));
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Review saved plan" })).toBeVisible();
+        expect(screen.getByText("Review compose changes.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Create Workflow" })).toBeEnabled();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
     it.each(["workflow-1", null])("opens an existing workflow using reads only (reference: %s)", async workflow_session_id => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "workflow_created", planning_allowed: false, workflow_session_id }));
         renderPage();
