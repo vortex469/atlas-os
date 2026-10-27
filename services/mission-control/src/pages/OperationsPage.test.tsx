@@ -108,10 +108,13 @@ describe("OperationsPage", () => {
     it.each(["2099-10-27T12:00:00Z", "2099-10-27T12:00:00+02:00"])("keeps a future completion time unknown without hiding the reported result: %s", async completed_at => {
         const response = await mockedGetProviderActionHistory({});
         mockedGetProviderActionHistory.mockClear();
-        mockedGetProviderActionHistory.mockResolvedValue({ ...response, items: response.items.map(entry => ({ ...entry, completed_at })) });
+        const confirmed = completed_at.endsWith("Z");
+        mockedGetProviderActionHistory.mockResolvedValue({ ...response, items: response.items.map(entry => ({ ...entry, completed_at, confirmed })) });
         renderPage();
         expect(await screen.findByText("Unknown time")).toBeVisible();
         expect(screen.getByText("Model unloaded.")).toBeVisible();
+        if (confirmed) expect(screen.getByText("Request confirmed")).toBeVisible();
+        else expect(screen.queryByText("Request confirmed")).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "View audit details" })).toHaveAttribute("href", "/operations/actions/audit-1");
         expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(1);
     });
@@ -128,7 +131,7 @@ describe("OperationsPage", () => {
             screen.getByText("request-123"),
         ).toBeInTheDocument();
         expect(
-            screen.getByText("Confirmed"),
+            screen.getByText("Request confirmed"),
         ).toBeInTheDocument();
         expect(
             screen.getByRole("link", {
