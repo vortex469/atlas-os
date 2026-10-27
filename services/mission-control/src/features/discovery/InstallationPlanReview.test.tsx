@@ -68,8 +68,8 @@ describe("InstallationPlanReview", () => {
         render(<InstallationPlanReview plan={genericPlan()} isLoading={false} unavailable={false} />);
         expect(screen.getByText(FINGERPRINT)).toBeInTheDocument();
         expect(screen.getByText("Integrity linkage only — not approval")).toBeInTheDocument();
-        expect(screen.getByText(/1 unresolved blocker; this plan is not executable/i)).toBeInTheDocument();
-        expect(screen.getByText(/Confirm the storage migration risk/i)).toBeInTheDocument();
+        expect(screen.getByText("1 unresolved blocker; 1 required operator confirmation; this plan is not executable.")).toBeInTheDocument();
+        expect(screen.getByText(/Confirm Risk — Confirm the storage migration risk/i)).toBeInTheDocument();
         expect(screen.getByText(/High · Compatibility Warning/i)).toBeInTheDocument();
         expect(screen.getByText(/Claim: deployment-binding · Source class: deployment_binding/i)).toHaveTextContent("Observed at: None · Attested at: None");
         expect(screen.queryByRole("button", { name: /approve|confirm|install|execute|deploy|convert/i })).not.toBeInTheDocument();
@@ -79,7 +79,9 @@ describe("InstallationPlanReview", () => {
         const hostile = genericPlan();
         hostile.required_operator_confirmations[0].prompt = "<img src=x onerror=alert(1)>";
         const { container } = render(<InstallationPlanReview plan={hostile} isLoading={false} unavailable={false} />);
-        expect(screen.getByText(/<img src=x onerror=alert\(1\)>/)).toBeInTheDocument();
+        const hostileText = screen.getAllByText(/<img src=x onerror=alert\(1\)>/);
+        expect(hostileText).toHaveLength(2);
+        expect(hostileText[0]).toBeVisible();
         expect(container.querySelector("img")).toBeNull();
     });
 
@@ -92,7 +94,23 @@ describe("InstallationPlanReview", () => {
             expect(heading).toBeVisible();
             expect(heading.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         }
+        const blockers = screen.getByRole("heading", { name: "Blockers" }).parentElement!;
+        expect(within(blockers).getAllByRole("listitem")).toHaveLength(5);
+        expect(within(blockers).queryByText(/Required Operator Confirmation/)).not.toBeInTheDocument();
+        expect(screen.getByText("5 unresolved blockers; 4 required operator confirmations; this plan is not executable.")).toBeVisible();
+        expect(within(blockers).getByText(/Missing Prerequisite Fact — Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
+        expect(within(blockers).getByText(/Missing Prerequisite Fact — Requires capability container-orchestration/)).toBeVisible();
+        const confirmations = screen.getByRole("heading", { name: "Required operator confirmations" }).parentElement!;
+        expect(within(confirmations).getAllByRole("listitem")).toHaveLength(4);
+        expect(within(confirmations).getByText(/Review this informational assumption: Target environment must be checked\. Related prerequisite: Requires capability container-orchestration/)).toBeVisible();
+        expect(within(confirmations).getByText(/Review this informational prerequisite: Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
+        const rawBlocker = screen.getByText(/Blocker code: missing_prerequisite_fact · Subject ID: 833c8f05ff5931f984ba64333f4414d2d509b6e57c315889a1b045828982e305/);
+        const exactPrompt = screen.getByText(/Exact prompt: Review the informational prerequisite 833c8f05ff5931f984ba64333f4414d2d509b6e57c315889a1b045828982e305/);
+        expect(rawBlocker).not.toBeVisible();
+        expect(exactPrompt).not.toBeVisible();
         await userEvent.click(disclosure);
+        expect(rawBlocker).toBeVisible();
+        expect(exactPrompt).toBeVisible();
         expect(screen.getByText(FINGERPRINT)).toBeVisible();
         expect(screen.getAllByText(/Missing Deployment Artifact/).length).toBeGreaterThan(0);
         expect(screen.getAllByText("2026.8.3", { selector: "dd" })).toHaveLength(2);
@@ -109,8 +127,8 @@ describe("InstallationPlanReview", () => {
         expect(screen.getByText(/Source class: registry_attested/)).toHaveTextContent("Observed at: None");
         expect(screen.getByText(/Source class: registry_attested/)).toHaveTextContent("2026-08-21T20:54:36Z");
         expect(screen.getByText(/Source class: registry_attested/)).toHaveTextContent("Freshness window seconds: 2592000 · Trust: accepted");
-        expect(screen.getByText(/Prerequisite ID: 833c8f/)).toHaveTextContent("Kind: network · State: unknown · Description: Requires port 8123/tcp");
-        expect(screen.getByText(/Prerequisite ID: 9d3cb7/)).toHaveTextContent("Kind: platform · State: unknown · Description: Requires capability container-orchestration.");
+        expect(screen.getByText(/Kind: network · State: unknown · Description: Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
+        expect(screen.getByText(/Kind: platform · State: unknown · Description: Requires capability container-orchestration/)).toBeVisible();
         expect(screen.getByText(/Item: mqtt/)).toHaveTextContent("Minimum version: None · Maximum version: None");
         expect(screen.getByText(/Item: postgresql/)).toHaveTextContent("Required: No");
         expect(screen.getByText(/Assumption ID: 091e943/)).toHaveTextContent("Target environment must be checked");
@@ -118,7 +136,7 @@ describe("InstallationPlanReview", () => {
         expect(screen.getByText(/Claim: catalog_entry/)).toHaveTextContent("Source class: curated_catalog");
         expect(screen.getByText(/Claim: freshness/)).toHaveTextContent("Observed at: 2026-08-25T00:00:00Z");
         expect(screen.getByText(/Claim: immutable_image_release · Source class: image_release_evidence/)).toBeInTheDocument();
-        expect(screen.getByText(/9 unresolved blockers; this plan is not executable/i)).toBeInTheDocument();
+        expect(screen.getByText("5 unresolved blockers; 4 required operator confirmations; this plan is not executable.")).toBeInTheDocument();
         expect(screen.getByText(/Missing Immutable Image Identity/)).toBeInTheDocument();
         expect(screen.getByText(/Unknown Compatibility/)).toBeInTheDocument();
         for (const code of ["Deployment Artifact", "Immutable Image Identity", "Prerequisite Fact", "Compatibility Fact"]) {
