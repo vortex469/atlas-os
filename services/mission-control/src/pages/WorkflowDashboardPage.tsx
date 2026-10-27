@@ -264,7 +264,14 @@ export function WorkflowDashboardPage() {
                 {isLoading ? (
                     <p role="status" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">Loading workflow results…</p>
                 ) : workflows.length === 0 ? (
-                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">{hasFilters ? "No workflows match the current filters." : "No workflows yet."}</p>
+                    <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">
+                        <p>{hasFilters ? "No workflows match the current filters." : "No workflows yet."}</p>
+                        <p>{hasFilters ? "Try a broader search or clear the filters above." : "Review a change proposal or choose maintenance to prepare a workflow."}</p>
+                        {!hasFilters && <div className="flex flex-wrap gap-4">
+                            <Link to="/execution-candidates" className="text-blue-300 underline underline-offset-4 focus-visible:outline-2">Review change proposals</Link>
+                            <Link to="/operations/request" className="text-blue-300 underline underline-offset-4 focus-visible:outline-2">Choose maintenance</Link>
+                        </div>}
+                    </div>
                 ) : (
                     <div className="space-y-4">
                         {workflows.map((workflow) => <WorkflowCard key={workflow.workflow_id} workflow={workflow} />)}
