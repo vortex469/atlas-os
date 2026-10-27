@@ -489,3 +489,12 @@ Policy timestamps use the same freshness presentation in both locations. Failed
 refreshes retain explicit last-known warnings, and explanations use the existing
 sensitive-text filter. Tests cover all three sources, stale recovery, malformed
 statuses, keyboard navigation and zero writes at phone and desktop widths.
+
+Operator Attention keeps five conditions visible and makes every remaining
+reported condition available in a More conditions disclosure. Its count follows
+source deduplication; expanded rows use the same status, safe text, source links,
+workflow decision details and stale warnings as the first five. Refreshing the
+page data keeps an existing disclosure open while updating the count and rows.
+Keyboard and phone fixtures cover added conditions, failed refresh, collapse and
+reopen, and direct navigation to a workflow that was initially below the cutoff.
+This is local presentation only and submits no mutations or extra reads.

@@ -263,3 +263,35 @@ describe('reported health conditions in operator attention', () => {
         for (const name of ['Atlas health', 'System assessment', 'Policy status']) expect(attention.queryByRole('link', { name })).not.toBeInTheDocument();
     });
 });
+
+describe('overflow attention access', () => {
+    const providers = Array.from({length: 6}, (_, index) => ({id: `p${index}`, name: `Problem ${index}`, health: {status: 'blocked', message: `Reported problem ${index}`}}));
+    it('keeps the first five conditions visible and exposes the remaining decisions in details', () => {
+        show({providers: {data: providers}, workflows: {data: {items: [{workflow_id: 'review/last', workflow_state: 'awaiting_commit_approval'}]}}});
+        const attention = within(screen.getByRole('region', {name: 'Operator Attention'}));
+        expect(attention.getByRole('link', {name: 'Problem 0'})).toBeVisible();
+        expect(attention.getByRole('link', {name: 'Problem 4'})).toBeVisible();
+        const more = attention.getByText('More conditions (2)');
+        expect(more.closest('details')).not.toHaveAttribute('open');
+        expect(attention.getByText('Problem 5')).not.toBeVisible();
+        expect(attention.getByText('review/last')).not.toBeVisible();
+        fireEvent.click(more);
+        expect(attention.getByRole('link', {name: 'Problem 5'})).toBeVisible();
+        expect(attention.getByRole('link', {name: 'review/last'})).toHaveAttribute('href', '/workflows/review%2Flast');
+        expect(attention.getByText('Human action required')).toBeVisible();
+        expect(attention.getAllByRole('listitem')).toHaveLength(7);
+    });
+    it('counts overflow after source deduplication and retains stale warnings', () => {
+        show({providers: {data: providers, stale: true}, health: {stale: true, data: {services: {Duplicate: {provider_id: 'p0', status: 'blocked', message: 'Reported problem 0'}}}}});
+        const attention = within(screen.getByRole('region', {name: 'Operator Attention'}));
+        fireEvent.click(attention.getByText('More conditions (1)'));
+        expect(attention.getAllByRole('listitem')).toHaveLength(6);
+        const extra = attention.getByRole('link', {name: 'Problem 5'}).closest('li')!;
+        expect(within(extra).getByText('Last-known condition; current state unknown.')).toBeVisible();
+        expect(within(extra).queryByText('Blocked', {exact: true})).not.toBeInTheDocument();
+    });
+    it('needs no overflow control for five conditions', () => {
+        show({providers: {data: providers.slice(0, 5)}});
+        expect(within(screen.getByRole('region', {name: 'Operator Attention'})).queryByText(/More conditions/)).not.toBeInTheDocument();
+    });
+});

@@ -96,14 +96,8 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     }
     const uniqueAttention = [...deduplicated.values()]
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
-    return <>
-        <Card title="Operator Attention" evidence={evidence.summary}>
-            <p>Review the conditions below and open a workflow when it needs your decision.</p>
-            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" /><SourceNote evidence={evidence.policyHealth} label="Policy status" />
-            {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
-            {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
-            {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
+    const renderAttentionItem = (item: typeof uniqueAttention[number]) => (
+        <li key={item.key}>
                 {item.to.startsWith("#") ? <a href={item.to}>{item.label}</a> : <Link to={item.to}>{item.label || "Inspect condition"}</Link>}
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
                 {"workflowState" in item ? <>
@@ -115,8 +109,20 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                     </details>
                 </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} checkedAt={"checkedAt" in item ? item.checkedAt : undefined} />}
                 {item.stale && <p>Last-known condition; current state unknown.</p>}
-            </li>)}</ul>
-            {uniqueAttention.length > 5 && <p>Showing 5 of {uniqueAttention.length} reported conditions. Open the detail views for more.</p>}
+        </li>
+    );
+    return <>
+        <Card title="Operator Attention" evidence={evidence.summary}>
+            <p>Review the conditions below and open a workflow when it needs your decision.</p>
+            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" /><SourceNote evidence={evidence.policyHealth} label="Policy status" />
+            {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
+            {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
+            {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(renderAttentionItem)}</ul>
+            {uniqueAttention.length > 5 && <details className="rounded-lg border border-mc-border-subtle p-3">
+                <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">More conditions ({uniqueAttention.length - 5})</summary>
+                <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(5).map(renderAttentionItem)}</ul>
+            </details>}
             <div className="flex flex-wrap gap-x-4 gap-y-2">
                 <Link to="/operations">Review operational conditions →</Link>
                 <Link to="/workflows">Review workflow attention →</Link>
