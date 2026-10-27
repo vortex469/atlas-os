@@ -18,6 +18,7 @@ import { OperationalRecoverySummary } from "../components/OperationalRecoverySum
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import { repositoryImplementationRequest } from "../utils/repositoryImplementationRequest";
 import { repositoryCommitRequest } from "../utils/repositoryCommitRequest";
+import { repositoryVerificationPlan } from "../utils/repositoryVerificationPlan";
 import type {
     WorkflowDetailResponse,
     WorkflowImplementationRequestSummary,
@@ -26,6 +27,7 @@ import type {
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
     WorkflowVerificationApprovalResponse,
+    WorkflowVerificationPlanSummary,
     WorkflowOperationalLifecycle,
     WorkflowRecoveryDiagnostic,
     OperationalSupportBundle,
@@ -264,6 +266,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const isRepository = !isOperational;
     const implementationRequest = isRepository ? repositoryImplementationRequest(workflow.implementation_request) : null;
     const commitRequest = isRepository ? repositoryCommitRequest(workflow.commit_request) : null;
+    const verificationPlan = isRepository ? repositoryVerificationPlan(workflow.verification_plan) : null;
     const actionRequest = isOperational ? operationalRequest(workflow.operational_action_request) : null;
     const operationalApprovalReady = !isOperational || (actionRequest !== null
         && Array.isArray(workflow.approval_presentations) && workflow.approval_presentations.some((approval) =>
@@ -282,7 +285,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         isRepository
         &&
         workflow.workflow_state === "awaiting_verification_approval"
-        && workflow.verification_approval_status === "pending";
+        && workflow.verification_approval_status === "pending"
+        && verificationPlan !== null;
     const canDecideCommit =
         isRepository
         &&
@@ -298,7 +302,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         isRepository
         &&
         workflow.workflow_state === "awaiting_verification_approval"
-        && workflow.verification_approval_status === "approved";
+        && workflow.verification_approval_status === "approved"
+        && verificationPlan !== null;
     const canResumeCommit =
         isRepository
         &&
@@ -449,6 +454,9 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <>
                     <VerificationReviewSection
                         workflow={workflow}
+                        plan={verificationPlan}
+                        onRefresh={refreshWorkflow}
+                        isRefreshing={isRefreshing}
                         canDecideVerification={canDecideVerification}
                         isSubmittingVerification={isSubmittingVerification}
                         actionsDisabled={controlsBusy}
@@ -603,6 +611,9 @@ function ImplementationRequestSection({ request, onRefresh, isRefreshing, refres
 
 function VerificationReviewSection({
     workflow,
+    plan,
+    onRefresh,
+    isRefreshing,
     canDecideVerification,
     isSubmittingVerification,
     actionsDisabled,
@@ -611,6 +622,9 @@ function VerificationReviewSection({
     onVerificationDecision,
 }: {
     workflow: WorkflowDetailResponse;
+    plan: WorkflowVerificationPlanSummary | null;
+    onRefresh: () => void;
+    isRefreshing: boolean;
     canDecideVerification: boolean;
     isSubmittingVerification: boolean;
     actionsDisabled: boolean;
@@ -618,7 +632,6 @@ function VerificationReviewSection({
     verificationApprovalError: string | null;
     onVerificationDecision: (decision: WorkflowImplementationDecision) => Promise<void>;
 }) {
-    const plan = workflow.verification_plan;
     const evidence = workflow.verification_evidence;
     const review = workflow.review;
 
@@ -631,6 +644,7 @@ function VerificationReviewSection({
 
             <section aria-labelledby="verification-plan-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="verification-plan-heading" className="text-base font-semibold text-white">Verification Plan</h3>
+                {plan ? (
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Verification Plan ID" value={plan.verification_plan_id ?? "Not available"} />
                     <Detail label="Verifier Version" value={plan.verifier_version ?? "Not available"} />
@@ -641,6 +655,12 @@ function VerificationReviewSection({
                     <Detail label="Repository" value={plan.repository ?? "Not available"} />
                     <Detail label="Verification status" value={formatLabel(plan.verification_status)} />
                 </dl>
+                ) : workflow.workflow_state === "awaiting_verification_approval" ? (
+                    <div role="alert" className="mt-3 text-sm text-amber-100">
+                        <p>The verification plan is unavailable. Check it again to review the proposed checks.</p>
+                        <button type="button" onClick={onRefresh} disabled={actionsDisabled} className="mc-control mc-focusable mt-3 px-3 py-2 font-semibold disabled:opacity-50">{isRefreshing ? "Checking verification plan..." : "Check verification plan"}</button>
+                    </div>
+                ) : <p className="mt-3 text-sm text-slate-300">Verification plan is not available for this workflow.</p>}
             </section>
 
             <section aria-labelledby="verification-evidence-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
@@ -671,17 +691,21 @@ function VerificationReviewSection({
 
             <section aria-labelledby="verification-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="verification-approval-heading" className="text-base font-semibold text-white">Verification approval</h3>
-                <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and verification approval decision.</p>
+                <p className="mt-2 text-sm text-slate-400">Review the proposed checks before deciding. Approval and running verification are separate steps.</p>
                 {canDecideVerification ? (
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button type="button" onClick={() => void onVerificationDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Verification</button>
                         <button type="button" onClick={() => void onVerificationDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Verification</button>
                     </div>
                 ) : (
-                    <p className="mt-4 text-sm text-slate-300">Verification approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
+                    <p className="mt-4 text-sm text-slate-300">{workflow.workflow_state === "awaiting_verification_approval" && plan === null
+                        ? workflow.verification_approval_status === "approved"
+                            ? "Verification approval is recorded. Load the plan before running its checks."
+                            : "Verification approval is paused until the plan is available."
+                        : `Verification approval controls are unavailable because this workflow is ${formatLabel(workflow.workflow_state)}.`}</p>
                 )}
                 {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting verification approval...</p>}
-                {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
+                {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && plan !== null && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
                 {verificationApprovalResult?.verification_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Verification approval rejected.</p>}
                 {verificationApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(verificationApprovalError)}</p>}
             </section>
@@ -762,7 +786,7 @@ function CommitSection({
                         : `Commit approval controls are unavailable because this workflow is ${formatLabel(workflow.workflow_state)}.`}</p>
                 )}
                 {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
-                {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
+                {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && request !== null && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
                 {commitApprovalResult?.commit_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Commit approval rejected.</p>}
                 {commitApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(commitApprovalError)}</p>}
             </section>

@@ -1224,4 +1224,66 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: "Check commit request" })).not.toBeInTheDocument();
     });
 
+    it.each([
+        { label: "missing", value: null },
+        { label: "unreported", value: { ...workflow().verification_plan, verification_plan_id: null, verification_status: "not_available" } },
+        { label: "incomplete", value: { verification_plan_id: "plan-only" } },
+        { label: "unreadable checks", value: { ...workflow().verification_plan, verification_check_ids: "compose-config" } },
+        { label: "unreadable command checks", value: { ...workflow().verification_plan, command_backed_checks: [{ name: "compose-config" }] } },
+    ])("pauses verification decisions for a $label plan", async ({ value }) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingVerification({ verification_approval_status: "pending", verification_plan: value as unknown as WorkflowDetailResponse["verification_plan"] }));
+        renderPage();
+        expect(await screen.findByRole("button", { name: "Check verification plan" })).toBeEnabled();
+        expect(screen.queryByRole("button", { name: "Approve Verification" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject Verification" })).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowVerificationApproval).not.toHaveBeenCalled();
+    });
+
+    it.each([null, { ...workflow().verification_plan, verification_plan_id: null }])("pauses approved verification when the plan cannot be reviewed", async (value) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingVerification({ verification_plan: value as unknown as WorkflowDetailResponse["verification_plan"] }));
+        renderPage();
+        await screen.findByRole("button", { name: "Check verification plan" });
+        expect(screen.queryByRole("button", { name: "Resume Approved Verification" })).not.toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it.each(["pending", "approved"])("recovers an unreadable %s verification plan through a read", async (approval) => {
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflowAwaitingVerification({ verification_approval_status: approval, verification_plan: null as unknown as WorkflowDetailResponse["verification_plan"] }));
+        let finishRead!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+        renderPage();
+        fireEvent.click(await screen.findByRole("button", { name: "Check verification plan" }));
+        expect(screen.getByRole("button", { name: "Checking verification plan..." })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: /Approve Verification|Resume Approved Verification/ })).not.toBeInTheDocument();
+        await act(async () => finishRead(workflowAwaitingVerification({ verification_approval_status: approval })));
+        expect(await screen.findByRole("button", { name: approval === "pending" ? "Approve Verification" : "Resume Approved Verification" })).toBeEnabled();
+        expect(mockedSubmitWorkflowVerificationApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("keeps nullable verification metadata and empty check lists reviewable when a plan is identified", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingVerification({ verification_approval_status: "pending", verification_plan: { ...workflow().verification_plan, verifier_version: null, changed_files_digest: null, working_directory: null, repository: null, verification_check_ids: [], command_backed_checks: [] } }));
+        renderPage();
+        expect(await screen.findByRole("button", { name: "Approve Verification" })).toBeEnabled();
+        expect(screen.queryByRole("button", { name: "Check verification plan" })).not.toBeInTheDocument();
+    });
+
+    it.each(["verification", "commit"] as const)("does not suggest resume after %s approval if its review data disappears", async (stage) => {
+        const verification = stage === "verification";
+        mockedGetWorkflowDetail.mockResolvedValueOnce(verification
+            ? workflowAwaitingVerification({ verification_approval_status: "pending" })
+            : workflowAwaitingCommit());
+        mockedGetWorkflowDetail.mockResolvedValueOnce(verification
+            ? workflowAwaitingVerification({ verification_plan: { ...workflow().verification_plan, verification_plan_id: null } })
+            : workflowAwaitingCommit({ commit_approval_status: "approved", commit_request: null }));
+        if (verification) mockedSubmitWorkflowVerificationApproval.mockResolvedValue({ workflow_id: "workflow-123", workflow_state: "awaiting_verification_approval", verification_approval_status: "approved", message: null });
+        else mockedSubmitWorkflowCommitApproval.mockResolvedValue({ workflow_id: "workflow-123", workflow_state: "awaiting_commit_approval", commit_approval_status: "approved", message: null });
+        renderPage();
+        fireEvent.click(await screen.findByRole("button", { name: verification ? "Approve Verification" : "Approve Commit" }));
+        await screen.findByRole("button", { name: verification ? "Check verification plan" : "Check commit request" });
+        expect(screen.queryByText(verification ? "Verification approved. Resume to run the checks." : "Commit approved. Resume to finish the local commit.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: verification ? "Resume Approved Verification" : "Resume Approved Commit" })).not.toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
 });
