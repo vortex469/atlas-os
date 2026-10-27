@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 
 import { getAtlasErrorMessage } from "../api/atlas";
+import { DiscoveryCatalogResponseError } from "../api/discoveryCatalogResponse";
 import {
     getDiscoveryMetadata,
     listDiscoveryItems,
@@ -114,7 +115,7 @@ export function DiscoveryPage() {
                 if (generation !== requestGeneration.current) return;
                 console.error("Unable to load Discovery catalog:", requestError);
                 setError(
-                    getAtlasErrorMessage(
+                    requestError instanceof DiscoveryCatalogResponseError ? requestError.message : getAtlasErrorMessage(
                         requestError,
                         "Mission Control could not load Discovery Center.",
                     ),

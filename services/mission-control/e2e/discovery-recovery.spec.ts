@@ -70,3 +70,38 @@ for (const width of [320, 390, 1280]) {
         });
     });
 }
+
+for (const width of [320, 390, 1280]) {
+    for (const search of [false, true]) {
+        test(`malformed ${search ? "search" : "list"} response recovers at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+            await page.setViewportSize({ width, height: 900 });
+            let reads = 0;
+            const errors: string[] = [];
+            page.on("pageerror", error => errors.push(error.message));
+            await page.route(search ? "**/api/v1/discovery/search**" : "**/api/v1/discovery/items?**", async route => {
+                expect(route.request().method()).toBe("GET");
+                reads += 1;
+                const entry = discoveryItemsPage.entries[0];
+                const entries = reads === 1 ? [{ ...entry, item: { ...entry.item, tags: [{}] } }] : [entry];
+                return route.fulfill({ json: { ...discoveryItemsPage, ...(search
+                    ? { results: entries.map(entry => ({ entry, item: entry.item, evidence: [] })) }
+                    : { entries }) } });
+            });
+            await page.goto("/discovery");
+            if (search) {
+                await expect(page.getByRole("link", { name: "Fixture Application", exact: true })).toBeVisible();
+                await page.getByLabel("Keyword search").fill("fixture");
+                await page.getByRole("button", { name: "Search", exact: true }).click();
+            }
+            await expect(page.getByText("The catalog results could not be read. Try again.", { exact: true })).toBeVisible();
+            await expect(page.getByText("Results unavailable", { exact: true })).toBeVisible();
+            await expect(page.getByRole("link", { name: "Fixture Application", exact: true })).toHaveCount(0);
+            expect(reads).toBe(1);
+            await page.getByRole("button", { name: "Retry catalog request", exact: true }).click();
+            await expect(page.getByRole("link", { name: "Fixture Application", exact: true })).toBeVisible();
+            expect(reads).toBe(2);
+            expect(errors).toEqual([]);
+            expect(rejectedMutationRequests).toEqual([]);
+        });
+    }
+}
