@@ -317,6 +317,8 @@ class AgentLiveIntakeAdmissionStore:
 
         try:
             with self._connect() as connection:
+                # Keep replay and reserved-identity checks on one read snapshot.
+                connection.execute("BEGIN")
                 prior = self._replay(connection, operator=operator, key_digest=key_digest, envelope=exact)
                 if prior is None:
                     self._reject_reserved_identity(connection, exact)
