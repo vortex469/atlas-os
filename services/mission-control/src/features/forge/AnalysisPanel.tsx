@@ -23,6 +23,10 @@ export function AnalysisPanel({
 
     const analysis = result.result.analysis;
     const plan = analysis.plan;
+    const riskColor = plan.risk === "low" ? "text-emerald-300"
+        : plan.risk === "medium" ? "text-yellow-300"
+        : plan.risk === "high" ? "text-orange-300"
+        : plan.risk === "critical" ? "text-red-300" : "text-slate-300";
 
     return (
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-6">
@@ -62,7 +66,7 @@ export function AnalysisPanel({
                     <dt className="text-slate-500">
                         Risk
                     </dt>
-                    <dd className="mt-1 font-semibold uppercase text-emerald-300">
+                    <dd className={`mt-1 font-semibold uppercase ${riskColor}`}>
                         {plan.risk}
                     </dd>
                 </div>

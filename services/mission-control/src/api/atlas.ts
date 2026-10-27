@@ -37,6 +37,7 @@ import { DoctorResponseError, parseDoctorReport } from "./doctorResponse";
 
 import { parseProviderActionList } from "./providerActionListResponse";
 import { parseProviderActionResult } from "./providerActionResponse";
+import { parseDeploymentAnalysisResponse } from "./deploymentAnalysisResponse";
 
 const ATLAS_API_BASE_URL =
     import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
@@ -54,7 +55,7 @@ export async function analyzeCompose(
     reference: string,
 ): Promise<DeploymentAnalysisResponse> {
     const response =
-        await atlas.post<DeploymentAnalysisResponse>(
+        await atlas.post<unknown>(
             "/analysis/deployments",
             {
                 source: "compose",
@@ -63,7 +64,7 @@ export async function analyzeCompose(
             },
         );
 
-    return response.data;
+    return parseDeploymentAnalysisResponse(response.data);
 }
 
 export async function getProviderActions(
