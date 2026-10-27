@@ -35,3 +35,22 @@ draft. A failed public read clears drafts and suppression acknowledgements;
 after recovery the form starts from reported configuration or a still-valid
 reviewed suggestion, and suppression needs a fresh acknowledgement. These UI checks supplement Core’s authorization and
 version checks; they do not confer permission or execute provider operations.
+
+While a private permission recheck is pending, previously visible controls retain
+their draft but pause editing and saving. A plain status explains the pause. The
+save callback also requires the current successful private descriptor and its
+resource, so a queued event cannot reuse cached permission while a read starts.
+A successful unchanged recheck restores the draft; a failed or revoked permission
+read removes editing, and any later recovery requires a new draft and suppression
+acknowledgement. Session expiry during an advisory read disposes the private view;
+a late ready reply from that expired session cannot restore editing.
+
+The private response is validated before publication, using the existing public
+management reader for shared fields and the v3 contract for caller capability,
+resource liveness, mutation support and readiness. Booleans must be booleans;
+unknown fields, unrelated providers, duplicate or unordered coordinates and
+contradictory readiness are rejected. Browser-unsafe record versions and NUL
+coordinate aliases are also rejected. Serialized native-model fixtures cover all
+eight readiness values, caller denial, configured/replacement state and empty
+results. These checks interpret Core's response; Core still authorizes every
+write and enforces CSRF, identity and record-version preconditions.

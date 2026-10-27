@@ -1,0 +1,1154 @@
+[
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "authoritative",
+        "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_authority": "provider_intent",
+        "intent_status": "needs_review",
+        "intent_reason": "no_active_intent",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "ready",
+        "editable_in_principle": true,
+        "caller_can_mutate": true,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "authoritative",
+        "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_authority": "provider_intent",
+        "intent_status": "needs_review",
+        "intent_reason": "no_active_intent",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "not_activated",
+        "editable_in_principle": false,
+        "caller_can_mutate": false,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "not_activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "authoritative",
+        "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_authority": "provider_intent",
+        "intent_status": "needs_review",
+        "intent_reason": "no_active_intent",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "authority_unavailable",
+        "editable_in_principle": false,
+        "caller_can_mutate": false,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "unavailable",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "authoritative",
+        "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_authority": "provider_intent",
+        "intent_status": "needs_review",
+        "intent_reason": "no_active_intent",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "store_migration_required",
+        "editable_in_principle": false,
+        "caller_can_mutate": false,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "authoritative",
+        "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_authority": "provider_intent",
+        "intent_status": "needs_review",
+        "intent_reason": "no_active_intent",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "store_unavailable",
+        "editable_in_principle": false,
+        "caller_can_mutate": false,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": true,
+        "resource_live": false,
+        "identity_assurance": "unavailable",
+        "management_fingerprint": null,
+        "intent_authority": "provider_intent",
+        "intent_status": "missing",
+        "intent_reason": "resource_missing",
+        "expectation": "running",
+        "record_version": 7,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "resource_missing",
+        "editable_in_principle": false,
+        "caller_can_mutate": false,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "unavailable",
+        "management_fingerprint": null,
+        "intent_authority": "provider_intent",
+        "intent_status": "needs_review",
+        "intent_reason": "identity_unavailable",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "identity_unavailable",
+        "editable_in_principle": false,
+        "caller_can_mutate": false,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "lxc",
+        "resource_readable": true,
+        "authoritative_identity_supported": false,
+        "provider_intent_capability_supported": false,
+        "provider_intent_mutation_supported": false,
+        "supported_expectations": [],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "lxc",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "unsupported",
+        "management_fingerprint": null,
+        "intent_authority": "provider_intent",
+        "intent_status": "unsupported",
+        "intent_reason": "resource_type_unsupported",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": false,
+        "mutation_readiness": "resource_type_unsupported",
+        "editable_in_principle": false,
+        "caller_can_mutate": false,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "authoritative",
+        "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_authority": "provider_intent",
+        "intent_status": "needs_review",
+        "intent_reason": "no_active_intent",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "ready",
+        "editable_in_principle": true,
+        "caller_can_mutate": false,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": false,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "authoritative",
+        "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_authority": "provider_intent",
+        "intent_status": "configured",
+        "intent_reason": "matching_active_intent",
+        "expectation": "running",
+        "record_version": 7,
+        "legacy_review_available": false,
+        "legacy_expectation": null,
+        "replacement_detected": false,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "ready",
+        "editable_in_principle": true,
+        "caller_can_mutate": true,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [
+      {
+        "provider_id": "proxmox",
+        "resource_type": "qemu",
+        "resource_readable": true,
+        "authoritative_identity_supported": true,
+        "provider_intent_capability_supported": true,
+        "provider_intent_mutation_supported": true,
+        "supported_expectations": [
+          "running",
+          "stopped",
+          "ignored"
+        ],
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "resource_type": "qemu",
+        "display_name": "Camera archive",
+        "current_state": "running",
+        "missing": false,
+        "resource_live": true,
+        "identity_assurance": "authoritative",
+        "management_fingerprint": "provider-management-fingerprint-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_authority": "provider_intent",
+        "intent_status": "needs_review",
+        "intent_reason": "incarnation_mismatch",
+        "expectation": null,
+        "record_version": null,
+        "legacy_review_available": true,
+        "legacy_expectation": "stopped",
+        "replacement_detected": true,
+        "provider_intent_mutation_supported": true,
+        "mutation_readiness": "ready",
+        "editable_in_principle": true,
+        "caller_can_mutate": true,
+        "operationally_requestable": false,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  },
+  {
+    "schema_version": "provider-management-v3",
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "sections": [
+      {
+        "section": "connection",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "discovery",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "resources",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "monitoring",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "diagnostics",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      },
+      {
+        "section": "actions",
+        "availability": "available",
+        "read_only_descriptor": true,
+        "grants_permission": false,
+        "grants_execution": false
+      }
+    ],
+    "resource_types": [],
+    "resources": [],
+    "provider_intent_activation": "activated",
+    "provider_intent_authority_status": "available",
+    "caller_has_provider_intent_update": true,
+    "grants_permission": false,
+    "grants_execution": false
+  }
+]

@@ -99,6 +99,7 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
     managementLoading, inventoryError, managementError, loadInventory, loadManagement }: SessionResourceProps) {
     const active = useRef(true);
     const operatorReadId = useRef(0);
+    const operatorReadRef = useRef<ProviderManagementV3 | null>(null);
     const suggestionReadId = useRef(0);
     useLayoutEffect(() => {
         active.current = true;
@@ -126,11 +127,13 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
     const loadOperator = useCallback(async (): Promise<boolean> => {
         if (!active.current) return false;
         const readId = ++operatorReadId.current;
+        operatorReadRef.current = null;
         if (!session.authenticated) { setOperator(null); setOperatorError(null); setOperatorLoading(false); return true; }
         setOperatorLoading(true); setOperatorError(null);
         try {
             const value = await getAuthenticatedProviderManagement(provider.id);
             if (!active.current || readId !== operatorReadId.current) return false;
+            operatorReadRef.current = value;
             setOperator(value); return true;
         } catch (error) {
             if (!active.current || readId !== operatorReadId.current) return false;
@@ -205,6 +208,8 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
         const key = managementCoordinate(publicResource);
         if (!active.current || managementReadRef.current === null || managementReadRef.current !== management
             || !managementReadRef.current.resources.includes(publicResource)
+            || operatorReadRef.current === null || operatorReadRef.current !== operator
+            || !operatorReadRef.current.resources.includes(operatorResource)
             || !operatorResource.management_fingerprint || !session.csrfToken || saveInFlight.current || uncertainSave.current !== null) return;
         saveInFlight.current = true;
         setUpdatingCoordinate(key);
@@ -291,6 +296,7 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
             <div className="mt-4 space-y-2">
                 {inventoryError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{inventoryError}</p>}
                 {managementError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">Monitoring unavailable — {managementError} Observed inventory remains visible.</p>}
+                {operatorLoading && operator !== null && <p role="status" className="text-sm text-blue-200">Checking editing permissions. Your draft is kept; saving is paused.</p>}
                 {operatorError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{operatorError}</p>}
                 {suggestionError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{suggestionError}</p>}
                 {uncertainCoordinate !== null && <div role="alert" className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
@@ -310,7 +316,7 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
                             : "No provider resources are available."}
                 </p>
             ) : (
-                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} onDraftChange={() => setRowStatuses((current) => ({ ...current, [resource.coordinate]: "" }))} metadataColumns={metadataColumns} observationUnavailable={inventoryLoading || Boolean(inventoryError) || inventory === null} operatorEpoch={operatorEpoch} managementUnavailable={management === null} managementReadUnavailable={managementLoading || Boolean(managementError)} managementReadFailed={Boolean(managementError)} operatorState={session.authenticated ? (operator ? "available" : operatorLoading ? "loading" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} blocked={uncertainCoordinate !== null || (updatingCoordinate !== null && updatingCoordinate !== resource.coordinate)} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
+                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} onDraftChange={() => setRowStatuses((current) => ({ ...current, [resource.coordinate]: "" }))} metadataColumns={metadataColumns} observationUnavailable={inventoryLoading || Boolean(inventoryError) || inventory === null} operatorEpoch={operatorEpoch} managementUnavailable={management === null} managementReadUnavailable={managementLoading || Boolean(managementError)} managementReadFailed={Boolean(managementError)} operatorState={session.authenticated ? (operator ? "available" : operatorLoading ? "loading" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} blocked={operatorLoading || uncertainCoordinate !== null || (updatingCoordinate !== null && updatingCoordinate !== resource.coordinate)} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
             )}
         </section>
     );

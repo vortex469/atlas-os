@@ -1,5 +1,5 @@
 import { expect, test, providers } from "./mission-control-fixtures";
-import { resource, management } from "./resource-monitoring-fixture";
+import { resource, management, operatorManagement } from "./resource-monitoring-fixture";
 
 for (const width of [320, 390, 1280]) for (const authenticated of [false, true]) {
     test.describe(`Resource cards at ${width}px (${authenticated ? "editable" : "read-only"})`, () => {
@@ -18,11 +18,7 @@ for (const width of [320, 390, 1280]) for (const authenticated of [false, true])
                     authenticated: true, expires_at: "2999-01-01T00:00:00Z",
                     principal: { operator_id: "fixture-operator", authenticated_at: new Date().toISOString(), permissions: ["provider_intent:update"], auth_method: "core_session" },
                 } }));
-                await page.route("**/api/v1/providers/proxmox/management/operator", route => route.fulfill({ json: {
-                    ...management, schema_version: "provider-management-v3", caller_has_provider_intent_update: true,
-                    resources: management.resources.map(resource => ({ ...resource, resource_live: true,
-                        provider_intent_mutation_supported: true, mutation_readiness: "ready", editable_in_principle: true, caller_can_mutate: true })),
-                } }));
+                await page.route("**/api/v1/providers/proxmox/management/operator", route => route.fulfill({ json: operatorManagement() }));
                 await page.route("**/api/v1/providers/proxmox/management/operator/monitoring-suggestions", route => route.fulfill({ json: [] }));
             }
             await page.goto("/providers/proxmox");
