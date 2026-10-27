@@ -1136,4 +1136,48 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("link", { name: "Review preparation" })).not.toBeInTheDocument();
     });
 
+    it.each([
+        { label: "missing", value: null },
+        { label: "incomplete", value: { immutable_request_id: "request-only" } },
+        { label: "unreadable tool", value: { ...workflow().implementation_request, tool: { value: "editor" } } },
+        { label: "unreadable files", value: { ...workflow().implementation_request, affected_files: "compose.yaml" } },
+        { label: "empty identity", value: { ...workflow().implementation_request, immutable_request_id: " " } },
+    ])("pauses implementation decisions for a $label request", async ({ value }) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ implementation_request: value as unknown as WorkflowDetailResponse["implementation_request"] }));
+        renderPage();
+        expect(await screen.findByRole("button", { name: "Check request" })).toBeEnabled();
+        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^Reject$/ })).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+    });
+
+    it.each([null, { immutable_request_id: "request-only" }])("pauses implementation resume when the approved request is unreadable", async (value) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ implementation_approval_status: "approved", implementation_request: value as unknown as WorkflowDetailResponse["implementation_request"] }));
+        renderPage();
+        await screen.findByRole("button", { name: "Check request" });
+        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it.each(["pending", "approved"])("recovers an unreadable %s request through reads without replay", async (approval) => {
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflow({ implementation_approval_status: approval, implementation_request: null }));
+        let finishRead!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+        renderPage();
+        fireEvent.click(await screen.findByRole("button", { name: "Check request" }));
+        expect(screen.getByRole("button", { name: "Checking request..." })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: /Approve Implementation|Resume Approved Implementation/ })).not.toBeInTheDocument();
+        await act(async () => finishRead(workflow({ implementation_approval_status: approval })));
+        expect(await screen.findByRole("button", { name: approval === "pending" ? "Approve Implementation" : "Resume Approved Implementation" })).toBeEnabled();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("keeps empty file lists and nullable translator metadata reviewable", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ implementation_request: { ...workflow().implementation_request!, affected_files: [], translator_version: null } }));
+        renderPage();
+        expect(await screen.findByRole("button", { name: "Approve Implementation" })).toBeEnabled();
+        expect(screen.queryByRole("button", { name: "Check request" })).not.toBeInTheDocument();
+    });
+
 });
