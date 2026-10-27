@@ -107,10 +107,12 @@ describe("ExecutionCandidateDetailPage", () => {
     });
 
     it("accepts readable future labels, nullable optional metadata, and extra fields", async () => {
-        mockedGetExecutionCandidate.mockResolvedValue({ ...candidate({ execution_intent: "future-operation", status: "future_state", required_approval_level: "future_level", catalog_item_id: null, compatibility_assessment_id: null, compatibility_status: null, constraints: [], evidence_ids: [], relationship_ids: [] }), effect_kind: "future_effect", extra_metadata: { future: true } } as unknown as ExecutionCandidate);
+        mockedGetExecutionCandidate.mockResolvedValue({ ...candidate({ execution_intent: "future-operation", status: "future_state", required_approval_level: "future_level", rationale: "", catalog_item_id: null, compatibility_assessment_id: null, compatibility_status: null, constraints: [], evidence_ids: [], relationship_ids: [] }), effect_kind: "future_effect", extra_metadata: { future: true } } as unknown as ExecutionCandidate);
         renderPage();
         expect(await screen.findByRole("heading", { name: "Future Operation", level: 1 })).toBeVisible();
         expect(screen.getByText("Future Level", { exact: true })).toBeVisible();
+        expect(screen.getByText("No explanation was provided.", { exact: true })).toBeVisible();
+        expect(screen.getByText("No constraints were reported.", { exact: true })).toBeVisible();
         expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
@@ -168,11 +170,18 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.getByText("Standard")).toBeVisible();
         expect(screen.getByText("Compatible With Warnings")).toBeVisible();
         expect(screen.getByText("service_disruption")).toBeVisible();
+        const planning = screen.getByRole("region", { name: "Plan this change" });
+        const why = screen.getByRole("heading", { name: "Why this change", level: 2 });
+        const constraints = screen.getByRole("heading", { name: "Constraints", level: 2 });
+        expect(why.compareDocumentPosition(planning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(constraints.compareDocumentPosition(planning) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(screen.getByText("evidence-1", { exact: true })).not.toBeVisible();
         const disclosure = screen.getByText("Technical details", { exact: true });
         expect(disclosure.closest("details")).not.toHaveAttribute("open");
         expect(screen.getByText("candidate-1", { exact: true })).not.toBeVisible();
         await user.click(disclosure);
         expect(screen.getByText("candidate-1", { exact: true })).toBeVisible();
+        expect(screen.getByText("evidence-1", { exact: true })).toBeVisible();
         expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(1);
         expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
     });

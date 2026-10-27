@@ -8,7 +8,7 @@ const proposal: ExecutionCandidate = {
     target_id: `repository/${"atlas-stack-".repeat(12)}`, target_type: "compose_stack",
     execution_category: "update", execution_intent: "update-compose-stack",
     status: "eligible", required_approval_level: "elevated",
-    rationale: "Review the proposed stack update before planning.",
+    rationale: `Review the proposed stack update before planning. ${"context".repeat(60)}`,
     constraints: ["service_disruption"], evidence_ids: [`evidence-${"c".repeat(64)}`],
     compatibility_assessment_id: "assessment-1", compatibility_status: "compatible_with_warnings",
     relationship_ids: [], created_at: "2026-10-20T12:00:00Z", expires_at: null,
@@ -65,18 +65,25 @@ for (const width of [320, 390, 1280]) {
             await expect(page.getByText("Elevated", { exact: true })).toBeVisible();
             await expect(page.getByText(sample.expiryLabel, { exact: true })).toBeVisible();
             await expect(page.getByText(proposal.constraints[0], { exact: true })).toBeVisible();
+            const context = page.getByRole("region", { name: "Proposal review context", exact: true });
+            await expect(context.getByText(proposal.rationale, { exact: true })).toBeVisible();
+            const contextBox = await context.boundingBox();
+            const planningBox = await page.getByRole("region", { name: "Plan this change", exact: true }).boundingBox();
+            expect(contextBox!.y + contextBox!.height).toBeLessThanOrEqual(planningBox!.y);
+            await expect(page.getByText(proposal.evidence_ids[0], { exact: true })).toBeHidden();
             const disclosure = page.locator("details").filter({ has: page.getByText("Technical details", { exact: true }) });
             await expect(disclosure).not.toHaveAttribute("open");
             await expect(page.getByText(proposal.id, { exact: true })).toBeHidden();
             const detailReads = reads;
             await disclosure.locator("summary").click();
             await expect(page.getByText(proposal.id, { exact: true })).toBeVisible();
+            await expect(page.getByText(proposal.evidence_ids[0], { exact: true })).toBeVisible();
             expect(reads).toBe(detailReads);
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
             await disclosure.locator("summary").click();
             if (sample.name === "eligible") {
                 await page.evaluate(() => window.scrollTo(0, 0));
-                await page.screenshot({ path: `/tmp/atlas-proposal-detail-${width}.png`, fullPage: true });
+                await page.screenshot({ path: `/tmp/atlas-proposal-review-context-${width}.png`, fullPage: true });
             }
             expect(rejectedMutationRequests).toEqual([]);
         });
