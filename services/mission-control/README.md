@@ -161,6 +161,20 @@ Both proxies strip caller-supplied identity headers and preserve session cookies
 origin and CSRF headers; backends still authenticate and authorize requests.
 Core and Agent must already be running for real integration; the proxy does not
 start either service. The proxy regression test uses ephemeral local HTTP stubs.
+
+To preview Mission Control from another device on a trusted LAN, bind Vite to the
+host's network interfaces:
+
+```bash
+npm run dev -- --host 0.0.0.0
+```
+
+Open the `Network` URL printed by Vite on the other device. Core and Agent remain
+on the machine running Vite because the API proxies still target loopback. Allow
+the printed port through the host firewall only for the trusted LAN if needed.
+The Vite development server is for local development, not public or production
+access.
+
 Validate with:
 
 ```bash
