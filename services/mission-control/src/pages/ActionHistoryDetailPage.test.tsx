@@ -101,9 +101,12 @@ describe("ActionHistoryDetailPage", () => {
     });
 
     it.each(["2099-10-27T12:00:00Z", "2099-10-27T12:00:00+02:00"])("keeps future audit times unknown while retaining the reported result: %s", async timestamp => {
-        mockedGetProviderActionHistoryEntry.mockResolvedValue({ ...auditEntry(), started_at: timestamp, completed_at: timestamp });
+        const confirmed = timestamp.endsWith("Z");
+        mockedGetProviderActionHistoryEntry.mockResolvedValue({ ...auditEntry(), started_at: timestamp, completed_at: timestamp, confirmed });
         renderPage();
         expect(await screen.findByText("Model unloaded.")).toBeVisible();
+        if (confirmed) expect(screen.getByText("Request confirmed")).toBeVisible();
+        else expect(screen.queryByText("Request confirmed")).not.toBeInTheDocument();
         expect(screen.getAllByText("Unknown time")).toHaveLength(3);
         expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledTimes(1);
     });
@@ -116,6 +119,7 @@ describe("ActionHistoryDetailPage", () => {
                 name: "Unload Model",
             }),
         ).toBeInTheDocument();
+        expect(screen.getByText("Request confirmed")).toBeVisible();
         expect(
             mockedGetProviderActionHistoryEntry,
         ).toHaveBeenCalledWith("audit-1");
