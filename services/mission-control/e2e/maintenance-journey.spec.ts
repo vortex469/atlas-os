@@ -44,7 +44,10 @@ for (const width of [390, 1280]) {
         await expect(progress.locator('[aria-current="step"]')).toHaveText("PlanCurrent step");
         await expect(progress).not.toContainText("Commit");
         expect(fixture.repositoryPlanReads).toBe(0);
+        await expect(page.getByRole("heading", { name: "Review saved plan", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Create a workflow", exact: true })).toBeVisible();
         await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Workflow result", exact: true })).toBeVisible();
         await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
         await expect(progress.locator('[aria-current="step"]')).toHaveText("WorkflowCurrent step");
         await expect(progress.getByRole("listitem")).toHaveCount(4);

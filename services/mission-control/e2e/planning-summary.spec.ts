@@ -32,6 +32,7 @@ for (const viewport of [{ width: 320, height: 844 }, { width: 390, height: 844 }
             });
             await page.goto(`/candidate-planning/${planning.session_id}`);
             await expect(page.getByRole("heading", { name: "Plan this change", exact: true })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Plan", exact: true, level: 2 })).toBeVisible();
             const disclosure = page.locator("details").filter({ has: page.getByText("Technical details", { exact: true }) });
             await expect(disclosure).not.toHaveAttribute("open");
             await expect(page.getByText(planning.candidate_fingerprint!, { exact: true })).toBeHidden();

@@ -34,7 +34,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("button", { name: "Generate Plan", exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Create Workflow", exact: true })).toHaveCount(0);
         if (mode === "saved") await expect(page.getByRole("heading", { name: "Maintenance plan", exact: true })).toBeVisible();
-        else await expect(page.getByRole("heading", { name: "Candidate plan", exact: true })).toHaveCount(0);
+        else await expect(page.getByRole("heading", { name: "Plan", exact: true, level: 2 })).toHaveCount(0);
         if (mode === "orphan" && width !== 320) await page.screenshot({ path: `/tmp/atlas-existing-workflow-review-${width}.png`, fullPage: true });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         if (mode === "legacy") {

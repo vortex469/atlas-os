@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -193,6 +193,9 @@ describe("PlanningSessionPage", () => {
         expect(screen.queryByText("update-compose-stack")).not.toBeInTheDocument();
         expect(screen.queryByText("Affected repository")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Create Workflow" })).toBeEnabled();
+        expect(screen.getByRole("heading", { name: "Review saved plan", level: 1 })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Saved plan", level: 2 })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Create a workflow", level: 2 })).toBeVisible();
         expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
     });
@@ -214,6 +217,10 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", planning_allowed: false, operational_plan: operationalPlan() }));
         renderPage();
         await screen.findByRole("heading", { name: "Maintenance plan" });
+        expect(screen.getByRole("heading", { name: "Review saved plan", level: 1 })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Workflow creation unavailable", level: 2 })).toBeVisible();
+        expect(screen.getByText("Creating a workflow is not available for this session. You can review this plan and refresh planning to check the latest status.")).toBeVisible();
+        expect(screen.queryByRole("heading", { name: "Create a workflow" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
         expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
@@ -275,7 +282,7 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("fingerprint-1")).toBeInTheDocument();
         expect(screen.getByText("Proposal")).toBeInTheDocument();
         expect(screen.getByText("Planning").closest("li")).toHaveAttribute("aria-current", "step");
-        expect(screen.getByText("Plan")).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Planning progress" })).getByText("Plan")).toBeInTheDocument();
         expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|approve|create workflow|implementation|commit/i })).not.toBeInTheDocument();
         const disclosure = screen.getByText("Technical details", { exact: true });
@@ -350,6 +357,9 @@ describe("PlanningSessionPage", () => {
         renderPage();
 
         expect(await screen.findByText("Plan details")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Review saved plan", level: 1 })).toBeVisible();
+        expect(screen.getByText("Review the saved plan below. Later changes still need separate approvals.")).toBeVisible();
+        expect(screen.queryByText("Generate a plan to review. This does not apply changes or grant approval.")).not.toBeInTheDocument();
         expect(mockedGetCandidatePlan).toHaveBeenCalledWith("candidate-plan-1");
     });
 
@@ -399,6 +409,8 @@ describe("PlanningSessionPage", () => {
         await waitFor(() => expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1"));
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
         expect(await screen.findByText("Workflow created.")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Workflow result", level: 2 })).toBeVisible();
+        expect(screen.queryByRole("heading", { name: "Create a workflow" })).not.toBeInTheDocument();
         expect(screen.getByText("Workflow ID")).toBeInTheDocument();
         expect(screen.getByText("workflow-1")).toBeInTheDocument();
         expect(screen.getByText("Approval Pending")).toBeInTheDocument();
@@ -535,6 +547,9 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ planning_allowed: false, status: "plan_ready", plan: plan() }));
         renderPage();
         await screen.findByText("Update Home Assistant compose stack");
+        expect(screen.getByRole("heading", { name: "Review saved plan", level: 1 })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Workflow creation unavailable", level: 2 })).toBeVisible();
+        expect(screen.getByText("Creating a workflow is not available for this session. You can review this plan and refresh planning to check the latest status.")).toBeVisible();
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
     });
