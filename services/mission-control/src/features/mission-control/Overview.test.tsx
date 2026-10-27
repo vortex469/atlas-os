@@ -30,7 +30,7 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['Atlas overall state','Service health','Worker / Execution','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['System status','Service health','Worker / Execution','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
@@ -214,14 +214,18 @@ it('integrates one health summary with independent source freshness and safe rea
     });
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
-    const core = within(screen.getByRole('article', { name: 'Atlas Core health aggregate' }));
+    const help = screen.getByText('How to read health').closest('details');
+    expect(help).not.toHaveAttribute('open');
+    expect(screen.getByText('Core aggregate update time is not supplied.')).not.toBeVisible();
+    for (const name of ['Atlas health', 'System assessment', 'Policy status']) expect(screen.getByRole('heading', { name, level: 3 })).toBeVisible();
+    const core = within(screen.getByRole('article', { name: 'Atlas health' }));
     expect(core.getByText('Healthy')).toBeInTheDocument();
-    const ace = within(screen.getByRole('article', { name: 'ACE assessment' }));
+    const ace = within(screen.getByRole('article', { name: 'System assessment' }));
     expect(ace.queryByText('Healthy', { exact: true })).not.toBeInTheDocument();
     expect(ace.getByText('Unknown · Stale evidence')).toBeInTheDocument();
     expect(ace.getByText('[Sensitive text withheld]')).toBeInTheDocument();
     expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
-    const policy = within(screen.getByRole('article', { name: 'Policy reload' }));
+    const policy = within(screen.getByRole('article', { name: 'Policy status' }));
     expect(policy.getByText('Evidence unavailable.')).toBeInTheDocument();
     expect(policy.getByText('Unknown')).toBeInTheDocument();
 });
