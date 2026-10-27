@@ -5,33 +5,20 @@ import { describe, expect, it } from "vitest";
 import type { DiscoveryProposalNavigation } from "../../types/discovery";
 import { DiscoveryProposalCard } from "./DiscoveryProposalCard";
 
-function proposal(
-    overrides: Partial<DiscoveryProposalNavigation> = {},
-): DiscoveryProposalNavigation {
-    return {
-        proposal_id: `discovery-operator-proposal-${"a".repeat(64)}`,
-        destination_kind: "operator_maintenance_selection",
-        catalog_item_id: "frigate",
-        catalog_source_type: "curated",
-        compatibility_status: "compatible",
-        finding_reference_count: 1,
-        evidence_reference_count: 2,
-        status: "current",
-        reason: "compatible",
-        intent_hint: "restart-service",
-        target_hints: [{ catalog_target_id: "atlas", provider_hint: "proxmox", resource_type_hint: "qemu" }],
-        generated_at: "2026-08-15T00:00:00Z",
-        expires_at: "2026-08-15T00:30:00Z",
-        actionable_navigation: true,
-        ...overrides,
-    };
-}
+import { discoveryProposalFixture as proposal } from "../../test/discoveryProposal.fixture";
 
 function renderCard(value: DiscoveryProposalNavigation) {
     render(<MemoryRouter><DiscoveryProposalCard proposal={value} /></MemoryRouter>);
 }
 
 describe("DiscoveryProposalCard", () => {
+    it("does not advertise maintenance navigation for a string false flag", () => {
+        renderCard(proposal({ actionable_navigation: "false" as never }));
+        expect(screen.getByRole("link", { name: "Review Discovery item for frigate" })).toHaveAttribute("href", "/discovery/items/frigate");
+        expect(screen.queryByRole("link", { name: "Continue to maintenance selection for frigate" })).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Review only. This proposal cannot continue to maintenance selection.");
+    });
+
     it("renders sanitized current proposal context and advisory authority warning", () => {
         renderCard(proposal());
         expect(screen.getByText("Status: Current")).toBeInTheDocument();
@@ -50,7 +37,7 @@ describe("DiscoveryProposalCard", () => {
         ["not_actionable", "evidence_missing"],
     ] as const)("renders %s/%s as review only", (status, reason) => {
         renderCard(proposal({ status, reason, actionable_navigation: false }));
-        expect(screen.getByText(/Review only: operational navigation is disabled/i)).toBeInTheDocument();
+        expect(screen.getByText(/Review only\. This proposal cannot continue to maintenance selection\./)).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /Review Discovery item/i })).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: /maintenance selection/i })).not.toBeInTheDocument();
     });

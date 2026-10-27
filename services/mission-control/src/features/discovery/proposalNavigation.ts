@@ -22,7 +22,7 @@ export function resolveProposalNavigation(
     if (
         proposal.destination_kind === "operator_maintenance_selection"
         && proposal.status === "current"
-        && proposal.actionable_navigation
+        && proposal.actionable_navigation === true
     ) {
         return { kind: "operator_maintenance_selection", proposalId: proposal.proposal_id };
     }
@@ -30,7 +30,7 @@ export function resolveProposalNavigation(
         proposal.destination_kind === "discovery_detail"
         || proposal.destination_kind === "compatibility_review"
         || proposal.status !== "current"
-        || !proposal.actionable_navigation
+        || proposal.actionable_navigation !== true
     ) {
         return { kind: "discovery_item", itemId: proposal.catalog_item_id };
     }

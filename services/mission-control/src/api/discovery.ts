@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseDiscoveryProposal, parseDiscoveryProposalPage } from "./discoveryProposalResponse";
 import { parseDiscoveryInstallationPlan } from "./discoveryInstallationPlanResponse";
 import { parseDiscoveryImageGrounding } from "./discoveryImageGroundingResponse";
 import { parseDiscoveryEvidence } from "./discoveryEvidenceResponse";
@@ -33,19 +34,19 @@ export async function getDiscoveryMetadata(): Promise<DiscoveryMetadata> {
 }
 
 export async function listDiscoveryProposals(limit = 50): Promise<DiscoveryProposalPage> {
-    const response = await atlas.get<DiscoveryProposalPage>("/discovery/proposals", {
+    const response = await atlas.get<unknown>("/discovery/proposals", {
         params: { limit },
     });
-    return response.data;
+    return parseDiscoveryProposalPage(response.data);
 }
 
 export async function getDiscoveryProposal(
     proposalId: string,
 ): Promise<DiscoveryProposalNavigation> {
-    const response = await atlas.get<DiscoveryProposalNavigation>(
+    const response = await atlas.get<unknown>(
         `/discovery/proposals/${encodeURIComponent(proposalId)}`,
     );
-    return response.data;
+    return parseDiscoveryProposal(response.data, proposalId);
 }
 
 export async function listDiscoveryItems(
