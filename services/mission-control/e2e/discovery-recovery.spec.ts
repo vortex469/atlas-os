@@ -105,3 +105,46 @@ for (const width of [320, 390, 1280]) {
         });
     }
 }
+
+for (const width of [320, 390, 1280]) {
+    test(`malformed Discovery item recovers after reload at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        let reads = 0;
+        let recovered = false;
+        const errors: string[] = [];
+        page.on("pageerror", error => errors.push(error.message));
+        const entry = discoveryItemsPage.entries[0];
+        await page.route("**/api/v1/discovery/items/fixture-app", async route => {
+            reads += 1;
+            return route.fulfill({ json: !recovered
+                ? { ...entry, item: { ...entry.item, tags: [{}] } } : entry });
+        });
+        await page.goto("/discovery/items/fixture-app");
+        await expect(page.getByRole("alert").filter({ hasText: "Discovery catalog unavailable" })).toContainText("The catalog item could not be read. Reload to try again.");
+        await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toHaveCount(0);
+        const initialReads = reads;
+        expect(initialReads).toBeGreaterThan(0);
+        recovered = true;
+        await page.getByRole("button", { name: "Reload page", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toBeVisible();
+        expect(reads).toBe(initialReads * 2);
+        const compatibilityBox = await page.getByRole("heading", { name: "Compatibility assessment", exact: true }).boundingBox();
+        const evidenceBox = await page.getByRole("heading", { name: "Release evidence", exact: true }).boundingBox();
+        expect(compatibilityBox!.y).toBeLessThan(evidenceBox!.y);
+        const labels = page.locator("details").filter({ has: page.locator("summary", { hasText: "Capabilities and tags" }) });
+        await expect(labels.getByRole("heading", { name: "Tags", exact: true })).toBeHidden();
+        const toggle = labels.locator("summary");
+        await toggle.focus();
+        await page.keyboard.press("Enter");
+        await expect(labels.getByText("browser-fixture", { exact: true })).toBeVisible();
+        await expect(labels.getByText("read-only", { exact: true })).toBeVisible();
+        await page.keyboard.press("Enter");
+        await expect(labels.getByText("browser-fixture", { exact: true })).toBeHidden();
+        expect(reads).toBe(initialReads * 2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        if (width !== 320) await page.screenshot({ path: `/tmp/atlas-compact-item-labels-${width}.png`, fullPage: true });
+        expect(errors).toEqual([]);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}

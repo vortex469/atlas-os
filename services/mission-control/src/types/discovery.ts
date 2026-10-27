@@ -76,7 +76,7 @@ export type DiscoveryRequirements = {
         ports: DiscoveryPortRequirement[];
         requires_internet?: boolean | null;
         requires_lan?: boolean | null;
-        notes?: string | null;
+        notes?: string | string[] | null;
     };
 };
 

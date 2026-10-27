@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 
 import { getAtlasErrorMessage } from "../api/atlas";
+import { DiscoveryItemResponseError } from "../api/discoveryItemResponse";
 import {
     getDiscoveryCompatibility,
     getDiscoveryItemEvidence,
@@ -219,7 +220,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     return;
                 }
                 console.error(`Unable to load Discovery item ${itemId}:`, requestError);
-                const message = getAtlasErrorMessage(
+                const message = requestError instanceof DiscoveryItemResponseError ? requestError.message : getAtlasErrorMessage(
                     requestError,
                     "Mission Control could not load this Discovery item.",
                 );
@@ -313,7 +314,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-5xl p-8">
+            <main className="mx-auto max-w-5xl p-4 sm:p-8">
                 <Link
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -329,7 +330,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
     if (notFound) {
         return (
-            <main className="mx-auto max-w-5xl space-y-6 p-8">
+            <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
                 <Link
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -350,7 +351,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
     if (error || state.entry === null) {
         return (
-            <main className="mx-auto max-w-5xl space-y-6 p-8">
+            <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
                 <Link
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -377,7 +378,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const { item } = entry;
 
     return (
-        <main className="mx-auto max-w-5xl space-y-8 p-8">
+        <main className="mx-auto max-w-5xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <Link
                     to="/discovery"
@@ -412,14 +413,25 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 </div>
             </header>
 
-            <section className="grid gap-4 lg:grid-cols-2">
-                <InfoPanel title="Capabilities">
-                    <ChipList values={item.capabilities} empty="No capabilities listed." />
-                </InfoPanel>
-                <InfoPanel title="Tags">
-                    <ChipList values={item.tags} empty="No tags listed." />
-                </InfoPanel>
-            </section>
+            <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-300">Capabilities and tags</summary>
+                <section className="mt-4 grid gap-4 lg:grid-cols-2">
+                    <InfoPanel title="Capabilities">
+                        <ChipList values={item.capabilities} empty="No capabilities listed." />
+                    </InfoPanel>
+                    <InfoPanel title="Tags">
+                        <ChipList values={item.tags} empty="No tags listed." />
+                    </InfoPanel>
+                </section>
+            </details>
+
+            <CompatibilityPanel
+                compatibility={compatibility}
+                compatibilityLoading={compatibilityLoading}
+                compatibilityError={compatibilityError}
+                targetItemId={itemId}
+                onRetry={loadCompatibility}
+            />
 
             <DiscoveryEvidencePanel
                 evidence={evidence}
@@ -440,13 +452,6 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 csrfToken={operatorSession?.csrfToken ?? null}
             />
 
-            <CompatibilityPanel
-                compatibility={compatibility}
-                compatibilityLoading={compatibilityLoading}
-                compatibilityError={compatibilityError}
-                targetItemId={itemId}
-                onRetry={loadCompatibility}
-            />
 
             <section aria-labelledby="discovery-proposals-heading" className="space-y-4">
                 <div>
@@ -682,7 +687,7 @@ function RequirementsPanel({ requirements }: { requirements: DiscoveryRequiremen
         ),
         requirements.network.requires_internet === true ? "Internet access" : null,
         requirements.network.requires_lan === true ? "LAN access" : null,
-        requirements.network.notes ?? null,
+        ...(Array.isArray(requirements.network.notes) ? requirements.network.notes : [requirements.network.notes ?? null]),
     ].filter(Boolean) as string[];
 
     const hasRequirements =

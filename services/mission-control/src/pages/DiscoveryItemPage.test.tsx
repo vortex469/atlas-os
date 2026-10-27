@@ -107,6 +107,7 @@ function entry(overrides: Partial<DiscoveryCatalogEntry> = {}): DiscoveryCatalog
                     devices: [],
                 },
                 network: {
+                    notes: ["Keep video traffic local.", "Use the camera network."],
                     ports: [
                         {
                             port: 8971,
@@ -399,11 +400,18 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(screen.getByText("video-ingest")).not.toBeVisible();
+        expect(screen.getByText("nvr")).not.toBeVisible();
+        await userEvent.click(screen.getByText("Capabilities and tags", { exact: true }));
+        expect(screen.getByText("video-ingest")).toBeVisible();
+        expect(screen.getByText("nvr")).toBeVisible();
         expect(screen.getByText("Application")).toBeInTheDocument();
         expect(screen.getByText("Active")).toBeInTheDocument();
         expect(screen.getByText("video-ingest")).toBeInTheDocument();
         expect(screen.getByText("nvr")).toBeInTheDocument();
         expect(screen.getByText("Runtime: docker")).toBeInTheDocument();
+        expect(screen.getByText("Keep video traffic local.").tagName).toBe("LI");
+        expect(screen.getByText("Use the camera network.").tagName).toBe("LI");
         expect(screen.getByText(/TCP 8971 inbound optional/i)).toBeInTheDocument();
         expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
         expect(screen.getByText("Reviewed for D5: Yes")).toBeInTheDocument();
