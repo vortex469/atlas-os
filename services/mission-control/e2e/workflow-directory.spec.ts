@@ -38,6 +38,13 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/workflows");
         await expect(page.getByText("directory-workflow-000", { exact: true })).toBeVisible();
         await expect(page.getByText("Showing 10 of 215 matching workflows", { exact: true })).toBeVisible();
+        const applied = page.getByRole("region", {name: "Applied workflow filters", exact: true});
+        await expect(applied).toContainText("All workflows");
+        await expect(page.getByLabel("Source", {exact: true})).toBeAttached();
+        await expect(page.getByLabel("Candidate ID", {exact: true})).toBeAttached();
+        await expect(page.getByLabel("Source", {exact: true})).not.toBeVisible();
+        await expect(page.getByLabel("Candidate ID", {exact: true})).not.toBeVisible();
+        if (width !== 320) await page.locator('section[aria-labelledby="workflow-filters-heading"]').screenshot({path: `/tmp/atlas-workflow-filter-form-${width}.png`});
         const totals = page.locator('section[aria-labelledby="workflow-counts-heading"]');
         expect(await totals.evaluate(node => node.getBoundingClientRect().height)).toBeLessThan(width < 768 ? 600 : 500);
         await expect(totals.getByText("Completed", { exact: true }).locator("..").getByText("214", { exact: true })).toBeVisible();
@@ -62,12 +69,28 @@ for (const width of [320, 390, 1280]) {
         await page.getByLabel("Waiting for approval", { exact: true }).selectOption("no");
         await page.getByRole("button", { name: "Apply filters", exact: true }).click();
         await expect(page.getByText("Showing 10 of 214 matching workflows", { exact: true })).toBeVisible();
+        const more = page.locator("summary", {hasText: "More filters"});
+        await more.focus(); await page.keyboard.press("Enter");
+        await expect(page.getByLabel("Source", {exact: true})).toBeVisible();
+        await page.getByLabel("Source", {exact: true}).selectOption("candidate");
+        await page.getByLabel("Candidate ID", {exact: true}).fill(" candidate-214 ");
+        await page.getByLabel("Waiting for approval", {exact: true}).selectOption("");
+        await expect(applied).toContainText("Approval: Not waiting for approval");
+        expect(reads).toHaveLength(7);
+        await page.getByRole("button", {name: "Apply filters", exact: true}).click();
+        await expect(page.getByText("Showing 1 of 1 matching workflows", {exact: true})).toBeVisible();
+        await expect(applied).toContainText("Source: Candidate");
+        await expect(applied).toContainText("Candidate ID: candidate-214");
+        await more.focus(); await page.keyboard.press("Enter");
+        await expect(page.getByLabel("Candidate ID", {exact: true})).not.toBeVisible();
+        await expect(applied).toBeVisible();
         expect(reads).toEqual([
             { limit: "10", offset: "0" }, { limit: "10", offset: "10" },
             { workflow_id: "directory-workflow-214", limit: "10", offset: "0" },
             { workflow_id: "unmatched-workflow", limit: "10", offset: "0" },
             { limit: "10", offset: "0" }, { waiting_for_approval: "true", limit: "10", offset: "0" },
             { waiting_for_approval: "false", limit: "10", offset: "0" },
+            { source: "candidate", candidate_id: "candidate-214", limit: "10", offset: "0" },
         ]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);

@@ -139,6 +139,15 @@ export function WorkflowDashboardPage() {
     const currentPage = Math.floor((workflowResponse?.offset ?? 0) / PAGE_SIZE);
     const hasFilters = Object.values(selection.filters).some(Boolean);
     const retainedResults = isRefreshing || refreshError !== null;
+    const appliedFilters = [
+        selection.filters.state && `State: ${formatWorkflowLabel(selection.filters.state)}`,
+        selection.filters.source && `Source: ${formatWorkflowLabel(selection.filters.source)}`,
+        selection.filters.candidateId && `Candidate ID: ${selection.filters.candidateId}`,
+        selection.filters.workflowId && `Workflow ID: ${selection.filters.workflowId}`,
+        selection.filters.actionRequired === "yes" ? "Approval: Waiting for approval"
+            : selection.filters.actionRequired === "no" ? "Approval: Not waiting for approval" : "",
+    ].filter(Boolean);
+
 
     function updateDraftFilter(name: keyof DashboardFilters, value: string) {
         setDraftFilters((current) => ({ ...current, [name]: value }));
@@ -217,26 +226,13 @@ export function WorkflowDashboardPage() {
 
             <section aria-labelledby="workflow-filters-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="workflow-filters-heading" className="text-lg font-semibold text-white">Filters</h2>
-                <form onSubmit={applyFilters} className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <form onSubmit={applyFilters} className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <label className="text-sm text-slate-300">
                         State
                         <select value={draftFilters.state} onChange={(event) => updateDraftFilter("state", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
                             <option value="">Any state</option>
                             {WORKFLOW_STATES.map((state) => <option key={state} value={state}>{formatWorkflowLabel(state)}</option>)}
                         </select>
-                    </label>
-                    <label className="text-sm text-slate-300">
-                        Source
-                        <select value={draftFilters.source} onChange={(event) => updateDraftFilter("source", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
-                            <option value="">Any source</option>
-                            <option value="candidate">Candidate</option>
-                            <option value="manual">Manual</option>
-                            <option value="roadmap">Roadmap</option>
-                        </select>
-                    </label>
-                    <label className="text-sm text-slate-300">
-                        Candidate ID
-                        <input value={draftFilters.candidateId} onChange={(event) => updateDraftFilter("candidateId", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
                     </label>
                     <label className="text-sm text-slate-300">
                         Workflow ID search
@@ -250,11 +246,32 @@ export function WorkflowDashboardPage() {
                             <option value="no">Not waiting for approval</option>
                         </select>
                     </label>
-                    <div className="flex items-end gap-3 xl:col-span-5">
+                    <details className="md:col-span-2 xl:col-span-3">
+                        <summary className="cursor-pointer text-sm text-blue-300 focus-visible:outline-2">More filters</summary>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <label className="text-sm text-slate-300">
+                                Source
+                                <select aria-label="Source" value={draftFilters.source} onChange={(event) => updateDraftFilter("source", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+                                    <option value="">Any source</option>
+                                    <option value="candidate">Candidate</option>
+                                    <option value="manual">Manual</option>
+                                    <option value="roadmap">Roadmap</option>
+                                </select>
+                            </label>
+                            <label className="text-sm text-slate-300">
+                                Candidate ID
+                                <input aria-label="Candidate ID" value={draftFilters.candidateId} onChange={(event) => updateDraftFilter("candidateId", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
+                            </label>
+                        </div>
+                    </details>
+                    <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
                         <button type="submit" className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-blue-950 transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300">Apply filters</button>
                         <button type="button" onClick={clearFilters} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300">Clear filters</button>
                     </div>
                 </form>
+                <div role="region" aria-label="Applied workflow filters" className="mt-4 text-sm text-slate-400 [overflow-wrap:anywhere]">
+                    <p><strong>{isLoading ? "Searching with" : "Applied filters"}:</strong> {appliedFilters.length ? appliedFilters.join(" · ") : "All workflows"}</p>
+                </div>
             </section>
 
             <section aria-labelledby="workflow-list-heading" className="space-y-4">
