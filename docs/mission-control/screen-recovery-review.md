@@ -464,3 +464,17 @@ own approval labels. Blocked, completed and unrecognized stages use neutral
 review guidance rather than presenting a past implementation approval as the
 current decision. Recorded approval details remain available below. No action
 handler, request, capability or approval/resume guard changes.
+
+Workflow history puts recorded execution, verification and commit outcomes first,
+alongside validation and any blocked reason. Routine artifact fields and record
+identifiers remain available in keyboard-accessible disclosures; current, missing
+and inconsistent stages stay open. The stage overview lists each stage once,
+while all individual artifact records remain available. Return navigation is at
+the top of the page.
+
+Repository and maintenance history both announce failed audit validation even
+when the response contains no failure code. Workflow state remains separate from
+validation, and missing facts are not reconstructed. Read-only browser fixtures
+cover completed, blocked, invalid and missing-record views at phone and desktop
+widths, keyboard access to records, and zero mutation requests. Existing full
+journeys still verify the recorded commit and exact approval/resume sequence.
