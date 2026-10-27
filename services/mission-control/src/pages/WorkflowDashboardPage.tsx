@@ -139,6 +139,9 @@ export function WorkflowDashboardPage() {
     const currentPage = Math.floor((workflowResponse?.offset ?? 0) / PAGE_SIZE);
     const hasFilters = Object.values(selection.filters).some(Boolean);
     const retainedResults = isRefreshing || refreshError !== null;
+    const normalizedDraftFilters = normalizeDirectoryFilters(draftFilters);
+    const hasUnappliedFilters = (Object.keys(EMPTY_FILTERS) as Array<keyof DashboardFilters>)
+        .some(key => normalizedDraftFilters[key] !== selection.filters[key]);
     const appliedFilters = [
         selection.filters.state && `State: ${formatWorkflowLabel(selection.filters.state)}`,
         selection.filters.source && `Source: ${formatWorkflowLabel(selection.filters.source)}`,
@@ -154,7 +157,7 @@ export function WorkflowDashboardPage() {
     }
     function applyFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        void loadDashboard({ filters: { ...draftFilters, candidateId: draftFilters.candidateId.trim(), workflowId: draftFilters.workflowId.trim() }, offset: 0 });
+        void loadDashboard({ filters: normalizedDraftFilters, offset: 0 });
     }
     function clearFilters() {
         setDraftFilters(EMPTY_FILTERS);
@@ -269,6 +272,7 @@ export function WorkflowDashboardPage() {
                         <button type="button" onClick={clearFilters} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300">Clear filters</button>
                     </div>
                 </form>
+                {hasUnappliedFilters && <p role="status" className="mt-3 text-sm text-amber-200">Changes are not applied yet. Choose Apply filters to update results.</p>}
                 <div role="region" aria-label="Applied workflow filters" className="mt-4 text-sm text-slate-400 [overflow-wrap:anywhere]">
                     <p><strong>{isLoading ? "Searching with" : "Applied filters"}:</strong> {appliedFilters.length ? appliedFilters.join(" · ") : "All workflows"}</p>
                 </div>
@@ -357,6 +361,10 @@ function Detail({ label, value }: { label: string; value: string }) {
     );
 }
 
+
+function normalizeDirectoryFilters(filters: DashboardFilters): DashboardFilters {
+    return { ...filters, candidateId: filters.candidateId.trim(), workflowId: filters.workflowId.trim() };
+}
 
 function directoryQuery(selection: DirectorySelection): WorkflowListQuery {
     const filters = selection.filters;

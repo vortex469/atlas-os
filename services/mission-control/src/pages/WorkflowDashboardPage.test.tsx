@@ -68,12 +68,19 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.change(screen.getByLabelText("Candidate ID"), { target: { value: " candidate-123 " } });
         fireEvent.change(screen.getByLabelText("Waiting for approval"), { target: { value: "yes" } });
         expect(applied).toHaveTextContent("All workflows");
+        expect(screen.getByText("Changes are not applied yet. Choose Apply filters to update results.")).toBeVisible();
         expect(list).toHaveBeenCalledTimes(1);
         search(" workflow-123 ");
         await screen.findByText("workflow-123");
         expect(applied).toHaveTextContent("Source: Candidate");
         expect(applied).toHaveTextContent("Candidate ID: candidate-123");
         expect(applied).toHaveTextContent("Workflow ID: workflow-123");
+        expect(screen.queryByText("Changes are not applied yet. Choose Apply filters to update results.")).not.toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText("Workflow ID search"), {target: {value: "different"}});
+        expect(screen.getByText("Changes are not applied yet. Choose Apply filters to update results.")).toBeVisible();
+        fireEvent.change(screen.getByLabelText("Workflow ID search"), {target: {value: " workflow-123 "}});
+        expect(screen.queryByText("Changes are not applied yet. Choose Apply filters to update results.")).not.toBeInTheDocument();
+        expect(list).toHaveBeenCalledTimes(2);
         expect(list).toHaveBeenLastCalledWith({ state: "awaiting_implementation_approval", source: "candidate", candidate_id: "candidate-123", workflow_id: "workflow-123", waiting_for_approval: true, limit: 10, offset: 0 });
     });
 

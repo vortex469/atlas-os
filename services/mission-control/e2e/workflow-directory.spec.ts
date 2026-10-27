@@ -76,11 +76,13 @@ for (const width of [320, 390, 1280]) {
         await page.getByLabel("Candidate ID", {exact: true}).fill(" candidate-214 ");
         await page.getByLabel("Waiting for approval", {exact: true}).selectOption("");
         await expect(applied).toContainText("Approval: Not waiting for approval");
+        await expect(page.getByText("Changes are not applied yet. Choose Apply filters to update results.", {exact: true})).toBeVisible();
         expect(reads).toHaveLength(7);
         await page.getByRole("button", {name: "Apply filters", exact: true}).click();
         await expect(page.getByText("Showing 1 of 1 matching workflows", {exact: true})).toBeVisible();
         await expect(applied).toContainText("Source: Candidate");
         await expect(applied).toContainText("Candidate ID: candidate-214");
+        await expect(page.getByText("Changes are not applied yet. Choose Apply filters to update results.", {exact: true})).toHaveCount(0);
         await more.focus(); await page.keyboard.press("Enter");
         await expect(page.getByLabel("Candidate ID", {exact: true})).not.toBeVisible();
         await expect(applied).toBeVisible();

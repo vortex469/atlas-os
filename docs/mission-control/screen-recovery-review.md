@@ -568,3 +568,8 @@ fields are collapsed. Pending searches say Searching with; editing fields alone
 sends no request. Existing submit, clear, normalization, paging and recovery
 handlers are unchanged. Browser coverage retains all previous read assertions and
 adds optional-field submission and disclosure checks at phone and desktop widths.
+
+Workflow filter edits show a short unapplied-changes notice until submitted or
+restored to the applied values. The comparison uses the same ID trimming as
+submission, so equivalent whitespace edits do not create a false notice. This
+adds no reads or writes and preserves existing query construction and recovery.
