@@ -18,7 +18,7 @@ describe("authoritative health presentation", () => {
     ])("presents %j as %s without treating operational states as health", (status, label) => {
         render(<HealthEvidence status={status} />);
         expect(screen.getByText(label)).toBeInTheDocument();
-        expect(screen.getByText(/Evidence age unknown/)).toBeInTheDocument();
+        expect(screen.getByText(/Update time unknown/)).toBeInTheDocument();
     });
 
     it("retains source critical severity and renders reasons as plain text", () => {
@@ -42,7 +42,7 @@ describe("authoritative health presentation", () => {
 
     it.each([null, "yesterday", "2026-09-13", {}, "2099-01-01T00:00:00Z", "2026-02-30T00:00:00Z", "2026-09-13T24:00:00Z", "2026-09-13T12:00Z"])("does not claim freshness for timestamp %j", (checkedAt) => {
         render(<HealthEvidence status="healthy" checkedAt={checkedAt} reason={{ unsafe: true }} />);
-        expect(screen.getByText(/Evidence age unknown/)).toBeInTheDocument();
+        expect(screen.getByText(/Update time unknown/)).toBeInTheDocument();
         expect(screen.queryByText(/Current evidence/)).not.toBeInTheDocument();
     });
 

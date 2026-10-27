@@ -9,7 +9,7 @@ for (const width of [390, 1440]) {
         await page.goto("/");
         const policy = page.getByRole("article", { name: "Policy reload" });
         await expect(policy.getByText("Unknown", { exact: true })).toBeVisible();
-        await expect(policy.getByText(/Evidence age unknown/)).toBeVisible();
+        await expect(policy.getByText(/Update time unknown/)).toBeVisible();
         await expect(policy.getByText(/Current evidence/)).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
