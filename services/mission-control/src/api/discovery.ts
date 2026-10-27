@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseDiscoveryInstallationPlan } from "./discoveryInstallationPlanResponse";
 import { parseDiscoveryImageGrounding } from "./discoveryImageGroundingResponse";
 import { parseDiscoveryEvidence } from "./discoveryEvidenceResponse";
 import { parseDiscoveryCompatibility } from "./discoveryCompatibilityResponse";
@@ -98,10 +99,10 @@ export async function getDiscoveryImageGrounding(
 }
 
 export async function getDiscoveryInstallationPlan(itemId: string): Promise<InstallationPlan> {
-    const response = await atlas.get<InstallationPlan>(
+    const response = await atlas.get<unknown>(
         `/discovery/items/${encodeURIComponent(itemId)}/installation-plan`,
     );
-    return response.data;
+    return parseDiscoveryInstallationPlan(response.data, itemId);
 }
 
 export async function getDiscoveryRelationships(
