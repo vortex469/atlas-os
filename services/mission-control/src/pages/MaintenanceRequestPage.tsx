@@ -1,4 +1,5 @@
 import { isAxiosError } from "axios";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
@@ -118,6 +119,22 @@ export function MaintenanceRequestPage() {
         return () => { cancelled = true; };
     }, [proposalId, session.authenticated]);
 
+    const expiresAt = result?.candidate.expires_at;
+    const expiryTime = evidenceTimestamp(expiresAt);
+    const expiryUnreadable = expiresAt !== null && expiresAt !== undefined && expiryTime === null;
+    useEffect(() => {
+        if (expiryTime === null) return;
+        let timer: number;
+        const checkExpiry = () => {
+            const remaining = expiryTime - Date.now();
+            if (remaining <= 0) setResultExpired(true);
+            else timer = window.setTimeout(checkExpiry, Math.min(remaining, 2_147_483_647));
+        };
+        // Cap long waits to the browser timer limit; expiry does not trigger a request.
+        timer = window.setTimeout(checkExpiry, Math.max(0, Math.min(expiryTime - Date.now(), 2_147_483_647)));
+        return () => window.clearTimeout(timer);
+    }, [expiryTime, result]);
+
     if (session.loading) return <main className="p-8 text-slate-400">Restoring operator session…</main>;
     if (!session.authenticated) {
         return <Navigate to="/operator/login" state={proposalId ? { proposalId } : undefined} replace />;
@@ -151,7 +168,7 @@ export function MaintenanceRequestPage() {
             setResultExpired(
                 response.candidate.expires_at !== null
                 && response.candidate.expires_at !== undefined
-                && new Date(response.candidate.expires_at).getTime() <= Date.now()
+                && (evidenceTimestamp(response.candidate.expires_at) ?? Infinity) <= Date.now()
             );
         } catch (requestError) {
             if (generation !== submissionGeneration.current) return;
@@ -206,7 +223,7 @@ export function MaintenanceRequestPage() {
             <button type="button" onClick={() => void submit()} disabled={!selected?.requestable || loading || submitting || !permitted} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700">
                 {submitting ? "Requesting candidate…" : "Request restart candidate"}
             </button>
-            {result && <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5"><h2 className="text-lg font-semibold text-emerald-200">Maintenance candidate ready</h2><p className="mt-2 break-all text-sm text-slate-200">Candidate ID: {result.candidate_id}</p><p className="mt-1 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p><p className="mt-1 text-sm text-slate-300">Status: {result.candidate.status}</p><p className="mt-1 text-sm text-slate-300">Expires: {result.candidate.expires_at ?? "Not reported"}</p><p className="mt-1 text-sm text-amber-200">Expected disruption: brief service interruption</p>{resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This candidate has expired. Request a new maintenance candidate.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Continue to candidate planning</Link>}</section>}
+            {result && <section className={`rounded-xl border p-5 ${resultExpired || expiryUnreadable ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"}`}><h2 className={`text-lg font-semibold ${resultExpired || expiryUnreadable ? "text-amber-200" : "text-emerald-200"}`}>{expiryUnreadable ? "Candidate expiration unknown" : resultExpired ? "Maintenance candidate expired" : "Maintenance candidate ready"}</h2><p className="mt-2 break-all text-sm text-slate-200">Candidate ID: {result.candidate_id}</p><p className="mt-1 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p><p className="mt-1 text-sm text-slate-300">Status: {result.candidate.status}</p><p className="mt-1 text-sm text-slate-300">Expires: {expiryUnreadable ? "Not readable" : result.candidate.expires_at ?? "Not reported"}</p><p className="mt-1 text-sm text-amber-200">Expected disruption: brief service interruption</p>{expiryUnreadable ? <p role="alert" className="mt-3 text-sm text-amber-200">The candidate expiration could not be confirmed. Refresh the resource list before requesting a new candidate.</p> : resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This candidate has expired. Request a new maintenance candidate.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Continue to candidate planning</Link>}</section>}
         </main>
     );
 }
