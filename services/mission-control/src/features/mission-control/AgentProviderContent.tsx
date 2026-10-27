@@ -9,10 +9,15 @@ export function AgentOverviewContent({ evidence }: { evidence?: Evidence }) {
     const name = publicLabel(agent.app_name);
     return <>
         <HealthEvidence status={null} stale={evidence?.stale} reason="Agent health is not supplied by the information API." />
-        <p>{name || "Agent identity unknown"}{publicLabel(agent.version) && ` · ${publicLabel(agent.version)}`}</p>
-        <p>{name ? "Agent identity observed from Atlas Agent." : "Agent configuration unknown."} Identity does not establish availability or execution readiness.</p>
         <Link to="/forge">Open Forge →</Link>
         <Link className="block" to="/workflows">View agent workflows</Link>
+        <details>
+            <summary className="mc-focusable cursor-pointer text-mc-primary">Agent details</summary>
+            <div className="mt-3 space-y-3">
+                <p>{name || "Agent identity unknown"}{publicLabel(agent.version) && ` · ${publicLabel(agent.version)}`}</p>
+                <p>{name ? "Agent identity observed from Atlas Agent." : "Agent configuration unknown."} Identity does not establish availability or execution readiness.</p>
+            </div>
+        </details>
     </>;
 }
 
