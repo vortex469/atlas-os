@@ -601,6 +601,26 @@ async def get_candidate_plan(
     return _plan_response(plan)
 
 
+@router.get(
+    "/{session_id}/workflow",
+    response_model=CandidateWorkflowResponse,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"model": CandidatePlanningErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": CandidatePlanningErrorResponse},
+    },
+)
+async def get_candidate_workflow_shell(request: Request, session_id: str) -> CandidateWorkflowResponse:
+    """Read the saved workflow summary without conversion or Core revalidation."""
+    workflows = _candidate_workflows_for_session(
+        request.app.state.container.workflow_state, session_id,
+    )
+    if not workflows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
+    if len(workflows) > 1:
+        raise _candidate_planning_lookup_conflict_error(session_id, workflows)
+    return _workflow_response(_candidate_workflow_response_from_workflow(session_id, workflows[0]))
+
+
 @router.post(
     "/{session_id}/workflow",
     response_model=CandidateWorkflowResponse,

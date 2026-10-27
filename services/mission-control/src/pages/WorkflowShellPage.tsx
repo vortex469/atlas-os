@@ -3,11 +3,10 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 
 import {
-    createCandidateWorkflowShell,
+    getCandidateWorkflowShell,
     createCandidateImplementationRequest,
     createSuccessorCandidatePlanningSession,
     getAtlasAgentErrorMessage,
-    getCandidatePlanningSession,
 } from "../api/atlas-agent";
 import type {
     CandidateImplementationTranslationResponse,
@@ -34,6 +33,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
     const [isCreatingImplementation, setIsCreatingImplementation] = useState(false);
     const [isCreatingSuccessor, setIsCreatingSuccessor] = useState(false);
     const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(true);
+    const [readAttempt, setReadAttempt] = useState(0);
     const [workflowLoadError, setWorkflowLoadError] = useState<string | null>(null);
     const [implementationError, setImplementationError] = useState<string | null>(null);
     const [successorError, setSuccessorError] = useState<string | null>(null);
@@ -49,26 +49,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             setWorkflowLoadError(null);
 
             try {
-                const planningSession = workflowFromLocation === null
-                    ? await getCandidatePlanningSession(sessionId)
-                    : null;
-
-                if (planningSession === null && workflowFromLocation === null) {
-                    throw new Error("Planning session was not found.");
-                }
-
-                if (cancelled) {
-                    return;
-                }
-
-                if (planningSession && planningSession.session_id !== sessionId) {
-                    setWorkflow(null);
-                    setWorkflowLoadError("The returned planning session does not match this page.");
-                    return;
-                }
-                const response = await createCandidateWorkflowShell(sessionId, {
-                    expected_candidate_fingerprint: planningSession?.candidate_fingerprint ?? workflowFromLocation?.candidate_fingerprint,
-                });
+                const response = await getCandidateWorkflowShell(sessionId);
 
                 if (cancelled) {
                     return;
@@ -103,7 +84,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             cancelled = true;
             viewGeneration.current += 1;
         };
-    }, [sessionId, workflowFromLocation]);
+    }, [sessionId, workflowFromLocation, readAttempt]);
     const canCreateImplementation =
         workflow !== null
         && workflow.workflow_status === "awaiting_approval"
@@ -255,6 +236,9 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         {workflowLoadError
                             ?? "Return to the planning session to create or reopen this workflow."}
                     </p>
+                    <button type="button" onClick={() => setReadAttempt(value => value + 1)} className="mt-4 mr-4 rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Try again
+                    </button>
                     <Link to={`/candidate-planning/${encodeURIComponent(sessionId)}`} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Back to planning session
                     </Link>

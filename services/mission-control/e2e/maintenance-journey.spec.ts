@@ -40,10 +40,10 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("heading", { name: "Exact action request", exact: true })).toBeVisible();
         await expect(page.getByRole("button", { name: "Approve Exact Action", exact: true })).toBeEnabled();
         await expect(page.getByRole("button", { name: "Run approved action", exact: true })).toHaveCount(0);
-        expect(fixture.writes).toHaveLength(5);
+        expect(fixture.writes).toHaveLength(4);
         await page.getByRole("button", { name: "Approve Exact Action", exact: true }).click();
         await expect(page.getByRole("button", { name: "Run approved action", exact: true })).toBeEnabled();
-        expect(fixture.writes).toHaveLength(6);
+        expect(fixture.writes).toHaveLength(5);
         await page.getByRole("button", { name: "Run approved action", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
         await expect(page.getByText("Maintenance workflow completed. Review the recorded operational outcome.", { exact: true })).toBeVisible();

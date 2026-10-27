@@ -166,7 +166,6 @@ export async function installRepositoryJourney(page: Page, reject = false, optio
         { path: "/candidate-planning", body: { candidate_id: journey.candidate } },
         { path: `${planningPath}/plan`, body: null },
         { path: `${planningPath}/workflow`, body: null },
-        { path: `${planningPath}/workflow`, body: { expected_candidate_fingerprint: journey.candidateFingerprint } },
         { path: `${planningPath}/implementation`, body: { expected_candidate_fingerprint: journey.candidateFingerprint, expected_plan_fingerprint: journey.planFingerprint } },
         { path: `${workflowPath}/implementation-approval`, body: { workflow_id: journey.workflow, decision: "approve" } },
         { path: `${workflowPath}/resume`, body: null },
@@ -175,7 +174,7 @@ export async function installRepositoryJourney(page: Page, reject = false, optio
         { path: `${workflowPath}/commit-approval`, body: { workflow_id: journey.workflow, decision: "approve" } },
         { path: `${workflowPath}/resume`, body: null },
     ];
-    if (maintenance && !reject) expectedWrites.splice(7);
+    if (maintenance && !reject) expectedWrites.splice(6);
     let index = 0;
     let planReady = false;
     let implementationReady = reject;
@@ -232,6 +231,7 @@ export async function installRepositoryJourney(page: Page, reject = false, optio
             approved = true;
             return route.fulfill({ json: { workflow_id: journey.workflow, workflow_state: `awaiting_${phase}_approval`, [`${phase}_approval_status`]: "approved", message: "Approved in browser fixture." } });
         }
+        if (isAgent && path === `${planningPath}/workflow`) return route.fulfill({ json: shell });
         if (isCore && path === `/execution-candidates/${journey.candidate}`) return route.fulfill({ json: maintenance
             ? maintenanceCandidate
             : candidate });
