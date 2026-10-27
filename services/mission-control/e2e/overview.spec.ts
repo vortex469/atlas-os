@@ -9,7 +9,7 @@ for (const width of [320, 768, 1440]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
         expect(columns).toBe(width < 768 ? 1 : width < 1280 ? 2 : 3);
-        if (width === 1440) await page.screenshot({ path: '/tmp/atlas-compact-agent-1440.png', fullPage: true });
+        if (width === 1440) await page.screenshot({ path: '/tmp/atlas-compact-ai-1440.png', fullPage: true });
         await page.getByRole('link', { name: 'Inspect executions →' }).click();
         await expect(page).toHaveURL(/\/workflows$/);
         await page.goBack();
@@ -71,7 +71,9 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await expect(attention.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeVisible();
     await attention.getByText('Workflow details', { exact: true }).click();
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
-    const runtime = page.getByRole('region', { name: 'Local AI / Runtime' });
+    const runtime = page.getByRole('region', { name: 'AI provider' });
+    await expect(runtime.getByRole('heading', { name: 'AI provider', exact: true })).toBeVisible();
+    await expect(runtime.getByText('Configured model identity: Unknown.', { exact: true })).toBeHidden();
     await expect(runtime.getByText('Local AI availability is unknown; locality is not reported.')).toBeVisible();
     await expect(runtime.getByText('Reported runtime version', { exact: true })).toBeHidden();
     const agent = page.getByRole('region', { name: 'Agent state', exact: true });
@@ -88,11 +90,12 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await expect(identity).toBeHidden();
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: testInfo.outputPath('dashboard-default.png'), fullPage: true });
-    await page.screenshot({ path: '/tmp/atlas-compact-agent-390.png', fullPage: true });
+    await page.screenshot({ path: '/tmp/atlas-compact-ai-390.png', fullPage: true });
     const runtimeToggle = runtime.locator('summary', { hasText: 'Runtime observations' });
     await runtimeToggle.focus();
     await page.keyboard.press('Enter');
     await expect(runtime.getByText('Reported runtime version', { exact: true })).toBeVisible();
+    await expect(runtime.getByText('Configured model identity: Unknown.', { exact: true })).toBeVisible();
     const worker = page.getByRole('region', { name: 'Worker / Execution' });
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
     const workerToggle = worker.locator('summary', { hasText: 'Execution observations' });

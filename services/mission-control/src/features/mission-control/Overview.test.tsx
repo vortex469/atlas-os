@@ -30,7 +30,7 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['System status','Service health','Worker / Execution','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['System status','Service health','Worker / Execution','Agent state','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
@@ -69,7 +69,7 @@ describe("MC overview evidence", () => {
     });
     it.each(['healthy','unavailable','unknown'])('shows configured AI %s without asserting locality', (value) => {
         show({ ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: value } } } });
-        const card = screen.getByRole('region', { name: 'Local AI / Runtime' });
+        const card = screen.getByRole('region', { name: 'AI provider' });
         expect(within(card).getAllByText(value[0].toUpperCase() + value.slice(1)).length).toBeGreaterThan(0);
         expect(within(card).getByText(/Locality and dedicated/)).toBeInTheDocument();
     });
@@ -133,7 +133,7 @@ describe('overview fail-closed regressions', () => {
     });
     it('does not equate configured provider health with local runtime availability', () => {
         show({ ai: { data: { health: { status: 'healthy' } } } });
-        const runtime = within(screen.getByRole('region', { name: 'Local AI / Runtime' }));
+        const runtime = within(screen.getByRole('region', { name: 'AI provider' }));
         expect(runtime.getByText('Local AI availability is unknown; locality is not reported.')).toBeVisible();
         expect(runtime.getByText('Configured provider health')).toBeInTheDocument();
     });

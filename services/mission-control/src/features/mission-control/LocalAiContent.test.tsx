@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { Overview } from "./MissionControl";
@@ -12,7 +12,7 @@ const data = (status = "online") => ({
 });
 function show(ai?: Evidence) {
     render(<MemoryRouter><Overview evidence={{ ai }} /></MemoryRouter>);
-    return within(screen.getByRole("region", { name: "Local AI / Runtime" }));
+    return within(screen.getByRole("region", { name: "AI provider" }));
 }
 
 describe("integrated Local AI runtime observations", () => {
@@ -20,12 +20,16 @@ describe("integrated Local AI runtime observations", () => {
         const card = show({ data: data(status) });
         expect(card.getAllByText(label).length).toBeGreaterThan(0);
         expect(card.getByText(/Local AI availability is unknown/)).toBeInTheDocument();
+        expect(card.getByText("Configured model identity: Unknown.")).not.toBeVisible();
+        expect(card.getByRole("link")).toBeVisible();
+        fireEvent.click(card.getByText("Runtime observations"));
+        expect(card.getByText("Configured model identity: Unknown.")).toBeVisible();
         expect(card.getByText("1.2")).toBeInTheDocument();
         expect(card.getByText("12 ms")).toBeInTheDocument();
         expect(card.getByText("Reported installed models: model:latest")).toBeInTheDocument();
         expect(card.getByText("Reported running models: running-model")).toBeInTheDocument();
         expect(card.getByText("Configured model identity: Unknown.")).toBeInTheDocument();
-        expect(card.getByRole("link")).toHaveAttribute("href", "/providers/runtime");
+        expect(card.getByRole("link", { name: "Inspect AI provider →" })).toHaveAttribute("href", "/providers/runtime");
         expect(card.queryByRole("button")).not.toBeInTheDocument();
         expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
     });

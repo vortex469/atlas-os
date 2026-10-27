@@ -34,13 +34,14 @@ export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
         <p>Configured provider health</p>
         <HealthEvidence status={safeText(health.status)} reason={safeText(health.message)} stale={lastKnown} />
         <p>Local AI availability is unknown; locality is not reported.</p>
-        <p>Configured model identity: Unknown.</p>
         {lastKnown && <p>Last-known runtime observations below; current version, latency, and model inventory unknown.</p>}
         {evidence?.unavailable && !lastKnown && <p>AI status observation unavailable; runtime availability is unknown.</p>}
+        {path && <Link to={path}>Inspect AI provider →</Link>}
         <details>
             <summary className="mc-focusable cursor-pointer text-mc-primary">Runtime observations</summary>
             <div className="mt-3 space-y-3">
                 <p>Locality and dedicated Local AI Runtime capabilities are not exposed. This is configured AI provider health only.</p>
+                <p>Configured model identity: Unknown.</p>
                 <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div><dt>Reported runtime version</dt><dd>{safeText(record(health.details).version).trim() || "Unknown — not exposed"}</dd></div>
                     <div><dt>Reported health latency</dt><dd>{latency}</dd></div>
@@ -50,6 +51,5 @@ export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
                 <p>Reported models do not establish which model is selected or ready to use.</p>
             </div>
         </details>
-        {path && <Link to={path}>Inspect runtime provider →</Link>}
     </>;
 }
