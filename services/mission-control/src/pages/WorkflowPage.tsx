@@ -17,10 +17,12 @@ import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePan
 import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
 import { ExecutionTimeline } from "./ExecutionTimeline";
 import { repositoryImplementationRequest } from "../utils/repositoryImplementationRequest";
+import { repositoryCommitRequest } from "../utils/repositoryCommitRequest";
 import type {
     WorkflowDetailResponse,
     WorkflowImplementationRequestSummary,
     WorkflowCommitApprovalResponse,
+    WorkflowCommitRequestSummary,
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
     WorkflowVerificationApprovalResponse,
@@ -261,6 +263,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const isOperational = workflow.effect_kind === "operational_action";
     const isRepository = !isOperational;
     const implementationRequest = isRepository ? repositoryImplementationRequest(workflow.implementation_request) : null;
+    const commitRequest = isRepository ? repositoryCommitRequest(workflow.commit_request) : null;
     const actionRequest = isOperational ? operationalRequest(workflow.operational_action_request) : null;
     const operationalApprovalReady = !isOperational || (actionRequest !== null
         && Array.isArray(workflow.approval_presentations) && workflow.approval_presentations.some((approval) =>
@@ -284,7 +287,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         isRepository
         &&
         workflow.workflow_state === "awaiting_commit_approval"
-        && workflow.commit_approval_status === "pending";
+        && workflow.commit_approval_status === "pending"
+        && commitRequest !== null;
 
     const canResumeImplementation =
         workflow.workflow_state === "awaiting_implementation_approval"
@@ -299,7 +303,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         isRepository
         &&
         workflow.workflow_state === "awaiting_commit_approval"
-        && workflow.commit_approval_status === "approved";
+        && workflow.commit_approval_status === "approved"
+        && commitRequest !== null;
     const canReconcileWorker =
         isRepository
         && workflow.workflow_state === "blocked"
@@ -454,6 +459,9 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
                     <CommitSection
                         workflow={workflow}
+                        request={commitRequest}
+                        onRefresh={refreshWorkflow}
+                        isRefreshing={isRefreshing}
                         canDecideCommit={canDecideCommit}
                         isSubmittingCommit={isSubmittingCommit}
                         actionsDisabled={controlsBusy}
@@ -684,6 +692,9 @@ function VerificationReviewSection({
 
 function CommitSection({
     workflow,
+    request,
+    onRefresh,
+    isRefreshing,
     canDecideCommit,
     isSubmittingCommit,
     actionsDisabled,
@@ -692,6 +703,9 @@ function CommitSection({
     onCommitDecision,
 }: {
     workflow: WorkflowDetailResponse;
+    request: WorkflowCommitRequestSummary | null;
+    onRefresh: () => void;
+    isRefreshing: boolean;
     canDecideCommit: boolean;
     isSubmittingCommit: boolean;
     actionsDisabled: boolean;
@@ -699,7 +713,6 @@ function CommitSection({
     commitApprovalError: string | null;
     onCommitDecision: (decision: WorkflowImplementationDecision) => Promise<void>;
 }) {
-    const request = workflow.commit_request;
     const result = workflow.commit_result;
     const isCompleted = workflow.workflow_state === "completed";
 
@@ -725,21 +738,28 @@ function CommitSection({
                         <Detail label="Reviewed-content fingerprint" value={request.reviewed_content_fingerprint} />
                         <Detail label="Commit approval status" value={formatLabel(request.commit_approval_status)} />
                     </dl>
-                ) : (
-                    <p className="mt-3 text-sm text-slate-300">Commit request is not available for this workflow.</p>
-                )}
+                ) : workflow.workflow_state === "awaiting_commit_approval" ? (
+                    <div role="alert" className="mt-3 text-sm text-amber-100">
+                        <p>The commit request is unavailable. Check it again to review the saved commit details.</p>
+                        <button type="button" onClick={onRefresh} disabled={actionsDisabled} className="mc-control mc-focusable mt-3 px-3 py-2 font-semibold disabled:opacity-50">{isRefreshing ? "Checking commit request..." : "Check commit request"}</button>
+                    </div>
+                ) : <p className="mt-3 text-sm text-slate-300">Commit request is not available for this workflow.</p>}
             </section>
 
             <section aria-labelledby="commit-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="commit-approval-heading" className="text-base font-semibold text-white">Commit approval</h3>
-                <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and commit approval decision.</p>
+                <p className="mt-2 text-sm text-slate-400">Review the exact local commit before deciding. Approval and finishing the commit are separate steps.</p>
                 {canDecideCommit ? (
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button type="button" onClick={() => void onCommitDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Commit</button>
                         <button type="button" onClick={() => void onCommitDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Commit</button>
                     </div>
                 ) : (
-                    <p className="mt-4 text-sm text-slate-300">Commit approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
+                    <p className="mt-4 text-sm text-slate-300">{workflow.workflow_state === "awaiting_commit_approval" && request === null
+                        ? workflow.commit_approval_status === "approved"
+                            ? "Commit approval is recorded. Load the exact request before finishing the commit."
+                            : "Commit approval is paused until the exact request is available."
+                        : `Commit approval controls are unavailable because this workflow is ${formatLabel(workflow.workflow_state)}.`}</p>
                 )}
                 {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
                 {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}

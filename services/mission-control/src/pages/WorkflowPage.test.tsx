@@ -1180,4 +1180,48 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: "Check request" })).not.toBeInTheDocument();
     });
 
+    it.each([
+        { label: "missing", value: null },
+        { label: "incomplete", value: { commit_request_id: "request-only" } },
+        { label: "unreadable message", value: { ...workflowAwaitingCommit().commit_request, commit_message: { text: "change" } } },
+        { label: "unreadable files", value: { ...workflowAwaitingCommit().commit_request, reviewed_files: "compose.yaml" } },
+        { label: "empty fingerprint", value: { ...workflowAwaitingCommit().commit_request, reviewed_content_fingerprint: " " } },
+    ])("pauses commit decisions for a $label request", async ({ value }) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit({ commit_request: value as unknown as WorkflowDetailResponse["commit_request"] }));
+        renderPage();
+        expect(await screen.findByRole("button", { name: "Check commit request" })).toBeEnabled();
+        expect(screen.queryByRole("button", { name: "Approve Commit" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject Commit" })).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
+    });
+
+    it.each([null, { commit_request_id: "request-only" }])("pauses an approved commit when its request is unreadable", async (value) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit({ commit_approval_status: "approved", commit_request: value as unknown as WorkflowDetailResponse["commit_request"] }));
+        renderPage();
+        await screen.findByRole("button", { name: "Check commit request" });
+        expect(screen.queryByRole("button", { name: "Resume Approved Commit" })).not.toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it.each(["pending", "approved"])("recovers an unreadable %s commit with a read-only check", async (approval) => {
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflowAwaitingCommit({ commit_approval_status: approval, commit_request: null }));
+        let finishRead!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+        renderPage();
+        fireEvent.click(await screen.findByRole("button", { name: "Check commit request" }));
+        expect(screen.getByRole("button", { name: "Checking commit request..." })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: /Approve Commit|Resume Approved Commit/ })).not.toBeInTheDocument();
+        await act(async () => finishRead(workflowAwaitingCommit({ commit_approval_status: approval })));
+        expect(await screen.findByRole("button", { name: approval === "pending" ? "Approve Commit" : "Resume Approved Commit" })).toBeEnabled();
+        expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("keeps nullable commit metadata and empty reviewed file lists readable", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit({ commit_request: { ...workflowAwaitingCommit().commit_request!, repository: null, branch: null, expected_head: null, reviewed_files: [] } }));
+        renderPage();
+        expect(await screen.findByRole("button", { name: "Approve Commit" })).toBeEnabled();
+        expect(screen.queryByRole("button", { name: "Check commit request" })).not.toBeInTheDocument();
+    });
+
 });
