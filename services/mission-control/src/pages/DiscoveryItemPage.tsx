@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 
 import { getAtlasErrorMessage } from "../api/atlas";
+import { DiscoveryCompatibilityResponseError } from "../api/discoveryCompatibilityResponse";
 import { DiscoveryItemResponseError } from "../api/discoveryItemResponse";
 import {
     getDiscoveryCompatibility,
@@ -122,7 +123,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 }
                 console.error(`Unable to load Discovery compatibility for ${itemId}:`, requestError);
                 setCompatibilityError(
-                    getAtlasErrorMessage(
+                    requestError instanceof DiscoveryCompatibilityResponseError ? requestError.message : getAtlasErrorMessage(
                         requestError,
                         "Mission Control could not load compatibility for this item.",
                     ),
@@ -515,7 +516,7 @@ function CompatibilityPanel({
                   groups[key] = [...existing, finding];
                   return groups;
               },
-              {} as Record<string, typeof compatibility.findings>,
+              Object.create(null) as Record<string, typeof compatibility.findings>,
           )
         : {};
 
