@@ -28,7 +28,7 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
         let current = true;
         listInstallationExecutionRequests()
             .then((values) => { if (current) setRequests(values); })
-            .catch((requestError: unknown) => { if (current) setError(getAtlasErrorMessage(requestError, "Execution request records are currently unavailable.")); })
+            .catch((requestError: unknown) => { if (current) setError(getAtlasErrorMessage(requestError, "Saved request records are currently unavailable.")); })
             .finally(() => { if (current) setLoading(false); });
         return () => { current = false; };
     }, []);
@@ -36,7 +36,7 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
     const review = async (id: string) => {
         setError(null);
         try { setReviewed(await getInstallationExecutionRequest(id)); }
-        catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "The execution request record is currently unavailable.")); }
+        catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "The saved request record is currently unavailable.")); }
     };
     const record = async () => {
         if (!confirming || !csrfToken || recording) return;
@@ -45,7 +45,7 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
             const value = await recordInstallationExecutionRequest(confirming, csrfToken, executionRequestIdempotencyKey());
             setRequests((current) => [value, ...current.filter((item) => item.execution_request_id !== value.execution_request_id)]);
             setReviewed(value); setConfirming(null);
-        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "The non-executing execution request record could not be preserved.")); }
+        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "The request record could not be saved.")); }
         finally { setRecording(false); }
     };
 
@@ -57,26 +57,35 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
     });
 
     return <section aria-labelledby="execution-requests-heading" className="mt-6 border-t border-slate-700 pt-5">
-        <h5 id="execution-requests-heading" className="font-semibold text-slate-100">Installation execution request records</h5>
-        <p className="mt-1 text-sm font-semibold text-amber-200">Non-executing; Agent evidence is operator-submitted; no work has started.</p>
-        <p className="mt-1 text-sm text-slate-300">Immutable, authenticated operator-scoped evidence only. This is not install, execution, dispatch, deployment, rollback, worker invocation, Agent invocation, provider mutation, repository mutation, or in-guest mutation.</p>
-        <p className="mt-1 text-sm text-slate-400">Default-disabled and non-authorizing. Home Assistant remains blocked and non-executable because its required deployment artifact and proof chain are absent.</p>
-        {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading execution request records…</p>}
+        <h5 id="execution-requests-heading" className="font-semibold text-slate-100">Future installation request records</h5>
+        <p className="mt-1 text-sm font-semibold text-amber-200">Saving a record does not approve or start installation.</p>
+        <p className="mt-1 text-sm text-slate-300">It stores the exact candidate and operator-submitted Agent validation evidence. Saving does not call Agent, dispatch work, or change a guest.</p>
+        <p className="mt-1 text-sm text-slate-400">Home Assistant remains blocked because its deployment artifact and required proof are missing.</p>
+        {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading saved request records…</p>}
         {!loading && error && <p role="alert" className="mt-4 rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
-        {!loading && !error && requests.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No installation execution request records.</p>}
-        {!loading && !error && requests.length > 0 && <ul aria-label="Installation execution request records" className="mt-4 space-y-3">
+        {!loading && !error && requests.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No saved request records.</p>}
+        {!loading && !error && requests.length > 0 && <ul aria-label="Saved installation request records" className="mt-4 space-y-3">
             {requests.map((request) => <li key={request.execution_request_id} className="rounded-md border border-slate-700 p-3">
-                <p className="font-semibold text-slate-200">Non-executing request record · {request.lifecycle_state}</p>
-                <p className="mt-1 break-all text-xs text-slate-400">Request ID: {request.execution_request_id}</p>
-                <p className="mt-1 text-xs text-slate-400">Fresh until {request.valid_until}; expiry is terminal and performs no work.</p>
-                <button type="button" onClick={() => void review(request.execution_request_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review immutable request record</button>
+                <p className="font-semibold text-slate-200">{lifecycleLabel(request.lifecycle_state)} · No installation started</p>
+                <details className="mt-1 text-xs text-slate-400">
+                    <summary className="cursor-pointer">Request ID, candidate, and expiry</summary>
+                    <p className="mt-1 break-all">Request ID: {request.execution_request_id}</p>
+                    <p className="break-all">Candidate record ID: {request.linkage.candidate_record_id}</p>
+                    <p>Valid until {request.valid_until}</p>
+                </details>
+                <button type="button" aria-label={`Review request for candidate record ${request.linkage.candidate_record_id}, request ${request.execution_request_id}`} onClick={() => void review(request.execution_request_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review details</button>
             </li>)}
         </ul>}
-        {!loading && eligible.length === 0 && <p className="mt-4 text-sm text-slate-400">No exact fresh operator-submitted validation evidence is available for record preservation.</p>}
-        {!loading && eligible.length > 0 && <ul aria-label="Evidence eligible for request recording" className="mt-4 space-y-2">
+        {!loading && eligible.length === 0 && <p className="mt-4 text-sm text-slate-400">No fresh, operator-submitted Agent validation evidence is available for a request record.</p>}
+        {!loading && eligible.length > 0 && <ul aria-label="Candidate evidence available for a request record" className="mt-4 space-y-2">
             {eligible.map(({ intent, bundle }) => <li key={intent.approval_intent_id} className="rounded-md border border-amber-400/30 p-3">
-                <p className="break-all text-xs text-slate-300">Exact candidate {intent.approved_subject.candidate_record_id} · approval {intent.approval_intent_id} · Agent request {bundle.agent_request.request_id}</p>
-                {csrfToken ? <button type="button" onClick={() => setConfirming({ schema: "installation-execution-request-create-v1", candidate_record_id: intent.approved_subject.candidate_record_id, approval_intent_id: intent.approval_intent_id, agent_request: bundle.agent_request, agent_validation: bundle.agent_validation })} className="mt-2 rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100">Preserve non-executing execution request record only</button> : <p className="mt-2 text-xs text-slate-400">An authenticated operator session with mutation protection is required.</p>}
+                <p className="font-semibold text-slate-200">Validated request evidence is available to save</p>
+                <details className="mt-1 text-xs text-slate-400"><summary className="cursor-pointer">Candidate, approval, and Agent request IDs</summary>
+                    <p className="mt-1 break-all">Candidate record: {intent.approved_subject.candidate_record_id}</p>
+                    <p className="break-all">Approval statement: {intent.approval_intent_id}</p>
+                    <p className="break-all">Agent request: {bundle.agent_request.request_id}</p>
+                </details>
+                {csrfToken ? <button type="button" aria-label={`Save request record for candidate ${intent.approved_subject.candidate_record_id}`} onClick={() => setConfirming({ schema: "installation-execution-request-create-v1", candidate_record_id: intent.approved_subject.candidate_record_id, approval_intent_id: intent.approval_intent_id, agent_request: bundle.agent_request, agent_validation: bundle.agent_validation })} className="mt-2 rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100">Save request record</button> : <p className="mt-2 text-xs text-slate-400">Sign in with a protected operator session to save this record.</p>}
             </li>)}
         </ul>}
         {confirming && <Confirmation value={confirming} recording={recording} onConfirm={() => void record()} onCancel={() => setConfirming(null)} />}
@@ -87,23 +96,34 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
 
 function Confirmation({ value, recording, onConfirm, onCancel }: { value: InstallationExecutionRequestCreateV1; recording: boolean; onConfirm: () => void; onCancel: () => void }) {
     return <section aria-labelledby="execution-request-confirmation" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
-        <h6 id="execution-request-confirmation" className="font-semibold text-amber-100">Confirm preservation of a non-executing execution request record only</h6>
-        <p className="mt-2 text-sm text-slate-200">Confirm the exact candidate, approval, Agent request, validation, and evidence identities. This creates an inert record; it grants no authority and starts no work.</p>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Value name="Candidate record ID" value={value.candidate_record_id} /><Value name="Approval intent ID" value={value.approval_intent_id} /><Value name="Agent request ID" value={value.agent_request.request_id} /><Value name="Agent request fingerprint" value={value.agent_request.request_fingerprint.value} /><Value name="Agent validation fingerprint" value={value.agent_validation.validation_fingerprint.value} /><Value name="Agent evidence fingerprint" value={value.agent_validation.evidence.evidence_fingerprint.value} /></dl>
-        <div className="mt-3 flex gap-2"><button type="button" disabled={recording} onClick={onConfirm} className="rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100 disabled:opacity-50">Confirm record preservation only</button><button type="button" disabled={recording} onClick={onCancel} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Cancel</button></div>
-        {recording && <p role="status" className="mt-2 text-sm text-slate-400">Preserving immutable non-executing request record…</p>}
+        <h6 id="execution-request-confirmation" className="font-semibold text-amber-100">Confirm saving this request record</h6>
+        <p className="mt-2 text-sm text-slate-200">This stores the candidate, approval statement, and exact Agent request and validation. It does not authorize or start installation, dispatch, or Agent work.</p>
+        <p className="mt-2 break-all text-sm font-semibold text-slate-200">Candidate record ID: {value.candidate_record_id}</p>
+        <details className="mt-3 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400"><summary className="cursor-pointer font-medium text-slate-300">Verify request and evidence fingerprints</summary>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Value name="Approval intent ID" value={value.approval_intent_id} /><Value name="Agent request ID" value={value.agent_request.request_id} /><Value name="Agent request fingerprint" value={value.agent_request.request_fingerprint.value} /><Value name="Agent validation fingerprint" value={value.agent_validation.validation_fingerprint.value} /><Value name="Agent evidence fingerprint" value={value.agent_validation.evidence.evidence_fingerprint.value} /></dl>
+        </details>
+        <div className="mt-3 flex gap-2"><button type="button" disabled={recording} onClick={onConfirm} className="rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100 disabled:opacity-50">Save this request record</button><button type="button" disabled={recording} onClick={onCancel} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Cancel</button></div>
+        {recording && <p role="status" className="mt-2 text-sm text-slate-400">Saving request record…</p>}
     </section>;
 }
 
 function RequestDetails({ request }: { request: InstallationExecutionRequestV1 }) {
     const link = request.linkage;
     return <section aria-labelledby="execution-request-detail" className="mt-5 rounded-md border border-slate-700 p-3">
-        <h6 id="execution-request-detail" className="font-semibold text-slate-100">Immutable non-executing request evidence</h6>
-        <p className="mt-1 text-sm font-semibold text-amber-200">Non-executing; Agent evidence is operator-submitted; no work has started.</p>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Value name="Lifecycle" value={request.lifecycle_state} /><Value name="Ownership" value="authenticated operator-scoped" /><Value name="Recorded at" value={request.recorded_at} /><Value name="Valid until" value={request.valid_until} /><Value name="Freshness posture" value={request.lifecycle_state === "recorded" ? "evidence chain was fresh when accepted" : "expired terminally; no renewal, replay, or work"} /><Value name="Mode" value={request.mode} /><Value name="Statement" value={request.statement} /><Value name="Evidence provenance" value={request.evidence_provenance} /><Value name="Execution request ID" value={request.execution_request_id} /><Value name="Execution request fingerprint" value={request.execution_request_fingerprint.value} /><Value name="Candidate record ID" value={link.candidate_record_id} /><Value name="Candidate envelope fingerprint" value={link.candidate_envelope_fingerprint.value} /><Value name="Admission fingerprint" value={link.admission_fingerprint.value} /><Value name="Candidate record fingerprint" value={link.candidate_record_fingerprint.value} /><Value name="Approval intent ID" value={link.approval_intent_id} /><Value name="Approval intent fingerprint" value={link.approval_intent_fingerprint.value} /><Value name="Agent request ID" value={link.agent_request_id} /><Value name="Agent request fingerprint" value={link.agent_request_fingerprint.value} /><Value name="Agent validation fingerprint" value={link.agent_validation_fingerprint.value} /><Value name="Agent evidence fingerprint" value={link.agent_evidence_fingerprint.value} /><Value name="Destination fingerprint" value={link.destination_fingerprint} /><Value name="Source plan fingerprint" value={link.source_plan_fingerprint.value} /><Value name="Artifact policy fingerprint" value={link.artifact_policy_fingerprint.value} /></dl>
-        <dl aria-label="Fixed-false authority flags" className="mt-4 grid gap-2 text-sm sm:grid-cols-2"><Value name="Execution authorized" value={String(request.execution_authorized)} /><Value name="Dispatch allowed" value={String(request.dispatch_allowed)} /><Value name="Agent invocation allowed" value={String(request.agent_invocation_allowed)} /><Value name="Mutation allowed" value={String(request.mutation_allowed)} /><Value name="Replay allowed" value={String(request.replay_allowed)} /></dl>
-        <p className="mt-3 text-sm text-slate-400">Exact replay returns only this original record without revalidation, time extension, or work. It is never permission to consume or execute.</p>
+        <h6 id="execution-request-detail" className="font-semibold text-slate-100">Saved request details</h6>
+        <p className="mt-1 text-sm font-semibold text-amber-200">This record never runs installation. Agent evidence was supplied by the operator.</p>
+        <p className="mt-1 text-sm text-slate-300">{request.lifecycle_state === "recorded" ? "The request was saved while its evidence was current." : "This request has expired. It cannot be renewed or used to start work."} Replaying it returns only this record.</p>
+        <details className="mt-3 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400"><summary className="cursor-pointer font-medium text-slate-300">Technical request and evidence details</summary>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Value name="Lifecycle status code" value={request.lifecycle_state} /><Value name="Ownership" value="authenticated operator-scoped" /><Value name="Recorded at" value={request.recorded_at} /><Value name="Valid until" value={request.valid_until} /><Value name="Mode" value={request.mode} /><Value name="Statement" value={request.statement} /><Value name="Evidence provenance" value={request.evidence_provenance} /><Value name="Execution request ID" value={request.execution_request_id} /><Value name="Execution request fingerprint" value={request.execution_request_fingerprint.value} /><Value name="Candidate record ID" value={link.candidate_record_id} /><Value name="Candidate envelope fingerprint" value={link.candidate_envelope_fingerprint.value} /><Value name="Admission fingerprint" value={link.admission_fingerprint.value} /><Value name="Candidate record fingerprint" value={link.candidate_record_fingerprint.value} /><Value name="Approval intent ID" value={link.approval_intent_id} /><Value name="Approval intent fingerprint" value={link.approval_intent_fingerprint.value} /><Value name="Agent request ID" value={link.agent_request_id} /><Value name="Agent request fingerprint" value={link.agent_request_fingerprint.value} /><Value name="Agent validation fingerprint" value={link.agent_validation_fingerprint.value} /><Value name="Agent evidence fingerprint" value={link.agent_evidence_fingerprint.value} /><Value name="Destination fingerprint" value={link.destination_fingerprint} /><Value name="Source plan fingerprint" value={link.source_plan_fingerprint.value} /><Value name="Artifact policy fingerprint" value={link.artifact_policy_fingerprint.value} /></dl>
+        </details>
+        <details className="mt-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400"><summary className="cursor-pointer font-medium text-slate-300">Authority flags</summary>
+            <dl aria-label="Fixed-false authority flags" className="mt-2 grid gap-2 text-sm sm:grid-cols-2"><Value name="Execution authorized" value={String(request.execution_authorized)} /><Value name="Dispatch allowed" value={String(request.dispatch_allowed)} /><Value name="Agent invocation allowed" value={String(request.agent_invocation_allowed)} /><Value name="Mutation allowed" value={String(request.mutation_allowed)} /><Value name="Replay allowed" value={String(request.replay_allowed)} /></dl>
+        </details>
     </section>;
+}
+
+function lifecycleLabel(state: InstallationExecutionRequestV1["lifecycle_state"]): string {
+    return state === "recorded" ? "Saved while evidence was current" : "Expired";
 }
 
 function Value({ name, value }: { name: string; value: string }) { return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300">{value}</dd></div>; }

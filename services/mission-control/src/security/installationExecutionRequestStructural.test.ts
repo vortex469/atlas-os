@@ -12,8 +12,9 @@ describe("installation execution request authority isolation", () => {
         expect(api).not.toMatch(/agent-api|atlasAgent|workflow|provider|repository/);
     });
     it("has explicit non-authorizing copy and no navigation or prohibited controls", () => {
-        expect(view).toContain("Non-executing; Agent evidence is operator-submitted; no work has started.");
-        expect(view).toContain("Home Assistant remains blocked and non-executable");
+        expect(view).toContain("Saving a record does not approve or start installation.");
+        expect(view).toContain("Saving does not call Agent, dispatch work, or change a guest.");
+        expect(view).toContain("Home Assistant remains blocked because its deployment artifact and required proof are missing.");
         expect(view).not.toMatch(/<form|<Link|navigate\(|href=/);
         expect(approvalView).not.toMatch(/\/installation\/execution-requests/);
         for (const label of ["Install", "Run", "Execute", "Deploy", "Dispatch", "Send to Agent", "Start workflow", "Rollback"]) {
