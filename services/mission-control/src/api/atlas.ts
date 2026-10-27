@@ -35,6 +35,7 @@ import {
 
 import { DoctorResponseError, parseDoctorReport } from "./doctorResponse";
 
+import { parseProviderActionList } from "./providerActionListResponse";
 import { parseProviderActionResult } from "./providerActionResponse";
 
 const ATLAS_API_BASE_URL =
@@ -68,11 +69,11 @@ export async function analyzeCompose(
 export async function getProviderActions(
     providerId: string,
 ): Promise<ProviderAction[]> {
-    const response = await atlas.get<ProviderAction[]>(
+    const response = await atlas.get<unknown>(
         `/providers/${encodeURIComponent(providerId)}/actions`,
     );
 
-    return response.data;
+    return parseProviderActionList(response.data);
 }
 
 export async function runProviderAction(

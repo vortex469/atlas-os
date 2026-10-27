@@ -224,3 +224,16 @@ saves do not operate resources, advisory reports do not change settings or run
 actions, and maintenance requires review of the proposal/plan and approval of the
 exact action. Existing initial/retained error, recovery and authority assertions
 exercise these messages; no backend decisions or controls change.
+
+Provider action lists are read as unknown data and validated before publishing
+controls. Complete serialized metadata, native action ID syntax, strict boolean
+flags and unique selectable action IDs are required. Core's parameter dictionary
+is open: the UI checks object definitions and the string/bool fields its form
+consumes, preserving unrelated extensions. Unreadable definitions use the existing
+action-list error and Reload control rather than presenting a guessed form.
+Native serializer fixtures cover default actions, disabled/destructive/confirmed
+flags and parameter extensions. Browser cases cover malformed roots, flags,
+parameter descriptions, duplicate IDs and transport errors at three widths;
+reloading restores the required-input and confirmation gates. Dismissing the
+confirmation sends no action request. No execution behavior or backend authority
+is added or relaxed.

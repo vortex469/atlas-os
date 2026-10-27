@@ -1,0 +1,35 @@
+[
+  {
+    "id": "run-diagnostics",
+    "label": "Run Diagnostics",
+    "description": "",
+    "icon": "play",
+    "requires_confirmation": false,
+    "destructive": false,
+    "enabled": true,
+    "parameters": {}
+  },
+  {
+    "id": "unload-model",
+    "label": "Unload Model",
+    "description": "Unload a model from memory.",
+    "icon": "power",
+    "requires_confirmation": true,
+    "destructive": true,
+    "enabled": false,
+    "parameters": {
+      "model": {
+        "type": "string",
+        "required": true,
+        "description": "Loaded model name.",
+        "example": "example:model",
+        "future": {
+          "metadata": [
+            1,
+            2
+          ]
+        }
+      }
+    }
+  }
+]
