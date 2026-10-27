@@ -405,3 +405,17 @@ separate approval or resume action. Existing approvals remain recorded while the
 request is unavailable. Later verification/commit decisions and original-worker
 result reconciliation keep their existing boundaries. The implementation request
 explanation now uses plain language instead of listing internal editors and argv.
+
+Commit approval and commit resume now wait for a readable exact-request summary.
+The existing public commit DTO is checked for its request ID, commit message,
+reviewed-content fingerprint, approval status, reviewed file list and nullable
+repository/branch/HEAD metadata. Empty reviewed file lists and nullable metadata
+remain valid. Additional response metadata is preserved for existing displays.
+
+When the workflow is waiting for commit approval but its request is unreadable,
+Check commit request performs the existing read-only refresh. It pauses during a
+pending read and never approves or commits automatically. A previously recorded
+approval remains recorded; a successful read only restores the separate action.
+Earlier stages do not warn about commit requests that have not been created yet.
+Commit approval wording describes the operator's decision rather than internal
+HTTP payload fields. Backend approval binding and commit execution are unchanged.
