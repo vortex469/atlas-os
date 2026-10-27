@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseDiscoveryEvidence } from "./discoveryEvidenceResponse";
 import { parseDiscoveryCompatibility } from "./discoveryCompatibilityResponse";
 import { parseDiscoveryItem } from "./discoveryItemResponse";
 import { parseDiscoveryMetadata } from "./discoveryMetadataResponse";
@@ -78,11 +79,11 @@ export async function getDiscoveryItem(
 export async function getDiscoveryItemEvidence(
     itemId: string,
 ): Promise<DiscoveryItemEvidence> {
-    const response = await atlas.get<DiscoveryItemEvidence>(
+    const response = await atlas.get<unknown>(
         `/discovery/items/${encodeURIComponent(itemId)}/evidence`,
     );
 
-    return response.data;
+    return parseDiscoveryEvidence(response.data, itemId);
 }
 
 export async function getDiscoveryImageGrounding(

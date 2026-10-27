@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 
 import { getAtlasErrorMessage } from "../api/atlas";
+import { DiscoveryEvidenceResponseError } from "../api/discoveryEvidenceResponse";
 import { DiscoveryCompatibilityResponseError } from "../api/discoveryCompatibilityResponse";
 import { DiscoveryItemResponseError } from "../api/discoveryItemResponse";
 import {
@@ -259,7 +260,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 if (cancelled) return;
                 console.error(`Unable to load Discovery evidence for ${itemId}:`, requestError);
                 setEvidenceError(
-                    getAtlasErrorMessage(
+                    requestError instanceof DiscoveryEvidenceResponseError ? requestError.message : getAtlasErrorMessage(
                         requestError,
                         "Mission Control could not load dynamic source evidence.",
                     ),

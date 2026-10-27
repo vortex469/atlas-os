@@ -180,3 +180,35 @@ for (const width of [320, 390, 1280]) {
         expect(rejectedMutationRequests).toEqual([]);
     });
 }
+
+for (const width of [320, 390, 1280]) {
+    test(`malformed release evidence keeps the Discovery item readable at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        const entry = discoveryItemsPage.entries[0];
+        let reads = 0;
+        let recovered = false;
+        const errors: string[] = [];
+        page.on("pageerror", error => errors.push(error.message));
+        await page.route("**/api/v1/discovery/items/fixture-app", route => route.fulfill({ json: entry }));
+        await page.route("**/api/v1/discovery/items/fixture-app/evidence", route => {
+            reads += 1;
+            expect(route.request().method()).toBe("GET");
+            return route.fulfill({ json: { schema_version: "discovery-merged-item-v1", catalog_item_id: "fixture-app",
+                curated: entry, conflict_state: "none", dynamic_claims: [], source_states: recovered ? [] : {} } });
+        });
+        await page.goto("/discovery/items/fixture-app");
+        await expect(page.getByText("The release evidence could not be read. Reload the page to try again.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toBeVisible();
+        await expect(page.getByText("Dynamic evidence unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByText("No conflict", { exact: true })).toHaveCount(0);
+        const initialReads = reads;
+        expect(initialReads).toBeGreaterThan(0);
+        recovered = true;
+        await page.reload();
+        await expect(page.getByText("Curated catalog only", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toBeVisible();
+        expect(reads).toBe(initialReads * 2);
+        expect(errors).toEqual([]);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}

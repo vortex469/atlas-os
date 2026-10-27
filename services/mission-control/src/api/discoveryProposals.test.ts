@@ -25,9 +25,12 @@ describe("Discovery proposal API", () => {
     });
 
     it("reads evidence with an encoded item identity and no write options", async () => {
-        vi.mocked(atlas.get).mockResolvedValueOnce({ data: { catalog_item_id: "item" } });
+        vi.mocked(atlas.get).mockResolvedValueOnce({ data: {
+            schema_version: "discovery-merged-item-v1", catalog_item_id: "item/with?tampering",
+            curated: { item: { id: "item/with?tampering" } }, conflict_state: "none",
+        } });
 
-        await getDiscoveryItemEvidence("item/with?tampering");
+        await expect(getDiscoveryItemEvidence("item/with?tampering")).resolves.toMatchObject({ catalog_item_id: "item/with?tampering" });
 
         expect(atlas.get).toHaveBeenCalledWith(
             "/discovery/items/item%2Fwith%3Ftampering/evidence",
