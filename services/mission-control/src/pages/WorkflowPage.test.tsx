@@ -192,6 +192,7 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
         renderPage();
         await screen.findByRole("heading", { name: "Exact action request" });
+        expect(within(screen.getByRole("region", { name: "Workflow summary" })).getByText("Exact action approval status: Pending")).toBeVisible();
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
         expect(screen.getByText("2999-01-01T12:00:00Z")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
@@ -659,7 +660,7 @@ describe("WorkflowPage", () => {
         );
         renderPage();
 
-        expect(await screen.findByText("Implementation approval status: Pending")).toBeInTheDocument();
+        expect(await screen.findByText("Review the recorded workflow results.")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /Resume Approved/i })).not.toBeInTheDocument();
     });
 
@@ -877,9 +878,11 @@ describe("WorkflowPage", () => {
     });
 
     it("renders verification plan, evidence, and deterministic review", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingVerification({ verification_approval_status: "pending" }));
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Verification Plan" })).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Workflow summary" })).getByText("Verification approval status: Pending")).toBeVisible();
         expect(screen.getByText("verification-plan-123")).toBeInTheDocument();
         expect(screen.getByText("verifier-v1")).toBeInTheDocument();
         expect(screen.getAllByText("changed-digest-123").length).toBeGreaterThan(0);
@@ -963,6 +966,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Commit Request" })).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Workflow summary" })).getByText("Commit approval status: Pending")).toBeVisible();
         expect(screen.getByText("approval-commit-workflow-123")).toBeInTheDocument();
         expect(screen.getAllByText("/opt/atlas").length).toBeGreaterThan(0);
         expect(screen.getByText("feature/atlas-agent")).toBeInTheDocument();

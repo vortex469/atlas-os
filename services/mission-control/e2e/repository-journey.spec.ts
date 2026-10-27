@@ -55,6 +55,7 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Resume Approved Commit", exact: true }).click();
 
         await expect(page.getByRole("heading", { name: "Completed workflow", exact: true })).toBeVisible();
+        await expect(page.getByRole("region", { name: "Workflow summary", exact: true }).getByText("Review the recorded workflow results.", { exact: true })).toBeVisible();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
         await expect(page.getByText("Commit approved. Resume to finish the local commit.", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /Resume Approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
@@ -74,6 +75,7 @@ test("rejecting implementation leaves execution and later approvals unavailable 
     await page.goto(`/workflows/${journey.workflow}`);
     await page.getByRole("button", { name: "Reject", exact: true }).click();
     await expect(page.getByText("Approval rejected.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Workflow summary", exact: true }).getByText("Workflow is blocked. Review its details.", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Resume Approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Review repository change", exact: true })).toBeVisible();
@@ -100,6 +102,7 @@ test("a pending workflow refresh disables decisions without submitting a request
     await expect(page.getByRole("button", { name: "Reject", exact: true })).toBeEnabled();
     await page.getByRole("button", { name: "Reject", exact: true }).click();
     await expect(page.getByText("Approval rejected.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Workflow summary", exact: true }).getByText("Workflow is blocked. Review its details.", { exact: true })).toBeVisible();
     expect(fixture.writes).toEqual(fixture.expectedWrites);
     expect(fixture.unexpected).toEqual([]);
     await fitsViewport(page);
