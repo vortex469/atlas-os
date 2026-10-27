@@ -10,7 +10,9 @@ for (const width of [320, 390, 1280]) for (const mode of ['metadata', 'lists', '
         await page.route('**/api/v1/execution-candidates/review-readable', route => {
             expect(route.request().method()).toBe('GET');
             reads++;
-            const candidate = { ...maintenanceCandidate, id: 'review-readable', expires_at: '2999-01-01T00:00:00Z' };
+            const candidate = { ...maintenanceCandidate, id: 'review-readable', expires_at: '2999-01-01T00:00:00Z',
+                created_at: mode === 'metadata' ? '2026-02-30T00:00:00Z' : mode === 'lists' ? '2026-08-16T00:00:00' : '2099-01-01T00:00:00Z',
+            };
             const badFields = mode === 'metadata' ? { execution_intent: {}, target_id: {} }
                 : mode === 'lists' ? { constraints: [{}] } : { compatibility_status: {} };
             return route.fulfill({ json: unreadable ? { ...candidate, ...badFields } : candidate });
@@ -25,6 +27,10 @@ for (const width of [320, 390, 1280]) for (const mode of ['metadata', 'lists', '
         await expect(page.getByRole('heading', { name: 'Restart Service', exact: true, level: 1 })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Start planning', exact: true })).toBeEnabled();
         await expect(error).toHaveCount(0);
+        const details = page.getByText('Technical details', { exact: true });
+        await details.click();
+        await expect(page.getByText('Created', { exact: true }).locator('..')).toContainText('Unknown time');
+        await details.click();
         unreadable = true;
         await page.getByRole('button', { name: 'Refresh proposal', exact: true }).click();
         await expect(error).toContainText('The proposal response is incomplete or unreadable.');
