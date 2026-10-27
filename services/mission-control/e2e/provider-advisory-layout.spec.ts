@@ -18,6 +18,10 @@ for (const width of [320, 390, 1280]) for (const kind of ["finding", "recommenda
         await expect(card).toBeVisible();
         const verifyBounds = async () => {
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+            const panel = await card.boundingBox();
+            expect(panel).not.toBeNull();
+            expect(panel!.x).toBeGreaterThanOrEqual(0);
+            expect(panel!.x + panel!.width).toBeLessThanOrEqual(width + 1);
             const bounds = await card.evaluate(element => {
                 const panel = element.getBoundingClientRect();
                 return [...element.querySelectorAll("h3,p,span,dd,dt,summary")].filter(item => item.getClientRects().length > 0 && Boolean(item.textContent?.trim())).map(item => {
