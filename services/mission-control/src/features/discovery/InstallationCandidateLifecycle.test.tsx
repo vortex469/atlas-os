@@ -45,25 +45,33 @@ describe("installation candidate lifecycle", () => {
         let reject: (error: Error) => void = () => undefined;
         vi.mocked(listInstallationCandidateRecords).mockReturnValueOnce(new Promise((_, rejectPromise) => { reject = rejectPromise; }));
         const view = render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken={null} />);
-        expect(screen.getByText(/loading saved candidate records/i)).toBeInTheDocument();
+        expect(screen.getByText(/loading saved review records/i)).toBeInTheDocument();
         reject(new Error("secret 10.0.0.1 /internal/path"));
         await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
         expect(view.container).not.toHaveTextContent(/secret|10\.0\.0\.1|internal\/path/i);
         view.unmount();
         vi.mocked(listInstallationCandidateRecords).mockResolvedValueOnce([]);
         render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken={null} />);
-        expect(await screen.findByText("No saved candidate records.")).toBeInTheDocument();
+        expect(await screen.findByText("No saved review records.")).toBeInTheDocument();
     });
 
-    it("lists active and expired records, gets details, and visibly preserves five false flags", async () => {
+    it("uses plain expiry labels and keeps exact record and authority details available", async () => {
         vi.mocked(listInstallationCandidateRecords).mockResolvedValueOnce([envelope("active"), envelope("expired")]);
         vi.mocked(getInstallationCandidateRecord).mockResolvedValueOnce(envelope("expired"));
         const user = userEvent.setup();
         const { container } = render(<InstallationCandidateLifecycle admission={admission()} itemId="example" selectionId="selection-1" csrfToken="csrf" />);
-        expect(await screen.findByText("example · active")).toBeInTheDocument();
-        expect(screen.getByText("example · expired")).toBeInTheDocument();
-        await user.click(screen.getAllByRole("button", { name: "Review saved record" })[1]);
-        expect(await screen.findByText("candidate-fingerprint")).toBeInTheDocument();
+        expect(await screen.findByText("example · Not expired")).toBeInTheDocument();
+        expect(screen.getByText("example · Expired")).toBeInTheDocument();
+        expect(container).not.toHaveTextContent("example · active");
+        await user.click(screen.getByRole("button", { name: /Review example, Expired, record ID record-expired/ }));
+        expect(await screen.findByRole("heading", { name: "Saved review record" })).toBeInTheDocument();
+        const identifiersSummary = screen.getByText("Record identifiers and source facts");
+        const identifiers = identifiersSummary.closest("details");
+        expect(identifiers).not.toHaveAttribute("open");
+        await user.click(identifiersSummary);
+        expect(within(identifiers!).getByText("candidate-fingerprint")).toBeInTheDocument();
+        const authoritySummary = screen.getByText("Authority flags");
+        await user.click(authoritySummary);
         const flags = container.querySelector<HTMLElement>('[aria-label="Saved candidate record authority flags"]');
         expect(flags).not.toBeNull();
         expect(within(flags!).getAllByText("false")).toHaveLength(5);
@@ -73,14 +81,14 @@ describe("installation candidate lifecycle", () => {
         vi.mocked(preserveInstallationCandidateRecord).mockResolvedValueOnce(envelope());
         const user = userEvent.setup();
         render(<InstallationCandidateLifecycle admission={admission()} itemId="example" selectionId="selection-1" csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: "Preserve candidate record" }));
+        await user.click(await screen.findByRole("button", { name: "Save this review record" }));
         expect(preserveInstallationCandidateRecord).toHaveBeenCalledWith({ item_id: "example", selection_id: "selection-1" }, "csrf", "preserve-key");
-        expect(screen.getByText(/preservation is not approval/i)).toBeInTheDocument();
+        expect(screen.getByText(/saved records cannot approve, run, deploy, or dispatch an installation/i)).toBeInTheDocument();
     });
 
     it("keeps Home Assistant not preserved and exposes no authority control or navigation", async () => {
         const { container } = render(<InstallationCandidateLifecycle admission={admission(false)} itemId="home-assistant" selectionId="selection-1" csrfToken="csrf" />);
-        expect(await screen.findByText(/cannot be preserved/i)).toBeInTheDocument();
+        expect(await screen.findByText(/returned no review record to save/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /preserve/i })).not.toBeInTheDocument();
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
         expect(container.textContent).not.toMatch(/start workflow|send to agent|convert candidate|approve candidate/i);
@@ -92,8 +100,8 @@ describe("installation candidate lifecycle", () => {
         vi.mocked(deleteInstallationCandidateRecord).mockResolvedValueOnce();
         const user = userEvent.setup();
         render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: "Delete saved record" }));
+        await user.click(await screen.findByRole("button", { name: /Delete example, Not expired, record ID record-active/ }));
         expect(deleteInstallationCandidateRecord).toHaveBeenCalledWith("record-active", "csrf");
-        expect(await screen.findByText(/advisory record is gone and cannot be replayed/i)).toBeInTheDocument();
+        expect(await screen.findByText("Deleted saved review record. It cannot be restored or replayed.")).toBeInTheDocument();
     });
 });
