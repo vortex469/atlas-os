@@ -138,6 +138,7 @@ export function WorkflowDashboardPage() {
     const totalPages = Math.max(1, Math.ceil(matchingCount / PAGE_SIZE));
     const currentPage = Math.floor((workflowResponse?.offset ?? 0) / PAGE_SIZE);
     const hasFilters = Object.values(selection.filters).some(Boolean);
+    const retainedResults = isRefreshing || refreshError !== null;
 
     function updateDraftFilter(name: keyof DashboardFilters, value: string) {
         setDraftFilters((current) => ({ ...current, [name]: value }));
@@ -197,10 +198,11 @@ export function WorkflowDashboardPage() {
             </header>
 
             {isRefreshing && <p role="status" aria-live="polite" className="text-sm text-blue-200">Refreshing workflows...</p>}
+            {retainedResults && <p role="status" className="text-sm text-amber-200">Showing the last loaded results. Current workflow states and totals are unconfirmed.</p>}
             {refreshError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">Refresh failed: {refreshError}</p>}
 
             <section aria-labelledby="workflow-counts-heading" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <h2 id="workflow-counts-heading" className="text-sm font-semibold text-slate-300 md:col-span-2 xl:col-span-3">Totals for this search</h2>
+                <h2 id="workflow-counts-heading" className="text-sm font-semibold text-slate-300 md:col-span-2 xl:col-span-3">{retainedResults ? "Last loaded totals for this search" : "Totals for this search"}</h2>
                 {isLoading && <p role="status" className="text-sm text-slate-300">Loading matching workflow totals…</p>}
                 {!isLoading && SUMMARY_GROUPS.map((group) => (
                     <article key={group.key} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
@@ -258,23 +260,23 @@ export function WorkflowDashboardPage() {
             <section aria-labelledby="workflow-list-heading" className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 id="workflow-list-heading" className="text-xl font-semibold text-white">Workflow list</h2>
-                    <p className="text-sm text-slate-400">{isLoading ? "Loading matching workflows…" : `Showing ${workflows.length} of ${matchingCount} matching workflows`}</p>
+                    <p className="text-sm text-slate-400">{isLoading ? "Loading matching workflows…" : `${retainedResults ? "Last loaded: " : "Showing "}${workflows.length} of ${matchingCount} matching workflows`}</p>
                 </div>
 
                 {isLoading ? (
                     <p role="status" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">Loading workflow results…</p>
                 ) : workflows.length === 0 ? (
                     <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">
-                        <p>{hasFilters ? "No workflows match the current filters." : "No workflows yet."}</p>
-                        <p>{hasFilters ? "Try a broader search or clear the filters above." : "Review a change proposal or choose maintenance to prepare a workflow."}</p>
-                        {!hasFilters && <div className="flex flex-wrap gap-4">
+                        <p>{retainedResults ? (hasFilters ? "The last loaded search had no matches." : "The last loaded list was empty.") : (hasFilters ? "No workflows match the current filters." : "No workflows yet.")}</p>
+                        <p>{retainedResults ? "Use Refresh to check the current list." : hasFilters ? "Try a broader search or clear the filters above." : "Review a change proposal or choose maintenance to prepare a workflow."}</p>
+                        {!hasFilters && !retainedResults && <div className="flex flex-wrap gap-4">
                             <Link to="/execution-candidates" className="text-blue-300 underline underline-offset-4 focus-visible:outline-2">Review change proposals</Link>
                             <Link to="/operations/request" className="text-blue-300 underline underline-offset-4 focus-visible:outline-2">Choose maintenance</Link>
                         </div>}
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {workflows.map((workflow) => <WorkflowCard key={workflow.workflow_id} workflow={workflow} />)}
+                        {workflows.map((workflow) => <WorkflowCard key={workflow.workflow_id} workflow={workflow} retained={retainedResults} />)}
                     </div>
                 )}
 
@@ -290,7 +292,7 @@ export function WorkflowDashboardPage() {
     );
 }
 
-function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
+function WorkflowCard({ workflow, retained }: { workflow: WorkflowSummary; retained: boolean }) {
     const actionRequired = workflowActionRequired(workflow.workflow_state);
     const railId = `workflow-rail-${workflow.workflow_id}`;
     return (
@@ -298,17 +300,17 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h3 className="break-all text-lg font-semibold text-white">{workflow.workflow_id}</h3>
-                    <p className="mt-1 text-sm text-slate-400">Current stage: {workflowStageLabel(workflow.workflow_state)}</p>
+                    <p className="mt-1 text-sm text-slate-400">{retained ? "Last loaded stage" : "Current stage"}: {workflowStageLabel(workflow.workflow_state)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     Open Workflow
                 </Link>
             </div>
             <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <Detail label="Current State" value={formatWorkflowLabel(workflow.workflow_state)} />
+                <Detail label={retained ? "Last loaded state" : "Current State"} value={formatWorkflowLabel(workflow.workflow_state)} />
                 <Detail label="Repository or Target" value={workflow.repository ?? workflow.target_id ?? "Not exposed"} />
                 <Detail label="Last Known Result" value={workflow.last_result_summary} />
-                <Detail label="Approval state" value={actionRequired ? "Waiting for approval" : "Not waiting for approval"} />
+                <Detail label={retained ? "Last loaded approval state" : "Approval state"} value={actionRequired ? "Waiting for approval" : "Not waiting for approval"} />
             </dl>
             <details className="mt-4 rounded-lg border border-slate-800 p-3">
                 <summary className="cursor-pointer text-sm text-blue-300 focus-visible:outline-2">Workflow details</summary>
