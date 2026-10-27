@@ -545,3 +545,12 @@ available for inspecting current details; request handling, filtering, polling
 and approval boundaries are unchanged. Phone and desktop fixtures cover populated,
 empty and filtered results through pending reads, failure and recovery with GET
 only and exact read counts.
+
+Workflow directory responses validate display fields before replacing the current
+page. Unusable workflow identities, malformed timelines and non-text metadata
+use the existing recoverable list error instead of reaching rendering. A bad
+refresh retains the last valid snapshot and its last-loaded labels. Nullable or
+omitted metadata, empty timelines, extra response fields and future string states
+remain readable. Initial retry and refresh recovery use the existing GET only;
+no response fields are merged or reconstructed, and counts stay paired with the
+validated page. Tests cover both entry paths, exact read counts and zero writes.

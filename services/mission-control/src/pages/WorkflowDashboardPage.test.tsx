@@ -299,4 +299,47 @@ describe("WorkflowDashboardPage", () => {
         expect(list).toHaveBeenCalledTimes(filtered ? 4 : 3);
     });
 
+    it.each([
+        {repository: {}}, {target_id: {}}, {workflow_source: {}}, {candidate_id: {}}, {planning_session_id: 42},
+        {last_result_summary: {}}, {last_result_summary: null}, {timeline: {}}, {timeline: null}, {timeline: [null]},
+        {timeline: [{name: {}, status: "current"}]}, {timeline: [{name: "Execution", status: {}}]},
+        {workflow_id: ""}, {workflow_id: "   "}, {workflow_id: "."}, {workflow_id: ".."}, {workflow_id: "\ud800"},
+    ])("recovers an unreadable workflow record %j without rendering it", async patch => {
+        const invalid = {...workflow(), ...patch} as unknown as WorkflowSummary;
+        list.mockResolvedValueOnce(response([invalid])).mockResolvedValueOnce(response([workflow()]));
+        renderDashboard();
+        expect(await screen.findByRole("heading", {name: "Workflows unavailable"})).toBeVisible();
+        expect(screen.getByRole("alert")).toHaveTextContent("inconsistent workflow page");
+        fireEvent.click(screen.getByRole("button", {name: "Try again"}));
+        expect(await screen.findByRole("heading", {name: "workflow-123"})).toBeVisible();
+        expect(list).toHaveBeenCalledTimes(2);
+    });
+
+    it("retains the last valid record when refresh returns malformed display fields", async () => {
+        list.mockResolvedValueOnce(response([workflow()]))
+            .mockResolvedValueOnce(response([{...workflow(), repository: {private: "not-displayable"}} as unknown as WorkflowSummary]))
+            .mockResolvedValueOnce(response([workflow({last_result_summary: "Recovered record"})]));
+        renderDashboard(); await screen.findByText("workflow-123");
+        fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
+        expect(await screen.findByRole("alert")).toHaveTextContent("inconsistent workflow page");
+        expect(screen.getByText("Last loaded state")).toBeVisible();
+        expect(screen.getByText("/repo")).toBeVisible();
+        expect(screen.queryByText("not-displayable")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
+        expect(await screen.findByText("Recovered record")).toBeVisible();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(list).toHaveBeenCalledTimes(3);
+    });
+
+    it("preserves nullable metadata, empty timelines, extra fields and future string states", async () => {
+        const compatible = {...workflow({candidate_id: null, planning_session_id: null, repository: null, target_id: null, timeline: []}),
+            workflow_source: undefined, workflow_state: "future_state", extra_metadata: "not-a-public-field"} as unknown as WorkflowSummary;
+        list.mockResolvedValue(response([compatible]));
+        renderDashboard();
+        expect(await screen.findByRole("heading", {name: "workflow-123"})).toBeVisible();
+        expect(screen.getByText("Other states")).toBeVisible();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.queryByText("not-a-public-field")).not.toBeInTheDocument();
+    });
+
 });
