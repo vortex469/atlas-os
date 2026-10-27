@@ -263,6 +263,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         && Array.isArray(workflow.approval_presentations) && workflow.approval_presentations.some((approval) =>
             approval?.purpose === "operational_action" && approval.decision_status === "pending"
             && approval.presentation_state === "actionable" && approval.actionable === true));
+    const needsPreparation = workflow.workflow_source === "candidate"
+        && workflow.workflow_state === "awaiting_approval"
+        && workflow.implementation_request == null && workflow.operational_action_request == null;
+    const preparationPath = planningPreparationPath(workflow.planning_session_id);
     const canDecide =
         workflow.workflow_state === "awaiting_implementation_approval"
         && workflow.implementation_approval_status === "pending"
@@ -334,45 +338,46 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow</p>
-                    <h1 className="mt-3 break-all text-3xl font-bold text-white">Workflow {workflow.workflow_id}</h1>
+                    <h1 className={`mt-3 text-3xl font-bold text-white ${needsPreparation ? "break-words" : "break-all"}`}>{needsPreparation ? "Continue preparing this change" : `Workflow ${workflow.workflow_id}`}</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        {workflow.effect_kind === "operational_action"
+                        {needsPreparation ? "Review the saved workflow before preparing an exact request for approval." : workflow.effect_kind === "operational_action"
                             ? "Review the maintenance request, its approval and current result. Use Resume to advance an approved stage."
                             : "Review this workflow and its exact approval requests. Use Resume to advance an approved stage. Implementation, verification and commit each need their own approval."}
                     </p>
                 </div>
-                <WorkflowRail workflow={workflow} />
+                {!needsPreparation && <WorkflowRail workflow={workflow} />}
             </header>
+
+            {needsPreparation && <section aria-labelledby="continue-preparation-heading" className="rounded-xl border border-blue-400/30 bg-blue-400/5 p-5">
+                <h2 id="continue-preparation-heading" className="text-lg font-semibold text-white">{preparationPath ? "Finish preparing this change" : "Preparation details unavailable"}</h2>
+                <p className="mt-2 text-sm text-slate-300">{preparationPath
+                    ? "This workflow is saved, but its exact request is not ready for approval. Review preparation to continue. You will approve and run the change separately."
+                    : "This workflow does not report a usable planning session. Check its status again or return to change proposals."}</p>
+                {preparationPath && !controlsBusy && <Link to={preparationPath} className="mt-3 inline-flex text-sm font-semibold text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Review preparation</Link>}
+                {!preparationPath && <button type="button" disabled={controlsBusy} onClick={() => { if (!controlsBusy && !readPending.current) void loadWorkflow("refresh"); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold disabled:opacity-50">{isRefreshing ? "Checking workflow status…" : "Check workflow status"}</button>}
+            </section>}
 
             <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
-                        <p className="mt-1 text-sm text-slate-400">Implementation approval status: {formatLabel(workflow.implementation_approval_status)}</p>
+                        <p className="mt-1 text-sm text-slate-400">{needsPreparation ? "Request preparation is pending." : `Implementation approval status: ${formatLabel(workflow.implementation_approval_status)}`}</p>
                     </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{formatLabel(workflow.workflow_state)}</span>
+                    <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{needsPreparation ? "Preparation" : formatLabel(workflow.workflow_state)}</span>
                 </div>
-                <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Workflow ID" value={workflow.workflow_id} />
-                    <Detail label="Workflow Source" value={workflow.workflow_source} />
-                    <Detail label="Workflow State" value={formatLabel(workflow.workflow_state)} />
-                    <Detail label="Planning Session ID" value={workflow.planning_session_id ?? "Not exposed"} />
-                    <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not exposed"} />
-                    <Detail label="Candidate Fingerprint" value={workflow.candidate_fingerprint ?? "Not exposed"} />
-                    <Detail label="Plan Fingerprint" value={workflow.plan_fingerprint ?? "Not exposed"} />
-                    <Detail label="Implementation Approval Status" value={formatLabel(workflow.implementation_approval_status)} />
-                    <Detail label="Repository" value={workflow.repository ?? "Not exposed"} />
-                    <Detail label="Working Directory" value={workflow.working_directory ?? "Not exposed"} />
-                    <Detail label="Translator Version" value={workflow.translator_version ?? "Not exposed"} />
-                    <Detail label="Affected Files" value={workflow.affected_files.length > 0 ? workflow.affected_files.join(", ") : "None reported"} />
-                </dl>
+                {needsPreparation ? <details className="mt-4 rounded-lg border border-slate-800 p-3">
+                    <summary className="cursor-pointer text-sm text-slate-300">Workflow details</summary>
+                    <WorkflowFacts workflow={workflow} />
+                </details> : <WorkflowFacts workflow={workflow} />}
             </section>
 
-            {isRepository && <ImplementationRequestSection workflow={workflow} />}
+
+
+            {isRepository && !needsPreparation && <ImplementationRequestSection workflow={workflow} />}
 
             {isOperational && (
                 <>
-                    <OperationalActionRequestSection request={actionRequest} />
+                    {!needsPreparation && <OperationalActionRequestSection request={actionRequest} />}
                     <OperationalLifecyclePanel
                         lifecycle={operationalLifecycle}
                         isLoading={isRefreshing && operationalLifecycle === null && lifecycleError === null}
@@ -399,7 +404,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 </>
             )}
 
-            <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} onRefresh={refreshWorkflow} />
+            {needsPreparation ? <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <summary className="cursor-pointer text-sm text-slate-300">Workflow progress</summary>
+                <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} onRefresh={refreshWorkflow} />
+            </details> : <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} onRefresh={refreshWorkflow} />}
 
             {isRepository && workflow.execution.output_capture?.some((item) => item.truncated) && (
                 <section aria-labelledby="output-capture-heading" className="rounded-xl border border-amber-500/50 p-5">
@@ -428,7 +436,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 </details>
             )}
 
-            {isRepository && (
+            {isRepository && !needsPreparation && (
                 <>
                     <VerificationReviewSection
                         workflow={workflow}
@@ -452,7 +460,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 </>
             )}
 
-            <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            {!needsPreparation && <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="approval-controls-heading" className="text-lg font-semibold text-white">
                     {workflow.effect_kind === "operational_action" ? "Operational action approval" : "Implementation approval"}
                 </h2>
@@ -483,7 +491,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <p role="status" className="mt-3 text-sm text-red-100">Approval rejected.</p>
                 )}
                 {approvalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(approvalError)}</p>}
-            </section>
+            </section>}
 
             {canResume && (
                 <section aria-labelledby="resume-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -768,4 +776,32 @@ function approvalMessage(message: string): string {
     if (lower.includes("persistence")) return "Persistence failure.";
     if (lower.includes("unavailable")) return "Atlas Agent unavailable.";
     return message;
+}
+
+
+function planningPreparationPath(sessionId: string | null): string | null {
+    if (typeof sessionId !== "string" || !sessionId || sessionId.trim() !== sessionId
+        || sessionId === "." || sessionId === ".."
+        || Array.from(sessionId).some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) return null;
+    return `/candidate-planning/${encodeURIComponent(sessionId)}/workflow`;
+}
+
+
+function WorkflowFacts({ workflow }: { workflow: WorkflowDetailResponse }) {
+    return (
+                <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                    <Detail label="Workflow ID" value={workflow.workflow_id} />
+                    <Detail label="Workflow Source" value={workflow.workflow_source} />
+                    <Detail label="Workflow State" value={formatLabel(workflow.workflow_state)} />
+                    <Detail label="Planning Session ID" value={workflow.planning_session_id ?? "Not exposed"} />
+                    <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not exposed"} />
+                    <Detail label="Candidate Fingerprint" value={workflow.candidate_fingerprint ?? "Not exposed"} />
+                    <Detail label="Plan Fingerprint" value={workflow.plan_fingerprint ?? "Not exposed"} />
+                    <Detail label="Implementation Approval Status" value={formatLabel(workflow.implementation_approval_status)} />
+                    <Detail label="Repository" value={workflow.repository ?? "Not exposed"} />
+                    <Detail label="Working Directory" value={workflow.working_directory ?? "Not exposed"} />
+                    <Detail label="Translator Version" value={workflow.translator_version ?? "Not exposed"} />
+                    <Detail label="Affected Files" value={workflow.affected_files.length > 0 ? workflow.affected_files.join(", ") : "None reported"} />
+                </dl>
+    );
 }

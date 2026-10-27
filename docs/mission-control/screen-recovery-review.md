@@ -354,3 +354,24 @@ The browser journey allowlists remove only the former duplicate conversion POST;
 all later approvals and resumes retain their exact method, body and ordering.
 Summary tests cover direct entry, reload and failed-read recovery at 320, 390 and
 1280 pixels with zero mutation requests.
+
+
+A saved candidate workflow in the initial `awaiting_approval` preparation state
+now offers Review preparation when both exact request summaries are absent.
+The link uses the workflow's reported planning session and opens the read-only
+preparation summary; it does not create another workflow or prepare a request on
+navigation. Missing or unusable linkage offers Check workflow status, a GET-only
+retry. Later approval/execution states, other workflow sources and workflows with
+an existing request retain their normal views.
+
+The unfinished preparation view replaces unavailable-request and approval prompts
+with a single explanation of the next step. Repository verification and commit
+controls stay out of this initial view. Preparing the request still requires its
+own explicit click; approving it and running it remain separate. Browser cases
+resume both repository and maintenance preparation from a saved workflow, reload
+both views without writes, and allow one exact synthetic request-preparation POST
+only after the operator's click, with no approval or resume.
+
+The unfinished view uses a short heading and puts its next step before saved
+facts. Workflow identifiers, source information and progress remain available in
+collapsed disclosures. Later-stage workflow views retain their existing layout.
