@@ -405,26 +405,29 @@ function WorkflowCreationResult({ workflow }: { workflow: CandidateWorkflowRespo
     return (
         <div role={isSuccessful ? "status" : "alert"} className={["mt-4 rounded-lg border p-4", isSuccessful ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"].join(" ")}>
             <p className={isSuccessful ? "font-semibold text-emerald-200" : "font-semibold text-amber-200"}>{workflowMessage(workflow)}</p>
-            <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
-                <Detail label="Workflow ID" value={workflow.workflow_session_id ?? "Not available"} />
-                <Detail label="Workflow status" value={workflow.workflow_status ? formatLabel(workflow.workflow_status) : "Not available"} />
-                <Detail label="Implementation approval pending" value={workflow.implementation_approval_request_id ? "Yes" : "Not reported"} />
-                <Detail label="Conversion status" value={formatLabel(workflow.conversion_status)} />
-            </dl>
             {workflow.reason_codes.length > 0 && <p className="mt-3 text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
             {workflow.failure && <p className="mt-3 text-sm text-slate-400">Failure: {workflow.failure.code} - {workflow.failure.message}</p>}
             {workflow.workflow_session_id && (
                 <Link to={`/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}/workflow`} state={{ workflow }} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    Open Workflow
+                    Review workflow
                 </Link>
             )}
+            <details className="mt-4 rounded-lg border border-slate-700/70 p-3">
+                <summary className="mc-focusable cursor-pointer text-sm text-blue-300">Workflow details</summary>
+                <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                    <Detail label="Workflow ID" value={workflow.workflow_session_id ?? "Not available"} />
+                    <Detail label="Workflow status" value={workflow.workflow_status ? formatLabel(workflow.workflow_status) : "Not available"} />
+                    <Detail label="Implementation approval pending" value={workflow.implementation_approval_request_id ? "Yes" : "Not reported"} />
+                    <Detail label="Conversion status" value={formatLabel(workflow.conversion_status)} />
+                </dl>
+            </details>
         </div>
     );
 }
 
 function workflowMessage(workflow: CandidateWorkflowResponse): string {
-    if (workflow.workflow_session_id && workflow.failure === null) return "Workflow created.";
     if (workflow.conversion_status === "workflow_exists") return "Workflow already exists.";
+    if (workflow.workflow_session_id && workflow.failure === null) return "Workflow available for review.";
     if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "Stale candidate.";
     if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "Plan mismatch.";
     if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Unsupported intent.";

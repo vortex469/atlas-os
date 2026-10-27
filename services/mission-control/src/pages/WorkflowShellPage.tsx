@@ -257,9 +257,9 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow preparation</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow review</p>
                     <h1 className="mt-3 break-all text-3xl font-bold text-white">
-                        Prepare a workflow
+                        Review workflow
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         Review this workflow and prepare its exact request for approval. Preparing a request does not run the change.
@@ -272,7 +272,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
-                        <p className="mt-1 text-sm text-slate-400">{workflow.workflow_session_id ? "Workflow created." : workflowMessage(workflow)}</p>
+                        <p className="mt-1 text-sm text-slate-400">{workflowMessage(workflow)}</p>
                     </div>
                     <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">
                         {workflow.workflow_status ? formatLabel(workflow.workflow_status) : formatLabel(workflow.conversion_status)}
@@ -391,6 +391,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 function workflowMessage(workflow: CandidateWorkflowResponse): string {
     if (workflow.conversion_status === "workflow_exists") return "Workflow already exists.";
+    if (workflow.workflow_session_id) return "Workflow available for review.";
     if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "Stale candidate.";
     if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "Plan mismatch.";
     if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Unsupported intent.";
