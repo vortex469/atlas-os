@@ -400,6 +400,11 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(screen.getByText("video-ingest")).not.toBeVisible();
+        expect(screen.getByText("nvr")).not.toBeVisible();
+        await userEvent.click(screen.getByText("Capabilities and tags", { exact: true }));
+        expect(screen.getByText("video-ingest")).toBeVisible();
+        expect(screen.getByText("nvr")).toBeVisible();
         expect(screen.getByText("Application")).toBeInTheDocument();
         expect(screen.getByText("Active")).toBeInTheDocument();
         expect(screen.getByText("video-ingest")).toBeInTheDocument();
