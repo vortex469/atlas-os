@@ -375,3 +375,18 @@ only after the operator's click, with no approval or resume.
 The unfinished view uses a short heading and puts its next step before saved
 facts. Workflow identifiers, source information and progress remain available in
 collapsed disclosures. Later-stage workflow views retain their existing layout.
+
+Execution timeline summaries now use one repository-outcome presentation for
+both the timeline header and execution details. Only `succeeded` displays green
+completion. Failures, timeouts and launch failures have distinct error messages;
+unknown outcomes retain the instruction to check the original result without
+resubmitting. Unrecognized future statuses remain uncertain rather than appearing
+successful. A reported final result takes precedence over an executing workflow
+state, preventing simultaneous running and completion messages.
+
+Missing results are not treated as successful or generically unavailable.
+An approved initial request explains the separate resume step; rejected or
+blocked workflows keep their own explanation. Backend stages, result fields,
+approval checks, refresh requests and execution controls are unchanged. Tests
+cover every current terminal execution status, unknown future values, conflicting
+state/result observations, and read-only refresh at phone and desktop widths.

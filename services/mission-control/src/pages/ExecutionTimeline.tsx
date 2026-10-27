@@ -1,4 +1,4 @@
-import type { WorkflowDetailResponse, WorkflowExecutionSummary, WorkflowTimelineStage } from "../types/atlasAgent";
+import type { WorkflowDetailResponse, WorkflowTimelineStage } from "../types/atlasAgent";
 
 interface ExecutionTimelineProps {
     workflow: WorkflowDetailResponse;
@@ -30,7 +30,7 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
 
             {workflow.effect_kind === "operational_action"
                 ? <p className="mt-5 text-sm text-slate-300">Dispatch and verification results are shown in the operational lifecycle.</p>
-                : <ExecutionSection execution={workflow.execution} workflowState={workflow.workflow_state} approvalStatus={workflow.implementation_approval_status} />}
+                : <ExecutionSection workflow={workflow} />}
         </section>
     );
 }
@@ -44,17 +44,15 @@ function TimelineStage({ stage }: { stage: WorkflowTimelineStage }) {
     );
 }
 
-function ExecutionSection({ execution, workflowState, approvalStatus }: { execution: WorkflowExecutionSummary; workflowState: string; approvalStatus: string }) {
+function ExecutionSection({ workflow }: { workflow: WorkflowDetailResponse }) {
+    const execution = workflow.execution;
     const hasResult = execution.execution_status !== null;
-    const running = workflowState === "executing";
+    const outcome = repositoryExecutionState(workflow);
 
     return (
         <section aria-labelledby="execution-section-heading" className="mt-5 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
             <h3 id="execution-section-heading" className="text-base font-semibold text-white">Execution</h3>
-            {!hasResult && !running && approvalStatus !== "approved" && <p className="mt-2 text-sm text-slate-300">Waiting for implementation approval.</p>}
-            {!hasResult && !running && approvalStatus === "approved" && <p className="mt-2 text-sm text-slate-300">Execution unavailable.</p>}
-            {running && <p role="status" className="mt-2 text-sm text-blue-200">Execution running...</p>}
-            {hasResult && <p role="status" className="mt-2 text-sm text-emerald-200">Execution complete.</p>}
+            <p role="status" className={`mt-2 text-sm ${outcome.className}`}>{outcome.text}</p>
             {hasResult && (
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Execution status" value={formatLabel(execution.execution_status ?? "not_available")} />
@@ -81,13 +79,28 @@ function executionStateText(workflow: WorkflowDetailResponse): string {
         if (workflow.workflow_state === "awaiting_implementation_approval" && workflow.implementation_approval_status !== "approved") return "Waiting for exact action approval.";
         return "Check the operational lifecycle for dispatch and verification results.";
     }
-    const execution = workflow.execution;
-    if (execution.execution_status === "unknown") return "Worker outcome unknown. Check the original result; do not resubmit.";
-    if (workflow.workflow_state === "executing") return "Execution running...";
-    if (execution.execution_status === "succeeded") return "Execution complete.";
-    if (execution.execution_status === "failed" || execution.execution_status === "timed_out" || execution.execution_status === "launch_failed") return "Execution failed.";
-    if (workflow.implementation_approval_status !== "approved") return "Waiting for implementation approval.";
-    return "Execution unavailable.";
+    return repositoryExecutionState(workflow).text;
+}
+
+function repositoryExecutionState(workflow: WorkflowDetailResponse): { text: string; className: string } {
+    switch (workflow.execution.execution_status) {
+        case "succeeded": return { text: "Execution complete.", className: "text-emerald-200" };
+        case "failed": return { text: "Execution failed.", className: "text-red-200" };
+        case "timed_out": return { text: "Execution timed out.", className: "text-red-200" };
+        case "launch_failed": return { text: "Execution could not start.", className: "text-red-200" };
+        case "unknown": return { text: "Worker outcome unknown. Check the original result; do not resubmit.", className: "text-amber-200" };
+        case null: break;
+        default: return { text: "Execution status is not recognized. Refresh to check its status.", className: "text-amber-200" };
+    }
+    if (workflow.workflow_state === "executing") return { text: "Execution running...", className: "text-blue-200" };
+    if (workflow.implementation_approval_status === "rejected") return { text: "Implementation approval was rejected.", className: "text-amber-200" };
+    if (workflow.workflow_state === "blocked") return { text: "Workflow is blocked. No execution result is reported.", className: "text-amber-200" };
+    if (workflow.workflow_state === "awaiting_approval") return { text: "Prepare the exact request before implementation approval.", className: "text-slate-300" };
+    if (workflow.workflow_state === "awaiting_implementation_approval") {
+        if (workflow.implementation_approval_status === "approved") return { text: "Implementation approved. Waiting for a separate resume.", className: "text-slate-300" };
+        if (workflow.implementation_approval_status === "pending") return { text: "Waiting for implementation approval.", className: "text-slate-300" };
+    }
+    return { text: "No execution result is reported.", className: "text-amber-200" };
 }
 
 function stageClass(status: string): string {
