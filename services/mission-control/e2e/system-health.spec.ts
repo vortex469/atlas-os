@@ -27,7 +27,7 @@ for (const width of [390, 1440]) {
         await page.goto("/");
         const summary = page.getByRole("region", { name: "System health", exact: true });
         await expect(summary.getByRole("article", { name: "Atlas Core health aggregate" }).getByText("Unknown", { exact: true })).toBeVisible();
-        const core = page.getByRole("region", { name: "Core health", exact: true });
+        const core = page.getByRole("region", { name: "Service health", exact: true });
         for (const state of ["Degraded", "Unavailable", "Blocked", "Unknown"]) {
             await expect(core.getByText(state, { exact: true })).toBeVisible();
         }
