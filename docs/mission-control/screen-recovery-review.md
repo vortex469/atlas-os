@@ -671,3 +671,10 @@ an empty value shows Not reported. Valid leap-day, offset and epoch values keep
 their local display format. This informational field does not determine planning
 eligibility; expiry, Agent revalidation and exact approvals retain their own
 checks. Existing read-only recovery cases cover creation-time uncertainty too.
+
+Proposal review places Why this change and Constraints before Plan this change.
+Empty explanations and constraint lists explicitly say what was not provided or
+reported. Evidence IDs join the existing Technical details disclosure, where all
+reference fields remain available. Long explanations wrap without truncation.
+The planning action, eligibility, expiry, request payload and approval boundaries
+retain their existing behavior; disclosure toggles add no requests.

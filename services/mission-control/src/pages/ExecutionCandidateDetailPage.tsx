@@ -190,6 +190,13 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 <PlanningProgress current="Execution Candidate" />
             </header>
 
+            <section className="grid gap-4 lg:grid-cols-2" aria-label="Proposal review context">
+                <InfoPanel title="Why this change">
+                    <p className="text-sm leading-6 text-slate-300">{candidate.rationale.trim() ? candidate.rationale : "No explanation was provided."}</p>
+                </InfoPanel>
+                <InfoPanel title="Constraints"><ListField label="Constraints" values={candidate.constraints} empty="No constraints were reported." /></InfoPanel>
+            </section>
+
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5" aria-labelledby="planning-action-heading">
                 <h2 id="planning-action-heading" className="text-lg font-semibold text-white">Plan this change</h2>
                 <p className="mt-2 text-sm text-slate-400">
@@ -229,16 +236,9 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                         <DetailField label="Compatibility assessment ID" value={candidate.compatibility_assessment_id ?? "Not reported"} />
                         <ListField label="Relationship IDs" values={candidate.relationship_ids} empty="No relationship IDs." />
                     </InfoPanel>
+                    <InfoPanel title="Evidence IDs"><ListField label="Evidence IDs" values={candidate.evidence_ids} empty="No evidence IDs." /></InfoPanel>
                 </section>
             </details>
-
-            <InfoPanel title="Rationale">
-                <p className="text-sm leading-6 text-slate-300">{candidate.rationale}</p>
-            </InfoPanel>
-            <section className="grid gap-4 lg:grid-cols-2">
-                <InfoPanel title="Constraints"><ListField label="Constraints" values={candidate.constraints} empty="No constraints." /></InfoPanel>
-                <InfoPanel title="Evidence IDs"><ListField label="Evidence IDs" values={candidate.evidence_ids} empty="No evidence IDs." /></InfoPanel>
-            </section>
         </main>
     );
 }
@@ -332,7 +332,7 @@ function getPlanningActionState(candidate: ExecutionCandidate | null): { enabled
 }
 
 function InfoPanel({ title, children }: { title: string; children: React.ReactNode }) {
-    return <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5"><h2 className="text-lg font-semibold text-white">{title}</h2><div className="mt-4 space-y-3">{children}</div></section>;
+    return <section className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/70 p-5 [overflow-wrap:anywhere]"><h2 className="text-lg font-semibold text-white">{title}</h2><div className="mt-4 space-y-3">{children}</div></section>;
 }
 
 function DetailField({ label, value }: { label: string; value: string }) {
