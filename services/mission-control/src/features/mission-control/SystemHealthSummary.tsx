@@ -9,9 +9,9 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
     const ace = record(evidence.summary?.data);
     const policy = record(evidence.policyHealth?.data);
     const sources = [
-        { title: "Atlas Core health aggregate", evidence: evidence.health, status: core.atlas },
-        { title: "ACE assessment", evidence: evidence.summary, status: ace.status, reason: ace.summary },
-        { title: "Policy reload", evidence: evidence.policyHealth, status: policy.status, reason: policy.error, checkedAt: policy.checked_at },
+        { id: "atlas-health", title: "Atlas Core health aggregate", evidence: evidence.health, status: core.atlas },
+        { id: "system-assessment", title: "ACE assessment", evidence: evidence.summary, status: ace.status, reason: ace.summary },
+        { id: "policy-status", title: "Policy reload", evidence: evidence.policyHealth, status: policy.status, reason: policy.error, checkedAt: policy.checked_at },
     ];
     return (
         <section aria-label="System health" className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
@@ -21,7 +21,7 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
                 <p>No combined health score is calculated here. Timestamped evidence older than 60 seconds is marked stale.</p>
             </details>
             {sources.map(source => (
-                <article key={source.title} aria-label={source.title} className="min-w-0 space-y-1">
+                <article key={source.title} id={source.id} tabIndex={-1} aria-label={source.title} className="scroll-mt-24 min-w-0 space-y-1">
                     <h4 className="font-semibold">{source.title}</h4>
                     {source.evidence?.unavailable && <p>Evidence unavailable.{source.evidence.stale ? " Last-known observations only." : ""}</p>}
                     <HealthEvidenceContext.Provider value={{ stale: source.evidence?.stale === true }}>

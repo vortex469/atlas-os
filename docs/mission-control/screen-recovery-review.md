@@ -478,3 +478,14 @@ validation, and missing facts are not reconstructed. Read-only browser fixtures
 cover completed, blocked, invalid and missing-record views at phone and desktop
 widths, keyboard access to records, and zero mutation requests. Existing full
 journeys still verify the recorded commit and exact approval/resume sequence.
+
+The main dashboard now includes source-reported Atlas aggregate, system
+assessment and policy problems in Operator Attention. These are observations,
+not a new combined health score or execution permission. Healthy, unknown and
+unsupported statuses do not become alerts. Links move to the corresponding
+recorded health source on the same page, with keyboard focus and no extra action.
+
+Policy timestamps use the same freshness presentation in both locations. Failed
+refreshes retain explicit last-known warnings, and explanations use the existing
+sensitive-text filter. Tests cover all three sources, stale recovery, malformed
+statuses, keyboard navigation and zero writes at phone and desktop widths.

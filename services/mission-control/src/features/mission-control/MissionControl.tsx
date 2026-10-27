@@ -27,8 +27,8 @@ function Card({ title, children, evidence }: { title: string; children: ReactNod
         <div className="space-y-3 text-sm text-mc-text-secondary"><SourceNote evidence={evidence} />{children}</div>
     </section>;
 }
-function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unknown; stale?: boolean }) {
-    return <HealthEvidence status={safeText(value)} stale={stale} reason={safeText(reason)} />;
+function ObservedStatus({ value, reason, stale, checkedAt }: { value: unknown; reason?: unknown; stale?: boolean; checkedAt?: unknown }) {
+    return <HealthEvidence status={safeText(value)} stale={stale} reason={safeText(reason)} checkedAt={checkedAt} />;
 }
 
 function attentionPriority(value: unknown) {
@@ -60,8 +60,19 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         typeof f.severity === "string" && ["info", "warning", "critical", "blocked"].includes(f.severity));
     const aiProvider = record(ai.provider);
     const aiHealth = record(ai.health);
+    const assessment = record(evidence.summary?.data);
+    const policy = record(evidence.policyHealth?.data);
+    const healthConditions = [
+        { key: "atlas-health", label: "Atlas health", state: health.atlas, evidence: evidence.health, reason: undefined, checkedAt: undefined },
+        { key: "system-assessment", label: "System assessment", state: assessment.status, evidence: evidence.summary, reason: assessment.summary, checkedAt: undefined },
+        { key: "policy-status", label: "Policy status", state: policy.status, evidence: evidence.policyHealth, reason: policy.error, checkedAt: policy.checked_at },
+    ];
     // One row per authoritative source condition. Do not synthesize alerts from counts.
     const attention = [
+        ...healthConditions.filter(source => ["degraded", "unavailable", "blocked"].includes(status(source.state))).map(source => ({
+            key: source.key, label: source.label, reason: safeText(source.reason), state: source.state,
+            to: `#${source.key}`, stale: source.evidence?.stale, checkedAt: source.checkedAt,
+        })),
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
             key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "/operations", stale: evidence.health?.stale,
         })),
@@ -88,12 +99,12 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     return <>
         <Card title="Operator Attention" evidence={evidence.summary}>
             <p>Review the conditions below and open a workflow when it needs your decision.</p>
-            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" />
+            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" /><SourceNote evidence={evidence.policyHealth} label="Policy status" />
             {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
             {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
             {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
-                <Link to={item.to}>{item.label || "Inspect condition"}</Link>
+                {item.to.startsWith("#") ? <a href={item.to}>{item.label}</a> : <Link to={item.to}>{item.label || "Inspect condition"}</Link>}
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
                 {"workflowState" in item ? <>
                     {item.state === "blocked" && <p className="text-red-300">{item.stale ? "Last-known workflow blocked; current state unknown." : "Workflow blocked"}</p>}
@@ -102,7 +113,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                         <p>{item.stale ? "Last-known workflow stage" : "Workflow stage"}: {formatWorkflowLabel(safeText(item.workflowState))}</p>
                         <p className="text-xs text-mc-text-muted">Stage update time is not supplied.</p>
                     </details>
-                </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />}
+                </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} checkedAt={"checkedAt" in item ? item.checkedAt : undefined} />}
                 {item.stale && <p>Last-known condition; current state unknown.</p>}
             </li>)}</ul>
             {uniqueAttention.length > 5 && <p>Showing 5 of {uniqueAttention.length} reported conditions. Open the detail views for more.</p>}
