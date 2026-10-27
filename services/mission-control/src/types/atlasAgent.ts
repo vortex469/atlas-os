@@ -218,6 +218,7 @@ export interface CandidatePlanningResponse {
     planning_failure: CandidatePlanningFailure | null;
     predecessor_session_id?: string | null;
     successor_session_id?: string | null;
+    workflow_session_id?: string | null;
 }
 
 export interface CandidatePlanningSuccessorRequest {

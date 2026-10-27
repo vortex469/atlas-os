@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PlanningProgress } from "../components/PlanningProgress";
+import { existingWorkflowPath, hasExistingWorkflow } from "../utils/existingWorkflow";
 
 import {
     createCandidateWorkflowShell,
@@ -194,6 +195,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
         );
     }
 
+    const existingWorkflow = hasExistingWorkflow(session);
+    const workflowPath = existingWorkflowPath(session);
+
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
@@ -201,14 +205,14 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
                         Change planning
                     </p>
-                    <h1 className="mt-3 break-all text-3xl font-bold text-white">
-                        Plan this change
+                    <h1 className="mt-3 break-words text-3xl font-bold text-white">
+                        {existingWorkflow ? "Review existing workflow" : "Plan this change"}
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals.
+                        {existingWorkflow ? "This proposal already has a workflow. Review its progress; any remaining changes still need separate approvals." : "Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals."}
                     </p>
                 </div>
-                <PlanningProgress current={workflow ? "Workflow" : hasPlan ? "Candidate Plan" : "Planning Session"} />
+                <PlanningProgress current={workflow || existingWorkflow ? "Workflow" : hasPlan ? "Candidate Plan" : "Planning Session"} />
             </header>
 
             <section aria-labelledby="session-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -248,12 +252,18 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 <Link to={`/execution-candidates/${encodeURIComponent(session.candidate_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Review original proposal</Link>
             </section>
 
-            <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            {existingWorkflow && <section role="status" aria-label="Existing workflow" className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-5">
+                <h2 className="text-lg font-semibold text-white">Workflow already exists</h2>
+                <p className="mt-2 text-sm text-slate-300">Review the workflow’s progress and any remaining approvals. Opening it does not approve or run anything.</p>
+                <Link to={workflowPath ?? "/workflows"} className="mt-3 inline-flex text-sm font-semibold text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">{workflowPath ? "Open existing workflow" : "Browse workflows"}</Link>
+            </section>}
+
+            {(!existingWorkflow || hasPlan) && <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">Candidate plan</h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    Generate a plan to review. This does not apply changes or grant approval.
+                    {existingWorkflow ? "Planning has already led to a workflow. Any saved plan below is for review." : "Generate a plan to review. This does not apply changes or grant approval."}
                 </p>
-                {session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && (
+                {!existingWorkflow && session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button type="button" onClick={generatePlan} disabled={isGenerating} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                             {isGenerating ? "Generating plan..." : "Generate Plan"}
@@ -261,7 +271,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         {isGenerating && <p className="text-sm text-slate-400">Generating plan...</p>}
                     </div>
                 )}
-                {(session.status !== "ready_for_planning" || session.planning_allowed !== true) && !hasPlan && (
+                {!existingWorkflow && (session.status !== "ready_for_planning" || session.planning_allowed !== true) && !hasPlan && (
                     <p className="mt-4 text-sm text-slate-400">{nonReadyMessage(session)}</p>
                 )}
                 {generateError && (
@@ -273,9 +283,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 )}
                 {plan && <PlanViewer plan={plan} />}
                 {operationalPlan && <MaintenancePlanViewer plan={operationalPlan} />}
-            </section>
+            </section>}
 
-            {hasPlan && (
+            {hasPlan && !existingWorkflow && (
                 <section aria-labelledby="workflow-shell-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                     <h2 id="workflow-shell-heading" className="text-lg font-semibold text-white">Create a workflow</h2>
                     <p className="mt-2 text-sm text-slate-400">

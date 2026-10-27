@@ -183,6 +183,7 @@ def _response_from_session(session: CandidatePlanningSession) -> CandidatePlanRe
         planning_failure=session.planning_failure,
         predecessor_session_id=session.predecessor_session_id,
         successor_session_id=session.successor_session_id,
+        workflow_session_id=session.workflow_session_id,
     )
 
 
