@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import type { WorkflowListResponse, WorkflowSummary } from "../../types/atlasAgent";
@@ -22,19 +22,22 @@ describe("Worker / Execution observation", () => {
     it("shows an idle observation without inventing worker health or queue depth", () => {
         view(page([]));
         expect(screen.getByText("0 executing workflows")).toBeInTheDocument();
-        expect(screen.getByText(/Worker idleness is unknown/)).toBeInTheDocument();
+        expect(screen.getByText("Worker readiness and queue size are unknown.")).toBeVisible();
+        expect(screen.getByText(/Worker idleness is unknown/)).not.toBeVisible();
+        fireEvent.click(screen.getByText("Execution observations"));
+        expect(screen.getByText(/Worker idleness is unknown/)).toBeVisible();
         expect(screen.getByText(/Unknown — worker heartbeat/)).toBeInTheDocument();
         expect(screen.getByText(/Unknown — aggregate queue/)).toBeInTheDocument();
     });
     it("distinguishes executing from verification and links to encoded detail routes", () => {
         view(page([workflow("a/b?#"), workflow("verify", "verifying", "completed")]));
-        expect(screen.getByText("1 executing workflows")).toBeInTheDocument();
+        expect(screen.getByText("1 executing workflow")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "a/b?#" })).toHaveAttribute("href", "/workflows/a%2Fb%3F%23");
         expect(screen.getByRole("link", { name: "Inspect executions →" })).toHaveAttribute("href", "/workflows");
     });
     it("shows blocked workflows without claiming that execution started", () => {
         view(page([workflow("blocked", "blocked", "waiting")]));
-        expect(screen.getByText("1 blocked workflows")).toBeInTheDocument();
+        expect(screen.getByText("1 blocked workflow")).toBeInTheDocument();
         expect(screen.getByText(/Workflow blockers may precede execution/)).toBeInTheDocument();
         expect(screen.getByText("No execution outcomes recorded")).toBeInTheDocument();
     });
