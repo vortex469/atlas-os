@@ -5,6 +5,8 @@ for (const width of [320, 390, 1280]) for (const status of ["healthy", "offline"
     test.describe(`Compact provider overview at ${width}px (${status})`, () => {
         test.use({ viewport: { width, height: 900 } });
         test("keeps health and monitoring visible while details remain keyboard accessible", async ({ page, rejectedMutationRequests }) => {
+            const updatedAt = "2026-10-26T12:34:56.000Z";
+            await page.clock.setFixedTime(new Date(updatedAt));
             const message = status === "healthy" ? "Provider is reachable." : "Provider is not reachable.";
             await page.route("**/api/v1/providers", route => route.fulfill({ json: providers.map(provider => ({ ...provider, capabilities: ["resources"],
                 health: { ...provider.health, status, message, details: { url: "https://example.invalid/provider-health" } },
@@ -17,6 +19,17 @@ for (const width of [320, 390, 1280]) for (const status of ["healthy", "offline"
             await page.route("**/api/v1/providers/proxmox/management", route => route.fulfill({ json: management }));
             await page.goto("/providers/proxmox");
             await expect(page.getByRole("heading", { name: "Proxmox", level: 1 })).toBeVisible();
+            const refreshTime = page.locator(`time[datetime="${updatedAt}"]`);
+            await expect(refreshTime).toHaveText(await page.evaluate(value => new Date(value).toLocaleString(), updatedAt));
+            const refreshButton = page.getByRole("button", { name: "Refresh", exact: true });
+            for (const control of [refreshTime, refreshButton]) {
+                const bounds = await control.boundingBox();
+                expect(bounds).not.toBeNull();
+                expect(bounds!.x).toBeGreaterThanOrEqual(0);
+                expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
+            }
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+            if (status === "healthy" && width !== 320) await page.screenshot({ path: `/tmp/atlas-provider-refresh-date-${width}.png`, fullPage: true });
             await expect(page.getByText(message, { exact: true })).toBeInViewport();
             const monitoring = page.getByRole("heading", { name: "Resources and monitoring", exact: true });
             await expect(monitoring).toBeInViewport();

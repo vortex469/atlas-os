@@ -75,7 +75,7 @@ export function ProviderPage() {
         ) ?? [];
 
     return (
-        <main className="mx-auto max-w-7xl space-y-8 p-8">
+        <main className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <Link
@@ -90,7 +90,7 @@ export function ProviderPage() {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex max-w-full flex-wrap items-center gap-4">
                     <div className="text-right">
                         <p className="text-xs uppercase tracking-wider text-slate-500">
                             Last successful refresh
@@ -98,7 +98,7 @@ export function ProviderPage() {
 
                         <p className="mt-1 text-sm text-slate-300">
                             {lastUpdated
-                                ? lastUpdated.toLocaleTimeString()
+                                ? <time dateTime={lastUpdated.toISOString()}>{lastUpdated.toLocaleString()}</time>
                                 : isLoading ? "Connecting..." : "Not updated yet"}
                         </p>
                     </div>
