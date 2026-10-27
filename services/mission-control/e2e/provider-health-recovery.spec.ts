@@ -1,6 +1,6 @@
 import { expect, test, providers } from "./mission-control-fixtures";
 
-for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]) for (const failure of ["http", "capabilities", "name", "duplicate", "shape"] as const) {
+for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]) for (const failure of ["http", "capabilities", "name", "duplicate", "shape", "id", "blank-name"] as const) {
     test.describe(`Provider health refresh at ${width}px (${failure}, initial: ${initialFailure})`, () => {
         test.use({ viewport: { width, height: 900 } });
         test("marks retained healthy facts as last reported and recovers through reads", async ({ page, rejectedMutationRequests }) => {
@@ -13,6 +13,8 @@ for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]
                     if (failure === "http") return route.fulfill({ status: 503, json: { detail: "unavailable" } });
                     const malformed = failure === "capabilities" ? [{ ...providers[0], capabilities: null }]
                         : failure === "name" ? [{ ...providers[0], name: { private: "PRIVATE-CATALOG-CANARY" } }]
+                        : failure === "id" ? [{ ...providers[0], id: "../proxmox" }]
+                        : failure === "blank-name" ? [{ ...providers[0], name: " \t\n" }]
                         : failure === "duplicate" ? [providers[0], providers[0]] : { private: "PRIVATE-CATALOG-CANARY" };
                     return route.fulfill({ json: malformed });
                 }
@@ -34,6 +36,10 @@ for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]
             await expect(overview.locator("[data-mc-status='success']")).toHaveCount(0);
             await expect(page.getByText("PRIVATE-CATALOG-CANARY")).toHaveCount(0);
             await expect(page.getByText("Provider not found", { exact: true })).toHaveCount(0);
+            if (width !== 320 && !initialFailure && failure === "blank-name") {
+                await page.evaluate(() => window.scrollTo(0, 0));
+                await page.screenshot({ path: `/tmp/atlas-readable-provider-identity-${width}.png`, fullPage: true });
+            }
             await expect(page.locator(`time[datetime="${currentRefresh}"]`)).toHaveCount(0);
             if (!initialFailure) {
                 await expect(page.locator(`time[datetime="${previousRefresh}"]`)).toBeVisible();
