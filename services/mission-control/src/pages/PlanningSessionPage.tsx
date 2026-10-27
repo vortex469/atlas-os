@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PlanningProgress } from "../components/PlanningProgress";
 import { existingWorkflowPath, hasExistingWorkflow } from "../utils/existingWorkflow";
+import { isReadableWorkflowSummary } from "../utils/workflowSummary";
 
 import {
     createCandidateWorkflowShell,
@@ -231,6 +232,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             const response = await createCandidateWorkflowShell(sessionId);
             if (!response || response.candidate_planning_session_id !== sessionId || response.candidate_id !== session.candidate_id) {
                 setWorkflowError("The workflow response did not match this planning session. No workflow was opened.");
+                return;
+            }
+            if (!isReadableWorkflowSummary(response)) {
+                setWorkflowError("The workflow summary response is incomplete or unreadable.");
                 return;
             }
             setWorkflow(response);

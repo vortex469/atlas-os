@@ -15,6 +15,7 @@ import type {
     CandidateWorkflowResponse,
     OperationalCandidatePlanApiResponse,
 } from "../types/atlasAgent";
+import { unreadableWorkflowFields } from "../test/workflowSummary";
 import { operationalPlan } from "../test/operationalPlanning";
 import { PlanningSessionPage } from "./PlanningSessionPage";
 
@@ -124,6 +125,33 @@ const unreadableSessions: [string, object][] = [
 ];
 
 describe("PlanningSessionPage", () => {
+    it.each(unreadableWorkflowFields)("recovers an unreadable workflow creation %s without repeating it", async (_field, fields) => {
+        mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "plan_ready", plan: plan() }))
+            .mockResolvedValueOnce(session({ status: "workflow_created", planning_allowed: false, workflow_session_id: "workflow-1" }));
+        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow(fields as Partial<CandidateWorkflowResponse>));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("The workflow summary response is incomplete or unreadable.");
+        expect(screen.queryByRole("link", { name: "Open Workflow" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Check saved planning" }));
+        expect(await screen.findByRole("link", { name: "Open existing workflow" })).toHaveAttribute("href", "/workflows/workflow-1");
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledExactlyOnceWith("candidate-plan-1");
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+    });
+
+    it("keeps readable future workflow labels and unused metadata reviewable", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan() }));
+        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow({ workflow_status: "future_state", conversion_status: "future_conversion",
+            candidate_plan_id: {}, core_revalidation_status: {}, future_metadata: { extra: true } } as unknown as Partial<CandidateWorkflowResponse>));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
+        expect(await screen.findByRole("link", { name: "Open Workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
+    });
+
     for (const source of ["saved", "generated"] as const) {
         it.each(unreadableSessions)(`recovers unreadable ${source} session %s using only a new read`, async (_field, fields) => {
             const untrusted = session({ status: "plan_ready", ...fields } as Partial<CandidatePlanningResponse>);

@@ -1,6 +1,7 @@
 import { PlanningProgress } from "../components/PlanningProgress";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { isReadableWorkflowSummary } from "../utils/workflowSummary";
 
 import {
     getCandidateWorkflowShell,
@@ -21,7 +22,7 @@ export function WorkflowShellPage() {
     const { sessionId = "" } = useParams<{ sessionId: string }>();
     const location = useLocation();
     const supplied = (location.state as WorkflowLocationState | null)?.workflow;
-    const initialWorkflow = supplied && supplied.candidate_planning_session_id === sessionId ? supplied : null;
+    const initialWorkflow = supplied && supplied.candidate_planning_session_id === sessionId && isReadableWorkflowSummary(supplied) ? supplied : null;
     return <WorkflowShell key={JSON.stringify([sessionId, location.key])} sessionId={sessionId} initialWorkflow={initialWorkflow} />;
 }
 
@@ -58,6 +59,11 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 if (!response || response.candidate_planning_session_id !== sessionId) {
                     setWorkflow(null);
                     setWorkflowLoadError("The workflow response did not match this planning session.");
+                    return;
+                }
+                if (!isReadableWorkflowSummary(response)) {
+                    setWorkflow(null);
+                    setWorkflowLoadError("The workflow summary response is incomplete or unreadable.");
                     return;
                 }
                 setWorkflow(response);
