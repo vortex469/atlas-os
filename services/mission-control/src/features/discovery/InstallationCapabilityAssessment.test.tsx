@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getInstallationCapabilityAssessment } from "../../api/installationCapability";
@@ -37,31 +38,46 @@ function fixture(result: InstallationCapabilityResult = "satisfied"): Installati
 describe("installation capability assessment", () => {
     beforeEach(() => vi.resetAllMocks());
 
-    it.each(["satisfied", "not_satisfied", "unknown", "not_assessable"] as const)("renders the %s comparison state", async (result) => {
+    it.each([
+        ["satisfied", "Meets requirement", "The checked requirements appear satisfied. This does not approve installation."],
+        ["not_satisfied", "Below requirement", "Some stated requirements are not met."],
+        ["unknown", "Not enough information", "There is not enough reliable information to assess this guest."],
+        ["not_assessable", "Not checked", "There is not enough reliable information to assess this guest."],
+    ] as const)("shows plain-language outcome for %s", async (result, comparisonLabel, status) => {
         vi.mocked(getInstallationCapabilityAssessment).mockResolvedValueOnce(fixture(result));
+        const user = userEvent.setup();
         render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
-        expect(await screen.findByText(new RegExp(`^${result.replaceAll("_", " ")}`, "i"))).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: /sanitized provider configuration facts/i })).toBeInTheDocument();
-        expect(screen.getByText(/does not inspect actual in-guest or runtime capability/i)).toBeInTheDocument();
+        const outcome = await screen.findByText(status, { selector: 'p[role="status"]' });
+        expect(outcome).toBeInTheDocument();
+        expect(outcome).not.toHaveTextContent("requirements_satisfied_but_non_authorizing");
+        expect(screen.getByRole("list", { name: "Installation capability comparisons" })).toHaveTextContent(comparisonLabel);
+        expect(screen.getByText(/cannot check software or services inside the guest/i)).toBeInTheDocument();
+        const technicalSummary = screen.getByText("Technical facts and verification details");
+        const technicalDetails = technicalSummary.closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        await user.click(technicalSummary);
+        expect(within(technicalDetails!).getByText("Assessment status code")).toBeInTheDocument();
+        expect(within(technicalDetails!).getByRole("heading", { name: "Proxmox configuration reported for this guest" })).toBeInTheDocument();
+        expect(within(technicalDetails!).getByText("64 GiB (68,719,476,736 bytes) (Reported)")).toBeInTheDocument();
     });
 
     it("keeps the Home Assistant golden blocked and reasons in server order", async () => {
         vi.mocked(getInstallationCapabilityAssessment).mockResolvedValueOnce(fixture("not_satisfied"));
         render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
-        expect(await screen.findByText(/status: blocked — non-authorizing/i)).toBeInTheDocument();
+        expect(await screen.findByText("Some stated requirements are not met.", { selector: 'p[role="status"]' })).toBeInTheDocument();
         const reasons = screen.getByRole("list", { name: /installation capability reasons/i });
         expect(reasons.textContent).toMatch(/plan is blocked.*configuration facts are unavailable.*below a stated requirement.*does not support installation execution/i);
     });
 
     it("renders empty, loading, error, and no-response states", async () => {
         const empty = render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId={null} />);
-        expect(screen.getByText(/no prospective destination selection/i)).toBeInTheDocument();
+        expect(screen.getByText(/select a prospective destination above/i)).toBeInTheDocument();
         empty.unmount();
 
         let rejectRequest: (reason: Error) => void = () => undefined;
         vi.mocked(getInstallationCapabilityAssessment).mockReturnValueOnce(new Promise((_, reject) => { rejectRequest = reject; }));
         render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
-        expect(await screen.findByText(/loading installation capability/i)).toBeInTheDocument();
+        expect(await screen.findByText(/checking the selected guest configuration/i)).toBeInTheDocument();
         rejectRequest(new Error("secret provider address 10.0.0.1"));
         await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
     });
