@@ -248,8 +248,9 @@ function formatLabel(value: string): string {
 }
 
 function formatTimestamp(value: string): string {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+    if (!value) return "Not reported";
+    const parsed = evidenceTimestamp(value);
+    return parsed === null || parsed > Date.now() ? "Unknown time" : new Date(parsed).toLocaleString();
 }
 
 function statusText(status: string): string {

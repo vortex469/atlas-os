@@ -664,3 +664,10 @@ path; no planning request is sent during recovery. Correlation to the URL remain
 required. Extra metadata, future readable labels, empty lists and nullable
 optional labels stay supported. Expiry keeps its existing unverified/disabled
 handling. Agent revalidation and later exact approvals remain authoritative.
+
+Proposal Created time uses the shared strict timestamp reader. Impossible dates,
+timezone-free values, future times and unreadable strings show Unknown time;
+an empty value shows Not reported. Valid leap-day, offset and epoch values keep
+their local display format. This informational field does not determine planning
+eligibility; expiry, Agent revalidation and exact approvals retain their own
+checks. Existing read-only recovery cases cover creation-time uncertainty too.

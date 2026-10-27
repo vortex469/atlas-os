@@ -116,6 +116,32 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
     });
 
+    it.each(["2026-02-30T00:00:00Z", "2026-08-16T00:00:00", "2026-08-16", "2099-01-01T00:00:00Z", "not-a-time"])("does not invent a creation time for %s", async (createdAt) => {
+        mockedGetExecutionCandidate.mockResolvedValue(candidate({ created_at: createdAt }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Update Compose Stack", level: 1 });
+        await userEvent.click(screen.getByText("Technical details", { exact: true }));
+        expect(screen.getByText("Created", { exact: true }).parentElement).toHaveTextContent("Unknown time");
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeEnabled();
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
+    });
+
+    it("reports an absent creation time without inventing an epoch date", async () => {
+        mockedGetExecutionCandidate.mockResolvedValue(candidate({ created_at: "" }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Update Compose Stack", level: 1 });
+        await userEvent.click(screen.getByText("Technical details", { exact: true }));
+        expect(screen.getByText("Created", { exact: true }).parentElement).toHaveTextContent("Not reported");
+    });
+
+    it.each(["2024-02-29T12:00:00.123456Z", "2026-08-16T14:00:00+02:00", "1970-01-01T00:00:00Z"])("preserves confirmed creation time %s", async (createdAt) => {
+        mockedGetExecutionCandidate.mockResolvedValue(candidate({ created_at: createdAt }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Update Compose Stack", level: 1 });
+        await userEvent.click(screen.getByText("Technical details", { exact: true }));
+        expect(screen.getByText("Created", { exact: true }).parentElement).toHaveTextContent(new Date(createdAt).toLocaleString());
+    });
+
     it("renders all public candidate fields and boundary wording", async () => {
         const user = userEvent.setup();
         renderPage();
