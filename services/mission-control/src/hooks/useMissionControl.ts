@@ -7,6 +7,7 @@ import {
 
 import { normalizeAtlasHealth, normalizeServiceHealth } from "../utils/healthPresentation";
 import { atlas } from "../api/atlas";
+import { parsePolicies } from "../api/policiesResponse";
 import { parseIntelligenceHistory } from "../api/intelligenceHistoryResponse";
 import type {
     AceSummary,
@@ -111,7 +112,8 @@ export function useMissionControl(): MissionControlState {
                 atlas.get<AtlasHealth>("/health"),
                 atlas.get<Provider[]>("/providers"),
                 atlas
-                    .get<AtlasPolicies>("/policies")
+                    .get<unknown>("/policies")
+                    .then(response => ({ data: parsePolicies(response.data) }))
                     .catch(() => null),
                 atlas.get<PolicyReloadHealth>("/policies/status"),
                 atlas
