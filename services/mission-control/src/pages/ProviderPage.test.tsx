@@ -60,7 +60,10 @@ describe("ProviderPage authority layout", () => {
     });
 
     it("orders monitoring, diagnostics, compatibility, maintenance, and retained evidence distinctly", () => {
+        const lastUpdated = new Date("2026-10-26T12:34:56.000Z");
+        vi.mocked(useMissionControl).mockReturnValue({ ...vi.mocked(useMissionControl).getMockImplementation()!(), lastUpdated });
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+        expect(screen.getByText(lastUpdated.toLocaleString())).toHaveAttribute("dateTime", lastUpdated.toISOString());
 
         const ordered = [
             position("Provider overview"),
