@@ -46,15 +46,22 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const [management, setManagement] = useState<ProviderManagementV2 | null>(null);
     const managementReadRef = useRef<ProviderManagementV2 | null>(null);
     const managementReadId = useRef(0);
+    const inventoryReadId = useRef(0);
     const [inventoryLoading, setInventoryLoading] = useState(supported);
     const [managementLoading, setManagementLoading] = useState(supported);
     const [inventoryError, setInventoryError] = useState<string | null>(null);
     const [managementError, setManagementError] = useState<string | null>(null);
     const loadInventory = useCallback(async (refresh = false): Promise<boolean> => {
+        const readId = ++inventoryReadId.current;
         setInventoryLoading(true); setInventoryError(null);
-        try { setInventory(refresh ? await refreshProviderResources(provider.id) : await getProviderResources(provider.id)); return true; }
-        catch (error) { setInventoryError(getAtlasErrorMessage(error, `Mission Control could not load observed resources for ${provider.name}.`)); return false; }
-        finally { setInventoryLoading(false); }
+        try {
+            const value = refresh ? await refreshProviderResources(provider.id) : await getProviderResources(provider.id);
+            if (readId !== inventoryReadId.current) return false;
+            setInventory(value); return true;
+        } catch (error) {
+            if (readId !== inventoryReadId.current) return false;
+            setInventoryError(getAtlasErrorMessage(error, `Mission Control could not load observed resources for ${provider.name}.`)); return false;
+        } finally { if (readId === inventoryReadId.current) setInventoryLoading(false); }
     }, [provider.id, provider.name]);
 
     const loadManagement = useCallback(async (): Promise<boolean> => {
