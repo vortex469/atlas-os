@@ -158,9 +158,9 @@ describe("WorkflowShellPage", () => {
         const user = userEvent.setup();
         renderPage({ workflow: workflow() });
 
-        expect(screen.getByRole("heading", { name: "Prepare a workflow" })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Review workflow" })).toBeVisible();
         expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
-        expect(screen.getAllByText("Workflow created.").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Workflow available for review.").length).toBeGreaterThan(0);
         expect(screen.getByText("workflow-1")).toBeInTheDocument();
         expect(screen.getByText("Atlas Agent candidate planning")).toBeInTheDocument();
         expect((await screen.findAllByText(/Awaiting Approval|Approval Pending/)).length).toBeGreaterThan(0);
@@ -640,7 +640,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        expect(screen.getByRole("heading", { name: "Prepare a workflow" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Review workflow" })).toBeInTheDocument();
         expect(screen.getByText("Stale candidate.")).toBeInTheDocument();
         expect(screen.getByText("Reason codes: stale")).toBeInTheDocument();
         expect(screen.getByText("Failure: candidate_stale - Candidate changed")).toBeInTheDocument();

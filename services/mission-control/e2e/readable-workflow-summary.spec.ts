@@ -57,7 +57,7 @@ for (const width of [320, 390, 1280]) for (const mode of ['creation', 'summary',
         } else {
             if (mode === 'creation') await page.getByRole('button', { name: 'Create Workflow', exact: true }).click();
             await expect(page.getByRole('alert')).toContainText('The workflow summary response is incomplete or unreadable.');
-            await expect(page.getByRole('link', { name: 'Open Workflow', exact: true })).toHaveCount(0);
+            await expect(page.getByRole('link', { name: 'Review workflow', exact: true })).toHaveCount(0);
             await expect(page.getByRole('button', { name: /prepare exact request|re-plan/i })).toHaveCount(0);
             if (width !== 320) {
                 await page.evaluate(() => scrollTo(0, 0));

@@ -133,7 +133,7 @@ describe("PlanningSessionPage", () => {
         renderPage();
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("The workflow summary response is incomplete or unreadable.");
-        expect(screen.queryByRole("link", { name: "Open Workflow" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Review workflow" })).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Check saved planning" }));
         expect(await screen.findByRole("link", { name: "Open existing workflow" })).toHaveAttribute("href", "/workflows/workflow-1");
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledExactlyOnceWith("candidate-plan-1");
@@ -148,7 +148,7 @@ describe("PlanningSessionPage", () => {
         const user = userEvent.setup();
         renderPage();
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
-        expect(await screen.findByRole("link", { name: "Open Workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
+        expect(await screen.findByRole("link", { name: "Review workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
     });
 
@@ -347,7 +347,7 @@ describe("PlanningSessionPage", () => {
         expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledExactlyOnceWith("candidate-plan-1");
         await user.click(screen.getByRole("button", { name: "Create Workflow" }));
-        await screen.findByRole("link", { name: "Open Workflow" });
+        await screen.findByRole("link", { name: "Review workflow" });
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledExactlyOnceWith("candidate-plan-1");
     });
 
@@ -557,15 +557,21 @@ describe("PlanningSessionPage", () => {
 
         await waitFor(() => expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1"));
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
-        expect(await screen.findByText("Workflow created.")).toBeInTheDocument();
+        expect(await screen.findByText("Workflow available for review.")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Workflow result", level: 2 })).toBeVisible();
         expect(screen.queryByRole("heading", { name: "Create a workflow" })).not.toBeInTheDocument();
         expect(screen.getByText("Workflow ID")).toBeInTheDocument();
-        expect(screen.getByText("workflow-1")).toBeInTheDocument();
+        expect(screen.getByText("workflow-1")).not.toBeVisible();
+        const details = screen.getByText("Workflow details", { exact: true });
+        expect(details.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByRole("link", { name: "Review workflow" })).toBeVisible();
+        await user.click(details);
+        expect(screen.getByText("workflow-1")).toBeVisible();
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
         expect(screen.getByText("Approval Pending")).toBeInTheDocument();
         expect(screen.getByText("Implementation approval pending")).toBeInTheDocument();
         expect(screen.getByText("Yes")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Open Workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
+        expect(screen.getByRole("link", { name: "Review workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
         expect(screen.getByText("Workflow").closest("li")).toHaveAttribute("aria-current", "step");
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
@@ -586,7 +592,7 @@ describe("PlanningSessionPage", () => {
         expect(screen.getAllByText("Creating workflow...").length).toBeGreaterThan(0);
         expect(screen.getByRole("button", { name: "Refresh planning" })).toBeDisabled();
         resolveRequest(workflow());
-        expect(await screen.findByText("Workflow created.")).toBeInTheDocument();
+        expect(await screen.findByText("Workflow available for review.")).toBeInTheDocument();
     });
 
     it("handles workflow creation errors and rejected conversion states", async () => {
@@ -602,7 +608,16 @@ describe("PlanningSessionPage", () => {
         renderPage();
 
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
-        expect(await screen.findByText("Workflow already exists.")).toBeInTheDocument();
+        expect(await screen.findByText("Workflow already exists.")).toBeVisible();
+        expect(screen.getByText("Failure: conflicting_active_session - Workflow already exists")).toBeVisible();
+
+        mockedCreateCandidateWorkflowShell.mockResolvedValueOnce(workflow({ conversion_status: "workflow_exists" }));
+        cleanup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
+        expect(await screen.findByText("Workflow already exists.")).toBeVisible();
+        expect(screen.getByRole("link", { name: "Review workflow" })).toBeVisible();
+        expect(screen.queryByText("Workflow available for review.")).not.toBeInTheDocument();
 
         mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Agent unavailable"));
         cleanup();
@@ -681,7 +696,7 @@ describe("PlanningSessionPage", () => {
         renderPage();
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
         expect(await screen.findByRole("alert")).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: "Open Workflow" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Review workflow" })).not.toBeInTheDocument();
     });
 
     it("does not offer generation when planning is explicitly disallowed", async () => {
