@@ -29,6 +29,12 @@ export function InstallationPlanReview({
 
 function PlanDetails({ plan }: { plan: InstallationPlan }) {
     const nullable = (value: string | null) => value ?? "None";
+    const visibleBlockers = plan.blockers.filter((blocker) => blocker.code !== "required_operator_confirmation"
+        || !plan.required_operator_confirmations.some((confirmation) => confirmation.subject === blocker.subject));
+    const unresolvedSummary = [
+        visibleBlockers.length > 0 ? `${visibleBlockers.length} unresolved blocker${visibleBlockers.length === 1 ? "" : "s"}` : null,
+        plan.required_operator_confirmations.length > 0 ? `${plan.required_operator_confirmations.length} required operator confirmation${plan.required_operator_confirmations.length === 1 ? "" : "s"}` : null,
+    ].filter(Boolean).join("; ");
     return (
         <div className="mt-5 space-y-5">
             <div className={`rounded-lg border p-4 ${plan.blockers.length === 0 ? "border-blue-500/30 bg-blue-500/10" : "border-amber-500/30 bg-amber-500/10"}`}>
@@ -36,17 +42,17 @@ function PlanDetails({ plan }: { plan: InstallationPlan }) {
                 <p className="mt-1 text-sm text-slate-300">
                     {plan.blockers.length === 0
                         ? "Ready for operator review only; no execution authority has been granted."
-                        : `${plan.blockers.length} unresolved blocker${plan.blockers.length === 1 ? "" : "s"}; this plan is not executable.`}
+                        : `${unresolvedSummary}; this plan is not executable.`}
                 </p>
             </div>
-            <ReviewList title="Blockers" empty="No unresolved blockers." rows={plan.blockers.map((row) => `${label(row.code)} — ${row.subject}`)} />
-            <ReviewList title="Required operator confirmations" empty="No operator confirmations required." rows={plan.required_operator_confirmations.map((row) => `${label(row.code)} — ${row.prompt} (${row.subject})`)} />
+            <ReviewList title="Blockers" empty="No unresolved blockers." rows={visibleBlockers.map((row) => `${label(row.code)} — ${subjectDescription(plan, row.subject)}`)} />
+            <ReviewList title="Required operator confirmations" empty="No operator confirmations required." rows={plan.required_operator_confirmations.map((row) => confirmationDescription(plan, row))} />
             <ReviewList title="Risks" empty="No risks reported." rows={plan.risks.map((row) => `${label(row.severity)} · ${label(row.code)} — ${row.subject}`)} />
-            <ReviewList title="Missing facts" empty="No missing facts." rows={plan.missing_facts.map((row) => `${label(row.code)} — ${row.subject}`)} />
+            <ReviewList title="Missing facts" empty="No missing facts." rows={plan.missing_facts.map((row) => `${label(row.code)} — ${subjectDescription(plan, row.subject)}`)} />
             <ReviewList title="Compatibility" empty="No compatibility records." rows={plan.compatibility.map((row) => `Environment: ${row.environment} · Result: ${label(row.result)} · Reason code: ${row.reason_code}`)} />
-            <ReviewList title="Prerequisites" empty="No prerequisites listed." rows={plan.prerequisites.map((row) => `Prerequisite ID: ${row.prerequisite_id} · Kind: ${row.kind} · State: ${row.state} · Description: ${row.description}`)} />
+            <ReviewList title="Prerequisites" empty="No prerequisites listed." rows={plan.prerequisites.map((row) => `Kind: ${row.kind} · State: ${row.state} · Description: ${row.description}`)} />
             <ReviewList title="Relationships" empty="No relationships listed." rows={plan.relationships.map((row) => `Kind: ${row.kind} · Item: ${row.item_id} · Required: ${row.required ? "Yes" : "No"} · Minimum version: ${nullable(row.minimum_version)} · Maximum version: ${nullable(row.maximum_version)}`)} />
-            <ReviewList title="Assumptions" empty="No assumptions listed." rows={plan.assumptions.map((row) => `Assumption ID: ${row.assumption_id} · Kind: ${row.kind} · Statement: ${row.statement}`)} />
+            <ReviewList title="Assumptions" empty="No assumptions listed." rows={plan.assumptions.map((row) => `Kind: ${row.kind} · Statement: ${assumptionDescription(plan, row.assumption_id) ?? row.statement}`)} />
             <details className="rounded-lg border border-slate-700 p-4">
                 <summary className="cursor-pointer text-sm font-semibold text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-300">Plan identity and evidence</summary>
                 <div className="mt-4 space-y-5">
@@ -72,6 +78,12 @@ function PlanDetails({ plan }: { plan: InstallationPlan }) {
                     </dl>
                     <ReviewList title="Accepted evidence" empty="No accepted evidence records." rows={plan.accepted_evidence.map((row) => `Evidence ID: ${row.evidence_id} · Source class: ${row.source_class} · Source ID: ${row.source_id} · Subject: ${row.subject} · Claim: ${row.claim} · Immutable identity: ${row.immutable_identity} · Observed at: ${nullable(row.observed_at)} · Attested at: ${row.attested_at} · Freshness window seconds: ${row.freshness_window_seconds} · Trust: ${row.trust}`)} />
                     <ReviewList title="Provenance" empty="No provenance records." rows={plan.provenance.map((row) => `Claim: ${row.claim} · Source class: ${row.source_class} · Source ID: ${row.source_id} · Immutable identity: ${row.immutable_identity} · Observed at: ${nullable(row.observed_at)} · Attested at: ${nullable(row.attested_at)}`)} />
+                    <ReviewList title="Exact review references" empty="No blocker or confirmation references." rows={[
+                        ...plan.blockers.map((row) => `Blocker code: ${row.code} · Subject ID: ${row.subject}`),
+                        ...plan.required_operator_confirmations.map((row) => `Confirmation code: ${row.code} · Subject ID: ${row.subject} · Exact prompt: ${row.prompt}`),
+                        ...plan.prerequisites.map((row) => `Prerequisite ID: ${row.prerequisite_id}`),
+                        ...plan.assumptions.map((row) => `Assumption ID: ${row.assumption_id} · Exact statement: ${row.statement}`),
+                    ]} />
                 </div>
             </details>
         </div>
@@ -79,7 +91,39 @@ function PlanDetails({ plan }: { plan: InstallationPlan }) {
 }
 
 function ReviewList({ title, empty, rows }: { title: string; empty: string; rows: string[] }) {
-    return <div><h3 className="text-sm font-semibold text-slate-200">{title}</h3>{rows.length === 0 ? <p className="mt-2 text-sm text-slate-500">{empty}</p> : <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">{rows.map((row, index) => <li className="break-all" key={`${index}-${row}`}>{row}</li>)}</ul>}</div>;
+    return <div><h3 className="text-sm font-semibold text-slate-200">{title}</h3>{rows.length === 0 ? <p className="mt-2 text-sm text-slate-500">{empty}</p> : <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">{rows.map((row, index) => <li className="break-words" key={`${index}-${row}`}>{row}</li>)}</ul>}</div>;
+}
+
+function assumptionDescription(plan: InstallationPlan, assumptionId: string) {
+    const assumption = plan.assumptions.find((row) => row.assumption_id === assumptionId);
+    if (!assumption) return null;
+    const related = plan.prerequisites.filter((row) => assumption.statement.includes(row.prerequisite_id));
+    if (related.length === 0) return assumption.statement;
+    let statement = assumption.statement;
+    for (const prerequisite of related) {
+        statement = statement.replace(` for prerequisite ${prerequisite.prerequisite_id}`, "");
+    }
+    return `${statement} Related prerequisite: ${related.map((row) => row.description).join("; ")}`;
+}
+
+function subjectDescription(plan: InstallationPlan, subject: string) {
+    return plan.prerequisites.find((row) => row.prerequisite_id === subject)?.description
+        ?? assumptionDescription(plan, subject)
+        ?? subject;
+}
+
+function confirmationDescription(
+    plan: InstallationPlan,
+    row: InstallationPlan["required_operator_confirmations"][number],
+) {
+    const promptDisclaimer = "; this does not approve or authorize any action.";
+    const disclaimer = "This does not approve or authorize any action.";
+    if (!row.prompt.endsWith(promptDisclaimer)) return `${label(row.code)} — ${row.prompt} (${row.subject})`;
+    const prerequisite = plan.prerequisites.find((item) => item.prerequisite_id === row.subject);
+    if (prerequisite) return `${label(row.code)} — Review this informational prerequisite: ${prerequisite.description} ${disclaimer}`;
+    const assumption = plan.assumptions.find((item) => item.assumption_id === row.subject);
+    if (assumption) return `${label(row.code)} — Review this informational assumption: ${assumptionDescription(plan, assumption.assumption_id)} ${disclaimer}`;
+    return `${label(row.code)} — ${row.prompt} (${row.subject})`;
 }
 
 function Value({ name, value }: { name: string; value: string }) {
