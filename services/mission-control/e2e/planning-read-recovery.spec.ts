@@ -78,6 +78,17 @@ for (const width of [320, 390, 1280]) for (const mode of ['read', 'plan', 'workf
         expect(reads).toBe(baseURL!.includes(':4173') ? 2 : 3);
         expect(posts).toBe(mode === 'read' ? 0 : 1);
         expect(mutations).toEqual(mode === 'read' ? [] : [`POST ${baseURL}${actionPath}`]);
+        const references = page.getByText('Plan references', { exact: true });
+        await expect(references.locator('..')).not.toHaveAttribute('open');
+        await expect(page.getByText('Branch: fixture-branch', { exact: true })).toBeHidden();
+        await expect(page.getByText('No evidence IDs listed.', { exact: true })).toBeHidden();
+        for (const name of ['Planning assumptions', 'Constraints', 'Proposed steps', 'Affected files', 'Verification strategy', 'Rollback considerations', 'Unresolved questions']) {
+            await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+        }
+        await references.focus();
+        await page.keyboard.press('Enter');
+        await expect(page.getByText('Branch: fixture-branch', { exact: true })).toBeVisible();
+        await expect(page.getByText('No evidence IDs listed.', { exact: true })).toBeVisible();
         const panelBounds = await page.getByRole('heading', { name: 'Affected repository', exact: true }).evaluate(heading => {
             const panel = heading.closest('section')!;
             const bounds = panel.getBoundingClientRect();
@@ -86,6 +97,11 @@ for (const width of [320, 390, 1280]) for (const mode of ['read', 'plan', 'workf
         expect(panelBounds.left).toBeGreaterThanOrEqual(0);
         expect(panelBounds.right).toBeLessThanOrEqual(width);
         expect(panelBounds.fits).toBe(true);
+        await page.keyboard.press('Enter');
+        await expect(page.getByText('Branch: fixture-branch', { exact: true })).toBeHidden();
+        expect(reads).toBe(baseURL!.includes(':4173') ? 2 : 3);
+        expect(posts).toBe(mode === 'read' ? 0 : 1);
+        expect(mutations).toEqual(mode === 'read' ? [] : [`POST ${baseURL}${actionPath}`]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         if (width !== 320 && mode === 'plan') {
             await page.evaluate(() => scrollTo(0, 0));
