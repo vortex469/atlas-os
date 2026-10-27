@@ -30,11 +30,24 @@ describe("OperationalRecoverySummary", () => {
         [{ diagnostic_status: "attention_required", consistency: "transition_mismatch", controlled_reason: "invalid_transition_sequence", safe_next_action: "preserve_evidence" }, "Attention required"],
         [{ diagnostic_status: "attention_required", consistency: "terminal_mismatch", controlled_reason: "terminal_state_disagreement", safe_next_action: "operator_review_required" }, "Attention required"],
     ] as Array<[Partial<WorkflowRecoveryDiagnostic>, string]>)("renders controlled diagnostic %# distinctly", (overrides, heading) => {
-        render(<OperationalRecoverySummary diagnostic={diagnostic(overrides)} supportEvidenceAvailable />);
+        const report = diagnostic(overrides);
+        const { rerender } = render(<OperationalRecoverySummary diagnostic={report} supportEvidenceAvailable />);
 
         expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
         expect(screen.getByText(/Safe next action:/)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /retry|run again|reconcile|execute/i })).not.toBeInTheDocument();
+        expect(screen.getByText(/Read-only guidance only/)).toBeVisible();
+        if (report.controlled_reason === null) expect(screen.getByText("No recovery reason was reported.", { exact: true })).toBeVisible();
+        rerender(<OperationalRecoverySummary diagnostic={report} supportEvidenceAvailable compact />);
+        expect(screen.getByRole("heading", { name: heading })).toBeVisible();
+        expect(screen.getByText(/Safe next action:/)).toBeVisible();
+        expect(screen.queryByText(/Read-only guidance only/)).not.toBeInTheDocument();
+        if (report.consistency === "consistent") expect(screen.queryByText("consistent", { exact: true })).not.toBeInTheDocument();
+        else expect(screen.getByText(report.consistency.replaceAll("_", " "), { exact: true })).toBeVisible();
+        if (report.controlled_reason === null) {
+            if (report.diagnostic_status === "healthy") expect(screen.queryByText("No recovery reason was reported.", { exact: true })).not.toBeInTheDocument();
+            else expect(screen.getByText("No recovery reason was reported.", { exact: true })).toBeVisible();
+        }
     });
 
     it.each([

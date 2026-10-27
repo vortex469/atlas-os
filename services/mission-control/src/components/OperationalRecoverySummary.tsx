@@ -26,8 +26,8 @@ export function OperationalRecoverySummary({ diagnostic, isLoading = false, erro
 
     const presentation = recoveryPresentation(diagnostic);
     return <section aria-label="Recovery summary" className={`rounded-lg border p-4 ${SEVERITY_STYLES[retained ? "unavailable" : presentation.severity]}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold text-white">{retained ? `Last loaded: ${presentation.title}` : presentation.title}</h3><span className="rounded-full border border-current/30 px-2 py-1 text-xs uppercase tracking-wide text-slate-200">{retained && "Last loaded: "}{recoveryLabel(diagnostic.consistency)}</span></div>
-        <p className="mt-2 text-sm text-slate-200">{retained && "Last loaded assessment: "}{presentation.reason}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold text-white">{retained ? `Last loaded: ${presentation.title}` : presentation.title}</h3>{(!compact || diagnostic.consistency !== "consistent") && <span className="rounded-full border border-current/30 px-2 py-1 text-xs uppercase tracking-wide text-slate-200">{retained && "Last loaded: "}{recoveryLabel(diagnostic.consistency)}</span>}</div>
+        {(!compact || diagnostic.diagnostic_status !== "healthy" || diagnostic.controlled_reason !== null) && <p className="mt-2 text-sm text-slate-200">{retained && "Last loaded assessment: "}{presentation.reason}</p>}
         {retainedNotice}
         {!compact && <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
             <Evidence label="Fingerprint" value={recoveryLabel(diagnostic.verification_evidence.target_fingerprint_state)} />
@@ -40,7 +40,7 @@ export function OperationalRecoverySummary({ diagnostic, isLoading = false, erro
             <Evidence label="Support evidence" value={supportEvidenceAvailable ? "Available" : "Unavailable"} />
         </dl>}
         <p className="mt-3 text-sm font-medium text-cyan-100"><strong>{retained ? "Last loaded guidance:" : "Safe next action:"}</strong> {presentation.safeNextAction}</p>
-        <p className="mt-2 text-xs text-slate-300">Read-only guidance only. No retry, replay, or reconciliation control is provided.</p>
+        {!compact && <p className="mt-2 text-xs text-slate-300">Read-only guidance only. No retry, replay, or reconciliation control is provided.</p>}
     </section>;
 }
 
