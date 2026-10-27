@@ -193,7 +193,9 @@ export async function getProviderManagement(providerId: string): Promise<Provide
     const response = await atlas.get<unknown>(
         `/providers/${encodeURIComponent(providerId)}/management`,
     );
-    return parseProviderManagementV2(response.data);
+    const descriptor = parseProviderManagementV2(response.data);
+    if (descriptor.provider_id !== providerId) throw new Error("Provider management response belongs to another provider.");
+    return descriptor;
 }
 
 export function parseProviderManagementV3(value: unknown, requestedProviderId: string): ProviderManagementV3 {

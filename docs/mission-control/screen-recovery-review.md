@@ -287,3 +287,12 @@ a newer loading state. The same ordering applies to initial reads and manual
 inventory refreshes. Browser coverage overlaps reads through a provider catalog
 refresh and verifies both reply orders at phone and desktop widths using GETs
 only; monitoring permission and save contracts remain unchanged.
+
+Public monitoring responses are now bound to the requested provider ID before
+replacing the view, including otherwise-valid empty descriptors. An unrelated
+provider response follows the existing unavailable/retry path: observed inventory
+remains visible, retained monitoring facts are labelled as last reported and
+editing stays paused. Recovery restores current settings and requires a new
+suppression acknowledgement. Browser coverage checks initial and retained views
+at phone and desktop widths and excludes unrelated resource names/rows. Display
+name changes remain valid; backend permission and execution rules are unchanged.
