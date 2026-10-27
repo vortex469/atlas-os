@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     getCapabilityResources,
@@ -99,6 +99,7 @@ function createdCandidate(): OperatorIntentCreationResponse {
 }
 
 describe("MaintenanceRequestPage", () => {
+    afterEach(() => vi.useRealTimers());
     beforeEach(() => {
         vi.resetAllMocks();
         authenticated();
@@ -347,6 +348,37 @@ describe("MaintenanceRequestPage", () => {
         expect(await screen.findByRole("alert")).toHaveTextContent("resource changed");
         expect(getCapabilityResources).toHaveBeenCalledTimes(2);
         expect(await screen.findByRole("radio", { name: /Frigate/i })).not.toBeChecked();
+    });
+
+    it("removes the planning handoff when the displayed candidate expires without another request", async () => {
+        const response = createdCandidate();
+        response.candidate.expires_at = new Date(Date.now() + 60_000).toISOString();
+        vi.mocked(requestRestartServiceIntent).mockResolvedValue(response);
+        renderPage();
+        await screen.findByText("Frigate");
+        vi.useFakeTimers();
+        fireEvent.click(screen.getByRole("radio", { name: /Frigate/i }));
+        await act(async () => fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" })));
+        expect(screen.getByRole("link", { name: "Continue to candidate planning" })).toBeInTheDocument();
+        await act(async () => vi.advanceTimersByTime(60_000));
+        expect(screen.getByRole("heading", { name: "Maintenance candidate expired" })).toBeInTheDocument();
+        expect(screen.getByText(/candidate has expired/i)).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
+        expect(getCapabilityResources).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["yesterday", "2026-02-30T00:00:00Z", "2099-01-01T00:00:00"])("does not present unreadable expiry %s as ready", async (expiresAt) => {
+        const response = createdCandidate();
+        response.candidate.expires_at = expiresAt;
+        vi.mocked(requestRestartServiceIntent).mockResolvedValue(response);
+        renderPage();
+        await userEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
+        await userEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("The candidate expiration could not be confirmed. Refresh the resource list before requesting a new candidate.");
+        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Maintenance candidate ready" })).not.toBeInTheDocument();
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });
 
     it("does not hand an expired candidate to planning", async () => {
