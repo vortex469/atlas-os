@@ -87,11 +87,10 @@ function TrendChart({
         maximumDuration,
         performancePolicy?.maximum_collection_duration_ms ?? 0,
     );
-    const average =
-        points.reduce(
-            (total, { timing }) => total + timing.duration_ms,
-            0,
-        ) / points.length;
+    const average = points.reduce(
+        (mean, { timing }, index) => mean + (timing.duration_ms - mean) / (index + 1),
+        0,
+    );
     const issues = points.filter(
         ({ timing }) => timing.status !== "completed",
     ).length;

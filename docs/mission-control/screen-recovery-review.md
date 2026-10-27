@@ -52,7 +52,16 @@ changes display behavior only; backend policy enforcement is unchanged.
 layout uses complete final rows for odd setting counts, wraps long values within
 the panel, and places history metrics two across on narrow screens.
 `e2e/provider-panel-layout.spec.ts` checks one/three-setting layouts and long
-container names at 320, 390 and 1280 pixels.
+container names at 320, 390 and 1280 pixels. Collection-history responses are
+validated before publication to the page: malformed rows, dates, statuses or
+numeric fields make the optional read unavailable while preserving valid prior
+history. The reader projects known fields and honors Core telemetry defaults and
+naive/aware datetime serialization. Finding counts must be exactly representable
+browser integers, and duplicate snapshot IDs are rejected to avoid ambiguous
+chart keys. Native DTO fixture checks cover the public response shape. Chart
+averages use incremental arithmetic so large finite durations do not overflow.
+`e2e/provider-history.spec.ts` includes malformed successful-response recovery.
+
 
 Paths in the table are relative to `services/mission-control`.
 
