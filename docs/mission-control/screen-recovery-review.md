@@ -619,3 +619,13 @@ Result recorded. Impossible calendar dates, missing timezones, and future times
 show Unknown time; absent times remain Not reported. Valid timezone-aware values
 still use the operator's local display format. This changes timestamp display
 only, with no inference about maintenance outcome and no extra requests.
+
+Maintenance history retains the last complete page while a new read is pending
+or fails. The banner, row result, recovery assessment and guidance identify this
+as last-loaded information; retained diagnostics use neutral styling and do not
+claim a current safe next action. Empty and filtered pages receive the same
+qualification. A successful read replaces the snapshot and clears the warning.
+Pagination describes the displayed snapshot, disables page changes while loading,
+and retries the same requested page after failure rather than skipping ahead.
+Filters remain local to the displayed page. Recovery adds no writes, retries of
+maintenance work, or approval controls.

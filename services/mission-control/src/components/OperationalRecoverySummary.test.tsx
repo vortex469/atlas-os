@@ -7,6 +7,17 @@ import { OperationalRecoverySummary } from "./OperationalRecoverySummary";
 
 
 describe("OperationalRecoverySummary", () => {
+    it.each(["healthy", "attention_required"])("qualifies retained %s status and guidance", (diagnosticStatus) => {
+        render(<OperationalRecoverySummary diagnostic={diagnostic({ diagnostic_status: diagnosticStatus as WorkflowRecoveryDiagnostic["diagnostic_status"] })} supportEvidenceAvailable compact retained />);
+        const title = diagnosticStatus === "healthy" ? "Healthy" : "Attention required";
+        expect(screen.getByRole("heading", { name: `Last loaded: ${title}` })).toBeVisible();
+        expect(screen.queryByRole("heading", { name: title })).not.toBeInTheDocument();
+        expect(screen.getByText(/Current status and guidance have not been confirmed/)).toBeVisible();
+        expect(screen.getByText("Last loaded guidance:", { exact: true })).toBeVisible();
+        expect(screen.queryByText("Safe next action:", { exact: true })).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Recovery summary" })).toHaveClass("bg-slate-800/60");
+    });
+
     it.each([
         [{ diagnostic_status: "healthy" }, "Healthy"],
         [{ diagnostic_status: "pending", controlled_reason: "verification_pending", safe_next_action: "wait_for_verification" }, "Pending"],

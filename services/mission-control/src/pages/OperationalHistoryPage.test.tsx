@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -21,10 +21,8 @@ const mockedLifecycle = vi.mocked(getWorkflowOperationalLifecycle);
 const mockedDiagnostic = vi.mocked(getWorkflowRecoveryDiagnostic);
 const mockedList = vi.mocked(listWorkflows);
 
-describe("OperationalHistoryPage", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockedList.mockResolvedValue({
+function historyPage(): Awaited<ReturnType<typeof listWorkflows>> {
+    return {
             items: [{
                 workflow_id: "workflow-operational-1",
                 workflow_source: "candidate",
@@ -41,7 +39,13 @@ describe("OperationalHistoryPage", () => {
             total: 1,
             limit: 10,
             offset: 0,
-        });
+        };
+}
+
+describe("OperationalHistoryPage", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+        mockedList.mockResolvedValue(historyPage());
         mockedLifecycle.mockResolvedValue(operationalLifecycle());
         mockedDiagnostic.mockResolvedValue({
             applicable: true,
@@ -71,6 +75,60 @@ describe("OperationalHistoryPage", () => {
         expect(await screen.findByText(`Requested: ${formatted}`)).toBeVisible();
         fireEvent.click(screen.getByText("Workflow details", { exact: true }));
         expect(screen.getByText("Result recorded", { exact: true }).parentElement).toHaveTextContent(formatted);
+    });
+
+    it("retains qualified records through pending, failed and retried refreshes", async () => {
+        const page = historyPage();
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        await screen.findByRole("heading", { name: "Healthy" });
+        let fail!: (error: Error) => void;
+        mockedList.mockImplementationOnce(() => new Promise((_, reject) => { fail = reject; }));
+        fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
+        expect(screen.getByText("proxmox/qemu/110")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Last loaded: Healthy" })).toBeVisible();
+        expect(screen.queryByRole("heading", { name: "Healthy" })).not.toBeInTheDocument();
+        expect(screen.getByText(/Current status and guidance have not been confirmed/)).toBeVisible();
+        await act(async () => fail(new Error("unavailable")));
+        expect(await screen.findByRole("alert")).toBeVisible();
+        expect(screen.getByText("proxmox/qemu/110")).toBeVisible();
+        let finish!: (value: Awaited<ReturnType<typeof listWorkflows>>) => void;
+        mockedList.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
+        expect(screen.getByRole("heading", { name: "Last loaded: Healthy" })).toBeVisible();
+        await act(async () => finish(page));
+        expect(await screen.findByRole("heading", { name: "Healthy" })).toBeVisible();
+        expect(screen.queryByText(/Current status and guidance have not been confirmed/)).not.toBeInTheDocument();
+        expect(mockedList).toHaveBeenCalledTimes(3);
+    });
+
+    it("retains the displayed page and retries a failed Next without skipping a page", async () => {
+        const page = historyPage();
+        const item = page.items[0];
+        mockedList.mockReset()
+            .mockResolvedValueOnce({ ...page, items: Array.from({ length: 10 }, (_, index) => ({ ...item, workflow_id: `old-${index}`, target_id: `Previous target ${index}` })), total: 11 })
+            .mockRejectedValueOnce(new Error("unavailable"))
+            .mockResolvedValueOnce({ ...page, items: [{ ...item, workflow_id: "new-page", target_id: "New page target" }], total: 11, offset: 10 });
+        mockedLifecycle.mockResolvedValue(null);
+        mockedDiagnostic.mockResolvedValue(null);
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        fireEvent.click(await screen.findByRole("button", { name: "Next" }));
+        await screen.findByRole("alert");
+        expect(screen.getByText("Previous target 0")).toBeVisible();
+        expect(screen.getByText("Last loaded: Showing 1–10 of 11")).toBeVisible();
+        fireEvent.click(screen.getByRole("button", { name: "Next" }));
+        expect(await screen.findByText("New page target")).toBeVisible();
+        expect(screen.getByText("Showing 11–11 of 11")).toBeVisible();
+        expect(mockedList.mock.calls.map(([query]) => query?.offset)).toEqual([0, 10, 10]);
+    });
+
+    it("qualifies a retained empty page instead of claiming current emptiness", async () => {
+        mockedList.mockResolvedValueOnce({ items: [], total: 0, limit: 10, offset: 0 }).mockRejectedValueOnce(new Error("unavailable"));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        await screen.findByText("No maintenance requests yet.");
+        fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
+        await screen.findByRole("alert");
+        expect(screen.getByText("No requests in the last loaded page. Current results have not been confirmed.")).toBeVisible();
+        expect(screen.queryByText("No maintenance requests yet.")).not.toBeInTheDocument();
     });
 
     it("keeps missing reports in the unavailable filter without claiming a network failure", async () => {
