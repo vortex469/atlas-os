@@ -348,10 +348,30 @@ function directoryQuery(selection: DirectorySelection): WorkflowListQuery {
     };
 }
 
+// Validate only fields this read-only directory displays; nullable/omitted
+// metadata and future string states remain readable without granting authority.
+function isReadableDirectoryRecord(item: WorkflowSummary): boolean {
+    if (!item || typeof item !== "object" || Array.isArray(item)
+        || typeof item.workflow_id !== "string" || !item.workflow_id.trim()
+        || item.workflow_id === "." || item.workflow_id === ".."
+        || typeof item.workflow_state !== "string"
+        || typeof item.last_result_summary !== "string") return false;
+    try {
+        encodeURIComponent(item.workflow_id);
+    } catch {
+        return false;
+    }
+    const metadata = [item.workflow_source, item.candidate_id, item.planning_session_id, item.repository, item.target_id];
+    return metadata.every(value => value === null || value === undefined || typeof value === "string")
+        && Array.isArray(item.timeline) && item.timeline.every(stage => stage !== null
+            && typeof stage === "object" && !Array.isArray(stage)
+            && typeof stage.name === "string" && typeof stage.status === "string");
+}
+
 function validateDirectoryPage(page: WorkflowListResponse, selection: DirectorySelection): void {
     if (!page || !Array.isArray(page.items) || !Number.isSafeInteger(page.total) || page.total < 0
         || page.limit !== PAGE_SIZE || page.offset !== selection.offset || page.items.length > PAGE_SIZE
-        || page.items.some((item) => !item || typeof item.workflow_id !== "string" || typeof item.workflow_state !== "string")
+        || page.items.some((item) => !isReadableDirectoryRecord(item))
         || new Set(page.items.map((item) => item.workflow_id)).size !== page.items.length
         || (page.offset < page.total && page.items.length !== Math.min(PAGE_SIZE, page.total - page.offset))
         || (page.offset >= page.total && page.items.length !== 0)) {
