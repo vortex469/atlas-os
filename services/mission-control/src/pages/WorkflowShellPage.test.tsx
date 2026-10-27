@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
     createCandidateImplementationRequest,
-    createCandidateWorkflowShell,
+    getCandidateWorkflowShell,
     createSuccessorCandidatePlanningSession,
     getCandidatePlanningSession,
 } from "../api/atlas-agent";
@@ -19,7 +19,7 @@ import { WorkflowShellPage } from "./WorkflowShellPage";
 
 vi.mock("../api/atlas-agent", () => ({
     createCandidateImplementationRequest: vi.fn(),
-    createCandidateWorkflowShell: vi.fn(),
+    getCandidateWorkflowShell: vi.fn(),
     createSuccessorCandidatePlanningSession: vi.fn(),
     getCandidatePlanningSession: vi.fn(),
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) =>
@@ -27,7 +27,7 @@ vi.mock("../api/atlas-agent", () => ({
 }));
 
 const mockedCreateCandidateImplementationRequest = vi.mocked(createCandidateImplementationRequest);
-const mockedCreateCandidateWorkflowShell = vi.mocked(createCandidateWorkflowShell);
+const mockedGetCandidateWorkflowShell = vi.mocked(getCandidateWorkflowShell);
 const mockedCreateSuccessorCandidatePlanningSession = vi.mocked(createSuccessorCandidatePlanningSession);
 const mockedGetCandidatePlanningSession = vi.mocked(getCandidatePlanningSession);
 
@@ -102,7 +102,7 @@ describe("WorkflowShellPage", () => {
         mockedCreateCandidateImplementationRequest.mockResolvedValue(
             implementationTranslationResponse(),
         );
-        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow());
+        mockedGetCandidateWorkflowShell.mockResolvedValue(workflow());
         mockedCreateSuccessorCandidatePlanningSession.mockResolvedValue(
             planningSession({
                 session_id: "candidate-plan-2",
@@ -137,22 +137,20 @@ describe("WorkflowShellPage", () => {
         expect(screen.queryByText(/argv|commands|execution metadata/i)).not.toBeInTheDocument();
         expect(await screen.findByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();
         expect(mockedGetCandidatePlanningSession).not.toHaveBeenCalled();
-        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
-            expected_candidate_fingerprint: "fingerprint-1",
-        });
+        expect(mockedGetCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1");
         const disclosure = screen.getByText("Technical details", { exact: true });
         expect(disclosure.closest("details")).not.toHaveAttribute("open");
         expect(screen.getByText("plan-fingerprint-1")).not.toBeVisible();
-        const shellReads = mockedCreateCandidateWorkflowShell.mock.calls.length;
+        const shellReads = mockedGetCandidateWorkflowShell.mock.calls.length;
         await user.click(disclosure);
         expect(screen.getByText("plan-fingerprint-1")).toBeVisible();
-        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(shellReads);
+        expect(mockedGetCandidateWorkflowShell).toHaveBeenCalledTimes(shellReads);
         expect(mockedCreateCandidateImplementationRequest).not.toHaveBeenCalled();
         expect(mockedCreateSuccessorCandidatePlanningSession).not.toHaveBeenCalled();
     });
 
     it("reconciles stale location state against a blocked authoritative server response", async () => {
-        mockedCreateCandidateWorkflowShell.mockResolvedValue(
+        mockedGetCandidateWorkflowShell.mockResolvedValue(
             workflow({
                 workflow_status: "blocked",
                 implementation_approval_request_id: "approval-shell",
@@ -172,14 +170,12 @@ describe("WorkflowShellPage", () => {
         expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
         expect(screen.getByText("Recovery: blocked workflow")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
-        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
-            expected_candidate_fingerprint: "fingerprint-1",
-        });
+        expect(mockedGetCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1");
     });
 
     it("does not render mutation actions before authoritative state reconciliation", async () => {
         let resolveShell!: (value: CandidateWorkflowResponse) => void;
-        mockedCreateCandidateWorkflowShell.mockReturnValue(new Promise((resolve) => {
+        mockedGetCandidateWorkflowShell.mockReturnValue(new Promise((resolve) => {
             resolveShell = resolve;
         }));
 
@@ -203,22 +199,20 @@ describe("WorkflowShellPage", () => {
         renderPage();
 
         expect(await screen.findByText("workflow-1", { exact: true })).toBeInTheDocument();
-        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1");
-        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
-            expected_candidate_fingerprint: "fingerprint-1",
-        });
+        expect(mockedGetCandidatePlanningSession).not.toHaveBeenCalled();
+        expect(mockedGetCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1");
     });
 
     it("shows loading state while resolving workflow shell summary", async () => {
-        let resolveSession!: (value: CandidatePlanningResponse) => void;
-        mockedGetCandidatePlanningSession.mockImplementation(() => new Promise((resolve) => {
+        let resolveSession!: (value: CandidateWorkflowResponse) => void;
+        mockedGetCandidateWorkflowShell.mockImplementation(() => new Promise((resolve) => {
             resolveSession = resolve;
         }));
 
         renderPage();
 
         expect(await screen.findByText(/Loading workflow summary/i)).toBeInTheDocument();
-        resolveSession(planningSession());
+        resolveSession(workflow());
     });
 
 	it("renders a prepare exact request button for awaiting_approval shells", async () => {
@@ -420,7 +414,7 @@ describe("WorkflowShellPage", () => {
 
 		it("shows blocked recovery and preserves shared successor behavior", async () => {
 			const user = userEvent.setup();
-			mockedCreateCandidateWorkflowShell.mockResolvedValue(
+			mockedGetCandidateWorkflowShell.mockResolvedValue(
 				workflow({
 					workflow_status: "blocked",
 					implementation_approval_request_id: "approval-shell",
@@ -445,7 +439,7 @@ describe("WorkflowShellPage", () => {
 
 		it("blocks duplicate blocked-workflow successor submissions", async () => {
 			const user = userEvent.setup();
-			mockedCreateCandidateWorkflowShell.mockResolvedValue(
+			mockedGetCandidateWorkflowShell.mockResolvedValue(
 				workflow({
 					workflow_status: "blocked",
 					implementation_approval_request_id: "approval-shell",
@@ -580,7 +574,7 @@ describe("WorkflowShellPage", () => {
     });
 
     it("shows an error when no workflow shell can be loaded from the planning session ID", async () => {
-        mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Workflow unavailable"));
+        mockedGetCandidateWorkflowShell.mockRejectedValueOnce(new Error("Workflow unavailable"));
 
         renderPage();
 
@@ -611,7 +605,7 @@ describe("WorkflowShellPage", () => {
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
     it.each(["awaiting_approval", "blocked"])("does not offer cached %s actions after server validation fails", async (workflow_status) => {
-        mockedCreateCandidateWorkflowShell.mockRejectedValue(new Error("unavailable"));
+        mockedGetCandidateWorkflowShell.mockRejectedValue(new Error("unavailable"));
         renderPage({ workflow: workflow({ workflow_status }) });
         await screen.findByRole("alert");
         expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
@@ -622,19 +616,12 @@ describe("WorkflowShellPage", () => {
         renderPage({ workflow: workflow({ candidate_planning_session_id: "other-session", workflow_session_id: "other-workflow", candidate_fingerprint: "other-fingerprint" }) });
         expect(screen.queryByText("other-workflow", { exact: true })).not.toBeInTheDocument();
         await screen.findByText("workflow-1", { exact: true });
-        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1");
-        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", { expected_candidate_fingerprint: "fingerprint-1" });
-    });
-
-    it("does not create a workflow from a mismatched planning-session read", async () => {
-        mockedGetCandidatePlanningSession.mockResolvedValue(planningSession({ session_id: "other-session" }));
-        renderPage();
-        expect(await screen.findByRole("alert")).toBeInTheDocument();
-        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+        expect(mockedGetCandidatePlanningSession).not.toHaveBeenCalled();
+        expect(mockedGetCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1");
     });
 
     it("rejects an authoritative workflow response for a different session", async () => {
-        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow({ candidate_planning_session_id: "other-session" }));
+        mockedGetCandidateWorkflowShell.mockResolvedValue(workflow({ candidate_planning_session_id: "other-session" }));
         renderPage();
         expect(await screen.findByRole("alert")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
@@ -644,7 +631,7 @@ describe("WorkflowShellPage", () => {
         const user = userEvent.setup();
         let resolveTranslation!: (value: CandidateImplementationTranslationResponse) => void;
         mockedGetCandidatePlanningSession.mockImplementation(async (id) => planningSession({ session_id: id }));
-        mockedCreateCandidateWorkflowShell.mockImplementation(async (id) => workflow({ candidate_planning_session_id: id, workflow_session_id: `workflow-${id}` }));
+        mockedGetCandidateWorkflowShell.mockImplementation(async (id) => workflow({ candidate_planning_session_id: id, workflow_session_id: `workflow-${id}` }));
         mockedCreateCandidateImplementationRequest.mockImplementationOnce(() => new Promise((resolve) => { resolveTranslation = resolve; }));
         const router = createMemoryRouter([
             { path: "/candidate-planning/:sessionId/workflow", element: <WorkflowShellPage /> },
@@ -673,14 +660,14 @@ describe("WorkflowShellPage", () => {
             <Routes><Route path="/candidate-planning/:sessionId/workflow" element={<WorkflowShellPage />} /></Routes>
         </MemoryRouter></StrictMode>);
         await screen.findByRole("button", { name: /prepare exact request/i });
-        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
+        expect(mockedGetCandidateWorkflowShell).toHaveBeenCalledTimes(1);
     });
 
     it("does not let a late recovery response navigate away from another session", async () => {
         const user = userEvent.setup();
         let resolveSuccessor!: (value: CandidatePlanningResponse) => void;
         mockedGetCandidatePlanningSession.mockImplementation(async (id) => planningSession({ session_id: id }));
-        mockedCreateCandidateWorkflowShell.mockImplementation(async (id) => workflow({ candidate_planning_session_id: id, workflow_session_id: `workflow-${id}`, workflow_status: "blocked" }));
+        mockedGetCandidateWorkflowShell.mockImplementation(async (id) => workflow({ candidate_planning_session_id: id, workflow_session_id: `workflow-${id}`, workflow_status: "blocked" }));
         mockedCreateSuccessorCandidatePlanningSession.mockImplementationOnce(() => new Promise((resolve) => { resolveSuccessor = resolve; }));
         const router = createMemoryRouter([
             { path: "/candidate-planning/:sessionId/workflow", element: <WorkflowShellPage /> },

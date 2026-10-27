@@ -379,7 +379,7 @@ def test_openapi_exposes_planning_only_endpoint(monkeypatch, tmp_path: Path) -> 
     assert set(schema["paths"]["/candidate-planning"]) == {"post"}
     assert set(schema["paths"]["/candidate-planning/{session_id}"]) == {"get"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/plan"]) == {"get", "post"}
-    assert set(schema["paths"]["/candidate-planning/{session_id}/workflow"]) == {"post"}
+    assert set(schema["paths"]["/candidate-planning/{session_id}/workflow"]) == {"get", "post"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/successor"]) == {"post"}
     assert set(schema["paths"]["/candidate-planning/{session_id}/implementation"]) == {"post"}
     route_schema = schema["paths"]["/candidate-planning"]["post"]
@@ -573,6 +573,12 @@ def test_get_candidate_planning_session_recovers_orphan_after_restart(
     assert payload["status"] == "workflow_created"
     assert payload["plan"] is None
     assert client.app.state.container.candidate_planning_state.export_snapshot() == {}
+    before = persistence.snapshot_path.read_bytes()
+    saved_summary = client.get("/candidate-planning/candidate-plan-1/workflow")
+    assert saved_summary.status_code == 200
+    assert saved_summary.json()["workflow_session_id"] == workflow.identifier
+    assert persistence.snapshot_path.read_bytes() == before
+    assert service.requests == []
 
 
 def test_implementation_route_accepts_only_expected_fingerprints(monkeypatch, tmp_path: Path) -> None:
@@ -708,4 +714,44 @@ def test_planning_request_rejects_caller_supplied_workflow_reference(monkeypatch
     client = make_client(monkeypatch, tmp_path, service)
     response = client.post("/candidate-planning", json={"candidate_id": "candidate-1", "workflow_session_id": "caller-supplied-workflow"})
     assert response.status_code == 422
+    assert service.requests == []
+
+
+def test_get_workflow_summary_is_read_only_and_supports_orphan_recovery(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    client = make_client(monkeypatch, tmp_path, service)
+    state = client.app.state.container.workflow_state
+    state.create_session(linked_candidate_workflow())
+    before = state.export_snapshot()
+    for _ in range(2):
+        response = client.get('/candidate-planning/candidate-plan-1/workflow')
+        assert response.status_code == 200
+        assert response.json()['workflow_session_id'] == 'candidate-workflow-1'
+        assert response.json()['workflow_status'] == 'awaiting_approval'
+    assert state.export_snapshot() == before
+    assert service.requests == []
+
+
+def test_get_workflow_summary_does_not_create_missing_workflow(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.session = session_with_plan(tmp_path)
+    client = make_client(monkeypatch, tmp_path, service)
+    before = client.app.state.container.workflow_state.export_snapshot()
+    response = client.get('/candidate-planning/candidate-plan-1/workflow')
+    assert response.status_code == 404
+    assert service.requests == []
+    assert client.app.state.container.workflow_state.export_snapshot() == before
+
+
+def test_get_workflow_summary_rejects_ambiguous_linkage_without_mutation(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    client = make_client(monkeypatch, tmp_path, service)
+    state = client.app.state.container.workflow_state
+    state.create_session(linked_candidate_workflow(workflow_id='candidate-workflow-1'))
+    state.create_session(linked_candidate_workflow(workflow_id='candidate-workflow-2'))
+    before = state.export_snapshot()
+    response = client.get('/candidate-planning/candidate-plan-1/workflow')
+    assert response.status_code == 409
+    assert response.json()['detail']['code'] == 'candidate_planning_session_conflict'
+    assert state.export_snapshot() == before
     assert service.requests == []

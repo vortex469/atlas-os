@@ -302,6 +302,13 @@ export async function createSuccessorCandidatePlanningSession(
     return response.data;
 }
 
+export async function getCandidateWorkflowShell(sessionId: string): Promise<CandidateWorkflowResponse> {
+    const response = await atlasAgent.get<CandidateWorkflowResponse>(
+        `/candidate-planning/${encodeURIComponent(sessionId)}/workflow`,
+    );
+    return response.data;
+}
+
 export async function createCandidateWorkflowShell(
     sessionId: string,
     request?: CandidateWorkflowRequest,

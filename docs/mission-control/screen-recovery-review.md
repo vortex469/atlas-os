@@ -337,3 +337,20 @@ saved plan without a workflow offers plan review rather than a false failure.
 Tests cover persisted/orphan/legacy responses, unusable references, maintenance
 plan retention, reload and exact request allowlists at phone and desktop widths.
 These are source and simulated-browser checks, not production acceptance.
+
+
+Opening or reloading workflow preparation now uses
+`GET /candidate-planning/{session_id}/workflow`. The additive Agent read endpoint
+projects the saved workflow and current state using its persisted planning linkage,
+including orphaned-session recovery. It returns 404 for no workflow and 409 for
+ambiguous linkage, and never converts a plan, revalidates with Core, generates an
+approval or writes state. A failed read offers Try again; it never falls back to
+a creation POST. Deployments need the matching Agent read endpoint before using
+this UI change.
+
+Create Workflow remains an explicit planning-page action. Preparing an exact
+request, approving it and running the approved request remain separate actions.
+The browser journey allowlists remove only the former duplicate conversion POST;
+all later approvals and resumes retain their exact method, body and ordering.
+Summary tests cover direct entry, reload and failed-read recovery at 320, 390 and
+1280 pixels with zero mutation requests.

@@ -17,6 +17,7 @@ import { operationalDiagnostic } from "../test/operationalLifecycle";
 
 import {
     getAgentInfo,
+    getCandidateWorkflowShell,
     getReviewReport,
     getSprintStatus,
     getVerificationReport,
@@ -216,4 +217,14 @@ describe("Atlas Agent optional summary endpoints", () => {
             "/api/v1/agent/workflows/workflow%2Fone/support-bundle",
         );
     });
+});
+
+
+it("reads an encoded saved workflow path without treating missing as an empty success", async () => {
+    mockGet.mockResolvedValueOnce({ data: { workflow_session_id: "saved" } });
+    await expect(getCandidateWorkflowShell("session/one")).resolves.toEqual({ workflow_session_id: "saved" });
+    expect(mockGet).toHaveBeenLastCalledWith("/candidate-planning/session%2Fone/workflow");
+    const missing = axiosError(404);
+    mockGet.mockRejectedValueOnce(missing);
+    await expect(getCandidateWorkflowShell("missing")).rejects.toBe(missing);
 });
