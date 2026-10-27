@@ -132,7 +132,7 @@ for (const wrongIdentity of [false, true]) {
         await page.goto("/candidate-planning/browser-session");
         if (wrongIdentity) {
             await expect(page.getByRole("heading", { name: "Planning unavailable" })).toBeVisible();
-            await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+            await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
         } else {
             await expect(page.getByText("Planning is not available for this session.")).toBeVisible();
         }
