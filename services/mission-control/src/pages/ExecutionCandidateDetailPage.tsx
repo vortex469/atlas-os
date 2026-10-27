@@ -1,5 +1,5 @@
 import { isAxiosError } from "axios";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getAtlasErrorMessage } from "../api/atlas";
@@ -26,6 +26,9 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     const [planningResponse, setPlanningResponse] = useState<CandidatePlanningResponse | null>(null);
     const [planningError, setPlanningError] = useState<string | null>(null);
     const [isPlanningPending, setIsPlanningPending] = useState(false);
+    const [readRevision, setReadRevision] = useState(0);
+    const readPending = useRef(true);
+    const planningPending = useRef(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -53,6 +56,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
             })
             .finally(() => {
                 if (!cancelled) {
+                    readPending.current = false;
                     setIsLoading(false);
                 }
             });
@@ -60,15 +64,28 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
         return () => {
             cancelled = true;
         };
-    }, [candidateId]);
+    }, [candidateId, readRevision]);
+
+    function reloadProposal() {
+        if (readPending.current || planningPending.current) return;
+        readPending.current = true;
+        setIsLoading(true);
+        setCandidate(null);
+        setError(null);
+        setNotFound(false);
+        setPlanningResponse(null);
+        setPlanningError(null);
+        setReadRevision(revision => revision + 1);
+    }
 
     const actionState = useMemo(() => getPlanningActionState(candidate), [candidate]);
 
     async function askAtlasAgentToPlan() {
-        if (!candidate || !actionState.enabled || isPlanningPending) {
+        if (!candidate || !actionState.enabled || readPending.current || planningPending.current) {
             return;
         }
 
+        planningPending.current = true;
         setIsPlanningPending(true);
         setPlanningError(null);
         setPlanningResponse(null);
@@ -91,28 +108,30 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 ),
             );
         } finally {
+            planningPending.current = false;
             setIsPlanningPending(false);
         }
     }
 
     if (isLoading) {
-        return <PageFrame><p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">Loading change proposal…</p></PageFrame>;
+        return <PageFrame><p role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">Loading change proposal…</p></PageFrame>;
     }
 
     if (notFound) {
-        return <PageFrame><section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6"><h1 className="text-2xl font-bold text-white">Change proposal not found</h1><p className="mt-2 text-sm text-slate-400">Atlas Core could not find a current proposal for {candidateId}.</p></section></PageFrame>;
+        return <PageFrame><section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6"><h1 className="text-2xl font-bold text-white">Change proposal not found</h1><p className="mt-2 text-sm text-slate-400">Atlas Core could not find a current proposal for {candidateId}.</p><button type="button" onClick={reloadProposal} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300">Try again</button></section></PageFrame>;
     }
 
     if (error || candidate === null) {
-        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Change proposal unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Mission Control could not load this change proposal."}</p></div></PageFrame>;
+        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Change proposal unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Mission Control could not load this change proposal."}</p><button type="button" onClick={reloadProposal} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300">Try again</button></div></PageFrame>;
     }
 
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
-                <Link to="/execution-candidates" className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    ← Change proposals
-                </Link>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Link to="/execution-candidates" className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">← Change proposals</Link>
+                    <button type="button" onClick={reloadProposal} disabled={isPlanningPending} className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50">Refresh proposal</button>
+                </div>
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Change proposal</p>
                     <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
@@ -241,7 +260,7 @@ function planningMessage(response: CandidatePlanningResponse): string {
         return "Planning session created. Next step: generate a candidate plan.";
     }
     if (response.status === "unsupported_intent") return "Unsupported intent. Atlas Agent cannot plan this candidate yet.";
-    if (response.status.includes("stale") || response.planning_failure?.code === "candidate_stale") return "Candidate is stale. Refresh the candidate and try again.";
+    if (response.status.includes("stale") || response.planning_failure?.code === "candidate_stale") return "This proposal changed or expired. Choose Refresh proposal to check its latest state.";
     if (response.status === "intake_rejected") return "Planning intake rejected by Atlas Core.";
     return "Atlas Agent returned a planning intake response.";
 }

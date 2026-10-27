@@ -193,7 +193,7 @@ describe("ExecutionCandidateDetailPage", () => {
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "stale_before_planning", planning_allowed: false, intake_status: "stale" }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByText("Candidate is stale. Refresh the candidate and try again.")).toBeInTheDocument();
+        expect(await screen.findByText("This proposal changed or expired. Choose Refresh proposal to check its latest state.")).toBeInTheDocument();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "atlas_core_unavailable", message: "Core unavailable" } }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
@@ -281,6 +281,51 @@ describe("ExecutionCandidateDetailPage", () => {
         renderPage();
         await screen.findByText("candidate-1", { exact: true });
         expect(screen.getByRole("button", { name: "Start planning" })).toBeEnabled();
+    });
+
+    it.each(["missing", "unavailable", "foreign"] as const)("retries the same proposal after an initial %s response", async failure => {
+        if (failure === "foreign") mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ id: "foreign-candidate" }));
+        else mockedGetExecutionCandidate.mockRejectedValueOnce(Object.assign(new Error("read unavailable"), { isAxiosError: true, response: { status: failure === "missing" ? 404 : 503 } }));
+        const user = userEvent.setup();
+        renderPage();
+        const retry = await screen.findByRole("button", { name: "Try again" });
+        expect(screen.queryByRole("button", { name: "Start planning" })).not.toBeInTheDocument();
+        await user.click(retry);
+        expect(await screen.findByRole("button", { name: "Start planning" })).toBeEnabled();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+        expect(mockedGetExecutionCandidate).toHaveBeenLastCalledWith("candidate-1");
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
+    });
+
+    it("clears a stale planning result while refreshing and uses the new proposal eligibility", async () => {
+        let finish!: (value: ExecutionCandidate) => void;
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate()).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "candidate_stale", planning_allowed: false, planning_failure: { code: "candidate_stale", message: "Read the latest proposal" } }));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        await screen.findByText(/This proposal changed or expired/);
+        await user.click(screen.getByRole("button", { name: "Refresh proposal" }));
+        expect(screen.queryByText(/This proposal changed or expired/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Start planning" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /Change proposals/ })).toBeInTheDocument();
+        await act(async () => finish(candidate({ status: "expired" })));
+        expect(await screen.findByRole("button", { name: "Start planning" })).toBeDisabled();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("pauses proposal refresh during an explicit planning request", async () => {
+        let finish!: (value: CandidatePlanningResponse) => void;
+        mockedCreateCandidatePlanningSession.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        expect(screen.getByRole("button", { name: "Refresh proposal" })).toBeDisabled();
+        await user.click(screen.getByRole("button", { name: "Refresh proposal" }));
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(1);
+        await act(async () => finish(planningResponse()));
+        expect(screen.getByRole("button", { name: "Refresh proposal" })).toBeEnabled();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
     });
 
     it("uses HTTP status instead of error wording to classify a missing proposal", async () => {
