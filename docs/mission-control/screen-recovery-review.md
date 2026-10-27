@@ -597,3 +597,12 @@ expired and unrecognized statuses therefore show an amber receipt with a visible
 explanation and no planning handoff. Raw status stays available in Proposal
 details. These receipt checks do not submit another request or change Core's
 eligibility decisions, Agent revalidation, or approval boundaries.
+
+Maintenance errors distinguish resource loading from proposal submission. A
+resource read failure points to Refresh. A network failure or server error after
+submission leaves the proposal request outcome unknown and offers Review change
+proposals before another request; this link opens the existing read-only list.
+An uncorrelated creation response also offers the list without opening its
+returned identifier. There is no automatic submission retry, and the UI does not
+claim that a failed reply proves no proposal was created. Manual submission and
+all downstream planning, approval and execution boundaries are unchanged.

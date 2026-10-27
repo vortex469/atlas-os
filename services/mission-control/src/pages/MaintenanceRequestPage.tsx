@@ -21,12 +21,24 @@ import type {
     OperatorIntentResource,
 } from "../types/operatorIntent";
 
-function errorMessage(status: number | undefined): string {
-    if (status === 403) return "Your operator session lacks maintenance permission.";
-    if (status === 409) return "The resource changed. Refresh and select it again.";
-    if (status === 429) return "Maintenance requests are rate limited. Wait before trying again.";
-    if (status === 503) return "The Proxmox resource selector is temporarily unavailable.";
-    return "The maintenance request could not be completed.";
+type MaintenanceError = { message: string; reviewProposals?: boolean };
+
+function errorMessage(status: number | undefined, stage: "resources" | "proposal"): MaintenanceError {
+    if (status === 403) return { message: "Your operator session lacks maintenance permission." };
+    if (status === 409) return { message: "The resource changed. Refresh and select it again." };
+    if (status === 429) return { message: "Maintenance requests are rate limited. Wait before trying again." };
+    if (stage === "proposal" && (status === undefined || status >= 500)) {
+        return {
+            message: status === 503
+                ? "The maintenance proposal service is temporarily unavailable. The request outcome is unknown. Review change proposals before creating another request."
+                : "The proposal request outcome is unknown. Review change proposals before creating another request.",
+            reviewProposals: true,
+        };
+    }
+    if (status === 503) return { message: "Maintenance resources are temporarily unavailable. Choose Refresh to check again." };
+    return { message: stage === "resources"
+        ? "Maintenance resources could not be loaded. Choose Refresh to check again."
+        : "The proposal request could not be completed." };
 }
 
 function descriptorLabel(value: string | undefined): string {
@@ -43,7 +55,7 @@ export function MaintenanceRequestPage() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<MaintenanceError | null>(null);
     const [result, setResult] = useState<OperatorIntentCreationResponse | null>(null);
     const [resultExpired, setResultExpired] = useState(false);
     const [proposal, setProposal] = useState<DiscoveryProposalNavigation | null>(null);
@@ -72,7 +84,7 @@ export function MaintenanceRequestPage() {
             if (!selectedCapability) {
                 setCapability(null);
                 setResources([]);
-                setError("No consistent production maintenance capability is currently available.");
+                setError({ message: "No consistent production maintenance capability is currently available." });
                 return;
             }
             const response = await getCapabilityResources(selectedCapability.selector_id);
@@ -83,7 +95,7 @@ export function MaintenanceRequestPage() {
             if (generation !== selectorGeneration.current) return;
             const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
             if (status === 401) session.invalidate();
-            setError(errorMessage(status));
+            setError(errorMessage(status, "resources"));
         } finally {
             if (generation === selectorGeneration.current) setLoading(false);
         }
@@ -163,7 +175,7 @@ export function MaintenanceRequestPage() {
                 || response.candidate.target_type !== selected.resource_type
                 || response.candidate.execution_intent !== "restart-service"
                 || response.candidate.source_subsystem !== "operator-intent") {
-                setError("The returned proposal does not match this maintenance request. Refresh the resource list before continuing.");
+                setError({ message: "The returned proposal does not match this maintenance request. Refresh the resource list before continuing.", reviewProposals: true });
                 return;
             }
             setResult(response);
@@ -180,7 +192,7 @@ export function MaintenanceRequestPage() {
                 setSelectedId(null);
                 await loadResources();
             }
-            setError(errorMessage(status));
+            setError(errorMessage(status, "proposal"));
         } finally {
             if (generation === submissionGeneration.current) setSubmitting(false);
         }
@@ -208,7 +220,10 @@ export function MaintenanceRequestPage() {
                 <FixedField label="Resource type" value={descriptorLabel(capability?.resource_type)} />
             </section>
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your operator session lacks maintenance permission.</p>}
-            {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
+            {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+                <p>{error.message}</p>
+                {error.reviewProposals && <Link to="/execution-candidates" className="mt-3 inline-flex font-semibold text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Review change proposals</Link>}
+            </div>}
             <section className="space-y-3" aria-label="Authoritative Proxmox resources">
                 <div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-white">Choose a resource</h2><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Refreshing authoritative resources…</p>}

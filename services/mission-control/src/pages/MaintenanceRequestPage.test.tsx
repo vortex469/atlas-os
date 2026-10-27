@@ -332,7 +332,7 @@ describe("MaintenanceRequestPage", () => {
     it.each([
         [403, "lacks maintenance permission"],
         [429, "rate limited"],
-        [503, "temporarily unavailable"],
+        [503, "The maintenance proposal service is temporarily unavailable. The request outcome is unknown."],
     ])("renders controlled status %i without automatic retry", async (status, message) => {
         vi.mocked(requestRestartServiceIntent).mockRejectedValue({ isAxiosError: true, response: { status } });
         const user = userEvent.setup();
@@ -341,6 +341,25 @@ describe("MaintenanceRequestPage", () => {
         await user.click(screen.getByRole("button", { name: "Create restart proposal" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(message);
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([undefined, 500])("offers review after an unconfirmed proposal request with status %s", async (status) => {
+        vi.mocked(requestRestartServiceIntent).mockRejectedValue(status === undefined ? new Error("connection lost") : { isAxiosError: true, response: { status } });
+        renderPage();
+        await userEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
+        await userEvent.click(screen.getByRole("button", { name: "Create restart proposal" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("The proposal request outcome is unknown. Review change proposals before creating another request.");
+        expect(screen.getByRole("link", { name: "Review change proposals" })).toHaveAttribute("href", "/execution-candidates");
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
+        expect(getCapabilityResources).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a resource loading failure distinct from a submitted request", async () => {
+        vi.mocked(getCapabilityResources).mockRejectedValueOnce({ isAxiosError: true, response: { status: 503 } });
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Maintenance resources are temporarily unavailable. Choose Refresh to check again.");
+        expect(screen.queryByRole("link", { name: "Review change proposals" })).not.toBeInTheDocument();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
     });
 
     it("refreshes and requires reselection after a stale CAS conflict", async () => {
