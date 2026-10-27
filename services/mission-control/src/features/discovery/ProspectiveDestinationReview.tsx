@@ -26,14 +26,14 @@ const REASON_LABELS: Record<InstallationAdmissionReasonCode, { title: string; de
     destination_selection_missing: { title: "Destination selection missing", detail: "No exact prospective destination selection is bound to this assessment." },
     destination_selection_expired: { title: "Destination selection expired", detail: "The recorded prospective destination selection is no longer current." },
     destination_unavailable: { title: "Destination unavailable", detail: "Atlas could not currently resolve the selected destination." },
-    destination_identity_unavailable: { title: "Destination identity unavailable", detail: "Atlas could not establish the current opaque identity of the selected destination." },
+    destination_identity_unavailable: { title: "Destination identity could not be verified", detail: "Atlas could not establish the current opaque identity of the selected destination." },
     destination_replaced_or_moved: { title: "Destination replaced or moved", detail: "The current guest incarnation or placement no longer matches the immutable selection." },
-    destination_installation_capability_unknown: { title: "Destination installation capability unknown", detail: "Atlas has not established in-guest installability, runtime, transport, or readiness for this destination." },
-    installation_interest_missing: { title: "Installation interest missing", detail: "No current ephemeral assessment interest was available." },
-    installation_interest_expired: { title: "Installation interest expired", detail: "The ephemeral assessment interest expired before evaluation." },
-    installation_interest_plan_stale: { title: "Installation interest plan stale", detail: "The interest does not match the exact current InstallationPlan fingerprint." },
-    installation_interest_destination_stale: { title: "Installation interest destination stale", detail: "The interest does not match the exact current destination selection." },
-    agent_install_container_unsupported: { title: "Agent install-container unsupported", detail: "Atlas Agent cannot plan this install intent yet." },
+    destination_installation_capability_unknown: { title: "Installation support on this guest is unconfirmed", detail: "Atlas has not established in-guest installability, runtime, transport, or readiness for this destination." },
+    installation_interest_missing: { title: "No current assessment record", detail: "No current ephemeral assessment interest was available." },
+    installation_interest_expired: { title: "Assessment record expired", detail: "The ephemeral assessment interest expired before evaluation." },
+    installation_interest_plan_stale: { title: "Assessment uses an older installation plan", detail: "The interest does not match the exact current InstallationPlan fingerprint." },
+    installation_interest_destination_stale: { title: "Assessment uses a different destination", detail: "The interest does not match the exact current destination selection." },
+    agent_install_container_unsupported: { title: "Atlas Agent cannot plan this installation yet", detail: "Atlas Agent cannot plan this install intent yet." },
 };
 
 export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: InstallationPlan; csrfToken: string | null }) {
@@ -145,15 +145,24 @@ function SelectionSummary({ selection }: { selection: InstallationDestinationSel
 
 function AssessmentSummary({ assessment }: { assessment: InstallationAdmissionAssessmentV1 }) {
     const unsupported = assessment.assessment_status === "preconditions_satisfied_but_unsupported";
+    const status = unsupported
+        ? "The reviewed inputs passed checks, but Atlas cannot support this installation yet."
+        : "Assessment blocked: some requirements remain unresolved.";
     return <section aria-labelledby="admission-assessment-heading" className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
         <h4 id="admission-assessment-heading" className="font-semibold text-slate-100">Installation admission assessment</h4>
-        <p role="status" className="mt-2 font-semibold text-amber-200">Assessment status: {assessment.assessment_status}</p>
+        <p role="status" className="mt-2 font-semibold text-amber-200">{status}</p>
         {unsupported && <p className="mt-2 text-sm text-slate-300">Atlas can evaluate the reviewed plan and destination consistently, but installation capability and Agent support remain unavailable.</p>}
-        <p className="mt-2 text-sm text-slate-300">Candidate eligibility evaluated: false. This assessment does not establish candidate eligibility or authorization.</p>
+        <p className="mt-2 text-sm text-slate-300">Candidate eligibility was not assessed. This result does not confirm installation is supported, approve installation, or authorize execution.</p>
         <h5 className="mt-4 text-sm font-semibold text-slate-200">Assessment blockers</h5>
         <ul aria-label="Installation admission blockers" className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-300">
-            {assessment.reason_codes.map((code) => <li key={code}><span className="font-semibold">{REASON_LABELS[code].title}</span><span> — {REASON_LABELS[code].detail} </span><code className="break-all text-xs text-slate-400">{code}</code></li>)}
+            {assessment.reason_codes.map((code) => <li key={code}><span className="font-semibold">{REASON_LABELS[code].title}</span><span> — {REASON_LABELS[code].detail}</span></li>)}
         </ul>
+        <details className="mt-4 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400">
+            <summary className="cursor-pointer font-medium text-slate-300">Technical reason codes</summary>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+                {assessment.reason_codes.map((code) => <li key={code}><span>{REASON_LABELS[code].title}: </span><code className="break-all text-xs">{code}</code></li>)}
+            </ul>
+        </details>
     </section>;
 }
 

@@ -133,7 +133,9 @@ describe("ProspectiveDestinationReview", () => {
         expect(blockers).toHaveTextContent("Installation plan missing deployment artifact");
         expect(blockers).toHaveTextContent("has not established in-guest installability, runtime, transport, or readiness");
         expect(blockers).toHaveTextContent("Atlas Agent cannot plan this install intent yet");
-        expect(screen.getByText(/Candidate eligibility evaluated: false/)).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Assessment blocked: some requirements remain unresolved.");
+        expect(screen.getByText(/Candidate eligibility was not assessed/)).toBeInTheDocument();
+        expect(within(blockers).queryByText("agent_install_container_unsupported")).not.toBeInTheDocument();
     });
 
     it("distinguishes preconditions satisfied but unsupported without readiness language", async () => {
@@ -144,6 +146,7 @@ describe("ProspectiveDestinationReview", () => {
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
         await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
         await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
+        expect(await screen.findByRole("status")).toHaveTextContent("The reviewed inputs passed checks, but Atlas cannot support this installation yet.");
         expect(await screen.findByText(/installation capability and Agent support remain unavailable/i)).toBeInTheDocument();
         expect(document.body).not.toHaveTextContent(/\bready\b|\beligible\b|\bapproved\b|\bexecutable\b/i);
     });
@@ -157,7 +160,13 @@ describe("ProspectiveDestinationReview", () => {
         await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
         const list = await screen.findByRole("list", { name: "Installation admission blockers" });
         expect(within(list).getAllByRole("listitem")).toHaveLength(16);
-        for (const code of codes) expect(list).toHaveTextContent(code);
+        for (const code of codes) expect(within(list).queryByText(code)).not.toBeInTheDocument();
+        const diagnostics = screen.getByText("Technical reason codes");
+        const disclosure = diagnostics.closest("details");
+        expect(disclosure).not.toHaveAttribute("open");
+        await user.click(diagnostics);
+        expect(disclosure).toHaveAttribute("open");
+        for (const code of codes) expect(within(disclosure!).getByText(code)).toBeInTheDocument();
     });
 
     it("explains disabled mutation protection and exposes no prohibited control or authority navigation", async () => {
