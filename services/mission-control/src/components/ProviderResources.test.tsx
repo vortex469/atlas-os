@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
@@ -203,6 +204,7 @@ describe("ProviderResources Provider Intent flow", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        for (const mock of [getProviderResources, refreshProviderResources, getProviderManagement, getAuthenticatedProviderManagement, getProviderMonitoringIntentSuggestions, putProviderMonitoringIntent]) vi.mocked(mock).mockReset();
         vi.mocked(useOperatorSession).mockReturnValue({
             authenticated: true,
             principal: null,
@@ -889,6 +891,74 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
         expect(screen.getByText("Monitoring unavailable", { selector: "p.font-semibold" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    });
+
+    it("labels retained monitoring facts and blocks saves through a failed public read", async () => {
+        const user = userEvent.setup();
+        const first = publicManagement({ intent_status: "configured", intent_reason: "matching_active_intent", expectation: "running", record_version: 1 });
+        const fresh = publicManagement({ intent_status: "configured", intent_reason: "matching_active_intent", expectation: "stopped", record_version: 2 });
+        let fail!: (error: Error) => void;
+        vi.mocked(getProviderManagement).mockResolvedValueOnce(first)
+            .mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; })).mockResolvedValueOnce(fresh);
+        render(<ProviderResources provider={provider} />);
+        expect(await screen.findByText("Expected running")).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        expect(screen.getByText("Last reported: Expected running")).toBeInTheDocument();
+        expect(screen.getByText("Last reported: Verified")).toBeInTheDocument();
+        await act(async () => fail(new Error("unavailable")));
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        expect(screen.getByText("Current monitoring settings could not be checked.")).toBeInTheDocument();
+        expect(screen.queryByText("Configured — matches observed state")).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        expect(await screen.findByText("Expected stopped")).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeEnabled());
+        expect(screen.queryByText(/Last reported:/)).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("requires a new suppression acknowledgment after public monitoring recovery", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderManagement).mockResolvedValueOnce(publicManagement()).mockRejectedValueOnce(new Error("unavailable")).mockResolvedValueOnce(publicManagement());
+        render(<ProviderResources provider={provider} />);
+        await user.selectOptions(await screen.findByRole("combobox"), "ignored");
+        await user.click(screen.getByRole("checkbox"));
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        await screen.findByText(/Monitoring unavailable —/);
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        await waitFor(() => expect(screen.getByRole("combobox")).toBeEnabled());
+        expect(screen.getByRole("combobox")).toHaveValue("");
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        expect(screen.getByRole("checkbox")).not.toBeChecked();
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("does not claim a suggestion changed incarnation when the public read failed", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderManagement).mockResolvedValueOnce(publicManagement()).mockRejectedValueOnce(new Error("unavailable"));
+        vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
+        render(<ProviderResources provider={provider} />);
+        await screen.findByRole("button", { name: "Review suggestion" });
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        await screen.findByText(/Monitoring unavailable —/);
+        expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
+        expect(screen.getByText("Current monitoring settings could not be checked. Reload them before reviewing this suggestion.")).toBeInTheDocument();
+        expect(screen.queryByText(/created for a different resource incarnation/)).not.toBeInTheDocument();
+    });
+
+    it("ignores an older public monitoring read after a newer read completed", async () => {
+        let finishOld!: (value: ProviderManagementV2) => void;
+        const latest = publicManagement({ intent_status: "configured", intent_reason: "matching_active_intent", expectation: "running", record_version: 1 });
+        vi.mocked(getProviderManagement).mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; })).mockResolvedValue(latest);
+        render(<StrictMode><ProviderResources provider={provider} /></StrictMode>);
+        expect(await screen.findByText("Expected running")).toBeInTheDocument();
+        await act(async () => finishOld(publicManagement({ intent_status: "configured", intent_reason: "matching_active_intent", expectation: "stopped", record_version: 1 })));
+        expect(screen.getByText("Expected running")).toBeInTheDocument();
+        expect(screen.queryByText("Expected stopped")).not.toBeInTheDocument();
     });
 
     it("keeps retained observations distinct from a current monitoring comparison after failed refresh", async () => {

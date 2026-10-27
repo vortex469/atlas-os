@@ -260,3 +260,13 @@ identity/authority extensions do not become editing permission; management APIs
 remain the source for those decisions. Malformed successful responses now retain
 the previous inventory and its timestamp through the existing error/retry path.
 Native public-model fixtures and browser recovery cases cover these boundaries.
+
+Public monitoring reloads now distinguish retained identity/expectation values
+from a confirmed current descriptor. Pending or failed reads mark retained facts
+as “Last reported”, suppress current match comparisons and pause editing and
+suggestion review. A read failure does not claim a changed resource incarnation.
+Only the latest public read may publish state; save callbacks also require the
+current descriptor and resource. Successful unchanged reloads preserve drafts;
+failed reads reset drafts and suppression acknowledgements. Browser checks cover
+HTTP and malformed-success failures, pending reads and recovery at phone and
+desktop widths with only the two exact mocked discovery-refresh requests.

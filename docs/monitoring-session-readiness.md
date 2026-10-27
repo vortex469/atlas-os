@@ -22,3 +22,16 @@ execution authority. HTTP requests and backend behavior are unchanged. Tests use
 synthetic session/permission responses, preserve read-only public facts and bind
 fixture writes to exact local origins, paths and bodies; no real operator login,
 provider action, deployment or runtime enablement is involved.
+
+Public monitoring reads also have to be current. During a reload, or after its
+failure, retained identity and expectation values are marked “Last reported”.
+They are not compared with observed state, and saving or reviewing a suggestion
+pauses until the public descriptor is available again. A failed read does not
+mean the resource changed identity. Only the newest public read may replace the
+view; a Save callback must still reference that current descriptor and resource.
+
+A successful refresh with unchanged identity and version preserves an unsaved
+draft. A failed public read clears drafts and suppression acknowledgements;
+after recovery the form starts from reported configuration or a still-valid
+reviewed suggestion, and suppression needs a fresh acknowledgement. These UI checks supplement Core’s authorization and
+version checks; they do not confer permission or execute provider operations.
