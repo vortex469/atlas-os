@@ -118,7 +118,7 @@ export function workflowDetail(phase: Phase, approved: boolean): WorkflowDetailR
     };
 }
 
-function completedAudit(): WorkflowAuditResponse {
+export function completedAudit(): WorkflowAuditResponse {
     return {
         effect_kind: "repository_change",
         workflow_id: journey.workflow, workflow_state: "completed", workflow_source: "candidate",

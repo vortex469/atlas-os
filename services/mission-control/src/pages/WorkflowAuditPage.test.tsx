@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -156,12 +156,13 @@ describe("WorkflowAuditPage", () => {
         mockedGetWorkflowAudit.mockResolvedValueOnce(audit()).mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
         const router = createMemoryRouter([{ path: "/workflows/:workflowId/audit", element: <WorkflowAuditPage /> }], { initialEntries: ["/workflows/workflow-123/audit"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "Workflow workflow-123" });
+        await screen.findByRole("heading", { name: "Workflow history" });
         await act(() => router.navigate("/workflows/next-workflow/audit"));
         expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
         expect(screen.getByRole("status")).toHaveTextContent("Loading workflow audit");
         await act(async () => resolveNext(audit({ workflow_id: "next-workflow", workflow: { ...audit().workflow, workflow_id: "next-workflow" } })));
-        expect(await screen.findByRole("heading", { name: "Workflow next-workflow" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Workflow history" })).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Overview" })).getByText("next-workflow")).toBeInTheDocument();
     });
 
     it.each(["outer", "nested"])("refuses an audit with a mismatched %s workflow identity", async (field) => {
@@ -180,7 +181,7 @@ describe("WorkflowAuditPage", () => {
             <Route path="/workflows/:workflowId/audit" element={<WorkflowAuditPage />} />
         </Routes></MemoryRouter></StrictMode>);
         fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
-        await screen.findByRole("heading", { name: "Workflow workflow-123" });
+        await screen.findByRole("heading", { name: "Workflow history" });
         expect(mockedGetWorkflowAudit).toHaveBeenCalledTimes(2);
     });
 
@@ -192,10 +193,11 @@ describe("WorkflowAuditPage", () => {
         render(<RouterProvider router={router} />);
         await waitFor(() => expect(mockedGetWorkflowAudit).toHaveBeenCalledWith("workflow-123"));
         await act(() => router.navigate("/workflows/next-workflow/audit"));
-        await screen.findByRole("heading", { name: "Workflow next-workflow" });
+        await screen.findByRole("heading", { name: "Workflow history" });
         await act(async () => resolveOld(audit()));
-        expect(screen.getByRole("heading", { name: "Workflow next-workflow" })).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Workflow workflow-123" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Workflow history" })).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Overview" })).queryByText("workflow-123")).not.toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Overview" })).getByText("next-workflow")).toBeInTheDocument();
     });
 
     beforeEach(() => {
@@ -229,11 +231,11 @@ describe("WorkflowAuditPage", () => {
     it("renders completed audit chain", async () => {
         renderAuditPage();
 
-        expect(await screen.findByRole("heading", { name: /Workflow workflow-123/i })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: /^Workflow history$/ })).toBeInTheDocument();
         expect(screen.getByText("Workflow Audit")).toBeInTheDocument();
         expect(screen.getByText("candidate-123")).toBeInTheDocument();
-        expect(screen.getByText("def456")).toBeInTheDocument();
-        expect(screen.getByText("Commit SHA")).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Overview" })).getByText("def456")).toBeVisible();
+        expect(within(screen.getByRole("region", { name: "Overview" })).getByText("Commit SHA")).toBeVisible();
         expect(screen.getAllByText("Workflow State").length).toBe(1);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
         expect(screen.getByText("Overall audit status")).toBeInTheDocument();
@@ -391,11 +393,30 @@ describe("WorkflowAuditPage", () => {
     it("renders no mutation controls", async () => {
         renderAuditPage();
 
-        expect(await screen.findByRole("heading", { name: "Candidate" })).toBeInTheDocument();
+        expect(await screen.findByRole("region", { name: "Candidate" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /reject/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /resume/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
     });
+    it("keeps routine audit records collapsed behind a short history heading", async () => {
+        renderAuditPage();
+        expect(await screen.findByRole("heading", { name: "Workflow history" })).toBeVisible();
+        const candidate = screen.getByRole("region", { name: "Candidate" });
+        expect(within(candidate).getByText("candidate-123")).not.toBeVisible();
+        expect(candidate.querySelector("details")).not.toHaveAttribute("open");
+        const overview = screen.getByRole("region", { name: "Overview" });
+        expect(within(overview).getByText("def456")).toBeVisible();
+        expect(mockedGetWorkflowAudit).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["repository_change", "operational_action"] as const)("announces failed %s audit validation without a failure code", async (effect_kind) => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({ effect_kind, validation: { valid: false, failure_code: null, failure_stage: null } }));
+        vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(null);
+        renderAuditPage();
+        const overview = await screen.findByRole("region", { name: effect_kind === "operational_action" ? "Audit validation" : "Overview" });
+        expect(within(overview).getByRole("alert")).toHaveTextContent("Audit validation failed. Review the recorded details.");
+    });
+
 });
