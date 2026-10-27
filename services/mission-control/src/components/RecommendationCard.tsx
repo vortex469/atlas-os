@@ -37,9 +37,9 @@ export function RecommendationCard({
     );
 
     return (
-        <article className="rounded-lg border border-slate-800 bg-slate-900 p-5">
-            <div className="flex items-start justify-between gap-5">
-                <div>
+        <article className="min-w-0 rounded-lg border border-slate-800 bg-slate-900 p-5 [overflow-wrap:anywhere]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 basis-40">
                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
                         Advisory recommendation
                     </p>
@@ -51,7 +51,7 @@ export function RecommendationCard({
 
                 <span
                     className={[
-                        "shrink-0 rounded-full border px-3 py-1",
+                        "max-w-full shrink-0 rounded-full border px-3 py-1",
                         "text-xs font-semibold uppercase tracking-wider",
                         priorityClass,
                     ].join(" ")}
@@ -64,37 +64,40 @@ export function RecommendationCard({
                 {recommendation.reason}
             </p>
 
-            <dl className="mt-5 grid grid-cols-3 gap-4 border-t border-slate-800 pt-4">
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Component
-                    </dt>
+            <details className="mt-5 border-t border-slate-800 pt-4">
+                <summary className="cursor-pointer text-sm font-medium text-blue-300 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-400">Recommendation details</summary>
+                <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="min-w-0">
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Component
+                        </dt>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {formatComponent(recommendation.component)}
-                    </dd>
-                </div>
+                        <dd className="mt-1 text-sm font-medium text-slate-200">
+                            {formatComponent(recommendation.component)}
+                        </dd>
+                    </div>
 
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Confidence
-                    </dt>
+                    <div className="min-w-0">
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Confidence
+                        </dt>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {confidence}%
-                    </dd>
-                </div>
+                        <dd className="mt-1 text-sm font-medium text-slate-200">
+                            {confidence}%
+                        </dd>
+                    </div>
 
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Effort
-                    </dt>
+                    <div className="min-w-0">
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Effort
+                        </dt>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {recommendation.estimated_effort}
-                    </dd>
-                </div>
-            </dl>
+                        <dd className="mt-1 text-sm font-medium text-slate-200">
+                            {recommendation.estimated_effort}
+                        </dd>
+                    </div>
+                </dl>
+            </details>
         </article>
     );
 }

@@ -78,15 +78,15 @@ export function FindingCard({ finding }: FindingCardProps) {
     return (
         <article
             className={[
-                "rounded-lg border bg-slate-900 p-5",
+                "min-w-0 rounded-lg border bg-slate-900 p-5 [overflow-wrap:anywhere]",
                 style.card,
             ].join(" ")}
         >
-            <div className="flex items-start justify-between gap-5">
-                <div className="min-w-0">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 basis-40">
                     <div className="flex items-center gap-2">
                         <span
-                            className={`h-2 w-2 rounded-full ${style.dot}`}
+                            className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`}
                             aria-hidden="true"
                         />
 
@@ -102,7 +102,7 @@ export function FindingCard({ finding }: FindingCardProps) {
 
                 <span
                     className={[
-                        "shrink-0 rounded-full border px-3 py-1",
+                        "max-w-full shrink-0 rounded-full border px-3 py-1",
                         "text-xs font-semibold uppercase tracking-wider",
                         style.badge,
                     ].join(" ")}
@@ -115,50 +115,53 @@ export function FindingCard({ finding }: FindingCardProps) {
                 {finding.message}
             </p>
 
-            <dl className="mt-5 grid grid-cols-3 gap-4 border-t border-slate-800 pt-4">
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Category
-                    </dt>
+            <details className="mt-5 border-t border-slate-800 pt-4">
+                <summary className="cursor-pointer text-sm font-medium text-blue-300 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-400">Finding details</summary>
+                <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="min-w-0">
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Category
+                        </dt>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {formatLabel(finding.category)}
-                    </dd>
-                </div>
+                        <dd className="mt-1 text-sm font-medium text-slate-200">
+                            {formatLabel(finding.category)}
+                        </dd>
+                    </div>
 
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Health
-                    </dt>
+                    <div className="min-w-0">
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Health
+                        </dt>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {finding.affects_health ? "Affected" : "Unaffected"}
-                    </dd>
-                </div>
+                        <dd className="mt-1 text-sm font-medium text-slate-200">
+                            {finding.affects_health ? "Affected" : "Unaffected"}
+                        </dd>
+                    </div>
 
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Score Impact
-                    </dt>
+                    <div className="min-w-0">
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Score Impact
+                        </dt>
 
-                    <dd
-                        className={[
-                            "mt-1 text-sm font-medium",
-                            finding.score_penalty > 0
-                                ? "text-amber-300"
-                                : "text-slate-200",
-                        ].join(" ")}
-                    >
-                        {finding.score_penalty > 0
-                            ? `−${finding.score_penalty}`
-                            : "None"}
-                    </dd>
-                </div>
-            </dl>
+                        <dd
+                            className={[
+                                "mt-1 text-sm font-medium",
+                                finding.score_penalty > 0
+                                    ? "text-amber-300"
+                                    : "text-slate-200",
+                            ].join(" ")}
+                        >
+                            {finding.score_penalty > 0
+                                ? `−${finding.score_penalty}`
+                                : "None"}
+                        </dd>
+                    </div>
+                </dl>
+            </details>
 
             {unavailableEntities.length > 0 && (
                 <div className="mt-5 border-t border-slate-800 pt-4">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                                 Unavailable Entities
@@ -183,23 +186,23 @@ export function FindingCard({ finding }: FindingCardProps) {
                         {visibleEntities.map((entity, index) => (
                             <div
                                 key={`${entity.entity_id ?? "entity"}-${index}`}
-                                className="flex items-center justify-between gap-4 rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2"
+                                className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2"
                             >
-                                <div className="min-w-0">
-                                    <p className="truncate text-sm font-medium text-slate-200">
+                                <div className="min-w-0 flex-1 basis-40">
+                                    <p className="text-sm font-medium text-slate-200">
                                         {entity.name ??
                                             entity.entity_id ??
                                             "Unknown entity"}
                                     </p>
 
                                     {entity.entity_id && (
-                                        <p className="truncate text-xs text-slate-500">
+                                        <p className="text-xs text-slate-500">
                                             {entity.entity_id}
                                         </p>
                                     )}
                                 </div>
 
-                                <span className="shrink-0 rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-xs uppercase text-slate-400">
+                                <span className="max-w-full shrink-0 rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-xs uppercase text-slate-400">
                                     {entity.state ?? "unknown"}
                                 </span>
                             </div>
