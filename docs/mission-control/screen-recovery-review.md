@@ -656,3 +656,11 @@ missing explanations say No recovery reason was reported, without implying that
 no problem exists. Full workflow summaries retain their detailed fields and
 footer. Diagnostic mappings, retained-result qualification and approval controls
 are unchanged.
+
+Proposal review checks the displayed text, critical identifiers/action labels,
+optional labels and string lists before showing planning controls. Incomplete or
+unreadable responses use the existing unavailable view with a GET-only Try again
+path; no planning request is sent during recovery. Correlation to the URL remains
+required. Extra metadata, future readable labels, empty lists and nullable
+optional labels stay supported. Expiry keeps its existing unverified/disabled
+handling. Agent revalidation and later exact approvals remain authoritative.
