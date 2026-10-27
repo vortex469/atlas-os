@@ -6,6 +6,7 @@ import {
     useState,
 } from "react";
 import { Link } from "react-router-dom";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 
 import { AtlasDoctorPanel } from "../components/AtlasDoctorPanel";
 import {
@@ -29,13 +30,8 @@ type HistoryFilter = "all" | ActionHistoryStatus;
 const PAGE_SIZE = 25;
 
 function formatTimestamp(timestamp: string): string {
-    const date = new Date(timestamp);
-
-    if (Number.isNaN(date.getTime())) {
-        return "Unknown time";
-    }
-
-    return date.toLocaleString();
+    const parsed = evidenceTimestamp(timestamp);
+    return parsed === null || parsed > Date.now() ? "Unknown time" : new Date(parsed).toLocaleString();
 }
 
 function statusClasses(status: ActionHistoryStatus): string {

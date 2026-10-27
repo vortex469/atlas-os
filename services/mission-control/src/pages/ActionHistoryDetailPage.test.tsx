@@ -100,6 +100,14 @@ describe("ActionHistoryDetailPage", () => {
         expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
     });
 
+    it.each(["2099-10-27T12:00:00Z", "2099-10-27T12:00:00+02:00"])("keeps future audit times unknown while retaining the reported result: %s", async timestamp => {
+        mockedGetProviderActionHistoryEntry.mockResolvedValue({ ...auditEntry(), started_at: timestamp, completed_at: timestamp });
+        renderPage();
+        expect(await screen.findByText("Model unloaded.")).toBeVisible();
+        expect(screen.getAllByText("Unknown time")).toHaveLength(3);
+        expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledTimes(1);
+    });
+
     it("loads a directly linked audit entry", async () => {
         renderPage();
 

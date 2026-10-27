@@ -105,6 +105,17 @@ describe("OperationsPage", () => {
         });
     });
 
+    it.each(["2099-10-27T12:00:00Z", "2099-10-27T12:00:00+02:00"])("keeps a future completion time unknown without hiding the reported result: %s", async completed_at => {
+        const response = await mockedGetProviderActionHistory({});
+        mockedGetProviderActionHistory.mockClear();
+        mockedGetProviderActionHistory.mockResolvedValue({ ...response, items: response.items.map(entry => ({ ...entry, completed_at })) });
+        renderPage();
+        expect(await screen.findByText("Unknown time")).toBeVisible();
+        expect(screen.getByText("Model unloaded.")).toBeVisible();
+        expect(screen.getByRole("link", { name: "View audit details" })).toHaveAttribute("href", "/operations/actions/audit-1");
+        expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(1);
+    });
+
     it("renders sanitized action audit details", async () => {
         renderPage();
 
