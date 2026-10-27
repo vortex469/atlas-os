@@ -517,3 +517,11 @@ Recent Activity uses Failed and Succeeded for recorded action results and keeps
 Unknown outcome for unsupported statuses. The introduction explains plainly that
 past results do not show current health. Outcome classification, timestamp
 validation, deduplication, retained history and read-only links are unchanged.
+
+Workflow directory cards keep current state, target, latest result, approval state
+and the Open Workflow link visible. Source, candidate and planning identifiers
+are available in Workflow details; the existing progress rail is available in
+Workflow progress. Blocked cards start with progress open. Search, totals,
+paging, stale-read handling, result values and approval boundaries are unchanged.
+Phone and desktop fixtures cover pending, completed and blocked cards, keyboard
+access to all records, direct workflow navigation and zero mutation requests.
