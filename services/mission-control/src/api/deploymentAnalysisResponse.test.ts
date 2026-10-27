@@ -7,6 +7,33 @@ import { analyzeCompose } from "./atlas";
 
 beforeEach(() => mockPost.mockReset());
 
+describe("Compose analysis input", () => {
+    it.each(["", "null", "[]", "true", "123", "plain text", "!!set { first, second }"])("rejects a document without named sections before sending: %s", async compose => {
+        mockPost.mockResolvedValue({ data: deploymentAnalysisFixture() });
+        await expect(analyzeCompose(compose, "preview-name")).rejects.toThrow('Use a Compose document with named sections, such as "services:".');
+        expect(mockPost).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        "services:\n  web: [PUBLIC-COMPOSE-CANARY\n",
+        "services: {}\nservices: PUBLIC-COMPOSE-CANARY\n",
+    ])("reports a YAML location without copying input into the error: %s", async compose => {
+        const error = await analyzeCompose(compose, "preview-name").catch((value: unknown) => value);
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toMatch(/^Compose document could not be read\. Check YAML formatting near line \d+, column \d+\.$/);
+        expect((error as Error).message).not.toContain("PUBLIC-COMPOSE-CANARY");
+        expect(mockPost).not.toHaveBeenCalled();
+    });
+
+    it("preserves mapping contents and resolved aliases in the analysis request", async () => {
+        mockPost.mockResolvedValue({ data: deploymentAnalysisFixture() });
+        await analyzeCompose("x-template: &base\n  image: example.invalid/fixture:one\nservices:\n  web: *base\n", "preview-name");
+        expect(mockPost).toHaveBeenCalledExactlyOnceWith("/analysis/deployments", { source: "compose", reference: "preview-name", document: {
+            "x-template": { image: "example.invalid/fixture:one" }, services: { web: { image: "example.invalid/fixture:one" } },
+        } });
+    });
+});
+
 describe("Forge analysis report readability", () => {
     it("preserves a readable report and the exact analysis request", async () => {
         const data = deploymentAnalysisFixture();

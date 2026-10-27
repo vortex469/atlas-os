@@ -1,5 +1,4 @@
 import axios from "axios";
-import { parse } from "yaml";
 
 import type { DeploymentAnalysisResponse } from "../features/forge/types";
 import type { DoctorReport } from "../types/doctor";
@@ -38,6 +37,7 @@ import { DoctorResponseError, parseDoctorReport } from "./doctorResponse";
 import { parseProviderActionList } from "./providerActionListResponse";
 import { parseProviderActionResult } from "./providerActionResponse";
 import { parseDeploymentAnalysisResponse } from "./deploymentAnalysisResponse";
+import { parseComposeDocument } from "./composeDocument";
 
 const ATLAS_API_BASE_URL =
     import.meta.env.VITE_ATLAS_API_BASE_URL ?? "/api/v1";
@@ -60,7 +60,7 @@ export async function analyzeCompose(
             {
                 source: "compose",
                 reference,
-                document: parse(compose),
+                document: parseComposeDocument(compose),
             },
         );
 
