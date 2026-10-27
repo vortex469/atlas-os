@@ -146,8 +146,15 @@ describe("WorkflowDashboardPage", () => {
     it("distinguishes an empty directory from no server-side filter matches", async () => {
         list.mockResolvedValue(response([])); renderDashboard();
         expect(await screen.findByText("No workflows yet.")).toBeVisible();
+        expect(screen.getByRole("link", {name: "Review change proposals"})).toHaveAttribute("href", "/execution-candidates");
+        expect(screen.getByRole("link", {name: "Choose maintenance"})).toHaveAttribute("href", "/operations/request");
+        expect(list).toHaveBeenCalledTimes(1);
         search("missing");
         expect(await screen.findByText("No workflows match the current filters.")).toBeVisible();
+        expect(screen.getByText("Try a broader search or clear the filters above.")).toBeVisible();
+        expect(screen.queryByRole("link", {name: "Review change proposals"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", {name: "Choose maintenance"})).not.toBeInTheDocument();
+        expect(list).toHaveBeenCalledTimes(2);
     });
 
     it("does not invent global counts for an older Agent", async () => {

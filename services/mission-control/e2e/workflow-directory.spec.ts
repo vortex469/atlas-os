@@ -47,6 +47,11 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("button", { name: "Apply filters", exact: true }).click();
         await expect(page.getByText("directory-workflow-214", { exact: true })).toBeVisible();
         await expect(page.getByText("Showing 1 of 1 matching workflows", { exact: true })).toBeVisible();
+        await page.getByLabel("Workflow ID search", { exact: true }).fill("unmatched-workflow");
+        await page.getByRole("button", { name: "Apply filters", exact: true }).click();
+        await expect(page.getByText("No workflows match the current filters.", { exact: true })).toBeVisible();
+        await expect(page.getByText("Try a broader search or clear the filters above.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Review change proposals", exact: true })).toHaveCount(0);
         await page.getByRole("button", { name: "Clear filters", exact: true }).click();
         await expect(page.getByText("directory-workflow-000", { exact: true })).toBeVisible();
         await page.getByLabel("Waiting for approval", { exact: true }).selectOption("yes");
@@ -58,6 +63,7 @@ for (const width of [320, 390, 1280]) {
         expect(reads).toEqual([
             { limit: "10", offset: "0" }, { limit: "10", offset: "10" },
             { workflow_id: "directory-workflow-214", limit: "10", offset: "0" },
+            { workflow_id: "unmatched-workflow", limit: "10", offset: "0" },
             { limit: "10", offset: "0" }, { waiting_for_approval: "true", limit: "10", offset: "0" },
             { waiting_for_approval: "false", limit: "10", offset: "0" },
         ]);

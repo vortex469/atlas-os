@@ -525,3 +525,8 @@ Workflow progress. Blocked cards start with progress open. Search, totals,
 paging, stale-read handling, result values and approval boundaries are unchanged.
 Phone and desktop fixtures cover pending, completed and blocked cards, keyboard
 access to all records, direct workflow navigation and zero mutation requests.
+
+An empty workflow directory offers links to review change proposals or choose
+maintenance, using the existing routes without preparing or running work. An
+empty filtered result instead suggests broadening the search or clearing the
+filters above. The directory's reads, counts and filtering behavior are unchanged.
