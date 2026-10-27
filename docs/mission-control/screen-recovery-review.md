@@ -1,7 +1,7 @@
 # Mission Control screen recovery review
 
-This review covers the simplification and repair work on
-`codex/mission-control-screen-recovery`. It is a source and simulated-browser
+This review covers the Mission Control simplification and reliability changes,
+including their combined local integration checks. It is a source and simulated-browser
 review, not production acceptance or authorization to merge, deploy, enable a
 runtime, tag, or publish a release.
 
@@ -11,12 +11,12 @@ runtime, tag, or publish a release.
 | --- | --- | --- |
 | Shared navigation | Plain menu labels distinguish action history, maintenance history, request creation and proposals; only the owning destination is highlighted; links, mobile drawer, focus, skip link and missing-page recovery work | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` includes maintenance/action-detail ownership |
 | Screen loading | Secondary screens load on demand; pending navigation pauses the old page's controls while keeping navigation available; module failure offers reload and home recovery | `e2e/page-loading.spec.ts` covers delayed modules, leaving a pending screen, and direct-link failure/reload at phone and desktop widths |
-| Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` reuses 42 compatible browser cases against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
+| Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` reuses compatible operator journeys against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
 | Providers | Registry and detail links work; unavailable data differs from absence; forms and late responses stay with their provider | Provider page/component tests; provider registry and route-switch browser cases in `e2e/screen-recovery.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
-| Proposals and planning | Only current search results and matching proposal/plan identities appear; preparation has four simple steps | Proposal/planning page tests; proposal recovery browser cases; both workflow journey specs |
+| Proposals and planning | Only current search results and matching proposal/plan identities appear; proposal details support read-only retry/refresh; preparation has four simple steps | Proposal/planning page tests; `e2e/proposal-detail-recovery.spec.ts`; proposal search recovery cases; both workflow journey specs |
 | Repository workflow | Each exact approval and resume remains separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
 | Maintenance workflow | Explicit target selection and exact request submission return a proposal; operational plan and exact verification rules precede action approval; a separate run precedes lifecycle outcome and audit | `e2e/maintenance-journey.spec.ts`; planning and workflow component tests |
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
@@ -305,3 +305,15 @@ name the action the operator can take. The layout, option values, acknowledgemen
 requirement, permissions and requests are unchanged. Existing interaction tests
 retain their save and suppression checks with updated accessible text; phone and
 desktop previews use synthetic data without submitting any writes.
+
+
+Proposal details now offer Try again after failed, missing or mismatched reads
+and Refresh proposal on a loaded view. Refresh clears prior proposal/planning
+feedback, keeps directory navigation available, and announces loading while
+planning controls are absent. Updated eligibility is checked before planning can
+be requested again. Refresh is paused during a pending planning request; queued
+events cannot start planning from an unconfirmed read or refresh over the pending
+request. A stale planning result points to the actual refresh control. Recovery
+never resubmits planning automatically and grants no execution approval. Browser
+fixtures cover initial failures, changed eligibility and one exact synthetic
+planning POST followed by read-only recovery at phone and desktop widths.
