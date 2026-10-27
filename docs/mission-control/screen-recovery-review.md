@@ -573,3 +573,12 @@ Workflow filter edits show a short unapplied-changes notice until submitted or
 restored to the applied values. The comparison uses the same ID trimming as
 submission, so equivalent whitespace edits do not create a false notice. This
 adds no reads or writes and preserves existing query construction and recovery.
+
+Proposal planning availability updates when a displayed proposal reaches its
+reported expiry. Start planning also rechecks the current time at the click
+boundary, so a delayed browser timer cannot submit a stale planning request.
+The expiry timer makes no API calls. Refresh proposal remains an explicit GET
+and can restore availability only from a current eligible proposal; Atlas Agent
+still performs authoritative revalidation. Browser checks cover expiry and wall
+clock jumps at 320, 390 and 1280px, with exact read counts and zero writes before
+and after the expired click.
