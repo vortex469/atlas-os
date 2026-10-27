@@ -33,7 +33,7 @@ export function InstallationCandidateLifecycle({
         listInstallationCandidateRecords()
             .then((values) => { if (current) setRecords(values); })
             .catch((requestError: unknown) => {
-                if (current) setError(getAtlasErrorMessage(requestError, "Saved candidate records are currently unavailable."));
+                if (current) setError(getAtlasErrorMessage(requestError, "Saved review records are currently unavailable."));
             })
             .finally(() => { if (current) setLoading(false); });
         return () => { current = false; };
@@ -76,32 +76,39 @@ export function InstallationCandidateLifecycle({
 
     const preservable = admission?.status === "admitted_but_non_executable" && admission.candidate_record !== null;
     return <section aria-labelledby="candidate-lifecycle-heading" className="mt-5 border-t border-slate-700 pt-5">
-        <h5 id="candidate-lifecycle-heading" className="font-semibold text-slate-100">Saved candidate record lifecycle</h5>
-        <p className="mt-1 text-sm text-slate-300">Durable advisory records only. Preservation is not approval. Active means only that the exact source facts have not expired.</p>
-        <p className="mt-1 text-sm font-semibold text-amber-200">Every record is non-executable, non-approved, non-deployable, non-dispatchable, and has no Agent execution support.</p>
+        <h5 id="candidate-lifecycle-heading" className="font-semibold text-slate-100">Saved review records</h5>
+        <p className="mt-1 text-sm text-slate-300">These records help with review only. “Not expired” means the source facts have not expired; it does not mean the record is approved or executable.</p>
+        <p className="mt-1 text-sm font-semibold text-amber-200">Saved records cannot approve, run, deploy, or dispatch an installation.</p>
         {preservable && <div className="mt-3">
-            {csrfToken && <button type="button" disabled={mutation !== null} onClick={() => void preserve()} className="rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:opacity-50">Preserve candidate record</button>}
+            {csrfToken && <button type="button" disabled={mutation !== null} onClick={() => void preserve()} className="rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:opacity-50">Save this review record</button>}
             {!csrfToken && <p className="text-xs text-slate-400">An authenticated operator session with mutation protection is required to preserve this record.</p>}
         </div>}
-        {!preservable && admission && <p className="mt-3 text-sm text-slate-400">This admission cannot be preserved because it has no positive non-executable candidate record.</p>}
-        {mutation === "preserve" && <p role="status" className="mt-3 text-sm text-slate-400">Preserving candidate record…</p>}
-        {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading saved candidate records…</p>}
+        {!preservable && admission && <p className="mt-3 text-sm text-slate-400">This check returned no review record to save.</p>}
+        {mutation === "preserve" && <p role="status" className="mt-3 text-sm text-slate-400">Saving review record…</p>}
+        {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading saved review records…</p>}
         {!loading && error && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
-        {!loading && !error && records.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No saved candidate records.</p>}
-        {!loading && !error && records.length > 0 && <ul aria-label="Saved candidate records" className="mt-4 space-y-3">
+        {!loading && !error && records.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No saved review records.</p>}
+        {!loading && !error && records.length > 0 && <ul aria-label="Saved review records" className="mt-4 space-y-3">
             {records.map((record) => <li key={record.candidate_record_id} className="rounded-md border border-slate-700 p-3">
-                <p className="font-semibold text-slate-200">{record.candidate_record.item_id} · {record.lifecycle_state}</p>
-                <p className="mt-1 break-all text-xs text-slate-400">Record ID: {record.candidate_record_id}</p>
+                <p className="font-semibold text-slate-200">{record.candidate_record.item_id} · {lifecycleLabel(record.lifecycle_state)}</p>
+                <details className="mt-1 text-xs text-slate-400">
+                    <summary className="cursor-pointer">Record ID and date</summary>
+                    <p className="mt-1 break-all">{record.candidate_record_id}</p>
+                    <p>Saved {record.created_at}</p>
+                </details>
                 <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" onClick={() => void review(record.candidate_record_id)} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review saved record</button>
+                    <button type="button" aria-label={`Review ${record.candidate_record.item_id}, ${lifecycleLabel(record.lifecycle_state)}, record ID ${record.candidate_record_id}`} onClick={() => void review(record.candidate_record_id)} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review record</button>
                     <a href={`/installation/candidate-records/${encodeURIComponent(record.candidate_record_id)}/readiness-review`} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-blue-200">Open readiness review</a>
-                    <button type="button" disabled={!csrfToken || mutation !== null} onClick={() => void remove(record.candidate_record_id)} className="rounded border border-red-500/50 px-3 py-1.5 text-sm text-red-200 disabled:opacity-50">Delete saved record</button>
+                    <button type="button" aria-label={`Delete ${record.candidate_record.item_id}, ${lifecycleLabel(record.lifecycle_state)}, record ID ${record.candidate_record_id}`} disabled={!csrfToken || mutation !== null} onClick={() => void remove(record.candidate_record_id)} className="rounded border border-red-500/50 px-3 py-1.5 text-sm text-red-200 disabled:opacity-50">Delete record</button>
                 </div>
-                <p className="mt-2 text-xs text-slate-400">Deletion removes only this advisory record. It cannot be replayed and does not cancel any external activity.</p>
+                <p className="mt-2 text-xs text-slate-400">Deleting removes only this saved record. It cannot undo or cancel changes elsewhere.</p>
             </li>)}
         </ul>}
         {mutationError && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{mutationError}</p>}
-        {deletedId && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">Deleted saved record {deletedId}. The advisory record is gone and cannot be replayed.</p>}
+        {deletedId && <div role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">
+            <p>Deleted saved review record. It cannot be restored or replayed.</p>
+            <details className="mt-2 text-xs text-slate-400"><summary className="cursor-pointer">Deleted record ID</summary><code className="mt-1 block break-all">{deletedId}</code></details>
+        </div>}
         {reviewed && <RecordDetails record={reviewed} />}
         <InstallationApprovalIntents records={records} csrfToken={csrfToken} />
     </section>;
@@ -110,27 +117,38 @@ export function InstallationCandidateLifecycle({
 function RecordDetails({ record }: { record: InstallationCandidateRecordEnvelopeV1 }) {
     const candidate = record.candidate_record;
     return <section aria-labelledby="saved-record-detail-heading" className="mt-5 rounded-md border border-slate-700 p-3">
-        <h6 id="saved-record-detail-heading" className="font-semibold text-slate-100">Saved non-executable candidate record</h6>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-            <Value name="Lifecycle state" value={record.lifecycle_state} />
-            <Value name="Candidate record ID" value={record.candidate_record_id} />
-            <Value name="Item ID" value={candidate.item_id} />
-            <Value name="Catalog entry ID" value={candidate.catalog_entry_id} />
-            <Value name="Created at" value={record.created_at} />
-            <Value name="Evaluated at" value={candidate.evaluated_at} />
-            <Value name="Valid until" value={candidate.valid_until} />
-            <Value name="Admission fingerprint" value={record.admission_fingerprint} />
-            <Value name="Candidate fingerprint" value={candidate.record_fingerprint} />
-            <Value name="Envelope fingerprint" value={record.envelope_fingerprint} />
-            <Value name="Plan fingerprint" value={candidate.plan_fingerprint} />
-            <Value name="Selection ID" value={candidate.selection_id} />
-        </dl>
-        <dl aria-label="Saved candidate record authority flags" className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-            <Value name="Approved" value="false" /><Value name="Executable" value="false" />
-            <Value name="Deployable" value="false" /><Value name="Dispatchable" value="false" />
-            <Value name="Agent execution supported" value="false" />
-        </dl>
+        <h6 id="saved-record-detail-heading" className="font-semibold text-slate-100">Saved review record</h6>
+        <p className="mt-1 text-sm text-slate-300">This record is advisory only. It cannot approve, run, deploy, or dispatch an installation.</p>
+        <details className="mt-3 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400">
+            <summary className="cursor-pointer font-medium text-slate-300">Record identifiers and source facts</summary>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                <Value name="Lifecycle status code" value={record.lifecycle_state} />
+                <Value name="Candidate record ID" value={record.candidate_record_id} />
+                <Value name="Item ID" value={candidate.item_id} />
+                <Value name="Catalog entry ID" value={candidate.catalog_entry_id} />
+                <Value name="Created at" value={record.created_at} />
+                <Value name="Evaluated at" value={candidate.evaluated_at} />
+                <Value name="Valid until" value={candidate.valid_until} />
+                <Value name="Admission fingerprint" value={record.admission_fingerprint} />
+                <Value name="Candidate fingerprint" value={candidate.record_fingerprint} />
+                <Value name="Envelope fingerprint" value={record.envelope_fingerprint} />
+                <Value name="Plan fingerprint" value={candidate.plan_fingerprint} />
+                <Value name="Selection ID" value={candidate.selection_id} />
+            </dl>
+        </details>
+        <details className="mt-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400">
+            <summary className="cursor-pointer font-medium text-slate-300">Authority flags</summary>
+            <dl aria-label="Saved candidate record authority flags" className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                <Value name="Approved" value="false" /><Value name="Executable" value="false" />
+                <Value name="Deployable" value="false" /><Value name="Dispatchable" value="false" />
+                <Value name="Agent execution supported" value="false" />
+            </dl>
+        </details>
     </section>;
+}
+
+function lifecycleLabel(state: InstallationCandidateRecordEnvelopeV1["lifecycle_state"]): string {
+    return state === "active" ? "Not expired" : "Expired";
 }
 
 function Value({ name, value }: { name: string; value: string }) {
