@@ -15,6 +15,7 @@ import type {
     CandidatePlanningResponse,
     CandidateWorkflowResponse,
 } from "../types/atlasAgent";
+import { unreadableWorkflowFields } from "../test/workflowSummary";
 import { WorkflowShellPage } from "./WorkflowShellPage";
 
 vi.mock("../api/atlas-agent", () => ({
@@ -97,6 +98,47 @@ function renderPage(state?: { workflow: CandidateWorkflowResponse }) {
 }
 
 describe("WorkflowShellPage", () => {
+    it.each(unreadableWorkflowFields)("recovers an unreadable workflow summary %s through a read", async (_field, fields) => {
+        mockedGetCandidateWorkflowShell.mockResolvedValueOnce(workflow(fields as Partial<CandidateWorkflowResponse>));
+        const user = userEvent.setup();
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("The workflow summary response is incomplete or unreadable.");
+        expect(screen.queryByRole("button", { name: "Prepare exact request" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Try again" }));
+        await screen.findByRole("heading", { name: "Workflow summary" });
+        expect(mockedGetCandidateWorkflowShell).toHaveBeenCalledTimes(2);
+        expect(mockedCreateCandidateImplementationRequest).not.toHaveBeenCalled();
+        expect(mockedCreateSuccessorCandidatePlanningSession).not.toHaveBeenCalled();
+    });
+
+    it.each(["..", "bad\u0000id"])("does not accept an unusable proposal reference: %j", async candidate_id => {
+        mockedGetCandidateWorkflowShell.mockResolvedValue(workflow({ candidate_id }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("The workflow summary response is incomplete or unreadable.");
+        expect(mockedCreateCandidateImplementationRequest).not.toHaveBeenCalled();
+    });
+
+    it("ignores unreadable cached data while awaiting a fresh summary", async () => {
+        let finish!: (value: CandidateWorkflowResponse) => void;
+        mockedGetCandidateWorkflowShell.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        renderPage({ workflow: workflow({ candidate_fingerprint: {} } as unknown as Partial<CandidateWorkflowResponse>) });
+        expect(await screen.findByText("Loading workflow summary…")).toBeVisible();
+        expect(screen.queryByRole("button", { name: "Prepare exact request" })).not.toBeInTheDocument();
+        await act(async () => finish(workflow()));
+        await screen.findByRole("heading", { name: "Workflow summary" });
+        expect(mockedGetCandidateWorkflowShell).toHaveBeenCalledTimes(1);
+    });
+
+    it("accepts readable future workflow labels with unused metadata", async () => {
+        mockedGetCandidateWorkflowShell.mockResolvedValue(workflow({ workflow_status: "future_state", conversion_status: "future_conversion",
+            candidate_plan_id: {}, core_revalidation_status: {}, future_metadata: { extra: true } } as unknown as Partial<CandidateWorkflowResponse>));
+        renderPage();
+        await screen.findByRole("heading", { name: "Workflow summary" });
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Prepare exact request" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidateImplementationRequest).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.resetAllMocks();
         mockedCreateCandidateImplementationRequest.mockResolvedValue(
