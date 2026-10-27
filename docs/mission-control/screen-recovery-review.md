@@ -613,3 +613,9 @@ rows stay visible; More services exposes every remaining row by keyboard without
 another request. Status ordering, field allowlisting, safe text, and stale
 qualifiers use the same renderer for visible and collapsed rows. An open section
 stays open as the service count changes or a refresh retains last-known data.
+
+Maintenance history uses the shared strict timestamp reader for Requested and
+Result recorded. Impossible calendar dates, missing timezones, and future times
+show Unknown time; absent times remain Not reported. Valid timezone-aware values
+still use the operator's local display format. This changes timestamp display
+only, with no inference about maintenance outcome and no extra requests.

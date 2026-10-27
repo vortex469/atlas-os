@@ -8,6 +8,7 @@ import {
 } from "../api/atlas-agent";
 import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
 import { recoveryPresentation } from "../utils/recoveryDiagnostic";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import type {
     WorkflowOperationalLifecycle,
     WorkflowRecoveryDiagnostic,
@@ -25,8 +26,8 @@ interface HistoryItem {
 
 function formatTimestamp(value: string | null): string {
     if (!value) return "Not reported";
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? "Unknown time" : parsed.toLocaleString();
+    const parsed = evidenceTimestamp(value);
+    return parsed === null || parsed > Date.now() ? "Unknown time" : new Date(parsed).toLocaleString();
 }
 
 export function OperationalHistoryPage() {
