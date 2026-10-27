@@ -22,6 +22,17 @@ export function PlanningSessionPage() {
     return <PlanningSession key={sessionId} sessionId={sessionId} />;
 }
 
+function isReadableRepositoryPlan(plan: CandidatePlanApiResponse): boolean {
+    if (!plan || typeof plan !== "object" || Array.isArray(plan)) return false;
+    const text = [plan.title, plan.objective];
+    const lists = [plan.assumptions, plan.constraints, plan.proposed_steps, plan.likely_affected_files,
+        plan.verification_strategy, plan.rollback_considerations, plan.unresolved_questions, plan.evidence_ids];
+    const references = [plan.repository_branch, plan.repository_head];
+    return text.every(value => typeof value === "string")
+        && lists.every(value => Array.isArray(value) && value.every(item => typeof item === "string"))
+        && references.every(value => value === null || value === undefined || typeof value === "string");
+}
+
 function PlanningSession({ sessionId }: { sessionId: string }) {
     const [session, setSession] = useState<CandidatePlanningResponse | null>(null);
     const [plan, setPlan] = useState<CandidatePlanApiResponse | null>(null);
@@ -65,7 +76,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 }
                 let loadedPlan = nextSession?.plan ?? null;
                 const loadedOperationalPlan = nextSession?.operational_plan ?? null;
-                if (loadedPlan && loadedOperationalPlan) {
+                if (loadedPlan !== null && loadedOperationalPlan !== null) {
                     setError("The planning response contains conflicting plan types. Reload to check again.");
                     return;
                 }
@@ -73,10 +84,14 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     setError("The maintenance plan does not match this planning session or target.");
                     return;
                 }
-                if (!loadedPlan && !loadedOperationalPlan && nextSession?.status === "plan_ready") loadedPlan = await getCandidatePlan(sessionId);
+                if (loadedPlan === null && loadedOperationalPlan === null && nextSession?.status === "plan_ready") loadedPlan = await getCandidatePlan(sessionId);
                 if (cancelled) return;
                 if (loadedPlan && (!nextSession || loadedPlan.session_id !== sessionId || loadedPlan.candidate_id !== nextSession.candidate_id)) {
                     setError("The returned plan does not match this planning session.");
+                    return;
+                }
+                if (loadedPlan !== null && !isReadableRepositoryPlan(loadedPlan)) {
+                    setError("The repository plan response is incomplete or unreadable.");
                     return;
                 }
                 if (nextSession?.status === "plan_ready" && loadedPlan === null && loadedOperationalPlan === null) {
@@ -140,6 +155,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             const generatedPlan = response.plan ?? (generatedOperationalPlan ? null : await getCandidatePlan(sessionId));
             if (generatedPlan && (generatedPlan.session_id !== sessionId || generatedPlan.candidate_id !== session.candidate_id)) {
                 setGenerateError("The returned plan does not match this planning session.");
+                return;
+            }
+            if (generatedPlan !== null && !isReadableRepositoryPlan(generatedPlan)) {
+                setGenerateError("The repository plan response is incomplete or unreadable.");
                 return;
             }
             if (response.status === "plan_ready" && generatedPlan === null && generatedOperationalPlan === null) {
@@ -281,9 +300,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
 
             {(!existingWorkflow || hasPlan) && <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">{hasPlan ? "Saved plan" : "Plan"}</h2>
-                <p className="mt-2 text-sm text-slate-400">
+                {!generateError && <p className="mt-2 text-sm text-slate-400">
                     {existingWorkflow ? "Planning has already led to a workflow. Any saved plan below is for review." : hasPlan ? "Review the saved plan below. Later changes still need separate approvals." : "Generate a plan to review. This does not apply changes or grant approval."}
-                </p>
+                </p>}
                 {!existingWorkflow && session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button type="button" onClick={generatePlan} disabled={isGenerating} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
@@ -292,7 +311,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         {isGenerating && <p className="text-sm text-slate-400">Generating plan...</p>}
                     </div>
                 )}
-                {!existingWorkflow && (session.status !== "ready_for_planning" || session.planning_allowed !== true) && !hasPlan && (
+                {!existingWorkflow && (session.status !== "ready_for_planning" || session.planning_allowed !== true) && !hasPlan && !generateError && (
                     <p className="mt-4 text-sm text-slate-400">{nonReadyMessage(session)}</p>
                 )}
                 {generateError && (
