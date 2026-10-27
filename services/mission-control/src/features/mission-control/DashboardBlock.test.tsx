@@ -42,14 +42,14 @@ describe("integrated attention and activity", () => {
         render(dashboard({ summary: { data: { findings: [{ severity: { toString: null } }] } }, health: { unavailable: true }, activity: { data: { items: [{ ...event, status: "failed" }] } } }));
         expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
         expect(attention().getByText(/Missing sources do not establish an all-clear/)).toBeVisible();
-        expect(activity().getByText("Error · Restart")).toBeVisible();
+        expect(activity().getByText("Failed · Restart")).toBeVisible();
     });
     it("orders and deduplicates source history with provider context and safe detail navigation", async () => {
         render(dashboard({ activity: { data: { items: [event, event, { ...event, id: "new", status: "failed", completed_at: "2026-09-02T12:00:00Z" }] } } }));
         const entries = activity().getAllByRole("listitem");
         expect(entries).toHaveLength(2);
-        expect(entries[0]).toHaveTextContent("Error · Restart");
-        expect(entries[1]).toHaveTextContent("Informational · Restart");
+        expect(entries[0]).toHaveTextContent("Failed · Restart");
+        expect(entries[1]).toHaveTextContent("Succeeded · Restart");
         expect(entries[1]).toHaveTextContent("Provider");
         expect(within(entries[1]).getByRole("link")).toHaveAttribute("href", "/operations/actions/audit%2F1");
         await userEvent.click(within(entries[1]).getByRole("link"));
