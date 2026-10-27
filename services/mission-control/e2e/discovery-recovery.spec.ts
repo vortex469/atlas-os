@@ -1,3 +1,4 @@
+import { homeAssistantGoldenPlan } from "../src/test/installationPlan.fixture";
 import { expect, test, discoveryItemsPage } from "./mission-control-fixtures";
 
 for (const width of [320, 390, 1280]) {
@@ -245,4 +246,44 @@ for (const width of [320, 390, 1280]) {
             expect(rejectedMutationRequests).toEqual([]);
         });
     }
+}
+
+for (const width of [320, 390, 1280]) {
+    test(`unreadable installation plan keeps the Discovery item at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        const plan = homeAssistantGoldenPlan();
+        const entry = { ...discoveryItemsPage.entries[0], item: { ...discoveryItemsPage.entries[0].item, id: "home-assistant", name: "Home Assistant" } };
+        let reads = 0;
+        let destinationReads = 0;
+        page.on("request", request => {
+            if (new URL(request.url()).pathname === "/api/v1/installation/destinations") destinationReads += 1;
+        });
+        let recovered = false;
+        const errors: string[] = [];
+        page.on("pageerror", error => errors.push(error.message));
+        await page.route("**/api/v1/discovery/items/home-assistant", route => route.fulfill({ json: entry }));
+        await page.route("**/api/v1/discovery/items/home-assistant/installation-plan", route => {
+            reads += 1;
+            expect(route.request().method()).toBe("GET");
+            return route.fulfill({ json: recovered ? plan : { ...plan, blockers: null } });
+        });
+        await page.goto("/discovery/items/home-assistant");
+        await expect(page.getByText("Installation plan is currently unavailable.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Home Assistant", exact: true })).toBeVisible();
+        await expect(page.getByText("Ready for operator review only; no execution authority has been granted.", { exact: true })).toHaveCount(0);
+        await expect(page.getByText(plan.fingerprint.value, { exact: true })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "Prospective installation destination", exact: true })).toHaveCount(0);
+        expect(destinationReads).toBe(0);
+        const initialReads = reads;
+        expect(initialReads).toBeGreaterThan(0);
+        recovered = true;
+        await page.reload();
+        await expect(page.getByText("9 unresolved blockers; this plan is not executable.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Home Assistant", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Prospective installation destination", exact: true })).toBeVisible();
+        await expect.poll(() => destinationReads).toBeGreaterThan(0);
+        expect(reads).toBe(initialReads * 2);
+        expect(errors).toEqual([]);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
 }
