@@ -203,3 +203,15 @@ and clears the stale presentation, including transitions to empty or unavailable
 providers. Initial-load failures still show recovery without claiming an empty
 registry. Browser checks cover listed/empty snapshots, delayed reads, both failure
 kinds, local search, three reads per recovery and zero mutations at three widths.
+
+Provider detail refreshes validate catalog metadata and capability arrays before
+publishing the shared snapshot. Invalid entries and duplicate IDs preserve the
+previous coherent snapshot and refresh time, using the existing unavailable/
+last-reported recovery; initial failures do not claim a provider is missing.
+Duplicate rejection follows Core's registry invariant. Public metadata and
+capability strings remain open; unreadable health retains the existing unknown
+fallback independently of otherwise valid identity. Known public fields are
+projected, and the native model fixture covers serialized defaults and future
+string values. Browser checks cover initial/retained failures, malformed names,
+capabilities, duplicate identities and roots at 320/390/1280 pixels, recovery to
+fresh offline evidence and no mutation requests.

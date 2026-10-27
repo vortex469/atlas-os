@@ -5,8 +5,9 @@ import {
     useState,
 } from "react";
 
-import { normalizeAtlasHealth, normalizeServiceHealth } from "../utils/healthPresentation";
+import { normalizeAtlasHealth } from "../utils/healthPresentation";
 import { atlas } from "../api/atlas";
+import { parseProviderCatalog } from "../api/providerCatalogResponse";
 import { parseAceSummary } from "../api/aceSummaryResponse";
 import { parsePolicies } from "../api/policiesResponse";
 import { parseIntelligenceHistory } from "../api/intelligenceHistoryResponse";
@@ -111,7 +112,7 @@ export function useMissionControl(): MissionControlState {
             ] = await Promise.all([
                 atlas.get<unknown>("/ace/summary").then(response => ({ data: parseAceSummary(response.data) })),
                 atlas.get<AtlasHealth>("/health"),
-                atlas.get<Provider[]>("/providers"),
+                atlas.get<unknown>("/providers").then(response => ({ data: parseProviderCatalog(response.data) })),
                 atlas
                     .get<unknown>("/policies")
                     .then(response => ({ data: parsePolicies(response.data) }))
@@ -131,9 +132,7 @@ export function useMissionControl(): MissionControlState {
                     .catch(() => null),
             ]);
 
-            const nextProviders = sortProviders(providersResponse.data.map((provider) => ({
-                ...provider, health: normalizeServiceHealth(provider.health),
-            })));
+            const nextProviders = sortProviders(providersResponse.data);
 
             setSummary(summaryResponse.data);
             setHealth(normalizeAtlasHealth(healthResponse.data));
