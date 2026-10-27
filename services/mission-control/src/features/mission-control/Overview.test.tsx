@@ -141,8 +141,8 @@ describe('overview fail-closed regressions', () => {
 
 it('distinguishes executing workflows from verification and commit activity', () => {
     show({ workflows: { data: { total: 3, offset: 0, limit: 200, items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state, last_result_summary: '', timeline: [] })) } } });
-    expect(screen.getByText("1 executing workflows")).toBeInTheDocument();
-    expect(screen.getByText(/Worker availability and queue depth are not exposed/)).toBeInTheDocument();
+    expect(screen.getByText("1 executing workflow")).toBeInTheDocument();
+    expect(screen.getByText(/Worker readiness and queue size are unknown/)).toBeInTheDocument();
 });
 
 it('preserves the most urgent duplicate condition at equal freshness', () => {

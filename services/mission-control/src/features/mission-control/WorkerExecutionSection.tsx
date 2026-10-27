@@ -38,14 +38,13 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             <p className="mt-2 text-sm text-mc-text-muted">
                 Recorded workflow progress. This view does not start work.
             </p>
-            <HealthEvidence status={null} stale={evidence?.stale} reason="Worker availability and queue depth are not exposed by this evidence." />
+            <HealthEvidence status={null} stale={evidence?.stale} reason="Worker readiness and queue size are unknown." />
             {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Stale evidence — last-known workflow observations; current execution state unknown.</p>}
             {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing execution evidence; displayed observations may be stale.</p>}
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Metric label="Active execution" value={items && knownStates ? `${active.length} executing workflows` : fallback} />
-                <Metric label="Blocked execution / workflow" value={items && knownStates ? `${blocked.length} blocked workflows` : fallback} />
+                <Metric label="Active execution" value={items && knownStates ? `${active.length} executing workflow${active.length === 1 ? "" : "s"}` : fallback} />
+                <Metric label="Blocked execution / workflow" value={items && knownStates ? `${blocked.length} blocked workflow${blocked.length === 1 ? "" : "s"}` : fallback} />
             </dl>
-            {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No executing workflows observed. Worker idleness is unknown.</p>}
             {items && !knownStates && <p className="mt-3 text-sm text-amber-200">Unrecognized workflow state; activity totals are unknown.</p>}
             <div className="mt-4 grid gap-4">
                 {active.length > 0 && <EvidenceList title="Active execution evidence" items={active} available={!!items} empty="Unknown" />}
@@ -54,6 +53,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             <details className="mt-4 text-sm text-mc-text-secondary">
                 <summary className="mc-focusable cursor-pointer text-mc-primary">Execution observations</summary>
                 <div className="mt-3 space-y-4">
+                    {items && knownStates && active.length === 0 && <p className="text-mc-text-muted">No executing workflows observed. Worker idleness is unknown.</p>}
                     <dl className="grid gap-4 sm:grid-cols-2">
                         <Metric label="Worker availability / state" value="Unknown — worker heartbeat not exposed" />
                         <Metric label="Queued / admitted work" value="Unknown — aggregate queue and admission evidence not exposed" />
