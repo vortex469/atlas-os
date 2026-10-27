@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -82,8 +83,17 @@ describe("InstallationPlanReview", () => {
         expect(container.querySelector("img")).toBeNull();
     });
 
-    it("shows the exact Home Assistant missing-artifact result without action controls", () => {
+    it("shows the exact Home Assistant missing-artifact result without action controls", async () => {
         render(<InstallationPlanReview plan={homeAssistantGoldenPlan()} isLoading={false} unavailable={false} />);
+        expect(screen.getByText(FINGERPRINT)).not.toBeVisible();
+        const disclosure = screen.getByText("Plan identity and evidence", { exact: true });
+        for (const name of ["Blockers", "Required operator confirmations", "Risks", "Missing facts"]) {
+            const heading = screen.getByRole("heading", { name });
+            expect(heading).toBeVisible();
+            expect(heading.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        }
+        await userEvent.click(disclosure);
+        expect(screen.getByText(FINGERPRINT)).toBeVisible();
         expect(screen.getAllByText(/Missing Deployment Artifact/).length).toBeGreaterThan(0);
         expect(screen.getAllByText("2026.8.3", { selector: "dd" })).toHaveLength(2);
         expect(screen.getByText("d5-home-assistant")).toBeInTheDocument();

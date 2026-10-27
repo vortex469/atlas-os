@@ -283,6 +283,29 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("heading", { name: "Home Assistant", exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Prospective installation destination", exact: true })).toBeVisible();
         await expect.poll(() => destinationReads).toBeGreaterThan(0);
+        const planPanel = page.getByRole("region", { name: "Installation plan review", exact: true });
+        const fingerprint = planPanel.getByText(plan.fingerprint.value, { exact: true });
+        await expect(fingerprint).toHaveCount(1);
+        await expect(fingerprint).toBeHidden();
+        const disclosure = planPanel.getByText("Plan identity and evidence", { exact: true });
+        for (const name of ["Blockers", "Required operator confirmations", "Risks", "Missing facts"]) {
+            const heading = planPanel.getByRole("heading", { name, exact: true });
+            await expect(heading).toBeVisible();
+            expect((await heading.boundingBox())!.y).toBeLessThan((await disclosure.boundingBox())!.y);
+        }
+        const readsBeforeDetails = reads;
+        const destinationsBeforeDetails = destinationReads;
+        await disclosure.focus();
+        await page.keyboard.press("Enter");
+        await expect(fingerprint).toBeVisible();
+        await expect(planPanel.getByRole("heading", { name: "Accepted evidence", exact: true })).toBeVisible();
+        await page.keyboard.press("Enter");
+        await expect(fingerprint).toBeHidden();
+        expect(reads).toBe(readsBeforeDetails);
+        expect(destinationReads).toBe(destinationsBeforeDetails);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await planPanel.evaluate(el => window.scrollTo(0, window.scrollY + el.getBoundingClientRect().top - 96));
+        if (width !== 320) await page.screenshot({ path: `/tmp/atlas-plan-review-after-${width}.png` });
         expect(reads).toBe(initialReads * 2);
         expect(errors).toEqual([]);
         expect(rejectedMutationRequests).toEqual([]);
