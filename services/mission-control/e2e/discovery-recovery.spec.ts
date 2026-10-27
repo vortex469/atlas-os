@@ -105,3 +105,30 @@ for (const width of [320, 390, 1280]) {
         });
     }
 }
+
+for (const width of [320, 390, 1280]) {
+    test(`malformed Discovery item recovers after reload at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        let reads = 0;
+        let recovered = false;
+        const errors: string[] = [];
+        page.on("pageerror", error => errors.push(error.message));
+        const entry = discoveryItemsPage.entries[0];
+        await page.route("**/api/v1/discovery/items/fixture-app", async route => {
+            reads += 1;
+            return route.fulfill({ json: !recovered
+                ? { ...entry, item: { ...entry.item, tags: [{}] } } : entry });
+        });
+        await page.goto("/discovery/items/fixture-app");
+        await expect(page.getByRole("alert").filter({ hasText: "Discovery catalog unavailable" })).toContainText("The catalog item could not be read. Reload to try again.");
+        await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toHaveCount(0);
+        const initialReads = reads;
+        expect(initialReads).toBeGreaterThan(0);
+        recovered = true;
+        await page.getByRole("button", { name: "Reload page", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toBeVisible();
+        expect(reads).toBe(initialReads * 2);
+        expect(errors).toEqual([]);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}

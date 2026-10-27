@@ -107,6 +107,7 @@ function entry(overrides: Partial<DiscoveryCatalogEntry> = {}): DiscoveryCatalog
                     devices: [],
                 },
                 network: {
+                    notes: ["Keep video traffic local.", "Use the camera network."],
                     ports: [
                         {
                             port: 8971,
@@ -404,6 +405,8 @@ describe("DiscoveryItemPage", () => {
         expect(screen.getByText("video-ingest")).toBeInTheDocument();
         expect(screen.getByText("nvr")).toBeInTheDocument();
         expect(screen.getByText("Runtime: docker")).toBeInTheDocument();
+        expect(screen.getByText("Keep video traffic local.").tagName).toBe("LI");
+        expect(screen.getByText("Use the camera network.").tagName).toBe("LI");
         expect(screen.getByText(/TCP 8971 inbound optional/i)).toBeInTheDocument();
         expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
         expect(screen.getByText("Reviewed for D5: Yes")).toBeInTheDocument();

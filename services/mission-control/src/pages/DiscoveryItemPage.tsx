@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 
 import { getAtlasErrorMessage } from "../api/atlas";
+import { DiscoveryItemResponseError } from "../api/discoveryItemResponse";
 import {
     getDiscoveryCompatibility,
     getDiscoveryItemEvidence,
@@ -219,7 +220,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     return;
                 }
                 console.error(`Unable to load Discovery item ${itemId}:`, requestError);
-                const message = getAtlasErrorMessage(
+                const message = requestError instanceof DiscoveryItemResponseError ? requestError.message : getAtlasErrorMessage(
                     requestError,
                     "Mission Control could not load this Discovery item.",
                 );
@@ -682,7 +683,7 @@ function RequirementsPanel({ requirements }: { requirements: DiscoveryRequiremen
         ),
         requirements.network.requires_internet === true ? "Internet access" : null,
         requirements.network.requires_lan === true ? "LAN access" : null,
-        requirements.network.notes ?? null,
+        ...(Array.isArray(requirements.network.notes) ? requirements.network.notes : [requirements.network.notes ?? null]),
     ].filter(Boolean) as string[];
 
     const hasRequirements =
