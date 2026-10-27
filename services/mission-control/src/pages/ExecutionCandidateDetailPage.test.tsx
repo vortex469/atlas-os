@@ -203,6 +203,48 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.getByText("Planning session ID: candidate-plan-1")).toBeInTheDocument();
     });
 
+    it.each([
+        { status: null }, { status: " " }, { intake_status: {} },
+        { planning_allowed: "true" }, { intake_reason_codes: null },
+        { intake_reason_codes: [{}] }, { unsupported_reason: {} },
+        { planning_failure: undefined }, { planning_failure: {} },
+        { planning_failure: { code: "failed", message: {} } },
+        { workflow_session_id: "\ud800" },
+    ])("offers read-only recovery for an unreadable planning result: %j", async fields => {
+        mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse(fields as unknown as Partial<CandidatePlanningResponse>));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("The planning response could not be read. A session may have been saved.");
+        expect(screen.getByRole("link", { name: "Review planning details" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1");
+        expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledExactlyOnceWith({ candidate_id: "candidate-1" });
+        await user.click(screen.getByRole("button", { name: "Refresh proposal" }));
+        await screen.findByRole("button", { name: "Start planning" });
+        expect(screen.queryByRole("link", { name: "Review planning details" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([{}, "", "..", " leading", "bad\nref", "\ud800"])("withholds unreadable planning references: %j", async session_id => {
+        mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse({ session_id } as unknown as Partial<CandidatePlanningResponse>));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("The planning response could not be read.");
+        expect(screen.queryByRole("link", { name: "Review planning details" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("accepts readable future planning labels and unused metadata", async () => {
+        mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse({ status: "future_status", intake_status: "future_intake", intake_reason_codes: ["future_reason"], candidate_fingerprint: {} } as unknown as Partial<CandidatePlanningResponse>));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        expect(await screen.findByRole("link", { name: "Continue planning" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1");
+        expect(screen.getByText("Reason codes: future_reason")).toBeInTheDocument();
+    });
+
     it("prevents duplicate planning submissions", async () => {
         const user = userEvent.setup();
         let resolveRequest!: (value: CandidatePlanningResponse) => void;
