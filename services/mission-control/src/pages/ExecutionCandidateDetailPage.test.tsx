@@ -1,7 +1,7 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createCandidatePlanningSession } from "../api/atlas-agent";
 import { getExecutionCandidate } from "../api/executionCandidates";
@@ -80,6 +80,7 @@ function renderPage(path = "/execution-candidates/candidate-1") {
 }
 
 describe("ExecutionCandidateDetailPage", () => {
+    afterEach(() => vi.useRealTimers());
     beforeEach(() => {
         vi.resetAllMocks();
         mockedGetExecutionCandidate.mockResolvedValue(candidate());
@@ -156,6 +157,35 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.getByText("Planning request is already pending.")).toBeInTheDocument();
         resolveRequest(planningResponse());
         expect(await screen.findByText("Planning session ID: candidate-plan-1")).toBeInTheDocument();
+    });
+
+    it("disables planning when the proposal expires while open without another read", async () => {
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ expires_at: new Date(Date.now() + 60_000).toISOString() }));
+        renderPage();
+        await screen.findByRole("button", { name: "Start planning" });
+        vi.useFakeTimers();
+        // Refresh after installing the controlled clock so the expiry timer is controlled too.
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ expires_at: new Date(Date.now() + 60_000).toISOString() }));
+        await act(async () => fireEvent.click(screen.getByRole("button", { name: "Refresh proposal" })));
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeEnabled();
+        await act(async () => vi.advanceTimersByTime(60_000));
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
+        expect(screen.getByText("Candidate has expired.")).toBeInTheDocument();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
+    });
+
+    it("rechecks expiry at the click boundary before the expiry timer fires", async () => {
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ expires_at: new Date(Date.now() + 60_000).toISOString() }));
+        renderPage();
+        const button = await screen.findByRole("button", { name: "Start planning" });
+        expect(button).toBeEnabled();
+        vi.useFakeTimers();
+        vi.setSystemTime(Date.now() + 120_000);
+        await act(async () => fireEvent.click(button));
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
+        expect(screen.getByText("Candidate has expired.")).toBeInTheDocument();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(1);
     });
 
     it("disables planning for not eligible and expired candidates with visible reasons", async () => {

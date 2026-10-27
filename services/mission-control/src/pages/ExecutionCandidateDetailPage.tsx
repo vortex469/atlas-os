@@ -1,5 +1,5 @@
 import { isAxiosError } from "axios";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getAtlasErrorMessage } from "../api/atlas";
@@ -79,10 +79,26 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
         setReadRevision(revision => revision + 1);
     }
 
-    const actionState = useMemo(() => getPlanningActionState(candidate), [candidate]);
+    const [, updateExpiry] = useState(0);
+    useEffect(() => {
+        const expiry = evidenceTimestamp(candidate?.expires_at);
+        if (expiry === null || expiry <= Date.now()) return;
+        let timer: number;
+        const checkExpiry = () => {
+            const remaining = expiry - Date.now();
+            if (remaining <= 0) updateExpiry(revision => revision + 1);
+            else timer = window.setTimeout(checkExpiry, Math.min(remaining, 2_147_483_647));
+        };
+        timer = window.setTimeout(checkExpiry, Math.min(expiry - Date.now(), 2_147_483_647));
+        return () => window.clearTimeout(timer);
+    }, [candidate]);
+    const actionState = getPlanningActionState(candidate);
 
     async function askAtlasAgentToPlan() {
-        if (!candidate || !actionState.enabled || readPending.current || planningPending.current) {
+        if (!candidate || readPending.current || planningPending.current) return;
+        // Recheck at the click boundary: background tabs can delay the display timer.
+        if (!getPlanningActionState(candidate).enabled) {
+            updateExpiry(revision => revision + 1);
             return;
         }
 
