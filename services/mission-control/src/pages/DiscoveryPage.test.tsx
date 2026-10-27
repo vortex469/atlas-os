@@ -199,6 +199,10 @@ describe("DiscoveryPage", () => {
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
         expect(screen.getByText("2")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Browse the catalog" })).toBeVisible();
+        expect(screen.getByText("v1")).not.toBeVisible();
+        fireEvent.click(screen.getByText("Catalog details"));
+        expect(screen.getByText("v1")).toBeVisible();
         expect(
             screen.getByText(/does not mean compatibility, support, installability/i),
         ).toBeInTheDocument();
@@ -215,7 +219,11 @@ describe("DiscoveryPage", () => {
         renderPage();
 
         await screen.findByText("Home Assistant");
+        expect(screen.getByLabelText("Item type")).not.toBeVisible();
+        await user.click(screen.getByText("More filters"));
         await user.type(screen.getByLabelText("Keyword search"), "ollama");
+        expect(screen.getByText("Search to apply your changes.")).toBeVisible();
+        expect(screen.queryByText("Filters applied to these results.")).not.toBeInTheDocument();
         await user.selectOptions(screen.getByLabelText("Item type"), "service");
         await user.selectOptions(screen.getByLabelText("Status"), "active");
         await user.type(screen.getByLabelText("Tag"), "ai");
@@ -234,6 +242,11 @@ describe("DiscoveryPage", () => {
             }),
         );
         expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1);
+        expect(await screen.findByText("Filters applied to these results.")).toBeVisible();
+        expect(screen.queryByText("Search to apply your changes.")).not.toBeInTheDocument();
+        await user.click(screen.getByText("More filters"));
+        expect(screen.getByLabelText("Item type")).not.toBeVisible();
+        expect(screen.getByText("Filters applied to these results.")).toBeVisible();
     });
 
     it("uses item listing when submitted query is empty", async () => {
@@ -241,6 +254,7 @@ describe("DiscoveryPage", () => {
         renderPage();
 
         await screen.findByText("Home Assistant");
+        await user.click(screen.getByText("More filters"));
         await user.selectOptions(screen.getByLabelText("Item type"), "application");
         await user.click(screen.getByRole("button", { name: "Search" }));
 
@@ -303,6 +317,7 @@ describe("DiscoveryPage", () => {
     });
 
     it("distinguishes loaded empty catalog from unavailable catalog", async () => {
+        const user = userEvent.setup();
         mockedGetDiscoveryMetadata.mockResolvedValue(metadata({ entry_count: 0 }));
         mockedListDiscoveryItems.mockResolvedValue(page([]));
 
@@ -312,6 +327,12 @@ describe("DiscoveryPage", () => {
             await screen.findByText("The Discovery catalog is loaded but empty."),
         ).toBeInTheDocument();
         expect(screen.getByText("Catalog empty")).toBeInTheDocument();
+        expect(screen.getByText("Check again after entries have been added to the catalog.")).toBeVisible();
+        expect(screen.queryByText("Try clearing filters or using a broader keyword.")).not.toBeInTheDocument();
+        mockedGetDiscoveryMetadata.mockResolvedValue(metadata({ catalog_loaded: false, entry_count: 0 }));
+        await user.click(screen.getByRole("button", { name: "Clear Discovery filters" }));
+        expect(await screen.findByText("The Discovery catalog is unavailable.")).toBeVisible();
+        expect(screen.queryByText("No Discovery items matched these filters.")).not.toBeInTheDocument();
     });
 
     it("keeps items visible when the summary fails and retries only the summary", async () => {

@@ -139,6 +139,8 @@ export function DiscoveryPage() {
     }, [loadCatalog]);
 
     const isSearchMode = submittedFilters.query.trim().length > 0;
+    const hasAppliedFilters = Object.values(submittedFilters).some(Boolean);
+    const hasDraftChanges = JSON.stringify(normalizeFilters(filters)) !== JSON.stringify(submittedFilters);
     function submitFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const normalized = normalizeFilters(filters);
@@ -162,14 +164,14 @@ export function DiscoveryPage() {
     }
 
     return (
-        <main className="mx-auto max-w-7xl space-y-8 p-8">
+        <main className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
                         Discovery Center
                     </p>
                     <h1 className="mt-3 text-3xl font-bold text-white">
-                        Provider-neutral catalog
+                        Browse the catalog
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         Browse Atlas&apos;s read-only catalog of applications, services,
@@ -208,89 +210,97 @@ export function DiscoveryPage() {
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <form
-                    className="grid gap-4 lg:grid-cols-[2fr_repeat(4,1fr)_auto]"
+                    className="space-y-4"
                     onSubmit={submitFilters}
                     aria-label="Search Discovery catalog"
                 >
-                    <label className="space-y-2 text-sm text-slate-300">
-                        <span>Keyword search</span>
-                        <input
-                            type="search"
-                            value={filters.query}
-                            onChange={(event) =>
-                                setFilters((current) => ({
-                                    ...current,
-                                    query: event.target.value,
-                                }))
-                            }
-                            placeholder="Search by name or description"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
-                        />
-                    </label>
+                    <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <label className="space-y-2 text-sm text-slate-300">
+                            <span>Keyword search</span>
+                            <input
+                                type="search"
+                                value={filters.query}
+                                onChange={(event) =>
+                                    setFilters((current) => ({
+                                        ...current,
+                                        query: event.target.value,
+                                    }))
+                                }
+                                placeholder="Search by name or description"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                            />
+                        </label>
 
-                    <SelectFilter
-                        label="Item type"
-                        value={filters.type}
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                type: value as "" | DiscoveryItemType,
-                            }))
-                        }
-                        options={itemTypeOptions}
-                    />
-
-                    <SelectFilter
-                        label="Status"
-                        value={filters.status}
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                status: value as "" | DiscoveryItemStatus,
-                            }))
-                        }
-                        options={statusOptions}
-                    />
-
-                    <TextFilter
-                        label="Tag"
-                        value={filters.tag}
-                        placeholder="ai"
-                        onChange={(value) =>
-                            setFilters((current) => ({ ...current, tag: value }))
-                        }
-                    />
-
-                    <TextFilter
-                        label="Capability"
-                        value={filters.capability}
-                        placeholder="mqtt-broker"
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                capability: value,
-                            }))
-                        }
-                    />
-
-                    <div className="flex items-end gap-2">
-                        <button
-                            type="submit"
-                            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={isLoading}
-                        >
-                            Search
-                        </button>
-                        <button
-                            type="button"
-                            onClick={clearFilters}
-                            disabled={isLoading}
-                            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Clear Discovery filters"
-                        >
-                            Clear
-                        </button>
+                        <div className="flex items-end gap-2">
+                            <button
+                                type="submit"
+                                className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={isLoading}
+                            >
+                                Search
+                            </button>
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                disabled={isLoading}
+                                className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Clear Discovery filters"
+                            >
+                                Clear
+                            </button>
+                        </div>
                     </div>
+                    <details className="rounded-lg border border-slate-700 p-3">
+                        <summary className="mc-focusable cursor-pointer text-sm text-blue-300">More filters</summary>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            <SelectFilter
+                                label="Item type"
+                                value={filters.type}
+                                onChange={(value) =>
+                                    setFilters((current) => ({
+                                        ...current,
+                                        type: value as "" | DiscoveryItemType,
+                                    }))
+                                }
+                                options={itemTypeOptions}
+                            />
+
+                            <SelectFilter
+                                label="Status"
+                                value={filters.status}
+                                onChange={(value) =>
+                                    setFilters((current) => ({
+                                        ...current,
+                                        status: value as "" | DiscoveryItemStatus,
+                                    }))
+                                }
+                                options={statusOptions}
+                            />
+
+                            <TextFilter
+                                label="Tag"
+                                value={filters.tag}
+                                placeholder="ai"
+                                onChange={(value) =>
+                                    setFilters((current) => ({ ...current, tag: value }))
+                                }
+                            />
+
+                            <TextFilter
+                                label="Capability"
+                                value={filters.capability}
+                                placeholder="mqtt-broker"
+                                onChange={(value) =>
+                                    setFilters((current) => ({
+                                        ...current,
+                                        capability: value,
+                                    }))
+                                }
+                            />
+
+                        </div>
+                    </details>
+                    {hasDraftChanges && <p className="text-sm text-slate-300">Search to apply your changes.</p>}
                 </form>
             </section>
 
@@ -300,6 +310,7 @@ export function DiscoveryPage() {
                         <h2 className="text-xl font-semibold text-white">
                             {isSearchMode ? "Search results" : "Catalog items"}
                         </h2>
+                        {!isLoading && !error && hasAppliedFilters && <p className="mt-1 text-sm text-blue-300">Filters applied to these results.</p>}
                         <p className="mt-1 text-sm text-slate-500">
                             {isLoading ? "Loading results..." : error ? "Results unavailable" : `${result.total} item${result.total === 1 ? "" : "s"} found`}
                         </p>
@@ -334,12 +345,18 @@ export function DiscoveryPage() {
                 ) : error ? null : result.entries.length === 0 ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">
-                            {metadata?.catalog_loaded && metadata.entry_count === 0
+                            {metadata?.catalog_loaded === false
+                                ? "The Discovery catalog is unavailable."
+                                : metadata?.catalog_loaded && metadata.entry_count === 0
                                 ? "The Discovery catalog is loaded but empty."
                                 : "No Discovery items matched these filters."}
                         </p>
                         <p className="mt-2 text-sm text-slate-500">
-                            Try clearing filters or using a broader keyword.
+                            {metadata?.catalog_loaded === false
+                                ? "Search again to check whether catalog data is available."
+                                : metadata?.catalog_loaded && metadata.entry_count === 0
+                                  ? "Check again after entries have been added to the catalog."
+                                  : "Try clearing filters or using a broader keyword."}
                         </p>
                     </div>
                 ) : (
@@ -411,25 +428,27 @@ function DiscoveryStatus({
           : "Catalog status unknown";
 
     return (
-        <div className="grid gap-3 sm:grid-cols-3">
-            <StatusTile label="Status" value={label} />
-            <StatusTile
-                label="Entries"
-                value={metadata ? String(metadata.entry_count) : "…"}
-            />
-            <StatusTile
-                label="Schema"
-                value={metadata ? `v${metadata.schema_version}` : "…"}
-            />
+        <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <StatusTile label="Status" value={label} />
+                <StatusTile label="Entries" value={metadata ? String(metadata.entry_count) : "…"} />
+            </div>
+            <details className="rounded-lg border border-slate-800 p-3">
+                <summary className="mc-focusable cursor-pointer text-sm text-blue-300">Catalog details</summary>
+                <dl className="mt-3 text-sm text-slate-300">
+                    <dt>Schema</dt>
+                    <dd>{metadata ? `v${metadata.schema_version}` : "…"}</dd>
+                </dl>
+            </details>
         </div>
     );
 }
 
 function StatusTile({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div className="min-w-0">
             <p className="text-xs uppercase tracking-wider text-slate-500">{label}</p>
-            <p className="mt-2 text-lg font-semibold text-slate-100">{value}</p>
+            <p className="mt-1 font-semibold text-slate-100">{value}</p>
         </div>
     );
 }
