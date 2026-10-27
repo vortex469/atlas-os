@@ -254,4 +254,49 @@ describe("WorkflowDashboardPage", () => {
         expect(list).toHaveBeenCalledTimes(1);
     });
 
+    it("keeps retained states and totals qualified through failed refresh and recovery", async () => {
+        let rejectRefresh!: (reason: Error) => void;
+        list.mockResolvedValueOnce(response([workflow()]))
+            .mockImplementationOnce(() => new Promise((_, reject) => {rejectRefresh = reject;}))
+            .mockResolvedValueOnce(response([workflow({workflow_state: "completed", last_result_summary: "Latest result"})]));
+        renderDashboard(); await screen.findByText("workflow-123");
+        fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
+        expect(screen.getByRole("heading", {name: "Last loaded totals for this search"})).toBeVisible();
+        expect(screen.getByText("Last loaded stage: Implementation")).toBeVisible();
+        expect(screen.getByText("Last loaded approval state")).toBeVisible();
+        expect(screen.getByText("Showing the last loaded results. Current workflow states and totals are unconfirmed.")).toBeVisible();
+        await act(async () => rejectRefresh(new Error("Refresh unavailable")));
+        expect(screen.getByRole("alert")).toHaveTextContent("Refresh unavailable");
+        expect(screen.getByText("Last loaded state")).toBeVisible();
+        fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
+        await screen.findByText("Latest result");
+        expect(screen.getByRole("heading", {name: "Totals for this search"})).toBeVisible();
+        expect(screen.queryByText("Last loaded state")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Current workflow states and totals are unconfirmed/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(list).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([false, true])("keeps an empty retained list historical while retrying (filtered: %s)", async filtered => {
+        let finishRetry!: (value: WorkflowListResponse) => void;
+        list.mockResolvedValue(response([]));
+        renderDashboard(); await screen.findByText("No workflows yet.");
+        if (filtered) {search("missing"); await screen.findByText("No workflows match the current filters.");}
+        list.mockRejectedValueOnce(new Error("Refresh unavailable"))
+            .mockImplementationOnce(() => new Promise(resolve => {finishRetry = resolve;}));
+        fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
+        await screen.findByRole("alert");
+        const message = filtered ? "The last loaded search had no matches." : "The last loaded list was empty.";
+        expect(screen.getByText(message)).toBeVisible();
+        expect(screen.queryByRole("link", {name: "Review change proposals"})).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
+        expect(screen.getByText(message)).toBeVisible();
+        expect(screen.getByRole("button", {name: "Refresh"})).toBeDisabled();
+        await act(async () => finishRetry(response([])));
+        expect(screen.getByText(filtered ? "No workflows match the current filters." : "No workflows yet.")).toBeVisible();
+        expect(screen.queryByText(message)).not.toBeInTheDocument();
+        if (!filtered) expect(screen.getByRole("link", {name: "Review change proposals"})).toBeVisible();
+        expect(list).toHaveBeenCalledTimes(filtered ? 4 : 3);
+    });
+
 });

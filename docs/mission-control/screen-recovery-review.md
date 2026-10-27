@@ -535,3 +535,13 @@ Workflow totals use compact label-and-number rows to reduce mobile scrolling.
 Every approval-stage category, other-state count and unavailable-value fallback
 remains visible. Count calculations, search, paging and source validation are
 unchanged; labels and large values can wrap within the available width.
+
+The workflow directory labels retained totals, list counts, stages and approval
+state as last loaded while a refresh is pending or has failed. Empty retained
+results describe the previous read and suggest Refresh, rather than claiming
+there are currently no workflows. These qualifiers remain through a retry and
+clear only when a successful response replaces the snapshot. Workflow links stay
+available for inspecting current details; request handling, filtering, polling
+and approval boundaries are unchanged. Phone and desktop fixtures cover populated,
+empty and filtered results through pending reads, failure and recovery with GET
+only and exact read counts.
