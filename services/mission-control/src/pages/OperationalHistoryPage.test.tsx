@@ -131,6 +131,51 @@ describe("OperationalHistoryPage", () => {
         expect(screen.queryByText("No maintenance requests yet.")).not.toBeInTheDocument();
     });
 
+    it.each([
+        ["offset", { offset: 10 }], ["limit", { limit: 11 }], ["total", { total: -1 }],
+        ["missing rows", { total: 2 }],
+        ["duplicate IDs", { items: [historyPage().items[0], historyPage().items[0]], total: 2 }],
+        ["null record", { items: [null] }],
+        ["target metadata", { items: [{ ...historyPage().items[0], target_id: {} }] }],
+        ["state metadata", { items: [{ ...historyPage().items[0], workflow_state: {} }] }],
+        ["action metadata", { items: [{ ...historyPage().items[0], execution_intent: [] }] }],
+        ["dot identity", { items: [{ ...historyPage().items[0], workflow_id: ".." }] }],
+        ["unencodable identity", { items: [{ ...historyPage().items[0], workflow_id: "\ud800" }] }],
+        ["foreign effect", { items: [{ ...historyPage().items[0], effect_kind: "repository_change" }] }],
+    ] as Array<[string, Record<string, unknown>]>)("retains the valid snapshot when returned %s is unreadable", async (_, overrides) => {
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        await screen.findByRole("heading", { name: "Healthy" });
+        mockedList.mockResolvedValueOnce({ ...historyPage(), ...overrides } as unknown as Awaited<ReturnType<typeof listWorkflows>>);
+        fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Could not load maintenance history.");
+        expect(screen.getByText("proxmox/qemu/110")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Last loaded: Healthy" })).toBeVisible();
+        expect(mockedLifecycle).toHaveBeenCalledTimes(1);
+        expect(mockedDiagnostic).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+        ["target_label", {}], ["target_label", 42], ["verification_status", []],
+    ] as Array<[string, unknown]>)("keeps a readable workflow and diagnostic when lifecycle field %s is unreadable", async (field, value) => {
+        mockedLifecycle.mockResolvedValue(operationalLifecycle({ [field as string]: value }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        expect(await screen.findByRole("heading", { name: "110" })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Healthy" })).toBeVisible();
+        fireEvent.click(screen.getByText("Workflow details", { exact: true }));
+        expect(screen.getByText("Verification", { exact: true }).parentElement).toHaveTextContent("Not reported");
+        expect(mockedList).toHaveBeenCalledTimes(1);
+    });
+
+    it("accepts future states and actions with nullable display metadata and extra fields", async () => {
+        mockedList.mockResolvedValue({ ...historyPage(), items: [{ ...historyPage().items[0], workflow_state: "future_state", execution_intent: "future-operation", target_id: null, extra_metadata: { future: true } }] } as unknown as Awaited<ReturnType<typeof listWorkflows>>);
+        mockedLifecycle.mockResolvedValue(null);
+        mockedDiagnostic.mockResolvedValue(null);
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        expect(await screen.findByRole("heading", { name: "Maintenance target" })).toBeVisible();
+        expect(screen.getByText("future-operation · Status unavailable", { exact: true })).toBeVisible();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
     it("keeps missing reports in the unavailable filter without claiming a network failure", async () => {
         mockedDiagnostic.mockResolvedValue(null);
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);

@@ -629,3 +629,14 @@ Pagination describes the displayed snapshot, disables page changes while loading
 and retries the same requested page after failure rather than skipping ahead.
 Filters remain local to the displayed page. Recovery adds no writes, retries of
 maintenance work, or approval controls.
+
+Maintenance history checks each returned page before requesting its lifecycle
+and diagnostic details. Paging must match the requested offset and size, totals
+and row counts must agree, identities must be unique and usable in routes, and
+rows must belong to operational actions with readable displayed fields. An
+unreadable page uses the normal load error and preserves any last-loaded snapshot;
+its row identifiers are not used for further reads. Extra metadata and future
+state/action names remain accepted. Independently unreadable lifecycle labels or
+verification fields become unavailable while a readable matching workflow and
+diagnostic stay visible. These are display-read checks, not approval or execution
+admission rules.
