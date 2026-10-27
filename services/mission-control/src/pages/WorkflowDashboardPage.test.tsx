@@ -50,7 +50,7 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getAllByRole("link", { name: "Open Workflow" })[0]).toHaveAttribute("href", "/workflows/workflow-123");
         const main = screen.getByRole("main");
         expect(within(main).queryByRole("button", { name: /Approve|Reject|Execute|Resume|Commit/i })).not.toBeInTheDocument();
-        expect(screen.getAllByText("Mini workflow rail").length).toBe(10);
+        expect(screen.getAllByText("Workflow progress").length).toBe(10);
     });
 
     it("sends all submitted filters to the server and resets the offset", async () => {
@@ -226,4 +226,25 @@ describe("WorkflowDashboardPage", () => {
         await screen.findByText("No workflows yet.");
         expect(list).toHaveBeenCalledTimes(1);
     });
+    it.each(["awaiting_implementation_approval", "completed", "blocked"])("keeps %s directory results visible with supporting facts expandable", async workflow_state => {
+        list.mockResolvedValue(response([workflow({workflow_state})]));
+        renderDashboard();
+        const heading = await screen.findByRole("heading", {name: "workflow-123"});
+        const card = within(heading.closest("article")!);
+        expect(card.getByText("/repo")).toBeVisible();
+        expect(card.getByText("No result yet")).toBeVisible();
+        expect(card.getByRole("link", {name: "Open Workflow"})).toHaveAttribute("href", "/workflows/workflow-123");
+        expect(card.getByText("candidate-123")).not.toBeVisible();
+        expect(card.getByText("planning-123")).not.toBeVisible();
+        const details = card.getByText("Workflow details");
+        expect(details.closest("details")).not.toHaveAttribute("open");
+        const progress = card.getByText("Workflow progress").closest("details");
+        if (workflow_state === "blocked") expect(progress).toHaveAttribute("open");
+        else expect(progress).not.toHaveAttribute("open");
+        fireEvent.click(details);
+        expect(card.getByText("candidate-123")).toBeVisible();
+        expect(card.getByText("planning-123")).toBeVisible();
+        expect(list).toHaveBeenCalledTimes(1);
+    });
+
 });

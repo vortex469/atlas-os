@@ -298,18 +298,23 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
                 </Link>
             </div>
             <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <Detail label="Workflow Source" value={formatWorkflowLabel(workflow.workflow_source)} />
-                <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not exposed"} />
-                <Detail label="Planning Session ID" value={workflow.planning_session_id ?? "Not exposed"} />
                 <Detail label="Current State" value={formatWorkflowLabel(workflow.workflow_state)} />
                 <Detail label="Repository or Target" value={workflow.repository ?? workflow.target_id ?? "Not exposed"} />
                 <Detail label="Last Known Result" value={workflow.last_result_summary} />
                 <Detail label="Approval state" value={actionRequired ? "Waiting for approval" : "Not waiting for approval"} />
             </dl>
-            <div className="mt-4">
-                <h4 id={railId} className="mb-2 text-sm font-semibold text-slate-200">Mini workflow rail</h4>
-                <WorkflowMiniRail labelledBy={railId} stages={workflowRailStages(workflow)} />
-            </div>
+            <details className="mt-4 rounded-lg border border-slate-800 p-3">
+                <summary className="cursor-pointer text-sm text-blue-300 focus-visible:outline-2">Workflow details</summary>
+                <dl className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+                    <Detail label="Workflow Source" value={formatWorkflowLabel(workflow.workflow_source)} />
+                    <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not exposed"} />
+                    <Detail label="Planning Session ID" value={workflow.planning_session_id ?? "Not exposed"} />
+                </dl>
+            </details>
+            <details open={workflow.workflow_state === "blocked"} className="mt-3 rounded-lg border border-slate-800 p-3">
+                <summary className="cursor-pointer focus-visible:outline-2"><h4 id={railId} className="inline text-sm font-semibold text-slate-200">Workflow progress</h4></summary>
+                <div className="mt-3"><WorkflowMiniRail labelledBy={railId} stages={workflowRailStages(workflow)} /></div>
+            </details>
         </article>
     );
 }
