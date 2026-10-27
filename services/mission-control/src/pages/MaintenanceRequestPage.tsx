@@ -187,9 +187,9 @@ export function MaintenanceRequestPage() {
     return (
         <main className="mx-auto max-w-6xl space-y-6 p-8">
             <header>
-                <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Bounded maintenance</p>
+                <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Maintenance</p>
                 <h1 className="mt-2 text-3xl font-bold text-white">Request service restart</h1>
-                <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. This creates a candidate only; it does not restart anything.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
+                <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. Creating a proposal does not restart anything.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
             </header>
             {(proposalId !== null || proposalLoading || proposalError || proposal) && (
                 <section aria-label="Advisory proposal context" className="space-y-3">
@@ -208,7 +208,7 @@ export function MaintenanceRequestPage() {
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your operator session lacks maintenance permission.</p>}
             {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
             <section className="space-y-3" aria-label="Authoritative Proxmox resources">
-                <div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-white">Select one exact resource</h2><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
+                <div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-white">Choose a resource</h2><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Refreshing authoritative resources…</p>}
                 {!loading && capability && resources.length === 0 && <p role="status" className="text-sm text-slate-400">No resources were returned. Choose Refresh to check again.</p>}
                 {resources.map((resource) => (
@@ -221,9 +221,33 @@ export function MaintenanceRequestPage() {
                 ))}
             </section>
             <button type="button" onClick={() => void submit()} disabled={!selected?.requestable || loading || submitting || !permitted} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700">
-                {submitting ? "Requesting candidate…" : "Request restart candidate"}
+                {submitting ? "Creating proposal…" : "Create restart proposal"}
             </button>
-            {result && <section className={`rounded-xl border p-5 ${resultExpired || expiryUnreadable ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"}`}><h2 className={`text-lg font-semibold ${resultExpired || expiryUnreadable ? "text-amber-200" : "text-emerald-200"}`}>{expiryUnreadable ? "Candidate expiration unknown" : resultExpired ? "Maintenance candidate expired" : "Maintenance candidate ready"}</h2><p className="mt-2 break-all text-sm text-slate-200">Candidate ID: {result.candidate_id}</p><p className="mt-1 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p><p className="mt-1 text-sm text-slate-300">Status: {result.candidate.status}</p><p className="mt-1 text-sm text-slate-300">Expires: {expiryUnreadable ? "Not readable" : result.candidate.expires_at ?? "Not reported"}</p><p className="mt-1 text-sm text-amber-200">Expected disruption: brief service interruption</p>{expiryUnreadable ? <p role="alert" className="mt-3 text-sm text-amber-200">The candidate expiration could not be confirmed. Refresh the resource list before requesting a new candidate.</p> : resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This candidate has expired. Request a new maintenance candidate.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Continue to candidate planning</Link>}</section>}
+            {result && (
+                <section className={`rounded-xl border p-5 ${resultExpired || expiryUnreadable ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"}`}>
+                    <h2 className={`text-lg font-semibold ${resultExpired || expiryUnreadable ? "text-amber-200" : "text-emerald-200"}`}>
+                        {expiryUnreadable ? "Proposal expiration unknown" : resultExpired ? "Maintenance proposal expired" : "Maintenance proposal ready"}
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p>
+                    <p className="mt-1 text-sm text-slate-300">Expires: {expiryUnreadable ? "Not readable" : result.candidate.expires_at ?? "Not reported"}</p>
+                    <p className="mt-1 text-sm text-amber-200">Expected disruption: brief service interruption</p>
+                    <details className="mt-3 text-sm text-slate-300">
+                        <summary className="cursor-pointer font-semibold text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Proposal details</summary>
+                        <p className="mt-2 break-all">Candidate ID: {result.candidate_id}</p>
+                        <p className="mt-1">Status: {result.candidate.status}</p>
+                    </details>
+                    {expiryUnreadable ? (
+                        <p role="alert" className="mt-3 text-sm text-amber-200">The proposal expiration could not be confirmed. Refresh the resource list before requesting a new proposal.</p>
+                    ) : resultExpired ? (
+                        <p role="alert" className="mt-3 text-sm text-amber-200">This proposal has expired. Refresh the resource list before requesting a new proposal.</p>
+                    ) : (
+                        <>
+                            <p className="mt-3 text-sm text-slate-300">Review the proposal and its plan, then approve the exact restart action.</p>
+                            <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Review restart proposal</Link>
+                        </>
+                    )}
+                </section>
+            )}
         </main>
     );
 }

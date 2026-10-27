@@ -29,7 +29,7 @@ for (const width of [320, 390, 1280]) {
             if (mode === 'empty') await expect(page.getByRole('status')).toHaveText('No resources were returned. Choose Refresh to check again.');
             else await expect(page.getByText('Maintenance unavailable', { exact: true })).toBeVisible();
             await expect(page.getByText('Loading capability', { exact: true })).toHaveCount(0);
-            await expect(page.getByRole('button', { name: 'Request restart candidate', exact: true })).toBeDisabled();
+            await expect(page.getByRole('button', { name: 'Create restart proposal', exact: true })).toBeDisabled();
             expect(capabilityReads).toBe(1);
             expect(resourceReads).toBe(mode === 'empty' ? 1 : 0);
             await page.getByRole('button', { name: 'Refresh', exact: true }).click();

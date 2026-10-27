@@ -42,17 +42,17 @@ for (const width of [320, 390, 1280]) {
             });
             await page.goto('/operations/request');
             await page.getByRole('radio', { name: /Browser fixture VM/ }).check();
-            await page.getByRole('button', { name: 'Request restart candidate', exact: true }).click();
+            await page.getByRole('button', { name: 'Create restart proposal', exact: true }).click();
             if (mode === 'expires') {
-                await expect(page.getByRole('link', { name: 'Continue to candidate planning', exact: true })).toBeVisible();
+                await expect(page.getByRole('link', { name: 'Review restart proposal', exact: true })).toBeVisible();
                 await page.clock.runFor(60_000);
-                await expect(page.getByRole('heading', { name: 'Maintenance candidate expired', exact: true })).toBeVisible();
-                await expect(page.getByRole('alert')).toContainText('This candidate has expired.');
+                await expect(page.getByRole('heading', { name: 'Maintenance proposal expired', exact: true })).toBeVisible();
+                await expect(page.getByRole('alert')).toContainText('This proposal has expired.');
             } else {
-                await expect(page.getByRole('heading', { name: 'Candidate expiration unknown', exact: true })).toBeVisible();
-                await expect(page.getByRole('alert')).toContainText('The candidate expiration could not be confirmed.');
+                await expect(page.getByRole('heading', { name: 'Proposal expiration unknown', exact: true })).toBeVisible();
+                await expect(page.getByRole('alert')).toContainText('The proposal expiration could not be confirmed.');
             }
-            await expect(page.getByRole('link', { name: 'Continue to candidate planning', exact: true })).toHaveCount(0);
+            await expect(page.getByRole('link', { name: 'Review restart proposal', exact: true })).toHaveCount(0);
             expect(capabilityReads).toBe(1);
             expect(resourceReads).toBe(1);
             expect(writes).toEqual([{ execution_intent: 'restart-service', provider_id: 'proxmox', resource_id: resource.resource_id,

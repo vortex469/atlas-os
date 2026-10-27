@@ -582,3 +582,10 @@ and can restore availability only from a current eligible proposal; Atlas Agent
 still performs authoritative revalidation. Browser checks cover expiry and wall
 clock jumps at 320, 390 and 1280px, with exact read counts and zero writes before
 and after the expired click.
+
+The maintenance entry screen uses “proposal” consistently for the result of
+Create restart proposal. Review restart proposal opens the existing candidate
+route; it does not plan, approve, or execute a restart. Target, expiry and the
+expected interruption remain visible in the receipt. Candidate ID and raw status
+remain available under the keyboard-accessible Proposal details disclosure.
+Existing expiry warnings and request guards retain their behavior.

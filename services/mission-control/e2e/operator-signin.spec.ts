@@ -68,7 +68,7 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("heading", { name: "Request service restart" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Advisory proposal context" })).toBeVisible();
         await expect(page.getByRole("radio", { name: /Browser fixture VM/ })).not.toBeChecked();
-        await expect(page.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Create restart proposal" })).toBeDisabled();
         expect(logins).toBe(1);
         expect(proposalReads).toBe(1);
         expect(unexpectedMutations).toEqual([]);
