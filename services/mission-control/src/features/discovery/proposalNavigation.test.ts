@@ -38,6 +38,10 @@ describe("resolveProposalNavigation", () => {
         },
     );
 
+    it.each(["false", "true", 1, null, {}])("does not use truthiness for navigation flag %j", actionable_navigation => {
+        expect(resolveProposalNavigation({ ...proposal, actionable_navigation: actionable_navigation as never })).toEqual({ kind: "discovery_item", itemId: "frigate" });
+    });
+
     it("fails closed for an unknown destination", () => {
         expect(() => resolveProposalNavigation({
             ...proposal,

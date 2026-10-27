@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { atlas } from "./atlas";
+import { discoveryProposalFixture } from "../test/discoveryProposal.fixture";
 import { getDiscoveryItemEvidence, getDiscoveryProposal, listDiscoveryProposals } from "./discovery";
 
 vi.mock("./atlas", () => ({ atlas: { get: vi.fn() } }));
@@ -9,11 +10,11 @@ describe("Discovery proposal API", () => {
     beforeEach(() => vi.resetAllMocks());
 
     it("uses bounded GET-only proposal reads", async () => {
-        vi.mocked(atlas.get).mockResolvedValueOnce({ data: { proposals: [] } });
-        vi.mocked(atlas.get).mockResolvedValueOnce({ data: { proposal_id: "proposal" } });
+        vi.mocked(atlas.get).mockResolvedValueOnce({ data: { proposals: [], total: 0, limit: 25 } });
+        vi.mocked(atlas.get).mockResolvedValueOnce({ data: discoveryProposalFixture() });
 
         await listDiscoveryProposals(25);
-        await getDiscoveryProposal("proposal/with?tampering");
+        await expect(getDiscoveryProposal("proposal/with?tampering")).rejects.toThrow("The advisory proposal context could not be read.");
 
         expect(atlas.get).toHaveBeenNthCalledWith(1, "/discovery/proposals", {
             params: { limit: 25 },

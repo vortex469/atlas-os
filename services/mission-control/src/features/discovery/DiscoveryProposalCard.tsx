@@ -15,7 +15,7 @@ function label(value: string): string {
 
 function isReviewOnly(proposal: DiscoveryProposalNavigation): boolean {
     return proposal.status !== "current"
-        || !proposal.actionable_navigation
+        || proposal.actionable_navigation !== true
         || proposal.destination_kind !== "operator_maintenance_selection";
 }
 
@@ -80,7 +80,7 @@ export function DiscoveryProposalCard({
 
             {reviewOnly ? (
                 <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-                    Review only: operational navigation is disabled because this proposal is {label(proposal.status).toLowerCase()} ({label(proposal.reason).toLowerCase()}).
+                    Review only. This proposal cannot continue to maintenance selection.
                 </p>
             ) : (
                 <p className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-200">

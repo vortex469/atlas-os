@@ -1,3 +1,4 @@
+import { discoveryProposalFixture } from "../src/test/discoveryProposal.fixture";
 import { homeAssistantGoldenPlan } from "../src/test/installationPlan.fixture";
 import { expect, test, discoveryItemsPage } from "./mission-control-fixtures";
 
@@ -286,4 +287,40 @@ for (const width of [320, 390, 1280]) {
         expect(errors).toEqual([]);
         expect(rejectedMutationRequests).toEqual([]);
     });
+}
+
+for (const width of [320, 390, 1280]) {
+    for (const malformed of ["object reason", "string navigation flag"]) {
+        test(`unreadable Discovery proposal (${malformed}) stays unavailable at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+            await page.setViewportSize({ width, height: 900 });
+            await page.clock.install({ time: new Date("2026-08-15T00:05:00Z") });
+            const proposal = discoveryProposalFixture();
+            const entry = { ...discoveryItemsPage.entries[0], item: { ...discoveryItemsPage.entries[0].item, id: "frigate", name: "Frigate" } };
+            let reads = 0;
+            let recovered = false;
+            const errors: string[] = [];
+            page.on("pageerror", error => errors.push(error.message));
+            await page.route("**/api/v1/discovery/items/frigate", route => route.fulfill({ json: entry }));
+            await page.route("**/api/v1/discovery/proposals?**", route => {
+                reads += 1;
+                expect(route.request().method()).toBe("GET");
+                const row = recovered ? { ...proposal, actionable_navigation: false } : malformed === "object reason"
+                    ? { ...proposal, reason: {} } : { ...proposal, actionable_navigation: "false" };
+                return route.fulfill({ json: { proposals: [row], total: 1, limit: 25 } });
+            });
+            await page.goto("/discovery/items/frigate");
+            await expect(page.getByText("Proposal context is temporarily unavailable. Discovery and provider state were not affected.", { exact: true })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Frigate", exact: true })).toBeVisible();
+            await expect(page.getByRole("link", { name: "Continue to maintenance selection for frigate", exact: true })).toHaveCount(0);
+            const initialReads = reads;
+            expect(initialReads).toBeGreaterThan(0);
+            recovered = true;
+            await page.reload();
+            await expect(page.getByRole("link", { name: "Review Discovery item for frigate", exact: true })).toBeVisible();
+            await expect(page.getByRole("link", { name: "Continue to maintenance selection for frigate", exact: true })).toHaveCount(0);
+            expect(reads).toBe(initialReads * 2);
+            expect(errors).toEqual([]);
+            expect(rejectedMutationRequests).toEqual([]);
+        });
+    }
 }
