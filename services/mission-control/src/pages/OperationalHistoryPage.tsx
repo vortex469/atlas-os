@@ -131,6 +131,15 @@ export function OperationalHistoryPage() {
         && (providerFilter === "all" || lifecycle?.provider_id === providerFilter)
         && (resourceTypeFilter === "all" || lifecycle?.resource_type === resourceTypeFilter));
 
+    const activeFilters = [
+        { label: "Status", value: diagnosticFilter },
+        { label: "Completion", value: terminalFilter },
+        { label: "Action", value: intentFilter },
+        { label: "Provider", value: providerFilter },
+        { label: "Resource type", value: resourceTypeFilter },
+    ].filter(filter => filter.value !== "all")
+        .map(filter => `${filter.label}: ${FILTER_LABELS[filter.value] ?? filter.value.replaceAll("_", " ")}`);
+
     function goToPage(nextOffset: number) {
         if (isLoading) return;
         if (nextOffset === offset) void load();
@@ -155,8 +164,31 @@ export function OperationalHistoryPage() {
             {retained && <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Showing the last loaded maintenance history. Current results have not been confirmed.</p>}
             {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} A loading problem does not tell us whether maintenance failed.</p>}
             {snapshot !== null && items.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">{retained ? "No requests in the last loaded page. Current results have not been confirmed." : displayOffset === 0 ? "No maintenance requests yet." : "No requests on this page. Go back to an earlier page."}</p>}
-            {snapshot !== null && items.length > 0 && <section aria-label="Operational history filters" className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4 sm:grid-cols-2 xl:grid-cols-5"><Filter label="Status" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} /><Filter label="Completion" value={terminalFilter} onChange={setTerminalFilter} options={["all", "terminal", "non_terminal"]} /><Filter label="Action" value={intentFilter} onChange={setIntentFilter} options={["all", "restart-service"]} /><Filter label="Provider" value={providerFilter} onChange={setProviderFilter} options={["all", "proxmox"]} /><Filter label="Resource type" value={resourceTypeFilter} onChange={setResourceTypeFilter} options={["all", "qemu"]} /></section>}
-            {snapshot !== null && items.length > 0 && visibleItems.length === 0 && <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300"><p>{retained ? "No requests in the last loaded page match your filters." : "No requests on this page match your filters."}</p><button type="button" onClick={clearFilters} className="mt-3 rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold">Clear filters</button></section>}
+            {snapshot !== null && items.length > 0 && (
+                <section aria-label="Operational history filters" className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <Filter label="Status" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} />
+                        <Filter label="Completion" value={terminalFilter} onChange={setTerminalFilter} options={["all", "terminal", "non_terminal"]} />
+                    </div>
+                    <details className="rounded-lg border border-slate-800 p-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-300">More filters</summary>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                            <Filter label="Action" value={intentFilter} onChange={setIntentFilter} options={["all", "restart-service"]} />
+                            <Filter label="Provider" value={providerFilter} onChange={setProviderFilter} options={["all", "proxmox"]} />
+                            <Filter label="Resource type" value={resourceTypeFilter} onChange={setResourceTypeFilter} options={["all", "qemu"]} />
+                        </div>
+                    </details>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p role="status" aria-label="Applied history filters" className="text-sm text-slate-400">
+                            {activeFilters.length === 0
+                                ? `All requests on ${retained ? "the last loaded page" : "this page"}.`
+                                : `Filters on ${retained ? "the last loaded page" : "this page"}: ${activeFilters.join(" · ")}`}
+                        </p>
+                        {activeFilters.length > 0 && <button type="button" onClick={clearFilters} className="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-100">Clear filters</button>}
+                    </div>
+                </section>
+            )}
+            {snapshot !== null && items.length > 0 && visibleItems.length === 0 && <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300"><p>{retained ? "No requests in the last loaded page match your filters." : "No requests on this page match your filters."}</p></section>}
             {snapshot !== null && <section aria-label="Maintenance history" className="space-y-4">{visibleItems.map((item) => <OperationalHistoryCard key={item.workflow.workflow_id} {...item} retained={retained} />)}</section>}
             {snapshot !== null && (displayOffset > 0 || total > PAGE_SIZE) && <nav aria-label="Operational history pagination" className="flex items-center gap-3"><button type="button" onClick={() => goToPage(Math.max(0, displayOffset - PAGE_SIZE))} disabled={isLoading || displayOffset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Previous</button><span className="text-sm text-slate-400">{retained && "Last loaded: "}{items.length > 0 ? `Showing ${displayOffset + 1}–${Math.min(displayOffset + items.length, total)} of ${total}` : `${total} request${total === 1 ? "" : "s"} total`}</span><button type="button" onClick={() => goToPage(displayOffset + PAGE_SIZE)} disabled={isLoading || displayOffset + PAGE_SIZE >= total} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Next</button></nav>}
         </main>

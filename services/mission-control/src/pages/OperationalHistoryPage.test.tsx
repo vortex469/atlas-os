@@ -249,12 +249,24 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByText("proxmox/qemu/110");
 
+        expect(screen.getByRole("status", { name: "Applied history filters" })).toHaveTextContent("All requests on this page.");
+        expect(screen.getByLabelText("Provider", { exact: true })).not.toBeVisible();
+        fireEvent.click(screen.getByText("More filters", { exact: true }));
+        expect(screen.getByLabelText("Provider", { exact: true })).toBeVisible();
+        fireEvent.change(screen.getByRole("combobox", { name: "Provider" }), { target: { value: "proxmox" } });
+        fireEvent.change(screen.getByRole("combobox", { name: "Resource type" }), { target: { value: "qemu" } });
+        fireEvent.click(screen.getByText("More filters", { exact: true }));
+        expect(screen.getByLabelText("Provider", { exact: true })).not.toBeVisible();
+        expect(screen.getByRole("status", { name: "Applied history filters" })).toHaveTextContent("Provider: Proxmox · Resource type: Virtual machine");
         const diagnosticFilter = screen.getByRole("combobox", { name: "Status" });
         fireEvent.change(diagnosticFilter, { target: { value: "attention_required" } });
         expect(screen.getByText("No requests on this page match your filters.")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
         expect(screen.getByText("proxmox/qemu/110")).toBeInTheDocument();
         expect(diagnosticFilter).toHaveValue("all");
+        expect(screen.getByLabelText("Provider", { exact: true })).toHaveValue("all");
+        expect(screen.getByLabelText("Resource type", { exact: true })).toHaveValue("all");
+        expect(screen.getByRole("status", { name: "Applied history filters" })).toHaveTextContent("All requests on this page.");
         expect(mockedList).toHaveBeenCalledTimes(1);
     });
 

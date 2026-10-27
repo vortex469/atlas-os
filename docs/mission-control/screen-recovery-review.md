@@ -640,3 +640,10 @@ state/action names remain accepted. Independently unreadable lifecycle labels or
 verification fields become unavailable while a readable matching workflow and
 diagnostic stay visible. These are display-read checks, not approval or execution
 admission rules.
+
+Maintenance history keeps Status and Completion visible, with Action, Provider
+and Resource type under More filters. The active-filter summary remains visible
+when that section is closed and identifies the displayed page, including a
+last-loaded page during refresh recovery. One Clear filters control resets all
+five choices whenever a filter is active. All filtering stays local, using the
+same predicate and clear handler, with no extra reads or writes.
