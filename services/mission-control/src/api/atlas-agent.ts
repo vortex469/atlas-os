@@ -505,13 +505,18 @@ export function getAtlasAgentErrorMessage(
     error: unknown,
     fallback: string,
 ): string {
+    const readableText = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
     if (isAxiosError(error)) {
-        const detail = error.response?.data as
-            | { detail?: string }
-            | undefined;
-
-        return detail?.detail ?? error.message ?? fallback;
+        const data: unknown = error.response?.data;
+        const detail = isRecord(data) ? data.detail : undefined;
+        if (readableText(detail)) return detail;
+        if (isRecord(detail) && !Array.isArray(detail) && readableText(detail.message)) return detail.message;
+        if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
+            return "Atlas Agent did not respond before the request timed out.";
+        }
+        if (error.code === "ERR_NETWORK") return "No response was received from Atlas Agent.";
+        return fallback;
     }
 
-    return error instanceof Error ? error.message : fallback;
+    return error instanceof Error && readableText(error.message) ? error.message : fallback;
 }

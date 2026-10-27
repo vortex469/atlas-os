@@ -17,6 +17,7 @@ import { operationalDiagnostic } from "../test/operationalLifecycle";
 
 import {
     getAgentInfo,
+    getAtlasAgentErrorMessage,
     getCandidateWorkflowShell,
     getReviewReport,
     getSprintStatus,
@@ -227,4 +228,51 @@ it("reads an encoded saved workflow path without treating missing as an empty su
     const missing = axiosError(404);
     mockGet.mockRejectedValueOnce(missing);
     await expect(getCandidateWorkflowShell("missing")).rejects.toBe(missing);
+});
+
+
+describe("Atlas Agent readable errors", () => {
+    const fallback = "The saved result could not be loaded.";
+    const failure = (detail: unknown, code?: string) => ({ isAxiosError: true, code,
+        message: "Opaque Axios diagnostic", response: { data: { detail } } });
+
+    it.each([
+        ["plain message", "Planning is temporarily unavailable.", "Planning is temporarily unavailable."],
+        ["structured message", { code: "unavailable", message: "Try loading the saved result." }, "Try loading the saved result."],
+        ["missing detail", undefined, fallback], ["null detail", null, fallback], ["number detail", 42, fallback],
+        ["boolean detail", false, fallback], ["empty detail", "", fallback], ["blank detail", " \n ", fallback],
+        ["unknown object", { code: "unavailable", extra: true }, fallback],
+        ["non-text message", { message: {} }, fallback], ["empty message", { message: "" }, fallback],
+        ["blank message", { message: "  " }, fallback],
+        ["validation list", [{ loc: ["body", "credential"], msg: "Input rejected", input: "SECRET-CANARY" }], fallback],
+        ["string list", ["do not display arbitrary lists"], fallback],
+    ])("formats %s as readable text", (_name, detail, expected) => {
+        expect(getAtlasAgentErrorMessage(failure(detail), fallback)).toBe(expected);
+    });
+
+    it.each(["ECONNABORTED", "ETIMEDOUT"])("explains a %s timeout without claiming an action outcome", code => {
+        expect(getAtlasAgentErrorMessage(failure(undefined, code), fallback)).toBe("Atlas Agent did not respond before the request timed out.");
+    });
+
+    it("explains a lost network response", () => {
+        expect(getAtlasAgentErrorMessage(failure(undefined, "ERR_NETWORK"), fallback)).toBe("No response was received from Atlas Agent.");
+    });
+
+    it("keeps the public API message ahead of transport diagnostics", () => {
+        expect(getAtlasAgentErrorMessage(failure({ message: "Saved information is unavailable." }, "ECONNABORTED"), fallback)).toBe("Saved information is unavailable.");
+    });
+
+    it.each([null, undefined, false, "opaque", {}, new Error("")])("uses the contextual fallback for an unreadable error: %j", error => {
+        expect(getAtlasAgentErrorMessage(error, fallback)).toBe(fallback);
+    });
+
+    it("preserves a readable client error", () => {
+        expect(getAtlasAgentErrorMessage(new Error("The saved reply did not match this session."), fallback)).toBe("The saved reply did not match this session.");
+    });
+
+    it("does not return a non-text client error message", () => {
+        const error = new Error("placeholder");
+        Object.assign(error, { message: { private: true } });
+        expect(getAtlasAgentErrorMessage(error, fallback)).toBe(fallback);
+    });
 });
