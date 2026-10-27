@@ -193,3 +193,13 @@ initial five rows and can reveal or collapse the complete list. Browser checks
 cover closed/open metadata, Enter/Space interaction, text and viewport bounds,
 and six-entity expansion at 320/390/1280 pixels. This presentation change leaves
 advisory data, permissions, reads and execution boundaries intact.
+
+The provider directory retains its last successful list through pending refreshes,
+HTTP failures and malformed root responses. Search and existing detail links stay
+available; retained health uses the shared unknown/stale badge and last-reported
+reasons. An empty retained list is scoped to the last successful refresh instead
+of claiming the current registry is empty. A successful retry replaces the list
+and clears the stale presentation, including transitions to empty or unavailable
+providers. Initial-load failures still show recovery without claiming an empty
+registry. Browser checks cover listed/empty snapshots, delayed reads, both failure
+kinds, local search, three reads per recovery and zero mutations at three widths.

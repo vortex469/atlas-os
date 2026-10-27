@@ -24,7 +24,6 @@ export function ProvidersPage() {
             if (generation === requestGeneration.current) setProviders(observations);
         } catch {
             if (generation === requestGeneration.current) {
-                setProviders(null);
                 setError(true);
             }
         } finally {
@@ -38,6 +37,7 @@ export function ProvidersPage() {
         return () => { active = false; requestGeneration.current += 1; };
     }, [load]);
 
+    const retained = providers !== null && (loading || error);
     const search = query.trim().toLowerCase();
     const visible = providers?.filter((provider) => provider.name.toLowerCase().includes(search)) ?? [];
 
@@ -51,36 +51,37 @@ export function ProvidersPage() {
                 </div>
                 <button type="button" onClick={() => void load()} disabled={loading} className="mc-control mc-focusable px-4 py-2 text-sm font-semibold disabled:opacity-50">Refresh</button>
             </header>
-            {loading && <p role="status" className="text-slate-300">Loading providers…</p>}
+            {loading && <p role="status" className="text-slate-300">{providers === null ? "Loading providers…" : "Refreshing providers…"}</p>}
             {!loading && error && (
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
-                    <h2 className="font-semibold text-red-100">Providers could not load</h2>
-                    <p className="mt-2 text-sm text-slate-300">Try again to get the latest provider list.</p>
+                    <h2 className="font-semibold text-red-100">{providers === null ? "Providers could not load" : "Provider list could not be refreshed"}</h2>
+                    <p className="mt-2 text-sm text-slate-300">{providers === null ? "Try again to get the latest provider list." : "Showing the last reported provider list. Current provider health could not be checked."}</p>
                     <button type="button" onClick={() => void load()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
             )}
-            {!loading && !error && providers?.length === 0 && <p className="rounded-xl border border-slate-800 p-5 text-slate-300">No providers are listed yet.</p>}
-            {!loading && !error && providers !== null && (providers.length > 1 || query.length > 0) && (
+            {providers?.length === 0 && <p className="rounded-xl border border-slate-800 p-5 text-slate-300">{retained ? "No providers were listed in the last successful refresh." : "No providers are listed yet."}</p>}
+            {providers !== null && (providers.length > 1 || query.length > 0) && (
                 <label className="block max-w-md text-sm text-slate-300">
                     Search providers
                     <input type="search" value={query} maxLength={100} onChange={(event) => setQuery(event.target.value)} placeholder="Find a provider" className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
                 </label>
             )}
-            {!loading && !error && providers !== null && providers.length > 0 && visible.length === 0 && (
+            {providers !== null && providers.length > 0 && visible.length === 0 && (
                 <section className="rounded-xl border border-slate-800 p-5 text-slate-300">
                     <p>No providers match your search.</p>
                     <button type="button" onClick={() => setQuery("")} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm">Clear search</button>
                 </section>
             )}
-            {!loading && !error && visible.length > 0 && (
+            {visible.length > 0 && (
                 <section aria-label="Provider list" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {visible.map((provider, index) => (
-                        <article key={provider.path ?? index} className="min-w-0 space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 [overflow-wrap:anywhere]">
+                    {visible.map((provider, index) => {
+                        const reason = safeText(provider.reason);
+                        return <article key={provider.path ?? index} className="min-w-0 space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 [overflow-wrap:anywhere]">
                             <h2 className="text-lg font-semibold text-white">{provider.name}</h2>
-                            <HealthEvidence status={safeText(provider.status)} reason={safeText(provider.reason)} />
+                            <HealthEvidence status={safeText(provider.status)} reason={retained && reason ? `Last reported: ${reason}` : reason} stale={retained} />
                             {provider.path && <Link to={provider.path} className="inline-block text-sm font-semibold text-blue-300">Open {provider.name} provider</Link>}
-                        </article>
-                    ))}
+                        </article>;
+                    })}
                 </section>
             )}
         </main>
