@@ -589,7 +589,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await user.click(screen.getByRole("button", { name: "Save" }));
         await waitFor(() => expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1));
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(screen.queryByText("Monitoring suggestion")).not.toBeInTheDocument();
     });
 
     it("allows manual override after review", async () => {
@@ -612,7 +612,7 @@ describe("ProviderResources Provider Intent flow", () => {
             suggestion({ management_fingerprint: replacementFingerprint }),
         ]);
         await renderResources();
-        expect(screen.getByText(/different resource incarnation/i)).toBeInTheDocument();
+        expect(screen.getByText(/This suggestion no longer matches the resource/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
@@ -633,7 +633,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await user.click(screen.getByRole("button", { name: "Review suggestion" }));
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("running");
         await user.click(screen.getByRole("button", { name: "Refresh resources" }));
-        expect(await screen.findByText(/different resource incarnation/i)).toBeInTheDocument();
+        expect(await screen.findByText(/This suggestion no longer matches the resource/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
@@ -674,7 +674,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await renderResources();
         await user.click(screen.getByRole("button", { name: "Review suggestion" }));
         await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "ignored");
-        const acknowledgement = screen.getByRole("checkbox", { name: /I understand monitoring findings/i });
+        const acknowledgement = screen.getByRole("checkbox", { name: /I understand that Ignored hides monitoring findings/i });
         expect(acknowledgement).not.toBeChecked();
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
         await user.click(acknowledgement);
@@ -688,7 +688,7 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({ caller_can_mutate: false }));
         render(<ProviderResources provider={provider} />);
         await user.click(await screen.findByRole("button", { name: "Review suggestion" }));
-        expect(screen.getByText(/selected for local review/i)).toBeInTheDocument();
+        expect(screen.getByText(/Suggestion reviewed/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
@@ -697,7 +697,7 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
         vi.mocked(getAuthenticatedProviderManagement).mockRejectedValue(new Error("offline"));
         render(<ProviderResources provider={provider} />);
-        expect(await screen.findByText("Advisory suggestion")).toBeInTheDocument();
+        expect(await screen.findByText("Monitoring suggestion")).toBeInTheDocument();
         expect(screen.getByText("Not configured")).toBeInTheDocument();
         expect(screen.getByText(/Your editing permissions could not be checked/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
@@ -709,7 +709,7 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Not configured")).toBeInTheDocument();
         expect(screen.getByText(/suggestions could not be loaded/i)).toBeInTheDocument();
-        expect(screen.queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(screen.queryByText("Monitoring suggestion")).not.toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
     });
 
@@ -732,7 +732,7 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(await screen.findByText(/saved and confirmed.*suggestions could not be refreshed/i)).toBeInTheDocument();
         expect(screen.queryByText(/could not save the monitoring expectation/i)).not.toBeInTheDocument();
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.getByText(/different resource incarnation or monitoring state/i)).toBeInTheDocument();
+        expect(screen.getByText(/This suggestion no longer matches the resource/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
     });
 
@@ -759,8 +759,8 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
         const qemu = await screen.findByTestId("resource-row-qemu-110");
         const lxc = screen.getByTestId("resource-row-lxc-110");
-        expect(within(qemu).getByText("Advisory suggestion")).toBeInTheDocument();
-        expect(within(lxc).queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(within(qemu).getByText("Monitoring suggestion")).toBeInTheDocument();
+        expect(within(lxc).queryByText("Monitoring suggestion")).not.toBeInTheDocument();
     });
 
     it("keeps reviewed selection local to its exact QEMU coordinate", async () => {
@@ -778,7 +778,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await user.click(within(qemu110).getByRole("button", { name: "Review suggestion" }));
         expect(within(qemu110).getByLabelText(/monitoring expectation/i)).toHaveValue("running");
         expect(within(qemu200).getByLabelText(/monitoring expectation/i)).toHaveValue("");
-        expect(within(qemu200).queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(within(qemu200).queryByText("Monitoring suggestion")).not.toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
 
@@ -989,7 +989,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await screen.findByText(/Monitoring unavailable —/);
         expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
         expect(screen.getByText("Current monitoring settings could not be checked. Reload them before reviewing this suggestion.")).toBeInTheDocument();
-        expect(screen.queryByText(/created for a different resource incarnation/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/This suggestion no longer matches the resource/)).not.toBeInTheDocument();
     });
 
     it("ignores an older public monitoring read after a newer read completed", async () => {
@@ -1196,10 +1196,10 @@ describe("ProviderResources bounded monitoring presentation", () => {
     });
 
     it.each([
-        ["no_active_intent", "Needs Review — monitoring expectation not configured"],
-        ["legacy_unbound_evidence", "Needs Review — historical expectation available for review"],
-        ["incarnation_mismatch", "Needs Review — resource identity changed"],
-        ["identity_unavailable", "Needs Review — resource identity could not be verified"],
+        ["no_active_intent", "No monitoring setting has been chosen."],
+        ["legacy_unbound_evidence", "A previous monitoring setting is available to review."],
+        ["incarnation_mismatch", "The resource identity changed. Review the monitoring setting."],
+        ["identity_unavailable", "Atlas could not verify this resource’s identity."],
         ["authority_store_unavailable", "Monitoring unavailable — monitoring settings could not be loaded"],
         ["resource_missing", "Resource missing — the saved setting is kept for reference"],
         ["resource_type_unsupported", "Monitoring settings are not supported for this resource type"],

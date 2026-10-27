@@ -296,3 +296,12 @@ editing stays paused. Recovery restores current settings and requires a new
 suppression acknowledgement. Browser coverage checks initial and retained views
 at phone and desktop widths and excludes unrelated resource names/rows. Display
 name changes remain valid; backend permission and execution rules are unchanged.
+
+Resource monitoring guidance uses plain language for reported states, monitoring
+suggestions and recovery. It explains that Ignored hides findings about the
+resource's expected state, describes a stale suggestion without “incarnation”
+jargon, and keeps review separate from saving. Choice labels and retry guidance
+name the action the operator can take. The layout, option values, acknowledgement
+requirement, permissions and requests are unchanged. Existing interaction tests
+retain their save and suppression checks with updated accessible text; phone and
+desktop previews use synthetic data without submitting any writes.
