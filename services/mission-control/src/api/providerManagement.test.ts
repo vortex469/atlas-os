@@ -82,6 +82,18 @@ describe("provider management API", () => {
         grants_execution: false,
     };
 
+    it.each([false, true])("rejects a valid descriptor belonging to another provider (populated: %s)", async populated => {
+        const foreign = { ...publicDescriptor, provider_id: "docker", provider_name: "Other provider",
+            resources: populated ? [{ provider_id: "docker", resource_id: "999", resource_type: "qemu", display_name: "Other resource", current_state: "running", missing: false,
+                identity_assurance: "authoritative", management_fingerprint: `provider-management-fingerprint-v1:${"a".repeat(64)}`,
+                intent_authority: "provider_intent", intent_status: "configured", intent_reason: "matching_active_intent", expectation: "running", record_version: 1,
+                legacy_review_available: false, legacy_expectation: null, replacement_detected: false, mutation_available: false, operationally_requestable: false, grants_execution: false }] : [] };
+        expect(() => parseProviderManagementV2(foreign)).not.toThrow();
+        vi.mocked(atlas.get).mockResolvedValue({ data: foreign });
+        await expect(getProviderManagement("proxmox")).rejects.toThrow();
+        expect(atlas.get).toHaveBeenLastCalledWith("/providers/proxmox/management");
+    });
+
     it("loads and validates public v2 management without authentication options", async () => {
         vi.mocked(atlas.get).mockResolvedValue({ data: publicDescriptor });
         await expect(getProviderManagement("proxmox")).resolves.toEqual(publicDescriptor);
