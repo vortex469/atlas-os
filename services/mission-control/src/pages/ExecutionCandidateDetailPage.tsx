@@ -19,6 +19,22 @@ export function ExecutionCandidateDetailPage() {
     return <CandidateDetail key={candidateId} candidateId={candidateId} />;
 }
 
+function isReadableProposal(candidate: ExecutionCandidate): boolean {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
+    const text = [candidate.id, candidate.source_recommendation_id, candidate.source_subsystem,
+        candidate.recommendation_class, candidate.target_id, candidate.target_type,
+        candidate.execution_category, candidate.execution_intent, candidate.status,
+        candidate.required_approval_level, candidate.rationale, candidate.created_at];
+    const identity = [candidate.id, candidate.target_id, candidate.target_type,
+        candidate.execution_intent, candidate.status, candidate.required_approval_level];
+    const optional = [candidate.catalog_item_id, candidate.compatibility_assessment_id, candidate.compatibility_status];
+    const lists = [candidate.constraints, candidate.evidence_ids, candidate.relationship_ids];
+    return text.every(value => typeof value === "string")
+        && identity.every(value => value.trim().length > 0)
+        && optional.every(value => value === null || value === undefined || typeof value === "string")
+        && lists.every(value => Array.isArray(value) && value.every(item => typeof item === "string"));
+}
+
 function CandidateDetail({ candidateId }: { candidateId: string }) {
     const [candidate, setCandidate] = useState<ExecutionCandidate | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +55,10 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 if (cancelled) return;
                 if (!nextCandidate || nextCandidate.id !== candidateId) {
                     setError("The returned proposal does not match this page.");
+                    return;
+                }
+                if (!isReadableProposal(nextCandidate)) {
+                    setError("The proposal response is incomplete or unreadable. Choose Try again to reload it.");
                     return;
                 }
                 setCandidate(nextCandidate);

@@ -87,6 +87,35 @@ describe("ExecutionCandidateDetailPage", () => {
         mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse());
     });
 
+    it.each([
+        ["execution_intent", {}], ["execution_intent", ""], ["execution_category", null],
+        ["status", {}], ["required_approval_level", []], ["target_id", {}], ["target_id", " "],
+        ["target_type", 42], ["rationale", {}], ["constraints", null], ["constraints", [{}]],
+        ["evidence_ids", undefined], ["relationship_ids", [{}]], ["compatibility_status", {}],
+        ["compatibility_assessment_id", {}], ["catalog_item_id", {}], ["created_at", {}],
+        ["source_recommendation_id", null], ["source_subsystem", {}], ["recommendation_class", []],
+    ] as Array<[keyof ExecutionCandidate, unknown]>)("keeps unreadable %s out of proposal review and recovers by GET", async (field, value) => {
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ [field]: value } as unknown as Partial<ExecutionCandidate>));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("The proposal response is incomplete or unreadable. Choose Try again to reload it.");
+        expect(screen.queryByRole("button", { name: "Start planning" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+        expect(await screen.findByRole("button", { name: "Start planning" })).toBeEnabled();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
+    });
+
+    it("accepts readable future labels, nullable optional metadata, and extra fields", async () => {
+        mockedGetExecutionCandidate.mockResolvedValue({ ...candidate({ execution_intent: "future-operation", status: "future_state", required_approval_level: "future_level", catalog_item_id: null, compatibility_assessment_id: null, compatibility_status: null, constraints: [], evidence_ids: [], relationship_ids: [] }), effect_kind: "future_effect", extra_metadata: { future: true } } as unknown as ExecutionCandidate);
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Future Operation", level: 1 })).toBeVisible();
+        expect(screen.getByText("Future Level", { exact: true })).toBeVisible();
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
+    });
+
     it("renders all public candidate fields and boundary wording", async () => {
         const user = userEvent.setup();
         renderPage();
