@@ -8,7 +8,7 @@ export type ProviderExpectationOption = {
 export type ProviderResourceExpectation = {
     value: string | null;
     label: string;
-    state: "needs_review" | "configured" | "ignored" | "unsupported";
+    state: "needs_review" | "configured" | "ignored" | "unsupported" | "unavailable";
     allowed_values: ProviderExpectationOption[];
 };
 

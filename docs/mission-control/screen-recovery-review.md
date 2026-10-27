@@ -248,3 +248,15 @@ observations against running/stopped expectations at three widths, two exact
 mocked discovery-refresh POSTs, and no monitoring writes or provider actions.
 Editing permissions, fingerprints, save approvals and uncertain-save recovery
 continue through their existing independent contracts.
+
+Observed inventory responses are validated on both the ordinary read and manual
+discovery-refresh paths before replacing the current snapshot. The read-only view
+is bound to the requested provider, checks row identities and unique coordinates,
+rejects NUL-delimited coordinate aliases, validates display fields, real datetime
+strings, legacy expectation shapes and browser-safe nonnegative counts, and
+projects known view fields while preserving open metadata. The native unavailable
+expectation state and naive/aware datetime serialization are supported. Inventory
+identity/authority extensions do not become editing permission; management APIs
+remain the source for those decisions. Malformed successful responses now retain
+the previous inventory and its timestamp through the existing error/retry path.
+Native public-model fixtures and browser recovery cases cover these boundaries.
