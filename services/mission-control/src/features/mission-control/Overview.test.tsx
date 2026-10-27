@@ -233,3 +233,33 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
 });
+
+describe('reported health conditions in operator attention', () => {
+    it.each([
+        ['health', { atlas: 'degraded' }, 'Atlas health', '#atlas-health'],
+        ['summary', { status: 'critical', summary: 'Assessment needs review', findings: [] }, 'System assessment', '#system-assessment'],
+        ['policyHealth', { status: 'degraded', error: 'Policy validation failed', checked_at: '2026-09-13T12:00:00Z' }, 'Policy status', '#policy-status'],
+    ] as const)('shows a reported %s problem with a link to its recorded source', (source, data, label, href) => {
+        show({ [source]: { data } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByRole('link', { name: label })).toHaveAttribute('href', href);
+        expect(document.querySelector(href)).toBeInTheDocument();
+        expect(attention.queryByText(/No attention items/)).not.toBeInTheDocument();
+    });
+
+    it('marks retained health problems last-known and withholds sensitive explanations', () => {
+        show({ policyHealth: { stale: true, unavailable: true, data: { status: 'degraded', error: 'token=private-value' } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByRole('link', { name: 'Policy status' })).toBeVisible();
+        expect(attention.getByText('Last-known condition; current state unknown.')).toBeVisible();
+        expect(attention.getByText('[Sensitive text withheld]')).toBeVisible();
+        expect(attention.queryByText(/private-value/)).not.toBeInTheDocument();
+        expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
+    });
+
+    it.each(['healthy', 'unknown', 'executing', null, {}])('does not manufacture a health problem from %j', status => {
+        show({ health: { data: { atlas: status } }, summary: { data: { status, findings: [] } }, policyHealth: { data: { status } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        for (const name of ['Atlas health', 'System assessment', 'Policy status']) expect(attention.queryByRole('link', { name })).not.toBeInTheDocument();
+    });
+});
