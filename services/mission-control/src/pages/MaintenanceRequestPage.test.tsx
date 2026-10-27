@@ -140,7 +140,7 @@ describe("MaintenanceRequestPage", () => {
         renderPage();
         expect(await screen.findByText("No resources were returned. Choose Refresh to check again.")).toBeInTheDocument();
         expect(screen.queryByText("Loading capability")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Create restart proposal" })).toBeDisabled();
         expect(getCapabilityResources).toHaveBeenCalledTimes(1);
         await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe("MaintenanceRequestPage", () => {
         expect(await screen.findByText("Maintenance unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Loading capability")).not.toBeInTheDocument();
         expect(screen.queryByText("No resources were returned. Choose Refresh to check again.")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Create restart proposal" })).toBeDisabled();
         expect(getCapabilityResources).not.toHaveBeenCalled();
         await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
@@ -179,7 +179,7 @@ describe("MaintenanceRequestPage", () => {
         const user = userEvent.setup();
         renderPage();
         await user.click(await screen.findByRole("radio", { name: /Frigate/i }));
-        await user.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        await user.click(screen.getByRole("button", { name: "Create restart proposal" }));
         await waitFor(() => expect(requestRestartServiceIntent).toHaveBeenCalledWith(
             "110",
             "operational-target-fingerprint-v1:abc",
@@ -187,8 +187,13 @@ describe("MaintenanceRequestPage", () => {
         ));
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
         expect(await screen.findByText(/Candidate ID: candidate-operator-intent-110/)).toBeInTheDocument();
+        expect(screen.getByText(/Candidate ID: candidate-operator-intent-110/)).not.toBeVisible();
+        await user.click(screen.getByText("Proposal details", { exact: true }));
+        expect(screen.getByText(/Candidate ID: candidate-operator-intent-110/)).toBeVisible();
+        expect(screen.getByText("Status: eligible", { exact: true })).toBeVisible();
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
         expect(screen.getByText("Expected disruption: brief service interruption")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Continue to candidate planning" })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "Review restart proposal" })).toHaveAttribute(
             "href",
             "/execution-candidates/candidate-operator-intent-110",
         );
@@ -229,12 +234,12 @@ describe("MaintenanceRequestPage", () => {
         renderPage();
         const target = await screen.findByRole("radio", { name: /Frigate/i });
         fireEvent.click(target);
-        fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        fireEvent.click(screen.getByRole("button", { name: "Create restart proposal" }));
         expect(target).toBeDisabled();
         expect(screen.getByRole("button", { name: "Refresh" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Requesting candidate…" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Creating proposal…" })).toBeDisabled();
         await act(async () => resolve(createdCandidate()));
-        expect(screen.getByRole("link", { name: "Continue to candidate planning" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Review restart proposal" })).toBeInTheDocument();
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });
 
@@ -242,13 +247,13 @@ describe("MaintenanceRequestPage", () => {
         renderPage();
         const target = await screen.findByRole("radio", { name: /Frigate/i });
         fireEvent.click(target);
-        fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
-        await screen.findByRole("link", { name: "Continue to candidate planning" });
+        fireEvent.click(screen.getByRole("button", { name: "Create restart proposal" }));
+        await screen.findByRole("link", { name: "Review restart proposal" });
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
-        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Review restart proposal" })).not.toBeInTheDocument();
         await waitFor(() => expect(getCapabilityResources).toHaveBeenCalledTimes(2));
         expect(await screen.findByRole("radio", { name: /Frigate/i })).not.toBeChecked();
-        expect(screen.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Create restart proposal" })).toBeDisabled();
     });
 
     it.each(["candidate_id", "target_id", "execution_intent"])("refuses a proposal with a mismatched %s", async (field) => {
@@ -259,9 +264,9 @@ describe("MaintenanceRequestPage", () => {
         vi.mocked(requestRestartServiceIntent).mockResolvedValue(response);
         renderPage();
         fireEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
-        fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        fireEvent.click(screen.getByRole("button", { name: "Create restart proposal" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("does not match this maintenance request");
-        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Review restart proposal" })).not.toBeInTheDocument();
     });
 
     it("clears the previous proposal when another resource is selected", async () => {
@@ -269,10 +274,10 @@ describe("MaintenanceRequestPage", () => {
             generated_at: "2026-08-14T00:00:00Z", resources: [requestable, { ...requestable, resource_id: "111", display_name: "Other VM" }] });
         renderPage();
         fireEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
-        fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
-        await screen.findByRole("link", { name: "Continue to candidate planning" });
+        fireEvent.click(screen.getByRole("button", { name: "Create restart proposal" }));
+        await screen.findByRole("link", { name: "Review restart proposal" });
         fireEvent.click(screen.getByRole("radio", { name: /Other VM/ }));
-        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Review restart proposal" })).not.toBeInTheDocument();
         expect(screen.queryByText(/Candidate ID:/)).not.toBeInTheDocument();
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });
@@ -284,7 +289,7 @@ describe("MaintenanceRequestPage", () => {
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         await screen.findByRole("alert");
         expect(screen.queryByRole("radio")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Request restart candidate" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Create restart proposal" })).toBeDisabled();
         expect(requestRestartServiceIntent).not.toHaveBeenCalled();
     });
 
@@ -333,7 +338,7 @@ describe("MaintenanceRequestPage", () => {
         const user = userEvent.setup();
         renderPage();
         await user.click(await screen.findByRole("radio", { name: /Frigate/i }));
-        await user.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        await user.click(screen.getByRole("button", { name: "Create restart proposal" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(message);
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });
@@ -344,7 +349,7 @@ describe("MaintenanceRequestPage", () => {
         renderPage();
         const radio = await screen.findByRole("radio", { name: /Frigate/i });
         await user.click(radio);
-        await user.click(screen.getByRole("button", { name: "Request restart candidate" }));
+        await user.click(screen.getByRole("button", { name: "Create restart proposal" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("resource changed");
         expect(getCapabilityResources).toHaveBeenCalledTimes(2);
         expect(await screen.findByRole("radio", { name: /Frigate/i })).not.toBeChecked();
@@ -358,12 +363,12 @@ describe("MaintenanceRequestPage", () => {
         await screen.findByText("Frigate");
         vi.useFakeTimers();
         fireEvent.click(screen.getByRole("radio", { name: /Frigate/i }));
-        await act(async () => fireEvent.click(screen.getByRole("button", { name: "Request restart candidate" })));
-        expect(screen.getByRole("link", { name: "Continue to candidate planning" })).toBeInTheDocument();
+        await act(async () => fireEvent.click(screen.getByRole("button", { name: "Create restart proposal" })));
+        expect(screen.getByRole("link", { name: "Review restart proposal" })).toBeInTheDocument();
         await act(async () => vi.advanceTimersByTime(60_000));
-        expect(screen.getByRole("heading", { name: "Maintenance candidate expired" })).toBeInTheDocument();
-        expect(screen.getByText(/candidate has expired/i)).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Maintenance proposal expired" })).toBeInTheDocument();
+        expect(screen.getByText(/proposal has expired/i)).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Review restart proposal" })).not.toBeInTheDocument();
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
         expect(getCapabilityResources).toHaveBeenCalledTimes(1);
     });
@@ -374,10 +379,10 @@ describe("MaintenanceRequestPage", () => {
         vi.mocked(requestRestartServiceIntent).mockResolvedValue(response);
         renderPage();
         await userEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
-        await userEvent.click(screen.getByRole("button", { name: "Request restart candidate" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("The candidate expiration could not be confirmed. Refresh the resource list before requesting a new candidate.");
-        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Maintenance candidate ready" })).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "Create restart proposal" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("The proposal expiration could not be confirmed. Refresh the resource list before requesting a new proposal.");
+        expect(screen.queryByRole("link", { name: "Review restart proposal" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Maintenance proposal ready" })).not.toBeInTheDocument();
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });
 
@@ -408,9 +413,9 @@ describe("MaintenanceRequestPage", () => {
         const user = userEvent.setup();
         renderPage();
         await user.click(await screen.findByRole("radio", { name: /Frigate/i }));
-        await user.click(screen.getByRole("button", { name: "Request restart candidate" }));
-        expect(await screen.findByText(/candidate has expired/i)).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: "Continue to candidate planning" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Create restart proposal" }));
+        expect(await screen.findByText(/proposal has expired/i)).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Review restart proposal" })).not.toBeInTheDocument();
     });
 
     it("returns to login on 401", async () => {
