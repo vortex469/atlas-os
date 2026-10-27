@@ -58,38 +58,39 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
     const evidenced = new Set(intents.map((intent) => intent.approved_subject.candidate_record_id));
     const active = records.filter((recordValue) => recordValue.lifecycle_state === "active" && !evidenced.has(recordValue.candidate_record_id));
     return <section aria-labelledby="approval-intents-heading" className="mt-6 border-t border-slate-700 pt-5">
-        <h5 id="approval-intents-heading" className="font-semibold text-slate-100">Installation approval evidence</h5>
-        <p className="mt-1 text-sm font-semibold text-amber-200">Evidence only — an approval intent is not execution authorization, dispatch, or installation.</p>
-        <p className="mt-1 text-sm text-slate-300">Recording this fixed statement neither starts nor permits installation. Source expiry or deletion does not make the historical intent executable.</p>
-        {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading installation approval evidence…</p>}
+        <h5 id="approval-intents-heading" className="font-semibold text-slate-100">Approval evidence</h5>
+        <p className="mt-1 text-sm font-semibold text-amber-200">This records a review decision for one exact candidate. It cannot approve or start installation.</p>
+        <p className="mt-1 text-sm text-slate-300">If the source record expires or is deleted, this historical evidence still cannot authorize work.</p>
+        {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading approval evidence…</p>}
         {!loading && error && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
-        {!loading && !error && intents.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No installation approval evidence has been recorded.</p>}
-        {!loading && !error && active.length > 0 && <ul aria-label="Active records eligible for approval evidence" className="mt-4 space-y-2">
+        {!loading && !error && intents.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No approval evidence has been recorded.</p>}
+        {!loading && !error && active.length > 0 && <ul aria-label="Review-only records available for approval evidence" className="mt-4 space-y-2">
             {active.map((recordValue) => <li key={recordValue.candidate_record_id} className="rounded-md border border-slate-700 p-3">
-                <p className="break-all text-xs text-slate-300">Active candidate record: {recordValue.candidate_record_id}</p>
+                <p className="font-semibold text-slate-200">{recordValue.candidate_record.item_id} · Not expired</p>
+                <details className="mt-1 text-xs text-slate-400"><summary className="cursor-pointer">Record ID</summary><code className="mt-1 block break-all">{recordValue.candidate_record_id}</code></details>
                 {csrfToken
-                    ? <button type="button" onClick={() => setConfirming(recordValue)} className="mt-2 rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100">Record approval intent</button>
-                    : <p className="mt-2 text-xs text-slate-400">An authenticated operator session with mutation protection is required to record approval evidence.</p>}
+                    ? <button type="button" aria-label={`Record approval statement for ${recordValue.candidate_record.item_id}, record ID ${recordValue.candidate_record_id}`} onClick={() => setConfirming(recordValue)} className="mt-2 rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100">Record approval statement</button>
+                    : <p className="mt-2 text-xs text-slate-400">Sign in with a protected operator session to record this statement.</p>}
             </li>)}
         </ul>}
         {!loading && intents.length > 0 && <ul aria-label="Installation approval evidence records" className="mt-4 space-y-3">
             {intents.map((intent) => <li key={intent.approval_intent_id} className="rounded-md border border-slate-700 p-3">
-                <p className="font-semibold text-slate-200">Immutable approval evidence</p>
-                <p className="mt-1 break-all text-xs text-slate-400">Candidate record ID: {intent.approved_subject.candidate_record_id}</p>
-                <button type="button" onClick={() => void review(intent.approval_intent_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review approval evidence</button>
+                <p className="font-semibold text-slate-200">Approval evidence recorded</p>
+                <details className="mt-1 text-xs text-slate-400"><summary className="cursor-pointer">Candidate record ID</summary><code className="mt-1 block break-all">{intent.approved_subject.candidate_record_id}</code></details>
+                <button type="button" aria-label={`Review approval evidence for record ID ${intent.approved_subject.candidate_record_id}`} onClick={() => void review(intent.approval_intent_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review details</button>
             </li>)}
         </ul>}
         {confirming && <section aria-labelledby="approval-confirmation-heading" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
-            <h6 id="approval-confirmation-heading" className="font-semibold text-amber-100">Confirm exact non-executable candidate identity</h6>
-            <p className="mt-2 text-sm text-slate-200">You are recording approval evidence only for this complete identity:</p>
+            <h6 id="approval-confirmation-heading" className="font-semibold text-amber-100">Confirm your review of this candidate</h6>
+            <p className="mt-2 text-sm text-slate-200">You are recording that you approved this exact non-executable candidate record for review. This does not approve installation, authorize execution, or start work.</p>
+            <p className="mt-2 break-all text-sm font-semibold text-slate-200">Candidate: {confirming.candidate_record.item_id} · Record ID: {confirming.candidate_record_id}</p>
             <SubjectValues record={confirming} />
-            <p className="mt-3 break-all text-sm text-slate-200">Fixed statement: operator_approved_exact_non_executable_candidate</p>
-            <p className="mt-2 text-sm font-semibold text-amber-200">This confirmation does not authorize or initiate any work.</p>
+            <details className="mt-3 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400"><summary className="cursor-pointer font-medium text-slate-300">Technical statement recorded</summary><code className="mt-2 block break-all">operator_approved_exact_non_executable_candidate</code></details>
             <div className="mt-3 flex gap-2">
-                <button type="button" disabled={recording} onClick={() => void record()} className="rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100 disabled:opacity-50">Confirm and record approval evidence only</button>
+                <button type="button" disabled={recording} onClick={() => void record()} className="rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100 disabled:opacity-50">Confirm review statement</button>
                 <button type="button" disabled={recording} onClick={() => setConfirming(null)} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200 disabled:opacity-50">Cancel</button>
             </div>
-            {recording && <p role="status" className="mt-2 text-sm text-slate-400">Recording immutable approval evidence…</p>}
+            {recording && <p role="status" className="mt-2 text-sm text-slate-400">Recording approval evidence…</p>}
         </section>}
         {reviewed && <IntentDetails intent={reviewed} sourcePresent={records.some((recordValue) => recordValue.candidate_record_id === reviewed.approved_subject.candidate_record_id)} />}
         <InstallationExecutionRequests intents={intents} csrfToken={csrfToken} />
@@ -97,21 +98,25 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
 }
 
 function SubjectValues({ record }: { record: InstallationCandidateRecordEnvelopeV1 }) {
-    return <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-        <Value name="Candidate record ID" value={record.candidate_record_id} />
-        <Value name="Candidate envelope fingerprint" value={record.envelope_fingerprint} />
-        <Value name="Admission fingerprint" value={record.admission_fingerprint} />
-        <Value name="Embedded candidate-record fingerprint" value={record.candidate_record.record_fingerprint} />
-    </dl>;
+    return <details className="mt-3 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400">
+        <summary className="cursor-pointer font-medium text-slate-300">Verify exact source fingerprints</summary>
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+            <Value name="Candidate envelope fingerprint" value={record.envelope_fingerprint} />
+            <Value name="Admission fingerprint" value={record.admission_fingerprint} />
+            <Value name="Embedded candidate-record fingerprint" value={record.candidate_record.record_fingerprint} />
+        </dl>
+    </details>;
 }
 
 function IntentDetails({ intent, sourcePresent }: { intent: InstallationApprovalIntentV1; sourcePresent: boolean }) {
     const subject = intent.approved_subject;
     return <section aria-labelledby="approval-evidence-detail-heading" className="mt-5 rounded-md border border-slate-700 p-3">
-        <h6 id="approval-evidence-detail-heading" className="font-semibold text-slate-100">Immutable operator-scoped approval evidence</h6>
-        <p className="mt-1 text-sm font-semibold text-amber-200">Historical evidence only. It grants no authority and cannot be executed.</p>
-        <p className="mt-1 text-sm text-slate-300">Source record: {sourcePresent ? "available in this operator-scoped review" : "unavailable or deleted; the historical identity is not reconstructed"}.</p>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+        <h6 id="approval-evidence-detail-heading" className="font-semibold text-slate-100">Recorded approval evidence</h6>
+        <p className="mt-1 text-sm font-semibold text-amber-200">This is a past review record. It cannot approve or run installation.</p>
+        <p className="mt-1 text-sm text-slate-300">Source record: {sourcePresent ? "available in this review" : "unavailable or deleted; this page does not recreate it"}.</p>
+        <details className="mt-3 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400">
+            <summary className="cursor-pointer font-medium text-slate-300">Technical record and identity details</summary>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
             <Value name="Schema" value={intent.schema} /><Value name="Approval intent ID" value={intent.approval_intent_id} />
             <Value name="Authenticated operator ID" value={intent.operator_id} /><Value name="Server-recorded time" value={intent.recorded_at} />
             <Value name="Candidate record ID" value={subject.candidate_record_id} />
@@ -119,7 +124,8 @@ function IntentDetails({ intent, sourcePresent }: { intent: InstallationApproval
             <Value name="Admission fingerprint" value={subject.admission_fingerprint} />
             <Value name="Embedded candidate-record fingerprint" value={subject.candidate_record_fingerprint} />
             <Value name="Exact fixed approval statement" value={intent.statement} /><Value name="Approval intent fingerprint" value={intent.intent_fingerprint} />
-        </dl>
+            </dl>
+        </details>
     </section>;
 }
 
