@@ -32,7 +32,7 @@ for (const width of [320, 390, 1280]) for (const initiallyUnavailable of [false,
                 await expect(history.getByRole("img", { name: "Proxmox intelligence duration trend" })).toBeVisible();
             }
             await expect(overview.locator("[data-mc-status='success']")).toBeVisible();
-            await expect(page.getByText("Atlas Core unavailable", { exact: true })).toHaveCount(0);
+            await expect(page.getByText("Latest provider details unavailable", { exact: true })).toHaveCount(0);
             await expect(page.getByText("private-history-canary", { exact: false })).toHaveCount(0);
             phase = "recovered";
             await page.getByRole("button", { name: "Refresh", exact: true }).click();

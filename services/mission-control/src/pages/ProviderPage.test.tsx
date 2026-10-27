@@ -56,7 +56,7 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue({ ...vi.mocked(useMissionControl).getMockImplementation()!(), providers: [], ...state });
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
         expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
-        expect(screen.getByText(state.isLoading ? "Loading provider details..." : "Atlas Core unavailable")).toBeInTheDocument();
+        expect(screen.getByText(state.isLoading ? "Loading provider details..." : "Latest provider details unavailable")).toBeInTheDocument();
     });
 
     it("orders monitoring, diagnostics, compatibility, maintenance, and retained evidence distinctly", () => {
@@ -104,8 +104,8 @@ describe("ProviderPage authority layout", () => {
 
     it("states that monitoring is policy-only and maintenance is a separate workflow", () => {
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
-        expect(screen.getByText(/Monitoring expectations describe monitoring policy/)).toHaveTextContent("do not start, stop, restart, or remediate resources");
-        expect(screen.getByText(/start a request, review its proposal and plan, then approve the exact action/)).toBeInTheDocument();
+        expect(screen.getByText(/Monitoring settings describe the state you expect/)).toHaveTextContent("does not start, stop, restart or repair resources");
+        expect(screen.getByText(/Request maintenance, review the proposal and plan, then approve the exact action/)).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Request operational maintenance" })).toHaveAttribute("href", "/operations/request");
     });
 });

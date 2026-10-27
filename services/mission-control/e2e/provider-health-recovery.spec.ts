@@ -25,7 +25,7 @@ for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]
                 phase = "failed";
                 await page.getByRole("button", { name: "Refresh", exact: true }).click();
             }
-            await expect(page.getByText("Atlas Core unavailable", { exact: true })).toBeVisible();
+            await expect(page.getByText("Latest provider details unavailable", { exact: true })).toBeVisible();
             await expect(overview.locator("[data-mc-status='success']")).toHaveCount(0);
             await expect(page.getByText("PRIVATE-CATALOG-CANARY")).toHaveCount(0);
             await expect(page.getByText("Provider not found", { exact: true })).toHaveCount(0);
@@ -39,7 +39,7 @@ for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]
             await expect(overview.locator("[data-mc-status='error']")).toBeVisible();
             await expect(overview.getByText("Provider is not reachable.", { exact: true })).toBeVisible();
             await expect(overview.getByText(/Last reported message:/)).toHaveCount(0);
-            await expect(page.getByText("Atlas Core unavailable", { exact: true })).toHaveCount(0);
+            await expect(page.getByText("Latest provider details unavailable", { exact: true })).toHaveCount(0);
             expect(rejectedMutationRequests).toEqual([]);
         });
     });
