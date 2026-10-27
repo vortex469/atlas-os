@@ -386,6 +386,27 @@ describe("MaintenanceRequestPage", () => {
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });
 
+    it.each([
+        ["not_eligible", "This proposal is not eligible for planning."],
+        ["rejected", "This proposal is not eligible for planning."],
+        ["expired", "This proposal has expired."],
+        ["future_status", "The proposal status could not be confirmed."],
+    ])("does not present returned status %s as ready", async (status, explanation) => {
+        const response = createdCandidate();
+        response.candidate.status = status;
+        vi.mocked(requestRestartServiceIntent).mockResolvedValue(response);
+        renderPage();
+        await userEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
+        await userEvent.click(screen.getByRole("button", { name: "Create restart proposal" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(explanation);
+        expect(screen.queryByRole("heading", { name: "Maintenance proposal ready" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Review restart proposal" })).not.toBeInTheDocument();
+        await userEvent.click(screen.getByText("Proposal details", { exact: true }));
+        expect(screen.getByText(`Status: ${status}`, { exact: true })).toBeVisible();
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
+        expect(getCapabilityResources).toHaveBeenCalledTimes(1);
+    });
+
     it("does not hand an expired candidate to planning", async () => {
         vi.mocked(requestRestartServiceIntent).mockResolvedValue({
             outcome: "created",

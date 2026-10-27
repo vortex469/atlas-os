@@ -122,6 +122,8 @@ export function MaintenanceRequestPage() {
     const expiresAt = result?.candidate.expires_at;
     const expiryTime = evidenceTimestamp(expiresAt);
     const expiryUnreadable = expiresAt !== null && expiresAt !== undefined && expiryTime === null;
+    const proposalExpired = resultExpired || result?.candidate.status === "expired";
+    const proposalReady = result?.candidate.status === "eligible" && !proposalExpired && !expiryUnreadable;
     useEffect(() => {
         if (expiryTime === null) return;
         let timer: number;
@@ -224,9 +226,9 @@ export function MaintenanceRequestPage() {
                 {submitting ? "Creating proposal…" : "Create restart proposal"}
             </button>
             {result && (
-                <section className={`rounded-xl border p-5 ${resultExpired || expiryUnreadable ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"}`}>
-                    <h2 className={`text-lg font-semibold ${resultExpired || expiryUnreadable ? "text-amber-200" : "text-emerald-200"}`}>
-                        {expiryUnreadable ? "Proposal expiration unknown" : resultExpired ? "Maintenance proposal expired" : "Maintenance proposal ready"}
+                <section className={`rounded-xl border p-5 ${!proposalReady ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"}`}>
+                    <h2 className={`text-lg font-semibold ${!proposalReady ? "text-amber-200" : "text-emerald-200"}`}>
+                        {expiryUnreadable ? "Proposal expiration unknown" : proposalExpired ? "Maintenance proposal expired" : !proposalReady ? "Maintenance proposal unavailable" : "Maintenance proposal ready"}
                     </h2>
                     <p className="mt-2 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p>
                     <p className="mt-1 text-sm text-slate-300">Expires: {expiryUnreadable ? "Not readable" : result.candidate.expires_at ?? "Not reported"}</p>
@@ -238,8 +240,14 @@ export function MaintenanceRequestPage() {
                     </details>
                     {expiryUnreadable ? (
                         <p role="alert" className="mt-3 text-sm text-amber-200">The proposal expiration could not be confirmed. Refresh the resource list before requesting a new proposal.</p>
-                    ) : resultExpired ? (
+                    ) : proposalExpired ? (
                         <p role="alert" className="mt-3 text-sm text-amber-200">This proposal has expired. Refresh the resource list before requesting a new proposal.</p>
+                    ) : !proposalReady ? (
+                        <p role="alert" className="mt-3 text-sm text-amber-200">
+                            {result.candidate.status === "not_eligible" || result.candidate.status === "rejected"
+                                ? "This proposal is not eligible for planning."
+                                : "The proposal status could not be confirmed."} Refresh the resource list before requesting a new proposal.
+                        </p>
                     ) : (
                         <>
                             <p className="mt-3 text-sm text-slate-300">Review the proposal and its plan, then approve the exact restart action.</p>

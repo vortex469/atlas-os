@@ -589,3 +589,11 @@ route; it does not plan, approve, or execute a restart. Target, expiry and the
 expected interruption remain visible in the receipt. Candidate ID and raw status
 remain available under the keyboard-accessible Proposal details disclosure.
 Existing expiry warnings and request guards retain their behavior.
+
+A returned maintenance proposal is ready for review only when its status is
+eligible and any reported expiry is usable. Core can return an ineligible
+projection after rechecking the target during creation. Rejected, not-eligible,
+expired and unrecognized statuses therefore show an amber receipt with a visible
+explanation and no planning handoff. Raw status stays available in Proposal
+details. These receipt checks do not submit another request or change Core's
+eligibility decisions, Agent revalidation, or approval boundaries.
