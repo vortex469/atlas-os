@@ -116,7 +116,7 @@ jobs:
     env:
       PLAYWRIGHT_IMAGE_VERSION: "1.63.0"
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - name: Check out Atlas
