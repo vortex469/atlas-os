@@ -76,7 +76,9 @@ test("rejecting implementation leaves execution and later approvals unavailable 
     await expect(page.getByText("Approval rejected.", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Resume Approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
     await page.reload();
-    await expect(page.getByRole("heading", { name: `Workflow ${journey.workflow}`, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review repository change", exact: true })).toBeVisible();
+    await page.getByText("Workflow details", { exact: true }).click();
+    await expect(page.getByRole("region", { name: "Workflow summary", exact: true }).getByText(journey.workflow, { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Resume Approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
     expect(fixture.writes).toEqual(fixture.expectedWrites);
     expect(fixture.unexpected).toEqual([]);

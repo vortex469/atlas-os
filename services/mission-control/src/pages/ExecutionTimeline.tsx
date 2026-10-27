@@ -5,10 +5,18 @@ interface ExecutionTimelineProps {
     isRefreshing: boolean;
     refreshDisabled?: boolean;
     onRefresh: () => void;
+    compact?: boolean;
 }
 
-export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = false, onRefresh }: ExecutionTimelineProps) {
+export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = false, onRefresh, compact = false }: ExecutionTimelineProps) {
     const executionState = executionStateText(workflow);
+    const stages = (
+            <ol className="mt-5 grid gap-2 text-sm md:grid-cols-3 xl:grid-cols-9" aria-label="Authoritative execution stages">
+                {workflow.timeline.map((stage) => (
+                    <TimelineStage key={stage.name} stage={stage} />
+                ))}
+            </ol>
+    );
 
     return (
         <section aria-labelledby="execution-timeline-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -22,15 +30,14 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
                 </button>
             </div>
 
-            <ol className="mt-5 grid gap-2 text-sm md:grid-cols-3 xl:grid-cols-9" aria-label="Authoritative execution stages">
-                {workflow.timeline.map((stage) => (
-                    <TimelineStage key={stage.name} stage={stage} />
-                ))}
-            </ol>
+            {compact ? <details className="mt-4 rounded-lg border border-slate-800 p-3">
+                <summary className="cursor-pointer text-sm text-slate-300">Execution stages</summary>
+                {stages}
+            </details> : stages}
 
             {workflow.effect_kind === "operational_action"
                 ? <p className="mt-5 text-sm text-slate-300">Dispatch and verification results are shown in the operational lifecycle.</p>
-                : <ExecutionSection workflow={workflow} />}
+                : <ExecutionSection workflow={workflow} compact={compact} />}
         </section>
     );
 }
@@ -44,16 +51,11 @@ function TimelineStage({ stage }: { stage: WorkflowTimelineStage }) {
     );
 }
 
-function ExecutionSection({ workflow }: { workflow: WorkflowDetailResponse }) {
+function ExecutionSection({ workflow, compact }: { workflow: WorkflowDetailResponse; compact: boolean }) {
     const execution = workflow.execution;
     const hasResult = execution.execution_status !== null;
     const outcome = repositoryExecutionState(workflow);
-
-    return (
-        <section aria-labelledby="execution-section-heading" className="mt-5 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
-            <h3 id="execution-section-heading" className="text-base font-semibold text-white">Execution</h3>
-            <p role="status" className={`mt-2 text-sm ${outcome.className}`}>{outcome.text}</p>
-            {hasResult && (
+    const facts = hasResult ? (
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Execution status" value={formatLabel(execution.execution_status ?? "not_available")} />
                     <Detail label="Started time" value={execution.started_at ?? "Not exposed by Atlas Agent"} />
@@ -66,7 +68,16 @@ function ExecutionSection({ workflow }: { workflow: WorkflowDetailResponse }) {
                     <Detail label="Changed files" value={execution.changed_files.length > 0 ? execution.changed_files.join(", ") : "None reported"} />
                     <Detail label="Execution request ID" value={execution.execution_request_id ?? "Not exposed"} />
                 </dl>
-            )}
+    ) : null;
+
+    return (
+        <section aria-labelledby="execution-section-heading" className="mt-5 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+            <h3 id="execution-section-heading" className="text-base font-semibold text-white">Execution</h3>
+            <p role="status" className={`mt-2 text-sm ${outcome.className}`}>{outcome.text}</p>
+            {facts && (compact ? <details className="mt-4 rounded-lg border border-slate-800 p-3">
+                <summary className="cursor-pointer text-sm text-slate-300">Execution details</summary>
+                {facts}
+            </details> : facts)}
         </section>
     );
 }

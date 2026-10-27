@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode } from "react";
@@ -567,7 +567,7 @@ describe("WorkflowPage", () => {
         expect(screen.getByText("Resuming workflow...")).toBeVisible();
 
         resolveResume();
-        await screen.findByText("Implementation");
+        await screen.findByText("Implementation Approval");
     });
 
     it("reloads workflow detail on resume success and uses server-authoritative state", async () => {
@@ -589,7 +589,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Resume Approved Implementation" }));
 
-        expect(await screen.findByText("Awaiting Verification Approval")).toBeInTheDocument();
+        await waitFor(() => expect(within(screen.getByRole("region", { name: "Workflow summary" })).getByText("Awaiting Verification Approval", { selector: "span" })).toBeVisible());
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
     });
 
@@ -666,7 +666,7 @@ describe("WorkflowPage", () => {
     it("renders workflow and immutable implementation request details", async () => {
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: /Workflow workflow-123/i })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: /^Review repository change$/ })).toBeInTheDocument();
         expect(screen.getByText("candidate-plan-123")).toBeInTheDocument();
         expect(screen.getByText("candidate-123")).toBeInTheDocument();
         expect(screen.getByText("candidate-fingerprint-123")).toBeInTheDocument();
@@ -777,15 +777,15 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
     });
 
-    it("renders workflow rail and no execution, verification, or commit controls", async () => {
+    it("keeps authoritative execution stages available without execution, verification, or commit controls", async () => {
         renderPage();
 
-        expect(await screen.findByText("Implementation")).toBeInTheDocument();
+        expect(await screen.findByText("Implementation Approval")).toBeInTheDocument();
         expect(screen.getAllByText("Execution").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Verification").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Commit").length).toBeGreaterThan(0);
-        expect(screen.getByText("current")).toBeInTheDocument();
-        expect(screen.getAllByText("waiting").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Current").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Waiting").length).toBeGreaterThan(0);
         expect(screen.queryByRole("button", { name: /execute/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /verify/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
@@ -1284,6 +1284,25 @@ describe("WorkflowPage", () => {
         expect(screen.queryByText(verification ? "Verification approved. Resume to run the checks." : "Commit approved. Resume to finish the local commit.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: verification ? "Resume Approved Verification" : "Resume Approved Commit" })).not.toBeInTheDocument();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it.each(["repository_change", "operational_action"] as const)("keeps the %s review heading short and identifiers collapsed", async (effect_kind) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind }));
+        renderPage();
+        expect(await screen.findByRole("heading", { name: effect_kind === "operational_action" ? "Review maintenance" : "Review repository change" })).toBeVisible();
+        const summary = screen.getByRole("region", { name: "Workflow summary" });
+        expect(within(summary).getByText("workflow-123", { exact: true })).not.toBeVisible();
+        expect(within(summary).getByText("Workflow details", { exact: true }).closest("details")).not.toHaveAttribute("open");
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("puts implementation approval directly after the request being reviewed", async () => {
+        renderPage();
+        const request = await screen.findByRole("region", { name: "Implementation request" });
+        const approval = screen.getByRole("region", { name: "Implementation approval" });
+        expect(request.nextElementSibling).toBe(approval);
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
     });
 
 });

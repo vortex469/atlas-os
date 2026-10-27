@@ -438,3 +438,21 @@ Browser fixtures cover read-only recovery before/after approval at phone and
 desktop widths. Two additional fixtures allow one exact synthetic approval POST,
 then return unavailable review data and verify that no resume is submitted or
 suggested. They never run verification or commit an actual repository change.
+
+Workflow review now uses a short effect-specific heading and keeps workflow IDs,
+source facts, translator metadata and request IDs in keyboard-accessible details.
+The loaded page uses one authoritative execution-stage list rather than showing
+a second progress rail. Execution status and Refresh stay visible while stage
+and result metadata can be expanded when needed.
+
+Implementation approval sits directly after the request being reviewed, followed
+by its separately approved resume action when available. Repository views keep
+the current review stage open and put inactive implementation, verification and
+commit sections in disclosures. Blocked workflows retain their detail views;
+preparation, approval decisions, resume guards, error feedback and request bodies
+are unchanged. Earlier facts remain available for review without sending writes.
+
+Phone and desktop fixtures cover pending and approved implementation,
+maintenance, verification and commit views, opening identifiers and progress with
+the keyboard while asserting zero mutations. Existing rejection, identity,
+pending-refresh and full repository/maintenance journeys retain their assertions.
