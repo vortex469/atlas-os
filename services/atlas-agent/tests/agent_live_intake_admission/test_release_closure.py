@@ -21,6 +21,7 @@ from app.agent_live_intake_admission.route import create_agent_live_intake_route
 from app.agent_live_intake_admission.service import AgentLiveIntakeAdmissionService
 from app.agent_live_intake_admission.store import AgentLiveIntakeAdmissionStore
 from fastapi import FastAPI
+from pytest import MonkeyPatch
 
 from .test_contract import OPERATOR, envelope
 from .test_route import Authenticator
@@ -135,6 +136,42 @@ def test_concurrent_one_envelope_admits_once_and_reservation_is_permanent(
     with sqlite3.connect(store.database_path) as connection:
         assert connection.execute(
             "SELECT COUNT(*) FROM agent_live_intake_reservations"
+        ).fetchone()[0] == 1
+
+
+def test_replay_precheck_keeps_one_snapshot_when_identical_request_commits(
+    tmp_path: Path, monkeypatch: MonkeyPatch,
+) -> None:
+    service, store, env = closure(tmp_path)
+    other_service, _, _ = closure(tmp_path)
+    # WAL permits a second connection to commit while the first holds a read snapshot.
+    with sqlite3.connect(store.database_path) as connection:
+        assert connection.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+
+    winner = None
+    reject_reserved_identity = store._reject_reserved_identity
+
+    def commit_between_precheck_reads(connection, exact) -> None:
+        nonlocal winner
+        if winner is None:
+            winner = submit(other_service, env, correlation="snapshot-winner")
+        reject_reserved_identity(connection, exact)
+
+    monkeypatch.setattr(store, "_reject_reserved_identity", commit_between_precheck_reads)
+    replay = submit(service, env, correlation="snapshot-reader")
+    assert winner is not None
+    assert winner.outcome == "admitted_for_evidence_only"
+    assert replay == winner
+    assert replay.admission is not None
+    assert replay.admission.execution_authorized is False
+    assert replay.admission.replay_allowed is False
+    assert submit(service, env, key="different-key").reason_code == "replay_conflict"
+    with sqlite3.connect(store.database_path) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM agent_live_intake_reservations"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM agent_live_intake_admissions"
         ).fetchone()[0] == 1
 
 
