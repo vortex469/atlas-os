@@ -42,14 +42,14 @@ describe("installation approval evidence", () => {
         let reject: (error: Error) => void = () => undefined;
         vi.mocked(listInstallationApprovalIntents).mockReturnValueOnce(new Promise((_, rejectPromise) => { reject = rejectPromise; }));
         const view = render(<InstallationApprovalIntents records={[]} csrfToken={null} />);
-        expect(screen.getByText(/loading installation approval evidence/i)).toBeInTheDocument();
+        expect(screen.getByText(/loading approval evidence/i)).toBeInTheDocument();
         reject(new Error("credential secret /internal/path 10.0.0.1"));
         await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
         expect(view.container).not.toHaveTextContent(/credential|internal\/path|10\.0\.0\.1/i);
         view.unmount();
         vi.mocked(listInstallationApprovalIntents).mockResolvedValueOnce([]);
         render(<InstallationApprovalIntents records={[]} csrfToken={null} />);
-        expect(await screen.findByText(/no installation approval evidence has been recorded/i)).toBeInTheDocument();
+        expect(await screen.findByText(/no approval evidence has been recorded/i)).toBeInTheDocument();
     });
 
     it("lists and gets exact operator-scoped linkage with fixed statement", async () => {
@@ -57,8 +57,10 @@ describe("installation approval evidence", () => {
         vi.mocked(getInstallationApprovalIntent).mockResolvedValueOnce(intent);
         const user = userEvent.setup();
         render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: /review approval evidence/i }));
-        const detail = screen.getByRole("heading", { name: /immutable operator-scoped/i }).parentElement!;
+        await user.click(await screen.findByRole("button", { name: /review approval evidence for record ID/i }));
+        const detail = screen.getByRole("heading", { name: "Recorded approval evidence" }).parentElement!;
+        const technicalSummary = within(detail).getByText("Technical record and identity details");
+        await user.click(technicalSummary);
         expect(within(detail).getByText("operator-a")).toBeInTheDocument();
         expect(within(detail).getByText("2026-08-27T12:00:01Z")).toBeInTheDocument();
         expect(within(detail).getByText("operator_approved_exact_non_executable_candidate")).toBeInTheDocument();
@@ -71,21 +73,21 @@ describe("installation approval evidence", () => {
         vi.mocked(recordInstallationApprovalIntent).mockResolvedValueOnce(intent);
         const user = userEvent.setup();
         const { container } = render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: "Record approval intent" }));
+        await user.click(await screen.findByRole("button", { name: /Record approval statement for example, record ID/ }));
         expect(recordInstallationApprovalIntent).not.toHaveBeenCalled();
-        const confirmation = screen.getByRole("heading", { name: /confirm exact non-executable candidate identity/i }).parentElement!;
-        expect(within(confirmation).getByText(ids.record)).toBeInTheDocument();
-        expect(within(confirmation).getByText(/does not authorize or initiate any work/i)).toBeInTheDocument();
-        await user.click(within(confirmation).getByRole("button", { name: /confirm and record approval evidence only/i }));
+        const confirmation = screen.getByRole("heading", { name: "Confirm your review of this candidate" }).parentElement!;
+        expect(confirmation).toHaveTextContent(ids.record);
+        expect(within(confirmation).getByText(/does not approve installation, authorize execution, or start work/i)).toBeInTheDocument();
+        await user.click(within(confirmation).getByRole("button", { name: "Confirm review statement" }));
         expect(recordInstallationApprovalIntent).toHaveBeenCalledWith(ids.record, "csrf", "approval-key");
-        expect(await screen.findByText(/historical evidence only/i)).toBeInTheDocument();
+        expect(await screen.findByText(/this is a past review record/i)).toBeInTheDocument();
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
     });
 
     it("keeps Home Assistant non-approvable and exposes no prohibited controls or navigation", async () => {
         const { container } = render(<InstallationApprovalIntents records={[]} csrfToken="csrf" />);
-        await screen.findByText(/no installation approval evidence/i);
-        expect(screen.queryByRole("button", { name: /record approval intent/i })).not.toBeInTheDocument();
+        await screen.findByText(/no approval evidence/i);
+        expect(screen.queryByRole("button", { name: /record approval statement/i })).not.toBeInTheDocument();
         expect(recordInstallationApprovalIntent).not.toHaveBeenCalled();
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
         const controls = Array.from(container.querySelectorAll("button, a")).map((node) => node.textContent).join(" ");
@@ -97,7 +99,7 @@ describe("installation approval evidence", () => {
         vi.mocked(getInstallationApprovalIntent).mockResolvedValueOnce(intent);
         const user = userEvent.setup();
         render(<InstallationApprovalIntents records={[]} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: /review approval evidence/i }));
-        expect(await screen.findByText(/unavailable or deleted; the historical identity is not reconstructed/i)).toBeInTheDocument();
+        await user.click(await screen.findByRole("button", { name: /review approval evidence for record ID/i }));
+        expect(await screen.findByText(/unavailable or deleted; this page does not recreate it/i)).toBeInTheDocument();
     });
 });
