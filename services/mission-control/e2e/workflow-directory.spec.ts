@@ -39,8 +39,10 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("directory-workflow-000", { exact: true })).toBeVisible();
         await expect(page.getByText("Showing 10 of 215 matching workflows", { exact: true })).toBeVisible();
         const totals = page.locator('section[aria-labelledby="workflow-counts-heading"]');
+        expect(await totals.evaluate(node => node.getBoundingClientRect().height)).toBeLessThan(width < 768 ? 600 : 500);
         await expect(totals.getByText("Completed", { exact: true }).locator("..").getByText("214", { exact: true })).toBeVisible();
         await expect(totals.getByText("Waiting for commit approval", { exact: true }).locator("..").getByText("1", { exact: true })).toBeVisible();
+        if (width !== 320) await totals.screenshot({path: `/tmp/atlas-workflow-totals-${width}.png`});
         await page.getByRole("button", { name: "Next", exact: true }).click();
         await expect(page.getByText("directory-workflow-010", { exact: true })).toBeVisible();
         await page.getByLabel("Workflow ID search", { exact: true }).fill("directory-workflow-214");

@@ -530,3 +530,8 @@ An empty workflow directory offers links to review change proposals or choose
 maintenance, using the existing routes without preparing or running work. An
 empty filtered result instead suggests broadening the search or clearing the
 filters above. The directory's reads, counts and filtering behavior are unchanged.
+
+Workflow totals use compact label-and-number rows to reduce mobile scrolling.
+Every approval-stage category, other-state count and unavailable-value fallback
+remains visible. Count calculations, search, paging and source validation are
+unchanged; labels and large values can wrap within the available width.

@@ -203,12 +203,12 @@ export function WorkflowDashboardPage() {
                 <h2 id="workflow-counts-heading" className="text-sm font-semibold text-slate-300 md:col-span-2 xl:col-span-3">Totals for this search</h2>
                 {isLoading && <p role="status" className="text-sm text-slate-300">Loading matching workflow totals…</p>}
                 {!isLoading && SUMMARY_GROUPS.map((group) => (
-                    <article key={group.key} className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-                        <p className="text-sm text-slate-400">{group.label}</p>
-                        <p className="mt-2 text-2xl font-bold text-white">{summaryCounts === null ? "Unavailable" : summaryCounts.get(group.key) ?? 0}</p>
+                    <article key={group.key} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+                        <p className="min-w-0 flex-1 text-sm text-slate-400">{group.label}</p>
+                        <p className="max-w-full break-all text-xl font-bold text-white">{summaryCounts === null ? "Unavailable" : summaryCounts.get(group.key) ?? 0}</p>
                     </article>
                 ))}
-                {!isLoading && (summaryCounts?.get("unknown") ?? 0) > 0 && <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-4"><p className="text-sm text-slate-400">Other states</p><p className="mt-2 text-2xl font-bold text-white">{summaryCounts?.get("unknown")}</p></article>}
+                {!isLoading && (summaryCounts?.get("unknown") ?? 0) > 0 && <article className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3"><p className="min-w-0 flex-1 text-sm text-slate-400">Other states</p><p className="max-w-full break-all text-xl font-bold text-white">{summaryCounts?.get("unknown")}</p></article>}
             </section>
 
             {!isLoading && summaryCounts === null && <p role="status" className="text-sm text-slate-400">This Agent does not provide workflow totals. Paging and search are available; approval-state filtering requires an updated Agent.</p>}
