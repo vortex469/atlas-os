@@ -17,17 +17,13 @@ export function DiagnosticsPanel({
             </h2>
 
             {diagnostics.length === 0 ? (
-                <div className="mt-4 flex items-center gap-3 rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-4">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-900/50 text-sm text-emerald-300">
-                        ✓
-                    </span>
-
+                <div className="mt-4 rounded-lg border border-slate-700 bg-slate-950/50 p-4">
                     <div>
-                        <p className="font-medium text-emerald-300">
-                            No issues detected
+                        <p className="font-medium text-slate-200">
+                            No diagnostic findings reported
                         </p>
                         <p className="mt-1 text-sm text-slate-500">
-                            Atlas found no security or operational concerns.
+                            Review the reported analysis and proposed plan risk.
                         </p>
                     </div>
                 </div>

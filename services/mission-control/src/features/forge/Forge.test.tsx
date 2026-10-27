@@ -17,7 +17,7 @@ function analysis(name: string): DeploymentAnalysisResponse {
         } },
     } };
 }
-const submit = () => fireEvent.click(screen.getByRole("button", { name: "Analyze Deployment" }));
+const submit = () => fireEvent.click(screen.getByRole("button", { name: "Analyze document" }));
 
 describe("Forge analysis freshness", () => {
     beforeEach(() => { analyze.mockReset().mockResolvedValue(analysis("Original result")); });
@@ -26,7 +26,9 @@ describe("Forge analysis freshness", () => {
         render(<Forge />);
         submit();
         await screen.findAllByText("Original result");
+        expect(screen.getByRole("status")).toHaveTextContent("Analysis available. Review the summary and proposed steps below.");
         fireEvent.change(screen.getByLabelText(label), { target: { value: "new input" } });
+        expect(screen.getByRole("status")).toBeEmptyDOMElement();
         expect(screen.queryByRole("heading", { name: "Deployment Brief" })).not.toBeInTheDocument();
         expect(screen.queryByText("Original result")).not.toBeInTheDocument();
     });
@@ -58,6 +60,7 @@ describe("Forge analysis freshness", () => {
         await act(async () => rejectOld(new Error("Old failure")));
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Analyzing..." })).toBeDisabled();
+        expect(screen.getByRole("status")).toHaveTextContent("Analyzing the current document…");
         await act(async () => resolveCurrent(analysis("Current result")));
         expect(screen.getAllByText("Current result")).toHaveLength(2);
     });
@@ -69,6 +72,7 @@ describe("Forge analysis freshness", () => {
         analyze.mockRejectedValueOnce(new Error("Analysis unavailable"));
         submit();
         expect(await screen.findByRole("alert")).toHaveTextContent("Analysis unavailable");
+        expect(screen.getByRole("status")).toBeEmptyDOMElement();
         expect(screen.queryByRole("heading", { name: "Deployment Brief" })).not.toBeInTheDocument();
         submit();
         await screen.findAllByText("Original result");
@@ -93,6 +97,9 @@ describe("Forge analysis freshness", () => {
         render(<Forge />);
         submit();
         expect(await screen.findByText(`Highest reported risk: ${risk}`)).toBeInTheDocument();
+        expect(screen.getByText("No diagnostic findings reported")).toBeVisible();
+        expect(screen.queryByText("No issues detected")).not.toBeInTheDocument();
+        expect(screen.queryByText("Atlas found no security or operational concerns.")).not.toBeInTheDocument();
         expect(screen.queryByText("Ready for Review")).not.toBeInTheDocument();
         expect(screen.queryByText("Deployment Blocked")).not.toBeInTheDocument();
     });

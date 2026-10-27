@@ -11,6 +11,7 @@ const defaultCompose = `services:
 `;
 
 type ComposeEditorProps = {
+    analysisAvailable?: boolean;
     onAnalysis: (
         result: DeploymentAnalysisResponse | null,
     ) => void;
@@ -18,6 +19,7 @@ type ComposeEditorProps = {
 
 export function ComposeEditor({
     onAnalysis,
+    analysisAvailable = false,
 }: ComposeEditorProps) {
     const [compose, setCompose] = useState(defaultCompose);
     const [reference, setReference] = useState("nginx-demo");
@@ -78,7 +80,7 @@ export function ComposeEditor({
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-6">
             <div className="mb-4">
                 <h2 className="text-lg font-semibold text-slate-100">
-                    Compose Deployment
+                    Compose analysis
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
@@ -121,7 +123,9 @@ export function ComposeEditor({
                 </p>
             )}
 
-            {loading && <p role="status" className="mt-3 text-sm text-blue-200">Analyzing the current document…</p>}
+            <p role="status" className={loading || analysisAvailable ? "mt-3 text-sm text-blue-200" : "sr-only"}>
+                {loading ? "Analyzing the current document…" : analysisAvailable ? "Analysis available. Review the summary and proposed steps below." : ""}
+            </p>
 
             <div className="mt-4 flex justify-end">
                 <button
@@ -132,7 +136,7 @@ export function ComposeEditor({
                 >
                     {loading
                         ? "Analyzing..."
-                        : "Analyze Deployment"}
+                        : "Analyze document"}
                 </button>
             </div>
         </section>
