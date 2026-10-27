@@ -396,6 +396,16 @@ describe("DiscoveryItemPage", () => {
         mockedListDiscoveryProposals.mockResolvedValue({ proposals: [], total: 0, limit: 25 });
     });
 
+    it.each(["constructor", "__proto__"])("keeps future severity label %s readable", async severity => {
+        const result = compatibilityAssessment();
+        result.findings[0].severity = severity as typeof result.findings[number]["severity"];
+        mockedGetDiscoveryCompatibility.mockResolvedValue(result);
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Compatibility details" })).toBeVisible();
+        expect(screen.getByText("Catalog item status is active.")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Frigate" })).toBeVisible();
+    });
+
     it("renders item details, requirements, provenance, approved metadata, and compatibility", async () => {
         renderPage();
 

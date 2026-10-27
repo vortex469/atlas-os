@@ -148,3 +148,35 @@ for (const width of [320, 390, 1280]) {
         expect(rejectedMutationRequests).toEqual([]);
     });
 }
+
+for (const width of [320, 390, 1280]) {
+    test(`malformed compatibility keeps the Discovery item readable at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        const entry = discoveryItemsPage.entries[0];
+        let reads = 0;
+        let recovered = false;
+        const errors: string[] = [];
+        page.on("pageerror", error => errors.push(error.message));
+        await page.route("**/api/v1/discovery/items/fixture-app", route => route.fulfill({ json: entry }));
+        await page.route("**/api/v1/discovery/items/fixture-app/compatibility", route => {
+            reads += 1;
+            expect(route.request().method()).toBe("GET");
+            return route.fulfill({ json: { item_id: "fixture-app", target_id: "atlas", target_type: "atlas",
+                status: "insufficient_information", checked_at: "2026-10-27T12:00:00Z",
+                findings: recovered ? [] : null, evidence: [], unknown_facts: ["Host resources are unknown."] } });
+        });
+        await page.goto("/discovery/items/fixture-app");
+        await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toBeVisible();
+        await expect(page.getByText("The compatibility result could not be read. Try again.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Compatibility status", exact: true })).toHaveCount(0);
+        expect(reads).toBe(1);
+        recovered = true;
+        await page.getByRole("button", { name: "Retry compatibility check", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Compatibility status", exact: true })).toBeVisible();
+        await expect(page.getByText("Host resources are unknown.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toBeVisible();
+        expect(reads).toBe(2);
+        expect(errors).toEqual([]);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}

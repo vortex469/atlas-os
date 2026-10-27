@@ -1,4 +1,5 @@
 import { atlas } from "./atlas";
+import { parseDiscoveryCompatibility } from "./discoveryCompatibilityResponse";
 import { parseDiscoveryItem } from "./discoveryItemResponse";
 import { parseDiscoveryMetadata } from "./discoveryMetadataResponse";
 import { parseDiscoveryCatalogPage } from "./discoveryCatalogResponse";
@@ -120,14 +121,14 @@ export async function getDiscoveryCompatibility(
     target?: string,
 ): Promise<DiscoveryCompatibilityAssessment> {
     const normalizedTarget = target?.trim();
-    const response = await atlas.get<DiscoveryCompatibilityAssessment>(
+    const response = await atlas.get<unknown>(
         `/discovery/items/${encodeURIComponent(itemId)}/compatibility`,
         {
             params: normalizedTarget ? { target: normalizedTarget } : undefined,
         },
     );
 
-    return response.data;
+    return parseDiscoveryCompatibility(response.data, itemId, normalizedTarget || "atlas");
 }
 
 function discoveryParams(query: DiscoveryListQuery | DiscoverySearchQuery) {
