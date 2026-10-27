@@ -560,3 +560,11 @@ to review for approval state. They do not imply that no approval is needed. Know
 state labels, Other states counts, retained-data qualifiers and workflow links
 are unchanged. Existing compatibility and browser recovery checks cover the
 unknown fallback as well as recognized approval waits.
+
+Workflow search keeps state, workflow ID and approval-wait fields visible, with
+Source and Candidate ID under keyboard-accessible More filters. The applied
+search is shown separately from editable drafts and remains visible when optional
+fields are collapsed. Pending searches say Searching with; editing fields alone
+sends no request. Existing submit, clear, normalization, paging and recovery
+handlers are unchanged. Browser coverage retains all previous read assertions and
+adds optional-field submission and disclosure checks at phone and desktop widths.

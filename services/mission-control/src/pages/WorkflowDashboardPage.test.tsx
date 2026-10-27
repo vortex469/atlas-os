@@ -56,12 +56,24 @@ describe("WorkflowDashboardPage", () => {
     it("sends all submitted filters to the server and resets the offset", async () => {
         list.mockResolvedValue(response([workflow()]));
         renderDashboard(); await screen.findByText("workflow-123");
+        const applied = screen.getByRole("region", {name: "Applied workflow filters"});
+        expect(applied).toHaveTextContent("All workflows");
+        expect(screen.getByLabelText("Source")).not.toBeVisible();
+        expect(screen.getByLabelText("Candidate ID")).not.toBeVisible();
+        fireEvent.click(screen.getByText("More filters"));
+        expect(screen.getByLabelText("Source")).toBeVisible();
+        expect(screen.getByLabelText("Candidate ID")).toBeVisible();
         fireEvent.change(screen.getByLabelText("State"), { target: { value: "awaiting_implementation_approval" } });
         fireEvent.change(screen.getByLabelText("Source"), { target: { value: "candidate" } });
         fireEvent.change(screen.getByLabelText("Candidate ID"), { target: { value: " candidate-123 " } });
         fireEvent.change(screen.getByLabelText("Waiting for approval"), { target: { value: "yes" } });
+        expect(applied).toHaveTextContent("All workflows");
+        expect(list).toHaveBeenCalledTimes(1);
         search(" workflow-123 ");
         await screen.findByText("workflow-123");
+        expect(applied).toHaveTextContent("Source: Candidate");
+        expect(applied).toHaveTextContent("Candidate ID: candidate-123");
+        expect(applied).toHaveTextContent("Workflow ID: workflow-123");
         expect(list).toHaveBeenLastCalledWith({ state: "awaiting_implementation_approval", source: "candidate", candidate_id: "candidate-123", workflow_id: "workflow-123", waiting_for_approval: true, limit: 10, offset: 0 });
     });
 
