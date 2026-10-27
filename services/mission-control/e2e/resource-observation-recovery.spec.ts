@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { installMissionControlMocks, providers } from "./mission-control-fixtures";
 import { management, resource } from "./resource-monitoring-fixture";
 
-for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]) for (const expectation of ["running", "stopped"] as const) {
-    test(`observed inventory recovery at ${width}px (initial: ${initialFailure}, expected: ${expectation})`, async ({ page, baseURL }) => {
+for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]) for (const expectation of ["running", "stopped"] as const) for (const failure of ["http", "shape"] as const) {
+    test(`observed inventory recovery at ${width}px (initial: ${initialFailure}, expected: ${expectation}, ${failure})`, async ({ page, baseURL }) => {
         const mutations: string[] = [];
         await installMissionControlMocks(page, "available", mutations);
         await page.setViewportSize({ width, height: 900 });
@@ -11,9 +11,12 @@ for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]
             resources: [{ ...resource, current_state, expectation: { value: null, label: "Needs Review", state: "needs_review", allowed_values: [] },
                 configured: false, needs_review: true, metadata: {} }],
             summary: { total: 1, configured: 0, needs_review: 1, missing: 0, ignored: 0, by_type: { qemu: 1 }, by_state: { [current_state]: 1 } }, metadata: {} });
+        const failedResponse = () => failure === "http"
+            ? { status: 503, json: { private: "PRIVATE-INVENTORY-CANARY" } }
+            : { json: { ...inventory("running"), resources: [{ ...inventory("running").resources[0], display_name: { private: "PRIVATE-INVENTORY-CANARY" } }] } };
         await page.route("**/api/v1/providers", route => route.fulfill({ json: providers.map(p => ({ ...p, capabilities: ["resources"] })) }));
         await page.route("**/api/v1/providers/proxmox/resources", route => route.fulfill(initialFailure
-            ? { status: 503, json: { detail: "unavailable" } } : { json: inventory("running") }));
+            ? failedResponse() : { json: inventory("running") }));
         await page.route("**/api/v1/providers/proxmox/management", route => route.fulfill({ json: { ...management, resources: [{ ...management.resources[0],
             intent_status: "configured", intent_reason: "matching_active_intent", expectation, record_version: 1,
         }] } }));
@@ -26,7 +29,7 @@ for (const width of [320, 390, 1280]) for (const initialFailure of [false, true]
             expect(route.request().postData()).toBeNull();
             refreshes += 1;
             if (pending) await new Promise<void>(resolve => { finish = resolve; });
-            return route.fulfill(refreshes === 1 ? { status: 503, json: { private: "PRIVATE-INVENTORY-CANARY" } } : { json: inventory("stopped") });
+            return route.fulfill(refreshes === 1 ? failedResponse() : { json: inventory("stopped") });
         });
         await page.goto("/providers/proxmox");
         const row = page.getByTestId("resource-row-qemu-110");

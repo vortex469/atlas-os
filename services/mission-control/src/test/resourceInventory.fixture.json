@@ -1,0 +1,274 @@
+[
+  {
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "refreshed_at": "2026-10-27T00:00:00Z",
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "110",
+        "display_name": "Resource 110",
+        "resource_type": "qemu",
+        "current_state": "running",
+        "identity": null,
+        "expectation": {
+          "value": null,
+          "label": "Needs Review",
+          "state": "needs_review",
+          "authority": "legacy_policy",
+          "reason": "no_legacy_policy",
+          "record_version": null,
+          "legacy_review_available": false,
+          "legacy_expectation": null,
+          "replacement_detected": false,
+          "mutation_available": false,
+          "allowed_values": [
+            {
+              "value": "running",
+              "label": "Running",
+              "description": "",
+              "terminal": false
+            }
+          ]
+        },
+        "configured": false,
+        "missing": false,
+        "needs_review": true,
+        "metadata": {
+          "vmid": 110,
+          "future": {
+            "nested": []
+          }
+        }
+      }
+    ],
+    "summary": {
+      "total": 1,
+      "configured": 0,
+      "needs_review": 1,
+      "missing": 0,
+      "ignored": 0,
+      "by_type": {
+        "qemu": 1
+      },
+      "by_state": {
+        "running": 1
+      }
+    },
+    "metadata": {},
+    "intent_authority": "legacy_policy",
+    "intent_authority_status": "available"
+  },
+  {
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "refreshed_at": "2026-10-27T00:00:00Z",
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "111",
+        "display_name": "Resource 111",
+        "resource_type": "qemu",
+        "current_state": "running",
+        "identity": null,
+        "expectation": {
+          "value": "running",
+          "label": "Expected running",
+          "state": "configured",
+          "authority": "provider_intent",
+          "reason": "matching_active_intent",
+          "record_version": 1,
+          "legacy_review_available": false,
+          "legacy_expectation": null,
+          "replacement_detected": false,
+          "mutation_available": false,
+          "allowed_values": [
+            {
+              "value": "running",
+              "label": "Running",
+              "description": "",
+              "terminal": false
+            }
+          ]
+        },
+        "configured": true,
+        "missing": false,
+        "needs_review": false,
+        "metadata": {
+          "vmid": 111,
+          "future": {
+            "nested": []
+          }
+        }
+      },
+      {
+        "provider_id": "proxmox",
+        "resource_id": "112",
+        "display_name": "Resource 112",
+        "resource_type": "qemu",
+        "current_state": "running",
+        "identity": null,
+        "expectation": {
+          "value": "ignored",
+          "label": "Expected ignored",
+          "state": "ignored",
+          "authority": "provider_intent",
+          "reason": "matching_active_intent",
+          "record_version": 1,
+          "legacy_review_available": false,
+          "legacy_expectation": null,
+          "replacement_detected": false,
+          "mutation_available": false,
+          "allowed_values": [
+            {
+              "value": "running",
+              "label": "Running",
+              "description": "",
+              "terminal": false
+            }
+          ]
+        },
+        "configured": true,
+        "missing": false,
+        "needs_review": false,
+        "metadata": {
+          "vmid": 112,
+          "future": {
+            "nested": []
+          }
+        }
+      },
+      {
+        "provider_id": "proxmox",
+        "resource_id": "113",
+        "display_name": "Resource 113",
+        "resource_type": "qemu",
+        "current_state": "running",
+        "identity": null,
+        "expectation": {
+          "value": null,
+          "label": "Needs Review",
+          "state": "unsupported",
+          "authority": "provider_intent",
+          "reason": "resource_type_unsupported",
+          "record_version": null,
+          "legacy_review_available": false,
+          "legacy_expectation": null,
+          "replacement_detected": false,
+          "mutation_available": false,
+          "allowed_values": [
+            {
+              "value": "running",
+              "label": "Running",
+              "description": "",
+              "terminal": false
+            }
+          ]
+        },
+        "configured": false,
+        "missing": false,
+        "needs_review": false,
+        "metadata": {
+          "vmid": 113,
+          "future": {
+            "nested": []
+          }
+        }
+      }
+    ],
+    "summary": {
+      "total": 3,
+      "configured": 2,
+      "needs_review": 0,
+      "missing": 0,
+      "ignored": 1,
+      "by_type": {
+        "qemu": 3
+      },
+      "by_state": {
+        "running": 3
+      }
+    },
+    "metadata": {},
+    "intent_authority": "provider_intent",
+    "intent_authority_status": "available"
+  },
+  {
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "refreshed_at": "2026-10-27T00:00:00Z",
+    "resources": [
+      {
+        "provider_id": "proxmox",
+        "resource_id": "114",
+        "display_name": "Resource 114",
+        "resource_type": "qemu",
+        "current_state": "running",
+        "identity": null,
+        "expectation": {
+          "value": null,
+          "label": "Needs Review",
+          "state": "unavailable",
+          "authority": "provider_intent",
+          "reason": "authority_store_unavailable",
+          "record_version": null,
+          "legacy_review_available": false,
+          "legacy_expectation": null,
+          "replacement_detected": false,
+          "mutation_available": false,
+          "allowed_values": [
+            {
+              "value": "running",
+              "label": "Running",
+              "description": "",
+              "terminal": false
+            }
+          ]
+        },
+        "configured": false,
+        "missing": false,
+        "needs_review": false,
+        "metadata": {
+          "vmid": 114,
+          "future": {
+            "nested": []
+          }
+        }
+      }
+    ],
+    "summary": {
+      "total": 1,
+      "configured": 0,
+      "needs_review": 0,
+      "missing": 0,
+      "ignored": 0,
+      "by_type": {
+        "qemu": 1
+      },
+      "by_state": {
+        "running": 1
+      }
+    },
+    "metadata": {},
+    "intent_authority": "provider_intent",
+    "intent_authority_status": "unavailable"
+  },
+  {
+    "provider_id": "proxmox",
+    "provider_name": "Proxmox",
+    "refreshed_at": "2026-10-27T00:00:00",
+    "resources": [],
+    "summary": {
+      "total": 0,
+      "configured": 0,
+      "needs_review": 0,
+      "missing": 0,
+      "ignored": 0,
+      "by_type": {},
+      "by_state": {}
+    },
+    "metadata": {},
+    "intent_authority": "legacy_policy",
+    "intent_authority_status": "available"
+  }
+]
