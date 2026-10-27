@@ -20,15 +20,22 @@ function formatLabel(value: string): string {
         .join(" ");
 }
 
+function providerAddress(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    try {
+        const url = new URL(value);
+        return url.protocol === "https:" || url.protocol === "http:" ? url.origin : null;
+    } catch {
+        return null;
+    }
+}
+
 export function ProviderOverview({
     provider,
     stale = false,
 }: ProviderOverviewProps) {
     const state = healthState(provider.health.status);
-    const endpoint =
-        typeof provider.health.details.url === "string"
-            ? provider.health.details.url
-            : null;
+    const address = providerAddress(provider.health.details.url);
 
     return (
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-8">
@@ -151,14 +158,14 @@ export function ProviderOverview({
                     </div>
                 </div>
 
-                {endpoint && (
+                {address && (
                     <div className="mt-6 border-t border-slate-800 pt-6">
                         <p className="text-xs uppercase tracking-wider text-slate-500">
-                            Health Endpoint
+                            Provider address
                         </p>
 
                         <p className="mt-2 break-all font-mono text-sm text-slate-300">
-                            {endpoint}
+                            {address}
                         </p>
                     </div>
                 )}
