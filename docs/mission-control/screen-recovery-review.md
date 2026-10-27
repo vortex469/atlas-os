@@ -419,3 +419,22 @@ approval remains recorded; a successful read only restores the separate action.
 Earlier stages do not warn about commit requests that have not been created yet.
 Commit approval wording describes the operator's decision rather than internal
 HTTP payload fields. Backend approval binding and commit execution are unchanged.
+
+Verification approval and verification resume now wait for an identified,
+readable public plan summary. A null plan ID is the existing Agent sentinel for
+no plan. Mission Control checks the current display DTO's ID, status, check lists
+and nullable metadata before rendering it. Nullable metadata and empty check
+lists remain compatible when a plan is identified; readiness still belongs to
+Agent's exact approval boundary.
+
+An unreadable plan at the verification approval stage offers Check verification
+plan through the existing workflow GET. A successful read restores the separate
+action without running checks. Earlier stages keep a plain empty state rather
+than an alert about a plan that has not been created yet. Approval feedback for
+verification and commit only suggests Resume when the corresponding review data
+is available; recorded approvals remain visible when it is not.
+
+Browser fixtures cover read-only recovery before/after approval at phone and
+desktop widths. Two additional fixtures allow one exact synthetic approval POST,
+then return unavailable review data and verify that no resume is submitted or
+suggested. They never run verification or commit an actual repository change.
