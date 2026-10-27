@@ -12,19 +12,19 @@ export function Forge() {
         useState<DeploymentAnalysisResponse | null>(null);
 
     return (
-        <main className="mx-auto max-w-7xl space-y-8 p-8">
+        <main className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
             <header>
                 <h1 className="text-3xl font-bold text-slate-100">
                     Atlas Forge
                 </h1>
 
                 <p className="mt-2 text-slate-400">
-                    Analyze, understand, and prepare deployments before
-                    execution.
+                    Review a Docker Compose document and a proposed plan.
+                    Changes require a separately approved workflow.
                 </p>
             </header>
 
-            <ComposeEditor onAnalysis={setResult} />
+            <ComposeEditor onAnalysis={setResult} analysisAvailable={Boolean(result)} />
 
             {result && (
                 <div className="space-y-6">
