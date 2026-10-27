@@ -345,6 +345,48 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
 
+    it.each(["ready", "failed", "revoked"] as const)("pauses saves during a private permissions recheck ending %s", async outcome => {
+        const user = userEvent.setup();
+        let finish!: (value: ProviderManagementV3) => void;
+        let fail!: (error: Error) => void;
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValueOnce(management())
+            .mockImplementationOnce(() => new Promise((resolve, reject) => { finish = resolve; fail = reject; }));
+        await renderResources();
+        await user.selectOptions(screen.getByRole("combobox"), "ignored");
+        await user.click(screen.getByRole("checkbox"));
+        expect(screen.getByRole("button", { name: /^Save$/ })).toBeEnabled();
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        await waitFor(() => expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(screen.queryByText(/Last reported:/)).not.toBeInTheDocument());
+        expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled();
+        expect(screen.getByRole("combobox")).toHaveValue("ignored");
+        expect(screen.getByRole("checkbox")).toBeChecked();
+        expect(screen.getByText("Checking editing permissions. Your draft is kept; saving is paused.")).toBeInTheDocument();
+        if (outcome === "failed") {
+            await act(async () => fail(new Error("private failure")));
+            expect(await screen.findByText("Your editing permissions could not be checked.")).toBeInTheDocument();
+            expect(screen.queryByRole("button", { name: /^Save$/ })).not.toBeInTheDocument();
+            await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+            await waitFor(() => expect(screen.getByRole("combobox")).toBeEnabled());
+            expect(screen.getByRole("combobox")).toHaveValue("");
+            await user.selectOptions(screen.getByRole("combobox"), "ignored");
+            expect(screen.getByRole("checkbox")).not.toBeChecked();
+            expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled();
+        } else {
+            await act(async () => finish(management(outcome === "revoked" ? { caller_can_mutate: false } : {})));
+            if (outcome === "revoked") {
+                expect(await screen.findByText("You do not have permission to edit monitoring expectations.")).toBeInTheDocument();
+                expect(screen.queryByRole("button", { name: /^Save$/ })).not.toBeInTheDocument();
+            } else {
+                await waitFor(() => expect(screen.getByRole("button", { name: /^Save$/ })).toBeEnabled());
+                expect(screen.getByRole("combobox")).toHaveValue("ignored");
+                expect(screen.getByRole("checkbox")).toBeChecked();
+            }
+        }
+        expect(screen.queryByText("Checking editing permissions. Your draft is kept; saving is paused.")).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
     it("distinguishes an edited draft from the last confirmed save", async () => {
         const saved = { intent_status: "configured" as const, intent_reason: "matching_active_intent" as const, expectation: "running" as const, record_version: 1 };
         vi.mocked(getProviderManagement).mockResolvedValueOnce(publicManagement()).mockResolvedValue(publicManagement(saved));

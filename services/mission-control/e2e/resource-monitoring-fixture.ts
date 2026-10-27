@@ -24,7 +24,7 @@ export function operatorManagement(state: ProviderManagementV2 = management) {
         resources: state.resources.map(resource => {
             const { mutation_available, ...facts } = resource;
             void mutation_available;
-            return { ...facts, resource_live: !resource.missing, provider_intent_mutation_supported: true,
+            return { ...facts, grants_permission: false, resource_live: !resource.missing, provider_intent_mutation_supported: true,
                 mutation_readiness: "ready", editable_in_principle: true, caller_can_mutate: true };
         }),
     };

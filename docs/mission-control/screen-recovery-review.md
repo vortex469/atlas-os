@@ -270,3 +270,12 @@ current descriptor and resource. Successful unchanged reloads preserve drafts;
 failed reads reset drafts and suppression acknowledgements. Browser checks cover
 HTTP and malformed-success failures, pending reads and recovery at phone and
 desktop widths with only the two exact mocked discovery-refresh requests.
+
+Permission rechecks now pause monitoring edits even when the public descriptor
+has already refreshed. The draft remains visible through a successful unchanged
+recheck, with a short explanation for disabled controls. A save callback must
+reference the latest successful private read and resource. Failed or revoked
+permissions remove editing and reset suppression acknowledgement on recovery.
+Browser coverage includes pending, ready, failed and revoked rechecks, plus
+session expiry before a late private reply; these fixtures never submit a policy
+write and allow only their exact synthetic discovery-refresh requests.

@@ -196,14 +196,78 @@ export async function getProviderManagement(providerId: string): Promise<Provide
     return parseProviderManagementV2(response.data);
 }
 
+export function parseProviderManagementV3(value: unknown, requestedProviderId: string): ProviderManagementV3 {
+    const root = object(value, ["schema_version", "provider_id", "provider_name", "sections", "resource_types", "resources",
+        "provider_intent_activation", "provider_intent_authority_status", "caller_has_provider_intent_update", "grants_permission", "grants_execution"], "operator management");
+    if (root.schema_version !== "provider-management-v3" || root.provider_id !== requestedProviderId) throw new Error("Operator management provider or schema is invalid.");
+    if (!Array.isArray(root.resources) || !Array.isArray(root.resource_types)) throw new Error("Operator management collections are invalid.");
+    const callerHasPermission = boolean(root.caller_has_provider_intent_update, "operator capability");
+    const privateRows = root.resources.map(entry => {
+        const row = object(entry, ["provider_id", "resource_id", "resource_type", "display_name", "current_state", "missing", "resource_live", "identity_assurance", "management_fingerprint", "intent_authority", "intent_status", "intent_reason", "expectation", "record_version", "legacy_review_available", "legacy_expectation", "replacement_detected", "provider_intent_mutation_supported", "mutation_readiness", "editable_in_principle", "caller_can_mutate", "operationally_requestable", "grants_permission", "grants_execution"], "operator resource");
+        const { resource_live, provider_intent_mutation_supported, mutation_readiness, editable_in_principle, caller_can_mutate, grants_permission, ...publicFields } = row;
+        return {
+            publicFields: { ...publicFields, mutation_available: false },
+            resource_live: boolean(resource_live, "live resource"),
+            provider_intent_mutation_supported: boolean(provider_intent_mutation_supported, "mutation support"),
+            mutation_readiness: enumValue<ProviderManagementV3["resources"][number]["mutation_readiness"]>(mutation_readiness,
+                new Set(["ready", "not_activated", "authority_unavailable", "store_migration_required", "store_unavailable", "resource_missing", "identity_unavailable", "resource_type_unsupported"]), "mutation readiness"),
+            editable_in_principle: boolean(editable_in_principle, "editability"),
+            caller_can_mutate: boolean(caller_can_mutate, "caller mutation"),
+            grants_permission: falseValue(grants_permission, "resource permission"),
+        };
+    });
+    const privateTypes = root.resource_types.map(entry => {
+        const item = object(entry, ["provider_id", "resource_type", "resource_readable", "authoritative_identity_supported", "provider_intent_capability_supported", "provider_intent_mutation_supported", "supported_expectations", "operationally_requestable", "grants_permission", "grants_execution"], "operator resource support");
+        const { provider_intent_mutation_supported, ...publicFields } = item;
+        return { publicFields: { ...publicFields, provider_intent_mutation_available: false },
+            supported: boolean(provider_intent_mutation_supported, "type mutation support") };
+    });
+    const { caller_has_provider_intent_update, ...publicRoot } = root;
+    void caller_has_provider_intent_update;
+    const parsed = parseProviderManagementV2({ ...publicRoot, schema_version: "provider-management-v2",
+        resources: privateRows.map(row => row.publicFields), resource_types: privateTypes.map(item => item.publicFields) });
+    const resources: ProviderManagementV3["resources"] = parsed.resources.map((row, index) => {
+        const { mutation_available, ...facts } = row;
+        void mutation_available;
+        const { publicFields, ...privateFields } = privateRows[index];
+        void publicFields;
+        const result = { ...facts, ...privateFields };
+        const ready = result.mutation_readiness === "ready";
+        if (result.resource_id.includes("\u0000") || result.resource_type.includes("\u0000")) throw new Error("Operator resource coordinate is ambiguous.");
+        if (result.record_version !== null && !Number.isSafeInteger(result.record_version)) throw new Error("Operator record version is not browser safe.");
+        if (result.resource_live === result.missing
+            || (!result.provider_intent_mutation_supported && result.mutation_readiness !== "resource_type_unsupported")
+            || result.editable_in_principle !== ready
+            || (ready && !(result.provider_id === "proxmox" && result.resource_type === "qemu" && result.provider_intent_mutation_supported && result.resource_live && result.identity_assurance === "authoritative"))
+            || (result.caller_can_mutate && (!result.editable_in_principle || !callerHasPermission))
+            || ((result.intent_status === "configured" || result.intent_status === "missing") !== (result.record_version !== null))
+            || (ready && (parsed.provider_intent_activation !== "activated" || parsed.provider_intent_authority_status !== "available"))) throw new Error("Operator resource readiness contradicts its context.");
+        return result;
+    });
+    const keys = resources.map(row => `${row.provider_id}\u0000${row.resource_type}\u0000${row.resource_id}`);
+    if (JSON.stringify(keys) !== JSON.stringify([...keys].sort((left, right) => {
+        const a = Array.from(left, c => c.codePointAt(0) ?? 0), b = Array.from(right, c => c.codePointAt(0) ?? 0);
+        for (let index = 0; index < Math.min(a.length, b.length); index += 1) if (a[index] !== b[index]) return a[index] - b[index];
+        return a.length - b.length;
+    }))) throw new Error("Operator resources must be ordered.");
+    const resourceTypes: ProviderManagementV3["resource_types"] = parsed.resource_types.map((item, index) => {
+        const { provider_intent_mutation_available, ...facts } = item;
+        void provider_intent_mutation_available;
+        const supported = privateTypes[index].supported;
+        if (supported && !(item.provider_id === "proxmox" && item.resource_type === "qemu" && item.resource_readable && item.authoritative_identity_supported && item.provider_intent_capability_supported && item.supported_expectations.length > 0)) throw new Error("Operator type mutation support is invalid.");
+        return { ...facts, provider_intent_mutation_supported: supported };
+    });
+    return { ...parsed, schema_version: "provider-management-v3", caller_has_provider_intent_update: callerHasPermission, resources, resource_types: resourceTypes };
+}
+
 export async function getAuthenticatedProviderManagement(
     providerId: string,
 ): Promise<ProviderManagementV3> {
-    const response = await atlas.get<ProviderManagementV3>(
+    const response = await atlas.get<unknown>(
         `/providers/${encodeURIComponent(providerId)}/management/operator`,
         { withCredentials: true },
     );
-    return response.data;
+    return parseProviderManagementV3(response.data, providerId);
 }
 
 export async function putProviderMonitoringIntent(

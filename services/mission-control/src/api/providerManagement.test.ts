@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { atlas } from "./atlas";
+import operatorFixture from "../test/operatorManagement.fixture.json";
 import {
     getAuthenticatedProviderManagement,
     getProviderManagement,
@@ -16,12 +17,23 @@ describe("provider management API", () => {
     beforeEach(() => vi.clearAllMocks());
 
     it("loads authenticated v3 management with session cookies", async () => {
-        vi.mocked(atlas.get).mockResolvedValue({ data: { schema_version: "provider-management-v3" } });
+        vi.mocked(atlas.get).mockResolvedValue({ data: operatorFixture[0] });
         await getAuthenticatedProviderManagement("proxmox");
         expect(atlas.get).toHaveBeenCalledWith(
             "/providers/proxmox/management/operator",
             { withCredentials: true },
         );
+    });
+
+    it.each([
+        { ...operatorFixture[0], caller_has_provider_intent_update: "true" },
+        { ...operatorFixture[0], provider_id: "docker" },
+        { ...operatorFixture[0], resources: [{ ...operatorFixture[0].resources[0], caller_can_mutate: { value: true } }] },
+        { schema_version: "provider-management-v3" },
+    ])("rejects malformed or unrelated private responses before publishing permission", async data => {
+        vi.mocked(atlas.get).mockResolvedValue({ data });
+        await expect(getAuthenticatedProviderManagement("proxmox")).rejects.toThrow();
+        expect(atlas.put).not.toHaveBeenCalled();
     });
 
     it("sends only the bounded mutation body with CSRF and cookies", async () => {
