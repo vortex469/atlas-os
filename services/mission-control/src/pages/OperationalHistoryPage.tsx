@@ -13,6 +13,7 @@ import type {
     WorkflowOperationalLifecycle,
     WorkflowRecoveryDiagnostic,
     WorkflowSummary,
+    WorkflowListResponse,
 } from "../types/atlasAgent";
 
 const PAGE_SIZE = 10;
@@ -28,6 +29,39 @@ function formatTimestamp(value: string | null): string {
     if (!value) return "Not reported";
     const parsed = evidenceTimestamp(value);
     return parsed === null || parsed > Date.now() ? "Unknown time" : new Date(parsed).toLocaleString();
+}
+
+function isReadableHistoryRecord(workflow: WorkflowSummary): boolean {
+    if (!workflow || typeof workflow !== "object" || Array.isArray(workflow)
+        || typeof workflow.workflow_id !== "string" || !workflow.workflow_id.trim()
+        || workflow.workflow_id === "." || workflow.workflow_id === ".."
+        || typeof workflow.workflow_state !== "string"
+        || workflow.effect_kind !== "operational_action") return false;
+    try {
+        encodeURIComponent(workflow.workflow_id);
+    } catch {
+        return false;
+    }
+    return [workflow.execution_intent, workflow.target_id]
+        .every(value => value === null || value === undefined || typeof value === "string");
+}
+
+function validateHistoryPage(page: WorkflowListResponse, offset: number): void {
+    if (!page || typeof page !== "object" || Array.isArray(page) || !Array.isArray(page.items)
+        || !Number.isSafeInteger(page.total) || page.total < 0 || page.limit !== PAGE_SIZE || page.offset !== offset
+        || page.items.length > PAGE_SIZE || page.items.some(item => !isReadableHistoryRecord(item))
+        || new Set(page.items.map(item => item.workflow_id)).size !== page.items.length
+        || (offset < page.total && page.items.length !== Math.min(PAGE_SIZE, page.total - offset))
+        || (offset >= page.total && page.items.length !== 0)) {
+        throw new Error("Maintenance history page is unreadable or inconsistent.");
+    }
+}
+
+function isReadableLifecycle(lifecycle: WorkflowOperationalLifecycle | null, workflowId: string): boolean {
+    return lifecycle !== null && typeof lifecycle === "object" && !Array.isArray(lifecycle)
+        && lifecycle.workflow_id === workflowId
+        && [lifecycle.target_label, lifecycle.verification_status]
+            .every(value => value === null || value === undefined || typeof value === "string");
 }
 
 export function OperationalHistoryPage() {
@@ -59,6 +93,7 @@ export function OperationalHistoryPage() {
                 offset,
             });
             if (generation !== requestGeneration.current) return;
+            validateHistoryPage(page, offset);
             const evidence = await Promise.all(
                 page.items.map(async (workflow) => {
                     const [lifecycle, diagnostic] = await Promise.all([
@@ -67,7 +102,7 @@ export function OperationalHistoryPage() {
                             .then((value) => ({ value, unavailable: false }))
                             .catch(() => ({ value: null, unavailable: true })),
                     ]);
-                    const matchingLifecycle = lifecycle?.workflow_id === workflow.workflow_id ? lifecycle : null;
+                    const matchingLifecycle = isReadableLifecycle(lifecycle, workflow.workflow_id) ? lifecycle : null;
                     const matchingDiagnostic = diagnostic.value?.correlation?.workflow_id === workflow.workflow_id ? diagnostic.value : null;
                     return { lifecycle: matchingLifecycle, diagnostic: matchingDiagnostic,
                         diagnosticUnavailable: diagnostic.unavailable || (diagnostic.value !== null && matchingDiagnostic === null) };
