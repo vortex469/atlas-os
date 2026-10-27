@@ -390,3 +390,18 @@ blocked workflows keep their own explanation. Backend stages, result fields,
 approval checks, refresh requests and execution controls are unchanged. Tests
 cover every current terminal execution status, unknown future values, conflicting
 state/result observations, and read-only refresh at phone and desktop widths.
+
+Repository implementation decisions now wait for a readable exact-request
+summary. Mission Control checks the existing public DTO's request identity,
+tool, working directory, repository, file list and nullable translator metadata
+before rendering it. Missing or malformed summaries show Check request instead
+of broken fields, implementation approval/rejection or implementation resume.
+Empty file lists and nullable translator metadata remain valid. Additional
+metadata is tolerated; this does not introduce a new backend contract.
+
+Check request performs the existing workflow GET refresh, pauses while that read
+is pending and never replays a decision. A successful read can restore the
+separate approval or resume action. Existing approvals remain recorded while the
+request is unavailable. Later verification/commit decisions and original-worker
+result reconciliation keep their existing boundaries. The implementation request
+explanation now uses plain language instead of listing internal editors and argv.

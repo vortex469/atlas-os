@@ -16,8 +16,10 @@ import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
 import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePanel";
 import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
 import { ExecutionTimeline } from "./ExecutionTimeline";
+import { repositoryImplementationRequest } from "../utils/repositoryImplementationRequest";
 import type {
     WorkflowDetailResponse,
+    WorkflowImplementationRequestSummary,
     WorkflowCommitApprovalResponse,
     WorkflowImplementationApprovalResponse,
     WorkflowImplementationDecision,
@@ -258,6 +260,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     const isOperational = workflow.effect_kind === "operational_action";
     const isRepository = !isOperational;
+    const implementationRequest = isRepository ? repositoryImplementationRequest(workflow.implementation_request) : null;
     const actionRequest = isOperational ? operationalRequest(workflow.operational_action_request) : null;
     const operationalApprovalReady = !isOperational || (actionRequest !== null
         && Array.isArray(workflow.approval_presentations) && workflow.approval_presentations.some((approval) =>
@@ -270,7 +273,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const canDecide =
         workflow.workflow_state === "awaiting_implementation_approval"
         && workflow.implementation_approval_status === "pending"
-        && operationalApprovalReady;
+        && operationalApprovalReady
+        && (isOperational || implementationRequest !== null);
     const canDecideVerification =
         isRepository
         &&
@@ -285,7 +289,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const canResumeImplementation =
         workflow.workflow_state === "awaiting_implementation_approval"
         && workflow.implementation_approval_status === "approved"
-        && (!isOperational || actionRequest !== null);
+        && (isOperational ? actionRequest !== null : implementationRequest !== null);
     const canResumeVerification =
         isRepository
         &&
@@ -373,7 +377,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
 
 
-            {isRepository && !needsPreparation && <ImplementationRequestSection workflow={workflow} />}
+            {isRepository && !needsPreparation && <ImplementationRequestSection request={implementationRequest} onRefresh={refreshWorkflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} />}
 
             {isOperational && (
                 <>
@@ -481,6 +485,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         ? "Exact action approval is recorded."
                         : isOperational && workflow.workflow_state === "awaiting_implementation_approval" && !operationalApprovalReady
                         ? "Exact action approval is unavailable. Refresh to check the request and its approval status."
+                        : isRepository && workflow.workflow_state === "awaiting_implementation_approval" && implementationRequest === null
+                        ? workflow.implementation_approval_status === "approved"
+                            ? "Implementation approval is recorded. The exact request must be available before running this change."
+                            : "Approval is paused until the exact implementation request is available."
                         : `Approval controls are unavailable because this workflow is ${formatLabel(workflow.workflow_state)}.`}</p>
                 )}
                 {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">Submitting approval...</p>}
@@ -556,13 +564,16 @@ function OperationalActionRequestSection({ request }: { request: WorkflowOperati
     </section>;
 }
 
-function ImplementationRequestSection({ workflow }: { workflow: WorkflowDetailResponse }) {
-    const request = workflow.implementation_request;
-
+function ImplementationRequestSection({ request, onRefresh, isRefreshing, refreshDisabled }: {
+    request: WorkflowImplementationRequestSummary | null;
+    onRefresh: () => void;
+    isRefreshing: boolean;
+    refreshDisabled: boolean;
+}) {
     return (
         <section aria-labelledby="implementation-request-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-            <h2 id="implementation-request-heading" className="text-lg font-semibold text-white">Immutable implementation request</h2>
-            <p className="mt-2 text-sm text-slate-400">Read-only summary. Commands, argv, shell editors, environment editing, repository editing, and path editing are intentionally not rendered.</p>
+            <h2 id="implementation-request-heading" className="text-lg font-semibold text-white">Implementation request</h2>
+            <p className="mt-2 text-sm text-slate-400">Review the exact request before approving it. Approval and running the change are separate steps.</p>
             {request ? (
                 <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Tool" value={request.tool} />
@@ -570,10 +581,13 @@ function ImplementationRequestSection({ workflow }: { workflow: WorkflowDetailRe
                     <Detail label="Affected files" value={request.affected_files.length > 0 ? request.affected_files.join(", ") : "None reported"} />
                     <Detail label="Repository" value={request.repository} />
                     <Detail label="Translator version" value={request.translator_version ?? "Not exposed"} />
-                    <Detail label="Immutable request ID" value={request.immutable_request_id} />
+                    <Detail label="Request ID" value={request.immutable_request_id} />
                 </dl>
             ) : (
-                <p role="alert" className="mt-4 text-sm text-amber-100">Immutable implementation request is not available for this workflow.</p>
+                <div role="alert" className="mt-4 text-sm text-amber-100">
+                    <p>The exact request is unavailable. Check it again before approving or running this change.</p>
+                    <button type="button" onClick={onRefresh} disabled={refreshDisabled} className="mc-control mc-focusable mt-3 px-3 py-2 font-semibold disabled:opacity-50">{isRefreshing ? "Checking request..." : "Check request"}</button>
+                </div>
             )}
         </section>
     );
