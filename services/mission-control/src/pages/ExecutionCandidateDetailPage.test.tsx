@@ -328,6 +328,37 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
     });
 
+    it.each(["workflow-1", null])("reviews an existing workflow without treating it as a planning failure (reference: %s)", async workflow_session_id => {
+        mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse({ status: "workflow_created", planning_allowed: false, workflow_session_id }));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        const link = await screen.findByRole("link", { name: workflow_session_id ? "Open existing workflow" : "Browse workflows" });
+        expect(link).toHaveAttribute("href", workflow_session_id ? "/workflows/workflow-1" : "/workflows");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("reviews the linked workflow when a persisted plan is already converted", async () => {
+        mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse({ status: "plan_ready", planning_allowed: true, workflow_session_id: "workflow-1" }));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        expect(await screen.findByRole("link", { name: "Open existing workflow" })).toHaveAttribute("href", "/workflows/workflow-1");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("offers saved-plan review without reporting a denied planning action as failure", async () => {
+        mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse({ status: "plan_ready", planning_allowed: false }));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        expect(await screen.findByRole("link", { name: "Review saved plan" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
     it("uses HTTP status instead of error wording to classify a missing proposal", async () => {
         mockedGetExecutionCandidate.mockRejectedValue(Object.assign(new Error("A dependency was not found"), {
             isAxiosError: true, response: { status: 503 },

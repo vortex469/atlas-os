@@ -136,6 +136,7 @@ def _candidate_planning_session_from_workflow(
         intake_status = CoreCandidatePlanningIntakeStatus.NOT_FOUND
     return CandidatePlanResponse(
         session_id=metadata.candidate_planning_session_id,
+        workflow_session_id=workflow_session.identifier,
         candidate_id=metadata.candidate_id,
         status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
         planning_allowed=False,
@@ -347,6 +348,7 @@ class CandidatePlanningResponse(BaseModel):
     planning_failure: CandidatePlanningFailureResponse | None = None
     predecessor_session_id: str | None = None
     successor_session_id: str | None = None
+    workflow_session_id: str | None = None
 
 
 class CandidatePlanningErrorDetail(BaseModel):
@@ -448,6 +450,7 @@ def _to_response(response: CandidatePlanResponse) -> CandidatePlanningResponse:
         planning_failure=_failure_response(response.planning_failure),
         predecessor_session_id=response.predecessor_session_id,
         successor_session_id=response.successor_session_id,
+        workflow_session_id=response.workflow_session_id,
     )
 
 
@@ -550,6 +553,10 @@ async def get_candidate_planning_session(
             candidate_fingerprint=session.candidate_fingerprint,
             unsupported_reason=session.unsupported_reason,
             plan=session.plan,
+            operational_plan=session.operational_plan,
+            predecessor_session_id=session.predecessor_session_id,
+            successor_session_id=session.successor_session_id,
+            workflow_session_id=session.workflow_session_id,
             planning_failure=session.planning_failure,
         )
     )

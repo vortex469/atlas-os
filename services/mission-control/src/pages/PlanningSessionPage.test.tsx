@@ -102,6 +102,36 @@ function renderPage(path = "/candidate-planning/candidate-plan-1") {
 }
 
 describe("PlanningSessionPage", () => {
+    it.each(["workflow-1", null])("opens an existing workflow using reads only (reference: %s)", async workflow_session_id => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "workflow_created", planning_allowed: false, workflow_session_id }));
+        renderPage();
+        const link = await screen.findByRole("link", { name: workflow_session_id ? "Open existing workflow" : "Browse workflows" });
+        expect(link).toHaveAttribute("href", workflow_session_id ? "/workflows/workflow-1" : "/workflows");
+        expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+    });
+
+    it("keeps a converted maintenance plan available for review without offering another workflow", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan(), workflow_session_id: "workflow-1" }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Maintenance plan" });
+        expect(screen.getByRole("link", { name: "Open existing workflow" })).toHaveAttribute("href", "/workflows/workflow-1");
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+    });
+
+    it.each(["", "..", "invalid\u0000id", { unexpected: true }])("does not build a workflow link from an unusable reference: %j", async reference => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "workflow_created", planning_allowed: false, workflow_session_id: reference as string }));
+        renderPage();
+        expect(await screen.findByRole("link", { name: "Browse workflows" })).toHaveAttribute("href", "/workflows");
+        expect(screen.queryByRole("link", { name: "Open existing workflow" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
     it("renders the existing maintenance plan without requesting a repository plan", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan() }));
         renderPage();

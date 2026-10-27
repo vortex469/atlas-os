@@ -12,6 +12,7 @@ import type { CandidatePlanningResponse } from "../types/atlasAgent";
 import type { ExecutionCandidate } from "../types/executionCandidates";
 import { evidenceTimestamp } from "../utils/healthPresentation";
 import { PlanningProgress } from "../components/PlanningProgress";
+import { existingWorkflowPath, hasExistingWorkflow } from "../utils/existingWorkflow";
 
 export function ExecutionCandidateDetailPage() {
     const { candidateId = "" } = useParams<{ candidateId: string }>();
@@ -233,15 +234,22 @@ function PageFrame({ children }: { children: React.ReactNode }) {
 
 function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
     const message = planningMessage(response);
-    const isError = !response.planning_allowed || response.planning_failure !== null || response.session_id === null;
+    const existingWorkflow = hasExistingWorkflow(response);
+    const workflowPath = existingWorkflowPath(response);
+    const savedPlan = response.status === "plan_ready" && response.session_id !== null && response.planning_failure === null;
+    const isError = response.planning_failure !== null || response.session_id === null || (!existingWorkflow && !savedPlan && !response.planning_allowed);
 
     return (
         <div role={isError ? "alert" : "status"} className={["mt-4 rounded-lg border p-4", isError ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"].join(" ")}>
             <p className={isError ? "font-semibold text-amber-200" : "font-semibold text-emerald-200"}>{message}</p>
             {response.session_id && <p className="mt-1 break-all text-sm text-slate-200">Planning session ID: {response.session_id}</p>}
-            {response.session_id && (
+            {existingWorkflow ? (
+                <Link to={workflowPath ?? "/workflows"} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    {workflowPath ? "Open existing workflow" : "Browse workflows"}
+                </Link>
+            ) : response.session_id && (
                 <Link to={`/candidate-planning/${encodeURIComponent(response.session_id)}`} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    Continue planning
+                    {savedPlan ? "Review saved plan" : isError ? "Review planning details" : "Continue planning"}
                 </Link>
             )}
             <p className="mt-1 text-sm text-slate-400">Status: {formatLabel(response.status)}</p>
@@ -256,7 +264,9 @@ function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
 function planningMessage(response: CandidatePlanningResponse): string {
     if (response.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable during authoritative revalidation.";
     if (response.planning_failure?.code === "persistence_failed") return "Planning session could not be persisted.";
-    if (response.status === "ready_for_planning" && response.session_id) {
+    if (hasExistingWorkflow(response)) return "A workflow already exists for this proposal. Review its progress and any remaining approvals.";
+    if (response.status === "plan_ready" && response.session_id) return "A saved plan is available to review.";
+    if (response.status === "ready_for_planning" && response.session_id && response.planning_allowed) {
         return "Planning session created. Next step: generate a candidate plan.";
     }
     if (response.status === "unsupported_intent") return "Unsupported intent. Atlas Agent cannot plan this candidate yet.";

@@ -16,7 +16,7 @@ runtime, tag, or publish a release.
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
 | Providers | Registry and detail links work; unavailable data differs from absence; forms and late responses stay with their provider | Provider page/component tests; provider registry and route-switch browser cases in `e2e/screen-recovery.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
-| Proposals and planning | Only current search results and matching proposal/plan identities appear; proposal details support read-only retry/refresh; preparation has four simple steps | Proposal/planning page tests; `e2e/proposal-detail-recovery.spec.ts`; proposal search recovery cases; both workflow journey specs |
+| Proposals and planning | Only current search results and matching proposal/plan identities appear; proposal details support read-only retry/refresh; preparation has four simple steps | Proposal/planning page tests; `e2e/proposal-detail-recovery.spec.ts`, `e2e/existing-workflow-review.spec.ts`; proposal search recovery cases; both workflow journey specs |
 | Repository workflow | Each exact approval and resume remains separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
 | Maintenance workflow | Explicit target selection and exact request submission return a proposal; operational plan and exact verification rules precede action approval; a separate run precedes lifecycle outcome and audit | `e2e/maintenance-journey.spec.ts`; planning and workflow component tests |
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
@@ -317,3 +317,23 @@ request. A stale planning result points to the actual refresh control. Recovery
 never resubmits planning automatically and grants no execution approval. Browser
 fixtures cover initial failures, changed eligibility and one exact synthetic
 planning POST followed by read-only recovery at phone and desktop widths.
+
+
+Existing workflows can be reviewed directly from proposal results and saved
+planning sessions. Agent's planning response now includes the persisted
+`workflow_session_id` as an optional read-only reference, including orphaned
+planning-session recovery. This field grants no approval or execution authority.
+The normal planning GET also preserves the saved maintenance plan and predecessor
+and successor references that were previously omitted by its response projection.
+No planning state is created or changed by these reads.
+
+Mission Control treats a reported existing workflow as a completed planning
+outcome, keeps saved plans available for review and suppresses duplicate
+plan/workflow creation controls. Its link opens the existing `/workflows/:id`
+read view directly, avoiding the workflow-shell creation route. Older responses
+that report an existing workflow without a usable reference offer the workflow
+directory instead. A
+saved plan without a workflow offers plan review rather than a false failure.
+Tests cover persisted/orphan/legacy responses, unusable references, maintenance
+plan retention, reload and exact request allowlists at phone and desktop widths.
+These are source and simulated-browser checks, not production acceptance.

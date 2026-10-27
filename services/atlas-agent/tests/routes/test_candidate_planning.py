@@ -518,6 +518,7 @@ def test_get_candidate_planning_session_recovers_orphan_workflow(monkeypatch, tm
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "workflow_created"
+    assert payload["workflow_session_id"] == "candidate-workflow-1"
     assert payload["session_id"] == "candidate-plan-1"
     assert payload["plan"] is None
 
@@ -568,6 +569,7 @@ def test_get_candidate_planning_session_recovers_orphan_after_restart(
     assert response.status_code == 200
     payload = response.json()
     assert payload["session_id"] == workflow.candidate_metadata.candidate_planning_session_id
+    assert payload["workflow_session_id"] == workflow.identifier
     assert payload["status"] == "workflow_created"
     assert payload["plan"] is None
     assert client.app.state.container.candidate_planning_state.export_snapshot() == {}
@@ -666,3 +668,44 @@ def test_agent_operational_capability_projection_is_consistent_and_sanitized(
         }
     ]
     assert "provider_action_id" not in response.text
+
+
+def test_get_planning_preserves_saved_operational_context(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService()
+    service.session = replace(
+        session_with_plan(tmp_path),
+        plan=None,
+        operational_plan=operational_planned_response().operational_plan,
+        status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+        planning_status=CandidatePlanningSessionStatus.WORKFLOW_CREATED,
+        workflow_session_id="candidate-workflow-1",
+        predecessor_session_id="previous-session",
+        successor_session_id="next-session",
+    )
+    client = make_client(monkeypatch, tmp_path, service)
+    response = client.get("/candidate-planning/candidate-plan-1")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["workflow_session_id"] == "candidate-workflow-1"
+    assert payload["operational_plan"]["target_fingerprint"] == "operational-target-v1:aaa"
+    assert payload["predecessor_session_id"] == "previous-session"
+    assert payload["successor_session_id"] == "next-session"
+    assert payload["planning_allowed"] is False
+    assert service.requests == []
+    assert client.app.state.container.workflow_state.export_snapshot()[3] == {}
+
+
+def test_service_response_preserves_existing_workflow_reference(tmp_path: Path) -> None:
+    from app.candidate_planning.service import _response_from_session
+
+    session = replace(session_with_plan(tmp_path), workflow_session_id="candidate-workflow-1")
+    response = _response_from_session(session)
+    assert response.workflow_session_id == session.workflow_session_id
+
+
+def test_planning_request_rejects_caller_supplied_workflow_reference(monkeypatch, tmp_path: Path) -> None:
+    service = FakeCandidatePlanningService(ready_response())
+    client = make_client(monkeypatch, tmp_path, service)
+    response = client.post("/candidate-planning", json={"candidate_id": "candidate-1", "workflow_session_id": "caller-supplied-workflow"})
+    assert response.status_code == 422
+    assert service.requests == []

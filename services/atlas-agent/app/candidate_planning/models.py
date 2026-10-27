@@ -320,6 +320,7 @@ class CandidatePlanResponse:
     planning_failure: CandidatePlanningFailure | None = None
     predecessor_session_id: str | None = None
     successor_session_id: str | None = None
+    workflow_session_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
