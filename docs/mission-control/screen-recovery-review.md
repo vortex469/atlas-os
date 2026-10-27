@@ -606,3 +606,10 @@ An uncorrelated creation response also offers the list without opening its
 returned identifier. There is no automatic submission retry, and the UI does not
 claim that a failed reply proves no proposal was created. Manual submission and
 all downstream planning, approval and execution boundaries are unchanged.
+
+The main screen labels Core-reported subsystem observations as Service health,
+so they do not imply that Core process health was checked. The first four service
+rows stay visible; More services exposes every remaining row by keyboard without
+another request. Status ordering, field allowlisting, safe text, and stale
+qualifiers use the same renderer for visible and collapsed rows. An open section
+stays open as the service count changes or a refresh retains last-known data.

@@ -96,6 +96,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     }
     const uniqueAttention = [...deduplicated.values()]
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
+    const renderService = ([name, raw]: [string, unknown]) => <div key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></div>;
     const renderAttentionItem = (item: typeof uniqueAttention[number]) => (
         <li key={item.key}>
                 {item.to.startsWith("#") ? <a href={item.to}>{item.label}</a> : <Link to={item.to}>{item.label || "Inspect condition"}</Link>}
@@ -135,10 +136,15 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <p>Core aggregate update time is not supplied.</p>
                 <Link to="/operations">Open operations →</Link>
             </Card>
-            <Card title="Core health" evidence={evidence.health}>
+            <Card title="Service health" evidence={evidence.health}>
                 {services.length === 0 && <ObservedStatus value={null} reason="No subsystem evidence reported." />}
-                {services.slice(0, 4).map(([name, raw]) => <div key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></div>)}
-                <p>{services.length > 4 ? `Showing 4 of ${services.length} reported services. ` : ""}Core process health is not separately reported.</p>
+                <p>Service statuses reported by Atlas Core.</p>
+                {services.slice(0, 4).map(renderService)}
+                {services.length > 4 && <details className="rounded-lg border border-mc-border-subtle p-3">
+                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">More services ({services.length - 4})</summary>
+                    <div className="mt-3 space-y-3">{services.slice(4).map(renderService)}</div>
+                </details>}
+                <p>Core process health is not separately reported.</p>
                 <Link to="/operations">Inspect operations →</Link>
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />

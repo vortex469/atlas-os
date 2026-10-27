@@ -30,11 +30,30 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['Atlas overall state','Core health','Worker / Execution','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['Atlas overall state','Service health','Worker / Execution','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
     });
+    it.each([false, true])("keeps every service accessible with stale=%s", (stale) => {
+        const services = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`Service ${index + 1}`, { status: "healthy", message: `Reported service ${index + 1}` }]));
+        show({ health: { data: { atlas: "healthy", services }, stale } });
+        const card = within(screen.getByRole("region", { name: "Service health" }));
+        expect(card.getByText("Service 1", { exact: true })).toBeVisible();
+        expect(card.getByText("Service 4", { exact: true })).toBeVisible();
+        expect(card.getByText("Service 9", { exact: true })).not.toBeVisible();
+        fireEvent.click(card.getByText("More services (5)", { exact: true }));
+        expect(card.getByText("Service 9", { exact: true })).toBeVisible();
+        expect(card.getByText("Reported service 9", { exact: true })).toBeVisible();
+        const last = within(card.getByText("Service 9", { exact: true }).parentElement!);
+        if (stale) {
+            expect(last.getByText(/Last-known status: Healthy/)).toBeVisible();
+            expect(last.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
+        } else expect(last.getByText("Healthy", { exact: true })).toBeVisible();
+        fireEvent.click(card.getByText("More services (5)", { exact: true }));
+        expect(card.getByText("Service 9", { exact: true })).not.toBeVisible();
+    });
+
     it("handles malformed values without success or a crash", () => {
         show({ health: { data: { atlas: {}, services: { broken: null } } }, providers: { data: [null, { health: { status: 23 } }] }, workflows: { data: { items: [null] } }, ai: { data: { health: { status: [] } } }, activity: { data: { items: [null] } } });
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
