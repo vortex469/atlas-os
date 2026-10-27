@@ -456,3 +456,11 @@ Phone and desktop fixtures cover pending and approved implementation,
 maintenance, verification and commit views, opening identifiers and progress with
 the keyboard while asserting zero mutations. Existing rejection, identity,
 pending-refresh and full repository/maintenance journeys retain their assertions.
+
+The workflow summary now names the approval for the current stage. Repository
+verification/verifying states use verification approval, and commit/committing
+states use commit approval. Implementation and maintenance states retain their
+own approval labels. Blocked, completed and unrecognized stages use neutral
+review guidance rather than presenting a past implementation approval as the
+current decision. Recorded approval details remain available below. No action
+handler, request, capability or approval/resume guard changes.

@@ -466,7 +466,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
-                        <p className="mt-1 text-sm text-slate-400">{needsPreparation ? "Request preparation is pending." : `Implementation approval status: ${formatLabel(workflow.implementation_approval_status)}`}</p>
+                        <p className="mt-1 text-sm text-slate-400">{workflowApprovalSummary(workflow, needsPreparation)}</p>
                     </div>
                     <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{needsPreparation ? "Preparation" : formatLabel(workflow.workflow_state)}</span>
                 </div>
@@ -899,4 +899,21 @@ function WorkflowFacts({ workflow }: { workflow: WorkflowDetailResponse }) {
                     <Detail label="Affected Files" value={workflow.affected_files.length > 0 ? workflow.affected_files.join(", ") : "None reported"} />
                 </dl>
     );
+}
+
+
+function workflowApprovalSummary(workflow: WorkflowDetailResponse, needsPreparation: boolean): string {
+    if (needsPreparation) return "Request preparation is pending.";
+    if (workflow.workflow_state === "blocked") return "Workflow is blocked. Review its details.";
+    if (workflow.workflow_state === "completed") return "Review the recorded workflow results.";
+    const status = (value: unknown) => typeof value === "string" && value.trim() ? formatLabel(value) : "Unknown";
+    if (["awaiting_implementation_approval", "executing"].includes(workflow.workflow_state)) {
+        const label = workflow.effect_kind === "operational_action" ? "Exact action" : "Implementation";
+        return `${label} approval status: ${status(workflow.implementation_approval_status)}`;
+    }
+    if (workflow.effect_kind !== "operational_action") {
+        if (["awaiting_verification_approval", "verifying"].includes(workflow.workflow_state)) return `Verification approval status: ${status(workflow.verification_approval_status)}`;
+        if (["awaiting_commit_approval", "committing"].includes(workflow.workflow_state)) return `Commit approval status: ${status(workflow.commit_approval_status)}`;
+    }
+    return "Review the recorded approval details.";
 }

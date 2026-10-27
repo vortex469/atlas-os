@@ -17,6 +17,8 @@ for (const width of [320, 390, 1280]) for (const mode of ['repository', 'approve
         await expect(page.getByRole('heading', {name: maintenance ? 'Review maintenance' : 'Review repository change', exact: true})).toBeVisible();
         const summary = page.getByRole('region', {name: 'Workflow summary', exact: true});
         await expect(summary.getByText(journey.workflow, {exact: true})).not.toBeVisible();
+        const approvalLabel = maintenance ? 'Exact action' : mode === 'verification' ? 'Verification' : mode === 'commit' ? 'Commit' : 'Implementation';
+        await expect(summary.getByText(`${approvalLabel} approval status: ${mode === 'approved' ? 'Approved' : 'Pending'}`, {exact: true})).toBeVisible();
         if (!later) {
             const request = page.getByRole('region', {name: maintenance ? 'Exact action request' : 'Implementation request', exact: true});
             expect(await request.evaluate(el => el.nextElementSibling?.getAttribute('aria-labelledby'))).toBe('approval-controls-heading');
