@@ -506,3 +506,9 @@ after records with known completion times. Recorded action outcomes remain
 unchanged. Valid leap days, fractional seconds and timezone offsets preserve the
 source instant. Browser fixtures cover impossible, timezone-free, future and
 valid offset dates with read-only navigation at phone and desktop widths.
+
+The shell labels Core's returned release metadata as Version reported rather
+than Release available. This endpoint supplies a version string, not an update
+check. Missing or failed version reads show Version unknown and Version not
+reported with neutral styling, independently of subsystem health. The version
+value, existing read request and navigation behavior are unchanged.
