@@ -27,7 +27,7 @@ for (const width of [320, 390, 1280]) for (const records of [false, true]) for (
             if (records) await expect(page.getByRole("heading", { name: finding.title, exact: true })).toBeVisible();
             phase = "failed";
             await page.getByRole("button", { name: "Refresh", exact: true }).click();
-            await expect(page.getByText("Atlas Core unavailable", { exact: true })).toBeVisible();
+            await expect(page.getByText("Latest provider details unavailable", { exact: true })).toBeVisible();
             await expect(page.getByText(/no current findings/i)).toHaveCount(0);
             await expect(page.getByText(/no current recommendations/i)).toHaveCount(0);
             await expect(page.getByText("Diagnostics could not be refreshed. Showing the last reported findings.", { exact: true })).toBeVisible();
@@ -59,14 +59,14 @@ for (const width of [320, 390, 1280]) {
             let available = false;
             await page.route("**/api/v1/ace/summary", route => route.fulfill({ json: available ? aceSummary : malformed[failure] }));
             await page.goto("/providers/proxmox");
-            await expect(page.getByText("Atlas Core unavailable", { exact: true })).toBeVisible();
+            await expect(page.getByText("Latest provider details unavailable", { exact: true })).toBeVisible();
             await expect(page.getByText("Provider not found", { exact: true })).toHaveCount(0);
             await expect(page.getByText("PRIVATE-SUMMARY-CANARY")).toHaveCount(0);
             available = true;
             await page.getByRole("button", { name: "Refresh", exact: true }).click();
             await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
             await expect(page.getByRole("heading", { name: "Diagnostics", exact: true })).toBeVisible();
-            await expect(page.getByText("Atlas Core unavailable", { exact: true })).toHaveCount(0);
+            await expect(page.getByText("Latest provider details unavailable", { exact: true })).toHaveCount(0);
             expect(rejectedMutationRequests).toEqual([]);
         });
     }
@@ -85,7 +85,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("Power", { exact: true })).toBeVisible();
         await expect(page.getByText("Showing 2 of 2", { exact: true })).toBeVisible();
         await expect(page.getByText("PRIVATE-ENTITY-CANARY")).toHaveCount(0);
-        await expect(page.getByText("Atlas Core unavailable", { exact: true })).toHaveCount(0);
+        await expect(page.getByText("Latest provider details unavailable", { exact: true })).toHaveCount(0);
         expect(rejectedMutationRequests).toEqual([]);
     });
 }

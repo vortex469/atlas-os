@@ -215,3 +215,12 @@ projected, and the native model fixture covers serialized defaults and future
 string values. Browser checks cover initial/retained failures, malformed names,
 capabilities, duplicate identities and roots at 320/390/1280 pixels, recovery to
 fresh offline evidence and no mutation requests.
+
+Provider-page read failures say that the latest provider details are unavailable,
+without declaring Atlas Core itself unavailable. The existing Refresh control is
+named as the recovery step. Monitoring, diagnostic, recommendation and maintenance
+explanations use plain language while keeping the same boundaries: monitoring
+saves do not operate resources, advisory reports do not change settings or run
+actions, and maintenance requires review of the proposal/plan and approval of the
+exact action. Existing initial/retained error, recovery and authority assertions
+exercise these messages; no backend decisions or controls change.

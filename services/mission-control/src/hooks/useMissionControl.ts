@@ -164,7 +164,7 @@ export function useMissionControl(): MissionControlState {
             );
 
             setError(
-                "Mission Control could not retrieve the latest state from Atlas Core.",
+                "Could not read the latest provider details. Use Refresh to try again.",
             );
         } finally {
             requestInFlightRef.current = false;

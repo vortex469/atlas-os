@@ -87,7 +87,7 @@ test("a confirmed result remains visible when the provider overview refresh fail
     await expect(page.getByText("Last successful refresh", { exact: true })).toBeVisible();
     await expect(page.getByText("Live", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Synthetic action result confirmed.", { exact: true })).toBeVisible();
-    await expect(page.getByText("Mission Control could not retrieve the latest state from Atlas Core.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Could not read the latest provider details. Use Refresh to try again.", { exact: true })).toBeVisible();
     await expect(page.getByText("Action outcome not confirmed", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Action failed", { exact: true })).toHaveCount(0);
     expect(posts).toBe(1);

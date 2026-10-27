@@ -122,7 +122,7 @@ export function ProviderPage() {
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Atlas Core unavailable
+                        Latest provider details unavailable
                     </p>
 
                     <p className="mt-1 text-sm text-red-200/80">
@@ -176,7 +176,7 @@ export function ProviderPage() {
                     {provider.capabilities.includes("resources") && (
                         <section aria-label="Monitoring policy boundary">
                             <p className="mb-4 rounded-lg border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-300">
-                                Monitoring expectations describe monitoring policy. They do not start, stop, restart, or remediate resources.
+                                Monitoring settings describe the state you expect. Saving them does not start, stop, restart or repair resources.
                             </p>
                             <ProviderResources provider={provider} />
                         </section>
@@ -185,7 +185,7 @@ export function ProviderPage() {
                     <section>
                         <SectionHeader
                             title="Diagnostics"
-                            description="Read-only advisory findings from observed provider and monitoring evidence. Findings do not authorize policy mutation or execution."
+                            description="Read-only findings from provider reports. They do not change monitoring settings or run actions."
                         />
 
                         {error && <p role="status" className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">Diagnostics could not be refreshed. Showing the last reported findings.</p>}
@@ -220,7 +220,7 @@ export function ProviderPage() {
                     <section>
                         <SectionHeader
                             title="Advisory recommendations"
-                            description="Suggested operator review only. Recommendations do not apply monitoring policy or authorize provider or operational execution."
+                            description="Suggestions to review. They do not change settings or run actions."
                         />
 
                         {error && <p role="status" className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">Recommendations could not be refreshed. Showing the last reported recommendations.</p>}
@@ -250,7 +250,7 @@ export function ProviderPage() {
 
                     {provider.id === "proxmox" && <section aria-labelledby="operational-maintenance-heading" className="rounded-lg border border-slate-800 bg-slate-900/70 p-6">
                         <h2 id="operational-maintenance-heading" className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-200">Operational maintenance</h2>
-                        <p className="mt-2 text-sm leading-6 text-slate-400">For maintenance, start a request, review its proposal and plan, then approve the exact action. Monitoring changes and provider actions use separate controls.</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-400">Request maintenance, review the proposal and plan, then approve the exact action. Monitoring settings and provider actions use separate controls.</p>
                         <Link to="/operations/request" className="mt-4 inline-flex rounded-lg border border-cyan-400/50 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300">Request operational maintenance</Link>
                     </section>}
 

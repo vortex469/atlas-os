@@ -37,7 +37,7 @@ for (const width of [320, 390, 1280]) for (const initiallyUnavailable of [false,
                 await expect(settings.getByText("110: stopped", { exact: true })).toBeVisible();
             }
             await expect(overview.locator("[data-mc-status='success']")).toBeVisible();
-            await expect(page.getByText("Atlas Core unavailable", { exact: true })).toHaveCount(0);
+            await expect(page.getByText("Latest provider details unavailable", { exact: true })).toHaveCount(0);
             await expect(page.getByText("PRIVATE-POLICY-CANARY")).toHaveCount(0);
             phase = "recovered";
             await page.getByRole("button", { name: "Refresh", exact: true }).click();

@@ -456,7 +456,7 @@ describe("useMissionControl", () => {
         expect(result.current.lastUpdated).toBe(firstUpdatedAt);
         expect(result.current.isRefreshing).toBe(false);
         expect(result.current.error).toBe(
-            "Mission Control could not retrieve the latest state from Atlas Core.",
+            "Could not read the latest provider details. Use Refresh to try again.",
         );
 
         expect(get).toHaveBeenCalledTimes(14);
