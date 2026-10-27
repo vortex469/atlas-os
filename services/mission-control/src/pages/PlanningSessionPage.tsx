@@ -432,13 +432,18 @@ function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {
                 <ListPanel title="Planning assumptions" values={plan.assumptions} empty="No assumptions listed." />
                 <ListPanel title="Constraints" values={plan.constraints} empty="No constraints listed." />
                 <ListPanel title="Proposed steps" values={plan.proposed_steps} empty="No proposed steps listed." ordered />
-                <ListPanel title="Affected repository" values={[plan.repository_branch ? `Branch: ${plan.repository_branch}` : "Branch: unknown", plan.repository_head ? `Commit: ${plan.repository_head}` : "Commit: unknown"]} empty="Repository context unavailable." />
                 <ListPanel title="Affected files" values={plan.likely_affected_files} empty="No affected files listed." />
                 <ListPanel title="Verification strategy" values={plan.verification_strategy} empty="No verification strategy listed." />
                 <ListPanel title="Rollback considerations" values={plan.rollback_considerations} empty="No rollback considerations listed." />
                 <ListPanel title="Unresolved questions" values={plan.unresolved_questions} empty="No unresolved questions." />
-                <ListPanel title="Evidence IDs" values={plan.evidence_ids} empty="No evidence IDs listed." />
             </section>
+            <details className="min-w-0 rounded-lg border border-slate-700/70 p-3">
+                <summary className="mc-focusable cursor-pointer text-sm text-blue-300">Plan references</summary>
+                <section className="mt-3 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+                    <ListPanel title="Affected repository" values={[plan.repository_branch ? `Branch: ${plan.repository_branch}` : "Branch: unknown", plan.repository_head ? `Commit: ${plan.repository_head}` : "Commit: unknown"]} empty="Repository context unavailable." />
+                    <ListPanel title="Evidence IDs" values={plan.evidence_ids} empty="No evidence IDs listed." />
+                </section>
+            </details>
         </article>
     );
 }
