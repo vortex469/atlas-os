@@ -9,7 +9,7 @@ for (const width of [320, 390, 1280]) for (const status of ["healthy", "offline"
             await page.clock.setFixedTime(new Date(updatedAt));
             const message = status === "healthy" ? "Provider is reachable." : "Provider is not reachable.";
             await page.route("**/api/v1/providers", route => route.fulfill({ json: providers.map(provider => ({ ...provider, capabilities: ["resources"],
-                health: { ...provider.health, status, message, details: { url: "https://example.invalid/provider-health" } },
+                health: { ...provider.health, status, message, details: { url: "https://public-user:PUBLIC-ENDPOINT-CANARY@example.invalid/PUBLIC-ENDPOINT-CANARY?token=PUBLIC-ENDPOINT-CANARY#PUBLIC-ENDPOINT-CANARY" } },
             })) }));
             await page.route("**/api/v1/providers/proxmox/resources", route => route.fulfill({ json: {
                 provider_id: "proxmox", provider_name: "Proxmox", refreshed_at: "2026-01-01T00:00:00Z",
@@ -29,7 +29,7 @@ for (const width of [320, 390, 1280]) for (const status of ["healthy", "offline"
                 expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
             }
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-            if (status === "healthy" && width !== 320) await page.screenshot({ path: `/tmp/atlas-provider-refresh-date-${width}.png`, fullPage: true });
+            if (status === "healthy" && width !== 320) await page.screenshot({ path: `/tmp/atlas-safe-provider-address-${width}.png`, fullPage: true });
             await expect(page.getByText(message, { exact: true })).toBeInViewport();
             const monitoring = page.getByRole("heading", { name: "Resources and monitoring", exact: true });
             await expect(monitoring).toBeInViewport();
@@ -38,7 +38,8 @@ for (const width of [320, 390, 1280]) for (const status of ["healthy", "offline"
             const summary = overview.locator("summary");
             await expect(summary).toHaveText("Technical details");
             await expect(overview.getByText("Latency", { exact: true })).toBeHidden();
-            await expect(overview.getByText("https://example.invalid/provider-health", { exact: true })).toBeHidden();
+            await expect(overview.getByText("https://example.invalid", { exact: true })).toBeHidden();
+            await expect(page.locator("body")).not.toContainText("PUBLIC-ENDPOINT-CANARY");
             await summary.focus();
             await summary.press("Enter");
             await expect(overview.getByText("Latency", { exact: true })).toBeVisible();
@@ -46,7 +47,13 @@ for (const width of [320, 390, 1280]) for (const status of ["healthy", "offline"
             await expect(overview.getByText("Version", { exact: true })).toBeVisible();
             await expect(overview.getByText("Workspace", { exact: true })).toBeVisible();
             await expect(overview.getByText("Capabilities", { exact: true })).toBeVisible();
-            await expect(overview.getByText("https://example.invalid/provider-health", { exact: true })).toBeVisible();
+            await expect(overview.getByText("Provider address", { exact: true })).toBeVisible();
+            await expect(overview.getByText("https://example.invalid", { exact: true })).toBeVisible();
+            await expect(page.locator("body")).not.toContainText("PUBLIC-ENDPOINT-CANARY");
+            if (status === "healthy" && width !== 320) {
+                await page.evaluate(() => window.scrollTo(0, 0));
+                await page.screenshot({ path: `/tmp/atlas-safe-provider-address-details-${width}.png`, fullPage: true });
+            }
             await summary.press("Space");
             await expect(overview.getByText("Latency", { exact: true })).toBeHidden();
             await expect(page.getByText(message, { exact: true })).toBeVisible();
