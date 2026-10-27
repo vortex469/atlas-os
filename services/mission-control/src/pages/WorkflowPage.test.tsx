@@ -1076,4 +1076,64 @@ describe("WorkflowPage", () => {
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Approval already approved.");
     });
+    it.each(["repository_change", "operational_action"] as const)("offers read-only preparation navigation for a saved %s shell", async (effect_kind) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind, workflow_state: "awaiting_approval", implementation_request: null, operational_action_request: null }));
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Finish preparing this change" })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Continue preparing this change" })).toBeVisible();
+        expect(screen.getByText("candidate-fingerprint-123", { exact: true })).not.toBeVisible();
+        expect(screen.getByText("Workflow details", { exact: true }).closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByText("Workflow progress", { exact: true }).closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByRole("link", { name: "Review preparation" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-123/workflow");
+        expect(screen.queryByText("Immutable implementation request is not available for this workflow.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Exact action request unavailable" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /Approve|Resume|Run approved/ })).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it.each([null, "", ".", "..", " session ", "session\nother"])("does not invent a preparation route for missing or unsafe reference %s", async (planning_session_id) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_approval", planning_session_id, implementation_request: null }));
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Preparation details unavailable" })).toBeVisible();
+        expect(screen.queryByRole("link", { name: "Review preparation" })).not.toBeInTheDocument();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it.each(["awaiting_implementation_approval", "executing", "awaiting_verification_approval", "blocked", "completed"])("does not send a %s workflow back to request preparation", async (workflow_state) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state, implementation_request: null }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Workflow summary" });
+        expect(screen.queryByRole("link", { name: "Review preparation" })).not.toBeInTheDocument();
+    });
+
+    it("recovers missing preparation linkage through a read-only status check", async () => {
+        mockedGetWorkflowDetail.mockResolvedValueOnce(workflow({ workflow_state: "awaiting_approval", planning_session_id: null, implementation_request: null }));
+        let finishRead!: (value: WorkflowDetailResponse) => void;
+        mockedGetWorkflowDetail.mockImplementationOnce(() => new Promise(resolve => { finishRead = resolve; }));
+        renderPage();
+        fireEvent.click(await screen.findByRole("button", { name: "Check workflow status" }));
+        expect(screen.getByRole("button", { name: "Checking workflow status…" })).toBeDisabled();
+        expect(screen.queryByRole("link", { name: "Review preparation" })).not.toBeInTheDocument();
+        await act(async () => finishRead(workflow({ workflow_state: "awaiting_approval", implementation_request: null })));
+        expect(await screen.findByRole("link", { name: "Review preparation" })).toBeVisible();
+        expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("encodes a planning reference as one path segment", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_approval", planning_session_id: "planning/one", implementation_request: null }));
+        renderPage();
+        expect(await screen.findByRole("link", { name: "Review preparation" })).toHaveAttribute("href", "/candidate-planning/planning%2Fone/workflow");
+    });
+
+    it.each(["existing request", "other source"])("keeps %s out of unfinished candidate preparation", async (kind) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_approval", ...(kind === "other source" ? { workflow_source: "forge", implementation_request: null } : {}) }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Workflow summary" });
+        expect(screen.queryByRole("link", { name: "Review preparation" })).not.toBeInTheDocument();
+    });
+
 });

@@ -68,7 +68,7 @@ const shell: CandidateWorkflowResponse = {
     reason_codes: [], failure: null,
 };
 
-function workflowDetail(phase: Phase, approved: boolean): WorkflowDetailResponse {
+export function workflowDetail(phase: Phase, approved: boolean): WorkflowDetailResponse {
     const implemented = ["verification", "commit", "completed"].includes(phase);
     const verified = ["commit", "completed"].includes(phase);
     const completed = phase === "completed";
@@ -289,7 +289,7 @@ export async function installRepositoryJourney(page: Page, reject = false, optio
     } };
 }
 
-function maintenanceWorkflow(phase: Phase, approved: boolean, request: ReturnType<typeof operationalActionRequest>): WorkflowDetailResponse {
+export function maintenanceWorkflow(phase: Phase, approved: boolean, request: ReturnType<typeof operationalActionRequest>): WorkflowDetailResponse {
     const complete = phase === "completed";
     return {
         ...workflowDetail(phase, approved), effect_kind: "operational_action",
