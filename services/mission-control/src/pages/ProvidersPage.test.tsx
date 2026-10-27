@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -56,14 +56,52 @@ describe("ProvidersPage", () => {
         expect(get).toHaveBeenCalledTimes(1);
     });
 
-    it("does not keep old health visible after a failed refresh", async () => {
+    it("keeps provider navigation but marks retained health unknown after a failed refresh", async () => {
         get.mockResolvedValueOnce({ data: [provider()] }).mockRejectedValueOnce(new Error("offline"));
         show();
         const list = await screen.findByRole("region", { name: "Provider list" });
         expect(within(list).getByText("Healthy", { exact: true })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         await screen.findByRole("alert");
-        expect(screen.queryByRole("region", { name: "Provider list" })).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Provider list" })).toBeInTheDocument();
+        expect(within(list).getByText("Unknown · Stale evidence", { exact: true })).toBeInTheDocument();
+        expect(within(list).queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Open Proxmox provider" })).toHaveAttribute("href", "/providers/proxmox");
+    });
+
+    it.each(["http", "shape"])("scopes retained empty lists to the last successful refresh after %s failure", async failure => {
+        get.mockResolvedValueOnce({ data: [] });
+        if (failure === "http") get.mockRejectedValueOnce(new Error("PRIVATE_SERVER_BODY"));
+        else get.mockResolvedValueOnce({ data: { private: "PRIVATE_SERVER_BODY" } });
+        get.mockResolvedValueOnce({ data: [provider()] });
+        show();
+        await screen.findByText("No providers are listed yet.");
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        await screen.findByRole("alert");
+        expect(screen.getByText("No providers were listed in the last successful refresh.")).toBeInTheDocument();
+        expect(screen.queryByText("No providers are listed yet.")).not.toBeInTheDocument();
+        expect(document.body.textContent).not.toContain("PRIVATE_SERVER_BODY");
+        fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+        expect(await screen.findByRole("heading", { name: "Proxmox" })).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("keeps search and navigation available with unknown health while refresh is pending", async () => {
+        let finish!: (value: { data: unknown }) => void;
+        get.mockResolvedValueOnce({ data: [provider(), provider("docker", "Docker")] })
+            .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        show();
+        fireEvent.change(await screen.findByRole("searchbox", { name: "Search providers" }), { target: { value: "Proxmox" } });
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        expect(screen.getByRole("status")).toHaveTextContent("Refreshing providers");
+        expect(screen.getByRole("searchbox", { name: "Search providers" })).toHaveValue("Proxmox");
+        expect(screen.getByRole("link", { name: "Open Proxmox provider" })).toBeInTheDocument();
+        expect(screen.getByText("Unknown · Stale evidence", { exact: true })).toBeInTheDocument();
+        await act(async () => finish({ data: [provider("docker", "Docker", "offline")] }));
+        expect(screen.getByText("No providers match your search.")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+        expect(screen.getByRole("heading", { name: "Docker" })).toBeInTheDocument();
+        expect(screen.getByText("Unavailable", { exact: true })).toBeInTheDocument();
     });
 
     it("keeps duplicate identities unavailable and withholds sensitive reasons", async () => {
